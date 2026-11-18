@@ -4043,13 +4043,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4069,7 +4066,7 @@
         ],
         "position": "16384"
       },
-      "name": "updateCard-invalid-response",
+      "name": "updateCard-unconfirmed-change-retry",
       "operation": "updateCard"
     }
   ],

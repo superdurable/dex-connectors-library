@@ -109,7 +109,7 @@ export interface UpdateCardStepConfig<StepInput, OperationInput = UpdateCardInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Trello returned an invalid or oversized card, or a card that does not show a requested change. */
+  /** No longer selected. An invalid or oversized card, or a card that does not show a requested change, is retried because a repeated update converges; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

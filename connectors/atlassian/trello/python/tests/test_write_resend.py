@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Trello creates and comments whose outcome is unknown."""
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 import dex_connectors.sdk as sdk
@@ -191,3 +192,117 @@ async def test_credential_failure_after_a_possible_send_keeps_the_checkpoint() -
         await client.http_client.aclose()
     assert result.branch == "uncertain"
     assert context.heartbeat_value is earlier, "notSent would hide the earlier possible send"
+
+
+class _BrokerUnavailableCredentials:
+    """Fail every resolution as a transient credential broker outage."""
+
+    async def resolve(self, call: sdk.Call) -> trello.Credentials:
+        raise OSError("credential broker is unavailable")
+
+
+async def _run_with_broker_outage(context: AttemptContext) -> str:
+    client = trello.Client(
+        trello.Config("http://127.0.0.1:12345/1"),
+        _BrokerUnavailableCredentials(),
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(500))),
+    )
+    operation = sdk.OperationRef("trello", "createCard")
+    call = sdk.Call(CALL_ID, CONNECTION, operation, context=context, max_sends=3)
+    try:
+        await sdk.run_mutation(client.create_card(), call, trello.CreateCardInput(LIST_ID, "Approved"))
+    except sdk.RetryError:
+        return "retry"
+    finally:
+        await client.http_client.aclose()
+    return "terminal"
+
+
+@pytest.mark.asyncio
+async def test_transient_credential_failure_retries_and_records_not_sent_only_on_a_first_send() -> None:
+    first = AttemptContext()
+    assert await _run_with_broker_outage(first) == "retry"
+    assert first.marker is not None and first.marker.state == "notSent"
+    earlier = Marker(CALL_ID, 2, State.CAN_RESEND, send_count=1)
+    later = AttemptContext(attempt=3, heartbeat_value=earlier)
+    assert await _run_with_broker_outage(later) == "retry"
+    assert later.heartbeat_value is earlier, "notSent would hide the earlier possible send"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 404])
+async def test_refusal_with_an_oversized_body_is_unknown(status: int) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    oversized = "x" * (70 << 10)
+    assert await run("addComment", status, oversized, context, requests) == "retry"
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_update_refusal_with_an_oversized_body_retries() -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(400, content=b"x" * (70 << 10))
+
+    client = trello.Client(
+        trello.Config("http://127.0.0.1:12345/1"),
+        sdk.StaticCredentialProvider(
+            {CONNECTION: trello.Credentials(sdk.SecretString("test-key"), sdk.SecretString("test-token"))}
+        ),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    call = sdk.Call(CALL_ID, CONNECTION, sdk.OperationRef("trello", "updateCard"), context=AttemptContext())
+    try:
+        update = trello.UpdateCardInput(CARD_ID, is_closed=True)
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(client.update_card(), call, update)
+    finally:
+        await client.http_client.aclose()
+    assert len(requests) == 1
+
+
+class _SlowAcceptedBody(httpx.AsyncByteStream):
+    """Send 2xx headers, then hold the body past the write window."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(30)
+        yield b"{}"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_name", ["createCard", "addComment"])
+async def test_write_deadline_after_accepted_headers_is_never_resent(operation_name: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=4)
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, stream=_SlowAcceptedBody())
+
+    client = trello.Client(
+        trello.Config("http://127.0.0.1:12345/1"),
+        sdk.StaticCredentialProvider(
+            {CONNECTION: trello.Credentials(sdk.SecretString("test-key"), sdk.SecretString("test-token"))}
+        ),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    operation = sdk.OperationRef("trello", operation_name)
+    call = sdk.Call(CALL_ID, CONNECTION, operation, context=context, max_sends=3)
+    try:
+        if operation_name == "createCard":
+            result = await sdk.run_mutation(
+                client.create_card(), call, trello.CreateCardInput(LIST_ID, "Approved request")
+            )
+        else:
+            comment = trello.AddCommentInput(CARD_ID, "Approved.")
+            result = await sdk.run_mutation(client.add_comment(), call, comment)
+    finally:
+        await client.http_client.aclose()
+    assert result.branch == "uncertain"
+    assert result.failure is not None and "accepted" in result.failure.message
+    assert len(requests) == 1

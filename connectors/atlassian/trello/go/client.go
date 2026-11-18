@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -111,6 +112,13 @@ type exchangeResult struct {
 	response     trelloResponse
 	isDispatched bool
 	err          error
+}
+
+// sessionStartFailure is a credential failure before any request of one Invoke.
+type sessionStartFailure struct {
+	failure sdkgo.Failure
+	// isTransient is true when a later attempt may resolve the credential, such as a broker outage.
+	isTransient bool
 }
 
 // operationSession carries the resolved credential for one Invoke.
@@ -217,10 +225,15 @@ func (client *Client) UpdateCard() UpdateCardOperation { return UpdateCardOperat
 func (client *Client) AddComment() AddCommentOperation { return AddCommentOperation{client: client} }
 
 // startSession resolves the credential, reread before every call; the caller must call the returned cancel.
-func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
+func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sessionStartFailure) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return nil, nil, &sessionStartFailure{isTransient: true, failure: newFailure(operationID, sdkgo.FailureAvailability,
+			"Trello connection credentials could not be read, so nothing was sent")}
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication, "Trello connection credentials are unavailable; save an API key and a token for the connection")
+		return nil, nil, &sessionStartFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication,
+			"Trello connection credentials are unavailable; save an API key and a token for the connection")}
 	}
 	requestDeadline := time.Now().Add(operationDeadline)
 	if attemptDeadline, hasDeadline := call.Context.Deadline(); hasDeadline && attemptDeadline.Add(-time.Second).Before(requestDeadline) {
@@ -342,6 +355,9 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeRetry, retryAfter: client.rateLimitDelay(response), failure: rateLimitFailure(operationID, subject, response)}
 	case response.statusCode == http.StatusServiceUnavailable:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Trello "+subject+" is temporarily unavailable")}
+	case hasIncompleteBody(response):
+		// A refusal status proves nothing without its full body, so the outcome is unknown.
+		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Trello %s outcome is unknown after HTTP %d with an unreadable body", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	case response.statusCode == http.StatusConflict:
@@ -373,6 +389,8 @@ func (client *Client) classifyRepeatableWrite(operationID string, subject string
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.rateLimitDelay(response), failure: rateLimitFailure(operationID, subject, response)}
+	case hasIncompleteBody(response):
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Trello %s outcome is unknown after HTTP %d with an unreadable body, so the update is sent again", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	case isDefiniteWriteRefusalStatus(response.statusCode):
@@ -445,6 +463,17 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 }
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
+
+// hasIncompleteBody reports a response whose body broke or exceeded its limit before it was read in full.
+func hasIncompleteBody(response trelloResponse) bool {
+	return response.hasBodyReadFailed || response.isBodyTooLarge
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as broker outages, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
 
 // isDefiniteWriteRefusalStatus reports a status proving Trello refused a write; others leave it unknown.
 func isDefiniteWriteRefusalStatus(statusCode int) bool {

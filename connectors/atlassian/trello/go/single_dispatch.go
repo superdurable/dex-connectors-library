@@ -64,15 +64,19 @@ func (write *fencedWrite) isFirstSend() bool {
 	return write.decision.Kind == singledispatch.SendAllowed && !write.hasPossibleEarlierSend
 }
 
-// sessionFailureAttempt maps a credential failure before the send.
-func sessionFailureAttempt[OUT any](write *fencedWrite, operationID string, failure *sdkgo.Failure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
+// sessionFailureAttempt maps a credential failure before the send. A transient failure retries; a terminal
+// one selects defect on a first send and uncertain after a possible earlier send.
+func sessionFailureAttempt[OUT any](write *fencedWrite, operationID string, startFailure *sessionStartFailure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
 	// notSent after a possible earlier send would hide it, so only a first send records it.
 	if write.isFirstSend() {
 		if err := write.fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Trello setup failed and the not-sent checkpoint could not be recorded"), 0)
 		}
 	}
-	return defectOrSelectUncertain(write, defect, echo, *failure, sdkgo.Receipt{})
+	if startFailure.isTransient {
+		return sdkgo.NewMutationRetry[OUT](startFailure.failure, 0)
+	}
+	return defectOrSelectUncertain(write, defect, echo, startFailure.failure, sdkgo.Receipt{})
 }
 
 // dispatchFencedWrite sends once behind the fence; it returns a terminal attempt when the fence forbids sending.

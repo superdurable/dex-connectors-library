@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -159,13 +160,52 @@ func TestCreateCardCredentialFailureAfterAPossibleSendKeepsTheCheckpoint(t *test
 
 	// The canResend marker lets the third attempt send, although the first send may have created the card.
 	ctx = ctx.nextAttempt()
-	withoutCredentials, err := trello.New(trello.Config{Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[trello.Credentials]{})
+	brokerDown, err := trello.New(trello.Config{Endpoint: provider.URL}, failingTrelloCredentials{projectconfig.ErrCredentialBrokerUnavailable})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(ctx, brokerDown.CreateCard(), trelloConnection, validCreateCardInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, ctx.heartbeatCount, "a transient credential failure after a possible send records nothing")
+
+	ctx = ctx.nextAttempt()
+	withoutCredentials, err := trello.New(trello.Config{Endpoint: provider.URL}, failingTrelloCredentials{sdkgo.ErrReauthorizationRequired})
 	require.NoError(t, err)
 	result, err := sdkgo.RunMutation(ctx, withoutCredentials.CreateCard(), trelloConnection, validCreateCardInput())
 	require.NoError(t, err)
 	require.Equal(t, trello.CreateCardBranchUncertain, result.Branch)
 	require.Zero(t, ctx.heartbeatCount, "notSent would hide the earlier possible send")
 	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreateCardRefusalWithAnUnreadableBodyIsUnknown(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(http.ResponseWriter, *http.Request)
+	}{
+		{name: "interrupted 400", reply: func(response http.ResponseWriter, _ *http.Request) {
+			response.Header().Set("Content-Length", "100")
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte("partial"))
+		}},
+		{name: "oversized 404", reply: func(response http.ResponseWriter, _ *http.Request) {
+			writeText(t, response, http.StatusNotFound, strings.Repeat("x", 70<<10))
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingTrello(t, func(response http.ResponseWriter, request *http.Request, _ int) { test.reply(response, request) })
+			ctx := newTrelloDexContext("create-unreadable-refusal")
+			_, err := sdkgo.RunMutation(ctx, newTrelloClient(t, provider.URL).CreateCard(), trelloConnection, validCreateCardInput())
+			requireRetry(t, err, sdkgo.FailureTransport)
+			require.NotContains(t, string(ctx.recordedHeartbeat), `"state":"canResend"`, "an unknown outcome keeps the claim")
+			ctx = ctx.nextAttempt()
+			_, err = sdkgo.RunMutation(ctx, newTrelloClient(t, provider.URL).CreateCard(), trelloConnection, validCreateCardInput())
+			requireRetry(t, err, sdkgo.FailureTransport)
+			ctx = ctx.nextAttempt()
+			result, err := sdkgo.RunMutation(ctx, newTrelloClient(t, provider.URL).CreateCard(), trelloConnection, validCreateCardInput())
+			require.NoError(t, err)
+			require.Equal(t, trello.CreateCardBranchUncertain, result.Branch, "the cap is reached after the third send")
+			require.Equal(t, 3, provider.requestCount())
+		})
+	}
 }
 
 func TestCreateCardDefiniteRefusalsRecordCanResendAndAreNeverResent(t *testing.T) {

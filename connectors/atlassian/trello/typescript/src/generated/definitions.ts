@@ -120,7 +120,7 @@ export const UpdateCardBranchUpdated = UpdateCardBranch.Updated;
 export const UpdateCardBranchNotFound = UpdateCardBranch.NotFound;
 /** Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission. */
 export const UpdateCardBranchProviderRejected = UpdateCardBranch.ProviderRejected;
-/** Trello returned an invalid or oversized card, or a card that does not show a requested change. */
+/** No longer selected. An invalid or oversized card, or a card that does not show a requested change, is retried because a repeated update converges; the branch stays declared for compatibility. */
 export const UpdateCardBranchInvalidResponse = UpdateCardBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateCardBranchDefect = UpdateCardBranch.Defect;
@@ -131,7 +131,7 @@ export const UpdateCardDefinition: MutationDefinition = {
     { id: "updated", description: "Trello applied every requested change, including when the card already had those values, and the Value holds the card Trello returned." },
     { id: "notFound", description: "The card does not exist.", optional: true },
     { id: "providerRejected", description: "Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission.", optional: true },
-    { id: "invalidResponse", description: "Trello returned an invalid or oversized card, or a card that does not show a requested change.", optional: true },
+    { id: "invalidResponse", description: "No longer selected. An invalid or oversized card, or a card that does not show a requested change, is retried because a repeated update converges; the branch stays declared for compatibility.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

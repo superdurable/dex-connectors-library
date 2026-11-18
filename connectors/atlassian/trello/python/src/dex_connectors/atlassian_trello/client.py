@@ -10,7 +10,14 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -143,8 +150,12 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> ProviderResponse:
-        """Send one authenticated request without following redirects or persisting secrets."""
+        """Send one authenticated request without following redirects or persisting secrets.
+
+        ``observed_statuses`` receives the status once headers arrive, before the body is read.
+        """
         api_key, token = credentials.api_key.reveal(), credentials.token.reveal()
         headers = {
             "Authorization": f'OAuth oauth_consumer_key="{api_key}", oauth_token="{token}"',
@@ -156,6 +167,8 @@ class Client:
             method, self.endpoint + path, params=query, json=payload, headers=headers
         )
         response, _ = await send_traced(self.http_client, request)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         try:
             body = await read_bounded_body(
                 response,
@@ -185,6 +198,26 @@ class Client:
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Create a persistable failure without response bodies or secrets."""
     return Failure(kind, "trello", operation, message)
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure no retry fixes; others, such as broker outages, may pass."""
+    return isinstance(error, (ValueError, LookupError, ReauthorizationRequiredError))
+
+
+def credential_failure(operation: str, error: BaseException) -> Failure:
+    """Describe a credential failure; a transient one names its retry."""
+    if is_terminal_credential_error(error):
+        return failure(
+            operation,
+            FailureKind.AUTHENTICATION,
+            "Trello connection credentials are unavailable; save an API key and a token for the connection",
+        )
+    return failure(
+        operation,
+        FailureKind.AVAILABILITY,
+        "Trello connection credentials could not be read, so nothing was sent",
+    )
 
 
 def trello_id(value: str, field: str) -> str:
@@ -390,6 +423,17 @@ def classify_response(
                 failure(operation, FailureKind.AVAILABILITY, f"Trello {subject} is temporarily unavailable"),
                 delay,
             )
+        if response.interrupted or response.oversized:
+            # A refusal status proves nothing without its full body, so the outcome is unknown.
+            return (
+                "uncertain",
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Trello {subject} outcome is unknown after HTTP {status} with an unreadable body",
+                ),
+                0,
+            )
         if status == 404:
             return (
                 "notFound",
@@ -419,6 +463,17 @@ def classify_response(
                 0,
             )
     else:
+        if repeatable and not 200 <= status < 300 and (response.interrupted or response.oversized):
+            return (
+                "retry",
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Trello {subject} outcome is unknown after HTTP {status} with an unreadable body, "
+                    "so the update is sent again",
+                ),
+                delay,
+            )
         if status == 404:
             return (
                 "notFound",

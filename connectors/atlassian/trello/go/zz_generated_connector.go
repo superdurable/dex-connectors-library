@@ -507,7 +507,7 @@ var UpdateCardDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateCardBranchUpdated, Description: "Trello applied every requested change, including when the card already had those values, and the Value holds the card Trello returned."},
 		{ID: UpdateCardBranchNotFound, Description: "The card does not exist.", Optional: true},
 		{ID: UpdateCardBranchProviderRejected, Description: "Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission.", Optional: true},
-		{ID: UpdateCardBranchInvalidResponse, Description: "Trello returned an invalid or oversized card, or a card that does not show a requested change.", Optional: true},
+		{ID: UpdateCardBranchInvalidResponse, Description: "No longer selected. An invalid or oversized card, or a card that does not show a requested change, is retried because a repeated update converges; the branch stays declared for compatibility.", Optional: true},
 		{ID: UpdateCardBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
