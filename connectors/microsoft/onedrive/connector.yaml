@@ -6,17 +6,17 @@ metadata:
   description: Find, read, and write files in OneDrive and SharePoint document libraries through Microsoft Graph, with uploads and folders that stay single under retries.
   company: Microsoft
   categories: [files-documents]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: microsoft
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-microsoft-onedrive"
       operations: [searchFiles, getFile, readFileText, uploadFile, createFolder]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-microsoft-onedrive
       operations: [searchFiles, getFile, readFileText, uploadFile, createFolder]
       triggers: []
@@ -377,11 +377,13 @@ spec:
         - {id: uploaded, goName: Uploaded, description: "Microsoft Graph stored the file, or the file at that path already has exactly this content, such as from an earlier attempt of the Step."}
         - {id: alreadyExists, goName: AlreadyExists, description: "With the fail conflict behavior, a different file or a folder already has the name, so nothing was written.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the upload, such as a missing or read-only parent folder, a blocked file type, or a full quota.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized response while reading back a conflicting item., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retained for compatibility and no longer selected: an invalid or oversized read-back of a conflicting item now retries.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A PUT by parent folder and name never creates a second file, and a repeat converges on one file.
+        repeatOnUnknown: safe
       mocks:
         - name: uploadedDefaultAnswer
           branch: uploaded
@@ -408,11 +410,13 @@ spec:
         - {id: created, goName: Created, description: Microsoft Graph created the folder or a folder with that name already existed.}
         - {id: nameConflict, goName: NameConflict, description: "A file, not a folder, already has the name in the parent folder, so nothing was created.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized response to the creation or its read-back., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The fail conflict behavior never creates a second folder with one name; a repeat reads it back.
+        repeatOnUnknown: safe
       mocks:
         - name: createdDefaultAnswer
           branch: created

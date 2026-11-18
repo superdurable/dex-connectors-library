@@ -65,7 +65,7 @@ func (operation CreateFolderOperation) Invoke(call sdkgo.Call, input CreateFolde
 		return sdkgo.NewMutationRetry[CreateFolderOutput](*failure, 0)
 	}
 	if failure != nil {
-		return sdkgo.NewMutationBranch(CreateFolderBranchDefect, CreateFolderOutput{}, failure, sdkgo.Receipt{})
+		return writeCredentialFailure[CreateFolderOutput](call, failure, CreateFolderBranchDefect)
 	}
 	body, err := json.Marshal(map[string]any{"name": input.Name, "folder": map[string]any{}, conflictBehaviorParameter: "fail"})
 	if err != nil {
@@ -99,6 +99,9 @@ func (operation CreateFolderOperation) Invoke(call sdkgo.Call, input CreateFolde
 	case isRetryableStatus(response.status, codes):
 		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 		return sdkgo.NewMutationRetry[CreateFolderOutput](graphFailure(statusFailureKind(response.status, codes), createFolderOperationID, "provider temporarily rejected the folder creation"), delay)
+	case !isDefiniteWriteRefusal(response):
+		// Another 409, an unlisted status, or an unreadable body leaves the creation unsettled; the repeat finds it by name.
+		return sdkgo.NewMutationRetry[CreateFolderOutput](graphFailure(sdkgo.FailureProtocol, createFolderOperationID, "provider answer did not settle the folder creation, so it repeats"), 0)
 	default:
 		return sdkgo.NewMutationBranch(CreateFolderBranchProviderRejected, CreateFolderOutput{}, graphFailurePointer(statusFailureKind(response.status, codes), createFolderOperationID, "provider rejected the folder creation"), receipt)
 	}
@@ -116,12 +119,12 @@ func (operation CreateFolderOperation) readBackExistingFolder(call sdkgo.Call, c
 		return sdkgo.NewMutationRetry[CreateFolderOutput](graphFailure(sdkgo.FailureConflict, createFolderOperationID, "conflicting item is not readable yet"), 0)
 	}
 	if outcome != nil {
-		return mutationAttemptFromReadOutcome[CreateFolderOutput](outcome)
+		return writeReadBackAttempt[CreateFolderOutput](call, response, outcome)
 	}
 	receipt := client.receipt(call, response.requestID, "")
 	item, err := decodeItemResponse(response.body)
 	if err != nil {
-		return sdkgo.NewMutationBranch(CreateFolderBranchInvalidResponse, CreateFolderOutput{}, graphFailurePointer(sdkgo.FailureProtocol, createFolderOperationID, "provider returned an invalid item response"), receipt)
+		return sdkgo.NewMutationRetry[CreateFolderOutput](graphFailure(sdkgo.FailureProtocol, createFolderOperationID, "provider returned an invalid item response"), 0)
 	}
 	receipt.ProviderObjectID = item.ID
 	if !item.IsFolder {

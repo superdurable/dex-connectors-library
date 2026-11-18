@@ -613,7 +613,7 @@ var UploadFileDefinition = sdkgo.MutationDefinition{
 		{ID: UploadFileBranchUploaded, Description: "Microsoft Graph stored the file, or the file at that path already has exactly this content, such as from an earlier attempt of the Step."},
 		{ID: UploadFileBranchAlreadyExists, Description: "With the fail conflict behavior, a different file or a folder already has the name, so nothing was written.", Optional: true},
 		{ID: UploadFileBranchProviderRejected, Description: "Microsoft Graph conclusively rejected the upload, such as a missing or read-only parent folder, a blocked file type, or a full quota.", Optional: true},
-		{ID: UploadFileBranchInvalidResponse, Description: "Microsoft Graph returned an invalid or oversized response while reading back a conflicting item.", Optional: true},
+		{ID: UploadFileBranchInvalidResponse, Description: "Retained for compatibility and no longer selected: an invalid or oversized read-back of a conflicting item now retries.", Optional: true},
 		{ID: UploadFileBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -692,7 +692,7 @@ var CreateFolderDefinition = sdkgo.MutationDefinition{
 		{ID: CreateFolderBranchCreated, Description: "Microsoft Graph created the folder or a folder with that name already existed."},
 		{ID: CreateFolderBranchNameConflict, Description: "A file, not a folder, already has the name in the parent folder, so nothing was created.", Optional: true},
 		{ID: CreateFolderBranchProviderRejected, Description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", Optional: true},
-		{ID: CreateFolderBranchInvalidResponse, Description: "Microsoft Graph returned an invalid or oversized response to the creation or its read-back.", Optional: true},
+		{ID: CreateFolderBranchInvalidResponse, Description: "Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries.", Optional: true},
 		{ID: CreateFolderBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

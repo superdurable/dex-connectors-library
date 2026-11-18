@@ -118,7 +118,7 @@ export interface UploadFileStepConfig<StepInput, OperationInput = UploadFileInpu
   alreadyExists?: StepTarget<MutationResult<OperationOutput>>;
   /** Microsoft Graph conclusively rejected the upload, such as a missing or read-only parent folder, a blocked file type, or a full quota. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Microsoft Graph returned an invalid or oversized response while reading back a conflicting item. */
+  /** Retained for compatibility and no longer selected: an invalid or oversized read-back of a conflicting item now retries. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -149,7 +149,7 @@ export interface CreateFolderStepConfig<StepInput, OperationInput = CreateFolder
   nameConflict?: StepTarget<MutationResult<OperationOutput>>;
   /** Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Microsoft Graph returned an invalid or oversized response to the creation or its read-back. */
+  /** Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
