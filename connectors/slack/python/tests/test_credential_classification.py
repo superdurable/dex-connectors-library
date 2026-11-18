@@ -23,9 +23,24 @@ from dex_connectors.sdk.projectconfig.broker import RejectedCredentialNotRefresh
 from test_post_resend import CALL_ID, REFERENCE, SERVER_FAILURE, AttemptContext, SequencedCredentials, post
 
 from dex_connectors.slack import Client, Config, Credentials
+from dex_connectors.slack._generated.connection import CredentialMaterialError
 from dex_connectors.slack.models import ListChannelsInput
 
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Slack credential bot_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
 CASES: list[tuple[str, Exception, bool]] = [
+    ("malformed stored material", CredentialMaterialError("Slack credential bot_token is required"), True),
+    ("SDK-wrapped malformed material", sdk_wrapped_material_error(), True),
     ("reauthorization", ReauthorizationRequiredError(), True),
     ("object not found", ObjectNotFoundError(), True),
     ("connection not selected", ConnectionNotSelectedError(), True),

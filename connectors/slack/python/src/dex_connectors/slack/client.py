@@ -131,7 +131,9 @@ def _query_credential_failure(operation: str, is_terminal: bool) -> QueryAttempt
 
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
-    return isinstance(
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,
