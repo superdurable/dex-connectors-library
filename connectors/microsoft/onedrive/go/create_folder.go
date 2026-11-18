@@ -60,7 +60,10 @@ func (operation CreateFolderOperation) Invoke(call sdkgo.Call, input CreateFolde
 	if err := validateCreateFolderInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateFolderBranchDefect, CreateFolderOutput{}, graphFailurePointer(sdkgo.FailureValidation, createFolderOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, createFolderOperationID, input.DriveID)
+	credential, failure, isRetryable := client.resolveCredential(call, createFolderOperationID, input.DriveID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[CreateFolderOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateFolderBranchDefect, CreateFolderOutput{}, failure, sdkgo.Receipt{})
 	}

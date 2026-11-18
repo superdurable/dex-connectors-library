@@ -59,6 +59,7 @@ export class SearchFilesOperation implements Query<SearchFilesInput, SearchFiles
       if (!parentID && !name) throw new TypeError('name is required when parentFolderId is blank, because drive search needs search text');
     } catch (error) { return newQueryBranch(SearchFilesBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
+    if (resolved.isRetryable) return newQueryRetry(resolved.failure!);
     if (!resolved.credentials) return newQueryBranch(SearchFilesBranch.Defect, zero, zeroReceipt(), resolved.failure);
     const credentials = resolved.credentials;
     const isPath = Boolean(parentID && name && input.nameMatch !== 'contains' && !input.pageToken);
@@ -112,6 +113,7 @@ export class GetFileOperation implements Query<GetFileInput, DriveItem> {
     try { validateIDs(driveID, input.itemId); if (!input.itemId) throw new TypeError('itemId'); }
     catch { return newQueryBranch(GetFileBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', 'itemId must be a Microsoft Graph item ID or root, and driveId a drive ID or blank')); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
+    if (resolved.isRetryable) return newQueryRetry(resolved.failure!);
     if (!resolved.credentials) return newQueryBranch(GetFileBranch.Defect, zero, zeroReceipt(), resolved.failure);
     const exchange = await this.client.send(call, resolved.credentials, 'GET', this.client.itemURL(driveID, input.itemId) + '?' + odataQuery(['$select', itemFields]));
     const failed = queryFailure(this.client, operation, exchange, zero, GetFileBranch.NotFound);
@@ -141,6 +143,7 @@ export class ReadFileTextOperation implements Query<ReadFileTextInput, ReadFileT
     try { validateIDs(driveID, input.itemId); if (!input.itemId || input.itemId === 'root') throw new TypeError('itemId'); }
     catch { return newQueryBranch(ReadFileTextBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', 'itemId must be a Microsoft Graph file item ID, and driveId a drive ID or blank')); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
+    if (resolved.isRetryable) return newQueryRetry(resolved.failure!);
     if (!resolved.credentials) return newQueryBranch(ReadFileTextBranch.Defect, zero, zeroReceipt(), resolved.failure);
     let credentials = resolved.credentials;
     const itemURL = this.client.itemURL(driveID, input.itemId);
@@ -207,6 +210,7 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
       if (content.length > this.client.maxUploadBytes) throw new TypeError(`content exceeds the configured upload limit of ${this.client.maxUploadBytes} bytes`);
     } catch (error) { return newMutationBranch(UploadFileBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
+    if (resolved.isRetryable) return newMutationRetry(resolved.failure!);
     if (!resolved.credentials) return newMutationBranch(UploadFileBranch.Defect, zero, zeroReceipt(), resolved.failure);
     let credentials = resolved.credentials;
     const target = this.client.childURL(driveID, parentID, input.name) + ':/content?' + odataQuery(['@microsoft.graph.conflictBehavior', input.conflictBehavior]);
@@ -254,6 +258,7 @@ export class CreateFolderOperation implements Mutation<CreateFolderInput, Create
     try { validateIDs(driveID, parentID); validateName(input.name, true); }
     catch (error) { return newMutationBranch(CreateFolderBranch.Defect, zero, zeroReceipt(), failure(operation, 'VALIDATION', (error as Error).message)); }
     const resolved = await this.client.resolveCredentials(call, operation, driveID);
+    if (resolved.isRetryable) return newMutationRetry(resolved.failure!);
     if (!resolved.credentials) return newMutationBranch(CreateFolderBranch.Defect, zero, zeroReceipt(), resolved.failure);
     let credentials = resolved.credentials;
     const body = Buffer.from(JSON.stringify({ '@microsoft.graph.conflictBehavior': 'fail', folder: {}, name: input.name }), 'utf8');

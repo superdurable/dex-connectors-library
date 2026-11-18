@@ -128,7 +128,10 @@ func (operation SearchFilesOperation) Invoke(call sdkgo.Call, input SearchFilesI
 	if err != nil {
 		return sdkgo.NewQueryBranch(SearchFilesBranchDefect, SearchFilesOutput{}, graphFailurePointer(sdkgo.FailureValidation, searchFilesOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, searchFilesOperationID, input.DriveID)
+	credential, failure, isRetryable := client.resolveCredential(call, searchFilesOperationID, input.DriveID)
+	if isRetryable {
+		return sdkgo.NewQueryRetry[SearchFilesOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(SearchFilesBranchDefect, SearchFilesOutput{}, failure, sdkgo.Receipt{})
 	}

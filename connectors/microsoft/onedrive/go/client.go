@@ -28,6 +28,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -315,15 +316,26 @@ func (client *Client) CreateFolder() CreateFolderOperation {
 }
 
 // resolveCredential refreshes the credential and rejects a blank drive ID for app-only connections.
-func (client *Client) resolveCredential(call sdkgo.Call, operationID string, driveID string) (Credentials, *sdkgo.Failure) {
+// isRetryable reports a failure isTerminalCredentialError does not name, which a later attempt may clear.
+func (client *Client) resolveCredential(call sdkgo.Call, operationID string, driveID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, graphFailurePointer(sdkgo.FailureAvailability, operationID, "connection credentials are temporarily unavailable; nothing was sent"), true
+	}
 	if err != nil || validateResolvedCredentials(credential) != nil {
-		return Credentials{}, graphFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable")
+		return Credentials{}, graphFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable"), false
 	}
 	if driveID == "" && credential.AuthMethodID == MicrosoftAppOnlyAuthMethodID {
-		return Credentials{}, graphFailurePointer(sdkgo.FailureValidation, operationID, "driveId is required with app-only authorization, which has no signed-in user")
+		return Credentials{}, graphFailurePointer(sdkgo.FailureValidation, operationID, "driveId is required with app-only authorization, which has no signed-in user"), false
 	}
-	return credential, nil
+	return credential, nil, false
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // sendRead performs one idempotent Graph read and classifies every non-2xx or unreadable response.

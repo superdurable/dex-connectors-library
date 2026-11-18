@@ -220,8 +220,10 @@ Limits of this design:
 ## Branches
 
 Every operation uses `defect` for invalid input, connection configuration, a
-credential that cannot be resolved, or a contract violation, before any
-request. `providerRejected` is a conclusive Graph refusal, such as `403`, a
+terminal credential failure (reauthorization required, a missing or unselected
+connection, a broker refusal, or a token that fails local checks), or a
+contract violation, before any request. Every other credential failure, such
+as a broker outage, returns Retry before any request. `providerRejected` is a conclusive Graph refusal, such as `403`, a
 missing parent folder, a blocked file type, or `507` (a full quota, kind
 `QUOTA_EXHAUSTED`). `invalidResponse` is a malformed or oversized response.
 `408`, `429`, `5xx` other than `501` and `507`, and the codes
