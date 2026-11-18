@@ -1,11 +1,18 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { RetryError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials } from './generated/models.js';
+
+/** Report a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 
 export type GraphTransport = (request: ProviderRequest) => Promise<ProviderResponse>;
 export type GraphOutcome = 'succeeded' | 'notFound' | 'retry' | 'rejected' | 'invalid' | 'ambiguous' | 'defect';
@@ -69,9 +76,9 @@ export class GraphSession {
     let credentials: Credentials;
     try { credentials = await resolveCredential(source, call, driver, call.context.cancellationSignal); }
     catch (error) {
-      if (error && typeof error === 'object' && 'name' in error && error.name === 'ReauthorizationRequiredError') return zeroExchange('rejected', graphFailure(operation, 'AUTHENTICATION', 'Microsoft authorization must be renewed: authorize the connection again or replace the client secret'));
+      if (isTerminalCredentialError(error)) return zeroExchange('rejected', graphFailure(operation, 'AUTHENTICATION', 'Microsoft authorization must be renewed: authorize the connection again or replace the client secret'));
       if (error instanceof RetryError) return zeroExchange('retry', graphFailure(operation, 'AVAILABILITY', 'the Microsoft token endpoint is temporarily unavailable'));
-      return zeroExchange('defect', graphFailure(operation, 'AUTHENTICATION', 'Outlook Mail connection credentials are unavailable'));
+      return zeroExchange('retry', graphFailure(operation, 'AVAILABILITY', 'Outlook Mail connection credentials are temporarily unavailable; nothing was sent'));
     }
     if (!credentials.accessToken?.reveal() || !isHeaderSafeCredential(credentials.accessToken.reveal())) return zeroExchange('defect', graphFailure(operation, 'AUTHENTICATION', 'Outlook Mail connection credentials are unavailable'));
     const method = credentials.authMethodId || 'microsoft-oauth';

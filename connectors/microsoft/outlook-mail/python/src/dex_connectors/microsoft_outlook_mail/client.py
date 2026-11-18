@@ -19,7 +19,11 @@ from dex_connectors.sdk import (
     FailureKind,
     ReauthorizationRequiredError,
     Receipt,
-    RetryError,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
 )
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -50,6 +54,14 @@ GRAPH_HOST = "graph.microsoft.com"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 GRAPH_ID_PATTERN = re.compile(r"^[A-Za-z0-9=+_-]{1,1024}$")
 GUID_PATTERN = re.compile(r"^[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$")
+# Only these credential failures need a person; every other one retries.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+
 def is_bare_address(value: str) -> bool:
     """Accept only addr-specs that Go mail.ParseAddress preserves unchanged."""
     local, separator, domain = value.partition("@")
@@ -211,7 +223,7 @@ class Client:
                 resolved = await self.credentials.resolve_with_refresh(call)  # type: ignore[attr-defined]
             else:
                 resolved = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except _TERMINAL_CREDENTIAL_ERRORS:
             return None, Exchange(
                 "rejected",
                 problem=failure(
@@ -220,22 +232,13 @@ class Client:
                     "Microsoft authorization must be renewed: authorize the connection again or replace the client secret",  # noqa: E501
                 ),
             )
-        except (OSError, RetryError):
+        except Exception:
             return None, Exchange(
                 "retry",
                 problem=failure(
                     operation,
                     FailureKind.AVAILABILITY,
-                    "the Microsoft token endpoint is temporarily unavailable",
-                ),
-            )
-        except Exception:
-            return None, Exchange(
-                "defect",
-                problem=failure(
-                    operation,
-                    FailureKind.AUTHENTICATION,
-                    "Outlook Mail connection credentials are unavailable",
+                    "Outlook Mail connection credentials are temporarily unavailable; nothing was sent",
                 ),
             )
         if resolved.access_token is None or not is_header_safe_credential(resolved.access_token.reveal()):

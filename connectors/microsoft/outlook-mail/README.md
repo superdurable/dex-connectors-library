@@ -173,7 +173,10 @@ panics at construction.
 
 Credentials are reread before every operation, so a replaced secret takes
 effect without a restart; the mailbox and the response limit are startup
-configuration.
+configuration. A credential failure ends an operation only when it needs a
+person: reauthorization required, a missing or unselected connection, a
+broker refusal, or credential material that fails local checks. Every other
+credential failure, such as a broker outage, retries before any request.
 
 ## Operations
 
