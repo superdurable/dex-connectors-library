@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -304,6 +305,9 @@ func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, o
 		return Credentials{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "HubSpot authorization must be renewed", sdkgo.Receipt{})
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "HubSpot OAuth token refresh is temporarily unavailable", sdkgo.Receipt{})
+	case errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled):
+		// A write may have applied in an earlier attempt, so a passing outage must not select defect.
+		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "HubSpot connection credentials are temporarily unavailable", sdkgo.Receipt{})
 	case err != nil || validateResolvedCredentials(credentials) != nil:
 		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "HubSpot connection credentials are unavailable", sdkgo.Receipt{})
 	}

@@ -4,6 +4,7 @@
 package hubspot_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,6 +16,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/hubspot/go"
 	"github.com/superdurable/dex-connectors-library/connectors/hubspot/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -323,6 +325,26 @@ func TestWritesRetryABare409WithoutADocumentedConflictCategory(t *testing.T) {
 		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501", Properties: map[string]string{"email": "ada@example.com"},
 	})
 	require.ErrorAs(t, err, &retry, "a bare 409 does not prove a refusal, and the update is repeat-safe")
+}
+
+type brokerOutageCredentials struct{}
+
+func (brokerOutageCredentials) Resolve(sdkgo.Call) (hubspot.Credentials, error) {
+	return hubspot.Credentials{}, projectconfig.ErrCredentialBrokerUnavailable
+}
+
+func (source brokerOutageCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[hubspot.Credentials]) (hubspot.Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestUpdateObjectRetriesATransientCredentialFailure(t *testing.T) {
+	client, err := hubspot.New(hubspot.Config{Endpoint: "http://127.0.0.1:1"}, brokerOutageCredentials{})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newStepDexContext("update-broker-outage"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501", Properties: map[string]string{"email": "ada@example.com"},
+	})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an earlier attempt may have applied the write, so defect would be wrong")
 }
 
 func TestUpsertObjectClassifiesBatchErrorsAndMalformedResults(t *testing.T) {

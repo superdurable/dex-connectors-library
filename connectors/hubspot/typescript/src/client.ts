@@ -3,6 +3,7 @@
 
 import { ReauthorizationRequiredError, RetryError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, SecretString, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
@@ -95,6 +96,8 @@ export class HubSpotClient {
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: this.failure('rejected', operation, 'AUTHENTICATION', 'HubSpot authorization must be renewed') };
       if (error instanceof RetryError) return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'HubSpot OAuth token refresh is temporarily unavailable') };
+      // A write may have applied in an earlier attempt, so a passing outage must not select defect.
+      if (error instanceof CredentialBrokerUnavailableError || error instanceof DOMException && error.name === 'AbortError') return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'HubSpot connection credentials are temporarily unavailable') };
       return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'HubSpot connection credentials are unavailable') };
     }
     let encoded: Uint8Array | undefined;

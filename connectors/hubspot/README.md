@@ -149,7 +149,7 @@ as any last-write-wins retry does.
 | `408`, `477`, `5xx` except `501`, dropped connection | Retry, honoring `Retry-After` up to one hour |
 | oversized, malformed, or ID-less response | `invalidResponse` on reads; Retry on `upsertObject` and `updateObject`, which may have applied and are safe to repeat |
 | OAuth refresh rejected, or connection marked `reauthorization_required` | `providerRejected`, `AUTHENTICATION`, no request |
-| OAuth token endpoint temporarily unavailable | Retry, no request |
+| OAuth token endpoint or credential broker temporarily unavailable | Retry, no request |
 | invalid input, or missing or malformed credentials | `defect`, no request |
 
 Failure messages name only an allowlisted HubSpot category and an uppercase
