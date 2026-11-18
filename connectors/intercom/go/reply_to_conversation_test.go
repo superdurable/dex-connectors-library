@@ -239,9 +239,6 @@ func TestAcceptedReplyWithAnUnusableAnswerIsReadBackAndNeverResent(t *testing.T)
 		"reply absent": {status: http.StatusOK, expectedBranch: sdkgo.UncertainBranchID, body: func(t *testing.T) string {
 			return conversationJSON(t, testConversation, "open", nil)
 		}},
-		"rate limited read": {status: http.StatusTooManyRequests, expectedBranch: sdkgo.UncertainBranchID, body: func(*testing.T) string {
-			return `{"type":"error.list","errors":[{"code":"rate_limit_exceeded"}]}`
-		}},
 		"missing conversation": {status: http.StatusNotFound, expectedBranch: sdkgo.UncertainBranchID, body: func(*testing.T) string {
 			return `{"type":"error.list","errors":[{"code":"not_found"}]}`
 		}},
@@ -269,6 +266,54 @@ func TestAcceptedReplyWithAnUnusableAnswerIsReadBackAndNeverResent(t *testing.T)
 				}
 			})
 		}
+	}
+}
+
+func TestAcceptedReplyWhoseReadBackIsRateLimitedKeepsReadingBackWithoutResending(t *testing.T) {
+	for _, test := range []struct {
+		name           string
+		laterReadBack  string
+		expectedBranch sdkgo.BranchID
+	}{
+		{name: "reply found later", laterReadBack: "found", expectedBranch: intercom.ReplyToConversationBranchReplied},
+		{name: "reply absent later", laterReadBack: "absent", expectedBranch: sdkgo.UncertainBranchID},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			now := time.Now()
+			provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, index int) {
+				switch {
+				case index == 0:
+					require.Equal(t, http.MethodPost, request.Method)
+					writeJSON(t, response, http.StatusOK, `{"type":"conversation","id":"another"}`)
+				case request.Method != http.MethodGet:
+					t.Errorf("the accepted reply was sent again with %s", request.Method)
+					writeJSON(t, response, http.StatusInternalServerError, `{}`)
+				case index == 1:
+					writeJSON(t, response, http.StatusTooManyRequests, `{"type":"error.list","errors":[{"code":"rate_limit_exceeded"}]}`)
+				case test.laterReadBack == "found":
+					writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil,
+						testPart{id: "907", partType: "comment", body: replyPlainText, authorType: "admin", authorID: testAdminID, createdAt: now.Unix()}))
+				default:
+					writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil))
+				}
+			})
+			client := newIntercomClient(t, provider.URL)
+			dexContext := newTestDexContext("reply-accepted-rate-limited")
+			dexContext.firstAttemptAt = now
+			_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the rate-limited read-back of an accepted reply retries")
+
+			dexContext.startNextAttempt()
+			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+			require.NoError(t, err)
+			require.Equal(t, test.expectedBranch, result.Branch)
+			require.Equal(t, 3, provider.requestCount(), "below the cap, the accepted reply is only read back")
+			if test.expectedBranch == intercom.ReplyToConversationBranchReplied {
+				require.Equal(t, "907", result.Value.Part.ID)
+				require.True(t, result.Value.WasAlreadyApplied)
+			}
+		})
 	}
 }
 

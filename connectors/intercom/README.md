@@ -206,8 +206,11 @@ default, per Step execution. An application lowers or raises the cap, from 1 to
 4. A 2xx means Intercom accepted the reply, so it is never resent. When its
    answer is oversized, credential-reflecting, undecodable, cut off while its
    body is read, or shows the reply with an invalid part, the same attempt
-   reads the conversation back once: a matching part selects `replied`, and
-   anything else selects `uncertain`.
+   reads the conversation back: a matching part selects `replied`. A
+   read-back that gets a 429, a 5xx, or a lost connection saves an acceptance
+   marker in the checkpoint and retries, so later attempts only read back,
+   even below the cap; when the marker cannot be saved, it selects
+   `uncertain`. Anything else selects `uncertain`.
 5. A definite refusal of a first send, 400, 401, 403, 404, 411, 413, 414, 415,
    or 422, selects `notFound` or `providerRejected`. After a possible earlier
    send the same answer selects `uncertain`, because that send may have
@@ -347,7 +350,7 @@ non-2xx answer, as their sections describe.
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed; writes retry |
 | 429 | Retry after `X-RateLimit-Reset`, at most one minute |
 | 408, 5xx, transport failure | Retry; `replyToConversation` reads back before resending |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; `replyToConversation` reads back and selects `replied` or `uncertain`; `updateConversationState` retries after the write |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; `replyToConversation` reads back, never resends, and selects `replied` or `uncertain` or retries the read; `updateConversationState` retries after the write |
 | invalid input or unusable connection credentials | `defect`, with no request; after a possible reply send, `uncertain` |
 | credential lookup that may succeed later | Retry for writes |
 

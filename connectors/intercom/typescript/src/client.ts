@@ -355,6 +355,8 @@ export class IntercomClient {
           ),
           retryAfterMs: 0,
           receipt,
+          // The status stays, so a reply Intercom accepted is never resent.
+          status: response.status,
         };
       return { outcome: "succeeded", response, receipt };
     }

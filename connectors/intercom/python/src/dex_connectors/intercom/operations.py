@@ -702,6 +702,9 @@ _DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 
 # The reply read-back tolerates a difference between the Worker's and Intercom's clocks.
 _REPLY_RECONCILIATION_SKEW_SECONDS = 300
 
+# The checkpoint provider ID of a reply Intercom accepted without a usable part.
+_ACCEPTED_REPLY_WITHOUT_PART_ID = "dex:acceptedWithoutPartId"
+
 
 def _reply_problem(input: ReplyToConversationInput) -> str:
     if not _NUMERIC_ID.fullmatch(input.conversation_id):
@@ -897,6 +900,7 @@ class ReplyToConversationOperation:
             if observed_statuses and 200 <= observed_statuses[0] < 300:
                 return await self._confirm_accepted(
                     call,
+                    fence,
                     input,
                     credentials,
                     self.client.failure(
@@ -916,7 +920,7 @@ class ReplyToConversationOperation:
         if exchange.outcome != "succeeded" and exchange.has_success_status():
             # An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
             assert exchange.failure is not None
-            return await self._confirm_accepted(call, input, credentials, exchange.failure)
+            return await self._confirm_accepted(call, fence, input, credentials, exchange.failure)
         classified = await _classify_sent_reply(self.client, fence, is_first_send, exchange, output, receipt)
         if classified is not None:
             return classified
@@ -929,6 +933,7 @@ class ReplyToConversationOperation:
         except (ValueError, TypeError, OverflowError) as error:
             return await self._confirm_accepted(
                 call,
+                fence,
                 input,
                 credentials,
                 self.client.failure(
@@ -947,6 +952,7 @@ class ReplyToConversationOperation:
         except (ValueError, TypeError, OverflowError) as error:
             return await self._confirm_accepted(
                 call,
+                fence,
                 input,
                 credentials,
                 self.client.failure(
@@ -962,13 +968,33 @@ class ReplyToConversationOperation:
         )
 
     async def _confirm_accepted(
-        self, call: Call, input: ReplyToConversationInput, credentials: Any, answer_failure: Failure
+        self,
+        call: Call,
+        fence: Fence,
+        input: ReplyToConversationInput,
+        credentials: Any,
+        answer_failure: Failure,
     ) -> MutationAttempt[ReplyToConversationOutput]:
-        """Read back once after a 2xx; with no provider ID to guard a resend, never Retry."""
+        """Never resend a 2xx; a retryable read-back saves an acceptance marker and retries."""
         read_back = await self._read_back(call, input, credentials)
         if read_back.outcome == "found":
             return MutationAttempt.branch_result("replied", read_back.output, read_back.receipt)
         assert read_back.failure is not None
+        if read_back.outcome == "retryable":
+            try:
+                await fence.record_provider_id(_ACCEPTED_REPLY_WITHOUT_PART_ID)
+                return MutationAttempt.retry(
+                    self.client.failure(
+                        "replyToConversation",
+                        read_back.failure.kind,
+                        answer_failure.message
+                        + "; the reply was accepted and is never resent, and "
+                        + read_back.failure.message,
+                    ),
+                    read_back.retry_after_seconds,
+                )
+            except Exception:
+                pass  # Without the marker a later attempt could resend, so this one selects uncertain.
         return MutationAttempt.uncertain(
             read_back.output,
             self.client.failure(
