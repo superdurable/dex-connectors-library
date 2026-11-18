@@ -153,9 +153,12 @@ Sets any of `status`, `assigneeEmail`, `applyTagNames`, and `removeTagNames`:
    the resolved assignee, or the tag changes, the attempt is retried, which
    sends the same change again. A read-back that fails or is malformed, such
    as a 401 after the API key was deleted, also retries, because Hiver already
-   accepted the absolute change. `invalidResponse` means only that a user
-   search or tag page read before the change was malformed, so this attempt
-   sent no change.
+   accepted the absolute change. An earlier attempt's `PATCH` may also have
+   applied before the user search and tag pages are read, so those lookups
+   select a branch only for a definite answer: a readable listed refusal, or a
+   readable page that names no single matching user or tag. A malformed,
+   oversized, unlisted, or credential-reflecting answer Retries, and the
+   declared `invalidResponse` is no longer selected.
 
 `providerRejected` means this attempt changed nothing. An earlier attempt that
 ended unconfirmed, such as one whose read-back hit a 5xx, may still have
@@ -370,20 +373,20 @@ created ID; reads never use it.
 | any failure on the read-back after an accepted `PATCH` | Retry, repeating the absolute change | not applicable |
 | 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` on a first send, otherwise `uncertain` |
 | 411, 413, 414, 415 | `providerRejected` | `providerRejected` on a first send, otherwise `uncertain` |
-| 409, other 4xx | `providerRejected` for reads; Retry for the `PATCH` | resend within the send cap, then `uncertain` |
-| 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for the `PATCH`; redirects are never followed | resend within the send cap, then `uncertain` |
+| 409, other 4xx | `providerRejected` for reads; Retry for the updateConversation lookups and `PATCH` | resend within the send cap, then `uncertain` |
+| 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for the updateConversation lookups and `PATCH`; redirects are never followed | resend within the send cap, then `uncertain` |
 | 429 | Retry after `Retry-After` when present, and hold the client's later requests | same |
 | traced DNS, connect, or TLS failure before a connection | Retry | Retry with `canResend` checkpoint |
 | cancelled wait for a slot | Retry | Retry with `notSent` checkpoint |
 | 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
 | 408, other 5xx, lost response | Retry, after `Retry-After` when present | resend within the send cap, then `uncertain` |
-| oversized, malformed, cut-off, or credential-reflecting 2xx | `invalidResponse` for reads before the `PATCH`; Retry after it | `uncertain`, never resent |
-| 400, 401, 403, 404, 411, 413, 414, 415, 422 whose body is oversized or cut off | as above for reads; Retry for the `PATCH` | resend within the send cap, then `uncertain` |
+| oversized, malformed, cut-off, or credential-reflecting 2xx | `invalidResponse` for reads; Retry for every updateConversation request | `uncertain`, never resent |
+| 400, 401, 403, 404, 411, 413, 414, 415, 422 whose body is oversized, cut off, or reflects the credential | as above for reads; Retry for the updateConversation lookups and `PATCH` | resend within the send cap, then `uncertain` |
 | refusal status whose body carries the note or draft ID | not applicable | save the ID and select `uncertain`, never resent |
 | unreadable or untrusted fence checkpoint | not applicable | Retry without sending |
 | invalid input | `defect`, with no request | `defect`, with no request |
-| credentials temporarily unavailable | `defect` for reads; Retry for updateConversation | `notSent` checkpoint on a first send, then Retry |
-| revoked, absent, or malformed credentials | `defect`; updateConversation retries after its first attempt | `notSent` checkpoint and `defect` on a first send, otherwise `uncertain` |
+| any other credential failure, such as a broker outage or a connection the static provider does not configure | `defect` for reads; Retry for updateConversation | `notSent` checkpoint on a first send, then Retry |
+| reauthorization required, a missing or unselected connection, a credential broker refusal, or a malformed key | `defect`; updateConversation retries after its first attempt | `notSent` checkpoint and `defect` on a first send, otherwise `uncertain` |
 
 Hiver documents IDs as JSON strings in some responses and numbers in others;
 the connector accepts both and reports every ID as a string. The Receipt

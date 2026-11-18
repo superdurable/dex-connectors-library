@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -233,6 +234,13 @@ func (client *Client) UpdateRecord() UpdateRecordOperation {
 	return UpdateRecordOperation{client: client}
 }
 
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 // startSession resolves the credential and its API base URL under the deadline; callers cancel a returned session.
 func (client *Client) startSession(call sdkgo.Call, operation string) (*operationSession, context.CancelFunc, *sessionFailure) {
 	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
@@ -240,7 +248,7 @@ func (client *Client) startSession(call sdkgo.Call, operation string) (*operatio
 	var failure *sessionFailure
 	var apiBaseURL string
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		failure = &sessionFailure{route: sessionRejected, failure: crmFailure(sdkgo.FailureAuthentication, operation,
 			"Zoho authorization is revoked or expired; reconnect the connection")}
 	case err != nil:

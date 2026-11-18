@@ -3,12 +3,19 @@
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, resolveCredentialAfterRejection, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { SearchConversationsOperation, GetConversationOperation, ReplyToConversationOperation, UpdateConversationOperation, FindContactByEmailOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api2.frontapp.com';
 
 class InvalidFrontTokenError extends Error {}
+
+/** A credential failure another attempt cannot repair, including a token that failed local checks. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof InvalidFrontTokenError || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 
 /** One Front request, with an already escaped path. */
 export interface FrontRequest {
@@ -24,7 +31,7 @@ export interface FrontExchange {
   /** Bounded HTTP response, when one arrived. */ response?: ProviderResponse;
   /** Secret-safe failure for unsuccessful exchanges. */ failure?: Failure;
   /** Provider-directed delay for a safe retry, in milliseconds. */ retryAfterMs: number;
-  /** A non-2xx body was oversized or failed to read, so a write cannot rule out acceptance. */ isErrorBodyUnreadable?: boolean;
+  /** A non-2xx body was oversized, failed to read, or reflected the token, so a write cannot rule out acceptance. */ isErrorBodyUnreadable?: boolean;
 }
 /** Transport replacement for deterministic provider tests. */
 export type FrontRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -69,7 +76,7 @@ export class FrontClient {
       if (!isHeaderSafeCredential(token)) throw new InvalidFrontTokenError();
       return { token };
     } catch (error) {
-      return { failure: this.failure('AUTHENTICATION', call.operation.operationId, 'the Front API token is unavailable, blank, or contains characters a header cannot carry'), terminal: error instanceof ReauthorizationRequiredError || error instanceof InvalidFrontTokenError };
+      return { failure: this.failure('AUTHENTICATION', call.operation.operationId, 'the Front API token is unavailable, blank, or contains characters a header cannot carry'), terminal: isTerminalCredentialError(error) };
     }
   }
 
@@ -121,7 +128,9 @@ export class FrontClient {
       if (Buffer.from(response.body).includes(Buffer.from(token))) return { outcome: 'invalid', response, failure: this.failure('PROTOCOL', operation, 'the Front response reflected the API token'), retryAfterMs: 0 };
       return { outcome: 'succeeded', response, retryAfterMs: 0 };
     }
-    return this.classifyFailureStatus(status, response.headers, operation, response);
+    const failed = this.classifyFailureStatus(status, response.headers, operation, response);
+    // A token-reflecting refusal is untrusted, so it cannot rule out acceptance either.
+    return token !== '' && Buffer.from(response.body).includes(Buffer.from(token)) ? { ...failed, isErrorBodyUnreadable: true } : failed;
   }
 
   private classifyFailureStatus(status: number, headers: ProviderResponse['headers'], operation: string, response?: ProviderResponse): FrontExchange {

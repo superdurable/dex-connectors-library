@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Largest complete Front API response, in bytes, that one request reads; a larger response selects invalidResponse. getConversation reads a conversation's newest messages as HTML and every comment, so raise it only when conversations with very long emails select invalidResponse; enter a positive integer. Blank keeps the displayed safety limit."
+        description: "Largest complete Front API response, in bytes, that one request reads; a larger response selects invalidResponse for a Query and is retried by updateConversation. getConversation reads a conversation's newest messages as HTML and every comment, so raise it only when conversations with very long emails select invalidResponse; enter a positive integer. Blank keeps the displayed safety limit."
         required: false
         default: 4194304
   auth:
@@ -218,7 +218,7 @@ spec:
         - {id: updated, goName: Updated, description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the API token.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized conversation on any read is retried.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", optional: true}
       execution:
         executeMethodTimeout: 60s
@@ -242,7 +242,7 @@ spec:
           failure: {kind: VALIDATION, message: "Front rejected the tag ID (HTTP 400)."}
         - name: oversizedReadBack
           branch: invalidResponse
-          description: "The read of cnv_100 before routing exceeds maxResponseBytes."
+          description: "Kept for compatibility: the read of cnv_100 before routing exceeds maxResponseBytes, which the connector now retries."
           failure: {kind: RESPONSE_TOO_LARGE, message: "The Front response exceeds maxResponseBytes."}
     - name: findContactByEmail
       goName: FindContactByEmail

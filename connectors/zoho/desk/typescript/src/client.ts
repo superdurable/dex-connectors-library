@@ -4,7 +4,14 @@
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
+
+/** A credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
+    || error instanceof CredentialBrokerRejectedError;
+}
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { SearchTicketsOperation, GetTicketOperation, CreateTicketOperation, UpdateTicketOperation, AddCommentOperation } from './operations.js';
 
@@ -107,7 +114,7 @@ export class ZohoDeskClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, this.operationSignal(call)); }
     catch (error) {
-      if (error instanceof ReauthorizationRequiredError) return this.failure('rejected', operation, 'AUTHENTICATION', 'Zoho authorization is revoked or expired; reconnect the connection');
+      if (isTerminalCredentialError(error)) return this.failure('rejected', operation, 'AUTHENTICATION', 'Zoho authorization is revoked or expired; reconnect the connection');
       return this.failure('unavailable', operation, 'AUTHENTICATION', 'Zoho credentials are temporarily unavailable');
     }
     if (!this.hasValidCredentials(credentials)) return this.failure('defect', operation, 'AUTHENTICATION', 'Zoho Desk connection credentials are missing or invalid');
@@ -191,7 +198,7 @@ export class ZohoDeskClient {
     if (!('resolveAfterRejection' in this.credentials)) return 'reconnect';
     let replacement: Credentials;
     try { replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, this.operationSignal(call)); }
-    catch (error) { return error instanceof ReauthorizationRequiredError ? 'reconnect' : 'unavailable'; }
+    catch (error) { return isTerminalCredentialError(error) ? 'reconnect' : 'unavailable'; }
     return this.hasValidCredentials(replacement) && replacement.authMethodId === rejected.authMethodId &&
       replacement.accessToken.reveal() !== rejected.accessToken.reveal() ? 'replacement' : 'reconnect';
   }

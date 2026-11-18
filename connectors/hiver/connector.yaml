@@ -214,7 +214,7 @@ spec:
         - {id: updated, goName: Updated, description: "The conversation, read back after the change, holds the requested status, assignee, and tags."}
         - {id: notFound, goName: NotFound, description: "The conversation or shared inbox does not exist or is not visible to the API key.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized lookup or answer repeats the absolute change.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 60s
@@ -237,7 +237,7 @@ spec:
           failure: {kind: VALIDATION, message: "assigneeEmail matches 0 users of the shared inbox instead of one; the change was not sent"}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "For assignee phoebe@acme.example.com, Hiver returned a malformed user search page before the change was sent."
+          description: "Kept for compatibility: for assignee phoebe@acme.example.com, Hiver returned a malformed user search page, which the connector now retries."
           failure: {kind: PROTOCOL, message: "Hiver returned an invalid user search page: response has no data object"}
     - name: addNote
       goName: AddNote

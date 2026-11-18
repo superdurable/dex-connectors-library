@@ -217,7 +217,9 @@ func (client *Client) exchangeWithWritePreparation(
 	}
 	// The status decides a failure; writes also check whether the error body was readable.
 	result := client.classifyFailureStatus(response, operationID)
-	result.isErrorBodyUnreadable = readErr != nil || closeErr != nil
+	token := credentials.APIToken.Reveal()
+	isReflectingToken := token != "" && bytes.Contains(body, []byte(token))
+	result.isErrorBodyUnreadable = readErr != nil || closeErr != nil || isReflectingToken
 	return result
 }
 

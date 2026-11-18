@@ -344,6 +344,14 @@ def _query_terminal(
     )
 
 
+def _is_unknown_update_exchange(exchange: Exchange) -> bool:
+    """Report an updateTicket answer other than success or a definite refusal with a trusted body."""
+    return exchange.is_body_incomplete or (
+        exchange.outcome not in ("succeeded", "notFound", "defect")
+        and not (exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES)
+    )
+
+
 def _mutation_terminal(
     client: Client, call: Call, exchange: Exchange, zero: Output, object_id: int = 0
 ) -> MutationAttempt[Output] | None:
@@ -1029,17 +1037,19 @@ class UpdateTicketOperation:
             return MutationAttempt.branch_result("defect", zero, Receipt(), failure)
         path = f"/tickets/{input.ticket_id}"
         first = await self.client.exchange(call, operation, key, "GET", path)
+        if _is_unknown_update_exchange(first):
+            # An earlier attempt's PUT may have applied, so the read selects a branch only when definite.
+            assert first.failure is not None
+            return MutationAttempt.retry(first.failure, first.retry_after)
         terminal = _mutation_terminal(self.client, call, first, zero, input.ticket_id)
         if terminal:
             return terminal
         try:
             current = _ticket(first.body, input.ticket_id)
         except (ValueError, TypeError) as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                zero,
-                self.client.receipt(call, first, input.ticket_id),
-                self.client.failure(operation, "PROTOCOL", f"Freshdesk returned an invalid ticket: {error}"),
+            # An invalid ticket is an unknown answer, so the safe change repeats.
+            return MutationAttempt.retry(
+                self.client.failure(operation, "PROTOCOL", f"Freshdesk returned an invalid ticket: {error}")
             )
         current_output = UpdateTicketOutput(current)
         payload: dict[str, Any] = {}
@@ -1068,10 +1078,7 @@ class UpdateTicketOperation:
                 self.client.receipt(call, first, input.ticket_id),
             )
         second = await self.client.exchange(call, operation, key, "PUT", path, payload=payload)
-        if second.is_body_incomplete or (
-            second.outcome not in ("succeeded", "notFound", "defect")
-            and not (second.outcome == "rejected" and second.status in _DEFINITE_REFUSAL_STATUSES)
-        ):
+        if _is_unknown_update_exchange(second):
             # The PUT sets final values, so an unknown outcome repeats it.
             assert second.failure is not None
             return MutationAttempt.retry(second.failure, second.retry_after)

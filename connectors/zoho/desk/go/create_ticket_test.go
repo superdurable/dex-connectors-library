@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -422,6 +423,22 @@ func TestCreateTicketCountsEarlierSendsAfterACanResendMarker(t *testing.T) {
 			result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
 			require.NoError(t, err)
 			require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch)
+			require.Zero(t, ctx.heartbeatCount, "notSent would hide the earlier possible send")
+		}},
+		{name: "unselected connection is uncertain", third: func(t *testing.T, ctx *deskDexContext, provider *recordingDesk) {
+			client, err := desk.New(desk.Config{OrgID: testOrganizationID}, failingCredentialProvider{err: projectconfig.ErrConnectionNotSelected}, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+			require.NoError(t, err)
+			require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch)
+			require.Zero(t, ctx.heartbeatCount, "notSent would hide the earlier possible send")
+		}},
+		{name: "broker outage retries", third: func(t *testing.T, ctx *deskDexContext, provider *recordingDesk) {
+			client, err := desk.New(desk.Config{OrgID: testOrganizationID}, failingCredentialProvider{err: projectconfig.ErrCredentialBrokerUnavailable}, desk.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
 			require.Zero(t, ctx.heartbeatCount, "notSent would hide the earlier possible send")
 		}},
 		{name: "transient refresh after 401 retries without canResend", third: func(t *testing.T, ctx *deskDexContext, provider *recordingDesk) {

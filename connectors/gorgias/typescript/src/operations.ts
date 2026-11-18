@@ -136,7 +136,9 @@ function isConclusiveWriteFailure(result: Exchange): boolean {
   return result.outcome === 'defect' || ((result.outcome === 'notFound' || result.outcome === 'rejected') && isDefiniteRefusal(result));
 }
 /** A refusal status whose body was read, which proves Gorgias applied nothing. */
-function isDefiniteRefusal(result: Exchange): boolean { return definiteRefusalStatuses.has(result.response?.status ?? 0) && !result.bodyTooLarge; }
+function isDefiniteRefusal(result: Exchange): boolean { return definiteRefusalStatuses.has(result.response?.status ?? 0) && !result.bodyTooLarge && !result.bodyReflectsCredential; }
+/** A 3xx is Gorgias's documented answer for a merged ticket, which ends an update on any attempt. */
+function isMergedTicketRedirect(result: Exchange): boolean { const status = result.response?.status ?? 0; return result.outcome === 'rejected' && status >= 300 && status < 400; }
 /** A 2xx, or any answer naming a created object: Gorgias applied the write. */
 function isAcceptedWrite(result: Exchange): boolean {
   const status = result.response?.status ?? 0;
@@ -350,8 +352,8 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     if (!resolved.credentials) return newMutationBranch('defect', emptyUpdateTicketOutput, {} as Receipt, resolved.failure);
     const ticketID = input.ticketId;
     const read = await this.client.exchange(call, resolved.credentials, 'updateTicket', 'GET', `/tickets/${ticketID}`);
-    // An earlier attempt's write may have applied, so only a definite refusal selects a branch.
-    if (read.outcome !== 'succeeded') return isConclusiveWriteFailure(read) ? mutationFailure(this.client, call, read, emptyUpdateTicketOutput, 'notFound', ticketID) : newMutationRetry(read.failure!, read.retryAfterMs);
+    // An earlier attempt's write may have applied, so only a definite refusal or a merged ticket selects a branch.
+    if (read.outcome !== 'succeeded') return isConclusiveWriteFailure(read) || isMergedTicketRedirect(read) ? mutationFailure(this.client, call, read, emptyUpdateTicketOutput, 'notFound', ticketID) : newMutationRetry(read.failure!, read.retryAfterMs);
     let current: Ticket;
     try { current = decodeTicket(objectBody(read.response!.body)); if (current.id !== ticketID) throw new TypeError('ticket response is for another ticket'); }
     catch (error) { return newMutationRetry(gorgiasFailure('PROTOCOL', 'updateTicket', `Gorgias returned an invalid ticket: ${error instanceof Error ? error.message : 'invalid response'}`)); }

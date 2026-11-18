@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HelpScoutClient } from '../src/client.js';
 import { ReplyToConversationDefinition, UpdateConversationDefinition } from '../src/generated/definitions.js';
 import type { Credentials, CredentialSource as HelpScoutCredentialSource, ReplyToConversationInput } from '../src/generated/models.js';
@@ -109,7 +110,12 @@ describe('Help Scout fenced reply decisions', () => {
 
   it.each([
     ['transient', new Error('token endpoint unavailable'), 'retry'],
+    ['broker outage', new CredentialBrokerUnavailableError(), 'retry'],
+    ['unconfigured static connection', new Error('connection is not configured'), 'retry'],
     ['terminal', new ReauthorizationRequiredError(), 'uncertain'],
+    ['missing connection object', new ObjectNotFoundError(), 'uncertain'],
+    ['unselected connection', new ConnectionNotSelectedError(), 'uncertain'],
+    ['broker refusal', new CredentialBrokerRejectedError(), 'uncertain'],
   ])('records nothing for a %s credential failure after a possible send', async (_name, error, expected) => {
     const first = newClient(async () => errorResponse(502));
     const context = new AttemptContext();

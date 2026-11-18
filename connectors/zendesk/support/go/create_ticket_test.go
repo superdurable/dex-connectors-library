@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func validCreateTicketInput() support.CreateTicketInput {
@@ -183,7 +184,13 @@ func TestCreateTicketCredentialFailureSelectsDefectOnlyWhenTerminalOnTheFirstAtt
 		isDefect bool
 	}{
 		{name: "terminal first attempt", err: sdkgo.ErrReauthorizationRequired, attempt: 1, isDefect: true},
+		{name: "project reauthorization", err: projectconfig.ErrReauthorizationRequired, attempt: 1, isDefect: true},
+		{name: "connection object missing", err: projectconfig.ErrObjectNotFound, attempt: 1, isDefect: true},
+		{name: "connection not selected", err: projectconfig.ErrConnectionNotSelected, attempt: 1, isDefect: true},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected, attempt: 1, isDefect: true},
 		{name: "transient first attempt", err: errors.New("credential broker unavailable"), attempt: 1},
+		{name: "broker unavailable", err: projectconfig.ErrCredentialBrokerUnavailable, attempt: 1},
+		{name: "connection not configured", err: errors.New("connection is not configured"), attempt: 1},
 		{name: "terminal later attempt", err: sdkgo.ErrReauthorizationRequired, attempt: 2},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -83,12 +83,14 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	}
 	readResult := operation.client.exchange(call, credentials, updateTicketOperation, freshdeskRequest{method: http.MethodGet, path: ticketPath(input.TicketID)})
 	receipt := operation.client.receipt(call, readResult.response, input.TicketID)
-	if attempt, isTerminal := updateTicketAttemptForExchange(readResult, receipt, UpdateTicketOutput{}); isTerminal {
+	// An earlier attempt's PUT may have applied, so the read, like the write, selects a branch only when definite.
+	if attempt, isTerminal := updateTicketWriteAttemptForExchange(readResult, receipt, UpdateTicketOutput{}); isTerminal {
 		return attempt
 	}
 	current, err := decodeTicketBody(readResult.response.body, input.TicketID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, UpdateTicketOutput{}, freshdeskFailurePointer(sdkgo.FailureProtocol, updateTicketOperation, "Freshdesk returned an invalid ticket: "+err.Error()), receipt)
+		// An invalid ticket is an unknown answer, so the safe change repeats; invalidResponse stays declared.
+		return sdkgo.NewMutationRetry[UpdateTicketOutput](freshdeskFailure(sdkgo.FailureProtocol, updateTicketOperation, "Freshdesk returned an invalid ticket: "+err.Error()), 0)
 	}
 	currentOutput := UpdateTicketOutput{Ticket: current}
 	change, hasEffect := planTicketChange(input, current)
@@ -110,8 +112,8 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	return sdkgo.NewMutationBranch(UpdateTicketBranchUpdated, UpdateTicketOutput{Ticket: updated}, nil, receipt)
 }
 
-// updateTicketWriteAttemptForExchange repeats the absolute PUT on every outcome except a definite
-// refusal whose body was read completely.
+// updateTicketWriteAttemptForExchange repeats the absolute change on every outcome of the read or the PUT
+// except a definite refusal whose body was read completely and is trusted.
 func updateTicketWriteAttemptForExchange(result freshdeskExchange, receipt sdkgo.Receipt, value UpdateTicketOutput) (sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
 	if result.isBodyIncomplete {
 		return sdkgo.NewMutationRetry[UpdateTicketOutput](result.failure, result.retryAfter), true
@@ -127,7 +129,7 @@ func updateTicketWriteAttemptForExchange(result freshdeskExchange, receipt sdkgo
 	return sdkgo.NewMutationRetry[UpdateTicketOutput](result.failure, result.retryAfter), true
 }
 
-// updateTicketAttemptForExchange maps the read before the change; it retries every unconfirmed outcome.
+// updateTicketAttemptForExchange maps a definite outcome to its branch; it retries every unconfirmed outcome.
 func updateTicketAttemptForExchange(result freshdeskExchange, receipt sdkgo.Receipt, value UpdateTicketOutput) (sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
 	switch result.outcome {
 	case exchangeSucceeded:

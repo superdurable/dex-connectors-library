@@ -209,10 +209,11 @@ When nothing differs, it selects `updated` with `wasAlreadyApplied: true` and
 writes nothing. A missing required field returns 400, which selects
 `providerRejected`. A 405, which Freshdesk may return for a spam or deleted
 ticket, is not on the list of definite refusals, so the absolute write is
-retried until the Step retry budget runs out. `invalidResponse` means the
-ticket read before the change was malformed or oversized, so this attempt sent
-no change; an invalid answer to the `PUT` is retried instead. This release
-cannot clear an agent or group.
+retried until the Step retry budget runs out. An earlier attempt's `PUT` may
+have applied before the read, so the read, like the `PUT`, selects a branch
+only for a definite refusal with a trusted body; a malformed, oversized, or
+unlisted answer to either is retried, and the declared `invalidResponse` is no
+longer selected. This release cannot clear an agent or group.
 
 ### addNote
 
@@ -313,18 +314,18 @@ token that contains the API key is dropped.
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same as 400 |
 | 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` or `providerRejected` on a first send, otherwise `uncertain` |
 | 411, 413, 414, 415 | `providerRejected` | `providerRejected` on a first send, otherwise `uncertain` |
-| 405, 409, other 4xx | `providerRejected` for reads; Retry for the `PUT` | resend within the send cap, then `uncertain` |
-| 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for the `PUT`; redirects are never followed | resend within the send cap, then `uncertain` |
+| 405, 409, other 4xx | `providerRejected` for reads; Retry for both `updateTicket` requests | resend within the send cap, then `uncertain` |
+| 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for both `updateTicket` requests; redirects are never followed | resend within the send cap, then `uncertain` |
 | 429 | Retry after `Retry-After` | Retry after `Retry-After` with `canResend` checkpoint |
 | connection refused before sending | Retry | Retry with `canResend` checkpoint |
 | 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | resend within the send cap, then `uncertain` |
-| refusal status with an oversized body | the status's branch for reads; Retry for the `PUT` | resend within the send cap, then `uncertain` |
-| oversized, malformed, broken-off, or credential-reflecting 2xx | `invalidResponse` for reads, including the read before the `PUT`; Retry after the `PUT` | read back by the decoded ticket or conversation ID, never resent; `uncertain` without an ID |
+| refusal status with an oversized or credential-reflecting body | the status's branch for reads; Retry for both `updateTicket` requests | resend within the send cap, then `uncertain` |
+| oversized, malformed, broken-off, or credential-reflecting 2xx | `invalidResponse` for reads; Retry for both `updateTicket` requests | read back by the decoded ticket or conversation ID, never resent; `uncertain` without an ID |
 | unreadable or untrusted fence checkpoint | not applicable | Retry without sending |
 | invalid input | `defect`, with no request | `defect`, with no request |
-| terminal connection credentials | `defect`, with no request, on the first attempt; Retry on a later one, which may follow an applied `PUT` | `notSent` checkpoint and `defect` on a first send; `uncertain` after a possible send |
-| transient credential-store failure | Retry, with no request | Retry with no request; `notSent` checkpoint only on a first send |
+| terminal connection credentials: reauthorization required, a missing or unselected connection, a credential broker refusal, or an unusable key | `defect`, with no request, on the first attempt; Retry on a later one, which may follow an applied `PUT` | `notSent` checkpoint and `defect` on a first send; `uncertain` after a possible send |
+| any other credential failure, such as a credential-store or broker outage or a connection the static provider does not configure | Retry, with no request | Retry with no request; `notSent` checkpoint only on a first send |
 
 The Receipt carries the Call ID, the ticket or conversation ID, and
 Freshdesk's `X-Request-Id` header when present.

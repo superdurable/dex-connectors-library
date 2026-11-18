@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -243,8 +244,14 @@ func TestCredentialFailuresSendNothing(t *testing.T) {
 		branch      sdkgo.BranchID
 		isRetry     bool
 	}{
-		"reauthorization required": {credentials: failingCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_code"))}, branch: desk.GetTicketBranchProviderRejected},
-		"refresh outage":           {credentials: failingCredentialProvider{err: errors.New("Zoho token endpoint returned HTTP 503")}, isRetry: true},
+		"reauthorization required":  {credentials: failingCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("invalid_code"))}, branch: desk.GetTicketBranchProviderRejected},
+		"refresh outage":            {credentials: failingCredentialProvider{err: errors.New("Zoho token endpoint returned HTTP 503")}, isRetry: true},
+		"broker unavailable":        {credentials: failingCredentialProvider{err: projectconfig.ErrCredentialBrokerUnavailable}, isRetry: true},
+		"connection not configured": {credentials: sdkgo.StaticCredentialProvider[desk.Credentials]{}, isRetry: true},
+		"project reauthorization":   {credentials: failingCredentialProvider{err: projectconfig.ErrReauthorizationRequired}, branch: desk.GetTicketBranchProviderRejected},
+		"connection object missing": {credentials: failingCredentialProvider{err: projectconfig.ErrObjectNotFound}, branch: desk.GetTicketBranchProviderRejected},
+		"connection not selected":   {credentials: failingCredentialProvider{err: projectconfig.ErrConnectionNotSelected}, branch: desk.GetTicketBranchProviderRejected},
+		"broker rejected":           {credentials: failingCredentialProvider{err: projectconfig.ErrCredentialBrokerRejected}, branch: desk.GetTicketBranchProviderRejected},
 		"unknown data center": {credentials: sdkgo.StaticCredentialProvider[desk.Credentials]{deskConnection: testCredentials("zoho-cn-oauth")},
 			branch: desk.GetTicketBranchDefect},
 		"token with a space": {credentials: sdkgo.StaticCredentialProvider[desk.Credentials]{deskConnection: {AuthMethodID: desk.USDataCenterAuthMethodID, AccessToken: sdkgo.NewSecretString("two words")}},

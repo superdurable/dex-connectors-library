@@ -17,8 +17,11 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     QueryAttempt,
+    ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -56,7 +59,21 @@ _TIMESTAMP = re.compile(r"^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:[.,](\d+))?
 _ZERO = datetime.min.replace(tzinfo=UTC)
 _HOST_ERROR = "Typeform could not be reached or its answer was lost"
 _MALFORMED = "Typeform returned a malformed response"
+_REVOKED_MESSAGE = "the Typeform connection needs reauthorization or is no longer available; reconnect it"
 OutputT = TypeVar("OutputT")
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -312,7 +329,10 @@ class _Operation:
         if credentials is None:
             try:
                 credentials = await self.client.credentials.resolve(call)
-            except Exception:
+            except Exception as error:
+                if _is_terminal_credential_error(error):
+                    kind = FailureKind.AUTHENTICATION
+                    return None, _attempt(operation, mutation, "defect", empty, call, kind, _REVOKED_MESSAGE)
                 return None, _attempt(
                     operation,
                     mutation,
@@ -780,7 +800,13 @@ class UpsertWebhookOperation(_Operation):
             )
         try:
             credentials = await self.client.credentials.resolve(call)
-        except Exception:
+        except Exception as error:
+            is_later_attempt = call.context is not None and call.context.attempt > 1
+            if _is_terminal_credential_error(error) and not is_later_attempt:
+                return _attempt(
+                    operation, True, "defect", empty, call, FailureKind.AUTHENTICATION, _REVOKED_MESSAGE
+                )
+            # A later attempt retries: defect would hide a PUT an earlier attempt may have sent.
             return _attempt(
                 operation,
                 True,

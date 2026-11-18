@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, type Call, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { TypeformClient } from '../src/client.js';
 import { decodeCredentials } from '../src/generated/models.js';
@@ -32,6 +33,25 @@ it('retries unavailable credentials but selects defect for an unusable token', a
   expect((await unreadable.listForms().invoke(call, {})).failure?.kind).toBe('AVAILABILITY');
   const invalid = new TypeformClient({}, { resolve: async () => ({ accessToken: new SecretString('bad\ntoken') }) });
   expect(branchOf(await invalid.listForms().invoke(call, {}))).toBe('defect');
+});
+
+it.each([
+  ['reauthorization', () => new ReauthorizationRequiredError(), true],
+  ['missing connection object', () => new ObjectNotFoundError(), true],
+  ['unselected connection', () => new ConnectionNotSelectedError(), true],
+  ['broker refusal', () => new CredentialBrokerRejectedError(), true],
+  ['broker outage', () => new CredentialBrokerUnavailableError(), false],
+  ['unconfigured static connection', () => new Error('connection is not configured'), false],
+] as const)('classifies a %s resolve failure the same way for reads and the first upsert', async (_name, error, isTerminal) => {
+  const client = new TypeformClient({}, { resolve: async () => { throw error(); } }, { send: async () => { throw new Error('no request may be sent'); } });
+  const expected = isTerminal ? 'defect' : 'retry';
+  expect(branchOf(await client.listForms().invoke(call, {}))).toBe(expected);
+  const upsert = { formId: 'u6nXL7', tag: 'hook', url: 'https://hooks.example.com/t' };
+  const first = await client.upsertWebhook().invoke({ ...call, context: { ...call.context, attempt: 1 } } as Call, upsert);
+  expect(first.kind === 'branch' ? first.branch : first.kind).toBe(expected);
+  // A later attempt may follow an applied PUT, so it retries instead of selecting defect.
+  const later = await client.upsertWebhook().invoke({ ...call, context: { ...call.context, attempt: 2 } } as Call, upsert);
+  expect(later.kind).toBe('retry');
 });
 
 it('rejects invalid provider types and calendar dates', async () => {

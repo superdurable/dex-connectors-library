@@ -504,7 +504,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationBranchUpdated, Description: "The conversation, read back after the change, holds the requested status, assignee, and tags."},
 		{ID: UpdateConversationBranchNotFound, Description: "The conversation or shared inbox does not exist or is not visible to the API key.", Optional: true},
 		{ID: UpdateConversationBranchProviderRejected, Description: "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", Optional: true},
-		{ID: UpdateConversationBranchInvalidResponse, Description: "A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead.", Optional: true},
+		{ID: UpdateConversationBranchInvalidResponse, Description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized lookup or answer repeats the absolute change.", Optional: true},
 		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

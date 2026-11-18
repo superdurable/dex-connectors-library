@@ -7,6 +7,12 @@ from datetime import UTC, datetime
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.typeform import Client, Config, Credentials, GetFormInput, UpsertWebhookInput
 from dex_connectors.typeform.operations import _classify_status, _form, _response, _timestamp
@@ -135,3 +141,52 @@ async def test_oversized_error_body_keeps_rate_limit_status() -> None:
         assert attempt.kind == "retry"
         assert attempt.failure is not None
         assert attempt.failure.kind == sdk.FailureKind.RATE_LIMIT
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> Credentials:
+        raise self.error
+
+
+class _LaterAttemptContext:
+    attempt = 2
+
+
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (sdk.ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError("connection"), True),
+        (ConnectionNotSelectedError("connection"), True),
+        (CredentialBrokerRejectedError("broker"), True),
+        (CredentialBrokerUnavailableError("broker"), False),
+        (ValueError("connection is not configured"), False),
+    ],
+)
+@pytest.mark.asyncio
+async def test_every_credential_resolve_failure_shares_one_classification(
+    error: Exception, is_terminal: bool
+) -> None:
+    """Only the four terminal classes select defect, and a later upsert attempt still retries."""
+    connection = sdk.ConnectionRef("typeform", "forms")
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: pytest.fail("unexpected request"))
+    ) as transport:
+        client = Client(Config(), _FailingCredentials(error), transport)  # type: ignore[arg-type]
+        call = sdk.Call(sdk.CallID("test-call"), connection, sdk.OperationRef("typeform", "getForm"))
+        query = await client.get_form().invoke(call, GetFormInput(form_id="form123"))
+        upsert_input = UpsertWebhookInput(form_id="form123", tag="hook", url="https://hooks.example.com/t")
+        upsert = await client.upsert_webhook().invoke(call, upsert_input)
+        later = sdk.Call(
+            sdk.CallID("test-call"),
+            connection,
+            sdk.OperationRef("typeform", "upsertWebhook"),
+            context=_LaterAttemptContext(),  # type: ignore[arg-type]
+        )
+        later_upsert = await client.upsert_webhook().invoke(later, upsert_input)
+    expected = "branch" if is_terminal else "retry"
+    assert query.kind == expected and upsert.kind == expected
+    assert later_upsert.kind == "retry"

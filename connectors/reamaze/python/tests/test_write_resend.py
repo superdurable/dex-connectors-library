@@ -371,6 +371,39 @@ async def test_terminal_credential_failure_is_defect_before_a_send_and_uncertain
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["createConversation", "replyToConversation"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        projectconfig.CredentialBrokerUnavailableError("broker"),
+        projectconfig.RelayTokenRenewalDeferredError(),
+        ValueError("connection is not configured"),
+        RuntimeError("unlisted"),
+    ],
+)
+async def test_transient_credential_failure_retries_before_and_after_a_possible_send(
+    operation: str, error: Exception
+) -> None:
+    credentials = SwitchingCredentialProvider()
+    credentials.error = error
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await run(operation, lambda _: json_response(500, {}), context, requests, credentials)
+    assert isinstance(result, sdk.RetryError)
+    assert not requests
+
+    credentials.error = None
+    context = AttemptContext()
+    first = await run(operation, lambda _: json_response(502, {}), context, requests, credentials)
+    assert isinstance(first, sdk.RetryError)
+    context.next_attempt()
+    credentials.error = error
+    result = await run(operation, lambda _: json_response(500, {}), context, requests, credentials)
+    assert isinstance(result, sdk.RetryError)
+    assert methods(requests) == ["POST"]
+
+
+@pytest.mark.asyncio
 async def test_accepted_create_with_transient_read_back_and_no_slug_is_uncertain() -> None:
     def respond(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
@@ -459,6 +492,8 @@ async def test_update_retries_an_unusable_read_before_the_change(body: bytes) ->
         (400, b'{"errors":"' + b"x" * 4096 + b'"}', ""),
         (301, b"{}", ""),
         (409, b"{}", ""),
+        (500, b"{}", ""),
+        (400, b'{"errors":"reamazeTestToken0123456789"}', ""),
     ],
 )
 async def test_update_first_read_selects_a_branch_only_for_a_definite_refusal(

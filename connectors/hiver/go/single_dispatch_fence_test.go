@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/hiver/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
@@ -255,6 +256,43 @@ func TestSharedFenceTerminalCredentialFailureOnAFirstSendIsDefect(t *testing.T) 
 	require.NoError(t, err)
 	require.Equal(t, hiver.CreateSharedDraftBranchDefect, result.Branch)
 	require.Equal(t, singledispatch.StateNotSent, latestFenceMarker(t, ctx).State)
+}
+
+func TestSharedFenceClassifiesEveryCredentialFailureOnAFirstSend(t *testing.T) {
+	for name, test := range map[string]struct {
+		err        error
+		isTerminal bool
+	}{
+		"reauthorization required":         {err: sdkgo.ErrReauthorizationRequired, isTerminal: true},
+		"project reauthorization required": {err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		"connection object not found":      {err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		"connection not selected":          {err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		"broker rejected":                  {err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		"broker unavailable":               {err: projectconfig.ErrCredentialBrokerUnavailable},
+		"unlisted error":                   {err: errors.New("credential store timeout")},
+	} {
+		provider := newRecordingHiver(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request expected") })
+		client, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1}, failingHiverCredentials{err: test.err}, hiver.WithAPIBaseURL(provider.URL+"/v1"))
+		require.NoError(t, err, name)
+		ctx := singledispatchtest.NewContext("hiver-fence-credential-class", "add-note")
+		result, err := sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection,
+			hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."})
+		require.Equal(t, singledispatch.StateNotSent, latestFenceMarker(t, ctx).State, name)
+		if test.isTerminal {
+			require.NoError(t, err, name)
+			require.Equal(t, hiver.AddNoteBranchDefect, result.Branch, name)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
+}
+
+// failingHiverCredentials fails every resolution with err.
+type failingHiverCredentials struct{ err error }
+
+func (credentials failingHiverCredentials) Resolve(sdkgo.Call) (hiver.Credentials, error) {
+	return hiver.Credentials{}, credentials.err
 }
 
 // reauthorizationRequiredCredentials resolves no credentials, as a revoked connection does.

@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import dex_connectors.sdk as sdk
 import pytest
+from dex_connectors.sdk import projectconfig
 
 from dex_connectors.reamaze import Client, Config, Credentials, SearchConversationsInput
 from dex_connectors.reamaze.client import (
@@ -80,6 +81,41 @@ def test_brand_validation_and_response_limit() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (sdk.ReauthorizationRequiredError(), True),
+        (projectconfig.ObjectNotFoundError("connection"), True),
+        (projectconfig.ConnectionNotSelectedError("connection"), True),
+        (projectconfig.CredentialBrokerRejectedError("broker"), True),
+        (projectconfig.CredentialBrokerUnavailableError("broker"), False),
+        (ValueError("connection is not configured"), False),
+    ],
+)
+async def test_query_uses_the_shared_credential_classification(error: Exception, is_terminal: bool) -> None:
+    """A query maps the same terminal set to defect and every other resolve error to Retry."""
+
+    class FailingCredentials:
+        async def resolve(self, call: sdk.Call) -> Credentials:
+            raise error
+
+    call = sdk.Call(
+        sdk.CallID("55555555-5555-4555-8555-555555555555"),
+        CONNECTION,
+        sdk.OperationRef("reamaze", "searchConversations"),
+        sdk.IdempotencyKey(""),
+    )
+    client = Client(Config("acme"), FailingCredentials())
+    try:
+        attempt = await client.search_conversations().invoke(call, SearchConversationsInput())
+        if is_terminal:
+            assert attempt.branch == "defect"
+        else:
+            assert attempt.kind == "retry"
+    finally:
+        await client.aclose()
+
+
 async def test_query_distinguishes_transient_and_unusable_credentials() -> None:
     """Retry storage lookup errors and terminate a malformed saved credential."""
 

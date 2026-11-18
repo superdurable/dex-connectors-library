@@ -3,6 +3,7 @@
 
 import { ReauthorizationRequiredError, SecretString, type Call, type MutationAttempt } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { describe, expect, it } from 'vitest';
 import { ZohoDeskClient } from '../src/client.js';
 import type { CredentialSource, Credentials } from '../src/generated/models.js';
@@ -109,6 +110,24 @@ describe('Zoho Desk write recovery', () => {
     const retried = await outage.createTicket().invoke(step.call('createTicket'), createInput);
     expect(retried).toMatchObject({ kind: 'retry', failure: { message: 'Zoho Desk rejected the access token (HTTP 401); credential refresh is temporarily unavailable' } });
     expect(step.marker).toMatchObject({ state: 'claimed' });
+  });
+
+  it.each([
+    ['missing connection object', () => new ObjectNotFoundError(), 'uncertain'],
+    ['unselected connection', () => new ConnectionNotSelectedError(), 'uncertain'],
+    ['broker refusal', () => new CredentialBrokerRejectedError(), 'uncertain'],
+    ['broker outage', () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['unconfigured static connection', () => new Error('connection is not configured'), 'retry'],
+  ] as const)('maps a %s after a possible send without recording a checkpoint', async (_name, error, outcome) => {
+    const requests: ProviderRequest[] = [];
+    const step = new StepExecution();
+    expect(outcomeOf(await deskClient(requests, () => json(500)).createTicket().invoke(step.call('createTicket'), createInput))).toBe('retry');
+    const writes = step.writes;
+    step.attempt = 2;
+    const failing: CredentialSource = { resolve: async () => { throw error(); }, resolveWithRefresh: async () => { throw error(); } };
+    expect(outcomeOf(await deskClient(requests, () => json(500), failing).createTicket().invoke(step.call('createTicket'), createInput))).toBe(outcome);
+    expect(step.writes).toBe(writes);
+    expect(requests).toHaveLength(1);
   });
 
   it('records canResend and retries a first 401 whose refresh fails transiently', async () => {

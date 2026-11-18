@@ -228,7 +228,7 @@ func isTransientExchange(result gorgiasExchange) bool {
 
 // isDefiniteRefusal reports a refusal status whose body was read, which proves Gorgias applied nothing.
 func isDefiniteRefusal(result gorgiasExchange) bool {
-	return isDefiniteRefusalStatus(result.response.statusCode) && !result.response.isBodyTooLarge
+	return isDefiniteRefusalStatus(result.response.statusCode) && !result.response.isBodyTooLarge && !result.response.isBodyReflectingCredential
 }
 
 // isDefiniteRefusalStatus reports a status that proves Gorgias applied nothing.

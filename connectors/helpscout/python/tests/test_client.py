@@ -8,6 +8,7 @@ from typing import cast
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk import projectconfig
 
 from dex_connectors.helpscout import Client, Config, Credentials
 from dex_connectors.helpscout.decode import canonical_timestamp, parse_timestamp
@@ -27,7 +28,12 @@ class _FailingCredentials:
     "error,expected",
     [
         (sdk.ReauthorizationRequiredError(), "terminal"),
+        (projectconfig.ObjectNotFoundError("connection"), "terminal"),
+        (projectconfig.ConnectionNotSelectedError("connection"), "terminal"),
+        (projectconfig.CredentialBrokerRejectedError("broker"), "terminal"),
         (OSError("token endpoint unavailable"), "retry"),
+        (projectconfig.CredentialBrokerUnavailableError("broker"), "retry"),
+        (ValueError("connection is not configured"), "retry"),
     ],
 )
 async def test_credential_failure_classification(error: Exception, expected: str) -> None:

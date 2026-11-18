@@ -5,6 +5,7 @@ package typeform_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/typeform/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -135,6 +137,47 @@ func TestUpsertWebhookSelectsDefectBeforeAnyRequest(t *testing.T) {
 			requireSecretFree(t, result)
 		})
 	}
+}
+
+func TestUpsertWebhookClassifiesEveryCredentialResolveFailure(t *testing.T) {
+	for name, test := range map[string]struct {
+		err        error
+		isTerminal bool
+	}{
+		"reauthorization required":         {err: sdkgo.ErrReauthorizationRequired, isTerminal: true},
+		"project reauthorization required": {err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		"connection object not found":      {err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		"connection not selected":          {err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		"broker rejected":                  {err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		"broker unavailable":               {err: projectconfig.ErrCredentialBrokerUnavailable},
+		"connection not configured":        {err: errors.New("connection is not configured")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := newFakeTypeform(t, nil)
+			client := newTestClient(t, fake.redirectingClient(), failingTypeformCredentials{err: test.err}, typeform.Config{})
+			input := typeform.UpsertWebhookInput{FormID: testFormID, Tag: testWebhookTag, URL: testWebhookURL}
+			result, err := sdkgo.RunMutation(newStepContext("upsert"), client.UpsertWebhook(), testConnection, input)
+			var retry *sdkgo.RetryError
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, typeform.UpsertWebhookBranchDefect, result.Branch)
+				later := newStepContext("upsert-later")
+				later.laterAttempt = 2
+				_, err = sdkgo.RunMutation(later, client.UpsertWebhook(), testConnection, input)
+				require.ErrorAs(t, err, &retry, "an earlier attempt's PUT may have applied")
+			} else {
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Empty(t, fake.recordedRequests())
+		})
+	}
+}
+
+// failingTypeformCredentials fails every resolution with err.
+type failingTypeformCredentials struct{ err error }
+
+func (credentials failingTypeformCredentials) Resolve(sdkgo.Call) (typeform.Credentials, error) {
+	return typeform.Credentials{}, credentials.err
 }
 
 func TestUpsertWebhookClassifiesTypeformAnswers(t *testing.T) {

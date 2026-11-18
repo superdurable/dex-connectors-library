@@ -154,7 +154,7 @@ type hiverExchange struct {
 	response   hiverResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
-	// isErrorBodyUnreadable means a non-2xx body was oversized or broke while reading.
+	// isErrorBodyUnreadable means a non-2xx body was oversized, broke while reading, or reflected the credential.
 	isErrorBodyUnreadable bool
 }
 
@@ -246,8 +246,9 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
-		isTerminal := sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
-			errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+		isTerminal := sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+			errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+			errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 		return Credentials{}, hiverFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), isTerminal
 	}
 	if validateResolvedCredentials(credentials) != nil {
@@ -342,7 +343,9 @@ func (client *Client) sendWithContext(requestContext context.Context, credential
 	if httpResponse.StatusCode < 200 || httpResponse.StatusCode >= 300 {
 		// A write refusal is definite only when its body reads in full; callers check it.
 		result := client.classifyFailureStatus(response, operation)
-		if readErr != nil || closeErr != nil {
+		apiKey := credentials.APIKey.Reveal()
+		// A credential-reflecting refusal body is untrusted, so it is treated like an unreadable one.
+		if readErr != nil || closeErr != nil || (apiKey != "" && bytes.Contains(body, []byte(apiKey))) {
 			result.isErrorBodyUnreadable = true
 		} else {
 			result.response.body = body

@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
@@ -333,8 +334,15 @@ func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string)
 	}
 	return Credentials{}, &credentialFailure{
 		failure:     intercomFailure(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"),
-		isTransient: err != nil && !sdkgo.IsReauthorizationRequired(err),
+		isTransient: err != nil && !isTerminalCredentialError(err),
 	}
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.

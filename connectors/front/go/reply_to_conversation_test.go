@@ -620,8 +620,13 @@ func TestReplyToConversationCredentialFailureAfterAPossibleSendNeverSelectsDefec
 		failure     error
 		isUncertain bool
 	}{
-		"reauthorization required": {failure: sdkgo.ErrReauthorizationRequired, isUncertain: true},
-		"broker unavailable":       {failure: projectconfig.ErrCredentialBrokerUnavailable},
+		"reauthorization required":         {failure: sdkgo.ErrReauthorizationRequired, isUncertain: true},
+		"project reauthorization required": {failure: projectconfig.ErrReauthorizationRequired, isUncertain: true},
+		"connection object not found":      {failure: projectconfig.ErrObjectNotFound, isUncertain: true},
+		"connection not selected":          {failure: projectconfig.ErrConnectionNotSelected, isUncertain: true},
+		"broker rejected":                  {failure: projectconfig.ErrCredentialBrokerRejected, isUncertain: true},
+		"broker unavailable":               {failure: projectconfig.ErrCredentialBrokerUnavailable},
+		"connection not configured":        {failure: errors.New("connection is not configured")},
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {

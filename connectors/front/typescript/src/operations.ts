@@ -114,11 +114,14 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
     const read = async (isAfterWrite: boolean): Promise<{ conversation: Conversation } | { attempt: MutationAttempt<UpdateConversationOutput> }> => {
       const result = await this.client.exchange(call, selected.token, 'updateConversation', { method: 'GET', path });
       if (isAfterWrite && (result.outcome === 'invalid' || result.outcome === 'rejected')) return { attempt: newMutationRetry({ ...result.failure!, message: `Front accepted the change but its read-back failed: ${result.failure!.message}` }, result.retryAfterMs) };
+      // An earlier attempt's write may have applied, so only a definite answer selects a branch on any attempt.
+      if (!isAfterWrite && isUnknownConversationRead(result)) return { attempt: newMutationRetry(result.failure!, result.retryAfterMs) };
       if (result.outcome !== 'succeeded') return { attempt: classifyUpdate( result, zero, receipt) };
       try { const value = conversation(decode(result.response!.body)); if (value.id !== input.conversationId) throw new Error('Front returned another conversation'); return { conversation: value }; }
       catch (error) {
-        if (isAfterWrite) return { attempt: newMutationRetry(fail(this.client, 'updateConversation', 'PROTOCOL', `Front accepted the change but returned an invalid conversation: ${errorMessage(error)}`)) };
-        return { attempt: mutationFailure(this.client, 'updateConversation', 'invalidResponse', zero, receipt, 'PROTOCOL', `Front returned an invalid conversation: ${errorMessage(error)}`) };
+        // An invalid conversation is unknown, so the safe change repeats; invalidResponse stays declared.
+        const prefix = isAfterWrite ? 'Front accepted the change but returned an invalid conversation' : 'Front returned an invalid conversation';
+        return { attempt: newMutationRetry(fail(this.client, 'updateConversation', 'PROTOCOL', `${prefix}: ${errorMessage(error)}`)) };
       }
     };
     const initial = await read(false); if ('attempt' in initial) return initial.attempt;
@@ -278,6 +281,12 @@ interface ReplySendPermit {
 
 /** Only these statuses prove Front applied nothing; any other non-2xx answer may have been applied. */
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+/** A failed read that proves nothing; a merged 301 and a readable listed refusal are definite. */
+function isUnknownConversationRead(result: FrontExchange): boolean {
+  if (result.outcome === 'invalid') return true;
+  if (result.outcome !== 'rejected' && result.outcome !== 'notFound') return false;
+  return !definiteRefusalStatuses.has(result.response?.status ?? 0) || result.isErrorBodyUnreadable === true;
+}
 
 /** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
 function effectiveMaxSends(call: Call, operationMaxSends: number): number {

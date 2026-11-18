@@ -98,7 +98,7 @@ class Exchange:
     failure: Failure | None = None
     retry_after: float = 0
     is_error_body_unreadable: bool = False
-    """A refusal-status body was oversized or broke while reading."""
+    """A refusal-status body was oversized, broke while reading, or reflected the credential."""
 
 
 class Client:
@@ -342,13 +342,16 @@ class Client:
             self._rate_limit_penalty = 0
         if status < 200 or status >= 300:
             classified = classify_status(operation, status, response.headers, retry_after)
-            if method == "GET" or status not in DEFINITE_REFUSAL_STATUSES:
+            if status not in DEFINITE_REFUSAL_STATUSES:
                 await response.aclose()
                 return classified
             # A refusal is definite only when its body reads in full; callers check it.
             try:
                 error_body = await read_bounded_body(response, self.max_response_bytes)
             except (BodyTooLargeError, ProviderTransportError):
+                return replace(classified, is_error_body_unreadable=True)
+            if token and token.encode() in error_body:
+                # A credential-reflecting refusal body is untrusted, so it is treated like an unreadable one.
                 return replace(classified, is_error_body_unreadable=True)
             return replace(classified, body=error_body)
         try:

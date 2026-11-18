@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { GorgiasClient, isBareEmail } from '../src/client.js';
 import { decodeTicket } from '../src/wire.js';
@@ -36,7 +37,13 @@ function recordingMutationCall(attempt: number, heartbeats: unknown[], previousH
 /** A transient credential read failure and the terminal ones another attempt cannot repair. */
 const credentialFailures = [
   ['transient credential read failure', async () => { throw new Error('credential store unavailable'); }, false],
+  ['broker outage', async () => { throw new CredentialBrokerUnavailableError(); }, false],
+  ['refused credential not yet refreshed', async () => { throw new RejectedCredentialNotRefreshedError(); }, false],
+  ['connection that is not configured', async (requested: Call) => new StaticCredentialProvider<typeof credential>([]).resolve(requested), false],
   ['reauthorization requirement', async () => { throw new ReauthorizationRequiredError(); }, true],
+  ['missing connection object', async () => { throw new ObjectNotFoundError(); }, true],
+  ['connection that is not selected', async () => { throw new ConnectionNotSelectedError(); }, true],
+  ['broker refusal', async () => { throw new CredentialBrokerRejectedError(); }, true],
   ['unusable credential', async () => ({ email: 'not an address', apiKey: new SecretString('testKey0123456789') }), true],
 ] as const;
 
@@ -203,8 +210,10 @@ describe('Gorgias retry and routing parity', () => {
   it.each([
     ['an invalid ticket', async () => response(200, { id: 'SENTINEL' })],
     ['an oversized refusal', async () => { throw new BodyTooLargeError(400, {}); }],
-    ['a redirect', async () => response(301)],
     ['a conflict', async () => response(409)],
+    ['an outage', async () => response(500)],
+    ['a timeout status', async () => response(408)],
+    ['a credential-reflecting refusal', async () => response(400, { error: { msg: 'testKey0123456789' } })],
   ] as const)('retries an updateTicket whose first read returns %s', async (_name, send) => {
     const methods: string[] = [];
     const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => { methods.push(request.method); return send(); } });
@@ -213,7 +222,7 @@ describe('Gorgias retry and routing parity', () => {
     expect(attempt.kind).toBe('retry');
   });
 
-  it.each([[404, 'notFound'], [403, 'providerRejected']] as const)('selects a branch when the updateTicket first read gets a definite %s', async (status, branch) => {
+  it.each([[404, 'notFound'], [403, 'providerRejected'], [301, 'providerRejected']] as const)('selects a branch when the updateTicket first read gets a definite %s', async (status, branch) => {
     const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => response(status) });
     const attempt = await client.updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
     expect(attempt.kind).toBe('branch');

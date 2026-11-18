@@ -147,7 +147,7 @@ export const UpdateTicketBranch = {
 export const UpdateTicketBranchUpdated = UpdateTicketBranch.Updated;
 /** The ticket does not exist or is not visible to the connection's user. */
 export const UpdateTicketBranchNotFound = UpdateTicketBranch.NotFound;
-/** Gorgias conclusively rejected the ticket read or the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as for an unknown user or team; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again. */
+/** Gorgias conclusively rejected the ticket read or the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as for an unknown user or team, or answered the first ticket read with a 3xx because the ticket was merged; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again. */
 export const UpdateTicketBranchProviderRejected = UpdateTicketBranch.ProviderRejected;
 /** Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on any read is retried. */
 export const UpdateTicketBranchInvalidResponse = UpdateTicketBranch.InvalidResponse;
@@ -159,7 +159,7 @@ export const UpdateTicketDefinition: MutationDefinition = {
   branches: [
     { id: "updated", description: "The ticket holds the requested values, written now or by an earlier attempt." },
     { id: "notFound", description: "The ticket does not exist or is not visible to the connection's user.", optional: true },
-    { id: "providerRejected", description: "Gorgias conclusively rejected the ticket read or the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as for an unknown user or team; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.", optional: true },
+    { id: "providerRejected", description: "Gorgias conclusively rejected the ticket read or the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as for an unknown user or team, or answered the first ticket read with a 3xx because the ticket was merged; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.", optional: true },
     { id: "invalidResponse", description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on any read is retried.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid; revoked or unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent.", optional: true },
   ],

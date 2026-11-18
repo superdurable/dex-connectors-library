@@ -4,13 +4,16 @@
 package crm_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func dealStageUpdateInput() crm.UpdateRecordInput {
@@ -86,4 +89,44 @@ func TestUpdateRecordRetriesALostResponseAndRejectsInvalidInputWithoutARequest(t
 		require.Equal(t, crm.UpdateRecordBranchDefect, result.Branch)
 	}
 	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestUpdateRecordClassifiesEveryCredentialResolveFailure(t *testing.T) {
+	for name, test := range map[string]struct {
+		err        error
+		isTerminal bool
+	}{
+		"reauthorization required":         {err: sdkgo.ErrReauthorizationRequired, isTerminal: true},
+		"project reauthorization required": {err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		"connection object not found":      {err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		"connection not selected":          {err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		"broker rejected":                  {err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		"broker unavailable":               {err: projectconfig.ErrCredentialBrokerUnavailable},
+		"connection not configured":        {err: errors.New("connection is not configured")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingCRM(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+			client, err := crm.New(crm.Config{}, failingCRMCredentials{err: test.err}, crm.WithAPIBaseURL(provider.URL+"/crm/v8"))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newCRMDexContext("update-credentials"), client.UpdateRecord(), crmConnection, dealStageUpdateInput())
+			if !test.isTerminal {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, crm.UpdateRecordBranchProviderRejected, result.Branch)
+		})
+	}
+}
+
+// failingCRMCredentials fails every resolution with err.
+type failingCRMCredentials struct{ err error }
+
+func (credentials failingCRMCredentials) Resolve(sdkgo.Call) (crm.Credentials, error) {
+	return crm.Credentials{}, credentials.err
+}
+
+func (credentials failingCRMCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[crm.Credentials]) (crm.Credentials, error) {
+	return crm.Credentials{}, credentials.err
 }

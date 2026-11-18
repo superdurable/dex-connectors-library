@@ -23,6 +23,11 @@ from dex_connectors.sdk import (
     Receipt,
     TriggerLogger,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     is_header_safe_credential,
     new_provider_http_client,
@@ -214,10 +219,15 @@ class Client:
         """Resolve the access token; an unusable or revoked token is terminal, a lookup failure transient."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (LookupError, OSError):
-            return None, self._credential_problem(operation, is_transient=True)
-        except (ReauthorizationRequiredError, ValueError, AttributeError, TypeError):
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             return None, self._credential_problem(operation, is_transient=False)
+        except Exception:
+            return None, self._credential_problem(operation, is_transient=True)
         try:
             is_usable = is_header_safe_credential(credentials.access_token.reveal())
         except (AttributeError, TypeError):

@@ -146,6 +146,10 @@ func (client *Client) readConversationForUpdate(
 		failure.Message = "Front accepted the change but its read-back failed: " + failure.Message
 		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](failure, result.retryAfter), true
 	}
+	if !isAfterWrite && isUnknownConversationRead(result) {
+		// An earlier attempt's write may have applied, and only a definite answer selects a branch on any attempt.
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter), true
+	}
 	if result.outcome != exchangeSucceeded {
 		return Conversation{}, classifyUpdateFailure(result, UpdateConversationOutput{}, receipt, ""), true
 	}
@@ -153,15 +157,28 @@ func (client *Client) readConversationForUpdate(
 	if err == nil && "/conversations/"+conversation.ID != conversationPath {
 		err = errors.New("Front returned another conversation")
 	}
-	if err != nil && isAfterWrite {
-		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](frontFailure(sdkgo.FailureProtocol, operationID,
-			"Front accepted the change but returned an invalid conversation: "+err.Error()), 0), true
-	}
 	if err != nil {
-		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{},
-			frontFailurePointer(sdkgo.FailureProtocol, operationID, "Front returned an invalid conversation: "+err.Error()), receipt), true
+		// An invalid conversation is an unknown answer, so the safe change repeats; invalidResponse stays declared.
+		message := "Front returned an invalid conversation: "
+		if isAfterWrite {
+			message = "Front accepted the change but returned an invalid conversation: "
+		}
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](frontFailure(sdkgo.FailureProtocol, operationID, message+err.Error()), 0), true
 	}
 	return conversation, sdkgo.MutationAttempt[UpdateConversationOutput]{}, false
+}
+
+// isUnknownConversationRead reports a failed read that proves nothing: an invalid answer, or a refusal whose
+// status is not a definite one or whose body was unreadable, oversized, or reflected the token. A merged 301 is definite.
+func isUnknownConversationRead(result frontExchange) bool {
+	switch result.outcome {
+	case exchangeInvalid:
+		return true
+	case exchangeNotFound, exchangeRejected:
+		return !isDefiniteRefusalStatus(result.response.statusCode) || result.isErrorBodyUnreadable
+	default:
+		return false
+	}
 }
 
 // classifyUpdateFailure maps a failed request; appliedWritesNote tells the Flow that earlier writes stay applied.

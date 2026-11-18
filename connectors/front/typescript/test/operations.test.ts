@@ -4,6 +4,7 @@
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { FrontClient } from '../src/client.js';
 import { buildConversationSearchQuery, buildReplyHTML } from '../src/operations.js';
@@ -114,7 +115,11 @@ it('treats a merged redirect after a reply as an unknown outcome', async () => {
 });
 
 it('never selects defect for a reply credential failure after a possible send', async () => {
-  for (const [error, kind] of [[new ReauthorizationRequiredError(), 'uncertain'], [new TypeError('broker unavailable'), 'retry']] as const) {
+  for (const [error, kind] of [
+    [new ReauthorizationRequiredError(), 'uncertain'], [new ObjectNotFoundError(), 'uncertain'], [new ConnectionNotSelectedError(), 'uncertain'],
+    [new CredentialBrokerRejectedError(), 'uncertain'], [new TypeError('broker unavailable'), 'retry'], [new CredentialBrokerUnavailableError(), 'retry'],
+    [new Error('connection is not configured'), 'retry'],
+  ] as const) {
     const context = new HeartbeatContext(undefined);
     const first = await client(async () => ({ status: 502, headers: {}, body: Buffer.from('{}') })).replyToConversation().invoke(heartbeatCall('replyToConversation', context), reply);
     expect(first.kind).toBe('retry');
@@ -125,6 +130,18 @@ it('never selects defect for a reply credential failure after a possible send', 
     expect(second.kind).toBe(kind);
     expect(context.marker).toBe(marker);
   }
+});
+
+it.each([
+  [404, '{}', 'notFound'], [403, '{}', 'providerRejected'], [301, '{}', 'notFound'],
+  [200, '{"id":"bad"}', ''], [409, '{}', ''], [410, '{}', ''], [500, '{}', ''], [400, '{"_error":"test-token"}', ''],
+] as const)('selects an update branch on the first read only for a definite answer: HTTP %s %s', async (status, body, branch) => {
+  const methods: string[] = [];
+  const provider = client(async request => { methods.push(request.method); return { status, headers: {}, body: Buffer.from(body) }; });
+  const result = await provider.updateConversation().invoke(call('updateConversation'), tagging);
+  expect(methods).toEqual(['GET']);
+  if (!branch) { expect(result.kind).toBe('retry'); return; }
+  expect(result).toMatchObject({ kind: 'branch', branch });
 });
 
 it('retries an update write whose refusal body cannot be read', async () => {
@@ -139,7 +156,12 @@ it('retries an update write whose refusal body cannot be read', async () => {
 it('selects defect for an update credential failure only on a terminal first attempt', async () => {
   for (const [error, attempt, kind] of [
     [new TypeError('broker unavailable'), 1, 'retry'],
+    [new CredentialBrokerUnavailableError(), 1, 'retry'],
+    [new Error('connection is not configured'), 1, 'retry'],
     [new ReauthorizationRequiredError(), 1, 'branch'],
+    [new ObjectNotFoundError(), 1, 'branch'],
+    [new ConnectionNotSelectedError(), 1, 'branch'],
+    [new CredentialBrokerRejectedError(), 1, 'branch'],
     [new ReauthorizationRequiredError(), 2, 'retry'],
   ] as const) {
     const context = new HeartbeatContext(undefined);

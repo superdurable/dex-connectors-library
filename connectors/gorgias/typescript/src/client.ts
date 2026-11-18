@@ -22,6 +22,8 @@ export type Exchange = {
   retryAfterMs: number;
   /** The body exceeded maxResponseBytes and was not read, so it cannot prove a refusal. */
   bodyTooLarge?: boolean;
+  /** The body contains the API key, so it cannot prove a refusal. */
+  bodyReflectsCredential?: boolean;
   /** The top-level identity a readable body names; a write answer that carries an ID was accepted. */
   object?: ObjectMarker;
 };
@@ -152,7 +154,9 @@ export class GorgiasClient {
       if (Buffer.from(response.body).includes(Buffer.from(credentials.apiKey.reveal(), 'utf8'))) return { outcome: 'invalid', response: { ...response, body: new Uint8Array() }, failure: gorgiasFailure('PROTOCOL', operation, 'Gorgias response reflected the connection credential'), retryAfterMs: 0, object };
       return { outcome: 'succeeded', response, retryAfterMs: 0, object };
     }
-    return { ...this.classifyFailureStatus(response, credentials, operation), bodyTooLarge, object };
+    const apiKey = credentials.apiKey.reveal();
+    const bodyReflectsCredential = apiKey !== '' && Buffer.from(response.body).includes(Buffer.from(apiKey, 'utf8'));
+    return { ...this.classifyFailureStatus(response, credentials, operation), bodyTooLarge, bodyReflectsCredential, object };
   }
 
   /** Map a non-2xx response; Gorgias documents 429 as a request it did not perform. */

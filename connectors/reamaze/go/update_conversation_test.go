@@ -105,6 +105,8 @@ func TestUpdateConversationRetriesAnUnusableReadBeforeTheChange(t *testing.T) {
 		{name: "oversized refusal", body: `{"errors":"` + strings.Repeat("x", 4096) + `"}`, status: http.StatusBadRequest},
 		{name: "redirect", body: `{}`, status: http.StatusMovedPermanently},
 		{name: "conflict", body: `{}`, status: http.StatusConflict},
+		{name: "outage", body: `{}`, status: http.StatusInternalServerError},
+		{name: "credential-reflecting refusal", body: `{"errors":"` + testAPIToken + `"}`, status: http.StatusBadRequest},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {

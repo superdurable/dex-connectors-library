@@ -245,9 +245,11 @@ these positions:
   second dispatch sends the same values or finds them applied. It keeps async
   durability. An earlier attempt's write may have applied before any read of
   this attempt, so only a definite refusal (400, 401, 403, 404, 411, 413, 414,
-  415, or 422) selects a branch; every other outcome, including a 5xx, 409,
-  3xx, lost response, or invalid or oversized answer to the first read, a
-  write, or the read after it, is retried. `invalidResponse` stays declared
+  415, or 422, with a body that is neither oversized nor credential-reflecting)
+  selects a branch, on every attempt. A 3xx to the first read is Gorgias's
+  answer for a merged ticket and selects `providerRejected`. Every other
+  outcome, including a 5xx, 408, 409, lost response, or invalid or oversized
+  answer to the first read, a 3xx to a write, or the read after it, is retried. `invalidResponse` stays declared
   but is no longer selected. Revoked or unusable credentials select `defect`
   only on the first attempt; a later attempt returns Retry, because `defect`
   would hide a change an earlier attempt may have sent.
@@ -330,11 +332,11 @@ and the `createTicket` or `addNote` send.
 
 | Response | Reads | Writes |
 | --- | --- | --- |
-| 400, 411, 413, 414, 415, 422 | `providerRejected`, `VALIDATION` for 400 | `providerRejected`; `uncertain` after a possible earlier create or message send; Retry, as for 409, when the body exceeds `maxResponseBytes` |
+| 400, 411, 413, 414, 415, 422 | `providerRejected`, `VALIDATION` for 400 | `providerRejected`; `uncertain` after a possible earlier create or message send; Retry, as for 409, when the body exceeds `maxResponseBytes` or contains the API key |
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same as 400 |
 | 404 | `notFound` where declared, otherwise `providerRejected` | same as 400, with `notFound` where declared |
 | 409, other 4xx | `providerRejected` | Retry; a create or message reads back by `external_id` first |
-| 3xx, such as the 301 for a merged customer or ticket | `providerRejected`, `PROTOCOL`; redirects are never followed | Retry, as for 409 |
+| 3xx, such as the 301 for a merged customer or ticket | `providerRejected`, `PROTOCOL`; redirects are never followed | `providerRejected` for the first `updateTicket` read; otherwise Retry, as for 409 |
 | 429, 503, connection refused before sending | Retry after `Retry-After` | Retry after `Retry-After`; a create or message sends again without a lookup |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | Retry; a create or message reads back, resends below the cap, and selects `uncertain` at the cap |
 | oversized, malformed, credential-reflecting, or broken 2xx | `invalidResponse` | Retry for `updateTicket`; a create or message is read back once and never resent |

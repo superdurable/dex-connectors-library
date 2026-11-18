@@ -298,7 +298,7 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
 | 404 | `notFound` where declared, otherwise `providerRejected` | same on a first send; `uncertain` after a possible earlier send |
 | 404, 401, 403, or another refusal during read-back | N/A | `uncertain`; it cannot prove the write absent |
-| refusal status whose body exceeds `maxResponseBytes` | the refusal branch for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
+| refusal status whose body exceeds `maxResponseBytes` or contains the API token | the refusal branch for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
 | 409 | `providerRejected`, `CONFLICT`, for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
 | 411, 413, 414, 415 | `providerRejected` | `providerRejected` on a first send; `uncertain` after a possible earlier send |
 | other 4xx | `providerRejected` for reads; Retry for both requests of `updateConversation` | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
@@ -310,9 +310,9 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | oversized, interrupted, or credential-reflecting 2xx | `invalidResponse` or Retry for a read; Retry for both requests of `updateConversation` | Never resent: read back in the same attempt; a found record selects the happy path, otherwise `uncertain` |
 | malformed 2xx | `invalidResponse` for a read; Retry for both requests of `updateConversation`, which never selects its declared `invalidResponse` | Never resent: a create answer naming a valid slug saves it and reads that conversation; otherwise read back by key; a found record selects the happy path, otherwise `uncertain` |
 | unreadable or foreign fence checkpoint | N/A | Retry without sending |
-| connection credentials that cannot be read yet, such as a storage outage | Retry, with no request | Retry, with no request; after a possible send nothing is recorded |
+| connection credentials that cannot be read yet, such as a storage or credential broker outage, a connection the static provider does not configure, or any other unlisted error | Retry, with no request | Retry, with no request; after a possible send nothing is recorded |
 | invalid input or unusable connection credentials | `defect`, with no request | `defect`, `AUTHENTICATION` with a reconnect hint before send; `uncertain` with a reconnect hint after a possible send |
-| a connection that needs reconnecting, is missing, is no longer selected, or that the credential broker refuses | Go and Python reads: `defect` for reconnecting, otherwise Retry; TypeScript reads and `updateConversation`: `defect` | same as unusable connection credentials |
+| a connection that needs reconnecting, is missing, is no longer selected, or that the credential broker refuses | `defect`, with no request, in every language | same as unusable connection credentials |
 
 Unusable credentials select `defect` for `updateConversation` only on its
 first attempt. A later attempt returns Retry instead, because an earlier

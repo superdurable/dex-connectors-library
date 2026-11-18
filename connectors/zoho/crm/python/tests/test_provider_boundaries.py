@@ -13,9 +13,16 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     OperationRef,
+    ReauthorizationRequiredError,
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.zoho_crm import (
     Client,
@@ -146,6 +153,38 @@ async def test_boolean_page_limit_is_not_an_integer() -> None:
             .invoke(_call("findRecords"), FindRecordsInput("Contacts", ("Email",), (), limit=True))
         )
     assert result.kind == "branch" and result.branch == "defect"
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    ("error", "outcome"),
+    [
+        (ReauthorizationRequiredError(), "rejected"),
+        (ObjectNotFoundError("connection"), "rejected"),
+        (ConnectionNotSelectedError("connection"), "rejected"),
+        (CredentialBrokerRejectedError("broker"), "rejected"),
+        (CredentialBrokerUnavailableError("broker"), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_credential_resolve_failures_share_one_classification(error: Exception, outcome: str) -> None:
+    """Only the four terminal classes reject; every other resolve error retries."""
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: pytest.fail("unexpected request"))
+    ) as http_client:
+        client = Client(
+            Config(), _FailingCredentials(error), http_client, api_base_url="http://127.0.0.1:12345/crm/v8"
+        )
+        result = await client.exchange(_call("getRecord"), "getRecord", "GET", "/Deals/123")
+    assert result.outcome == outcome
 
 
 @pytest.mark.asyncio

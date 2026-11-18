@@ -89,7 +89,7 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The conversation, read back after the change, holds the requested status, assignee, and tags.", False),
         BranchDefinition(NOT_FOUND, "The conversation or shared inbox does not exist or is not visible to the API key.", True),
         BranchDefinition(PROVIDER_REJECTED, "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", True),
-        BranchDefinition(INVALID_RESPONSE, "A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead.", True),
+        BranchDefinition(INVALID_RESPONSE, "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized lookup or answer repeats the absolute change.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

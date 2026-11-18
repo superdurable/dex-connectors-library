@@ -22,6 +22,12 @@ from dex_connectors.sdk import (
     StaticCredentialProvider,
     run_mutation,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.singledispatch import Fence, Marker
 
 from dex_connectors.freshworks_freshdesk import Client, Config, Credentials
@@ -314,7 +320,16 @@ async def test_a_refusal_after_an_unknown_send_and_a_rate_limited_resend_selects
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("error", "branch"),
-    [(ReauthorizationRequiredError("reconnect"), "uncertain"), (RuntimeError("store unavailable"), None)],
+    [
+        (ReauthorizationRequiredError("reconnect"), "uncertain"),
+        (ObjectNotFoundError("connection"), "uncertain"),
+        (ConnectionNotSelectedError("connection"), "uncertain"),
+        (CredentialBrokerRejectedError("broker"), "uncertain"),
+        (RuntimeError("store unavailable"), None),
+        (CredentialBrokerUnavailableError("broker"), None),
+        (ValueError("connection is not configured"), None),
+        (KeyError("unlisted lookup failure"), None),
+    ],
 )
 async def test_a_credential_failure_after_a_possible_send_records_nothing(
     error: Exception, branch: str | None
@@ -426,6 +441,37 @@ async def test_a_terminal_credential_failure_selects_update_defect_only_on_the_f
     )
     assert isinstance(second, RetryError), "an earlier attempt may have sent the change"
     assert not requests
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "body", "branch"),
+    [
+        (404, {}, "notFound"),
+        (403, {}, "providerRejected"),
+        (200, {"id": 1207}, None),
+        (409, {}, None),
+        (500, {}, None),
+        (301, {}, None),
+        (400, {"description": "inert-key"}, None),
+    ],
+)
+async def test_the_update_read_selects_a_branch_only_for_a_definite_answer(
+    status: int, body: dict[str, Any], branch: str | None
+) -> None:
+    requests: list[httpx.Request] = []
+    result = await run(
+        "updateTicket",
+        UpdateTicketInput(ticket_id=1207, status=2),
+        AttemptContext(),
+        requests,
+        lambda request, index: json_response(status, body),
+    )
+    assert [request.method for request in requests] == ["GET"]
+    if branch is None:
+        assert isinstance(result, RetryError), "an earlier attempt's PUT may have applied"
+    else:
+        assert isinstance(result, MutationResult) and result.branch == branch
 
 
 @pytest.mark.asyncio

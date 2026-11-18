@@ -20,6 +20,7 @@ from dex_connectors.sdk import (
     RetryError,
     SecretString,
     StaticCredentialProvider,
+    projectconfig,
     run_mutation,
 )
 from dex_connectors.sdk.singledispatch import Marker
@@ -240,6 +241,12 @@ class FailingCredentials:
         (ReauthorizationRequiredError(), False, "defect"),
         (LookupError("credential store unavailable"), True, ""),
         (ReauthorizationRequiredError(), True, "uncertain"),
+        (projectconfig.ObjectNotFoundError("connection"), False, "defect"),
+        (projectconfig.ConnectionNotSelectedError("connection"), False, "defect"),
+        (projectconfig.CredentialBrokerRejectedError("broker"), True, "uncertain"),
+        (projectconfig.CredentialBrokerUnavailableError("broker"), False, ""),
+        (ValueError("connection is not configured"), False, ""),
+        (ValueError("connection is not configured"), True, ""),
     ],
 )
 async def test_credential_failures(error: Exception, has_possible_earlier_send: bool, branch: str) -> None:

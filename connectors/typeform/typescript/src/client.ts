@@ -1,9 +1,16 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, SecretString, type Call, type CredentialProvider, type Failure, type MutationAttempt, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type MutationAttempt, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
+
+/** A credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
+    || error instanceof CredentialBrokerRejectedError;
+}
 import { GetFormOperation, ListFormsOperation, ListResponsesOperation, UpsertWebhookOperation } from './operations.js';
 
 const hosts: Record<string, string> = { us: 'https://api.typeform.com', eu: 'https://api.eu.typeform.com', newEu: 'https://api.typeform.eu' };
@@ -44,7 +51,13 @@ export class TypeformClient {
   async resolve(call: Call, operation: string): Promise<{ credentials: Credentials } | { outcome: ExchangeFailure }> {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
-    catch { return { outcome: { retry: true, failure: this.failure(operation, 'AVAILABILITY', 'the Typeform connection could not be loaded yet') } }; }
+    catch (error) {
+      // A later upsertWebhook attempt retries: defect would hide a PUT an earlier attempt may have sent.
+      if (isTerminalCredentialError(error) && !(operation === 'upsertWebhook' && call.context.attempt > 1)) {
+        return { outcome: { branch: 'defect', failure: this.failure(operation, 'AUTHENTICATION', 'the Typeform connection needs reauthorization or is no longer available; reconnect it') } };
+      }
+      return { outcome: { retry: true, failure: this.failure(operation, 'AVAILABILITY', 'the Typeform connection could not be loaded yet') } };
+    }
     if (!(credentials.accessToken instanceof SecretString) || !isHeaderSafeCredential(credentials.accessToken.reveal())) {
       return { outcome: { branch: 'defect', failure: this.failure(operation, 'AUTHENTICATION', 'the Typeform access token is blank or contains characters a header cannot carry') } };
     }

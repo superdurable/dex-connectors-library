@@ -122,7 +122,12 @@ Mutation uses async durability: a lost answer, `408`, `429`, or `5xx` returns
 Retry, and a Dex re-dispatch repeats the same `PUT`. The real-Dex test in
 `mutation_dispatch_integration_test.go` forces a second Execute after the
 first accepted PUT, and observes two identical `PUT`s and one webhook.
-`isDisabled` stores the webhook without delivering to it. A blank
+`isDisabled` stores the webhook without delivering to it. A connection that
+needs reauthorization, is missing or no longer selected, or that the credential
+broker refuses selects `defect` before any request for every operation, except
+that a later `upsertWebhook` attempt retries, because an earlier attempt may
+have sent the `PUT`; any other credential failure, such as a broker outage or a
+connection the static provider does not configure, retries. A blank
 `webhook_secret` selects `defect` before any request, and Typeform's
 `webhook_url_https_required` selects `providerRejected` with `VALIDATION`.
 

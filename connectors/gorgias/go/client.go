@@ -124,6 +124,8 @@ type gorgiasResponse struct {
 	apiCallLimit string
 	// isBodyTooLarge marks a body over maxResponseBytes, which was not read, so it cannot prove a refusal.
 	isBodyTooLarge bool
+	// isBodyReflectingCredential marks a body that contains the API key, so it cannot prove a refusal.
+	isBodyReflectingCredential bool
 	// object holds the top-level object fields of a readable body, kept after the body is cleared.
 	object gorgiasObjectMarker
 }
@@ -304,6 +306,8 @@ func (client *Client) exchangeWithContext(ctx context.Context, credentials Crede
 		}
 		return gorgiasExchange{outcome: exchangeSucceeded, response: response}
 	}
+	apiKey := credentials.APIKey.Reveal()
+	response.isBodyReflectingCredential = apiKey != "" && bytes.Contains(body, []byte(apiKey))
 	return client.classifyFailureStatus(response, credentials, operation)
 }
 

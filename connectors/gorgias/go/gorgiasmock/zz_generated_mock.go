@@ -311,7 +311,7 @@ func UpdateTicketNotFound(value gorgias.UpdateTicketOutput, failure *sdkgo.Failu
 	return connectormock.Branch(gorgias.UpdateTicketBranchNotFound, value, failure)
 }
 
-// UpdateTicketProviderRejected selects the providerRejected branch: Gorgias conclusively rejected the ticket read or the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as for an unknown user or team; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.
+// UpdateTicketProviderRejected selects the providerRejected branch: Gorgias conclusively rejected the ticket read or the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as for an unknown user or team, or answered the first ticket read with a 3xx because the ticket was merged; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.
 func UpdateTicketProviderRejected(value gorgias.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[gorgias.UpdateTicketOutput] {
 	return connectormock.Branch(gorgias.UpdateTicketBranchProviderRejected, value, failure)
 }

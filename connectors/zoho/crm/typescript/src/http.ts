@@ -4,7 +4,14 @@
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
+
+/** A credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
+    || error instanceof CredentialBrokerRejectedError;
+}
 import type { Config, CredentialSource, Credentials, ProviderError } from './models.js';
 import { isFieldPath, isRecordId } from './coql.js';
 
@@ -134,7 +141,7 @@ export class ZohoHTTPClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, this.#operationSignal(call)); }
     catch (error) {
-      if (error instanceof ReauthorizationRequiredError) return emptyExchange('rejected', crmFailure('AUTHENTICATION', operation, 'Zoho authorization is revoked or expired; reconnect the connection'));
+      if (isTerminalCredentialError(error)) return emptyExchange('rejected', crmFailure('AUTHENTICATION', operation, 'Zoho authorization is revoked or expired; reconnect the connection'));
       return emptyExchange('retry', crmFailure('AUTHENTICATION', operation, 'Zoho credentials are temporarily unavailable'));
     }
     try { return { credentials, baseURL: apiBaseURL(credentials, this.#apiBaseURL) }; }

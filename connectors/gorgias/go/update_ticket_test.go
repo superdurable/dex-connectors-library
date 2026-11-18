@@ -155,8 +155,11 @@ func TestUpdateTicketFirstReadSelectsABranchOnlyForADefiniteRefusal(t *testing.T
 		{name: "invalid ticket", status: http.StatusOK, body: `{"id":"SENTINEL"}`, isRetry: true},
 		{name: "oversized ticket", status: http.StatusOK, body: `{"id":5512,"subject":"` + strings.Repeat("x", 8192) + `"}`, isRetry: true},
 		{name: "oversized refusal", status: http.StatusBadRequest, body: `{"error":{"msg":"` + strings.Repeat("x", 8192) + `"}}`, isRetry: true},
-		{name: "redirect", status: http.StatusMovedPermanently, body: `{}`, isRetry: true},
+		{name: "merged ticket redirect", status: http.StatusMovedPermanently, body: `{}`, branch: gorgias.UpdateTicketBranchProviderRejected},
 		{name: "conflict", status: http.StatusConflict, body: `{}`, isRetry: true},
+		{name: "outage", status: http.StatusInternalServerError, body: `{}`, isRetry: true},
+		{name: "timeout", status: http.StatusRequestTimeout, body: `{}`, isRetry: true},
+		{name: "credential-reflecting refusal", status: http.StatusBadRequest, body: `{"error":{"msg":"` + testAPIKey + `"}}`, isRetry: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingGorgias(t, func(response http.ResponseWriter, request *http.Request, _ int) {

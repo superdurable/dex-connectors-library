@@ -94,7 +94,7 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
     const key = credential.key;
     const output: UpdateConversationOutput = { conversation: emptyDetails.conversation };
     if (input.assigneeEmail) {
-      const result = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: `${inboxPath(input.inboxId)}/users/search`, query: new URLSearchParams({ email: input.assigneeEmail }) });
+      const result = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: `${inboxPath(input.inboxId)}/users/search`, query: new URLSearchParams({ email: input.assigneeEmail }), isPreWriteLookup: true });
       const terminal = updateOutcome(this.client, call, result, input.conversationId);
       if (terminal) return terminal;
     if (result.kind !== 'success') throw new Error('unclassified Hiver exchange');
@@ -106,7 +106,7 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
         }).filter(Boolean))];
         if (matches.length !== 1) return newMutationBranch('providerRejected', emptyUpdate, this.client.receipt(call, result.response, input.conversationId), failure('updateConversation', 'VALIDATION', `assigneeEmail matches ${matches.length} users of the shared inbox instead of one; the change was not sent`));
         output.assigneeUserId = matches[0]!;
-      } catch (error) { return mutationInvalid(this.client, call, result, 'updateConversation', emptyUpdate, `Hiver returned an invalid user search page: ${message(error)}`, input.conversationId); }
+      } catch (error) { return retryUnknownLookup(`Hiver returned an invalid user search page: ${message(error)}`); }
     }
     if (input.applyTagNames?.length || input.removeTagNames?.length) {
       const tags: Tag[] = [];
@@ -114,13 +114,13 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
       let isComplete = false;
       let lastResult: HiverExchange | undefined;
       for (let pageIndex = 0; pageIndex < 5; pageIndex++) {
-        const result = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: `${inboxPath(input.inboxId)}/tags`, query: pageQuery(token, 100) });
+        const result = await this.client.exchange(call, 'updateConversation', key, { method: 'GET', path: `${inboxPath(input.inboxId)}/tags`, query: pageQuery(token, 100), isPreWriteLookup: true });
         const terminal = updateOutcome(this.client, call, result, input.conversationId);
         if (terminal) return terminal;
     if (result.kind !== 'success') throw new Error('unclassified Hiver exchange');
         lastResult = result;
         try { const page = decodeListPage(result.response.body); tags.push(...page.results.map(decodeTag)); token = page.nextPageToken; isComplete = !token; }
-        catch (error) { return mutationInvalid(this.client, call, result, 'updateConversation', emptyUpdate, `Hiver returned an invalid tag page: ${message(error)}`, input.conversationId); }
+        catch (error) { return retryUnknownLookup(`Hiver returned an invalid tag page: ${message(error)}`); }
         if (isComplete || [...(input.applyTagNames ?? []), ...(input.removeTagNames ?? [])].every(name => tags.some(tag => tag.name === name))) break;
       }
       const missing = isComplete ? 'is not a tag of the shared inbox' : 'is not among the tags on the first 5 pages Hiver returned';
@@ -190,19 +190,22 @@ function mutationDefect<T>(operation: string, zero: T, error: unknown): Mutation
 function queryCredentialFailure<T>(operation: string, zero: T): QueryAttempt<T> { return newQueryBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
 function mutationCredentialFailure<T>(operation: string, zero: T): MutationAttempt<T> { return newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
 function queryInvalid<T>(client: HiverClient, call: Call, result: HiverExchange & { kind: 'success' }, operation: string, zero: T, detail: string, objectId = ''): QueryAttempt<T> { return newQueryBranch('invalidResponse', zero, client.receipt(call, result.response, objectId), failure(operation, 'PROTOCOL', detail)); }
-function mutationInvalid<T>(client: HiverClient, call: Call, result: HiverExchange & { kind: 'success' }, operation: string, zero: T, detail: string, objectId = ''): MutationAttempt<T> { return newMutationBranch('invalidResponse', zero, client.receipt(call, result.response, objectId), failure(operation, 'PROTOCOL', detail)); }
 function queryOutcome<T>(client: HiverClient, call: Call, result: HiverExchange, zero: T, objectId: string, notFoundBranch: string): QueryAttempt<T> | undefined {
   if (result.kind === 'success') return undefined;
   if (['rateLimited', 'notSent', 'unavailable'].includes(result.kind)) return newQueryRetry(result.failure, result.retryAfterMs);
   const branch = result.kind === 'notFound' ? notFoundBranch : result.kind === 'invalid' ? 'invalidResponse' : result.kind === 'defect' ? 'defect' : 'providerRejected';
   return newQueryBranch(branch, zero, client.receipt(call, result.response, objectId), result.failure);
 }
+/** Map an updateConversation lookup or write: an earlier attempt's PATCH may have applied, so only a definite answer selects a branch. */
 function updateOutcome(client: HiverClient, call: Call, result: HiverExchange, objectId: string): MutationAttempt<UpdateConversationOutput> | undefined {
   if (result.kind === 'success') return undefined;
-  if (['rateLimited', 'notSent', 'unavailable'].includes(result.kind)) return newMutationRetry(result.failure, result.retryAfterMs);
+  const isUnknown = result.kind === 'invalid' || (result.kind === 'rejected' && !definiteRefusalStatuses.has(result.status ?? 0));
+  if (isUnknown || ['rateLimited', 'notSent', 'unavailable'].includes(result.kind)) return newMutationRetry(result.failure, result.retryAfterMs);
   const branch = result.kind === 'notFound' ? 'notFound' : result.kind === 'invalid' ? 'invalidResponse' : result.kind === 'defect' ? 'defect' : 'providerRejected';
   return newMutationBranch(branch, emptyUpdate, client.receipt(call, result.response, objectId), result.failure);
 }
+/** Retry an invalid pre-write lookup answer; invalidResponse stays declared but is not selected. */
+function retryUnknownLookup(detail: string): MutationAttempt<UpdateConversationOutput> { return newMutationRetry(failure('updateConversation', 'PROTOCOL', detail)); }
 function validatePage(pageToken?: string, pageSize?: number): void {
   if (pageSize !== undefined && pageSize !== 0 && (!Number.isInteger(pageSize) || pageSize < 10 || pageSize > 100)) throw new Error('pageSize must be zero or from 10 to 100');
   if (pageToken && (Buffer.byteLength(pageToken) > 4096 || !/^[A-Za-z0-9+/=_.-]+$/.test(pageToken))) throw new Error('pageToken must be a next-page token exactly as Hiver returned it');
