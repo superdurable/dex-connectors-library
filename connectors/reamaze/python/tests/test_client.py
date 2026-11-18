@@ -9,6 +9,7 @@ import pytest
 from dex_connectors.sdk import projectconfig
 
 from dex_connectors.reamaze import Client, Config, Credentials, SearchConversationsInput
+from dex_connectors.reamaze._generated.connection import CredentialMaterialError
 from dex_connectors.reamaze.client import (
     CredentialsUnusableError,
     conversation_path,
@@ -17,6 +18,17 @@ from dex_connectors.reamaze.client import (
 from dex_connectors.reamaze.operations import _search_query
 
 CONNECTION = sdk.ConnectionRef("reamaze", "test")
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Re:amaze credential api_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 
 @pytest.mark.parametrize(
@@ -90,6 +102,8 @@ def test_brand_validation_and_response_limit() -> None:
         (projectconfig.CredentialBrokerRejectedError("broker"), True),
         (projectconfig.CredentialBrokerUnavailableError("broker"), False),
         (ValueError("connection is not configured"), False),
+        (CredentialMaterialError("Re:amaze credential api_token is required"), True),
+        (sdk_wrapped_material_error(), True),
     ],
 )
 async def test_query_uses_the_shared_credential_classification(error: Exception, is_terminal: bool) -> None:
@@ -112,6 +126,30 @@ async def test_query_uses_the_shared_credential_classification(error: Exception,
             assert attempt.branch == "defect"
         else:
             assert attempt.kind == "retry"
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_from_the_project_source_are_terminal() -> None:
+    """Malformed material the project source decodes selects defect instead of retrying."""
+    from dex_connectors.reamaze._generated.connection import _ProjectCredentialSource
+
+    class MalformedProject:
+        async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+            return {"email": "agent@example.com", "api_token": 7}
+
+    source = _ProjectCredentialSource(MalformedProject(), projectconfig.ConnectionKey("reamaze", "test"))  # type: ignore[arg-type]
+    call = sdk.Call(
+        sdk.CallID("55555555-5555-4555-8555-555555555555"),
+        CONNECTION,
+        sdk.OperationRef("reamaze", "searchConversations"),
+        sdk.IdempotencyKey(""),
+    )
+    client = Client(Config("acme"), source)
+    try:
+        attempt = await client.search_conversations().invoke(call, SearchConversationsInput())
+        assert attempt.branch == "defect"
     finally:
         await client.aclose()
 

@@ -6,7 +6,7 @@ import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledEr
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials, CredentialSource } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type CredentialSource } from './generated/models.js';
 import { ListMeetingsOperation, GetMeetingOperation, CreateMeetingOperation, UpdateMeetingOperation, ListPastMeetingParticipantsOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.zoom.us/v2';
@@ -140,7 +140,7 @@ export class ZoomClient {
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 export function zoomFailure(operation: string, kind: Failure['kind'], message: string): Failure {

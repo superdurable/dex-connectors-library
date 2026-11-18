@@ -13,6 +13,7 @@ import {
   sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
 import type { IncomingHttpHeaders } from 'node:http';
+import { isCredentialMaterialError } from './generated/models.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, CredentialSource, ProviderError } from './models.js';
 import {
@@ -203,7 +204,7 @@ export class SalesforceClient {
         'providerRejected', operation, 'AUTHENTICATION',
         'Salesforce authorization is revoked or expired; reauthorize the connection',
       );
-      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) return this.outcome(
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) return this.outcome(
         'defect', operation, 'AUTHENTICATION', 'Salesforce connection credentials are missing or invalid',
       );
       return this.outcome('retry', operation, 'AUTHENTICATION', 'Salesforce credentials are temporarily unavailable');

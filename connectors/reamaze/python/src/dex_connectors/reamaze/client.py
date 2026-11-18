@@ -167,6 +167,10 @@ class Client:
         ) as error:
             raise CredentialsUnusableError("connection credentials are unavailable") from error
         except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                raise CredentialsUnusableError("connection credentials are unavailable") from error
             raise CredentialsUnavailableError(
                 "connection credentials could not be loaded yet; nothing was sent"
             ) from error

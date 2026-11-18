@@ -148,6 +148,13 @@ class Client:
                 _failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"),
             ) from error
         except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                raise MailFailure(
+                    "defect",
+                    _failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"),
+                ) from error
             raise MailFailure(
                 "retry",
                 _failure(

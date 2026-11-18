@@ -24,11 +24,23 @@ from dex_connectors.sdk.projectconfig import (
 )
 
 from dex_connectors.twilio_messaging import Client, Config, Credentials
+from dex_connectors.twilio_messaging._generated.connection import CredentialMaterialError
 from dex_connectors.twilio_messaging.models import SendMessageInput
 from dex_connectors.twilio_messaging.operations import _send_form
 
 ACCOUNT = "AC" + "0123456789abcdef" * 2
 CONNECTION = ConnectionRef("twilio-messaging", "twilio-messaging")
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Twilio credential auth_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 
 def test_client_rejects_bad_configuration() -> None:
@@ -89,6 +101,8 @@ async def test_invalid_credentials_are_terminal_and_lookup_failure_retries() -> 
         (CredentialBrokerUnavailableError(), False),
         (ValueError("connection is not configured"), False),
         (RuntimeError("unlisted"), False),
+        (CredentialMaterialError("Twilio credential auth_token is required"), True),
+        (_sdk_wrapped_material_error(), True),
     ],
 )
 async def test_credential_lookup_classification(error: Exception, is_terminal: bool) -> None:

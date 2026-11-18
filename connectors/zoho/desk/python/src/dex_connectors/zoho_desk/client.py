@@ -91,7 +91,9 @@ def failure(operation: str, kind: FailureKind, message: str) -> Failure:
 
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential failure no later attempt resolves without a person."""
-    return isinstance(
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

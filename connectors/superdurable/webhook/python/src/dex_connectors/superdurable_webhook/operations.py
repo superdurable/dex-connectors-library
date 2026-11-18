@@ -73,7 +73,9 @@ class SendEventOperation:
         try:
             credentials = await self.client.credentials.resolve(call)
         except Exception as error:
-            if isinstance(error, _TERMINAL_CREDENTIAL_ERRORS):
+            from ._generated.connection import is_credential_material_error
+
+            if isinstance(error, _TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error):
                 return _defect(call, output, FailureKind.AUTHENTICATION, "webhook signing secret unavailable")
             return MutationAttempt.retry(
                 _failure(FailureKind.AVAILABILITY, "credential broker or store unavailable; nothing was sent")

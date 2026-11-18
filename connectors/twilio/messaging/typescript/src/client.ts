@@ -4,7 +4,7 @@
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ReauthorizationRequiredError, SecretString, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials, Message } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type Message } from './generated/models.js';
 import { GetMessageOperation, SendMessageOperation } from './operations.js';
 
 const accountPattern = /^AC[0-9a-f]{32}$/;
@@ -220,7 +220,7 @@ export function twilioFailure(operation: string, kind: Failure['kind'], message:
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
     error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError ||
-    (error instanceof Error && error.name === 'ReauthorizationRequiredError');
+    isCredentialMaterialError(error) || (error instanceof Error && error.name === 'ReauthorizationRequiredError');
 }
 /** Parse a supported sender. */
 export function parseSender(value: string): MessageSender {

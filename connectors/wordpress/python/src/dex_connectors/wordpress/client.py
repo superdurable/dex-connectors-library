@@ -154,7 +154,9 @@ class Client:
         try:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
-            return "", isinstance(error, _TERMINAL_CREDENTIAL_ERRORS)
+            from ._generated.connection import is_credential_material_error
+
+            return "", isinstance(error, _TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
         try:
             username = credentials.username
             password = credentials.application_password.reveal().replace(" ", "")

@@ -24,14 +24,29 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk.singledispatch import Marker
 
 from dex_connectors.zendesk_support import Client, Config, Credentials
+from dex_connectors.zendesk_support._generated.connection import CredentialMaterialError
 from dex_connectors.zendesk_support._generated.definitions import UPDATE_TICKET_DEFINITION
 from dex_connectors.zendesk_support.models import (
     CreateTicketInput,
     CreateTicketOutput,
+    GetTicketInput,
+    SearchTicketsInput,
     TicketCommentInput,
     UpdateTicketInput,
     UpdateTicketOutput,
 )
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Zendesk Support credential api_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
 
 REFERENCE = ConnectionRef("zendesk", "desk")
 CALL_ID = CallID("6a0e7f8c-2f0b-5d7e-9a51-2f4c8e1b3d77")
@@ -221,6 +236,8 @@ async def test_reads_back_before_resending_after_a_rate_limited_resend() -> None
         (RuntimeError("broker unavailable"), False),
         (projectconfig.CredentialBrokerUnavailableError("broker"), False),
         (ValueError("connection is not configured"), False),
+        (CredentialMaterialError("Zendesk Support credential api_token is required"), True),
+        (sdk_wrapped_material_error(), True),
     ],
 )
 async def test_credential_failure_after_a_possible_send_never_selects_defect(
@@ -254,6 +271,8 @@ async def test_credential_failure_after_a_possible_send_never_selects_defect(
         (RuntimeError("broker unavailable"), False),
         (projectconfig.CredentialBrokerUnavailableError("broker"), False),
         (ValueError("connection is not configured"), False),
+        (CredentialMaterialError("Zendesk Support credential api_token is required"), True),
+        (sdk_wrapped_material_error(), True),
     ],
 )
 async def test_credential_failure_on_a_first_send(error: Exception, is_defect: bool) -> None:
@@ -273,6 +292,44 @@ async def test_credential_failure_on_a_first_send(error: Exception, is_defect: b
     else:
         assert isinstance(result, RetryError)
     assert context.marker is not None and context.marker.state == "notSent"
+    assert not requests
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["getTicket", "searchTickets"])
+@pytest.mark.parametrize(
+    ("error", "is_defect"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (projectconfig.CredentialBrokerRejectedError("broker"), True),
+        (CredentialMaterialError("Zendesk Support credential api_token is required"), True),
+        (sdk_wrapped_material_error(), True),
+        (projectconfig.CredentialBrokerUnavailableError("broker"), False),
+        (ValueError("connection is not configured"), False),
+    ],
+)
+async def test_query_retries_a_transient_credential_failure(
+    operation: str, error: Exception, is_defect: bool
+) -> None:
+    """A Query selects defect only for a terminal credential failure, as the writes do."""
+    credentials = SwitchableCredentials()
+    credentials.error = error
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return json_answer(500, {})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = Client(Config("acme"), credentials, transport, api_base_url="http://127.0.0.1:37001/api/v2")
+        call = Call(CALL_ID, REFERENCE, OperationRef("zendesk-support", operation))
+        if operation == "getTicket":
+            result = await client.get_ticket().invoke(call, GetTicketInput(ticket_id=5512))
+        else:
+            result = await client.search_tickets().invoke(call, SearchTicketsInput(statuses=("open",)))
+    assert result.kind == ("branch" if is_defect else "retry")
+    if is_defect:
+        assert result.branch == "defect"
     assert not requests
 
 

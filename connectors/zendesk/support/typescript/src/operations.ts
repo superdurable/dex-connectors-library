@@ -5,7 +5,7 @@ import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUnc
 import { newFence, type Decision, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { CreateTicketDefinition, GetTicketDefinition, SearchTicketsDefinition, UpdateTicketDefinition } from './generated/definitions.js';
 import type { CreateTicketInput, CreateTicketOutput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, Ticket, TicketComment, TicketDetails, TicketUser, UpdateTicketInput, UpdateTicketOutput } from './generated/models.js';
-import { zendeskFailure, isBareEmailAddress, type ZendeskClient, type ZendeskExchange, header } from './client.js';
+import { zendeskFailure, isBareEmailAddress, type ZendeskClient, type ZendeskExchange, type ZendeskWriteCredentials, header } from './client.js';
 
 const emptyTime = '0001-01-01T00:00:00Z';
 const zeroTicket: Ticket = { id: 0, agentUrl: '', status: '', createdAt: emptyTime, updatedAt: emptyTime };
@@ -26,8 +26,9 @@ export class SearchTicketsOperation implements Query<SearchTicketsInput, SearchT
     let query: string;
     try { query = buildTicketSearchQuery(input); validateSearchPage(input); }
     catch (error) { return queryDefect('searchTickets', zeroSearch, error); }
-    const credentials = await this.client.resolveCredentials(call);
-    if (!credentials) return queryDefect('searchTickets', zeroSearch, 'connection credentials are unavailable', 'AUTHENTICATION');
+    const resolved = await this.client.resolveWriteCredentials(call, 'searchTickets');
+    if (resolved.kind !== 'resolved') return queryCredentialFailure(zeroSearch, resolved);
+    const credentials = resolved.credentials;
     const parameters = { 'filter[type]': 'ticket', 'page[size]': String(input.pageSize || 25), query, ...(input.cursor ? { 'page[after]': input.cursor } : {}) };
     const result = await this.client.exchange(call, credentials, 'searchTickets', 'GET', '/search/export', parameters);
     const terminal = queryExchange(result, this.client.receipt(call, result.response), zeroSearch);
@@ -52,8 +53,9 @@ export class GetTicketOperation implements Query<GetTicketInput, TicketDetails> 
   /** Read ticket and comment pages. */
   async invoke(call: Call, input: GetTicketInput): Promise<QueryAttempt<TicketDetails>> {
     if (!validID(input.ticketId) || !Number.isInteger(input.latestCommentLimit ?? 0) || (input.latestCommentLimit ?? 0) < 0 || (input.latestCommentLimit ?? 0) > 20) return queryDefect('getTicket', zeroDetails, 'ticketId or latestCommentLimit is invalid');
-    const credentials = await this.client.resolveCredentials(call);
-    if (!credentials) return queryDefect('getTicket', zeroDetails, 'connection credentials are unavailable', 'AUTHENTICATION');
+    const resolved = await this.client.resolveWriteCredentials(call, 'getTicket');
+    if (resolved.kind !== 'resolved') return queryCredentialFailure(zeroDetails, resolved);
+    const credentials = resolved.credentials;
     const read = await this.client.exchange(call, credentials, 'getTicket', 'GET', `/tickets/${input.ticketId}`, { include: 'users' });
     const readReceipt = this.client.receipt(call, read.response, input.ticketId);
     const terminal = queryExchange(read, readReceipt, zeroDetails);
@@ -441,6 +443,10 @@ function decodeUser(wire: Record<string, unknown>): TicketUser { return { id: op
 function decodeComment(wire: Record<string, unknown>): TicketComment { const id = optionalNumber(wire.id); if (id < 1) throw new Error('comment ID is missing'); const body = truncateUTF8(optionalString(wire.plain_body) || optionalString(wire.body)); return { id, isPublic: optionalBoolean(wire.public), body: body.value, createdAt: formatGoUTC(optionalTime(wire.created_at)), ...(optionalNumber(wire.author_id) ? { authorId: optionalNumber(wire.author_id) } : {}), ...(body.truncated ? { isBodyTruncated: true } : {}) }; }
 function queryExchange<T>(result: ZendeskExchange, receipt: ReceiptDraft, zero: T): QueryAttempt<T> | undefined { if (result.outcome === 'success') return undefined; if (result.outcome === 'retry') return newQueryRetry(result.failure, result.retryAfterMs); const branch = result.outcome === 'notFound' ? 'notFound' : result.outcome === 'invalid' ? 'invalidResponse' : result.outcome === 'defect' ? 'defect' : 'providerRejected'; return newQueryBranch(branch, zero, receipt, result.failure); }
 function mutationExchange<T>(result: ZendeskExchange, receipt: ReceiptDraft, zero: T): MutationAttempt<T> | undefined { if (result.outcome === 'success') return undefined; if (result.outcome === 'retry') return newMutationRetry(result.failure, result.retryAfterMs); const branch = result.outcome === 'notFound' ? 'notFound' : result.outcome === 'invalid' ? 'invalidResponse' : result.outcome === 'defect' ? 'defect' : 'providerRejected'; return newMutationBranch(branch, zero, receipt, result.failure); }
+/** Select defect for a terminal credential failure and retry a transient one. */
+function queryCredentialFailure<T>(zero: T, resolved: Exclude<ZendeskWriteCredentials, { kind: 'resolved' }>): QueryAttempt<T> {
+  return resolved.kind === 'terminal' ? newQueryBranch('defect', zero, zeroReceipt(), resolved.failure) : newQueryRetry(resolved.failure);
+}
 function queryDefect<T>(operation: string, zero: T, error: unknown, kind: Failure['kind'] = 'VALIDATION'): QueryAttempt<T> { return newQueryBranch('defect', zero, zeroReceipt(), zendeskFailure(operation, kind, String(error instanceof Error ? error.message : error))); }
 function mutationDefect<T>(operation: string, zero: T, error: unknown, kind: Failure['kind'] = 'VALIDATION'): MutationAttempt<T> { return newMutationBranch('defect', zero, zeroReceipt(), zendeskFailure(operation, kind, String(error instanceof Error ? error.message : error))); }
 function queryInvalid<T>(operation: string, zero: T, receipt: ReceiptDraft, message: string, error: unknown): QueryAttempt<T> { return newQueryBranch('invalidResponse', zero, receipt, zendeskFailure(operation, 'PROTOCOL', `${message}: ${error instanceof Error ? error.message : String(error)}`)); }

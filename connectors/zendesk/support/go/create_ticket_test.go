@@ -210,6 +210,36 @@ func TestCreateTicketCredentialFailureSelectsDefectOnlyWhenTerminalOnTheFirstAtt
 	}
 }
 
+func TestQueryCredentialFailureSelectsDefectOnlyWhenTerminal(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		err      error
+		isDefect bool
+	}{
+		{name: "reauthorization", err: sdkgo.ErrReauthorizationRequired, isDefect: true},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected, isDefect: true},
+		{name: "broker unavailable", err: projectconfig.ErrCredentialBrokerUnavailable},
+		{name: "connection not configured", err: errors.New("connection is not configured")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingZendesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+			client := newSwitchableZendeskClient(t, provider.URL, &switchableCredentials{err: test.err})
+			get, getErr := sdkgo.RunQuery(newZendeskDexContext("get-credentials-"+test.name), client.GetTicket(), zendeskConnection, support.GetTicketInput{TicketID: 5512})
+			search, searchErr := sdkgo.RunQuery(newZendeskDexContext("search-credentials-"+test.name), client.SearchTickets(), zendeskConnection, support.SearchTicketsInput{Statuses: []support.TicketStatus{support.TicketStatusOpen}})
+			if test.isDefect {
+				require.NoError(t, getErr)
+				require.NoError(t, searchErr)
+				require.Equal(t, support.GetTicketBranchDefect, get.Branch)
+				require.Equal(t, support.SearchTicketsBranchDefect, search.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, getErr, &retry)
+			require.ErrorAs(t, searchErr, &retry)
+		})
+	}
+}
+
 func TestCreateTicketRefusalWithAnUnreadableOrContradictoryBodyRetries(t *testing.T) {
 	for name, body := range map[string]string{
 		"oversized":        `{"error":"RecordInvalid","description":"` + strings.Repeat("x", 4096) + `"}`,

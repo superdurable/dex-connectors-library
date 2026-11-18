@@ -5,6 +5,7 @@ import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { SalesforceClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const connection = { provider: 'salesforce', name: 'salesforce-crm' };
 const call = {
@@ -47,6 +48,9 @@ it.each([
   ['object not found', new ObjectNotFoundError(), 'branch', 'defect'],
   ['connection not selected', new ConnectionNotSelectedError(), 'branch', 'defect'],
   ['broker rejected', new CredentialBrokerRejectedError(), 'branch', 'defect'],
+  ['malformed stored material', new CredentialMaterialError('credential access_token is required'), 'branch', 'defect'],
+  ['SDK-wrapped malformed material', new TypeError('project credential decoding failed'), 'branch', 'defect'],
+  ['unrelated type error', new TypeError('credential store is busy'), 'retry', undefined],
 ])('classifies a %s credential failure on a write', async (_name, error, kind, branch) => {
   const failing = async () => { throw error; };
   const client = new SalesforceClient({}, { resolve: failing, resolveWithRefresh: failing }, { send: async () => { throw new Error('no request may be sent'); } });

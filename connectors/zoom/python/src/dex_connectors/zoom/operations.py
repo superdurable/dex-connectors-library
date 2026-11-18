@@ -689,18 +689,22 @@ class CreateMeetingOperation:
                 replaced = replacement.access_token.reveal() != credentials.access_token.reveal()
             except TERMINAL_CREDENTIAL_ERRORS:
                 replaced = False
-            except Exception:
-                return await _reject_or_select_uncertain(
-                    fence,
-                    has_possible_earlier_send,
-                    requested,
-                    receipt,
-                    failure(
-                        operation,
-                        FailureKind.AVAILABILITY,
-                        "Zoom credential refresh is temporarily unavailable",
-                    ),
-                )
+            except Exception as error:
+                from ._generated.connection import is_credential_material_error
+
+                if not is_credential_material_error(error):
+                    return await _reject_or_select_uncertain(
+                        fence,
+                        has_possible_earlier_send,
+                        requested,
+                        receipt,
+                        failure(
+                            operation,
+                            FailureKind.AVAILABILITY,
+                            "Zoom credential refresh is temporarily unavailable",
+                        ),
+                    )
+                replaced = False
             if replaced:
                 try:
                     await fence.record_can_resend()

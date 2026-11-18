@@ -1,10 +1,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { z } from 'zod';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { CreateConversationOperation, FindContactByEmailOperation, GetConversationOperation, ReplyToConversationOperation, SearchConversationsOperation, UpdateConversationOperation } from './operations.js';
 
 /** The manifest's default pollInterval, one minute. */
@@ -81,7 +82,7 @@ export class ReamazeClient {
       const token = credentials.apiToken.reveal();
       return isHeaderSafeCredential(token) ? { kind: 'resolved', email: credentials.email, token } : { kind: 'terminal' };
     } catch (error) {
-      return { kind: error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError ? 'terminal' : 'transient' };
+      return { kind: error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error) || error instanceof z.ZodError ? 'terminal' : 'transient' };
     }
   }
 

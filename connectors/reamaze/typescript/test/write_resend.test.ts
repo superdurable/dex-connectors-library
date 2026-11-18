@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ReamazeClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 import { CreateConversationDefinition, ReplyToConversationDefinition, UpdateConversationDefinition } from '../src/generated/definitions.js';
 
 const callId = '0d6f4bc4-7a51-5d24-9a38-6d8f4f6a1e10';
@@ -213,6 +215,10 @@ it.each([
   ['broker refusal', () => new CredentialBrokerRejectedError(), true],
   ['broker outage', () => new CredentialBrokerUnavailableError(), false],
   ['unconfigured static connection', () => new Error('connection is not configured'), false],
+  ['malformed stored material', () => new CredentialMaterialError('credential api_token is required'), true],
+  ['SDK-wrapped malformed material', () => new TypeError('project credential decoding failed'), true],
+  ['unrelated type error', () => new TypeError('credential store is busy'), false],
+  ['project material the schema rejects', () => new z.ZodError([]), true],
 ] as const)('classifies a %s credential failure the same way for every write', async (_, credentialError, isTerminal) => {
   for (const operation of ['createConversation', 'replyToConversation'] as const) {
     const { client, requests } = newClient(() => json(500, {}), { credentialError });

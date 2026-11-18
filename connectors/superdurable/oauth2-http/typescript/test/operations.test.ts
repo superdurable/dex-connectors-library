@@ -6,6 +6,7 @@ import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, t
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { OAuth2HTTPClient, planRequest } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const connection = { provider: 'oauth2-http', name: 'tested-api' };
 const firstCredentials = { oauthClientId: 'client', oauthClientSecret: new SecretString('client-secret'), accessToken: new SecretString('first-access-token'), refreshToken: new SecretString('') };
@@ -138,6 +139,8 @@ describe('Go URL and operation budget regressions', () => {
       [new CredentialBrokerUnavailableError(), { kind: 'retry' }], [new ReauthorizationRequiredError(), { kind: 'branch', branch: 'rejected' }],
       [new ObjectNotFoundError(), { kind: 'branch', branch: 'defect' }], [new ConnectionNotSelectedError(), { kind: 'branch', branch: 'defect' }],
       [new CredentialBrokerRejectedError(), { kind: 'branch', branch: 'defect' }], [new TypeError('fetch failed'), { kind: 'retry' }],
+      [new CredentialMaterialError('credential access_token is required'), { kind: 'branch', branch: 'defect' }],
+      [new TypeError('project credential decoding failed'), { kind: 'branch', branch: 'defect' }],
     ] as const) {
       const client = new OAuth2HTTPClient(config, { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } });
       const result = await client.sendRequest().invoke(call, { path: '/userinfo' });

@@ -244,17 +244,9 @@ func (client *Client) UpdateTicket() UpdateTicketOperation {
 	return UpdateTicketOperation{client: client}
 }
 
-// resolveCredentials returns a header-safe API token and bare agent address, or a safe defect Failure.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
-	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, zendeskFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
-	}
-	return credentials, nil
-}
-
-// resolveWriteCredentials is resolveCredentials for a Mutation. isTerminal reports credentials that only
-// reconnecting the connection can fix; any other failure is transient and may resolve on a later attempt.
+// resolveWriteCredentials returns a header-safe API token and bare agent address for a Mutation or Query.
+// isTerminal reports credentials that only reconnecting the connection can fix; any other failure is
+// transient and may resolve on a later attempt.
 func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string) (credentials Credentials, failure *sdkgo.Failure, isTerminal bool) {
 	credentials, err := client.credentials.Resolve(call)
 	if err == nil && validateResolvedCredentials(credentials) == nil {

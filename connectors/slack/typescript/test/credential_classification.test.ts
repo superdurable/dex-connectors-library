@@ -7,6 +7,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBr
 import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { SlackClient } from '../src/client.js';
 import { ListChannelsDefinition, PostChannelMessageDefinition } from '../src/generated/definitions.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const callId = '74390522-858d-5ed6-bdf7-04e979ba9e4f';
 
@@ -32,6 +33,8 @@ const cases: Array<{ name: string; error: () => Error; terminal: boolean }> = [
   { name: 'rejected credential not refreshed', error: () => new RejectedCredentialNotRefreshedError(), terminal: false },
   { name: 'static not configured', error: () => new Error('connection is not configured'), terminal: false },
   { name: 'network TypeError', error: () => new TypeError('fetch failed'), terminal: false },
+  { name: 'malformed stored material', error: () => new CredentialMaterialError('credential bot_token is required'), terminal: true },
+  { name: 'SDK-wrapped malformed material', error: () => new TypeError('project credential decoding failed'), terminal: true },
 ];
 
 /** Build a client whose first validResolutions resolve, after which resolve throws. */

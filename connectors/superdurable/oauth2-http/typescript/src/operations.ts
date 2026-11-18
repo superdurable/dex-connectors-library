@@ -6,7 +6,7 @@ import { ConflictError, ConnectionNotSelectedError, CredentialBrokerRejectedErro
 import { AddressRefusal, ProviderTransportError, parseRetryAfter } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { PostNonIdempotentDefinition, SendRequestDefinition } from './generated/definitions.js';
-import type { Credentials, PostNonIdempotentInput, SendRequestInput, SendRequestOutput } from './generated/models.js';
+import { isCredentialMaterialError, type Credentials, type PostNonIdempotentInput, type SendRequestInput, type SendRequestOutput } from './generated/models.js';
 import { planRequest, type APIResponse, type OAuth2HTTPClient, type RequestPlan } from './client.js';
 
 const zeroOutput: SendRequestOutput = { statusCode: 0 };
@@ -232,7 +232,7 @@ async function resolveToken(client: OAuth2HTTPClient, call: Call, signal: AbortS
 /** Report a resolve failure no later attempt clears; a TypeError may be a fetch failure, so it is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
-    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 /** Report a renewal failure after a 401 that may clear; any other keeps the definite 401. */

@@ -16,8 +16,20 @@ from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.reamaze as reamaze
 from dex_connectors.reamaze import Credentials
+from dex_connectors.reamaze._generated.connection import CredentialMaterialError
 
 CONNECTION = sdk.ConnectionRef("reamaze", "reamaze-test")
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Re:amaze credential api_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 CALL_ID = sdk.CallID("0d6f4bc4-7a51-5d24-9a38-6d8f4f6a1e10")
 CREDENTIALS = Credentials("agent@acme.example.com", sdk.SecretString("reamazeTestToken0123456789"))
 CREATE_INPUT = reamaze.CreateConversationInput(
@@ -344,6 +356,8 @@ async def test_accepted_write_read_back_that_outlasts_the_attempt_deadline_is_un
         projectconfig.ObjectNotFoundError("connection"),
         projectconfig.ConnectionNotSelectedError("connection"),
         projectconfig.CredentialBrokerRejectedError("broker"),
+        CredentialMaterialError("Re:amaze credential api_token is required"),
+        sdk_wrapped_material_error(),
     ],
 )
 async def test_terminal_credential_failure_is_defect_before_a_send_and_uncertain_after_one(

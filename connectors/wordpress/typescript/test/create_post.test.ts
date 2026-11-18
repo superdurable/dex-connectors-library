@@ -9,7 +9,7 @@ import {
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { WordPressClient } from '../src/client.js';
 import { CreatePostDefinition } from '../src/generated/definitions.js';
-import type { CreatedPost } from '../src/generated/models.js';
+import { CredentialMaterialError, type CreatedPost } from '../src/generated/models.js';
 
 const callId = '053fca46-6608-58b2-a693-d0aefe234186';
 const sendCap = CreatePostDefinition.maxSends!;
@@ -202,6 +202,7 @@ describe('WordPress bounded resend of unconfirmed posts', () => {
   it.each([
     new ReauthorizationRequiredError(), new ObjectNotFoundError(),
     new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(),
+    new CredentialMaterialError('credential application_password is required'), new TypeError('project credential decoding failed'),
   ])('selects defect before any send and uncertain after one for a terminal credential failure: %s', async error => {
     const { client, requests } = newClient([serverFailure]);
     const { client: terminal } = newClient([serverFailure], undefined, error);

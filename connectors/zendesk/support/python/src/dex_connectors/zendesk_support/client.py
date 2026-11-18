@@ -359,7 +359,7 @@ class Client:
     async def resolve_write_credentials(
         self, call: Call, operation: str
     ) -> tuple[Credentials | None, Failure | None, bool]:
-        """Resolve credentials for a Mutation and report whether a failure is terminal.
+        """Resolve credentials for a Mutation or Query and report whether a failure is terminal.
 
         A terminal failure needs the connection reconnected; any other failure may resolve
         on a later attempt.
@@ -373,7 +373,11 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             return None, _unusable_credentials(operation), True
-        except Exception:
+        except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return None, _unusable_credentials(operation), True
             return (
                 None,
                 failure(FailureKind.AVAILABILITY, operation, "connection credentials could not be read"),

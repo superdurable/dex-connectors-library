@@ -7,7 +7,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFou
 import { ReauthorizationRequiredError, defaultTriggerLogger, newQueryBranch, newQueryRetry, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type QueryAttempt, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { MaxSlackSocketMessageBytes, dialSlackSocket, type SlackSocketDialer } from './socket_mode.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { GetThreadReplyOperation, GetWorkspaceIdentityOperation, ListChannelMessagesOperation, ListChannelsOperation, ListThreadMessagesOperation, PostButtonMessageOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
 
 /** One Slack request exchange, including a status when body decoding failed. */
@@ -211,7 +211,7 @@ export function failure(operation: string, kind: Failure['kind'], message: strin
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 /** Select defect for a terminal credential failure and retry a transient one in a Query. */

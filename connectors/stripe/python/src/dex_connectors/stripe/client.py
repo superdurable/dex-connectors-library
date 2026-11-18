@@ -45,6 +45,10 @@ _CURRENCY_PATTERN = re.compile(r"^[a-z]{3}$")
 _REFUND_STATUSES = frozenset({"succeeded", "pending", "failed", "requires_action", "canceled"})
 
 
+class CredentialMaterialError(ValueError):
+    """Stored Stripe credential material fails the connector credential checks, so no retry can succeed."""
+
+
 @dataclass(frozen=True, slots=True)
 class ProviderResponse:
     """Response status and headers retained when the body exceeds its byte limit."""
@@ -142,6 +146,7 @@ class Client:
             ObjectNotFoundError,
             ConnectionNotSelectedError,
             CredentialBrokerRejectedError,
+            CredentialMaterialError,
         ):
             return None, unavailable
         except Exception:
