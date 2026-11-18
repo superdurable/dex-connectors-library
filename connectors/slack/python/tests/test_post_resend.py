@@ -37,19 +37,42 @@ class AttemptContext:
         self.attempt = 1
         self.run_id = "run"
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
-        self.marker: Marker | None = None
+        self.heartbeat_value: object = None
+        self.read_error: Exception | None = None
+
+    @property
+    def marker(self) -> Marker | None:
+        """Decode this call's marker from the last heartbeat."""
+        return call_marker(self.heartbeat_value)
 
     def has_last_heartbeat_value(self) -> bool:
         """Report whether an earlier attempt recorded a heartbeat."""
-        return self.marker is not None
+        return self.read_error is not None or self.heartbeat_value is not None
 
-    def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        """Return the last marker."""
-        return self.marker
+    def get_last_heartbeat_value(self, value_type: object) -> object:
+        """Return the last heartbeat, translating a seeded marker to the requested format."""
+        if self.read_error is not None:
+            raise self.read_error
+        if isinstance(self.heartbeat_value, Marker) and value_type is not Marker:
+            marker = self.heartbeat_value
+            return {"singleDispatchMarkers": {str(marker.call_id): marker.to_wire()}}
+        if isinstance(self.heartbeat_value, dict) and value_type is Marker:
+            return self.marker
+        return self.heartbeat_value
 
     async def heartbeat(self, value: object = None) -> None:
-        """Record the attempt's marker."""
-        self.marker = value if isinstance(value, Marker) else None
+        """Record the heartbeat exactly as the SDK wrote it."""
+        self.heartbeat_value = value
+
+
+def call_marker(heartbeat_value: object) -> Marker | None:
+    """Decode CALL_ID's marker from a single-marker or per-call map heartbeat."""
+    if isinstance(heartbeat_value, Marker):
+        return heartbeat_value
+    if not isinstance(heartbeat_value, dict):
+        return None
+    entry = heartbeat_value.get("singleDispatchMarkers", {}).get(str(CALL_ID))
+    return None if entry is None else Marker.from_wire(entry)
 
 
 class SequencedCredentials(CredentialProvider[Credentials]):
@@ -205,7 +228,8 @@ class FailingCanResendContext(AttemptContext):
 
     async def heartbeat(self, value: object = None) -> None:
         """Reject canResend markers and record every other marker."""
-        if isinstance(value, Marker) and value.state == "canResend":
+        marker = call_marker(value)
+        if marker is not None and marker.state == "canResend":
             raise ConnectionError("can-resend heartbeat unavailable")
         await super().heartbeat(value)
 
@@ -242,7 +266,7 @@ async def test_terminal_credentials_after_a_counted_send_select_uncertain() -> N
     context = AttemptContext()
     context.attempt = 3
     # A canResend marker that still counts one possible send allows a send without read-back.
-    context.marker = Marker.from_wire(
+    context.heartbeat_value = Marker.from_wire(
         {"callId": str(CALL_ID), "attempt": 2, "state": "canResend", "sendCount": 1}
     )
     result = await post(lambda _: SERVER_FAILURE, context, requests, bot_tokens=[""])
@@ -257,9 +281,7 @@ async def test_unreadable_checkpoint_retries_below_the_send_cap(attempt: int, is
     requests: list[httpx.Request] = []
     context = AttemptContext()
     context.attempt = attempt
-    context.marker = Marker.from_wire(
-        {"callId": "5f0c4d1e-8b9a-4c3d-9e2f-1a2b3c4d5e6f", "attempt": 1, "state": "canResend"}
-    )
+    context.read_error = RuntimeError("heartbeat store unavailable")
     result = await post(lambda _: SERVER_FAILURE, context, requests)
     if is_retry:
         assert isinstance(result, RetryError)
@@ -288,7 +310,7 @@ async def test_checkpointed_timestamp_is_read_back_not_resent() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
     context.attempt = 2
-    context.marker = Marker.from_wire(
+    context.heartbeat_value = Marker.from_wire(
         {"callId": str(CALL_ID), "attempt": 1, "state": "claimed", "providerId": "2.0", "sendCount": 1}
     )
 

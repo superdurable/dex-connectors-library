@@ -149,19 +149,34 @@ class AttemptContext:
         self.run_id = "run"
         self.call_id = str(uuid4())
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
-        self.marker: Marker | None = None
+        self.heartbeat_value: object = None
         self.read_error: Exception | None = None
+
+    @property
+    def marker(self) -> Marker | None:
+        """Decode this call's marker from a single-marker or per-call map heartbeat."""
+        if isinstance(self.heartbeat_value, Marker):
+            return self.heartbeat_value
+        if not isinstance(self.heartbeat_value, dict):
+            return None
+        entry = self.heartbeat_value.get("singleDispatchMarkers", {}).get(self.call_id)
+        return None if entry is None else Marker.from_wire(entry)
 
     def has_last_heartbeat_value(self) -> bool:
         if self.read_error is not None:
             raise self.read_error
-        return self.marker is not None
+        return self.heartbeat_value is not None
 
-    def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        return self.marker
+    def get_last_heartbeat_value(self, value_type: object) -> object:
+        if isinstance(self.heartbeat_value, Marker) and value_type is not Marker:
+            marker = self.heartbeat_value
+            return {"singleDispatchMarkers": {str(marker.call_id): marker.to_wire()}}
+        if isinstance(self.heartbeat_value, dict) and value_type is Marker:
+            return self.marker
+        return self.heartbeat_value
 
     async def heartbeat(self, value: object = None) -> None:
-        self.marker = value if isinstance(value, Marker) else None
+        self.heartbeat_value = value
 
 
 def fenced_call(context: AttemptContext) -> Call:
