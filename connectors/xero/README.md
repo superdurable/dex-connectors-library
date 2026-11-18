@@ -259,6 +259,8 @@ same key and body:
   Read back with `listInvoices` by reference before writing again. Other
   definite refusals, such as a 400 or a 422, are replayed under the key and
   keep `providerRejected`;
+- a temporarily unavailable token endpoint or credential broker retries on
+  every attempt, because nothing reached Xero;
 - the four-minute retry window plus the 30-second Execute timeout stays
   inside the six-minute key lifetime, because a repeat after expiry would be
   processed as new.
@@ -306,6 +308,7 @@ errors, such as
 | 411, 413, 414, 415, 422 | `providerRejected` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; Retry under the same Idempotency-Key for a write |
 | rejected client, grant, or scope at the token endpoint | `providerRejected`, `AUTHENTICATION` |
+| unavailable token endpoint or credential broker | Retry on every attempt, `AVAILABILITY`, with no request |
 | invalid input or connection configuration | `defect`, with no request |
 
 ## invoiceChanged Trigger

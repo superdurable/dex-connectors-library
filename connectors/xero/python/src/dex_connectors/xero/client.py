@@ -16,6 +16,7 @@ from urllib.parse import quote, urlencode
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.projectconfig.provider import ExchangePendingError, RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
@@ -234,6 +235,16 @@ class Client:
                     operation,
                     FailureKind.AVAILABILITY,
                     "Xero access token request is temporarily unavailable",
+                ),
+            )
+        except (CredentialBrokerUnavailableError, TimeoutError):
+            # Nothing reached Xero, so every attempt retries instead of selecting defect or uncertain.
+            return Exchange(
+                "retry",
+                error=failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "Xero connection credentials are temporarily unavailable; nothing was sent",
                 ),
             )
         except Exception:
