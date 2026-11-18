@@ -11,9 +11,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
@@ -264,8 +266,79 @@ func TestCreatePostCredentialFailureAfterPossibleSendRetries(t *testing.T) {
 	require.NoError(t, err)
 	_, err = sdkgo.RunMutation(ctx, noCredentials.CreatePost(), testConnection, testCreateInput)
 	require.Error(t, err)
+	require.Equal(t, singledispatch.StateClaimed, lastMarker(t, ctx).State)
 	require.Equal(t, 1, *requests)
-	defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("first-credential-flow", "create-post-step"), noCredentials.CreatePost(), testConnection, testCreateInput)
+}
+
+// failingCredentialProvider returns one fixed error for every credential read.
+type failingCredentialProvider struct{ err error }
+
+func (provider failingCredentialProvider) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, provider.err
+}
+
+func TestCreatePostTransientCredentialFailureBeforeSendRetries(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusCreated}, []string{createdPostBody})
+	for _, credentialErr := range []error{errors.New("connection is not configured"), projectconfig.ErrCredentialBrokerUnavailable} {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			unavailable, err := New(Config{SiteURL: server.URL}, failingCredentialProvider{credentialErr})
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("transient-credential-flow", "create-post-step")
+			_, err = sdkgo.RunMutation(ctx, unavailable.CreatePost(), testConnection, testCreateInput)
+			require.Error(t, err, "a transient credential failure returns Retry, not defect")
+			require.Equal(t, singledispatch.StateNotSent, lastMarker(t, ctx).State)
+			require.Equal(t, 0, *requests)
+		})
+	}
+	ctx := singledispatchtest.NewContext("transient-credential-then-created-flow", "create-post-step")
+	unavailable, err := New(Config{SiteURL: server.URL}, failingCredentialProvider{projectconfig.ErrCredentialBrokerUnavailable})
 	require.NoError(t, err)
-	require.Equal(t, CreatePostBranchDefect, defect.Branch)
+	_, err = sdkgo.RunMutation(ctx, unavailable.CreatePost(), testConnection, testCreateInput)
+	require.Error(t, err)
+	ctx.AdvanceAttempt()
+	created, err := sdkgo.RunMutation(ctx, newTestClient(t, server.URL).CreatePost(), testConnection, testCreateInput)
+	require.NoError(t, err)
+	require.Equal(t, CreatePostBranchCreated, created.Branch)
+	require.EqualValues(t, 1, lastMarker(t, ctx).SendCount)
+	require.Equal(t, 1, *requests)
+}
+
+func TestCreatePostTerminalCredentialFailure(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusInternalServerError}, []string{`{}`})
+	terminalErrors := []error{sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), projectconfig.ErrObjectNotFound,
+		projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected}
+	for _, credentialErr := range terminalErrors {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			terminal, err := New(Config{SiteURL: server.URL}, failingCredentialProvider{credentialErr})
+			require.NoError(t, err)
+			defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("terminal-credential-flow", "create-post-step"), terminal.CreatePost(), testConnection, testCreateInput)
+			require.NoError(t, err)
+			require.Equal(t, CreatePostBranchDefect, defect.Branch)
+			ctx := singledispatchtest.NewContext("terminal-after-send-flow", "create-post-step")
+			_, err = sdkgo.RunMutation(ctx, newTestClient(t, server.URL).CreatePost(), testConnection, testCreateInput)
+			require.Error(t, err)
+			ctx.AdvanceAttempt()
+			uncertain, err := sdkgo.RunMutation(ctx, terminal.CreatePost(), testConnection, testCreateInput)
+			require.NoError(t, err)
+			require.Equal(t, CreatePostBranchUncertain, uncertain.Branch, "an earlier attempt may have created the post")
+		})
+	}
+	require.Equal(t, len(terminalErrors), *requests)
+}
+
+func TestCreatePostReadsALateBodyInsideTheWriteWindow(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusCreated)
+		w.(http.Flusher).Flush()
+		time.Sleep(50 * time.Millisecond)
+		_, err := fmt.Fprint(w, createdPostBody)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	created, err := sdkgo.RunMutation(singledispatchtest.NewContext("late-body-flow", "create-post-step"), newTestClient(t, server.URL).CreatePost(), testConnection, testCreateInput)
+	require.NoError(t, err)
+	require.Equal(t, CreatePostBranchCreated, created.Branch)
+	require.Equal(t, 1, requests)
 }

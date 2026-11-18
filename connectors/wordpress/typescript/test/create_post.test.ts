@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import {
+  ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError,
+} from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { WordPressClient } from '../src/client.js';
 import { CreatePostDefinition } from '../src/generated/definitions.js';
@@ -33,9 +36,12 @@ interface WordPressAnswer { status: number; body: string; bodyError?: 'transport
 const created: WordPressAnswer = { status: 201, body: '{"id":43,"status":"draft"}' };
 const serverFailure: WordPressAnswer = { status: 500, body: '{"code":"internal_server_error"}' };
 
-function newClient(answers: WordPressAnswer[], username = 'editor') {
+function newClient(answers: WordPressAnswer[], username = 'editor', resolveError?: Error) {
   const requests: ProviderRequest[] = [];
-  const resolve = async () => ({ username, applicationPassword: new SecretString('abcd efgh') });
+  const resolve = async () => {
+    if (resolveError) throw resolveError;
+    return { username, applicationPassword: new SecretString('abcd efgh') };
+  };
   const client = new WordPressClient({ siteUrl: 'http://127.0.0.1:12345' } as never, { resolve }, {
     send: async (request: ProviderRequest) => {
       requests.push(request);
@@ -167,5 +173,43 @@ describe('WordPress bounded resend of unconfirmed posts', () => {
     expect(await create(invalidClient, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
     expect(await create(invalidClient, new AttemptContext())).toMatchObject({ branch: 'defect' });
+  });
+
+  it.each([new CredentialBrokerUnavailableError(), new Error('connection is not configured')])(
+    'returns Retry and records notSent for a transient credential failure before any send: %s', async error => {
+      const { client: unavailable } = newClient([created], undefined, error);
+      const { client, requests } = newClient([created]);
+      const context = new AttemptContext();
+      expect(await create(unavailable, context)).toBeInstanceOf(RetryError);
+      expect(context.marker).toMatchObject({ state: 'notSent' });
+      context.attempt = 2;
+      expect(await create(client, context)).toMatchObject({ branch: 'created' });
+      expect(context.marker).toMatchObject({ sendCount: 1 });
+      expect(requests).toHaveLength(1);
+    });
+
+  it('keeps the claim for a transient credential failure after a possible send', async () => {
+    const { client, requests } = newClient([serverFailure]);
+    const { client: unavailable } = newClient([serverFailure], undefined, new CredentialBrokerUnavailableError());
+    const context = new AttemptContext();
+    expect(await create(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    expect(await create(unavailable, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    new ReauthorizationRequiredError(), new ObjectNotFoundError(),
+    new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(),
+  ])('selects defect before any send and uncertain after one for a terminal credential failure: %s', async error => {
+    const { client, requests } = newClient([serverFailure]);
+    const { client: terminal } = newClient([serverFailure], undefined, error);
+    expect(await create(terminal, new AttemptContext())).toMatchObject({ branch: 'defect' });
+    const context = new AttemptContext();
+    expect(await create(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    expect(await create(terminal, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
   });
 });
