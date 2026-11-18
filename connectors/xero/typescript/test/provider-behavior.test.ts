@@ -4,7 +4,7 @@
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { XeroClient, encodeGoQuery, escapeGoPath } from '../src/client.js';
 import type { Credentials } from '../src/generated/models.js';
 
@@ -53,7 +53,12 @@ it('separates terminal, transient, and broken credential sources', async () => {
   for (const [error, outcome] of [
     [new ReauthorizationRequiredError(), 'providerRejected'],
     [new RetryError({ kind: 'AVAILABILITY', provider: 'xero', operation: 'refreshCredentials', message: 'temporarily unavailable' }), 'retry'],
-    [new Error('missing connection'), 'defect'],
+    [new Error('connection is not configured'), 'retry'],
+    [new CredentialBrokerUnavailableError(), 'retry'],
+    [new ObjectNotFoundError(), 'defect'],
+    [new ConnectionNotSelectedError(), 'defect'],
+    [new CredentialBrokerRejectedError(), 'defect'],
+    [new TypeError('fetch failed'), 'retry'],
   ] as const) {
     const credentials = { resolveWithRefresh: async () => { throw error; }, resolve: async () => { throw error; } };
     const client = new XeroClient({}, credentials, { send: async () => { throw new Error('provider must not be called'); } });
@@ -96,16 +101,21 @@ it('selects uncertain for a credential or local failure on a later write attempt
     expect(attempt.kind === 'branch' ? attempt.branch : attempt.kind, `HTTP ${status}`).toBe(outcome);
   }
   const unconfigured = new XeroClient({}, new StaticCredentialProvider<Credentials>([]), { send: async () => { throw new Error('unexpected send'); } });
-  expect((await unconfigured.recordPayment().invoke(laterCall, paymentInput)).kind).toBe('uncertain');
+  expect((await unconfigured.recordPayment().invoke(laterCall, paymentInput)).kind, 'an unconfigured connection is transient').toBe('retry');
+  const notSelected = { resolveWithRefresh: async () => { throw new ConnectionNotSelectedError(); }, resolve: async () => { throw new ConnectionNotSelectedError(); } };
+  const terminal = new XeroClient({}, notSelected, { send: async () => { throw new Error('unexpected send'); } });
+  expect((await terminal.recordPayment().invoke(laterCall, paymentInput)).kind).toBe('uncertain');
 });
 
-it('retries an unavailable credential broker on every write attempt', async () => {
+it('retries a transient credential failure on every write attempt', async () => {
   const paymentInput = { invoiceId: invoiceID, accountCode: '090', date: '2026-10-01', amount: '109.89' };
-  const credentials = { resolveWithRefresh: async () => { throw new CredentialBrokerUnavailableError(); }, resolve: async () => { throw new CredentialBrokerUnavailableError(); } };
-  const client = new XeroClient({}, credentials, { send: async () => { throw new Error('provider must not be called'); } });
-  for (const attemptNumber of [1, 2]) {
-    const writeCall = { ...call, idempotencyKey: '801feb97-5ad4-5063-b93c-9a25f054e79b', context: { ...call.context, attempt: attemptNumber } } as Call;
-    const attempt = await client.recordPayment().invoke(writeCall, paymentInput);
-    expect(attempt.kind, `attempt ${attemptNumber}`).toBe('retry');
+  for (const error of [new CredentialBrokerUnavailableError(), new Error('connection is not configured'), new RangeError('unlisted')]) {
+    const credentials = { resolveWithRefresh: async () => { throw error; }, resolve: async () => { throw error; } };
+    const client = new XeroClient({}, credentials, { send: async () => { throw new Error('provider must not be called'); } });
+    for (const attemptNumber of [1, 2]) {
+      const writeCall = { ...call, idempotencyKey: '801feb97-5ad4-5063-b93c-9a25f054e79b', context: { ...call.context, attempt: attemptNumber } } as Call;
+      const attempt = await client.recordPayment().invoke(writeCall, paymentInput);
+      expect(attempt.kind, `attempt ${attemptNumber}`).toBe('retry');
+    }
   }
 });

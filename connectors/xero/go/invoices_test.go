@@ -5,6 +5,7 @@ package xero_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -318,40 +319,66 @@ func TestCreateInvoiceSelectsUncertainForACredentialFailureOnALaterAttempt(t *te
 
 	unconfigured, err := xero.New(xero.Config{}, sdkgo.StaticCredentialProvider[xero.Credentials]{}, xero.WithLocalProviderURL(validation.URL))
 	require.NoError(t, err)
-	result, err = sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later-defect"), unconfigured.CreateInvoice(),
+	_, err = sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later-unconfigured"), unconfigured.CreateInvoice(),
 		xeroConnection, validCreateInvoiceInput())
-	require.NoError(t, err)
-	require.Equal(t, xero.CreateInvoiceBranchUncertain, result.Branch, "a later attempt never selects defect")
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unconfigured static connection is transient")
 }
 
-// unavailableBrokerCredentials fails every resolve the way a temporarily unreachable credential broker does.
-type unavailableBrokerCredentials struct{}
+// failingResolveCredentials fails every resolve with resolveErr.
+type failingResolveCredentials struct{ resolveErr error }
 
-func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (xero.Credentials, error) {
-	return xero.Credentials{}, fmt.Errorf("%w: HTTP 503", projectconfig.ErrCredentialBrokerUnavailable)
+func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (xero.Credentials, error) {
+	return xero.Credentials{}, credentials.resolveErr
 }
 
-func (credentials unavailableBrokerCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[xero.Credentials]) (xero.Credentials, error) {
+func (credentials failingResolveCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[xero.Credentials]) (xero.Credentials, error) {
 	return credentials.Resolve(call)
 }
 
-func TestMutationsRetryAnUnavailableCredentialBrokerOnEveryAttempt(t *testing.T) {
+func TestMutationsClassifyCredentialResolveFailures(t *testing.T) {
 	provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
 		writeJSON(t, response, http.StatusInternalServerError, `{}`)
 	})
-	client, err := xero.New(xero.Config{}, unavailableBrokerCredentials{}, xero.WithLocalProviderURL(provider.URL))
-	require.NoError(t, err)
-	for name, newContext := range map[string]func(string) *xeroDexContext{
-		"first attempt": newXeroDexContext, "later attempt": newLaterAttemptXeroDexContext,
-	} {
-		t.Run(name, func(t *testing.T) {
-			_, err := sdkgo.RunMutation(newContext("create-broker-"+name), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
-			var retry *sdkgo.RetryError
-			require.ErrorAs(t, err, &retry, "a broker outage never selects defect or uncertain")
-			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
-			_, err = sdkgo.RunMutation(newContext("payment-broker-"+name), client.RecordPayment(), xeroConnection, validRecordPaymentInput())
-			require.ErrorAs(t, err, &retry)
-			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	transient := map[string]error{
+		"broker unavailable": fmt.Errorf("%w: HTTP 503", projectconfig.ErrCredentialBrokerUnavailable),
+		"not configured":     errors.New("connection is not configured"),
+		"deadline":           context.DeadlineExceeded,
+		"unlisted":           errors.New("unlisted resolve failure"),
+	}
+	terminal := map[string]error{
+		"sdk reauthorization":     sdkgo.NewReauthorizationRequiredError(nil),
+		"project reauthorization": projectconfig.ErrReauthorizationRequired,
+		"object not found":        projectconfig.ErrObjectNotFound,
+		"not selected":            projectconfig.ErrConnectionNotSelected,
+		"broker rejected":         projectconfig.ErrCredentialBrokerRejected,
+	}
+	for name, resolveErr := range transient {
+		t.Run("transient "+name, func(t *testing.T) {
+			client, err := xero.New(xero.Config{}, failingResolveCredentials{resolveErr}, xero.WithLocalProviderURL(provider.URL))
+			require.NoError(t, err)
+			for attempt, newContext := range map[string]func(string) *xeroDexContext{
+				"first": newXeroDexContext, "later": newLaterAttemptXeroDexContext,
+			} {
+				_, err := sdkgo.RunMutation(newContext("create-"+attempt), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "a transient credential failure never selects defect or uncertain")
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+				_, err = sdkgo.RunMutation(newContext("payment-"+attempt), client.RecordPayment(), xeroConnection, validRecordPaymentInput())
+				require.ErrorAs(t, err, &retry)
+			}
+		})
+	}
+	for name, resolveErr := range terminal {
+		t.Run("terminal "+name, func(t *testing.T) {
+			client, err := xero.New(xero.Config{}, failingResolveCredentials{resolveErr}, xero.WithLocalProviderURL(provider.URL))
+			require.NoError(t, err)
+			first, err := sdkgo.RunMutation(newXeroDexContext("create-first"), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
+			require.NoError(t, err)
+			require.NotEqual(t, xero.CreateInvoiceBranchUncertain, first.Branch, "nothing was sent before the first attempt")
+			later, err := sdkgo.RunMutation(newLaterAttemptXeroDexContext("create-later"), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
+			require.NoError(t, err)
+			require.Equal(t, xero.CreateInvoiceBranchUncertain, later.Branch, "an earlier attempt may have created the invoice")
 		})
 	}
 	require.Zero(t, provider.requestCount(), "nothing is sent without credentials")
