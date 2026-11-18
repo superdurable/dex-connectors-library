@@ -81,7 +81,7 @@ export interface CreateTaskStepConfig<StepInput, OperationInput = CreateTaskInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** ClickUp conclusively rejected the task, such as an unknown status, assignee, or custom field value, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Earlier attempts sent the create up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching task, so the task may exist; the connector does not send it again. */
+  /** Earlier attempts sent the create up to the send cap, ClickUp accepted it without a usable task ID, or read-back after a possible send cannot confirm a single matching task, including a List that is now missing, so the task may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -112,7 +112,7 @@ export interface UpdateTaskStepConfig<StepInput, OperationInput = UpdateTaskInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** ClickUp conclusively rejected the change, such as a status that is not in the task's List or missing permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** ClickUp returned an invalid or oversized task after the update, so the change may have been applied. */
+  /** Kept for compatibility and no longer selected: the update is safe to repeat, so an invalid or oversized task after the update retries. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -146,7 +146,7 @@ export interface UpdateTaskTagsStepConfig<StepInput, OperationInput = UpdateTask
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** ClickUp conclusively rejected a tag change, such as missing permission; earlier changes in the same Step may have been applied. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** ClickUp returned an invalid or oversized task when its tags were read back; the tag changes were applied. */
+  /** Kept for compatibility and no longer selected: the tag changes are safe to repeat, so an invalid or oversized task read back retries. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -180,7 +180,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** ClickUp conclusively rejected the comment, such as missing permission; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Earlier attempts sent the comment up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching comment, so the comment may exist; the connector does not send it again. */
+  /** Earlier attempts sent the comment up to the send cap, ClickUp accepted it without a usable comment ID, or read-back after a possible send cannot confirm a single matching comment, including a task that is now missing, so the comment may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

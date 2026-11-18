@@ -294,7 +294,7 @@ func UpdateTaskProviderRejected(value clickup.UpdateTaskOutput, failure *sdkgo.F
 	return connectormock.Branch(clickup.UpdateTaskBranchProviderRejected, value, failure)
 }
 
-// UpdateTaskInvalidResponse selects the invalidResponse branch: ClickUp returned an invalid or oversized task after the update, so the change may have been applied.
+// UpdateTaskInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: the update is safe to repeat, so an invalid or oversized task after the update retries.
 func UpdateTaskInvalidResponse(value clickup.UpdateTaskOutput, failure *sdkgo.Failure) connectormock.Case[clickup.UpdateTaskOutput] {
 	return connectormock.Branch(clickup.UpdateTaskBranchInvalidResponse, value, failure)
 }
@@ -347,7 +347,7 @@ func UpdateTaskTagsProviderRejected(value clickup.UpdateTaskTagsOutput, failure 
 	return connectormock.Branch(clickup.UpdateTaskTagsBranchProviderRejected, value, failure)
 }
 
-// UpdateTaskTagsInvalidResponse selects the invalidResponse branch: ClickUp returned an invalid or oversized task when its tags were read back; the tag changes were applied.
+// UpdateTaskTagsInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: the tag changes are safe to repeat, so an invalid or oversized task read back retries.
 func UpdateTaskTagsInvalidResponse(value clickup.UpdateTaskTagsOutput, failure *sdkgo.Failure) connectormock.Case[clickup.UpdateTaskTagsOutput] {
 	return connectormock.Branch(clickup.UpdateTaskTagsBranchInvalidResponse, value, failure)
 }
