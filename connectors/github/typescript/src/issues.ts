@@ -165,7 +165,7 @@ export class CreateIssueOperation implements Mutation<CreateIssueInput, CreatedI
       // A saved issue number proves an accepted send, so a missing issue is never sent again.
       if (readBack.status === 'unverifiable' || decision.kind === 'readBackRequired' || providerId) return writer.uncertain('AVAILABILITY', 'GitHub issue creation outcome is unknown', readBack.receipt);
     }
-    return writer.dispatch(fence, request, (decision.priorSendUpperBound ?? 0) + 1);
+    return writer.dispatch(fence, request, (decision.priorSendUpperBound ?? 0) + 1, hasPossibleEarlierSend);
   }
 }
 
@@ -178,12 +178,14 @@ class IssueWriter {
   constructor(readonly client: GitHubClient, readonly call: Call, readonly marker: string, readonly requested: CreatedIssue) {}
 
   /** Send the issue once and classify the answer; claimSendCount counts this send. */
-  async dispatch(fence: Fence, request: { title: string; body: string; labels?: string[]; assignees?: string[] }, claimSendCount: number): Promise<MutationAttempt<CreatedIssue>> {
+  async dispatch(fence: Fence, request: { title: string; body: string; labels?: string[]; assignees?: string[] }, claimSendCount: number, hasPossibleEarlierSend: boolean): Promise<MutationAttempt<CreatedIssue>> {
     const payload = encoder.encode(JSON.stringify(request));
     let result;
     try { result = await fence.dispatch(signal => this.client.postFencedWrite(this.access!.token, issuesPath(this.owner, this.repository), payload, signal)); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof AggregateError) return newMutationRetry(failure(createIssueOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint or request budget is unavailable'));
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(failure(createIssueOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint or request budget is unavailable'));
+      // An earlier send may have created the issue, so a local refusal now is never final.
+      if (hasPossibleEarlierSend) return this.uncertain('LOCAL_DEFECT', 'GitHub dispatch was not allowed after an earlier possible send', {});
       return this.branch('defect', 'LOCAL_DEFECT', 'GitHub dispatch was not allowed', {});
     }
     const isBelowSendCap = claimSendCount < this.maxSends();
@@ -518,7 +520,7 @@ export class CreateIssueCommentOperation implements Mutation<CreateIssueCommentI
       // A saved comment ID proves an accepted send, so a missing comment is never sent again.
       if (readBack.status === 'unverifiable' || decision.kind === 'readBackRequired' || providerId) return writer.uncertain('AVAILABILITY', 'GitHub comment creation outcome is unknown', readBack.receipt);
     }
-    return writer.dispatch(fence, request, (decision.priorSendUpperBound ?? 0) + 1);
+    return writer.dispatch(fence, request, (decision.priorSendUpperBound ?? 0) + 1, hasPossibleEarlierSend);
   }
 }
 
@@ -531,12 +533,14 @@ class CommentWriter {
   constructor(readonly client: GitHubClient, readonly call: Call, readonly marker: string, readonly requested: CreatedIssueComment) {}
 
   /** Send the comment once and classify the answer; claimSendCount counts this send. */
-  async dispatch(fence: Fence, request: { body: string }, claimSendCount: number): Promise<MutationAttempt<CreatedIssueComment>> {
+  async dispatch(fence: Fence, request: { body: string }, claimSendCount: number, hasPossibleEarlierSend: boolean): Promise<MutationAttempt<CreatedIssueComment>> {
     const payload = encoder.encode(JSON.stringify(request));
     let result;
     try { result = await fence.dispatch(signal => this.client.postFencedWrite(this.access!.token, this.commentsPath(), payload, signal)); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof AggregateError) return newMutationRetry(failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint or request budget is unavailable'));
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub dispatch checkpoint or request budget is unavailable'));
+      // An earlier send may have created the comment, so a local refusal now is never final.
+      if (hasPossibleEarlierSend) return this.uncertain('LOCAL_DEFECT', 'GitHub dispatch was not allowed after an earlier possible send', {});
       return this.branch('defect', 'LOCAL_DEFECT', 'GitHub dispatch was not allowed', {});
     }
     const isBelowSendCap = claimSendCount < this.maxSends();
@@ -852,3 +856,8 @@ function isSingleLineText(value: string): boolean { return isWellFormedText(valu
 
 // In Unicode mode a surrogate class matches only an unpaired surrogate, which is not valid UTF-8.
 function isWellFormedText(value: string): boolean { return !/\p{Cs}/u.test(value); }
+
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
+}

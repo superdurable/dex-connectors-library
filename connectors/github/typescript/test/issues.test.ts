@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
+import { DispatchNotAllowedError, Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
@@ -121,6 +122,25 @@ it('reads back before sending again below the cap', async () => {
   expect((await github.createIssue().invoke(call(), input)).kind).toBe('retry');
   expect(requests).toEqual(['POST /repos/octocat/hello-world/issues', 'GET /user', 'GET /repos/octocat/hello-world/issues',
     'GET /user', 'GET /repos/octocat/hello-world/issues', 'POST /repos/octocat/hello-world/issues']);
+});
+
+it('selects uncertain, not defect, when the Fence refuses a resend after a possible send', async () => {
+  for (const operationId of ['createIssue', 'createIssueComment'] as const) {
+    const invoke = (github: GitHubClient, call: Call) => operationId === 'createIssue'
+      ? github.createIssue().invoke(call, { owner: 'octocat', repository: 'hello-world', title: 'Crash' })
+      : github.createIssueComment().invoke(call, { owner: 'octocat', repository: 'hello-world', issueNumber: 7, body: 'Thanks' });
+    const context = new FenceContext();
+    const call = () => ({ id: callId, connection, operation: { connectorId: 'github', operationId }, context }) as unknown as Call;
+    const github = client([502], []);
+    expect((await invoke(github, call())).kind).toBe('retry');
+    context.attempt++;
+    const refusal = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(new DispatchNotAllowedError());
+    try { expect(await invoke(github, call())).toMatchObject({ kind: 'uncertain' }); }
+    finally { refusal.mockRestore(); }
+    const firstRefusal = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(new DispatchNotAllowedError());
+    try { expect(await invoke(client([], []), { id: callId, connection, operation: { connectorId: 'github', operationId }, context: new FenceContext() } as unknown as Call)).toMatchObject({ kind: 'branch', branch: 'defect' }); }
+    finally { firstRefusal.mockRestore(); }
+  }
 });
 
 it('reads back after a 429 that followed an unknown send', async () => {
