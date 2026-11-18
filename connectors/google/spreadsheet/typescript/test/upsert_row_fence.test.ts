@@ -145,6 +145,8 @@ describe('Google Sheets upsertRow bounded append resend', () => {
     { name: 'object not found', failure: new ObjectNotFoundError(), isTerminal: true },
     { name: 'connection not selected', failure: new ConnectionNotSelectedError(), isTerminal: true },
     { name: 'broker rejected', failure: new CredentialBrokerRejectedError(), isTerminal: true },
+    // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+    { name: 'malformed stored material', failure: new TypeError('project credential decoding failed'), isTerminal: true },
     { name: 'broker unavailable', failure: new CredentialBrokerUnavailableError(), isTerminal: false },
     { name: 'static connection not configured', failure: new Error('connection is not configured'), isTerminal: false },
   ];

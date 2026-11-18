@@ -50,6 +50,15 @@ TERMINAL_CREDENTIAL_ERRORS = (
     CredentialBrokerRejectedError,
 )
 
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure that only reconnection repairs, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
+
+
 MAXIMUM_ROW_ADDED_POLL_PAGE_SIZE: Final = MAXIMUM_CHANGES_PER_PAGE
 """The largest `Config.poll_page_size`, which keeps one rowAdded poll page within the poll kit's bound."""
 
@@ -151,7 +160,7 @@ class Client:
         try:
             credential = await self.credentials.resolve(call)
         except Exception as error:
-            terminal = isinstance(error, TERMINAL_CREDENTIAL_ERRORS)
+            terminal = is_terminal_credential_error(error)
         else:
             if isinstance(credential, Credentials) and credential.access_token.reveal():
                 return credential, None, False
@@ -180,7 +189,7 @@ class Client:
                 return None, True
             return credential, False
         except Exception as error:
-            return None, isinstance(error, TERMINAL_CREDENTIAL_ERRORS)
+            return None, is_terminal_credential_error(error)
 
     async def request(
         self,

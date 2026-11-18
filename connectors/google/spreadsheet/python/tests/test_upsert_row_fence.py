@@ -31,6 +31,10 @@ from dex_connectors.sdk.projectconfig import (
 )
 
 from dex_connectors.google_spreadsheet import Client, Config, Credentials
+from dex_connectors.google_spreadsheet._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 from dex_connectors.google_spreadsheet._generated.definitions import UPSERT_ROW_DEFINITION
 from dex_connectors.google_spreadsheet.models import GetValuesInput, UpsertRowInput, UpsertRowOutput
 
@@ -162,7 +166,20 @@ async def run_attempts(
     return result
 
 
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
+
 CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (sdk_wrapped_material_error(), True),
     (ReauthorizationRequiredError(), True),
     (ObjectNotFoundError(), True),
     (ConnectionNotSelectedError(), True),

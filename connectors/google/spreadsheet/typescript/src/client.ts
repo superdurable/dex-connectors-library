@@ -7,7 +7,7 @@ import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfter
 import { MaxChangesPerPage } from '@superdurable/connectors-sdk/pollingtrigger';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { GetValuesOperation, FindRowOperation, UpsertRowOperation } from './operations.js';
 
 const defaultEndpoint = 'https://sheets.googleapis.com/v4';
@@ -178,7 +178,7 @@ export function goPathEscape(value: string): string { return Array.from(Buffer.f
 /** Report a resolve failure that only reconnection repairs; any other one is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 function header(headers: ProviderResponse['headers'], name: string): string { const value = headers[name]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
