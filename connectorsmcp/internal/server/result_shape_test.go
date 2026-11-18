@@ -77,7 +77,7 @@ func TestToolsCallResultsCarryResultTypeUnderMCP20260728(t *testing.T) {
 			return result.Meta[metaKeyTruncatedBytes] != nil && result.StructuredContent == nil
 		}},
 		{"unknown outcome", func() rpcResponse {
-			harness.provider.Script("postNote", testconnectors.ScriptedResponse{Status: http.StatusServiceUnavailable})
+			harness.provider.Script("postNote", testconnectors.ScriptedResponse{Status: http.StatusInternalServerError})
 			return harness.callTool("example-notes_post_note", map[string]any{"text": "b"}, "flow/turn/shape-unknown")
 		}, func(result callResult) bool { return result.outcome() == outcomeUnknown }},
 		{"replay under a vanished name", func() rpcResponse {

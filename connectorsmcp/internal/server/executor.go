@@ -22,7 +22,6 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/canonicaljson"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
-	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // ProtocolPoint names a step of the keyed write protocol. Tests kill the
@@ -347,35 +346,35 @@ func (call *toolCall) resumeRecordedCall(ctx context.Context, lock *callstate.Ke
 		return callAnswer{result: stored, isReplayed: true}
 	}
 	// The last attempt's outcome was not observed, so it may have applied.
-	record.PossiblyApplied = record.PossiblyApplied || !isProvenNotSent(record)
+	record.PossiblyApplied = true
 	recordBinding := call.toolSet.toolForRequest(record.Request)
 	effect := record.Effect
 	if recordBinding != nil && effectRank(recordBinding.effect) > effectRank(effect) {
 		effect = recordBinding.effect
 	}
 	if effect != sdkgo.AgentToolEffectIdempotentWrite {
-		return call.finalizeFromCheckpoint(lock, record, "an earlier attempt of this call was interrupted")
+		return call.finalizeWithoutOutcome(lock, record, "an earlier attempt of this call was interrupted")
 	}
 	if call.executor.isDraining.Load() {
-		return callAnswer{err: interruptedError("the server is stopping; nothing was sent by this call")}
+		return callAnswer{err: interruptedError("the server is stopping; repeat the call with the same idempotency key")}
 	}
 	if !call.executor.clock.Now().Before(record.RetryWindowEndsAt) {
-		return call.finalizeFromCheckpoint(lock, record, "its retry window has passed")
+		return call.finalizeWithoutOutcome(lock, record, "its retry window has passed")
 	}
 	if recordBinding == nil {
-		return call.finalizeFromCheckpoint(lock, record, connectionRemovedReason)
+		return call.finalizeWithoutOutcome(lock, record, connectionRemovedReason)
 	}
 	if recordBinding.connectionTarget != record.ConnectionTarget {
-		return call.finalizeFromCheckpoint(lock, record, connectionRetargetedReason)
+		return call.finalizeWithoutOutcome(lock, record, connectionRetargetedReason)
 	}
 	if limit := attemptLimit(retryPolicyOf(recordBinding.metadata), call.executor.config.maximumInlineAttempts); record.Attempt >= limit {
-		return call.finalizeFromCheckpoint(lock, record, fmt.Sprintf("it already made %d attempts", record.Attempt))
+		return call.finalizeWithoutOutcome(lock, record, fmt.Sprintf("it already made %d attempts", record.Attempt))
 	}
 	record.Attempt++
 	call.attempt = record.Attempt
 	if err := lock.Write(record); err != nil {
 		call.executor.logger.Error("call state cannot be written", "key", call.keyPrefix(), "error", err)
-		return callAnswer{err: interruptedError("call state cannot be written; nothing was sent by this call")}
+		return callAnswer{err: interruptedError("call state cannot be written; repeat the call with the same idempotency key")}
 	}
 	call.sendCap = pinnedSendCap(recordBinding.metadata)
 	return call.runWriteAttempts(ctx, lock, record, recordBinding, key)
@@ -428,19 +427,19 @@ func (call *toolCall) startWrite(ctx context.Context, lock *callstate.KeyLock, k
 	return call.runWriteAttempts(ctx, lock, &record, binding, key)
 }
 
-// runWriteAttempts retries an idempotent write, and a limited write whose
-// pinned cap allows a resend, while the cap, window, and budget allow.
+// runWriteAttempts follows the Step retry policy after a connector Retry,
+// while the attempt cap, window, and budget allow.
 func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyLock, record *callstate.Record, binding *toolBinding, key string) callAnswer {
 	policy := retryPolicyOf(binding.metadata)
 	limit := writeAttemptLimit(policy, call.executor.config.maximumInlineAttempts, call.sendCap)
-	isBoundedResend := record.Effect != sdkgo.AgentToolEffectIdempotentWrite && allowsBoundedResend(call.sendCap)
+	isIdempotent := record.Effect == sdkgo.AgentToolEffectIdempotentWrite
 	for {
 		attempt, runErr := call.runWriteAttempt(ctx, lock, record, binding, key)
 		call.executor.observeProtocolPoint(ProtocolPointAfterAttempt, record.Request.OperationID)
 		if errors.Is(runErr, errRetryWindowPassed) {
-			return call.finalizeFromCheckpoint(lock, record, "its retry window has passed")
+			return call.finalizeWithoutOutcome(lock, record, "its retry window has passed")
 		}
-		if attemptMayHaveApplied(attempt, runErr, record) {
+		if attemptMayHaveApplied(attempt, runErr) {
 			record.PossiblyApplied = true
 		}
 		if reason := call.writeAttemptRetargetReason(ctx, record, attempt, runErr); reason != "" {
@@ -450,51 +449,51 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 			return call.finishWriteAttemptWithoutBranch(lock, record, binding, attempt, runErr)
 		}
 		if attempt.Outcome != sdkgo.AgentToolAttemptRetry {
-			return call.finalize(lock, record, call.writeBranchResult(binding, attempt, record))
+			return call.finalize(lock, record, branchResult(binding, attempt, call.executor.config.maxResultBytes))
 		}
 		detail := retryDetail(attempt)
-		if record.Effect != sdkgo.AgentToolEffectIdempotentWrite && !isBoundedResend {
-			return call.finalizeRetryLater(lock, record, detail)
-		}
 		if record.Attempt >= limit {
-			return call.finalizeFromCheckpoint(lock, record, fmt.Sprintf("the provider still asked to retry after %d attempts (%s)", record.Attempt, detail))
+			return call.finalizeWithoutOutcome(lock, record, fmt.Sprintf("the provider still asked to retry after %d attempts (%s)", record.Attempt, detail))
 		}
 		now := call.executor.clock.Now()
 		delay := retryDelay(policy, record.Attempt, attempt.RetryAfter)
 		if !now.Add(delay).Before(record.RetryWindowEndsAt) {
-			return call.finalizeFromCheckpoint(lock, record, "its retry window ends before the next attempt ("+detail+")")
+			return call.finalizeWithoutOutcome(lock, record, "its retry window ends before the next attempt ("+detail+")")
 		}
 		call.persistObservation(lock, record)
-		// A reissued limited write settles from its checkpoint, so it settles now instead.
+		// A repeated non-idempotent call never runs again, so it settles now.
 		if delay+binding.attemptTimeout() > call.remainingBudget(now) {
-			if isBoundedResend {
-				return call.finalizeRetryLater(lock, record, detail)
+			if !isIdempotent {
+				return call.finalizeWithoutOutcome(lock, record, "the call budget is spent before the next attempt ("+detail+")")
 			}
 			return callAnswer{err: interruptedError(binding.operationLabel() + " asked to retry and the call budget is spent; repeat the call with the same idempotency key")}
 		}
 		if !call.executor.clock.Sleep(ctx, delay) || call.executor.isDraining.Load() {
-			if isBoundedResend {
-				return call.finalizeRetryLater(lock, record, detail)
+			if !isIdempotent {
+				return call.finalizeWithoutOutcome(lock, record, "the call ended while waiting to retry ("+detail+")")
 			}
 			return callAnswer{err: interruptedError("the call ended while waiting to retry; repeat it with the same idempotency key")}
 		}
 		if !call.executor.clock.Now().Before(record.RetryWindowEndsAt) {
-			return call.finalizeFromCheckpoint(lock, record, "its retry window passed while it waited to retry ("+detail+")")
+			return call.finalizeWithoutOutcome(lock, record, "its retry window passed while it waited to retry ("+detail+")")
 		}
 		// The connections file may have changed during the delay.
 		current := call.executor.currentToolSet(context.WithoutCancel(ctx)).toolForRequest(record.Request)
 		if current == nil {
-			return call.finalizeFromCheckpoint(lock, record, connectionRemovedReason)
+			return call.finalizeWithoutOutcome(lock, record, connectionRemovedReason)
 		}
 		if current.connectionTarget != record.ConnectionTarget {
-			return call.finalizeFromCheckpoint(lock, record, connectionRetargetedReason)
+			return call.finalizeWithoutOutcome(lock, record, connectionRetargetedReason)
 		}
 		binding = current
 		record.Attempt++
 		call.attempt = record.Attempt
 		if err := lock.Write(record); err != nil {
 			call.executor.logger.Error("call state cannot be written", "key", call.keyPrefix(), "error", err)
-			return callAnswer{err: interruptedError("call state cannot be written; nothing was sent by this call")}
+			if !isIdempotent {
+				return call.finalizeWithoutOutcome(lock, record, "its call state cannot be written before the next attempt")
+			}
+			return callAnswer{err: interruptedError("call state cannot be written; repeat the call with the same idempotency key")}
 		}
 	}
 }
@@ -519,21 +518,22 @@ func (call *toolCall) writeAttemptRetargetReason(ctx context.Context, record *ca
 	}
 }
 
-// finalizeRetargetedAttempt settles from evidence: a possibly applied write
-// is never rejected, and a provider rejection never claims nothing was sent.
+// finalizeRetargetedAttempt keeps a selected branch's outcome; a provider
+// rejection never claims nothing was sent.
 func (call *toolCall) finalizeRetargetedAttempt(lock *callstate.KeyLock, record *callstate.Record, binding *toolBinding, attempt sdkgo.AgentToolAttempt, runErr error, reason string) callAnswer {
 	call.executor.logger.Warn("connection changed during an attempt; settling the call", "tool", call.name, "key", call.keyPrefix(), "attempt", record.Attempt, "reason", reason)
-	if runErr != nil || attempt.Outcome != sdkgo.AgentToolAttemptRejected {
-		return call.finalizeFromCheckpoint(lock, record, reason)
+	if runErr != nil || attempt.Outcome == sdkgo.AgentToolAttemptRetry {
+		return call.finalizeWithoutOutcome(lock, record, reason)
 	}
-	detail := string(attempt.Branch)
-	if attempt.Failure != nil {
-		detail += ": " + string(attempt.Failure.Kind) + ": " + attempt.Failure.Message
-	}
-	if record.PossiblyApplied {
+	detail := branchDetail(attempt)
+	switch attempt.Outcome {
+	case sdkgo.AgentToolAttemptRejected:
+		return call.finalize(lock, record, newErrorResult(resultRejected, binding.operationLabel()+" returned "+detail+"; "+reason, attempt.Branch))
+	case sdkgo.AgentToolAttemptFailed:
+		return call.finalize(lock, record, newErrorResult(resultFailed, binding.operationLabel()+" returned "+detail+"; "+reason, attempt.Branch))
+	default:
 		return call.finalize(lock, record, newErrorResult(resultUnknown, binding.operationLabel()+" may have taken effect: "+reason+" ("+detail+"); do not repeat it", attempt.Branch))
 	}
-	return call.finalize(lock, record, newErrorResult(resultRejected, binding.operationLabel()+" returned "+detail+"; "+reason, attempt.Branch))
 }
 
 // isConnectionTargetRefusal reports a credential resolution that refused the expected target.
@@ -574,26 +574,15 @@ func (call *toolCall) runWriteAttempt(ctx context.Context, lock *callstate.KeyLo
 		return sdkgo.AgentToolAttempt{}, err
 	}
 	call.executor.observeProtocolPoint(ProtocolPointBeforeAttempt, record.Request.OperationID)
-	return binding.tool.RunAttemptWithOptions(dexContext, call.arguments, sendCapRunOptions(call.sendCap)...)
-}
-
-// writeBranchResult maps a write's branch; once any attempt may have applied,
-// a rejected branch becomes unknown.
-func (call *toolCall) writeBranchResult(binding *toolBinding, attempt sdkgo.AgentToolAttempt, record *callstate.Record) toolResult {
-	if attempt.Outcome == sdkgo.AgentToolAttemptRejected && record.PossiblyApplied {
-		detail := string(attempt.Branch)
-		if attempt.Failure != nil {
-			detail += ": " + string(attempt.Failure.Kind) + ": " + attempt.Failure.Message
-		}
-		return newErrorResult(resultUnknown, binding.operationLabel()+" may have taken effect: an earlier attempt may have applied it ("+detail+"); do not repeat it", attempt.Branch)
-	}
-	return branchResult(binding, attempt, call.executor.config.maxResultBytes)
+	attempt, runErr := binding.tool.RunAttemptWithOptions(dexContext, call.arguments, sendCapRunOptions(call.sendCap)...)
+	return classifyAttemptByBranch(binding.metadata, attempt, runErr), runErr
 }
 
 func (call *toolCall) finishWriteAttemptWithoutBranch(lock *callstate.KeyLock, record *callstate.Record, binding *toolBinding, attempt sdkgo.AgentToolAttempt, runErr error) callAnswer {
 	if errors.Is(runErr, sdkgo.ErrAgentToolArgumentsInvalid) {
+		// Failed, not rejected: an earlier attempt may have sent.
 		if record.PossiblyApplied {
-			return call.finalize(lock, record, unknownResult(binding.operationLabel()+" may have taken effect: an earlier attempt may have applied it; do not repeat it"))
+			return call.finalize(lock, record, newErrorResult(resultFailed, "invalid arguments for "+call.name+": "+runErr.Error(), ""))
 		}
 		return call.finalize(lock, record, rejectedResult("invalid arguments for "+call.name+": "+runErr.Error()))
 	}
@@ -609,17 +598,10 @@ func (call *toolCall) finishWriteAttemptWithoutBranch(lock *callstate.KeyLock, r
 	return call.finalize(lock, record, unknownResult(binding.operationLabel()+" may have taken effect: the attempt ended without a result; do not repeat it"))
 }
 
-// finalizeRetryLater answers a non-idempotent write whose connector asked to retry.
-func (call *toolCall) finalizeRetryLater(lock *callstate.KeyLock, record *callstate.Record, detail string) callAnswer {
-	if isProvenNotSent(record) && !record.PossiblyApplied {
-		return call.finalize(lock, record, rejectedResult(recordLabel(record)+": not sent; the provider asked to retry later ("+detail+")"))
-	}
-	return call.finalize(lock, record, unknownResult(recordLabel(record)+" may have taken effect: the provider asked to retry later ("+detail+"); do not repeat it"))
-}
-
-// finalizeFromCheckpoint answers rejected only with notSent proof and nothing possibly applied.
-func (call *toolCall) finalizeFromCheckpoint(lock *callstate.KeyLock, record *callstate.Record, reason string) callAnswer {
-	if isProvenNotSent(record) && !record.PossiblyApplied {
+// finalizeWithoutOutcome settles a call no branch settled: rejected only when
+// no attempt invoked the operation, else unknown.
+func (call *toolCall) finalizeWithoutOutcome(lock *callstate.KeyLock, record *callstate.Record, reason string) callAnswer {
+	if !record.PossiblyApplied {
 		return call.finalize(lock, record, rejectedResult(recordLabel(record)+" did not take effect: "+reason+"; nothing was sent"))
 	}
 	return call.finalize(lock, record, unknownResult(recordLabel(record)+" may have taken effect: "+reason+"; do not repeat it"))
@@ -636,8 +618,8 @@ func (call *toolCall) finalize(lock *callstate.KeyLock, record *callstate.Record
 	return callAnswer{result: result}
 }
 
-// attemptMayHaveApplied: unknown, an error after Invoke, or a Retry without notSent proof.
-func attemptMayHaveApplied(attempt sdkgo.AgentToolAttempt, runErr error, record *callstate.Record) bool {
+// attemptMayHaveApplied: succeeded, unknown, or an error or Retry after Invoke.
+func attemptMayHaveApplied(attempt sdkgo.AgentToolAttempt, runErr error) bool {
 	if runErr != nil {
 		return attempt.HasInvokedOperation
 	}
@@ -645,7 +627,7 @@ func attemptMayHaveApplied(attempt sdkgo.AgentToolAttempt, runErr error, record 
 	case sdkgo.AgentToolAttemptSucceeded, sdkgo.AgentToolAttemptUnknown:
 		return true
 	case sdkgo.AgentToolAttemptRetry:
-		return attempt.HasInvokedOperation && !isProvenNotSent(record)
+		return attempt.HasInvokedOperation
 	default:
 		return false
 	}
@@ -734,7 +716,8 @@ func (call *toolCall) runReadAttempt(ctx context.Context, binding *toolBinding, 
 		return sdkgo.AgentToolAttempt{}, err
 	}
 	call.executor.observeProtocolPoint(ProtocolPointBeforeAttempt, binding.metadata.Operation.OperationID)
-	return binding.tool.RunAttempt(dexContext, call.arguments)
+	attempt, runErr := binding.tool.RunAttempt(dexContext, call.arguments)
+	return classifyAttemptByBranch(binding.metadata, attempt, runErr), runErr
 }
 
 func (call *toolCall) remainingBudget(now time.Time) time.Duration {
@@ -839,17 +822,6 @@ func (checkpoints *readCheckpoints) last() json.RawMessage {
 	checkpoints.mu.Lock()
 	defer checkpoints.mu.Unlock()
 	return checkpoints.checkpoint
-}
-
-// isProvenNotSent reports whether the record's current attempt checkpointed
-// notSent with no provider ID. canResend follows a claim and proves nothing.
-func isProvenNotSent(record *callstate.Record) bool {
-	var marker singledispatch.Marker
-	if len(bytes.TrimSpace(record.Checkpoint)) == 0 || json.Unmarshal(record.Checkpoint, &marker) != nil {
-		return false
-	}
-	return string(marker.CallID) == record.CallID && marker.Attempt == record.Attempt &&
-		marker.State == singledispatch.StateNotSent && marker.ProviderID == ""
 }
 
 func recordLabel(record *callstate.Record) string {
