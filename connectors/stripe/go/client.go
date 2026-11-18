@@ -146,9 +146,10 @@ type stripeErrorResponse struct {
 }
 
 type providerResponse struct {
-	statusCode int
-	header     http.Header
-	body       []byte
+	statusCode     int
+	header         http.Header
+	body           []byte
+	isBodyTooLarge bool
 }
 
 var (
@@ -258,7 +259,7 @@ func (client *Client) createCheckoutSession(call sdkgo.Call, write checkoutSessi
 	isResponseTooLarge := errors.Is(err, errStripeResponseTooLarge)
 	if err != nil && !isResponseTooLarge {
 		if errors.Is(err, errStripeRequestInvalid) {
-			return sdkgo.NewMutationBranch(write.defect, CheckoutSession{}, stripeFailurePointer(write.operation, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
+			return unavailableCredentialsAttempt[CheckoutSession](call, write.defect, stripeFailurePointer(write.operation, sdkgo.FailureLocalDefect, err.Error()))
 		}
 		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure(write.operation, sdkgo.FailureTransport, "Stripe Checkout Session response is unavailable"), retryAfter(response.header))
 	}
@@ -275,13 +276,14 @@ func (client *Client) createCheckoutSession(call sdkgo.Call, write checkoutSessi
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		return sdkgo.NewMutationRetry[CheckoutSession](unknownStripeWriteFailure(write.operation, "Checkout Session", response), retryAfter(response.header))
 	}
-	// Stripe replays the same 2xx body for every resend under the key, so an unusable one cannot be repaired by a retry.
+	// Stripe created the Session and replays the same 2xx body for every resend under the key, so an
+	// unusable one is uncertain: a retry cannot repair it.
 	if isResponseTooLarge {
-		return sdkgo.NewMutationBranch(write.invalidResponse, CheckoutSession{}, stripeFailurePointer(write.operation, sdkgo.FailureResponseTooLarge, err.Error()), client.receipt(call, response, ""))
+		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure(write.operation, sdkgo.FailureResponseTooLarge, err.Error()), client.receipt(call, response, ""))
 	}
 	session, err := decodeCheckoutSession(response.body)
 	if err != nil {
-		return sdkgo.NewMutationBranch(write.invalidResponse, CheckoutSession{}, stripeFailurePointer(write.operation, sdkgo.FailureProtocol, err.Error()), client.receipt(call, response, ""))
+		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure(write.operation, sdkgo.FailureProtocol, err.Error()), client.receipt(call, response, ""))
 	}
 	return sdkgo.NewMutationBranch(write.created, session, nil, client.receipt(call, response, session.ID))
 }
@@ -446,6 +448,7 @@ func (client *Client) request(call sdkgo.Call, secretKey string, method string, 
 	if int64(len(result.body)) > client.maxResponseBytes {
 		// A truncated body must not classify the response; callers use status and headers.
 		result.body = nil
+		result.isBodyTooLarge = true
 		return result, errStripeResponseTooLarge
 	}
 	return result, nil
@@ -485,6 +488,10 @@ func shouldRetryKeyedConflict(response providerResponse) bool {
 // isDefiniteStripeWriteRefusal reports a conclusive Stripe refusal: a listed 4xx whose body is not the
 // created object. A 402 counts only with a Stripe error object, Stripe's explicit request-failed refusal.
 func isDefiniteStripeWriteRefusal(response providerResponse, isCreatedObject func([]byte) bool) bool {
+	if response.isBodyTooLarge {
+		// An unread body may carry the created object, so the outcome is unknown.
+		return false
+	}
 	switch response.statusCode {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
@@ -507,8 +514,8 @@ func unknownStripeWriteFailure(operation string, subject string, response provid
 	return stripeFailure(operation, sdkgo.FailureProtocol, fmt.Sprintf("Stripe returned unexpected HTTP status %d for the %s request", response.statusCode, subject))
 }
 
-// unavailableCredentialsAttempt selects defect only on attempt one; a later attempt may follow a send,
-// so it returns Retry and resends under the same idempotency key.
+// unavailableCredentialsAttempt selects defect for a local failure only on attempt one; a later attempt
+// may follow a send, so it returns Retry and resends under the same idempotency key.
 func unavailableCredentialsAttempt[T any](call sdkgo.Call, defect sdkgo.BranchID, failure *sdkgo.Failure) sdkgo.MutationAttempt[T] {
 	var zero T
 	if call.Context != nil && call.Context.Attempt() > 1 {

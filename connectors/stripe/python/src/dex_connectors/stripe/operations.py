@@ -224,10 +224,9 @@ class _CheckoutMutation:
                 )
             )
         except ValueError:
-            return MutationAttempt.branch_result(
-                "defect",
+            return _unavailable_credentials_attempt(
+                call,
                 empty,
-                Receipt(),
                 stripe_failure(self._operation, FailureKind.LOCAL_DEFECT, "Stripe request is invalid"),
             )
         if response.status_code == 429:
@@ -263,26 +262,25 @@ class _CheckoutMutation:
                 unknown_stripe_write_failure(self._operation, "Checkout Session", response),
                 retry_after_seconds(response.headers),
             )
-        # Stripe replays the same 2xx body for every resend under the key, so a retry cannot repair it.
+        # Stripe created the Session and replays the same 2xx body for every resend under the key, so an
+        # unusable one is uncertain: a retry cannot repair it.
         if response.is_body_too_large:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
+            return MutationAttempt.uncertain(
                 empty,
-                self._client.receipt(call, response),
                 stripe_failure(
                     self._operation,
                     FailureKind.RESPONSE_TOO_LARGE,
                     "Stripe response exceeds configured size limit",
                 ),
+                self._client.receipt(call, response),
             )
         try:
             session = decode_checkout_session(response.body)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
+            return MutationAttempt.uncertain(
                 empty,
-                self._client.receipt(call, response),
                 stripe_failure(self._operation, FailureKind.PROTOCOL, str(error)),
+                self._client.receipt(call, response),
             )
         return MutationAttempt.branch_result(
             "created", session, self._client.receipt(call, response, session.id)
@@ -532,10 +530,9 @@ class CreateRefundOperation:
                 stripe_failure(operation, FailureKind.TRANSPORT, "Stripe refund response is unavailable")
             )
         except ValueError:
-            return MutationAttempt.branch_result(
-                "defect",
+            return _unavailable_credentials_attempt(
+                call,
                 empty,
-                Receipt(),
                 stripe_failure(operation, FailureKind.LOCAL_DEFECT, "Stripe request is invalid"),
             )
         if response.status_code == 429:
@@ -563,25 +560,24 @@ class CreateRefundOperation:
             return MutationAttempt.branch_result(
                 "providerRejected", empty, self._client.receipt(call, response), _refund_rejection(response)
             )
-        # Stripe replays the same 2xx body for every resend under the key, so a retry cannot repair it.
+        # Stripe accepted the refund and replays the same 2xx body for every resend under the key, so an
+        # unusable one is uncertain: a retry cannot repair it.
         if 200 <= response.status_code < 300 and response.is_body_too_large:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
+            return MutationAttempt.uncertain(
                 empty,
-                self._client.receipt(call, response),
                 stripe_failure(
                     operation, FailureKind.RESPONSE_TOO_LARGE, "Stripe response exceeds configured size limit"
                 ),
+                self._client.receipt(call, response),
             )
         if 200 <= response.status_code < 300:
             try:
                 refund = decode_refund(response.body)
             except ValueError as error:
-                return MutationAttempt.branch_result(
-                    "invalidResponse",
+                return MutationAttempt.uncertain(
                     empty,
-                    self._client.receipt(call, response),
                     stripe_failure(operation, FailureKind.PROTOCOL, str(error)),
+                    self._client.receipt(call, response),
                 )
             return MutationAttempt.branch_result(
                 "refunded", refund, self._client.receipt(call, response, refund.refund_id)
@@ -710,7 +706,7 @@ def _denied_refund_readback_failure(status_code: int) -> Failure:
 
 
 def _unavailable_credentials_attempt(call: Call, empty: T, failure: Failure | None) -> MutationAttempt[T]:
-    """Select defect only on attempt one; a later attempt may follow a send, so it retries."""
+    """Select defect for a local failure only on attempt one; a later attempt may follow a send."""
     if failure is not None and is_later_attempt(call):
         return MutationAttempt.retry(failure)
     return MutationAttempt.branch_result("defect", empty, Receipt(), failure)

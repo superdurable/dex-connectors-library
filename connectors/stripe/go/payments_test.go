@@ -159,7 +159,7 @@ func TestCreateRefundRejectsInvalidInputAndResponses(t *testing.T) {
 	client = newStripeClient(t, server.URL, stripe.Config{})
 	result, err := sdkgo.RunMutation(newStripeDexContext("refund-malformed"), client.CreateRefund(), stripeConnection, validRefundInput())
 	require.NoError(t, err)
-	require.Equal(t, stripe.CreateRefundBranchInvalidResponse, result.Branch)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "Stripe accepted the refund, so an unusable body is uncertain")
 	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 }
 

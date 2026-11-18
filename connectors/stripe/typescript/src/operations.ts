@@ -136,13 +136,13 @@ export class CreateRefundOperation implements Mutation<CreateRefundInput, Refund
     if (response.status >= 500 && shouldRetryKeyedServerFailure(response)) return newMutationRetry(stripeFailure(operation, 'AVAILABILITY', 'Stripe refund is temporarily unavailable'), stripeRetryAfter(response));
     if (isDefiniteStripeWriteRefusal(response, isRefundBody)) return newMutationBranch('providerRejected', zeroRefund, this.client.receipt(call, response, ''), classifyRefundRejection(response));
     if (response.status >= 200 && response.status < 300) {
-      // Stripe replays the same 2xx body for every resend under the key, so a retry cannot repair it.
-      if (response.isTooLarge) return newMutationBranch('invalidResponse', zeroRefund, this.client.receipt(call, response, ''), stripeFailure(operation, 'RESPONSE_TOO_LARGE', 'Stripe response exceeds configured size limit'));
+      // Stripe accepted the refund and replays the same 2xx body for every resend under the key, so an unusable one is uncertain.
+      if (response.isTooLarge) return newMutationUncertain(zeroRefund, stripeFailure(operation, 'RESPONSE_TOO_LARGE', 'Stripe response exceeds configured size limit'), this.client.receipt(call, response, ''));
       try {
         const refund = decodeRefund(response.body);
         return newMutationBranch('refunded', refund, this.client.receipt(call, response, refund.refundId));
       } catch (error) {
-        return newMutationBranch('invalidResponse', zeroRefund, this.client.receipt(call, response, ''), stripeFailure(operation, 'PROTOCOL', errorMessage(error)));
+        return newMutationUncertain(zeroRefund, stripeFailure(operation, 'PROTOCOL', errorMessage(error)), this.client.receipt(call, response, ''));
       }
     }
     const isServerError = response.status >= 500;
@@ -217,13 +217,13 @@ async function invokeCheckout(client: StripeClient, call: Call, input: CreateACH
   // Stripe replays this cached failure for every resend under the key, so no retry can confirm the Session.
   if (response.status >= 500 && isReplayedStripeResponse(response)) return newMutationUncertain(zeroSession, stripeFailure(operation, 'AVAILABILITY', 'Stripe Checkout Session outcome cannot be confirmed after a replayed server error'), client.receipt(call, response, ''));
   if (response.status < 200 || response.status >= 300) return newMutationRetry(unknownStripeWriteFailure(operation, 'Checkout Session', response), stripeRetryAfter(response));
-  // Stripe replays the same 2xx body for every resend under the key, so a retry cannot repair it.
-  if (response.isTooLarge) return newMutationBranch('invalidResponse', zeroSession, client.receipt(call, response, ''), stripeFailure(operation, 'RESPONSE_TOO_LARGE', 'Stripe response exceeds configured size limit'));
+  // Stripe created the Session and replays the same 2xx body for every resend under the key, so an unusable one is uncertain.
+  if (response.isTooLarge) return newMutationUncertain(zeroSession, stripeFailure(operation, 'RESPONSE_TOO_LARGE', 'Stripe response exceeds configured size limit'), client.receipt(call, response, ''));
   try {
     const session = decodeCheckoutSession(response.body);
     return newMutationBranch('created', session, client.receipt(call, response, session.id));
   } catch (error) {
-    return newMutationBranch('invalidResponse', zeroSession, client.receipt(call, response, ''), stripeFailure(operation, 'PROTOCOL', errorMessage(error)));
+    return newMutationUncertain(zeroSession, stripeFailure(operation, 'PROTOCOL', errorMessage(error)), client.receipt(call, response, ''));
   }
 }
 
@@ -236,6 +236,8 @@ const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415,
 
 /** Report a listed 4xx whose body is not the created object, or a 402 carrying a Stripe error. */
 function isDefiniteStripeWriteRefusal(response: StripeResponse, isCreatedObject: (body: Uint8Array) => boolean): boolean {
+  // An unread body may carry the created object, so the outcome is unknown.
+  if (response.isTooLarge) return false;
   if (definiteRefusalStatuses.has(response.status)) return !isCreatedObject(response.body);
   if (response.status === 402) return !!parseStripeAPIError(response.body).type;
   return false;

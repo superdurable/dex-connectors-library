@@ -63,8 +63,7 @@ def create_card_checkout_session_case(name: str) -> Case[CheckoutSession]:
             ),
         )
     if name == "malformedCardSession":
-        return Case.branch_result(
-            "invalidResponse",
+        return Case.uncertain(
             CheckoutSession(),
             _failure(
                 operation,
@@ -114,8 +113,7 @@ def create_ach_checkout_session_case(name: str) -> Case[CheckoutSession]:
             ),
         )
     if name == "malformedSession":
-        return Case.branch_result(
-            "invalidResponse",
+        return Case.uncertain(
             CheckoutSession(),
             _failure(
                 operation,
@@ -245,8 +243,7 @@ def create_refund_case(name: str) -> Case[Refund]:
             ),
         )
     if name == "malformedRefund":
-        return Case.branch_result(
-            "invalidResponse",
+        return Case.uncertain(
             Refund(),
             _failure(
                 operation,

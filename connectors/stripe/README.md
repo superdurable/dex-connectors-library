@@ -153,11 +153,15 @@ false`), every 5xx that Stripe does not mark `Idempotent-Replayed: true`
 (including an unhinted 500, which Stripe may replay until the retry budget
 runs out), and any other status retry with the same idempotency key. Two
 outcomes a resend under the same key would only replay end the Step instead:
-a 5xx with `Idempotent-Replayed: true` selects `uncertain`, and an oversized or
-malformed successful response selects `invalidResponse`; increase
-`maxResponseBytes` if the expected provider response exceeds the limit. An
-oversized error response is classified by its status and headers alone. Unavailable credentials select `defect` only on the first
-attempt; a later attempt retries because an earlier attempt may have sent.
+a 5xx with `Idempotent-Replayed: true` selects `uncertain`, and so does an
+oversized or malformed successful response, because Stripe already created the
+Session; increase `maxResponseBytes` if the expected provider response exceeds
+the limit. `invalidResponse` stays declared for compatibility but is no longer
+selected. An oversized error response is an unknown outcome, whatever its
+status, because its unread body may carry the created Session, so it retries
+under the same key. Unavailable credentials and a request that cannot be built
+select `defect` only on the first attempt; a later attempt retries because an
+earlier attempt may have sent.
 
 Every retry of one Step execution reuses its idempotency key. Stripe keeps a
 key for at least 24 hours and can run a later request with a removed key as a
@@ -216,8 +220,10 @@ inconclusive lookup, or a lookup Stripe rejects with 401 (the key is no longer
 valid) or 403 (the key lacks Refund read permission) retries with the same key,
 with a message naming the cause, except after a 5xx with `Idempotent-Replayed:
 true`, which Stripe replays for every resend, so it selects `uncertain`. An
-oversized or malformed successful response selects `invalidResponse`, because
-a resend under the same key would only replay it. Transient read-back failures retry. Unavailable credentials select
+oversized or malformed successful response also selects `uncertain`, because
+Stripe accepted the refund and a resend under the same key would only replay
+it; `invalidResponse` is no longer selected. An oversized error response is an
+unknown outcome that reads back like a 5xx. Transient read-back failures retry. Unavailable credentials select
 `defect` only on the first attempt and retry on later attempts.
 
 The key needs PaymentIntent and Charge read access plus Refund read and write

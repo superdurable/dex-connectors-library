@@ -35,8 +35,8 @@ CREATE_CARD_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Stripe created the Checkout Session.", False),
         BranchDefinition(PROVIDER_REJECTED, "Stripe conclusively rejected the Checkout Session request.", True),
-        BranchDefinition(UNCERTAIN, "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", True),
-        BranchDefinition(INVALID_RESPONSE, "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", True),
+        BranchDefinition(UNCERTAIN, "Stripe replayed a cached server error for this idempotency key, or accepted the request but returned an invalid or oversized Checkout Session, so no resend can confirm the Session; every other unknown outcome is resent under the same key.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized Checkout Session after Stripe accepted the request selects uncertain.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -51,8 +51,8 @@ CREATE_ACH_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Stripe created the Checkout Session.", False),
         BranchDefinition(PROVIDER_REJECTED, "Stripe conclusively rejected the Checkout Session request.", True),
-        BranchDefinition(UNCERTAIN, "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", True),
-        BranchDefinition(INVALID_RESPONSE, "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", True),
+        BranchDefinition(UNCERTAIN, "Stripe replayed a cached server error for this idempotency key, or accepted the request but returned an invalid or oversized Checkout Session, so no resend can confirm the Session; every other unknown outcome is resent under the same key.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized Checkout Session after Stripe accepted the request selects uncertain.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -99,8 +99,8 @@ CREATE_REFUND_DEFINITION = MutationDefinition(
     (
         BranchDefinition(REFUNDED, "Stripe accepted the refund; read its status to tell succeeded from pending.", False),
         BranchDefinition(PROVIDER_REJECTED, "Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large.", True),
-        BranchDefinition(UNCERTAIN, "Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID; every other unknown outcome is resent under the same key.", True),
-        BranchDefinition(INVALID_RESPONSE, "Stripe accepted the refund request but returned an invalid or oversized refund, which a resend under the same key would only replay.", True),
+        BranchDefinition(UNCERTAIN, "Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID, or Stripe accepted the refund but returned an invalid or oversized refund, which a resend would only replay; every other unknown outcome is resent under the same key.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized refund after Stripe accepted the request selects uncertain.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

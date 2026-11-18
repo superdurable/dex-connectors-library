@@ -205,6 +205,9 @@ def is_definite_stripe_write_refusal(
     response: ProviderResponse, is_created_object: Callable[[bytes], bool]
 ) -> bool:
     """Report a listed 4xx whose body is not the created object, or a 402 Stripe error."""
+    if response.is_body_too_large:
+        # An unread body may carry the created object, so the outcome is unknown.
+        return False
     if response.status_code in _DEFINITE_REFUSAL_STATUSES:
         return not is_created_object(response.body)
     if response.status_code == 402:

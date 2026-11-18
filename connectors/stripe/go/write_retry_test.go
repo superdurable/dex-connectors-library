@@ -445,7 +445,8 @@ func TestStripeKeyedWritesClassifyOversizedFailuresByStatus(t *testing.T) {
 		{name: "409 with no-retry hint", status: http.StatusConflict, headers: http.Header{"Stripe-Should-Retry": {"false"}}, wantKind: sdkgo.FailureConflict, isRetry: true},
 		{name: "503", status: http.StatusServiceUnavailable, wantKind: sdkgo.FailureAvailability, isRetry: true},
 		{name: "500", status: http.StatusInternalServerError, wantKind: sdkgo.FailureAvailability, isRetry: true},
-		{name: "400", status: http.StatusBadRequest, wantKind: sdkgo.FailureProviderRejection},
+		// An unread 400 body may carry the created object, so the outcome is unknown and resent under the key.
+		{name: "400", status: http.StatusBadRequest, wantKind: sdkgo.FailureProtocol, isRetry: true},
 	}
 	for _, write := range stripeWriteCases() {
 		for _, testCase := range testCases {
@@ -478,8 +479,9 @@ func TestStripeKeyedWritesClassifyOversizedFailuresByStatus(t *testing.T) {
 	}
 }
 
-// Stripe replays an unusable 2xx body unchanged under the key, so it selects invalidResponse instead of a futile retry.
-func TestStripeKeyedWritesSelectInvalidResponseForUnusableSuccessBodies(t *testing.T) {
+// Stripe accepted the write and replays an unusable 2xx body unchanged under the key, so it selects
+// uncertain instead of a futile retry or a failed invalidResponse.
+func TestStripeKeyedWritesSelectUncertainForUnusableSuccessBodies(t *testing.T) {
 	for _, write := range stripeWriteCases() {
 		for _, testCase := range []struct {
 			name     string
@@ -499,7 +501,7 @@ func TestStripeKeyedWritesSelectInvalidResponseForUnusableSuccessBodies(t *testi
 				client := newStripeClient(t, server.URL, stripe.Config{MaxResponseBytes: 64})
 				outcome, err := write.invoke(client, newStripeDexContext("oversized-response"))
 				require.NoError(t, err)
-				require.Equal(t, write.invalidResponseBranch, outcome.branch)
+				require.Equal(t, sdkgo.UncertainBranchID, outcome.branch)
 				require.Equal(t, testCase.wantKind, outcome.failure.Kind)
 			})
 		}

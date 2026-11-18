@@ -57,8 +57,10 @@ All writes send the stable Call ID as Stripe's `Idempotency-Key` and are
 422, or a 402 with a Stripe error, selects `providerRejected`; every unknown
 outcome (any 409, any 5xx, or any other status) requests a Dex retry with the
 same key. A 5xx that Stripe marks `Idempotent-Replayed: true` selects
-`uncertain`, and an oversized or malformed success selects `invalidResponse`,
-because a resend under the same key would only replay them. Refunds also write
+`uncertain`, and so does an oversized or malformed success, because Stripe
+accepted the write and a resend under the same key would only replay them;
+writes no longer select `invalidResponse`. An oversized error response to a
+write is an unknown outcome and retries with the same key. Refunds also write
 the Call ID to `metadata[dex_call_id]` and search at most three refund pages
 before retrying or, after a replayed 5xx, selecting `uncertain`. Keep any application retry override at most 23 hours because Stripe
 retains idempotency keys for at least 24 hours.

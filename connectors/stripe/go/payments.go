@@ -177,7 +177,7 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 	isResponseTooLarge := errors.Is(err, errStripeResponseTooLarge)
 	if err != nil && !isResponseTooLarge {
 		if errors.Is(err, errStripeRequestInvalid) {
-			return sdkgo.NewMutationBranch(CreateRefundBranchDefect, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
+			return unavailableCredentialsAttempt[Refund](call, CreateRefundBranchDefect, stripeFailurePointer("createRefund", sdkgo.FailureLocalDefect, err.Error()))
 		}
 		return sdkgo.NewMutationRetry[Refund](stripeFailure("createRefund", sdkgo.FailureTransport, "Stripe refund response is unavailable"), retryAfter(response.header))
 	}
@@ -194,13 +194,14 @@ func (operation CreateRefundOperation) Invoke(call sdkgo.Call, input CreateRefun
 		return sdkgo.NewMutationBranch(CreateRefundBranchProviderRejected, Refund{}, classifyRefundRejection(response), operation.client.receipt(call, response, ""))
 	}
 	if response.statusCode >= 200 && response.statusCode < 300 {
-		// Stripe replays the same 2xx body for every resend under the key, so an unusable one cannot be repaired by a retry.
+		// Stripe accepted the refund and replays the same 2xx body for every resend under the key, so an
+		// unusable one is uncertain: a retry cannot repair it.
 		if isResponseTooLarge {
-			return sdkgo.NewMutationBranch(CreateRefundBranchInvalidResponse, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
+			return sdkgo.NewMutationUncertain(Refund{}, stripeFailure("createRefund", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
 		}
 		refund, decodeErr := decodeRefund(response.body)
 		if decodeErr != nil {
-			return sdkgo.NewMutationBranch(CreateRefundBranchInvalidResponse, Refund{}, stripeFailurePointer("createRefund", sdkgo.FailureProtocol, decodeErr.Error()), operation.client.receipt(call, response, ""))
+			return sdkgo.NewMutationUncertain(Refund{}, stripeFailure("createRefund", sdkgo.FailureProtocol, decodeErr.Error()), operation.client.receipt(call, response, ""))
 		}
 		return sdkgo.NewMutationBranch(CreateRefundBranchRefunded, refund, nil, operation.client.receipt(call, response, refund.RefundID))
 	}

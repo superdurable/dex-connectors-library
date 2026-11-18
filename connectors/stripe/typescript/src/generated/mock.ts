@@ -94,7 +94,7 @@ export function createCardCheckoutSessionUnconfirmedCardSession(): Case<Checkout
 /** Manifest scenario malformedCardSession for createCardCheckoutSession. */
 export function createCardCheckoutSessionMalformedCardSession(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
-  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "createCardCheckoutSession", message: "Stripe response is invalid: Stripe returned an invalid Checkout Session" });
+  return uncertainCase(value, { kind: "PROTOCOL", provider: ConnectorID, operation: "createCardCheckoutSession", message: "Stripe response is invalid: Stripe returned an invalid Checkout Session" });
 }
 /** Manifest scenario invalidCardCurrency for createCardCheckoutSession. */
 export function createCardCheckoutSessionInvalidCardCurrency(): Case<CheckoutSession> {
@@ -134,7 +134,7 @@ export function createACHCheckoutSessionUnconfirmedSession(): Case<CheckoutSessi
 /** Manifest scenario malformedSession for createACHCheckoutSession. */
 export function createACHCheckoutSessionMalformedSession(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
-  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "createACHCheckoutSession", message: "Stripe response is invalid: Stripe returned an invalid Checkout Session" });
+  return uncertainCase(value, { kind: "PROTOCOL", provider: ConnectorID, operation: "createACHCheckoutSession", message: "Stripe response is invalid: Stripe returned an invalid Checkout Session" });
 }
 /** Manifest scenario invalidCurrency for createACHCheckoutSession. */
 export function createACHCheckoutSessionInvalidCurrency(): Case<CheckoutSession> {
@@ -254,7 +254,7 @@ export function createRefundUnconfirmedRefund(): Case<Refund> {
 /** Manifest scenario malformedRefund for createRefund. */
 export function createRefundMalformedRefund(): Case<Refund> {
   const value = emptyRefund;
-  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "createRefund", message: "Stripe response is invalid: Stripe returned an invalid refund" });
+  return uncertainCase(value, { kind: "PROTOCOL", provider: ConnectorID, operation: "createRefund", message: "Stripe response is invalid: Stripe returned an invalid refund" });
 }
 /** Manifest scenario invalidAmount for createRefund. */
 export function createRefundInvalidAmount(): Case<Refund> {
