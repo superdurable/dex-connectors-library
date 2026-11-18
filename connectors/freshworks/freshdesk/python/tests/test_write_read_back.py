@@ -31,6 +31,7 @@ from dex_connectors.sdk.projectconfig import (
 from dex_connectors.sdk.singledispatch import Fence, Marker
 
 from dex_connectors.freshworks_freshdesk import Client, Config, Credentials
+from dex_connectors.freshworks_freshdesk._generated.connection import CredentialMaterialError
 from dex_connectors.freshworks_freshdesk._generated.definitions import (
     ADD_NOTE_DEFINITION,
     CREATE_TICKET_DEFINITION,
@@ -43,6 +44,17 @@ from dex_connectors.freshworks_freshdesk.models import (
 )
 
 CONNECTION = ConnectionRef("freshdesk", "freshdesk-test")
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("Freshdesk credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 CALL_ID = CallID("703d7ec0-692e-50db-a914-86d5fecf7dcc")
 TICKET = {
     "id": 1207,
@@ -325,6 +337,8 @@ async def test_a_refusal_after_an_unknown_send_and_a_rate_limited_resend_selects
         (ObjectNotFoundError("connection"), "uncertain"),
         (ConnectionNotSelectedError("connection"), "uncertain"),
         (CredentialBrokerRejectedError("broker"), "uncertain"),
+        (CredentialMaterialError("Freshdesk stored credential does not match"), "uncertain"),
+        (sdk_decoding_failure(), "uncertain"),
         (RuntimeError("store unavailable"), None),
         (CredentialBrokerUnavailableError("broker"), None),
         (ValueError("connection is not configured"), None),
