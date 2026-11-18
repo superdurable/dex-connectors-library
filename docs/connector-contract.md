@@ -473,7 +473,9 @@ between attempts. Concurrent Mutation calls of the same operation in one Step
 are therefore unsupported: a Mutation run (Go `RunMutation` and agent tools,
 Python `run_mutation`, TypeScript `runMutation`) that starts while an earlier
 call of the same operation in the Step attempt is still running selects
-`defect` before the operation is invoked, so it never sends. Mutations of
+`defect` before the operation is invoked, so it never sends. The refused call
+still keeps its place in the count, so Call IDs depend only on call order,
+never on which calls overlapped. Mutations of
 different operations may run concurrently, and Queries are not restricted
 because they never fence a write.
 
