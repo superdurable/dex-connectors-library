@@ -4,7 +4,7 @@
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateCardOperation, GetCardOperation, ListCardsOperation, UpdateCardOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.trello.com/1';
@@ -49,7 +49,7 @@ export class TrelloCredentialUnavailableError extends Error {
 /** Report a credential failure that no retry fixes; others, such as broker outages, may pass. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof InvalidTrelloCredentialsError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError ||
-    error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+    error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error);
 }
 
 /** Resolved Trello credential material that fails the local header checks. */
