@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Confluence footer comments whose outcome is unknown."""
 
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
 import dex_connectors.sdk as sdk
@@ -141,3 +142,105 @@ async def test_unreadable_checkpoint_retries_without_sending() -> None:
     context.heartbeat_read_error = RuntimeError("heartbeat store unavailable")
     assert await run(201, context, requests) == "retry"
     assert requests == []
+
+
+class BrokenBody(httpx.AsyncByteStream):
+    """A response body that fails after the status line arrived."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"id":"70'
+        raise httpx.ReadError("connection reset")
+
+
+def matching_comment(comment_id: str) -> dict[str, object]:
+    """Render a footer comment with the requested text, created now."""
+    return {
+        "id": comment_id,
+        "pageId": "600002",
+        "version": {"number": 1, "createdAt": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")},
+        "body": {"storage": {"representation": "storage", "value": "<p>Approved</p>"}},
+    }
+
+
+async def run_with(
+    respond: Callable[[httpx.Request], httpx.Response], context: AttemptContext
+) -> sdk.MutationResult[confluence.AddCommentOutput] | str:
+    """Run one Execute attempt of addComment against an arbitrary provider."""
+    client = confluence.Client(
+        confluence.Config(cloud_id="11223344-a1b2-4b33-8c44-def123456789", endpoint="http://127.0.0.1"),
+        sdk.StaticCredentialProvider(
+            {
+                CONNECTION: confluence.Credentials(
+                    "client", sdk.SecretString("secret"), sdk.SecretString("token"), sdk.SecretString("")
+                )
+            }
+        ),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    operation = sdk.OperationRef("confluence", "addComment")
+    call = sdk.Call(CALL_ID, CONNECTION, operation, context=context, max_sends=3)
+    try:
+        return await sdk.run_mutation(client.add_comment(), call, COMMENT)
+    except sdk.RetryError as error:
+        return "retry:" + str(error.failure.kind)
+
+
+@pytest.mark.asyncio
+async def test_service_unavailable_records_can_resend() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert await run(503, context, requests) == "retry"
+    assert context.marker is not None and context.marker.state == "canResend"
+
+
+@pytest.mark.asyncio
+async def test_rate_limited_resend_reads_back_before_the_next_send() -> None:
+    requests: list[httpx.Request] = []
+    statuses = [500, 429]
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.method == "POST":
+            return httpx.Response(statuses.pop(0), json={})
+        reads = sum(1 for sent in requests if sent.method == "GET")
+        return httpx.Response(200, json={"results": [] if reads == 1 else [matching_comment("700009")]})
+
+    context = AttemptContext()
+    assert await run_with(respond, context) == "retry:AVAILABILITY"
+    context.attempt = 2
+    assert await run_with(respond, context) == "retry:RATE_LIMIT"
+    assert context.marker is not None and context.marker.state == "canResend"
+    context.attempt = 3
+    result = await run_with(respond, context)
+    assert not isinstance(result, str) and result.branch == "added"
+    assert result.value.comment_id == "700009"
+    assert posts(requests) == 2
+
+
+@pytest.mark.asyncio
+async def test_read_back_of_a_missing_page_after_a_possible_send_is_uncertain() -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(404, json={})
+
+    result = await run_with(respond, AttemptContext(2))
+    assert not isinstance(result, str) and result.branch == "uncertain"
+    assert posts(requests) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("is_visible", "branch"), [(True, "added"), (False, "uncertain")])
+async def test_accepted_comment_with_a_broken_body_is_never_resent(is_visible: bool, branch: str) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.method == "POST":
+            return httpx.Response(201, stream=BrokenBody())
+        return httpx.Response(200, json={"results": [matching_comment("700010")] if is_visible else []})
+
+    result = await run_with(respond, AttemptContext())
+    assert not isinstance(result, str) and result.branch == branch
+    assert posts(requests) == 1

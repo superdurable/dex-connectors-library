@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateTaskOperation, FindMemberByEmailOperation, GetTaskOperation, SearchTasksOperation, UpdateTaskOperation, UpdateTaskTagsOperation } from './operations.js';
@@ -20,10 +20,13 @@ export interface ClickUpClientOptions {
   /** Override only with a ClickUp compatible test endpoint. */
   apiBaseURL?: string;
 }
-/** Outcome of one ClickUp HTTP exchange; `status` is the HTTP status of a non-2xx response, or 0. */
+/**
+ * Outcome of one ClickUp HTTP exchange; `status` is the HTTP status of a response without a usable body, or 0.
+ * `isErrorBodyTooLarge` marks a non-2xx body over maxResponseBytes, which cannot prove a write refusal.
+ */
 export type Exchange =
   | { kind: 'succeeded'; response: ProviderResponse }
-  | { kind: 'notFound' | 'notSent' | 'rateLimited' | 'unconfirmed' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status: number };
+  | { kind: 'notFound' | 'notSent' | 'rateLimited' | 'unconfirmed' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status: number; isErrorBodyTooLarge?: boolean };
 /** Authenticated ClickUp API client; credentials are resolved for each request. */
 export class ClickUpClient {
   private readonly endpoint: string;
@@ -83,14 +86,27 @@ export class ClickUpClient {
         addressPolicy: this.endpoint === apiBaseURL ? 'publicHTTPS' : 'privateNetworkHTTP',
         timeoutMs: 9_000, signal });
     } catch (error) {
-      if (error instanceof BodyTooLargeError) return this.outcome('invalid', operation, 'RESPONSE_TOO_LARGE', 'ClickUp response exceeds the configured maxResponseBytes limit');
+      const status = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status ?? 0 : 0;
+      const isSuccessStatus = status >= 200 && status < 300;
+      if (error instanceof BodyTooLargeError && (isSuccessStatus || status === 0)) return this.outcome('invalid', operation, 'RESPONSE_TOO_LARGE', 'ClickUp response exceeds the configured maxResponseBytes limit', 0, status);
+      if (error instanceof BodyTooLargeError) {
+        // Go and Python classify a large error body by status; it cannot prove a write refusal.
+        const classified = this.classifyFailureStatus(operation, { status, headers: error.headers ?? {}, body: new Uint8Array() });
+        return classified.kind === 'succeeded' ? classified : { ...classified, isErrorBodyTooLarge: true };
+      }
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.outcome('notSent', operation, 'TRANSPORT', 'ClickUp could not be reached; no request was sent');
+      // Keep a 2xx status so an accepted write is never resent.
+      if (isSuccessStatus) return this.outcome('unconfirmed', operation, 'TRANSPORT', 'ClickUp response could not be read', 0, status);
       return this.outcome('unconfirmed', operation, 'TRANSPORT', 'ClickUp request failed before a response arrived');
     }
     if (response.status >= 200 && response.status < 300) {
-      if (Buffer.from(response.body).includes(Buffer.from(token))) return this.outcome('invalid', operation, 'PROTOCOL', 'ClickUp response reflected the connection credential');
+      if (Buffer.from(response.body).includes(Buffer.from(token))) return this.outcome('invalid', operation, 'PROTOCOL', 'ClickUp response reflected the connection credential', 0, response.status);
       return { kind: 'succeeded', response };
     }
+    return this.classifyFailureStatus(operation, response);
+  }
+
+  private classifyFailureStatus(operation: string, response: ProviderResponse): Exchange {
     const status = response.status;
     const code = readErrorCode(response.body);
     const withCode = (message: string) => message + (code ? ` [${code}]` : '');

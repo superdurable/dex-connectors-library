@@ -277,7 +277,7 @@ always retry:
 | 429 or 503 | Retry, honoring `Retry-After` when present; a 429 without it waits one 10-second window |
 | DNS, connect, or TLS failure before any connection opened | Retry |
 | Timeout, dropped connection, 3xx, 408, 409, another 4xx, or another 5xx after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
-| 2xx whose body is oversized, unreadable, unusable, or reflects a credential | Retry and resend below the send cap; `uncertain` at the cap |
+| 2xx whose body is oversized, unreadable, unusable, or reflects a credential | `uncertain` at once: Trello accepted the POST, so it is never sent again |
 | Earlier attempts may already have sent the cap of POSTs, or one was accepted | `uncertain`, with nothing sent |
 | Unreadable or untrusted dispatch checkpoint | Retry, with nothing sent |
 
@@ -298,6 +298,8 @@ Trello documents the `PUT` parameters but not whether `idLabels` and
 `dueComplete`. The operation therefore reads the card back after the `PUT` and
 selects `updated` only when the card shows every requested value; otherwise it
 selects `invalidResponse` naming the first missing change, such as `labels`.
+A read-back that fails, is unreadable or oversized, or is refused after Trello
+accepted the `PUT` retries the update instead of selecting a failure branch.
 `Position` is not compared, because Trello turns `top` and `bottom` into
 numbers.
 

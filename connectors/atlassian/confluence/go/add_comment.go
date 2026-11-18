@@ -104,8 +104,8 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	session, cancel, sessionErr := client.startSession(call, addCommentOperationID)
 	if sessionErr != nil {
-		// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-		if decision.Kind == singledispatch.SendAllowed {
+		// notSent after a possible earlier send would hide it, so only a first send records it.
+		if decision.Kind == singledispatch.SendAllowed && !hasPossibleEarlierSend {
 			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 				return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Confluence setup failed and the not-sent checkpoint could not be recorded"), sessionErr.retryAfter)
 			}
@@ -117,17 +117,16 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	}
 	defer cancel()
 	earliestSendAt := earliestDispatchTime(call, client.now())
-	switch {
-	case decision.Kind == singledispatch.ReadBackRequired, decision.Marker.ProviderID != "":
+	// A canResend marker yields SendAllowed while earlier sends may still have taken effect.
+	needsReadBack := decision.Kind != singledispatch.SendAllowed || hasPossibleEarlierSend || decision.Marker.ProviderID != ""
+	if needsReadBack {
 		attempt, isMissing, readReceipt := operation.readBackEarlierComment(session, creation, earliestSendAt)
-		if isMissing {
+		if !isMissing {
+			return attempt
+		}
+		if decision.Kind == singledispatch.ReadBackRequired || decision.Marker.ProviderID != "" {
 			return sdkgo.NewMutationUncertain(creation.requested, newFailure(addCommentOperationID, sdkgo.FailureTransport,
 				"earlier attempts of this Step sent the comment up to the send cap, and the page shows no matching comment, so it is not sent again"), readReceipt)
-		}
-		return attempt
-	case decision.Kind == singledispatch.ReadBackThenResendAllowed:
-		if attempt, isMissing, _ := operation.readBackEarlierComment(session, creation, earliestSendAt); !isMissing {
-			return attempt
 		}
 	}
 	var result exchangeResult
@@ -153,7 +152,10 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 			_ = fence.RecordProviderID(comment.ID)
 			return sdkgo.NewMutationBranch(AddCommentBranchAdded, creation.addedOutput(comment, false), nil, client.receipt(session, result.response, comment.ID))
 		}
-		classification.failure = newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Confluence accepted the comment but returned an unusable comment")
+		return operation.confirmAcceptedComment(session, creation, earliestSendAt,
+			newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Confluence accepted the comment but returned an unusable comment"))
+	case writeAcceptedUnreadable:
+		return operation.confirmAcceptedComment(session, creation, earliestSendAt, classification.failure)
 	case writeNotApplied:
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 			return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Confluence retry checkpoint could not be recorded"), classification.retryAfter)
@@ -187,35 +189,68 @@ func commentRefusalOrUncertain(hasPossibleEarlierSend bool, branch sdkgo.BranchI
 	return sdkgo.NewMutationBranch(branch, requested, &failure, receipt)
 }
 
+// confirmAcceptedComment reads back a comment Confluence accepted without a usable answer; it never resends.
+func (operation AddCommentOperation) confirmAcceptedComment(session *operationSession, creation commentCreation, earliestSendAt time.Time, cause sdkgo.Failure) sdkgo.MutationAttempt[AddCommentOutput] {
+	readBack := operation.findEarlierComment(session, creation, earliestSendAt)
+	if readBack.comment != nil {
+		return readBack.addedAttempt(operation.client, session, creation)
+	}
+	cause.Message += "; the page's comments do not confirm it, so it is not sent again"
+	return sdkgo.NewMutationUncertain(creation.requested, cause, readBack.receipt)
+}
+
 // readBackEarlierComment never sends: it reports an earlier attempt's comment found on the page, a Retry
-// for a transient read, or a missing page. isMissing means read-back could not confirm the comment.
+// for a transient read, or uncertain for a missing page. isMissing means read-back could not confirm the comment.
 func (operation AddCommentOperation) readBackEarlierComment(session *operationSession, creation commentCreation, earliestSendAt time.Time) (sdkgo.MutationAttempt[AddCommentOutput], bool, sdkgo.Receipt) {
+	readBack := operation.findEarlierComment(session, creation, earliestSendAt)
+	switch {
+	case readBack.comment != nil:
+		return readBack.addedAttempt(operation.client, session, creation), false, readBack.receipt
+	case readBack.classification.outcome == readRetry:
+		return sdkgo.NewMutationRetry[AddCommentOutput](readBack.classification.failure, readBack.classification.retryAfter), false, readBack.receipt
+	case readBack.classification.outcome == readNotFound:
+		// Read-back follows a possible send, so a missing page cannot prove nothing was added.
+		return sdkgo.NewMutationUncertain(creation.requested, readBack.classification.failure, readBack.receipt), false, readBack.receipt
+	default:
+		return sdkgo.MutationAttempt[AddCommentOutput]{}, true, readBack.receipt
+	}
+}
+
+// commentReadBack is one read of the page's newest footer comments.
+type commentReadBack struct {
+	// comment is this Step's comment when the page shows it.
+	comment        *footerCommentResource
+	classification readClassification
+	result         exchangeResult
+	receipt        sdkgo.Receipt
+}
+
+func (readBack commentReadBack) addedAttempt(client *Client, session *operationSession, creation commentCreation) sdkgo.MutationAttempt[AddCommentOutput] {
+	return sdkgo.NewMutationBranch(AddCommentBranchAdded, creation.addedOutput(*readBack.comment, true), nil, client.receipt(session, readBack.result.response, readBack.comment.ID))
+}
+
+// findEarlierComment reads the page's newest footer comments and finds one this Step sent; it never sends.
+func (operation AddCommentOperation) findEarlierComment(session *operationSession, creation commentCreation, earliestSendAt time.Time) commentReadBack {
 	client := operation.client
 	result := client.exchange(session, confluenceRequest{
 		method: http.MethodGet, api: contentAPI, path: pagePath(creation.body.PageID) + "/footer-comments",
 		query: url.Values{"body-format": {string(BodyRepresentationStorage)}, "sort": {"-created-date"}, "limit": {strconv.Itoa(commentReconciliationLimit)}},
 	})
-	classification := client.classifyRead(addCommentOperationID, "page comments", result)
-	receipt := client.receipt(session, result.response, "")
-	switch classification.outcome {
-	case readSucceeded:
-	case readRetry:
-		return sdkgo.NewMutationRetry[AddCommentOutput](classification.failure, classification.retryAfter), false, receipt
-	case readNotFound:
-		return sdkgo.NewMutationBranch(AddCommentBranchNotFound, creation.requested, &classification.failure, receipt), false, receipt
-	default:
-		return sdkgo.MutationAttempt[AddCommentOutput]{}, true, receipt
+	readBack := commentReadBack{classification: client.classifyRead(addCommentOperationID, "page comments", result), result: result, receipt: client.receipt(session, result.response, "")}
+	if readBack.classification.outcome != readSucceeded {
+		return readBack
 	}
 	var list footerCommentListResource
 	if err := json.Unmarshal(result.response.body, &list); err != nil {
-		return sdkgo.MutationAttempt[AddCommentOutput]{}, true, receipt
+		return readBack
 	}
-	for _, comment := range list.Results {
-		if creation.isSentByThisStep(comment, earliestSendAt) {
-			return sdkgo.NewMutationBranch(AddCommentBranchAdded, creation.addedOutput(comment, true), nil, client.receipt(session, result.response, comment.ID)), false, receipt
+	for index := range list.Results {
+		if creation.isSentByThisStep(list.Results[index], earliestSendAt) {
+			readBack.comment = &list.Results[index]
+			return readBack
 		}
 	}
-	return sdkgo.MutationAttempt[AddCommentOutput]{}, true, receipt
+	return readBack
 }
 
 func buildCommentCreation(input AddCommentInput) (commentCreation, error) {

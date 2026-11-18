@@ -490,9 +490,10 @@ class Client:
             )
         status = response.status
         if 200 <= status < 300:
+            # An unusable 2xx body still means the write happened, so it is never resent.
             if response.body_failed:
                 return Classification(
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.TRANSPORT,
@@ -501,7 +502,7 @@ class Client:
                 )
             if response.too_large:
                 return Classification(
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.RESPONSE_TOO_LARGE,
@@ -510,7 +511,7 @@ class Client:
                 )
             if response.reflects_secret:
                 return Classification(
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.PROTOCOL,

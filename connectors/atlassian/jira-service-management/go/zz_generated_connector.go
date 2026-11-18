@@ -523,7 +523,7 @@ var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTicketBranchCreated, Description: "Jira Service Management created the request and returned its key."},
 		{ID: CreateTicketBranchProviderRejected, Description: "Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateTicketBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", Optional: true},
+		{ID: CreateTicketBranchUncertain, Description: "The send cap is reached, or Jira Service Management accepted the request without a usable reference, and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -773,7 +773,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Jira Service Management added the comment and returned its ID."},
 		{ID: AddCommentBranchNotFound, Description: "The request does not exist or the connection cannot view it; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The send cap is reached, or Jira Service Management accepted the comment without a usable ID, and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

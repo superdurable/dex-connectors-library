@@ -154,6 +154,8 @@ type clickupExchange struct {
 	response   clickupResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+	// isErrorBodyTooLarge reports a non-2xx body over maxResponseBytes, which cannot prove a write refusal.
+	isErrorBodyTooLarge bool
 }
 
 // writeOutcome is what a sent write proves; only a definite refusal status selects a refusal branch.
@@ -165,9 +167,11 @@ const (
 	writeNotApplied
 	writeNotFound
 	writeRejected
-	// writeUnknown is a lost response, 408, 409, other 5xx, unlisted status, or unusable 2xx: ClickUp may have applied it.
+	// writeUnknown is a lost response, 408, 409, other 5xx, unlisted status, or oversized error: ClickUp may have applied it.
 	writeUnknown
 	writeDefect
+	// writeAcceptedUnreadable is a 2xx whose body is unreadable, oversized, or unsafe: ClickUp applied the write.
+	writeAcceptedUnreadable
 )
 
 // isRetryableRead reports an outcome that a read, or a write that is safe to repeat, may simply repeat.
@@ -189,13 +193,17 @@ func (result clickupExchange) classifyWrite() writeOutcome {
 		return writeNotApplied
 	case exchangeDefect:
 		return writeDefect
-	case exchangeInvalid:
-		return writeUnknown
 	}
 	status := result.response.statusCode
 	switch {
+	case status >= 200 && status < 300:
+		return writeAcceptedUnreadable
+	case result.outcome == exchangeInvalid:
+		return writeUnknown
 	case status == http.StatusServiceUnavailable:
 		return writeNotApplied
+	case result.isErrorBodyTooLarge:
+		return writeUnknown
 	case result.outcome == exchangeNotFound && status != http.StatusGone:
 		return writeNotFound
 	case result.outcome == exchangeRejected && isDefiniteWriteRefusalStatus(status):
@@ -359,7 +367,9 @@ func (client *Client) exchange(ctx context.Context, credentials Credentials, ope
 		}
 		return clickupExchange{outcome: exchangeSucceeded, response: response}
 	}
-	return client.classifyFailureStatus(response, operation)
+	result := client.classifyFailureStatus(response, operation)
+	result.isErrorBodyTooLarge = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
+	return result
 }
 
 func (client *Client) buildRequest(ctx context.Context, credentials Credentials, request clickupRequest) (*http.Request, error) {

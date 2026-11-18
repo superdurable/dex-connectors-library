@@ -181,6 +181,8 @@ const (
 	writeRejected
 	writeNotFound
 	writeUncertain
+	// writeAcceptedUnreadable is a 2xx whose body cannot be used; the write happened and is never resent.
+	writeAcceptedUnreadable
 	writeDefect
 )
 
@@ -514,11 +516,11 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, "Jira accepted the "+subject+" but its response was interrupted")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureTransport, "Jira accepted the "+subject+" but its response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Jira accepted the "+subject+" but its response exceeds the configured size limit")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Jira accepted the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureProtocol, "Jira accepted the "+subject+" but its response contains credential material")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureProtocol, "Jira accepted the "+subject+" but its response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
@@ -659,13 +661,16 @@ func (client *Client) hasMatchingJiraCallProperty(session *operationSession, pat
 }
 
 // reconcileCreatedIssue reads back a possibly created issue. A missing issue resends while the
-// policy allows, except that an issue Jira already identified is never sent again.
+// policy allows, except that an issue Jira already accepted or identified is never sent again.
 func (client *Client) reconcileCreatedIssue(session *operationSession, requested CreateIssueOutput, marker jiraCallProperty, providerID string, policy sendCapPolicy, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreateIssueOutput] {
 	created, status := client.findCreatedIssue(session, requested, marker, providerID)
 	switch status {
 	case writeReadbackFound:
 		return createdIssueBranch(requested, created, receipt)
 	case writeReadbackRetry:
+		if policy.hasUncheckpointedAcceptance {
+			return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		}
 		return sdkgo.NewMutationRetry[CreateIssueOutput](newFailure(createIssueOperationID, sdkgo.FailureAvailability, "Jira issue read-back is temporarily unavailable"), 0)
 	default:
 		if providerID != "" {
@@ -676,13 +681,16 @@ func (client *Client) reconcileCreatedIssue(session *operationSession, requested
 }
 
 // reconcileAddedComment reads back a possibly added comment. A missing comment resends while the
-// policy allows, except that a comment Jira already identified is never sent again.
+// policy allows, except that a comment Jira already accepted or identified is never sent again.
 func (client *Client) reconcileAddedComment(session *operationSession, requested AddCommentOutput, issueIDOrKey string, marker jiraCallProperty, providerID string, policy sendCapPolicy, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {
 	comment, status := client.findAddedComment(session, issueIDOrKey, marker, providerID)
 	switch status {
 	case writeReadbackFound:
 		return addedCommentBranch(requested, comment, receipt)
 	case writeReadbackRetry:
+		if policy.hasUncheckpointedAcceptance {
+			return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		}
 		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira comment read-back is temporarily unavailable"), 0)
 	default:
 		if providerID != "" {

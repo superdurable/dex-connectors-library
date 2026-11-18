@@ -248,13 +248,22 @@ can replay a Step after Worker loss or before a result is committed, so the writ
   single-dispatch fence reads and records the Step's send-count checkpoint in
   a Dex heartbeat. A 429, 503, or positively traced pre-connection failure
   records a `canResend` checkpoint and returns Retry. An unknown outcome (a
-  5xx, 408, 409, unlisted 4xx, a lost or unreadable response, or an unusable
-  2xx) returns Retry while another POST stays within the cap, so the next
-  attempt resends; at the cap it selects `uncertain` without sending. A missing
+  5xx, 408, 409, unlisted 4xx, or a response lost before its status arrived)
+  returns Retry while another POST stays within the cap, so the next
+  attempt resends; at the cap it selects `uncertain` without sending. A 2xx
+  means the service desk accepted the POST, so it is never sent again: a 2xx
+  whose body is interrupted, oversized, token-reflecting, or has no usable ID
+  or key selects `uncertain`. Once a response or a confirmed 409 supplied an
+  ID, the fence saves it, and a later attempt reads that request or comment
+  back by ID: a match selects `created` or `added`, a transient read failure
+  returns Retry, and anything else selects `uncertain`. A missing
   or stale checkpoint counts each earlier attempt as a possible POST, and an
   unreadable or foreign checkpoint returns Retry without sending. A definite
   refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of the first POST
   selects its branch; after an earlier possible POST it selects `uncertain`.
+  A credential failure before the first POST records `notSent`; after an
+  earlier possible POST it records nothing, returning Retry when transient and
+  `uncertain` when terminal.
   The service desk has no lookup by Call ID, so a resend may duplicate a request
   or a customer reply; at most the cap of them exist. Set the Step's `MaxSends`
   to 1 to forbid any resend. A 409
@@ -323,8 +332,9 @@ token, such as
 | 404 | `notFound` where declared | `notFound` (`addComment`), `providerRejected` (`createTicket`), as above |
 | 429, 503 | Retry after `Retry-After` | Checkpoint `canResend`, then Retry |
 | connection refused before sending | Retry | Retry |
-| 408, other 4xx or 5xx, lost or unreadable response | Retry | Retry and resend below the send cap, `uncertain` at the cap |
-| 3xx, oversized, malformed, or token-reflecting 2xx | Reads: `invalidResponse`; writes: Retry | Retry and resend below the send cap, `uncertain` at the cap |
+| 408, other 4xx or 5xx, response lost before its status | Retry | Retry and resend below the send cap, `uncertain` at the cap |
+| 3xx | Reads: `invalidResponse`; writes: Retry | Retry and resend below the send cap, `uncertain` at the cap |
+| interrupted, oversized, malformed, or token-reflecting 2xx | Reads: `invalidResponse`; writes: Retry | Read back by a returned ID; otherwise `uncertain`, never resent |
 | invalid input or credentials | `defect`, no request | `defect`, no request |
 
 ## Not in this release

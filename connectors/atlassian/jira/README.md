@@ -328,16 +328,19 @@ only when nothing is found and the cap allows another POST:
 | DNS, connect, or TLS failure before any connection opened | Checkpoint `canResend`, then Retry |
 | 503 | Checkpoint `canResend`, then Retry after `Retry-After` |
 | Timeout, dropped connection, 3xx, 408, 409, another 4xx, or another 5xx after dispatch | Read back; confirmed creation selects `created`, otherwise Retry and resend below the cap, or `uncertain` at the cap |
-| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Read back; confirmed creation selects `created`, otherwise Retry and resend below the cap, or `uncertain` at the cap |
+| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Jira accepted the POST, so it is never sent again: read back; confirmed creation selects `created`, otherwise `uncertain`. A transient read-back failure retries only when the returned issue ID was checkpointed, and selects `uncertain` otherwise |
 | Unreadable or untrusted dispatch checkpoint | Retry without sending |
 
 Once Jira has returned an issue ID, a later attempt reads that issue back and
 never sends again; a failed confirmation selects `uncertain`. During read-back,
 a transient 429, 5xx, transport error, interrupted response, or temporarily
-unavailable credential returns Retry without another POST. A transient
-credential lookup failure before a write also retries after recording
-`notSent`. Reauthorization-required or invalid credentials select `defect`
-before the first dispatch and `uncertain` after an earlier possible POST.
+unavailable credential returns Retry without another POST. A later attempt
+reads back whenever an earlier POST may have taken effect, including after a
+429 or 503 on a resend recorded `canResend`. A transient credential lookup
+failure before the first POST retries after recording `notSent`; after an
+earlier possible POST it retries without a checkpoint, so the next attempt
+reads back again. Reauthorization-required or invalid credentials select
+`defect` before the first dispatch and `uncertain` after an earlier possible POST.
 Set the Step's `MaxSends` to 1 to forbid any resend. If the retry budget is
 exhausted, the Flow fails.
 
@@ -365,7 +368,8 @@ screen's resolution. The operation:
    retries.
 
 Jira refuses a transition that is not available from the issue's current
-status, so a repeated or concurrent attempt cannot move an issue twice. Set
+status, so a repeated or concurrent attempt cannot move an issue twice; the
+manifest declares `repeatOnUnknown: safe`, and an unknown outcome retries. Set
 `DestinationStatusName` whenever the destination is known: a retried or backup
 attempt then recognizes a transition Jira already made. With only a transition
 ID or name, such an attempt finds the transition no longer offered and selects

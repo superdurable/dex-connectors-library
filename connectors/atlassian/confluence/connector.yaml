@@ -245,6 +245,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        # Confluence keeps one page per title in a space, so a repeated create finds the page instead of adding one.
+        repeatOnUnknown: safe
       mocks:
         - name: createdRemoteWorkPolicy
           branch: created
@@ -283,6 +285,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Confluence accepts each version number once, so a repeated update cannot apply twice.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedRemoteWorkPolicy
           branch: updated
@@ -316,7 +320,7 @@ spec:
         - {id: added, goName: Added, description: "The comment is on the page, including one an earlier attempt of this Step execution sent."}
         - {id: notFound, goName: NotFound, description: The page does not exist or the connection cannot view it; nothing was added., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, Confluence accepted the comment without a usable answer, or the page vanished after a possible send, and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

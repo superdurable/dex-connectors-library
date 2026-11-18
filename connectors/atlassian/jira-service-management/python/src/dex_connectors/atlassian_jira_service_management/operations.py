@@ -766,13 +766,16 @@ class _FencedWrite:
     """One attempt of a non-idempotent write behind the shared single-dispatch fence.
 
     Jira Service Management offers no lookup by Call ID, so an unknown outcome
-    resends while the send cap allows and selects `uncertain` at the cap.
+    resends while the send cap allows and selects `uncertain` at the cap. A
+    saved provider ID is read back instead and never resent.
     """
 
     def __init__(self, call: Call, operation: str, fence: Fence, decision: Decision) -> None:
         self.call, self.operation, self.fence, self.decision = call, operation, fence, decision
         self.can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         self.has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        # A provider ID an earlier attempt saved is read back, never resent.
+        self.accepted_provider_id = decision.marker.provider_id if decision.marker is not None else ""
 
     @classmethod
     async def start(cls, call: Call, operation: str, output: Any) -> "_FencedWrite | MutationAttempt[Any]":
@@ -800,7 +803,8 @@ class _FencedWrite:
                     "so nothing was sent in this attempt",
                 )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+        has_provider_id = decision.marker is not None and bool(decision.marker.provider_id)
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED and not has_provider_id:
             return MutationAttempt.uncertain(
                 output,
                 failure(
@@ -811,22 +815,33 @@ class _FencedWrite:
                 ),
                 _single_dispatch_receipt(call),
             )
-        if decision.marker is not None and decision.marker.provider_id:
-            return MutationAttempt.uncertain(
-                output,
-                failure(
-                    operation,
-                    FailureKind.TRANSPORT,
-                    "an earlier attempt of this Step was accepted, so the request is not sent again",
-                ),
-                _single_dispatch_receipt(call),
-            )
         return cls(call, operation, fence, decision)
+
+    def unconfirmed_read_back(self, status: str, output: Any) -> MutationAttempt[Any]:
+        """Retry a transient read-back of a saved provider ID; otherwise select uncertain."""
+        if status == "unavailable":
+            return MutationAttempt.retry(
+                failure(
+                    self.operation,
+                    FailureKind.AVAILABILITY,
+                    "Jira Service Management read-back of the accepted write is temporarily unavailable",
+                )
+            )
+        return MutationAttempt.uncertain(
+            output,
+            failure(
+                self.operation,
+                FailureKind.TRANSPORT,
+                "an earlier attempt of this Step was accepted but read-back could not confirm it, "
+                "so the request is not sent again",
+            ),
+            _single_dispatch_receipt(self.call),
+        )
 
     async def session_failure(self, error: Classification, output: Any) -> MutationAttempt[Any]:
         """Map a credential or site failure before the send."""
-        # notSent after a possible earlier send would hide it, so only a first-send decision records it.
-        if self.decision.kind == DecisionKind.SEND_ALLOWED:
+        # notSent after a possible earlier send would hide it, so only a first send records it.
+        if self.decision.kind == DecisionKind.SEND_ALLOWED and not self.has_possible_earlier_send:
             try:
                 await self.fence.record_not_sent()
             except Exception:
@@ -903,6 +918,9 @@ class _FencedWrite:
             return MutationAttempt.retry(classification.failure, classification.retry_after)
         if classification.outcome == "uncertain":
             return self.resend_or_select_uncertain(output, classification.failure, receipt)
+        if classification.outcome == "acceptedUnreadable":
+            # Nothing identifies the accepted write for read-back, and a resend would duplicate it.
+            return MutationAttempt.uncertain(output, classification.failure, receipt)
         if classification.outcome == "defect":
             try:
                 await self.fence.record_can_resend()
@@ -941,12 +959,13 @@ class _FencedWrite:
             return MutationAttempt.uncertain(output, cause, receipt)
         return MutationAttempt.branch_result(defs.DEFECT, output, receipt, cause)
 
-    async def record_accepted(self, provider_id: str) -> None:
-        """Save the accepted identity so a replayed attempt never resends it."""
+    async def record_accepted(self, provider_id: str) -> bool:
+        """Save the accepted identity so a replayed attempt never resends it; report whether it was saved."""
         try:
             await self.fence.record_provider_id(provider_id)
         except Exception:
-            pass  # The accepted result stands; a lost identity checkpoint keeps the claim.
+            return False  # The accepted result stands; a lost identity checkpoint keeps the claim.
+        return True
 
 
 def _created_request(value: dict[str, Any]) -> tuple[str, str, datetime | None, RequestStatus | None]:
@@ -1020,6 +1039,14 @@ class CreateTicketOperation:
         if session_error:
             return await write.session_failure(session_error, requested)
         assert credentials is not None
+        if write.accepted_provider_id:
+            key = "issueId" if _NUMERIC_ID.fullmatch(write.accepted_provider_id) else "issueKey"
+            saved, status = await self._read_back(
+                call, credentials, {key: write.accepted_provider_id}, requested
+            )
+            if saved is not None:
+                return self._created(requested, saved, _single_dispatch_receipt(call))
+            return write.unconfirmed_read_back(status, requested)
         payload = {"serviceDeskId": desk_id, "requestTypeId": type_id, "requestFieldValues": fields}
         if requested.raise_on_behalf_of_account_id:
             payload["raiseOnBehalfOf"] = requested.raise_on_behalf_of_account_id
@@ -1034,10 +1061,13 @@ class CreateTicketOperation:
         receipt = self.client.receipt(call, response)
         if response.status_code == 409:
             try:
-                recovered = await self._read_back(call, credentials, _json_object(response.body), requested)
+                conflict = _json_object(response.body)
+                recovered, _ = await self._read_back(call, credentials, conflict, requested)
             except (ValueError, TypeError, KeyError):
                 recovered = None
             if recovered:
+                # A saved reference keeps a replayed attempt from resending the confirmed request.
+                await write.record_accepted(_str_field(recovered, "issueId"))
                 return self._created(requested, recovered, receipt)
         if classification.outcome == "providerRejected":
             requested = replace(
@@ -1055,7 +1085,8 @@ class CreateTicketOperation:
             created, issue_id, issue_key = {}, "", ""
         reference = issue_id if _NUMERIC_ID.fullmatch(issue_id) else issue_key
         if not _NUMERIC_ID.fullmatch(reference) and not _ISSUE_KEY.fullmatch(reference):
-            return write.resend_or_select_uncertain(
+            # Jira Service Management accepted the request, so a resend would duplicate it.
+            return MutationAttempt.uncertain(
                 requested,
                 failure(
                     "createTicket",
@@ -1065,9 +1096,11 @@ class CreateTicketOperation:
                 ),
                 receipt,
             )
-        await write.record_accepted(reference)
+        has_recorded_provider_id = await write.record_accepted(reference)
         if not _NUMERIC_ID.fullmatch(issue_id) or not _ISSUE_KEY.fullmatch(issue_key):
-            recovered = await self._read_back(call, credentials, created, requested)
+            recovered, status = await self._read_back(call, credentials, created, requested)
+            if not recovered and status == "unavailable" and has_recorded_provider_id:
+                return write.unconfirmed_read_back(status, requested)
             if not recovered:
                 # The provider returned a reference to an accepted request; a resend would duplicate it.
                 return MutationAttempt.uncertain(
@@ -1096,41 +1129,43 @@ class CreateTicketOperation:
 
     async def _read_back(
         self, call: Call, credentials: Any, accepted: dict[str, Any], requested: CreateTicketOutput
-    ) -> dict[str, Any] | None:
+    ) -> tuple[dict[str, Any] | None, str]:
+        """Read a request by its accepted reference; unavailable means a transient failure."""
         issue_id = _str_field(accepted, "issueId")
         issue_key = _str_field(accepted, "issueKey")
         reference = issue_id if _NUMERIC_ID.fullmatch(issue_id) else issue_key
         if not _NUMERIC_ID.fullmatch(reference) and not _ISSUE_KEY.fullmatch(reference):
-            return None
+            return None, "unconfirmed"
         response = await self.client.exchange(
             call, credentials, "GET", "service", "/request/" + path_escape(reference)
         )
-        if self.client.classify_read("createTicket", "customer request", response).outcome != "success":
-            return None
+        outcome = self.client.classify_read("createTicket", "customer request", response).outcome
+        if outcome != "success":
+            return None, "unavailable" if outcome == "retry" else "unconfirmed"
         try:
             recovered = _json_object(response.body)
             recovered_id, recovered_key, _, _ = _created_request(recovered)
             reporter = recovered.get("reporter")
             if not _NUMERIC_ID.fullmatch(recovered_id) or not _ISSUE_KEY.fullmatch(recovered_key):
-                return None
+                return None, "unconfirmed"
             if (
                 _str_field(recovered, "serviceDeskId") != requested.service_desk_id
                 or _str_field(recovered, "requestTypeId") != requested.request_type_id
                 or _str_field(recovered, "summary") != requested.summary
             ):
-                return None
+                return None, "unconfirmed"
             if requested.raise_on_behalf_of_account_id and (
                 reporter is None
                 or _str_field(_object(reporter), "accountId") != requested.raise_on_behalf_of_account_id
             ):
-                return None
+                return None, "unconfirmed"
             if (_NUMERIC_ID.fullmatch(issue_id) and recovered_id != issue_id) or (
                 _ISSUE_KEY.fullmatch(issue_key) and recovered_key != issue_key
             ):
-                return None
-            return recovered
+                return None, "unconfirmed"
+            return recovered, "confirmed"
         except (ValueError, TypeError, KeyError):
-            return None
+            return None, "unconfirmed"
 
 
 class AddCommentOperation:
@@ -1165,6 +1200,11 @@ class AddCommentOperation:
         if session_error:
             return await write.session_failure(session_error, requested)
         assert credentials is not None
+        if write.accepted_provider_id:
+            saved, status = await self._read_back(call, credentials, issue, input, write.accepted_provider_id)
+            if saved is not None:
+                return self._added(requested, saved, _single_dispatch_receipt(call))
+            return write.unconfirmed_read_back(status, requested)
         sent = await write.dispatch(
             requested,
             lambda: self.client.exchange(
@@ -1184,10 +1224,13 @@ class AddCommentOperation:
         if response.status_code == 409:
             try:
                 conflict = _json_object(response.body)
-                recovered = await self._read_back(call, credentials, issue, input, _str_field(conflict, "id"))
+                conflict_id = _str_field(conflict, "id")
+                recovered, _ = await self._read_back(call, credentials, issue, input, conflict_id)
             except (ValueError, TypeError, KeyError):
                 recovered = None
             if recovered:
+                # A saved comment ID keeps a replayed attempt from resending the confirmed comment.
+                await write.record_accepted(_str_field(recovered, "id"))
                 return self._added(requested, recovered, receipt)
         attempt = await write.attempt_for_write(classification, requested, receipt, not_found=defs.NOT_FOUND)
         if attempt:
@@ -1197,7 +1240,8 @@ class AddCommentOperation:
             if not _NUMERIC_ID.fullmatch(_str_field(created, "id")):
                 raise ValueError("invalid comment ID")
         except (ValueError, TypeError, KeyError):
-            return write.resend_or_select_uncertain(
+            # Jira Service Management accepted the comment, so a resend would duplicate it.
+            return MutationAttempt.uncertain(
                 requested,
                 failure(
                     "addComment",
@@ -1223,26 +1267,28 @@ class AddCommentOperation:
 
     async def _read_back(
         self, call: Call, credentials: Any, issue: str, input: AddCommentInput, comment_id: str
-    ) -> dict[str, Any] | None:
+    ) -> tuple[dict[str, Any] | None, str]:
+        """Read a comment by ID; the status is unavailable only for a transient failure."""
         if not _NUMERIC_ID.fullmatch(comment_id):
-            return None
+            return None, "unconfirmed"
         response = await self.client.exchange(
             call, credentials, "GET", "service", "/request/" + path_escape(issue) + "/comment/" + comment_id
         )
-        if self.client.classify_read("addComment", "comment", response).outcome != "success":
-            return None
+        outcome = self.client.classify_read("addComment", "comment", response).outcome
+        if outcome != "success":
+            return None, "unavailable" if outcome == "retry" else "unconfirmed"
         try:
             recovered = _json_object(response.body)
             if _str_field(recovered, "id") != comment_id or recovered.get("public") is None:
-                return None
+                return None, "unconfirmed"
             if (
                 _str_field(recovered, "body") != input.body
                 or _boolean(recovered["public"]) != input.is_public
             ):
-                return None
-            return recovered
+                return None, "unconfirmed"
+            return recovered, "confirmed"
         except (ValueError, TypeError, KeyError):
-            return None
+            return None, "unconfirmed"
 
 
 class UpdateTicketOperation:

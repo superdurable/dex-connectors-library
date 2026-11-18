@@ -80,7 +80,8 @@ func TestCreateIssueFirstSendOutcomes(t *testing.T) {
 		{name: "request timeout", status: http.StatusRequestTimeout, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "conflict", status: http.StatusConflict, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "unlisted client error", status: http.StatusGone, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
-		{name: "unusable created body", status: http.StatusCreated, body: `{"id":"SENTINEL","key":"not a key"}`, isRetry: true, kind: sdkgo.FailureProtocol},
+		// Jira accepted the create, so an unconfirmed read-back never resends it.
+		{name: "unusable created body", status: http.StatusCreated, body: `{"id":"SENTINEL","key":"not a key"}`, branch: jira.CreateIssueBranchUncertain, kind: sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {

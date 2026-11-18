@@ -161,7 +161,7 @@ spec:
         - {id: created, goName: Created, description: "ClickUp created the task; a retried attempt that found its own earlier task in the List reports it instead of creating another."}
         - {id: notFound, goName: NotFound, description: "The List does not exist or the connection cannot see it; nothing was created.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the task, such as an unknown status, assignee, or custom field value, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Earlier attempts sent the create up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching task, so the task may exist; the connector does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Earlier attempts sent the create up to the send cap, ClickUp accepted it without a usable task ID, or read-back after a possible send cannot confirm a single matching task, including a List that is now missing, so the task may exist; the connector does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: ClickUp has no idempotency key, and an async backup attempt would send a slow create twice.
       execution:
@@ -199,7 +199,7 @@ spec:
         - {id: updated, goName: Updated, description: "ClickUp applied every requested change, including when the task already had those values, and the Value holds the task it returned."}
         - {id: notFound, goName: NotFound, description: The task does not exist or the connection cannot see it., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the change, such as a status that is not in the task's List or missing permission.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "ClickUp returned an invalid or oversized task after the update, so the change may have been applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: the update is safe to repeat, so an invalid or oversized task after the update retries.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -233,7 +233,7 @@ spec:
         - {id: updated, goName: Updated, description: "ClickUp applied every tag change, and the Value holds the task's tags read back."}
         - {id: notFound, goName: NotFound, description: The task does not exist or the connection cannot see it., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected a tag change, such as missing permission; earlier changes in the same Step may have been applied.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "ClickUp returned an invalid or oversized task when its tags were read back; the tag changes were applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: the tag changes are safe to repeat, so an invalid or oversized task read back retries.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -268,7 +268,7 @@ spec:
         - {id: added, goName: Added, description: "The comment is on the task; a retried attempt that found its own earlier comment reports it instead of adding another."}
         - {id: notFound, goName: NotFound, description: "The task does not exist or the connection cannot see it; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "ClickUp conclusively rejected the comment, such as missing permission; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Earlier attempts sent the comment up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching comment, so the comment may exist; the connector does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Earlier attempts sent the comment up to the send cap, ClickUp accepted it without a usable comment ID, or read-back after a possible send cannot confirm a single matching comment, including a task that is now missing, so the comment may exist; the connector does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

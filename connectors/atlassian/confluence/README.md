@@ -291,9 +291,12 @@ was closed Won't Fix. The operation relies on that rule:
 | 400, and the title lookup is unavailable or unreadable | Retry after at least five seconds |
 | 400 without such a page or with the lookup refused; 401, 403, 411, 413, 414, 415, or 422 | `providerRejected` |
 | 404, or an unknown space key | `notFound` |
-| 429 | Retry after `Retry-After` |
+| 429 or 503 | Retry after `Retry-After` |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 3xx, 408, 409, another 4xx, 5xx, or an unusable 2xx body | look the title up now: this Step's page selects `created`, another page `titleConflict`; otherwise Retry after at least five seconds |
+| Timeout, dropped connection, 3xx, 408, 409, another 4xx, another 5xx, or an unusable 2xx body | look the title up now: this Step's page selects `created`, another page `titleConflict`; otherwise Retry after at least five seconds |
+
+The operation declares `repeatOnUnknown: safe`, because the one-page-per-title
+rule makes a repeated create harmless; the send cap does not apply to it.
 
 A page found by title is this Step's page only when it was created no earlier
 than a minute before the Step's first attempt, sits below the requested parent,
@@ -306,7 +309,7 @@ Before sending, the operation records a Dex heartbeat checkpoint with the send
 time. A later attempt of the same Step execution, such as the retry after a
 lost Worker, finds it and looks the title up first: it reports the page it
 finds and sends again only when no page has the title, which Confluence then
-refuses to duplicate. A 429 or a provably unsent request clears the
+refuses to duplicate. A 429, a 503, or a provably unsent request clears the
 checkpoint. Dex sends the heartbeat without waiting for it to persist; when a
 checkpoint is lost that way, the retry's create fails on the title and the
 lookup reports the page as `created`, or as `titleConflict` when it cannot
@@ -333,11 +336,12 @@ way except that an unchanged page retries:
 | At `NextVersionNumber - 1` | `providerRejected`: Confluence refused the content itself |
 | At any other version | `versionConflict`, whose `VersionNumber` is the current version |
 
-After a timeout, dropped connection, 408, 5xx, or unusable 2xx body, the same
-read decides; an unchanged page retries after at least five seconds, because
-sending the same version again is safe. 404 selects `notFound`; 401, 403, 413,
-and 422 select `providerRejected`; any other status leaves a write's outcome
-unknown and is read back before a retry.
+After a timeout, dropped connection, 408, a 5xx other than 503, or unusable 2xx
+body, the same read decides; an unchanged page retries after at least five
+seconds, because sending the same version again is safe, so the operation
+declares `repeatOnUnknown: safe`. A 429 or 503 retries without reading back.
+404 selects `notFound`; 401, 403, 413, and 422 select `providerRejected`; any
+other status leaves a write's outcome unknown and is read back before a retry.
 
 ### addComment
 
@@ -351,16 +355,21 @@ the default send cap of 3 possibly effective POSTs per Call ID:
    claim that counts the send. If Dex does not record it, nothing is sent and
    the attempt retries. An unreadable or untrusted checkpoint retries without
    sending.
-3. A 429 or a connection that never opened records that nothing was sent and
-   retries.
-4. A timeout, dropped connection, 3xx, 408, 409, another 4xx, 5xx, or unusable
-   2xx body keeps the claim and retries after at least five seconds. A later
-   attempt first reads the page's 25 newest footer comments and selects `added`
-   with `IsConfirmedByReadBack` when one created since a minute before the first
+3. A 429, a 503, or a connection that never opened records that nothing was
+   sent and retries.
+4. A timeout, dropped connection, 3xx, 408, 409, another 4xx, or a 5xx other
+   than 503 keeps the claim and retries after at least five seconds. Every
+   attempt after a possible POST, including one after a resend that got a 429,
+   first reads the page's 25 newest footer comments and selects `added` with
+   `IsConfirmedByReadBack` when one created since a minute before the first
    attempt has the same text. Otherwise it sends again while another POST stays
    within the cap, and selects `uncertain` at the cap. A missing checkpoint
-   counts each earlier attempt as a possible POST.
-5. On the first POST, 404 selects `notFound`, and 400, 401, 403, 411, 413, 414,
+   counts each earlier attempt as a possible POST. A 404 on that read selects
+   `uncertain`, because the earlier POST may have added the comment.
+5. A 2xx whose body breaks, overflows the size limit, or lacks a usable comment
+   is never resent: the attempt reads the page's comments at once, and selects
+   `added` when the comment is there and `uncertain` otherwise.
+6. On the first POST, 404 selects `notFound`, and 400, 401, 403, 411, 413, 414,
    415, and 422 select `providerRejected`; after an earlier possible POST they
    select `uncertain`, because that POST may have added the comment.
 

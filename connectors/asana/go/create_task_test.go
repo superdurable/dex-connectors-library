@@ -101,7 +101,8 @@ func TestCreateTaskClassifiesPostOutcomesWithoutResendingAmbiguousWrites(t *test
 		{name: "server error", status: http.StatusInternalServerError, body: `{"errors":[{"message":"SENTINEL","phrase":"6 sad squid snuggle softly"}]}`, isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "redirect", status: http.StatusFound, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
-		{name: "unusable created body", status: http.StatusCreated, body: `{"data":{"gid":"SENTINEL"}}`, isRetry: true, kind: sdkgo.FailureProtocol},
+		// Asana accepted the task without a usable ID, so it is never sent again.
+		{name: "unusable created body", status: http.StatusCreated, body: `{"data":{"gid":"SENTINEL"}}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {

@@ -73,8 +73,8 @@ func (UpdateTaskOperation) IdempotencyKey(callID sdkgo.CallID, _ UpdateTaskInput
 
 // Invoke sends PUT /task/{task_id}, whose response is the updated task. Because a repeated PUT leaves
 // the same task, every unknown outcome, including a timeout after dispatch, a 5xx, a 409, or another
-// status that does not prove a refusal, retries. A 2xx proves the change applied, so an unusable body
-// selects invalidResponse.
+// status that does not prove a refusal, retries. A 2xx with an unreadable, oversized, or invalid body
+// also retries, so invalidResponse is never selected.
 func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInput) sdkgo.MutationAttempt[UpdateTaskOutput] {
 	output := UpdateTaskOutput{}
 	if err := validateUpdateTaskInput(input); err != nil {
@@ -88,9 +88,6 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 		method: http.MethodPut, path: taskPath(input.TaskID), payload: updateTaskPayload(input),
 	})
 	receipt := operation.client.receipt(call, input.TaskID)
-	if result.outcome == exchangeInvalid {
-		return sdkgo.NewMutationBranch(UpdateTaskBranchInvalidResponse, output, &result.failure, receipt)
-	}
 	switch result.classifyWrite() {
 	case writeAccepted:
 	case writeNotFound:
@@ -104,8 +101,9 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	}
 	task, err := decodeTaskBody(result.response.body, false)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateTaskBranchInvalidResponse, output, clickupFailurePointer(sdkgo.FailureProtocol, updateTaskOperation,
-			"ClickUp accepted the update but returned an invalid task: "+err.Error()), receipt)
+		// Repeating the absolute update is safe, so an unusable 2xx retries.
+		return sdkgo.NewMutationRetry[UpdateTaskOutput](clickupFailure(sdkgo.FailureProtocol, updateTaskOperation,
+			"ClickUp accepted the update but returned an invalid task: "+err.Error()), 0)
 	}
 	output.Task = task
 	return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, output, nil, receipt)

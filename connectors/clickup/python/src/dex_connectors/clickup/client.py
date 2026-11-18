@@ -5,7 +5,7 @@
 import json
 import re
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
@@ -68,7 +68,9 @@ class Exchange:
     body: bytes = b""
     retry_after: timedelta = timedelta()
     status: int = 0
-    """The HTTP status of a non-2xx response, or 0."""
+    """The HTTP status of a response without a usable body, or 0."""
+    is_error_body_too_large: bool = False
+    """Whether a non-2xx body exceeded maxResponseBytes, which cannot prove a write refusal."""
 
     @property
     def is_retryable(self) -> bool:
@@ -80,7 +82,8 @@ class Exchange:
         """Classify a sent write; only a definite refusal status selects a refusal branch.
 
         Returns `accepted`, `not_applied` (429, 503, or never sent), `not_found`,
-        `rejected`, `defect`, or `unknown`, when ClickUp may have applied it.
+        `rejected`, `defect`, `accepted_unreadable` (a 2xx without a usable body),
+        or `unknown`, when ClickUp may have applied it.
         """
         if self.kind == "succeeded":
             return "accepted"
@@ -88,10 +91,14 @@ class Exchange:
             return "not_applied"
         if self.kind == "defect":
             return "defect"
+        if 200 <= self.status < 300:
+            return "accepted_unreadable"
         if self.kind == "invalid":
             return "unknown"
         if self.status == 503:
             return "not_applied"
+        if self.is_error_body_too_large:
+            return "unknown"
         if self.kind == "not_found" and self.status != 410:
             return "not_found"
         if self.kind == "rejected" and self.status in _DEFINITE_WRITE_REFUSAL_STATUSES:
@@ -213,10 +220,16 @@ class Client:
                     operation,
                     FailureKind.RESPONSE_TOO_LARGE,
                     "ClickUp response exceeds the configured maxResponseBytes limit",
+                    status=response.status_code,
                 )
             except ProviderTransportError:
+                # Keep the 2xx status so an accepted write is never resent.
                 return outcome(
-                    "unconfirmed", operation, FailureKind.TRANSPORT, "ClickUp response could not be read"
+                    "unconfirmed",
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "ClickUp response could not be read",
+                    status=response.status_code,
                 )
             if credentials.api_token.reveal().encode() in response_body:
                 return outcome(
@@ -224,13 +237,15 @@ class Client:
                     operation,
                     FailureKind.PROTOCOL,
                     "ClickUp response reflected the connection credential",
+                    status=response.status_code,
                 )
             return Exchange("succeeded", body=response_body)
         status = response.status_code
+        is_error_body_too_large = False
         try:
             error_body = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:
-            error_body = b""
+            error_body, is_error_body_too_large = b"", True
         except ProviderTransportError:
             return outcome(
                 "unconfirmed",
@@ -239,6 +254,14 @@ class Client:
                 "ClickUp response could not be read",
                 status=status,
             )
+        result = self._classify_failure_status(operation, response, error_body)
+        return replace(result, is_error_body_too_large=True) if is_error_body_too_large else result
+
+    def _classify_failure_status(
+        self, operation: str, response: httpx.Response, error_body: bytes
+    ) -> Exchange:
+        """Classify a non-2xx response by status and its ClickUp error code."""
+        status = response.status_code
         error_code = ""
         try:
             decoded = json.loads(error_body)

@@ -430,17 +430,22 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	}
 	taskID, hasTaskID := decodeCreatedTaskID(result.body)
 	if !hasTaskID {
-		return write.resendOrSelectUncertain(*failure("createTask", sdkgo.FailureProtocol, "Todoist answered the creation without a usable task"), 0)
+		// A 2xx means Todoist accepted the creation, so a resend could create a second task.
+		return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation without a usable task, so the task is unconfirmed"), sdkgo.Receipt{})
 	}
-	write.recordAcceptedTask(taskID)
-	return operation.readCreatedTask(budget, credentials, taskID)
+	return operation.readCreatedTask(budget, credentials, taskID, write.recordAcceptedTask(taskID))
 }
 
-// readCreatedTask confirms an accepted creation. Any unusable or skipped read stays uncertain; a resend would create again.
-func (operation CreateTaskOperation) readCreatedTask(budget attemptBudget, credentials Credentials, taskID string) sdkgo.MutationAttempt[Task] {
+// readCreatedTask confirms an accepted creation and never resends it. A transient read failure retries the
+// read-back only when the task ID is saved; any other unusable read stays uncertain.
+func (operation CreateTaskOperation) readCreatedTask(budget attemptBudget, credentials Credentials, taskID string, isTaskIDSaved bool) sdkgo.MutationAttempt[Task] {
 	readBack := operation.client.sendTaskRequest(budget.remainingWindow(), credentials, "createTask", http.MethodGet, taskID, nil)
 	if readBack.failure == nil {
 		return sdkgo.NewMutationBranch(CreateTaskBranchCreated, readBack.task, nil, sdkgo.Receipt{})
+	}
+	if isTaskIDSaved && !readBack.isLocalDefect && (readBack.isTransient || readBack.status == http.StatusTooManyRequests) {
+		// The next attempt reads the saved task ID back instead of resending.
+		return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
 	}
 	return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation of task "+taskID+" but it could not be read back in this attempt, so the task is unconfirmed"), sdkgo.Receipt{})
 }

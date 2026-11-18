@@ -104,6 +104,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Every specified field is an absolute value, so a repeated update leaves the same task.
+        repeatOnUnknown: safe
       mocks:
         - name: lifecycleTitleUpdated
           branch: updated
@@ -159,7 +161,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Todoist confirmed creation and returned the task ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Todoist conclusively rejected creation., optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or Todoist accepted a task ID that could not be read back, so the task may exist; the connector does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or Todoist accepted the creation with an unreadable answer or a task ID that could not be read back, so the task may exist; the connector does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -191,6 +193,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Deleting an immutable task ID again cannot remove anything else.
+        repeatOnUnknown: safe
       mocks:
         - name: disposableTaskDeleted
           branch: deleted

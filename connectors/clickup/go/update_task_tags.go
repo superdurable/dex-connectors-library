@@ -98,12 +98,11 @@ func (operation UpdateTaskTagsOperation) Invoke(call sdkgo.Call, input UpdateTas
 	result := operation.client.exchange(ctx, credentials, updateTaskTagsOperation, clickupRequest{method: http.MethodGet, path: taskPath(input.TaskID)})
 	switch {
 	case result.outcome == exchangeSucceeded:
-	case result.isRetryableRead():
+	case result.isRetryableRead(), result.outcome == exchangeInvalid:
+		// Repeating the tag changes is safe, so an unusable read-back retries the whole set.
 		return sdkgo.NewMutationRetry[UpdateTaskTagsOutput](result.failure, result.retryAfter)
 	case result.outcome == exchangeNotFound:
 		return sdkgo.NewMutationBranch(UpdateTaskTagsBranchNotFound, output, &result.failure, receipt)
-	case result.outcome == exchangeInvalid:
-		return sdkgo.NewMutationBranch(UpdateTaskTagsBranchInvalidResponse, output, &result.failure, receipt)
 	case result.outcome == exchangeDefect:
 		return sdkgo.NewMutationBranch(UpdateTaskTagsBranchDefect, output, &result.failure, receipt)
 	default:
@@ -111,8 +110,8 @@ func (operation UpdateTaskTagsOperation) Invoke(call sdkgo.Call, input UpdateTas
 	}
 	task, err := decodeTaskBody(result.response.body, false)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateTaskTagsBranchInvalidResponse, output, clickupFailurePointer(sdkgo.FailureProtocol, updateTaskTagsOperation,
-			"ClickUp applied the tag changes but returned an invalid task: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[UpdateTaskTagsOutput](clickupFailure(sdkgo.FailureProtocol, updateTaskTagsOperation,
+			"ClickUp applied the tag changes but returned an invalid task: "+err.Error()), 0)
 	}
 	output.Tags = task.Tags
 	return sdkgo.NewMutationBranch(UpdateTaskTagsBranchUpdated, output, nil, receipt)

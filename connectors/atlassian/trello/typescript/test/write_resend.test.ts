@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { TrelloClient } from '../src/client.js';
 import { AddCommentDefinition, CreateCardDefinition } from '../src/generated/definitions.js';
 
@@ -91,6 +91,23 @@ describe('Trello bounded resend of unconfirmed writes', () => {
     context.attempt = 2;
     expect(await run(newClient(401, 'invalid token').client, 'addComment', context)).toBe('uncertain');
   });
+
+  for (const operation of ['createCard', 'addComment'] as const) {
+    it(`never resends an accepted ${operation} with an unusable body`, async () => {
+      const { client, requests } = newClient(200, 'not json');
+      expect(await run(client, operation, new AttemptContext())).toBe('uncertain');
+      expect(requests).toHaveLength(1);
+    });
+
+    it(`never resends an accepted ${operation} whose body broke`, async () => {
+      const requests: ProviderRequest[] = [];
+      const client = new TrelloClient({}, { resolve: async () => ({ apiKey: new SecretString('test-key'), token: new SecretString('test-token') }) }, {
+        send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 200, {}); },
+      });
+      expect(await run(client, operation, new AttemptContext())).toBe('uncertain');
+      expect(requests).toHaveLength(1);
+    });
+  }
 
   it('retries an untrusted checkpoint without sending', async () => {
     const { client, requests } = newClient(200, `{"id":"${cardId}"}`);

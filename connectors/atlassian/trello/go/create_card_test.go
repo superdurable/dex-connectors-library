@@ -84,12 +84,6 @@ func TestCreateCardResendsAnUnknownOutcomeUpToTheSendCap(t *testing.T) {
 			http.Redirect(response, request, "https://attacker.example/steal", http.StatusFound)
 		}, kind: sdkgo.FailureAvailability},
 		{name: "lost response", reply: func(response http.ResponseWriter, _ *http.Request) { dropConnection(t, response) }, kind: sdkgo.FailureTransport},
-		{name: "malformed card", reply: func(response http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, response, http.StatusOK, `{"id":"SENTINEL"}`)
-		}, kind: sdkgo.FailureProtocol},
-		{name: "reflected token", reply: func(response http.ResponseWriter, _ *http.Request) {
-			writeJSON(t, response, http.StatusOK, cardJSON(cardJSONOptions{name: testToken}))
-		}, kind: sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingTrello(t, func(response http.ResponseWriter, request *http.Request, _ int) { test.reply(response, request) })
@@ -114,6 +108,64 @@ func TestCreateCardResendsAnUnknownOutcomeUpToTheSendCap(t *testing.T) {
 			require.Equal(t, sendCap, provider.requestCount(), "no attempt sends beyond the cap")
 		})
 	}
+}
+
+func TestCreateCardAcceptedWithAnUnusableBodyIsNeverResent(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(http.ResponseWriter)
+		kind  sdkgo.FailureKind
+	}{
+		{name: "malformed card", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":"SENTINEL"}`)
+		}, kind: sdkgo.FailureProtocol},
+		{name: "reflected token", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, cardJSON(cardJSONOptions{name: testToken}))
+		}, kind: sdkgo.FailureProtocol},
+		{name: "broken body", reply: func(response http.ResponseWriter) {
+			// The headers promise more bytes than arrive, so the body read fails after a 200.
+			response.Header().Set("Content-Length", "4096")
+			response.WriteHeader(http.StatusOK)
+			_, _ = response.Write([]byte(`{"id":"65`))
+		}, kind: sdkgo.FailureTransport},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
+			result, err := sdkgo.RunMutation(newTrelloDexContext("create-accepted-"+test.name), newTrelloClient(t, provider.URL).CreateCard(), trelloConnection, validCreateCardInput())
+			require.NoError(t, err)
+			require.Equal(t, trello.CreateCardBranchUncertain, result.Branch, "Trello created the card, so it is not created again")
+			require.Equal(t, test.kind, result.Failure.Kind)
+			require.Equal(t, 1, provider.requestCount())
+			requireNoSentinel(t, result)
+		})
+	}
+}
+
+func TestCreateCardCredentialFailureAfterAPossibleSendKeepsTheCheckpoint(t *testing.T) {
+	provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeText(t, response, http.StatusInternalServerError, "SENTINEL")
+			return
+		}
+		writeText(t, response, http.StatusTooManyRequests, "SENTINEL")
+	})
+	ctx := newTrelloDexContext("create-credential-after-send")
+	_, err := sdkgo.RunMutation(ctx, newTrelloClient(t, provider.URL).CreateCard(), trelloConnection, validCreateCardInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	ctx = ctx.nextAttempt()
+	_, err = sdkgo.RunMutation(ctx, newTrelloClient(t, provider.URL).CreateCard(), trelloConnection, validCreateCardInput())
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"state":"canResend"`)
+
+	// The canResend marker lets the third attempt send, although the first send may have created the card.
+	ctx = ctx.nextAttempt()
+	withoutCredentials, err := trello.New(trello.Config{Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[trello.Credentials]{})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(ctx, withoutCredentials.CreateCard(), trelloConnection, validCreateCardInput())
+	require.NoError(t, err)
+	require.Equal(t, trello.CreateCardBranchUncertain, result.Branch)
+	require.Zero(t, ctx.heartbeatCount, "notSent would hide the earlier possible send")
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestCreateCardDefiniteRefusalsRecordCanResendAndAreNeverResent(t *testing.T) {

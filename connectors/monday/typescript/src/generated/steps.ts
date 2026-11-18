@@ -81,7 +81,7 @@ export interface CreateItemStepConfig<StepInput, OperationInput = CreateItemInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached, or monday.com identified the item without a usable result, and the outcome cannot be confirmed; the item may exist and must not be created again automatically. */
+  /** The send cap is reached, or monday.com returned an item value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the item may exist and must not be created again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -146,7 +146,7 @@ export interface AddUpdateStepConfig<StepInput, OperationInput = AddUpdateInput,
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** monday.com conclusively rejected the update, such as missing permission; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached, or monday.com identified the update without a usable result, and the outcome cannot be confirmed; the update may exist and must not be added again automatically. */
+  /** The send cap is reached, or monday.com returned an update value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the update may exist and must not be added again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

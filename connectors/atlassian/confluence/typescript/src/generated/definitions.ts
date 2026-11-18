@@ -100,8 +100,7 @@ export const CreatePageDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for createPage. */
 export const CreatePageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -135,8 +134,7 @@ export const UpdatePageDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updatePage. */
 export const UpdatePageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -155,7 +153,7 @@ export const AddCommentBranchAdded = AddCommentBranch.Added;
 export const AddCommentBranchNotFound = AddCommentBranch.NotFound;
 /** Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added. */
 export const AddCommentBranchProviderRejected = AddCommentBranch.ProviderRejected;
-/** The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically. */
+/** The send cap is reached, Confluence accepted the comment without a usable answer, or the page vanished after a possible send, and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically. */
 export const AddCommentBranchUncertain = AddCommentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddCommentBranchDefect = AddCommentBranch.Defect;
@@ -166,7 +164,7 @@ export const AddCommentDefinition: MutationDefinition = {
     { id: "added", description: "The comment is on the page, including one an earlier attempt of this Step execution sent." },
     { id: "notFound", description: "The page does not exist or the connection cannot view it; nothing was added.", optional: true },
     { id: "providerRejected", description: "Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added.", optional: true },
-    { id: "uncertain", description: "The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically.", optional: true },
+    { id: "uncertain", description: "The send cap is reached, Confluence accepted the comment without a usable answer, or the page vanished after a possible send, and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

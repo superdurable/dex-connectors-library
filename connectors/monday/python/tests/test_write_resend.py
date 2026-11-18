@@ -3,6 +3,7 @@
 """Bounded resend of monday.com creates and updates whose outcome is unknown."""
 
 import json
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -64,6 +65,14 @@ class AttemptContext:
         self.heartbeat_value = value
 
 
+class _BrokenBody(httpx.AsyncByteStream):
+    """A response body that breaks after its first bytes."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"data":{"create_item":'
+        raise httpx.ReadError("connection reset")
+
+
 async def run(
     operation_name: str,
     status: int,
@@ -72,11 +81,15 @@ async def run(
     requests: list[httpx.Request],
     *,
     max_sends: int = CREATE_ITEM_DEFINITION.max_sends,
+    breaks_body: bool = False,
+    has_credentials: bool = True,
 ) -> str:
     """Run one Execute attempt of a monday.com write and return its branch or `retry`."""
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
+        if breaks_body:
+            return httpx.Response(status, stream=_BrokenBody(), headers={"Content-Type": "application/json"})
         content = body if isinstance(body, str) else json.dumps(body)
         return httpx.Response(status, content=content.encode(), headers={"Content-Type": "application/json"})
 
@@ -84,6 +97,8 @@ async def run(
         monday.Config(),
         sdk.StaticCredentialProvider(
             {CONNECTION: monday.Credentials("personal-api-token", sdk.SecretString(TOKEN))}
+            if has_credentials
+            else {}
         ),
         httpx.AsyncClient(transport=httpx.MockTransport(respond)),
         endpoint="http://127.0.0.1:45101/v2",
@@ -171,13 +186,49 @@ async def test_identified_but_unusable_write_is_uncertain_without_resend() -> No
 
 
 @pytest.mark.asyncio
-async def test_refusal_beside_a_mutation_value_is_unknown() -> None:
+async def test_refusal_beside_a_mutation_value_is_uncertain_without_resend() -> None:
     requests: list[httpx.Request] = []
     beside = {
         "data": {"create_item": {"id": "x"}},
         "errors": [{"extensions": {"code": "ColumnValueException"}}],
     }
-    assert await run("createItem", 200, beside, AttemptContext(), requests) == "retry"
+    assert await run("createItem", 200, beside, AttemptContext(), requests) == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_two_xx_whose_body_breaks_is_uncertain_without_resend() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert await run("createItem", 200, "", context, requests, breaks_body=True) == "uncertain"
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_after_an_unknown_outcome_keeps_counting_toward_the_cap() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    for attempt, status in enumerate([500, 429, 500], start=1):
+        context.attempt = attempt
+        assert await run("createItem", status, "{}", context, requests) == "retry"
+    context.attempt = 4
+    assert await run("createItem", 500, "{}", context, requests) == "uncertain"
+    assert len(requests) == 4
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_after_a_rate_limited_resend_never_records_not_sent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    for attempt, status in enumerate([500, 429], start=1):
+        context.attempt = attempt
+        assert await run("addUpdate", status, "{}", context, requests) == "retry"
+    before = context.heartbeat_value
+    context.attempt = 3
+    assert await run("addUpdate", 200, ADDED_UPDATE, context, requests, has_credentials=False) == "uncertain"
+    assert context.heartbeat_value is before
+    assert len(requests) == 2
 
 
 @pytest.mark.asyncio

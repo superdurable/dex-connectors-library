@@ -115,8 +115,12 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	}
 	var created createdCommentWire
 	if err := json.Unmarshal(result.response.body, &created); err != nil || !taskIDPattern.MatchString(string(created.ID)) {
-		return sdkgo.NewMutationRetry[AddCommentOutput](clickupFailure(sdkgo.FailureProtocol, addCommentOperation,
-			"ClickUp accepted the comment but returned no valid comment ID, so the next attempt reads the comments back"), unknownWriteSettleDelay)
+		providerID := string(created.ID)
+		if !taskIDPattern.MatchString(providerID) {
+			providerID = ""
+		}
+		return retryAcceptedReadBackOrSelectUncertain(write, addCommentOperation, providerID, output,
+			"ClickUp accepted the comment but returned an invalid comment", receipt)
 	}
 	recordAcceptedWrite(write, string(created.ID))
 	output.CommentID, output.CreatedAt = string(created.ID), created.Date.timePointer()
@@ -139,7 +143,9 @@ func (operation AddCommentOperation) reconcileEarlierComment(
 	case result.isRetryableRead():
 		return sdkgo.NewMutationRetry[AddCommentOutput](result.failure, result.retryAfter), true
 	case result.outcome == exchangeNotFound:
-		return sdkgo.NewMutationBranch(AddCommentBranchNotFound, output, &result.failure, receipt), true
+		// An earlier send may have added the comment before the task became unreadable.
+		return sdkgo.NewMutationUncertain(output, clickupFailure(result.failure.Kind, addCommentOperation,
+			"an earlier attempt of this Step may have added the comment, and the task can no longer be read back, so it is not sent again: "+result.failure.Message), receipt), true
 	default:
 		return commentReadBackMissing(write, output, receipt, result.failure)
 	}

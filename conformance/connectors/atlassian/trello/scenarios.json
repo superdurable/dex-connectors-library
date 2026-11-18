@@ -1974,13 +1974,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2000,7 +1997,7 @@
         ],
         "position": "16384"
       },
-      "name": "updateCard-invalid-response",
+      "name": "updateCard-readback-unparseable-retry",
       "operation": "updateCard"
     },
     {
@@ -2202,7 +2199,7 @@
         "name": "Approved request",
         "position": "16384"
       },
-      "name": "createCard-uncertain",
+      "name": "createCard-unknown-outcome-retry",
       "operation": "createCard"
     },
     {
@@ -2248,7 +2245,7 @@
         "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
         "text": "Approved for facilities work."
       },
-      "name": "addComment-uncertain",
+      "name": "addComment-unknown-outcome-retry",
       "operation": "addComment"
     },
     {
@@ -3897,7 +3894,7 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -3905,10 +3902,14 @@
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request"
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
       "input": {
@@ -3954,7 +3955,7 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -3962,10 +3963,13 @@
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
       "input": {
@@ -3974,6 +3978,99 @@
       },
       "name": "addComment-accepted-invalid-reference",
       "operation": "addComment"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": false,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": true, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": false,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "name": "updateCard-invalid-response",
+      "operation": "updateCard"
     }
   ],
   "schemaVersion": 1

@@ -66,10 +66,6 @@ func TestCreateTicketResendsAnUnconfirmedRequestUpToTheSendCap(t *testing.T) {
 			writeJSON(t, response, http.StatusConflict, `{"errorMessage":"SENTINEL conflict"}`)
 		}, sdkgo.FailureConflict},
 		{"dropped connection", func(t *testing.T, response http.ResponseWriter) { dropConnection(t, response) }, sdkgo.FailureTransport},
-		{"interrupted accepted response", func(t *testing.T, response http.ResponseWriter) { writeInterruptedAcceptedJSON(t, response) }, sdkgo.FailureTransport},
-		{"unusable 2xx", func(t *testing.T, response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusCreated, `{"issueKey":"SENTINEL"}`)
-		}, sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(t, response) })
@@ -94,6 +90,29 @@ func TestCreateTicketResendsAnUnconfirmedRequestUpToTheSendCap(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, jiraservicemanagement.CreateTicketBranchUncertain, replay.Branch)
 			require.Equal(t, sendCap, provider.requestCount(), "no attempt sends beyond the cap")
+		})
+	}
+}
+
+func TestCreateTicketNeverResendsAnAcceptedRequestWithAnUnusableBody(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(*testing.T, http.ResponseWriter)
+		kind  sdkgo.FailureKind
+	}{
+		{"interrupted accepted response", func(t *testing.T, response http.ResponseWriter) { writeInterruptedAcceptedJSON(t, response) }, sdkgo.FailureTransport},
+		{"unusable 2xx", func(t *testing.T, response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusCreated, `{"issueKey":"SENTINEL"}`)
+		}, sdkgo.FailureProtocol},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(t, response) })
+			result, err := sdkgo.RunMutation(newTestDexContext("create-accepted-"+test.name), newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
+			require.NoError(t, err)
+			require.Equal(t, jiraservicemanagement.CreateTicketBranchUncertain, result.Branch, "Jira Service Management accepted the request, so it is never resent")
+			require.Equal(t, test.kind, result.Failure.Kind)
+			require.Equal(t, 1, provider.requestCount())
+			requireNoSentinel(t, result)
 		})
 	}
 }
@@ -238,6 +257,32 @@ func TestCreateTicketChecksPriorDispatchBeforeResolvingCredentials(t *testing.T)
 	require.Equal(t, 1, provider.requestCount())
 }
 
+func TestCreateTicketCredentialFailureAfterAPossibleSendRecordsNoNotSentMarker(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusInternalServerError, `{}`)
+			return
+		}
+		writeJSON(t, response, http.StatusTooManyRequests, `{}`)
+	})
+	ctx := newTestDexContext("create-credential-after-send")
+	_, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	ctx = ctx.nextAttempt()
+	_, err = sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	require.Contains(t, string(ctx.recordedHeartbeat), `"state":"canResend"`)
+	ctx = ctx.nextAttempt()
+	client, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL},
+		sdkgo.StaticCredentialProvider[jiraservicemanagement.Credentials]{})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), jsmConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.CreateTicketBranchUncertain, result.Branch, "the first send may have created the request")
+	require.Zero(t, ctx.heartbeatCount, "notSent would hide the earlier possible send")
+	require.Equal(t, 2, provider.requestCount())
+}
+
 func TestCreateTicketReadsBackAnAcceptedRequestByItsIssueID(t *testing.T) {
 	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, index int) {
 		if index == 0 {
@@ -254,22 +299,46 @@ func TestCreateTicketReadsBackAnAcceptedRequestByItsIssueID(t *testing.T) {
 	require.Equal(t, 2, provider.requestCount(), "the second request only reads the accepted ticket")
 }
 
-func TestCreateTicketDoesNotResendWhenAcceptedReadBackFails(t *testing.T) {
+func TestCreateTicketReadsBackASavedIssueIDWithoutResendingAfterATransientFailure(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch index {
+		case 0:
+			writeJSON(t, response, http.StatusCreated, `{"issueId":"10042","issueKey":"bad key"}`)
+		case 1:
+			writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
+		default:
+			require.Equal(t, http.MethodGet, request.Method)
+			require.Equal(t, testServiceDeskPath+"/request/10042", request.URL.Path)
+			writeJSON(t, response, http.StatusOK, createdRequestJSON)
+		}
+	})
+	ctx := newTestDexContext("create-readback-failed")
+	_, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.CreateTicketBranchCreated, replay.Branch, "the saved issue ID is read back")
+	require.Equal(t, "ITH-42", replay.Value.IssueKey)
+	require.Equal(t, 3, provider.requestCount(), "neither attempt repeats the POST")
+}
+
+func TestCreateTicketWithAnUnconfirmedSavedIssueIDIsUncertain(t *testing.T) {
 	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 		if index == 0 {
 			writeJSON(t, response, http.StatusCreated, `{"issueId":"10042","issueKey":"bad key"}`)
 			return
 		}
-		writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
+		writeJSON(t, response, http.StatusNotFound, `{}`)
 	})
-	ctx := newTestDexContext("create-readback-failed")
+	ctx := newTestDexContext("create-readback-missing")
 	result, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.CreateTicketBranchUncertain, result.Branch)
 	replay, err := sdkgo.RunMutation(ctx.nextAttempt(), newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
 	require.NoError(t, err)
-	require.Equal(t, jiraservicemanagement.CreateTicketBranchUncertain, replay.Branch)
-	require.Equal(t, 2, provider.requestCount(), "the second request reads the accepted ticket and neither attempt repeats its POST")
+	require.Equal(t, jiraservicemanagement.CreateTicketBranchUncertain, replay.Branch, "a 404 read-back after an accepted create never selects a refusal")
+	require.Equal(t, 3, provider.requestCount(), "one POST and two read-backs")
+	require.Equal(t, http.MethodGet, provider.request(2).method)
 }
 
 func TestCreateTicketReadsBackAConflictWithAnIssueID(t *testing.T) {
@@ -281,11 +350,13 @@ func TestCreateTicketReadsBackAConflictWithAnIssueID(t *testing.T) {
 		require.Equal(t, http.MethodGet, request.Method)
 		writeJSON(t, response, http.StatusOK, createdRequestJSON)
 	})
-	result, err := sdkgo.RunMutation(newTestDexContext("create-conflict-readback"), newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
+	ctx := newTestDexContext("create-conflict-readback")
+	result, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).CreateTicket(), jsmConnection, validCreateTicketInput())
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.CreateTicketBranchCreated, result.Branch)
 	require.Equal(t, "ITH-42", result.Value.IssueKey)
 	require.Equal(t, 2, provider.requestCount())
+	require.Contains(t, string(ctx.recordedHeartbeat), `"providerId":"10042"`, "a lost Step result reads the confirmed request back")
 }
 
 func TestCreateTicketDoesNotSendWithoutARecordedCheckpoint(t *testing.T) {

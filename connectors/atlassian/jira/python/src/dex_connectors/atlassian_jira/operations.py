@@ -25,6 +25,7 @@ from dex_connectors.sdk import (
 )
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
+    Decision,
     DecisionKind,
     DispatchNotAllowedError,
     Fence,
@@ -984,6 +985,24 @@ class _SendCapPolicy:
     """Another send stays within the cap."""
     has_possible_earlier_send: bool = False
     """An earlier send of this call may have taken effect."""
+    has_uncheckpointed_acceptance: bool = False
+    """Jira accepted this send without a recorded provider ID, so reconciliation never retries."""
+
+
+def _accepted_write_policy(has_recorded_provider_id: bool) -> _SendCapPolicy:
+    """Reconcile a write Jira accepted in this attempt; it is never sent again."""
+    return _SendCapPolicy(
+        has_possible_earlier_send=True, has_uncheckpointed_acceptance=not has_recorded_provider_id
+    )
+
+
+def _needs_read_back(decision: Decision) -> bool:
+    """Report a possible earlier send, including SEND_ALLOWED after a canResend marker."""
+    return (
+        decision.kind != DecisionKind.SEND_ALLOWED
+        or decision.prior_send_upper_bound > 0
+        or bool(decision.marker and decision.marker.provider_id)
+    )
 
 
 def _resend_or_select_uncertain(
@@ -1067,6 +1086,8 @@ class _FencedWrite:
         if status == "found" and candidate is not None:
             return self._accepted(requested, candidate, receipt)
         if status == "retry":
+            if policy.has_uncheckpointed_acceptance:
+                return MutationAttempt.uncertain(requested, cause, receipt)
             return self._read_back_retry()
         if provider_id:
             return MutationAttempt.uncertain(requested, cause, receipt)
@@ -1142,7 +1163,8 @@ class _FencedWrite:
         try:
             credentials, cloud_id = await self.client.session(call, self.operation)
         except SessionError as error:
-            if decision.kind == DecisionKind.SEND_ALLOWED:
+            # notSent after a possible earlier send would hide it, so only a first send records it.
+            if not _needs_read_back(decision):
                 try:
                     await fence.record_not_sent()
                 except Exception:
@@ -1163,9 +1185,7 @@ class _FencedWrite:
         earlier_send = failure(
             self.operation, FailureKind.AVAILABILITY, f"Jira {self.subject} dispatch may have succeeded"
         )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED or (
-            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED and provider_id
-        ):
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or provider_id:
             return await self._reconcile(
                 call,
                 credentials,
@@ -1177,7 +1197,7 @@ class _FencedWrite:
                 earlier_send,
                 receipt,
             )
-        if decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED:
+        if _needs_read_back(decision):
             found = await self._find_before_resend(call, credentials, cloud_id, requested, marker, receipt)
             if found is not None:
                 return found
@@ -1236,6 +1256,19 @@ class _FencedWrite:
             return await self._reconcile(
                 call, credentials, cloud_id, requested, marker, "", policy, classified.failure, receipt
             )
+        if classified.outcome == "acceptedUnreadable":
+            assert classified.failure is not None
+            return await self._reconcile(
+                call,
+                credentials,
+                cloud_id,
+                requested,
+                marker,
+                "",
+                _accepted_write_policy(False),
+                classified.failure,
+                receipt,
+            )
         if classified.outcome in ("rejected", "notFound"):
             if response.status == 401 and await _refresh_after_rejection(self.client, call):
                 try:
@@ -1276,10 +1309,12 @@ class _FencedWrite:
         except (ValueError, TypeError):
             resource, provider_id = {}, ""
         if _NUMERIC.fullmatch(provider_id):
+            has_recorded_provider_id = True
             try:
                 await fence.record_provider_id(provider_id)
             except Exception:
-                pass  # A lost identity checkpoint never authorizes a duplicate write.
+                # Without the identity checkpoint, reconciliation never retries.
+                has_recorded_provider_id = False
             if self.operation == "addComment" or _ISSUE.fullmatch(_field_string(resource, "key")):
                 return self._accepted(requested, resource, receipt)
             return await self._reconcile(
@@ -1289,7 +1324,7 @@ class _FencedWrite:
                 requested,
                 marker,
                 provider_id,
-                policy,
+                _accepted_write_policy(has_recorded_provider_id),
                 failure(
                     self.operation,
                     FailureKind.PROTOCOL,
@@ -1304,7 +1339,7 @@ class _FencedWrite:
             requested,
             marker,
             "",
-            policy,
+            _accepted_write_policy(False),
             failure(
                 self.operation,
                 FailureKind.PROTOCOL,

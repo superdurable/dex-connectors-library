@@ -7,7 +7,7 @@ import { DispatchNotAllowedError, newFence, type Decision, type Fence } from '@s
 import emailAddresses from 'email-addresses';
 import { AddUpdateDefinition, CreateItemDefinition, GetItemDefinition, ListItemsDefinition, UpdateItemColumnValuesDefinition } from './generated/definitions.js';
 import type { AddUpdateInput, AddUpdateOutput, ColumnValue, CreateItemInput, CreateItemOutput, GetItemInput, Item, ItemColumnValue, ItemFilter, ItemFilterRule, ItemOrder, ListItemsInput, ListItemsOutput, UpdateItemColumnValuesInput, UpdateItemColumnValuesOutput } from './generated/models.js';
-import { classifyWrite, type MondayClient, type MondayExchange, type MondayRequest, type ResolvedMondayCredentials } from './client.js';
+import { classifyWrite, hasMutationFieldValue, type MondayClient, type MondayExchange, type MondayRequest, type ResolvedMondayCredentials } from './client.js';
 
 const itemFields = 'id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value }';
 const createdItemFields = 'id name state created_at updated_at url creator_id board { id } group { id title }';
@@ -201,6 +201,9 @@ class FencedWrite {
     this.hasPossibleEarlierSend = priorSends > 0;
   }
 
+  /** Whether a pre-send Retry may record notSent; after a possible earlier send, even after canResend, it would hide that send. */
+  get canRecordNotSent(): boolean { return this.decision.kind === 'sendAllowed' && !this.hasPossibleEarlierSend; }
+
   /** Decide whether this attempt may send, or return the attempt that forbids it. */
   static start<Output>(call: Call, definition: MutationDefinition, operation: string, output: Output, receipt: ReceiptDraft): FencedWrite | MutationAttempt<Output> {
     const operationMaxSends = definitionMaxSends(definition);
@@ -221,8 +224,7 @@ class FencedWrite {
 
   /** Map a credential failure that ended the attempt before any send. */
   async preSendFailure<Output>(resolution: MondayExchange, output: Output): Promise<MutationAttempt<Output>> {
-    // notSent after a possible earlier send would hide it, so only a first-send decision records it.
-    if (this.decision.kind === 'sendAllowed') {
+    if (this.canRecordNotSent) {
       try { await this.fence.recordNotSent(); } catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'monday.com not-sent checkpoint could not be recorded')); }
     }
     if (resolution.outcome === 'retry') return newMutationRetry(resolution.failure!, resolution.retryAfterMs);
@@ -234,8 +236,7 @@ class FencedWrite {
   async dispatch<Output>(client: MondayClient, resolved: ResolvedMondayCredentials, request: MondayRequest, output: Output): Promise<MondayExchange | MutationAttempt<Output>> {
     const deadline = this.call.context.deadline?.getTime();
     if (deadline !== undefined && deadline - Date.now() < minimumDispatchWindowMs) {
-      // notSent after a possible earlier send would hide it, so only a first-send decision records it.
-      if (this.decision.kind === 'sendAllowed') {
+      if (this.canRecordNotSent) {
         try { await this.fence.recordNotSent(); } catch { return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'monday.com not-sent checkpoint could not be recorded')); }
       }
       return newMutationRetry(failure(this.operation, 'AVAILABILITY', 'not enough time remains to send the mutation'));
@@ -254,6 +255,11 @@ class FencedWrite {
 
   /** Map every sent outcome except an accepted one, as Go's attemptForWrite does. */
   async attemptForWrite<Output>(exchange: MondayExchange, mutationField: string, output: Output, receipt: ReceiptDraft): Promise<MutationAttempt<Output> | undefined> {
+    if (exchange.successBodyUnreadable || hasMutationFieldValue(exchange.data, mutationField)) {
+      // monday.com may have accepted the write, so a resend could create it again.
+      const cause = exchange.outcome === 'succeeded' || !exchange.failure ? failure(this.operation, 'PROTOCOL', 'monday.com accepted the write but returned an unusable result') : exchange.failure;
+      return newMutationUncertain(output, cause, receipt);
+    }
     const disposition = classifyWrite(exchange, mutationField);
     if (disposition === 'accepted') return undefined;
     if (disposition === 'notProcessed') {

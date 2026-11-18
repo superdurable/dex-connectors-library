@@ -217,7 +217,7 @@ func TestTemporarilyBlockedCreateRetriesWithRealDex(t *testing.T) {
 	require.Len(t, provider.distinctIdempotencyKeys("create"), 1)
 }
 
-func TestUnusableCreateAnswerFailsAtTheSendCapWithRealDex(t *testing.T) {
+func TestUnusableCreateAnswerSelectsUncertainWithoutResendWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.answersCreateUnusably = true
 	harness := newWorkHarness(t, provider, defaultRequestTimeout)
@@ -226,8 +226,8 @@ func TestUnusableCreateAnswerFailsAtTheSendCapWithRealDex(t *testing.T) {
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 3, provider.count("create"), "an answer without an item ID is resent only up to the default cap of three")
-	require.Equal(t, 2, provider.count("replay"), "every resend replays the same cached answer")
+	require.Equal(t, 1, provider.count("create"), "an accepted answer without a usable item ID is never resent")
+	require.Zero(t, provider.count("replay"))
 	require.Equal(t, 1, provider.itemCount(), "monday.com did create the item, which a person must now find")
 	require.Zero(t, provider.count("update"))
 }

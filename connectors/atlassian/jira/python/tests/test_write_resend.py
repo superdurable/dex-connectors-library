@@ -23,6 +23,32 @@ ISSUE_INPUT = jira.CreateIssueInput(project_key="OPS", issue_type_name="Task", s
 COMMENT_INPUT = jira.AddCommentInput(issue_id_or_key="OPS-43", body="Triage started.")
 
 Answer = Callable[[httpx.Request], tuple[int, str]]
+TRUNCATED_BODY = "<truncated>"
+"""A scripted body that sends the status and headers, then breaks the connection."""
+
+
+class BrokenStream(httpx.AsyncByteStream):
+    """A response body that fails after the status and headers arrived."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        yield b'{"id":"100'
+        raise httpx.ReadError("connection reset")
+
+
+class ScriptedCredentials:
+    """Credentials whose lookup fails transiently or terminally on demand."""
+
+    def __init__(self) -> None:
+        self.mode = "ready"
+
+    async def resolve(self, call: sdk.Call) -> jira.Credentials:
+        """Return the test token, or fail as the current mode says."""
+        if self.mode == "transient":
+            raise RuntimeError("credential broker unavailable")
+        token = "" if self.mode == "invalid" else "jira-access-token"
+        return jira.Credentials(
+            "client-id", sdk.SecretString("secret"), sdk.SecretString(token), sdk.SecretString("")
+        )
 
 
 class AttemptContext:
@@ -74,12 +100,15 @@ async def run(
     requests: list[httpx.Request],
     *,
     max_sends: int = CREATE_ISSUE_DEFINITION.max_sends,
+    credential_provider: object | None = None,
 ) -> sdk.MutationResult[object] | sdk.RetryError:
     """Run one Execute attempt of a Jira write against a scripted provider."""
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         status, body = answer(request)
+        if body == TRUNCATED_BODY:
+            return httpx.Response(status, stream=BrokenStream(), headers={"Content-Type": "application/json"})
         return httpx.Response(status, content=body.encode(), headers={"Content-Type": "application/json"})
 
     credentials = jira.Credentials(
@@ -88,7 +117,7 @@ async def run(
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         client = jira.Client(
             jira.Config(cloud_id=CLOUD_ID, endpoint="http://127.0.0.1:12345"),
-            sdk.StaticCredentialProvider({CONNECTION: credentials}),
+            credential_provider or sdk.StaticCredentialProvider({CONNECTION: credentials}),  # type: ignore[arg-type]
             transport,
         )
         call = sdk.Call(
@@ -193,3 +222,88 @@ async def test_unreadable_checkpoint_retries_without_sending() -> None:
     result = await run("addComment", empty_search_or(201, "{}"), AttemptContext(2, read_error=True), requests)
     assert isinstance(result, sdk.RetryError)
     assert requests == []
+
+
+def scripted_writes(statuses: list[tuple[int, str]]) -> Answer:
+    """Answer read-backs with nothing and each write with the next scripted response."""
+    remaining = list(statuses)
+
+    def answer(request: httpx.Request) -> tuple[int, str]:
+        if request.url.path.endswith("/search/jql"):
+            return 200, '{"issues":[]}'
+        if request.method == "GET":
+            return 200, '{"comments":[]}'
+        return remaining.pop(0)
+
+    return answer
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("operation_name", "created"),
+    [("createIssue", '{"id":"10043","key":"OPS-43"}'), ("addComment", '{"id":"10500"}')],
+)
+async def test_resend_after_can_resend_reads_back_before_the_third_send(
+    operation_name: str, created: str
+) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    answer = scripted_writes([(500, "{}"), (429, "{}"), (201, created)])
+    assert isinstance(await run(operation_name, answer, context, requests), sdk.RetryError)
+    context.attempt = 2
+    assert isinstance(await run(operation_name, answer, context, requests), sdk.RetryError)
+    assert context.marker is not None and context.marker.state == "canResend"
+    context.attempt = 3
+    requests.clear()
+    result = await run(operation_name, answer, context, requests)
+    assert isinstance(result, sdk.MutationResult) and result.branch in ("created", "added")
+    assert [request.method for request in requests][-1] == "POST"
+    assert len(requests) == 2, "attempt three reads back the possible first send before resending"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [TRUNCATED_BODY, "{}"])
+@pytest.mark.parametrize("operation_name", ["createIssue", "addComment"])
+async def test_accepted_write_with_broken_body_is_never_resent(operation_name: str, body: str) -> None:
+    requests: list[httpx.Request] = []
+    result = await run(operation_name, empty_search_or(201, body), AttemptContext(), requests)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert sum(1 for request in requests if request.method == "POST" and "jql" not in request.url.path) == 1
+
+
+@pytest.mark.asyncio
+async def test_accepted_issue_without_id_is_uncertain_when_read_back_is_rate_limited() -> None:
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> tuple[int, str]:
+        if request.url.path.endswith("/search/jql"):
+            return 429, "{}"
+        return 201, "{}"
+
+    result = await run("createIssue", answer, AttemptContext(), requests)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert posts(requests, "/issue") == 1
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_after_a_possible_send_records_no_not_sent_marker() -> None:
+    requests: list[httpx.Request] = []
+    credentials = ScriptedCredentials()
+    context = AttemptContext()
+    answer = scripted_writes([(500, "{}"), (429, "{}")])
+    for attempt in (1, 2):
+        context.attempt = attempt
+        retried = await run("createIssue", answer, context, requests, credential_provider=credentials)
+        assert isinstance(retried, sdk.RetryError)
+    marker = context.marker
+    credentials.mode = "transient"
+    context.attempt = 3
+    assert isinstance(
+        await run("createIssue", answer, context, requests, credential_provider=credentials), sdk.RetryError
+    )
+    assert context.marker == marker, "notSent would hide the earlier possible send"
+    credentials.mode = "invalid"
+    context.attempt = 4
+    result = await run("createIssue", answer, context, requests, credential_provider=credentials)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert posts(requests, "/issue") == 2

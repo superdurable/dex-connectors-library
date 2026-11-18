@@ -226,7 +226,7 @@ spec:
         - {id: created, goName: Created, description: "monday.com created the item, or replayed the item this Step already created, and returned it."}
         - {id: notFound, goName: NotFound, description: "The board or group does not exist or the connection cannot see it; nothing was created.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or monday.com identified the item without a usable result, and the outcome cannot be confirmed; the item may exist and must not be created again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or monday.com returned an item value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the item may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync makes dispatch heartbeats visible to the next attempt, which counts possible sends against the cap.
       # The five-minute budget stays inside monday.com's 30-minute key cache.
@@ -299,7 +299,7 @@ spec:
         - {id: added, goName: Added, description: "monday.com added the update, or replayed the update this Step already added, and returned it."}
         - {id: notFound, goName: NotFound, description: "The item does not exist or the connection cannot see it; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "monday.com conclusively rejected the update, such as missing permission; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or monday.com identified the update without a usable result, and the outcome cannot be confirmed; the update may exist and must not be added again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or monday.com returned an update value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the update may exist and must not be added again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
