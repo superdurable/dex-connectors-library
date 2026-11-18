@@ -364,6 +364,25 @@ func TestSendMessageFenceRetriesAfterCredentialRotation(t *testing.T) {
 	require.Len(t, provider.recordedRequests(), 2)
 }
 
+func TestSendMessageFenceRetriesAReadableUnauthorizedAfterATransientRefreshFailure(t *testing.T) {
+	provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusUnauthorized)
+		writeBody(response, `{"code":20003}`)
+	})
+	for _, refreshErr := range []error{errors.New("credential store unavailable"), projectconfig.ErrCredentialBrokerUnavailable} {
+		credentials := &failingRefreshTwilioCredentials{refreshErr: refreshErr}
+		client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, credentials)
+		ctx := singledispatchtest.NewContext("twilio-rejected-refresh-transient", "send-message")
+		_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "a readable 401 proves nothing was created, so a transient refresh failure retries")
+		require.Contains(t, retry.Failure.Message, "temporarily unavailable")
+		ctx.AdvanceAttempt()
+		require.Equal(t, singledispatch.StateCanResend, readPersistedMarker(t, ctx).State)
+	}
+	require.Len(t, provider.recordedRequests(), 2)
+}
+
 func TestSendMessageFenceClassifiesRejectedCredentialRefresh(t *testing.T) {
 	for _, testCase := range []struct {
 		name    string
@@ -373,7 +392,6 @@ func TestSendMessageFenceClassifiesRejectedCredentialRefresh(t *testing.T) {
 		{"reauthorization", sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), "reconnect"},
 		{"rejected credential not refreshed", fmt.Errorf("forced read: %w", projectconfig.ErrRejectedCredentialNotRefreshed), "update the connection"},
 		{"expiry not proved", errors.New("authentication rejection does not prove credential expiry"), "update the connection"},
-		{"refresh unavailable", errors.New("credential store unavailable"), "temporarily unavailable"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {

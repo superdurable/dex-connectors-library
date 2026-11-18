@@ -533,8 +533,15 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		isReplacementUnchanged := !isReplacementInvalid && replacement.BotToken.Reveal() == credentials.BotToken.Reveal()
 		if refreshErr != nil || isReplacementInvalid || isReplacementUnchanged {
 			failureMessage := "Slack credential refresh is temporarily unavailable"
-			if isTerminalCredentialError(refreshErr) || (refreshErr == nil && (isReplacementInvalid || isReplacementUnchanged)) {
+			isTerminalRefreshFailure := isTerminalCredentialError(refreshErr) || (refreshErr == nil && (isReplacementInvalid || isReplacementUnchanged))
+			if isTerminalRefreshFailure {
 				failureMessage = "Slack rejected the connection credential; reconnect the connection"
+			} else if isDefiniteSlackRefusal(response) && client.isTransientRefreshFailure(refreshErr) {
+				// A definite rejection proves this send posted nothing, so a transient refresh failure retries.
+				if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+					return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack retry checkpoint could not be recorded"), 0)
+				}
+				return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, failureMessage), 0)
 			}
 			return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, canResendUnknownOutcome, providerRejected, slackFailure(operationName, sdkgo.FailureAuthentication, failureMessage), response, client.receipt(call, response, ""))
 		}
@@ -763,6 +770,15 @@ func queryCredentialFailure[Output any](defect sdkgo.BranchID, failure *sdkgo.Fa
 }
 
 // isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+// isTransientRefreshFailure reports a refresh error that a later attempt may resolve. An unrefreshed
+// or unrefreshable credential leaves the provider's rejection standing.
+func (client *Client) isTransientRefreshFailure(refreshErr error) bool {
+	if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRefresh {
+		return false
+	}
+	return refreshErr != nil && !isTerminalCredentialError(refreshErr) && !errors.Is(refreshErr, projectconfig.ErrRejectedCredentialNotRefreshed)
+}
+
 func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
 		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||

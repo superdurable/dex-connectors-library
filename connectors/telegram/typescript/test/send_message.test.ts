@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { DispatchNotAllowedError, Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import {
   ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError,
@@ -154,6 +155,33 @@ describe('Telegram bounded resend of unconfirmed messages', () => {
     context.attempt = 2;
     expect(await send(client, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
+  });
+
+  it('returns Retry when the Fence refuses before sending', async () => {
+    const { client, requests } = newClient([sent]);
+    class ShortWindowContext extends AttemptContext {
+      override readonly deadline = new Date(Date.now() + 50);
+      override async recordHeartbeat(): Promise<void> { throw new Error('heartbeat write failed'); }
+    }
+    // A cap of 1 makes an unknown outcome select uncertain, so Retry proves nothing was counted as sent.
+    expect(await send(client, new ShortWindowContext(), 1)).toBeInstanceOf(RetryError);
+    const refusal = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(new DispatchNotAllowedError());
+    try { expect(await send(client, new AttemptContext(), 1)).toBeInstanceOf(RetryError); }
+    finally { refusal.mockRestore(); }
+    expect(requests).toHaveLength(0);
+  });
+
+  it('getChat retries a transient credential failure and selects defect only for a terminal one', async () => {
+    const call = { id: callId, connection: { provider: 'telegram', name: 'telegram' }, operation: { connectorId: 'telegram', operationId: 'getChat' }, context: new AttemptContext() } as unknown as Call;
+    for (const error of [new CredentialBrokerUnavailableError(), new Error('connection is not configured')]) {
+      const { client, requests } = newClient([sent], undefined, error);
+      expect((await client.getChat().invoke(call, { chatId: '@meridian_team' })).kind).toBe('retry');
+      expect(requests).toHaveLength(0);
+    }
+    for (const error of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), new CredentialMaterialError('bot token is required')]) {
+      const { client } = newClient([sent], undefined, error);
+      expect(await client.getChat().invoke(call, { chatId: '@meridian_team' })).toMatchObject({ kind: 'branch', branch: 'defect' });
+    }
   });
 
   it('returns Retry when the dispatch checkpoint is unreadable', async () => {

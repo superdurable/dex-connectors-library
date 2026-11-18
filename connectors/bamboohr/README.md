@@ -260,6 +260,15 @@ attempt could append a second row. A write answered with 400, 401, 403, 404,
 is the 409 BambooHR documents for an email another employee holds: it selects
 `providerRejected` with `CONFLICT`. Any other write status does not prove the
 write was refused, so the attempt is retried and the next attempt reads first.
+A refusal whose body echoes the API key, or that was cut at
+`maxResponseBytes`, proves nothing either and is retried.
+
+The read before the write uses the same rule on every attempt: only a readable
+400, 401, 403, 404, 411, 413, 414, 415, or 422 selects its branch. A
+malformed, oversized, or credential-reflecting 2xx, a refusal whose body echoes
+the API key or was cut, a redirect, and any other status retry, so
+`updateEmployee` no longer selects `invalidResponse`; the branch stays declared
+for compatibility.
 
 ### addEmployee
 
@@ -426,7 +435,9 @@ A non-2xx response never exposes BambooHR's `X-BambooHR-Error-Message`
 header or any message field. A Failure repeats only a machine-readable code
 from `error.code` first, then `code` if the first value is unusable, such as
 `BambooHR rejected the request (HTTP 422) [BadRequest]`. A code that contains
-the API key is dropped. An oversized error body contributes no code.
+the API key is dropped. An oversized error body contributes no code. An error
+body that contains the API key proves no refusal for a write: `updateEmployee`
+retries, and `addEmployee` resends below the send cap, then selects `uncertain`.
 
 | Response | Reads | updateEmployee write | addEmployee |
 | --- | --- | --- | --- |
@@ -435,15 +446,15 @@ the API key is dropped. An oversized error body contributes no code.
 | 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` | as 400 |
 | 411, 413, 414, 415 | `providerRejected` | `providerRejected` | as 400 |
 | 409, the documented duplicate email | `providerRejected`, `CONFLICT` | same | `providerRejected`, `CONFLICT`; `uncertain` after an earlier possible send |
-| 406, other 4xx | `providerRejected` | Retry | Retry below the send cap, then `uncertain` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | Retry | Retry below the send cap, then `uncertain` |
+| 406, other 4xx | `providerRejected`; Retry for the updateEmployee pre-write read | Retry | Retry below the send cap, then `uncertain` |
+| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed; Retry for the updateEmployee pre-write read | Retry | Retry below the send cap, then `uncertain` |
 | 429 with `Retry-After` | Retry after `Retry-After` | same | Retry after `Retry-After` |
 | 429 without `Retry-After` | Retry | Retry | Retry |
 | connection refused before sending | Retry | Retry | Retry |
 | 503, also when its body breaks | Retry, after `Retry-After` when present | same | Retry, not counted as a send |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | same | Retry below the send cap, then `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | the ID from `Location`, otherwise `uncertain` |
-| oversized non-2xx other than 429 and 503 | by status | Retry | Retry below the send cap, then `uncertain` |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; Retry for the updateEmployee pre-write read | Retry | the ID from `Location`, otherwise `uncertain` |
+| oversized non-2xx other than 429 and 503 | by status; Retry for the updateEmployee pre-write read | Retry | Retry below the send cap, then `uncertain` |
 | any failed read-back after an accepted updateEmployee write | | Retry | |
 | invalid input | `defect`, with no request | `defect`, with no request | `defect`, with no request |
 | reauthorization required, a missing, unselected, broker-refused, or (in Python and TypeScript) malformed stored credential, or unusable connection credentials | `defect`, with no request | `defect`, with no request | `defect` after a `notSent` checkpoint, with no request; `uncertain` after an earlier possible send or while a saved employee ID awaits read-back |

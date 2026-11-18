@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { Fence, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { ZoomClient } from '../src/client.js';
 import { CreateMeetingDefinition } from '../src/generated/definitions.js';
@@ -125,9 +126,51 @@ describe('Zoom bounded resend of unconfirmed meeting creates', () => {
     expect(requests).toHaveLength(2);
   });
 
-  it('never resends an accepted meeting ID with an unusable body', async () => {
-    const { client, requests } = newClient([{ status: 201, body: '{"id":92674392836,"start_time":"not a time"}' }]);
-    expect(await create(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+  it('retries only the Fence AggregateError; another AggregateError is an unknown outcome', async () => {
+    const { client, requests } = newClient([created]);
+    const fenceRefusal = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(new AggregateError([new InsufficientTimeError(), new Error('notSent write failed')]));
+    try { expect(await create(client, new AttemptContext(), 1)).toBeInstanceOf(RetryError); }
+    finally { fenceRefusal.mockRestore(); }
+    const otherError = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(new AggregateError([new Error('socket reset')]));
+    // A cap of 1 makes an unknown outcome select uncertain.
+    try { expect(await create(client, new AttemptContext(), 1)).toMatchObject({ branch: 'uncertain' }); }
+    finally { otherError.mockRestore(); }
+    expect(requests).toHaveLength(0);
+  });
+
+  it('reads back an accepted meeting ID with an unusable body instead of resending', async () => {
+    let gets = 0;
+    const { client, requests } = newClient(request => request.method === 'POST'
+      ? { status: 201, body: '{"id":92674392836,"start_time":"not a time"}' }
+      : gets++ === 0 ? { status: 503, body: '{}' } : { status: 200, body: meetingBody });
+    const context = new AttemptContext();
+    // A transient read-back failure retries, because the saved ID is read back on the next attempt.
+    expect(await create(client, context)).toBeInstanceOf(RetryError);
+    expect(JSON.stringify(context.marker)).toContain('92674392836');
+    context.attempt = 2;
+    expect(await create(client, context)).toMatchObject({ branch: 'created', value: { id: 92674392836 } });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET', 'GET']);
+  });
+
+  it.each([
+    ['transient broker failure', () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['transient unlisted failure', () => new Error('refresh timed out'), 'retry'],
+    ['reauthorization required', () => new ReauthorizationRequiredError(), 'providerRejected'],
+    ['not refreshed', () => new RejectedCredentialNotRefreshedError(), 'providerRejected'],
+  ] as const)('after a readable 401, retries only a transient refresh failure: %s', async (_name, refreshError, expected) => {
+    const requests: ProviderRequest[] = [];
+    const credentials = { accessToken: new SecretString('zoom-test-access-token'), oauthClientId: 'client-id',
+      oauthClientSecret: new SecretString('client-secret'), refreshToken: new SecretString('refresh-token') };
+    const resolve = async () => credentials;
+    const provider = { resolve, resolveWithRefresh: resolve, resolveAfterRejection: async () => { throw refreshError(); } };
+    const client = new ZoomClient({ endpoint: 'http://127.0.0.1:12345/v2' } as never, provider as never, {
+      send: async (request: ProviderRequest) => { requests.push(request); return { status: 401, headers: {}, body: Buffer.from('{"code":124,"message":"Invalid access token"}') }; },
+    });
+    const context = new AttemptContext();
+    const result = await create(client, context);
+    if (expected === 'retry') expect(result).toBeInstanceOf(RetryError);
+    else expect(result).toMatchObject({ branch: 'providerRejected' });
+    expect(context.marker).toMatchObject({ state: 'canResend' });
     expect(requests).toHaveLength(1);
   });
 

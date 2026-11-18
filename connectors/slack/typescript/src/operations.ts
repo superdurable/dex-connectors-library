@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { CheckpointError, InsufficientTimeError, newFence, type Marker } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Marker } from '@superdurable/connectors-sdk/singledispatch';
 import { failure, isCredentialRejected, queryCredentialFailure, retryAfter, type SlackClient, type SlackExchange } from './client.js';
 import { GetThreadReplyDefinition, GetWorkspaceIdentityDefinition, ListChannelMessagesDefinition, ListChannelsDefinition, ListThreadMessagesDefinition, PostButtonMessageDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './generated/definitions.js';
 import type { Channel, ChannelMessage, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelMessagesInput, ListChannelMessagesOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostButtonMessageInput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './generated/models.js';
@@ -357,7 +357,8 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
   try { response = await fence.dispatch(signal => client.request('POST', 'chat.postMessage', credential.token!, undefined, payload, signal)); }
   catch (error) {
     if (error instanceof CheckpointError) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack dispatch claim could not be recorded'));
-    if (error instanceof InsufficientTimeError) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack dispatch was not sent before the Step deadline'));
+    // The Fence raises these before sending, including its AggregateError for a short window and a failed notSent.
+    if (error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack dispatch was not sent before the Step deadline'));
     return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'TRANSPORT', 'Slack message outcome is unknown'), undefined, client.receipt(call));
   }
   if (response.status === 429 || response.status === 503) {
@@ -383,6 +384,11 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
   }
   if (response.status === 401 || (!response.error && response.status >= 200 && response.status < 300 && body?.ok === false && isCredentialRejected(response))) {
     const replacement = await client.refreshRejectedToken(call, 'bot', credential.token);
+    // A definite rejection proves this send posted nothing, so a transient refresh failure retries.
+    if (!replacement.token && replacement.isTransient && isDefiniteRefusal(response)) {
+      if (!await canResend(fence)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack retry checkpoint could not be recorded'));
+      return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack credential refresh is temporarily unavailable'));
+    }
     if (!replacement.token) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, canResendUnknownOutcome, response, client.receipt(call, response), failure(operation, 'AUTHENTICATION', replacement.terminal ? 'Slack rejected the connection credential; reconnect the connection' : 'Slack credential refresh is temporarily unavailable'));
     // An unreadable rejection cannot prove nothing was posted, so this send still counts.
     if (!isDefiniteRefusal(response)) return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'AUTHENTICATION', 'Slack connection credential was refreshed after an unconfirmed rejection'), undefined, client.receipt(call, response));
@@ -427,6 +433,11 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
 /** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
 function effectiveMaxSends(call: Call, operationMaxSends: number): number {
   return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+}
+
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
 }
 
 /** Retry a possibly sent post while the send cap allows another send, else select uncertain. */

@@ -52,19 +52,23 @@ describe('Twilio message validation', () => {
       expect(() => client().decodeMessage(Buffer.from(`${prefix}"num_segments":${token}}`), authorization)).toThrow('invalid message');
     }
   });
-  it('classifies a 401 as authentication even when credential lookup fails', async () => {
+  it.each([
+    { isTransient: true, kind: 'AVAILABILITY' as const, message: 'Twilio credential refresh is temporarily unavailable' },
+    { isTransient: false, kind: 'AUTHENTICATION' as const, message: 'Twilio rejected the message credentials; update the connection' },
+  ])('after a readable 401, retries only a transient refresh failure (transient: $isTransient)', async ({ isTransient, kind, message }) => {
     const sender = new TwilioClient({ accountSid, defaultSender: '+14155550100' }, credentialProvider, {
       send: async () => ({ status: 401, headers: {}, body: Buffer.from('{"code":20003}') }),
     });
-    vi.spyOn(sender, 'authorizationAfterRejection').mockResolvedValue({
-      failure: twilioFailure('sendMessage', 'AVAILABILITY', 'Twilio credential refresh is temporarily unavailable'), isTransient: true,
-    });
+    vi.spyOn(sender, 'authorizationAfterRejection').mockResolvedValue({ failure: twilioFailure('sendMessage', kind, message), isTransient });
+    const context = new HeartbeatContext(undefined);
     const call = { id: 'd1ffeecf-f887-5bbc-8ca8-1325f0d0700d', idempotencyKey: 'd1ffeecf-f887-5bbc-8ca8-1325f0d0700d',
       connection: { provider: 'twilio', name: 'twilio-test' }, operation: { connectorId: 'twilio-messaging', operationId: 'sendMessage' },
-      context: new HeartbeatContext(undefined), reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false } as unknown as Call;
-    expect(await sender.sendMessage().invoke(call, { to: '+14155550123', body: 'hello' })).toMatchObject({
-      branch: 'providerRejected', failure: { kind: 'AUTHENTICATION', message: 'Twilio credential refresh is temporarily unavailable' },
-    });
+      context, reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false } as unknown as Call;
+    const attempt = await sender.sendMessage().invoke(call, { to: '+14155550123', body: 'hello' });
+    // A readable 401 proves nothing was created, so either way the send is checkpointed as resendable.
+    expect(JSON.stringify(context.getLastHeartbeatValue())).toContain('"state":"canResend"');
+    if (isTransient) expect(attempt).toMatchObject({ kind: 'retry', failure: { kind, message } });
+    else expect(attempt).toMatchObject({ branch: 'providerRejected', failure: { kind: 'AUTHENTICATION', message } });
   });
   it.each([
     { error: new ReauthorizationRequiredError(), terminal: true },

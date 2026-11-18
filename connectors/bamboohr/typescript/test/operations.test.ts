@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { BambooHRClient } from '../src/client.js';
 import { buildTimeOffRequestFilter } from '../src/operations.js';
 import { CredentialMaterialError, type Credentials } from '../src/generated/models.js';
@@ -66,6 +67,39 @@ describe('BambooHR client', () => {
       const attempt = await invokeOperation(client, 'updateEmployee');
       expect(attempt.kind).toBe(expected);
     }
+  });
+
+  it.each([
+    ['unparseable 2xx', { status: 200, body: '{"id":' }],
+    ['oversized 2xx', new BodyTooLargeError(200, {})],
+    ['credential echo 2xx', { status: 200, body: '{"id":"123","firstName":"0123456789abcdef0123456789abcdef01234567"}' }],
+    ['credential echo 403', { status: 403, body: '{"error":"0123456789abcdef0123456789abcdef01234567"}' }],
+    ['oversized 404', new BodyTooLargeError(404, {})],
+    ['unlisted 409', { status: 409, body: '{}' }],
+    ['unlisted 302', { status: 302, body: '{}' }],
+  ] as const)('updateEmployee retries an unknown pre-write read: %s', async (_name, answer) => {
+    let requests = 0;
+    const client = new BambooHRClient({ companyDomain: 'acme' }, credentials, {
+      send: async () => {
+        requests += 1;
+        if (answer instanceof BodyTooLargeError) throw answer;
+        return { status: answer.status, headers: {}, body: Buffer.from(answer.body) };
+      },
+    });
+    const attempt = await invokeOperation(client, 'updateEmployee');
+    expect(attempt.kind).toBe('retry');
+    if (attempt.kind === 'retry') expect(attempt.failure.message).not.toContain('0123456789abcdef0123456789abcdef01234567');
+    expect(requests).toBe(1);
+  });
+
+  it('updateEmployee retries a write refusal that echoes the credential', async () => {
+    const answers = [{ status: 200, body: '{"id":"123","firstName":"Sam"}' }, { status: 400, body: '{"e":"0123456789abcdef0123456789abcdef01234567"}' }];
+    const client = new BambooHRClient({ companyDomain: 'acme' }, credentials, {
+      send: async () => { const answer = answers.shift()!; return { status: answer.status, headers: {}, body: Buffer.from(answer.body) }; },
+    });
+    const attempt = await invokeOperation(client, 'updateEmployee');
+    expect(attempt.kind).toBe('retry');
+    expect(answers).toHaveLength(0);
   });
 
   it.each(['getEmployee', 'findEmployeeByEmail', 'listEmployeeChanges', 'listTimeOffRequests'])('%s selects defect for a terminal credential failure and retries a transient one', async operation => {

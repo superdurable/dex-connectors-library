@@ -3,7 +3,7 @@
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
-import { DefiniteWriteStatuses, type BambooHRClient, type BambooHRCredentialResult, type BambooHRExchange } from './client.js';
+import { DefiniteRefusalStatuses, DefiniteWriteStatuses, type BambooHRClient, type BambooHRCredentialResult, type BambooHRExchange } from './client.js';
 import { AddEmployeeDefinition, FindEmployeeByEmailDefinition, GetEmployeeDefinition, ListEmployeeChangesDefinition, ListTimeOffRequestsDefinition, UpdateEmployeeDefinition } from './generated/definitions.js';
 import type { AddEmployeeInput, AddEmployeeOutput, EmployeeChange, EmployeeRecord, EmployeeSummary, FindEmployeeByEmailInput, FindEmployeeByEmailOutput, GetEmployeeInput, ListEmployeeChangesInput, ListEmployeeChangesOutput, ListTimeOffRequestsInput, ListTimeOffRequestsOutput, TimeOffRequest, UpdateEmployeeInput, UpdateEmployeeOutput } from './generated/models.js';
 
@@ -168,13 +168,12 @@ export class UpdateEmployeeOperation implements Mutation<UpdateEmployeeInput, Up
       const result = await this.client.exchange(call, 'updateEmployee', key, 'GET', `/employees/${input.employeeId}`, new URLSearchParams({ fields: fieldNames.join(',') }));
       // After an accepted write, every failed read-back retries, because repeating the absolute write is safe.
       if (isAfterWrite && result.kind !== 'success') return newMutationRetry(result.failure, result.retryAfterMs);
+      // Before the write, only a readable allowlisted refusal or a 404 selects a branch.
+      if (result.kind === 'invalid' || ((result.kind === 'rejected' || result.kind === 'notFound') && (!DefiniteRefusalStatuses.has(result.status ?? 0) || !isReadableRefusal(result)))) return newMutationRetry(result.failure, result.retryAfterMs);
       const terminal = exchangeMutation(this.client, call, result, value, input.employeeId, true);
       if (terminal) return terminal;
       try { return decodeEmployeeRecord(parseBody(result), input.employeeId, fieldNames); }
-      catch {
-        const invalidEmployee = failure('updateEmployee', 'PROTOCOL', 'BambooHR returned an invalid employee');
-        return isAfterWrite ? newMutationRetry(invalidEmployee) : newMutationBranch('invalidResponse', value, receipt, invalidEmployee);
-      }
+      catch { return newMutationRetry(failure('updateEmployee', 'PROTOCOL', 'BambooHR returned an invalid employee')); }
     };
     const current = await read(zeroUpdate);
     if (!('employeeId' in current)) return current;
@@ -183,7 +182,7 @@ export class UpdateEmployeeOperation implements Mutation<UpdateEmployeeInput, Up
     if (Object.keys(changed).length === 0) return newMutationBranch('updated', { employee: current, wasAlreadyApplied: true }, receipt);
     const write = await this.client.exchange(call, 'updateEmployee', key, 'POST', `/employees/${input.employeeId}`, undefined, changed);
     // A write without a definite refusal may have applied; the next attempt reads first.
-    if (write.kind === 'invalid' || ((write.kind === 'rejected' || write.kind === 'notFound') && !DefiniteWriteStatuses.has(write.status ?? 0))) return newMutationRetry(write.failure, write.retryAfterMs);
+    if (write.kind === 'invalid' || ((write.kind === 'rejected' || write.kind === 'notFound') && (!DefiniteWriteStatuses.has(write.status ?? 0) || !isReadableRefusal(write)))) return newMutationRetry(write.failure, write.retryAfterMs);
     const writeTerminal = exchangeMutation(this.client, call, write, { employee: current }, input.employeeId, true);
     if (writeTerminal) return writeTerminal;
     const writtenFields = Object.keys(changed).sort();
@@ -275,7 +274,7 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     // An invalid result is an unreadable 2xx: BambooHR accepted this POST, so a resend would duplicate it.
     if (result.kind === 'invalid') return newMutationUncertain(zeroAdd, result.failure, receipt);
     if (result.kind === 'defect' && !hasPossibleEarlierSend) return newMutationBranch('defect', zeroAdd, receipt, result.failure);
-    if ((result.kind === 'rejected' || result.kind === 'notFound') && DefiniteWriteStatuses.has(result.status ?? 0)) {
+    if ((result.kind === 'rejected' || result.kind === 'notFound') && DefiniteWriteStatuses.has(result.status ?? 0) && isReadableRefusal(result)) {
       // An earlier send may have added the employee, so a refusal of this resend proves nothing.
       if (hasPossibleEarlierSend) return newMutationUncertain(zeroAdd, result.failure, receipt);
       try { await fence.recordCanResend(); }
@@ -313,6 +312,8 @@ function exchangeMutation<Output>(client: BambooHRClient, call: Call, result: Ba
   const branch = result.kind === 'invalid' ? 'invalidResponse' : result.kind === 'defect' ? 'defect' : result.kind === 'notFound' && hasNotFound ? 'notFound' : 'providerRejected';
   return newMutationBranch(branch, value, client.receipt(call, objectId), result.failure);
 }
+/** Report an error answer read in full without echoing the credential. */
+function isReadableRefusal(result: Exclude<BambooHRExchange, { kind: 'success' }>): boolean { return !result.isBodyIncomplete && !result.isCredentialEchoed; }
 function parseBody(result: BambooHRExchange): unknown { if (result.kind !== 'success') throw new Error('response unavailable'); return JSON.parse(Buffer.from(result.response.body).toString('utf8')) as unknown; }
 function asObject(value: unknown): Record<string, unknown> { if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('expected object'); return value as Record<string, unknown>; }
 function decodeEmployeeId(value: unknown): string { const id = typeof value === 'number' ? String(value) : value; if (typeof id !== 'string' || !employeeIdPattern.test(id)) throw new Error('invalid employee ID'); return id; }

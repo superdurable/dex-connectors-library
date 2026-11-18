@@ -19,6 +19,7 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import RejectedCredentialNotRefreshedError
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
@@ -630,16 +631,17 @@ class CreateMeetingOperation:
                 try:
                     meeting = decode_meeting_body(exchange.body)
                 except ValueError:
-                    if _created_meeting_id(exchange.body) > 0:
-                        # Zoom returned a created meeting ID, so a resend could duplicate the meeting.
-                        return MutationAttempt.uncertain(
-                            requested,
-                            failure(
-                                operation,
-                                FailureKind.PROTOCOL,
-                                "Zoom accepted the request but returned an unusable meeting",
-                            ),
-                            self.client.receipt(call),
+                    accepted_meeting_id = _created_meeting_id(exchange.body)
+                    if accepted_meeting_id > 0:
+                        # Zoom returned a created meeting ID, so it is read back and never resent.
+                        is_accepted_id_saved = True
+                        try:
+                            await fence.record_provider_id(str(accepted_meeting_id))
+                        except Exception:
+                            # Read-back still runs, but a transient failure cannot retry without the saved ID.
+                            is_accepted_id_saved = False
+                        return await self._read_back(
+                            call, requested, str(accepted_meeting_id), is_accepted_id_saved
                         )
                     problem = failure(
                         operation,
@@ -692,7 +694,7 @@ class CreateMeetingOperation:
             except Exception as error:
                 from ._generated.connection import is_credential_material_error
 
-                if not is_credential_material_error(error):
+                if isinstance(error, RejectedCredentialNotRefreshedError):
                     return await _reject_or_select_uncertain(
                         fence,
                         has_possible_earlier_send,
@@ -700,9 +702,28 @@ class CreateMeetingOperation:
                         receipt,
                         failure(
                             operation,
+                            FailureKind.AUTHENTICATION,
+                            "Zoom rejected the connection credential, and it was not refreshed",
+                        ),
+                    )
+                if not is_credential_material_error(error):
+                    # A readable 401 proves Zoom did not process this create, so the next attempt may resend.
+                    try:
+                        await fence.record_can_resend()
+                    except Exception:
+                        return MutationAttempt.retry(
+                            failure(
+                                operation,
+                                FailureKind.AVAILABILITY,
+                                "Zoom rejected the credential but the resend checkpoint failed",
+                            )
+                        )
+                    return MutationAttempt.retry(
+                        failure(
+                            operation,
                             FailureKind.AVAILABILITY,
                             "Zoom credential refresh is temporarily unavailable",
-                        ),
+                        )
                     )
                 replaced = False
             if replaced:

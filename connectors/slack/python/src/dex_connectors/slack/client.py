@@ -31,6 +31,7 @@ from dex_connectors.sdk.projectconfig import (
     CredentialBrokerRejectedError,
     ObjectNotFoundError,
 )
+from dex_connectors.sdk.projectconfig.broker import RejectedCredentialNotRefreshedError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -1230,11 +1231,30 @@ async def _post_message(
     ):
         refresh = getattr(client.credentials, "resolve_after_rejection", None)
         replacement = None
+        is_refresh_failure_transient = False
         if refresh is not None:
             try:
                 replacement = await refresh(call)
-            except Exception:
-                pass  # A failed refresh leaves Slack's rejection terminal for this attempt.
+            except Exception as error:
+                # An unrefreshed credential leaves Slack's rejection standing; other failures may clear.
+                is_refresh_failure_transient = not _is_terminal_credential_error(error) and not isinstance(
+                    error, RejectedCredentialNotRefreshedError
+                )
+        if replacement is None and is_refresh_failure_transient and _is_definite_refusal(response):
+            # A definite rejection proves this send posted nothing, so the next attempt may resend.
+            try:
+                await fence.record_can_resend()
+            except CheckpointError:
+                return MutationAttempt.retry(
+                    _failure(
+                        operation, FailureKind.AVAILABILITY, "Slack retry checkpoint could not be recorded"
+                    )
+                )
+            return MutationAttempt.retry(
+                _failure(
+                    operation, FailureKind.AVAILABILITY, "Slack credential refresh is temporarily unavailable"
+                )
+            )
         if (
             replacement is None
             or not replacement.bot_token.reveal()

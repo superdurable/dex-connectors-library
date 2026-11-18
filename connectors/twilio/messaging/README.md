@@ -122,7 +122,7 @@ provider lookups; an unreadable or foreign checkpoint retries without sending.
 | Outcome | Result |
 | --- | --- |
 | 2xx with a valid message | `accepted`, with the SID and status, usually `queued` or `accepted` |
-| 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a readable body on a first send | `providerRejected`, with the Twilio error code in `Value.ErrorCode` and the Receipt's `twilioErrorCode`; a 401 retries only if a fresh credential differs |
+| 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a readable body on a first send | `providerRejected`, with the Twilio error code in `Value.ErrorCode` and the Receipt's `twilioErrorCode`; a 401 retries only if a fresh credential differs or the refresh fails transiently |
 | The same refusal, terminal credentials, or an unbuildable request after an earlier possible send | `uncertain` |
 | 429 or 503 | Retry, after `Retry-After` when Twilio sends it |
 | DNS, connect, or TLS failure before any connection opened | Retry |
@@ -149,7 +149,10 @@ without sending and asks for the connection to be updated or reconnected; after
 an earlier possible send it selects `uncertain`, and a transient failure there
 retries without recording `notSent`, so the earlier send stays counted. On
 401, the connector requests a forced credential refresh;
-it records a safe retry only if that returns a different valid credential.
+it records a safe retry if that returns a different valid credential, or if
+the refresh fails transiently, such as an unavailable credential broker,
+because a readable 401 proves Twilio created nothing. Go, Python, and
+TypeScript behave the same way.
 Static Twilio credentials cannot refresh automatically, so a 401 selects
 `providerRejected` with an update-connection hint until the connection is
 updated.

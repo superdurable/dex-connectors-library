@@ -1,8 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { describe, expect, it, vi } from 'vitest';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
+import { DispatchNotAllowedError, Fence, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { SlackClient } from '../src/client.js';
 import { PostChannelMessageDefinition } from '../src/generated/definitions.js';
@@ -264,6 +266,38 @@ describe('Slack bounded resend of unconfirmed posts', () => {
     expect(requests).toHaveLength(1);
     expect(forcedRefreshes).toBe(1);
     expect(callMarker(context.marker)).toMatchObject({ state: 'claimed', sendCount: 1 });
+  });
+
+  it.each([
+    ['transient 401', { status: 401, body: '{"ok":false,"error":"not_authed"}' }, () => new CredentialBrokerUnavailableError(), 'retry'],
+    ['transient token_expired', { status: 200, body: '{"ok":false,"error":"token_expired"}' }, () => new Error('refresh timed out'), 'retry'],
+    ['terminal 401', { status: 401, body: '{"ok":false,"error":"not_authed"}' }, () => new ReauthorizationRequiredError(), 'providerRejected'],
+    ['not refreshed 401', { status: 401, body: '{"ok":false,"error":"not_authed"}' }, () => new RejectedCredentialNotRefreshedError(), 'providerRejected'],
+  ] as const)('after a definite rejection, retries only a transient refresh failure: %s', async (_name, answer, refreshError, expected) => {
+    const requests: ProviderRequest[] = [];
+    const credentials = { botToken: new SecretString('rejected-bot'), userToken: new SecretString('user-token') };
+    const provider = { resolve: async () => credentials, resolveWithRefresh: async () => credentials, resolveAfterRejection: async () => { throw refreshError(); } };
+    const client = new SlackClient({}, provider, {
+      send: async (request: ProviderRequest) => { requests.push(request); return { status: answer.status, headers: {}, body: Buffer.from(answer.body) }; },
+    });
+    const context = new AttemptContext();
+    const result = await post(client, context);
+    if (expected === 'retry') expect(result).toBeInstanceOf(RetryError);
+    else expect(result).toMatchObject({ branch: 'providerRejected' });
+    expect(callMarker(context.marker)).toMatchObject({ state: 'canResend' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    ['DispatchNotAllowedError', () => new DispatchNotAllowedError()],
+    ['the Fence AggregateError', () => new AggregateError([new InsufficientTimeError(), new Error('notSent write failed')])],
+  ])('returns Retry when the Fence refuses with %s before sending', async (_name, refusal) => {
+    const { client, requests } = newClient(() => ({ status: 200, body: '{"ok":true,"channel":"C123","ts":"1.0"}' }));
+    const dispatch = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(refusal());
+    // A cap of 1 makes an unknown outcome select uncertain, so Retry proves nothing was counted as sent.
+    try { expect(await post(client, new AttemptContext(), 1)).toBeInstanceOf(RetryError); }
+    finally { dispatch.mockRestore(); }
+    expect(requests).toHaveLength(0);
   });
 
   it('treats an unreadable 401 body as an unknown outcome', async () => {

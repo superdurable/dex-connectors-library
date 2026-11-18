@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -199,6 +200,14 @@ func (operation CreateMeetingOperation) Invoke(call sdkgo.Call, input CreateMeet
 		failure := newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom credential refresh is temporarily unavailable")
 		if isTerminalCredentialError(refreshErr) || refreshErr == nil {
 			failure = newFailure(createMeetingOperationID, sdkgo.FailureAuthentication, "Zoom connection requires reauthorization; reconnect the connection")
+		} else if errors.Is(refreshErr, projectconfig.ErrRejectedCredentialNotRefreshed) {
+			failure = newFailure(createMeetingOperationID, sdkgo.FailureAuthentication, "Zoom rejected the connection credential, and it was not refreshed")
+		} else {
+			// A readable 401 proves Zoom did not process this create, so a transient refresh failure retries.
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[Meeting](newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom rejected the credential but the resend checkpoint failed"), 0)
+			}
+			return sdkgo.NewMutationRetry[Meeting](failure, 0)
 		}
 		return client.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, requested, failure, classification.errorCode)
 	case response.statusCode == http.StatusTooManyRequests && classification.outcome == statusOutcomeRejected:
@@ -233,9 +242,11 @@ func (client *Client) classifyCreatedMeeting(call sdkgo.Call, response providerR
 	}
 	meeting, err := decodeMeeting(response.body)
 	if err != nil {
-		if readCreatedMeetingID(response.body) > 0 {
-			// Zoom returned a created meeting ID, so a resend could duplicate the meeting.
-			return sdkgo.NewMutationUncertain(requested, newFailure(createMeetingOperationID, sdkgo.FailureProtocol, "Zoom accepted the request but returned an unusable meeting"), client.receipt(call, "", ""))
+		if createdMeetingID := readCreatedMeetingID(response.body); createdMeetingID > 0 {
+			// Zoom returned a created meeting ID, so the meeting is read back by it and never resent.
+			providerID := strconv.FormatInt(createdMeetingID, 10)
+			isProviderIDSaved := fence.RecordProviderID(providerID) == nil
+			return client.readBackCreatedMeeting(call, requested, providerID, isProviderIDSaved)
 		}
 		return sdkgo.NewMutationUncertain(requested, newFailure(createMeetingOperationID, sdkgo.FailureProtocol, "Zoom accepted the create, but its response is malformed"), client.receipt(call, "", ""))
 	}

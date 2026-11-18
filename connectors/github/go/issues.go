@@ -372,23 +372,23 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 			return writer.uncertain(sdkgo.FailureAvailability, "GitHub issue creation outcome is unknown", readBack.receipt())
 		}
 	}
-	return writer.dispatch(fence, request, decision.MaximumPriorSends+1)
+	return writer.dispatch(fence, request, decision.MaximumPriorSends+1, hasPossibleEarlierSend)
 }
 
 func (readBack issueReadBack) receipt() sdkgo.Receipt { return receipt(readBack.response) }
 
 // dispatch sends the issue once and classifies the answer. claimSendCount counts this send.
-func (writer *issueWriter) dispatch(fence *singledispatch.Fence, request createIssueRequestBody, claimSendCount int32) sdkgo.MutationAttempt[CreatedIssue] {
+func (writer *issueWriter) dispatch(fence *singledispatch.Fence, request createIssueRequestBody, claimSendCount int32, hasPossibleEarlierSend bool) sdkgo.MutationAttempt[CreatedIssue] {
 	payload, err := json.Marshal(request)
 	if err != nil {
-		return writer.branch(CreateIssueBranchDefect, sdkgo.FailureLocalDefect, "GitHub issue request could not be encoded", sdkgo.Receipt{})
+		return writer.localFailureBeforeSend(hasPossibleEarlierSend, "GitHub issue request could not be encoded")
 	}
 	attempt := &issueWriteAttempt{writer: writer, payload: payload}
 	if err := fence.Dispatch(attempt.send); err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return sdkgo.NewMutationRetry[CreatedIssue](providerFailure(createIssueOperationID, sdkgo.FailureAvailability, "GitHub dispatch checkpoint or request budget is unavailable"), 0)
 		}
-		return writer.branch(CreateIssueBranchDefect, sdkgo.FailureLocalDefect, "GitHub dispatch was not allowed", sdkgo.Receipt{})
+		return writer.localFailureBeforeSend(hasPossibleEarlierSend, "GitHub dispatch was not allowed")
 	}
 	isBelowSendCap := claimSendCount < writer.call.MaxSends()
 	if attempt.err != nil {
@@ -611,6 +611,14 @@ func (writer *issueWriter) branch(branch sdkgo.BranchID, kind sdkgo.FailureKind,
 
 func (writer *issueWriter) uncertain(kind sdkgo.FailureKind, message string, uncertainReceipt sdkgo.Receipt) sdkgo.MutationAttempt[CreatedIssue] {
 	return sdkgo.NewMutationUncertain(writer.requested, providerFailure(createIssueOperationID, kind, message), uncertainReceipt)
+}
+
+// localFailureBeforeSend selects defect only when no earlier send may have created the issue.
+func (writer *issueWriter) localFailureBeforeSend(hasPossibleEarlierSend bool, message string) sdkgo.MutationAttempt[CreatedIssue] {
+	if hasPossibleEarlierSend {
+		return writer.uncertain(sdkgo.FailureLocalDefect, message+" after an earlier possible send", sdkgo.Receipt{})
+	}
+	return writer.branch(CreateIssueBranchDefect, sdkgo.FailureLocalDefect, message, sdkgo.Receipt{})
 }
 
 // hasReplacementCredential reports whether the credential source issued a new token after a 401.

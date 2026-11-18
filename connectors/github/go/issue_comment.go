@@ -174,21 +174,21 @@ func (operation CreateIssueCommentOperation) Invoke(call sdkgo.Call, input Creat
 			return writer.uncertain(sdkgo.FailureAvailability, "GitHub comment creation outcome is unknown", receipt(readBack.response))
 		}
 	}
-	return writer.dispatch(fence, request, decision.MaximumPriorSends+1)
+	return writer.dispatch(fence, request, decision.MaximumPriorSends+1, hasPossibleEarlierSend)
 }
 
 // dispatch sends the comment once and classifies the answer. claimSendCount counts this send.
-func (writer *commentWriter) dispatch(fence *singledispatch.Fence, request createIssueCommentRequestBody, claimSendCount int32) sdkgo.MutationAttempt[CreatedIssueComment] {
+func (writer *commentWriter) dispatch(fence *singledispatch.Fence, request createIssueCommentRequestBody, claimSendCount int32, hasPossibleEarlierSend bool) sdkgo.MutationAttempt[CreatedIssueComment] {
 	payload, err := json.Marshal(request)
 	if err != nil {
-		return writer.branch(CreateIssueCommentBranchDefect, sdkgo.FailureLocalDefect, "GitHub comment request could not be encoded", sdkgo.Receipt{})
+		return writer.localFailureBeforeSend(hasPossibleEarlierSend, "GitHub comment request could not be encoded")
 	}
 	attempt := &commentWriteAttempt{writer: writer, payload: payload}
 	if err := fence.Dispatch(attempt.send); err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return sdkgo.NewMutationRetry[CreatedIssueComment](providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub dispatch checkpoint or request budget is unavailable"), 0)
 		}
-		return writer.branch(CreateIssueCommentBranchDefect, sdkgo.FailureLocalDefect, "GitHub dispatch was not allowed", sdkgo.Receipt{})
+		return writer.localFailureBeforeSend(hasPossibleEarlierSend, "GitHub dispatch was not allowed")
 	}
 	isBelowSendCap := claimSendCount < writer.call.MaxSends()
 	if attempt.err != nil {
@@ -234,6 +234,14 @@ func (writer *commentWriter) dispatch(fence *singledispatch.Fence, request creat
 
 // refuse selects a definite refusal of the first send after recording canResend; after an
 // earlier possible send, the refusal cannot prove no comment exists, so it selects uncertain.
+// localFailureBeforeSend selects defect only when no earlier send may have created the comment.
+func (writer *commentWriter) localFailureBeforeSend(hasPossibleEarlierSend bool, message string) sdkgo.MutationAttempt[CreatedIssueComment] {
+	if hasPossibleEarlierSend {
+		return writer.uncertain(sdkgo.FailureLocalDefect, message+" after an earlier possible send", sdkgo.Receipt{})
+	}
+	return writer.branch(CreateIssueCommentBranchDefect, sdkgo.FailureLocalDefect, message, sdkgo.Receipt{})
+}
+
 func (writer *commentWriter) refuse(fence *singledispatch.Fence, claimSendCount int32, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string, refusalReceipt sdkgo.Receipt) sdkgo.MutationAttempt[CreatedIssueComment] {
 	if claimSendCount > 1 {
 		return writer.uncertain(kind, message, refusalReceipt)

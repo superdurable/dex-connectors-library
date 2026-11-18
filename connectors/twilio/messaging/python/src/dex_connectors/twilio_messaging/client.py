@@ -16,16 +16,21 @@ import httpx
 from dex_connectors.sdk import (
     Call,
     CredentialProvider,
+    CredentialRefreshResult,
+    CredentialRefreshState,
     Failure,
     FailureKind,
     ReauthorizationRequiredError,
     Receipt,
+    RejectedCredentialRefreshingProvider,
+    resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.projectconfig import (
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
     ObjectNotFoundError,
 )
+from dex_connectors.sdk.projectconfig.broker import RejectedCredentialNotRefreshedError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -52,6 +57,23 @@ _TERMINAL_CREDENTIAL_ERRORS = (
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
 )
+
+
+class _ManualRotationRefreshDriver:
+    """Never refresh: a person rotates Twilio credentials, so the host only rereads them."""
+
+    def refresh_required(self, state: CredentialRefreshState[Credentials]) -> bool:
+        """Report that no provider refresh exchange exists."""
+        return False
+
+    async def refresh(
+        self, state: CredentialRefreshState[Credentials]
+    ) -> CredentialRefreshResult[Credentials]:
+        """Refuse a provider refresh exchange."""
+        raise ValueError("Twilio credentials require manual rotation")
+
+
+_MANUAL_ROTATION_REFRESH_DRIVER = _ManualRotationRefreshDriver()
 _ACCOUNT = re.compile(r"AC[0-9a-f]{32}\Z")
 _API_KEY = re.compile(r"SK[0-9a-f]{32}\Z")
 _MESSAGE = re.compile(r"(?:SM|MM)[0-9a-f]{32}\Z")
@@ -182,6 +204,68 @@ class Client:
                 ),
                 True,
             )
+        return self._authorization_from_credentials(credentials, operation)
+
+    async def authorization_after_rejection(
+        self, call: Call
+    ) -> tuple[tuple[str, str] | None, Failure | None, bool]:
+        """Ask the credential host for a newer credential after Twilio rejected a send.
+
+        The third value is True only for a transient failure that a later attempt may resolve.
+        """
+        if not isinstance(self._credentials, RejectedCredentialRefreshingProvider):
+            return (
+                None,
+                failure(
+                    "sendMessage",
+                    FailureKind.AUTHENTICATION,
+                    "Twilio credential cannot be refreshed after rejection",
+                ),
+                False,
+            )
+        try:
+            credentials = await resolve_credential_after_rejection(
+                self._credentials, call, _MANUAL_ROTATION_REFRESH_DRIVER
+            )
+        except RejectedCredentialNotRefreshedError:
+            return (
+                None,
+                failure(
+                    "sendMessage",
+                    FailureKind.AUTHENTICATION,
+                    "Twilio rejected the message credentials; update the connection",
+                ),
+                False,
+            )
+        except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if isinstance(error, _TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error):
+                return (
+                    None,
+                    failure(
+                        "sendMessage",
+                        FailureKind.AUTHENTICATION,
+                        "Twilio connection credentials are unavailable or require reauthorization; "
+                        "reconnect the connection",
+                    ),
+                    False,
+                )
+            return (
+                None,
+                failure(
+                    "sendMessage",
+                    FailureKind.AVAILABILITY,
+                    "Twilio credential refresh is temporarily unavailable",
+                ),
+                True,
+            )
+        return self._authorization_from_credentials(credentials, "sendMessage")
+
+    def _authorization_from_credentials(
+        self, credentials: object, operation: str
+    ) -> tuple[tuple[str, str] | None, Failure | None, bool]:
+        """Validate resolved credential material into a Basic authorization pair."""
         if not isinstance(credentials, Credentials):
             return (
                 None,

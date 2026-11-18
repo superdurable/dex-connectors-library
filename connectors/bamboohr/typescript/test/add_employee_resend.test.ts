@@ -70,6 +70,14 @@ describe('BambooHR addEmployee bounded resend', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it('treats a refusal that echoes the credential as an unknown outcome', async () => {
+    const { client, requests } = newClient(() => ({ status: 400, body: '{"echo":"inert-key"}' }));
+    const context = new AttemptContext();
+    expect(await add(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed', sendCount: 1 });
+    expect(requests).toHaveLength(1);
+  });
+
   it.each([400, 409])('selects uncertain for HTTP %i after a possible send', async status => {
     let index = 0;
     const { client, requests } = newClient(() => ({ status: index++ === 0 ? 502 : status, body: '{}' }));

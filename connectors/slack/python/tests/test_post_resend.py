@@ -16,9 +16,14 @@ from dex_connectors.sdk import (
     CredentialProvider,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     run_mutation,
+)
+from dex_connectors.sdk.projectconfig.broker import (
+    CredentialBrokerUnavailableError,
+    RejectedCredentialNotRefreshedError,
 )
 from dex_connectors.sdk.singledispatch import Marker
 
@@ -400,6 +405,47 @@ async def test_unreadable_unauthorized_body_still_counts_after_a_refresh() -> No
     assert credentials.forced_refreshes == 1
     assert len(requests) == 1
     assert context.marker is not None and context.marker.state == "claimed"
+
+
+_NOT_AUTHED = httpx.Response(401, json={"ok": False, "error": "not_authed"})
+
+
+class FailingRefreshCredentials(SequencedCredentials):
+    """Fail the forced refresh after a rejection with one fixed error."""
+
+    def __init__(self, error: Exception) -> None:
+        super().__init__(["rejected-bot"])
+        self.error = error
+
+    async def resolve_after_rejection(self, call: Call) -> Credentials:
+        """Raise the configured refresh failure."""
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("answer", "error", "expected"),
+    [
+        (_NOT_AUTHED, CredentialBrokerUnavailableError("down"), "retry"),
+        (httpx.Response(200, json={"ok": False, "error": "token_expired"}), TimeoutError(), "retry"),
+        (_NOT_AUTHED, ReauthorizationRequiredError("revoked"), "rejected"),
+        (_NOT_AUTHED, RejectedCredentialNotRefreshedError("not refreshed"), "rejected"),
+    ],
+)
+async def test_definite_rejection_retries_only_a_transient_refresh_failure(
+    answer: httpx.Response, error: Exception, expected: str
+) -> None:
+    """A definite rejection posted nothing, so a transient refresh failure records canResend."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    credentials = FailingRefreshCredentials(error)
+    result = await post(lambda _: answer, context, requests, credentials=credentials)
+    assert len(requests) == 1
+    assert context.marker is not None and context.marker.state == "canResend"
+    if expected == "retry":
+        assert isinstance(result, RetryError)
+    else:
+        assert isinstance(result, MutationResult) and result.branch == "providerRejected"
 
 
 class FailingProviderIDContext(AttemptContext):

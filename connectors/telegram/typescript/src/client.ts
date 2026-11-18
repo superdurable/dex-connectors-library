@@ -11,7 +11,7 @@ import {
   BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
-import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { GetChatDefinition, SendMessageDefinition } from './generated/definitions.js';
 import { isCredentialMaterialError, type Chat, type Config, type Credentials, type GetChatInput, type SendMessageInput, type SentMessage } from './generated/models.js';
 
@@ -182,7 +182,8 @@ export class SendMessageOperation implements Mutation<SendMessageInput, SentMess
       exchange = await fence.dispatch(signal => this.client.exchange(call, 'POST', url,
         { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body, signal));
     } catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError)
+      // The Fence raises these before sending, including its AggregateError for a short window and a failed notSent.
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error))
         return sendRetry('TRANSPORT', 'Telegram dispatch was not started');
       return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'Telegram message outcome is unknown');
     }
@@ -281,8 +282,10 @@ export class GetChatOperation implements Query<GetChatInput, Chat> {
   async invoke(call: Call, input: GetChatInput): Promise<QueryAttempt<Chat>> {
     if (!input || !validChatID(input.chatId))
       return chatFailure('defect', 'VALIDATION', 'chatId must be a decimal ID or public @username');
-    const token = await this.client.botToken(call);
-    if (!token) return chatFailure('defect', 'AUTHENTICATION', 'bot token is unavailable or invalid');
+    const resolution = await this.client.botTokenWithReason(call);
+    if (!('token' in resolution) && !resolution.isTerminal) return chatRetry('AVAILABILITY', 'bot token is temporarily unavailable');
+    if (!('token' in resolution)) return chatFailure('defect', 'AUTHENTICATION', 'bot token is unavailable or invalid');
+    const token = resolution.token;
     const url = `${this.client.baseUrl}/bot${token}/getChat?${new URLSearchParams({ chat_id: input.chatId })}`;
     const exchange = await this.client.exchange(call, 'GET', url, { Accept: 'application/json' });
     if (exchange.error === 'request') return chatRetry('AVAILABILITY', 'Telegram request failed');
@@ -324,6 +327,11 @@ export class GetChatOperation implements Query<GetChatInput, Chat> {
     return newQueryBranch('found', { id: result.id as number, type: result.type,
       title: result.title ?? '' as string, username: result.username ?? '' as string });
   }
+}
+
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
 }
 
 /** Report a credential failure that only reconnecting the connection can fix. */

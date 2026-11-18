@@ -110,6 +110,15 @@ type bambooHRResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+	// isBodyIncomplete marks an error body cut at maxResponseBytes; it proves no refusal.
+	isBodyIncomplete bool
+	// isCredentialEchoed marks an error body that contains the API key; it proves no refusal.
+	isCredentialEchoed bool
+}
+
+// isReadableRefusal reports an error answer whose body was read in full without echoing the credential.
+func (response bambooHRResponse) isReadableRefusal() bool {
+	return !response.isBodyIncomplete && !response.isCredentialEchoed
 }
 
 // exchangeOutcome is the provider-neutral meaning of one BambooHR request that each operation maps to a branch.
@@ -254,6 +263,7 @@ func (client *Client) exchangeWithContext(ctx context.Context, credentials Crede
 		return bambooHRExchange{outcome: exchangeUnavailable, response: response, failure: bambooHRFailure(sdkgo.FailureResponseTooLarge, operation, fmt.Sprintf("BambooHR write response exceeds the configured maxResponseBytes limit (HTTP %d)", httpResponse.StatusCode))}
 	}
 	response.body = body
+	response.isBodyIncomplete = readErr != nil
 	if isSuccess {
 		if bytes.Contains(body, []byte(credentials.APIKey.Reveal())) {
 			response.body = nil
@@ -296,6 +306,8 @@ func (client *Client) buildRequest(ctx context.Context, credentials Credentials,
 // free text, so it is never read.
 func (client *Client) classifyFailureStatus(response bambooHRResponse, credentials Credentials, operation string) bambooHRExchange {
 	errorCode := describeBambooHRError(response.body, credentials)
+	secret := credentials.APIKey.Reveal()
+	response.isCredentialEchoed = secret != "" && bytes.Contains(response.body, []byte(secret))
 	response.body = nil
 	retryAfterHeader := response.header.Get("Retry-After")
 	retryAfter := providerhttp.ParseRetryAfter(retryAfterHeader, client.now())
