@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/monday/go"
 	"github.com/superdurable/dex-connectors-library/connectors/monday/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -240,7 +242,7 @@ func TestFencedWritesCredentialFailureAfterARateLimitedResendNeverRecordsNotSent
 	before := dispatchMarkerForTest(t, stepContext)
 	require.Equal(t, singledispatch.StateCanResend, before.State)
 	// The canResend marker gives sendAllowed with one possible earlier send.
-	broken, err := monday.New(monday.Config{}, sdkgo.StaticCredentialProvider[monday.Credentials]{}, monday.WithAPIURL(provider.URL+"/v2"))
+	broken, err := monday.New(monday.Config{}, failingMondayCredentials{projectconfig.ErrObjectNotFound}, monday.WithAPIURL(provider.URL+"/v2"))
 	require.NoError(t, err)
 	stepContext.attemptNo = 3
 	result, err := addUpdateForTest(t, stepContext, broken)
@@ -248,6 +250,87 @@ func TestFencedWritesCredentialFailureAfterARateLimitedResendNeverRecordsNotSent
 	require.Equal(t, monday.AddUpdateBranchUncertain, result.Branch)
 	require.Equal(t, before, dispatchMarkerForTest(t, stepContext))
 	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestFencedWritesTreatAnOversizedRefusalBodyAsUnknown(t *testing.T) {
+	provider := newRecordingMonday(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
+		writeJSON(t, response, http.StatusForbidden, `{"errors":[{"message":"`+strings.Repeat("x", 4096)+`"}]}`)
+	})
+	client, err := monday.New(monday.Config{MaxResponseBytes: 1024}, testCredentialProvider(), monday.WithAPIURL(provider.URL+"/v2"))
+	require.NoError(t, err)
+	stepContext := newMondayDexContext("oversized-refusal")
+	for attempt := int32(1); attempt < 3; attempt++ {
+		stepContext.attemptNo = attempt
+		_, err := addUpdateForTest(t, stepContext, client)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "an unreadable refusal is unknown, so it resends below the cap")
+	}
+	stepContext.attemptNo = 3
+	result, err := addUpdateForTest(t, stepContext, client)
+	require.NoError(t, err)
+	require.Equal(t, monday.AddUpdateBranchUncertain, result.Branch)
+	require.Equal(t, 3, provider.requestCount())
+}
+
+// failingMondayCredentials fails every credential resolution with err.
+type failingMondayCredentials struct{ err error }
+
+func (credentials failingMondayCredentials) Resolve(sdkgo.Call) (monday.Credentials, error) {
+	return monday.Credentials{}, credentials.err
+}
+
+func (credentials failingMondayCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[monday.Credentials]) (monday.Credentials, error) {
+	return credentials.Resolve(call)
+}
+
+func TestFencedWritesRetryATransientCredentialFailureAndSelectDefectOnlyForATerminalOne(t *testing.T) {
+	unavailable := fmt.Errorf("read shared credential: %w", projectconfig.ErrCredentialBrokerUnavailable)
+	for _, test := range []struct {
+		name        string
+		err         error
+		isTransient bool
+	}{
+		{"broker unavailable", unavailable, true},
+		{"store read", errors.New("project storage read timed out"), true},
+		{"object not found", projectconfig.ErrObjectNotFound, false},
+		{"connection not selected", projectconfig.ErrConnectionNotSelected, false},
+		{"broker rejected", projectconfig.ErrCredentialBrokerRejected, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingMonday(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
+				writeJSON(t, response, http.StatusInternalServerError, `{"errors":[{}]}`)
+			})
+			broken, err := monday.New(monday.Config{}, failingMondayCredentials{test.err}, monday.WithAPIURL(provider.URL+"/v2"))
+			require.NoError(t, err)
+
+			firstSend := newMondayDexContext("credential-first-" + test.name)
+			result, err := addUpdateForTest(t, firstSend, broken)
+			if test.isTransient {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "a transient credential failure before any send retries")
+				require.Equal(t, singledispatch.StateNotSent, dispatchMarkerForTest(t, firstSend).State)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, monday.AddUpdateBranchDefect, result.Branch)
+			}
+
+			afterSend := newMondayDexContext("credential-after-" + test.name)
+			_, err = addUpdateForTest(t, afterSend, newMondayClient(t, provider.URL))
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			before := dispatchMarkerForTest(t, afterSend)
+			afterSend.attemptNo = 2
+			result, err = addUpdateForTest(t, afterSend, broken)
+			if test.isTransient {
+				require.ErrorAs(t, err, &retry, "a transient credential failure after a possible send retries")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, monday.AddUpdateBranchUncertain, result.Branch)
+			}
+			require.Equal(t, before, dispatchMarkerForTest(t, afterSend), "a possible earlier send is never hidden by notSent")
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
 }
 
 func TestFencedWritesHonorTheApplicationSendCap(t *testing.T) {

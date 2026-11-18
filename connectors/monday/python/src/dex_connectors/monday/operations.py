@@ -236,10 +236,11 @@ class _FencedWrite:
             return MutationAttempt.retry(
                 failure(operation, FailureKind.AVAILABILITY, "not enough time remains to send the mutation")
             )
+        observed_statuses: list[int] = []
         try:
             return await self.fence.dispatch(
                 lambda write_deadline: client.send_with_rejection_refresh(
-                    call, operation, document, variables, credentials, True, write_deadline
+                    call, operation, document, variables, credentials, True, write_deadline, observed_statuses
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError):
@@ -256,6 +257,16 @@ class _FencedWrite:
                 return MutationAttempt.uncertain(output, cause, Receipt())
             return MutationAttempt.branch_result("defect", output, Receipt(), cause)
         except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # The write window ended after 2xx headers, so monday.com may have accepted the write.
+                return Exchange(
+                    "invalid",
+                    observed_statuses[-1],
+                    problem=failure(
+                        operation, FailureKind.TRANSPORT, "monday.com response could not be read"
+                    ),
+                    success_body_unreadable=True,
+                )
             return Exchange(
                 "uncertain",
                 problem=failure(

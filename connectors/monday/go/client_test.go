@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/monday/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -211,11 +212,11 @@ func TestNewRejectsUnsafeConfiguration(t *testing.T) {
 
 func TestInvalidCredentialsSelectDefectWithoutARequest(t *testing.T) {
 	provider := newRecordingMonday(t, func(http.ResponseWriter, recordedRequest, int) { t.Fatal("no request may be sent") })
-	for name, providerCredentials := range map[string]sdkgo.StaticCredentialProvider[monday.Credentials]{
-		"token with a space":   {mondayConnection: {AuthMethodID: monday.PersonalAPITokenAuthMethodID, APIToken: sdkgo.NewSecretString("two words")}},
-		"unknown auth method":  {mondayConnection: {AuthMethodID: "basic", APIToken: sdkgo.NewSecretString(testAPIToken)}},
-		"blank oauth token":    {mondayConnection: {AuthMethodID: monday.OAuthAuthMethodID}},
-		"connection not found": {},
+	for name, providerCredentials := range map[string]monday.CredentialSource{
+		"token with a space":   sdkgo.StaticCredentialProvider[monday.Credentials]{mondayConnection: {AuthMethodID: monday.PersonalAPITokenAuthMethodID, APIToken: sdkgo.NewSecretString("two words")}},
+		"unknown auth method":  sdkgo.StaticCredentialProvider[monday.Credentials]{mondayConnection: {AuthMethodID: "basic", APIToken: sdkgo.NewSecretString(testAPIToken)}},
+		"blank oauth token":    sdkgo.StaticCredentialProvider[monday.Credentials]{mondayConnection: {AuthMethodID: monday.OAuthAuthMethodID}},
+		"connection not found": failingMondayCredentials{projectconfig.ErrObjectNotFound},
 	} {
 		t.Run(name, func(t *testing.T) {
 			client, err := monday.New(monday.Config{}, providerCredentials, monday.WithAPIURL(provider.URL+"/v2"))
