@@ -416,8 +416,9 @@ async def test_saved_ticket_id_with_a_missing_ticket_selects_uncertain() -> None
     [
         {"error": "RecordInvalid", "description": "x" * 4096},
         {"error": "RecordInvalid", "ticket": {"id": 5512}},
+        {"error": "RecordInvalid", "description": "inert-token"},
     ],
-    ids=["oversized", "carries a ticket"],
+    ids=["oversized", "carries a ticket", "echoes the token"],
 )
 @pytest.mark.parametrize("operation_name", ["updateTicket", "createTicket"])
 async def test_refusal_with_an_unreadable_or_contradictory_body_is_an_unknown_outcome(
@@ -479,6 +480,25 @@ async def test_unknown_outcome_of_the_last_allowed_send_reads_back_before_select
     assert result.branch == ("updated" if is_change_found else "uncertain")
     assert len(requests) == 11
     assert [request.method for request in requests[9:]] == ["GET", "GET"], "at the cap it only reads back"
+
+
+@pytest.mark.asyncio
+async def test_credential_echoing_refusal_resends_below_the_cap_and_is_uncertain_at_the_cap() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    answer = update_answers(
+        lambda _: json_answer(422, {"error": "RecordInvalid", "description": "inert-token"}),
+        lambda _: EMPTY_AUDITS,
+    )
+    for attempt in (1, 2, 3):
+        context.attempt = attempt
+        result = await run("updateTicket", answer, context, requests)
+        assert isinstance(result, RetryError), f"attempt {attempt}: an echoing refusal is unknown"
+        assert context.marker is not None and context.marker.state == "claimed"
+    context.attempt = 4
+    result = await run("updateTicket", answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert [request.method for request in requests].count("PUT") == 3
 
 
 @pytest.mark.asyncio

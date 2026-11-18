@@ -244,6 +244,7 @@ func TestCreateTicketRefusalWithAnUnreadableOrContradictoryBodyRetries(t *testin
 	for name, body := range map[string]string{
 		"oversized":        `{"error":"RecordInvalid","description":"` + strings.Repeat("x", 4096) + `"}`,
 		"carries a ticket": `{"error":"RecordInvalid","ticket":{"id":35437}}`,
+		"echoes the token": `{"error":"RecordInvalid","description":"` + testAPIToken + `"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingZendesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
