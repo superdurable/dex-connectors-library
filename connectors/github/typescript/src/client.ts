@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { BodyTooLargeError, ProviderTransportError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
@@ -201,7 +201,7 @@ export class GitHubClient {
       });
       return { response, isDispatched: true, hasUnusableBody: false };
     } catch (error) {
-      if (error instanceof BodyTooLargeError || error instanceof ProviderTransportError && error.status !== undefined) {
+      if (error instanceof BodyTooLargeError || (error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined) {
         return { response: { status: error.status ?? 0, headers: error.headers ?? {}, body: new Uint8Array() }, isDispatched: true, hasUnusableBody: true };
       }
       return { isDispatched: !(error instanceof ProviderTransportError && error.isProvablyNotSent), hasUnusableBody: false };

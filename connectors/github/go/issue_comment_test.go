@@ -97,6 +97,28 @@ func TestCreateIssueCommentSelectsUncertainOnlyAtTheSendCap(t *testing.T) {
 	require.Equal(t, 1, oneSend.count(http.MethodPost))
 }
 
+func TestCreateIssueCommentTreatsAnUnreadableRefusalBodyAsUnknown(t *testing.T) {
+	provider := newCommentProvider(t, comment422Cut)
+	client := newIssueClient(t, provider.server.URL, github.RepositoryAuthMethodID)
+	ctx := singledispatchtest.NewContext("issues-flow", "comment-unreadable-refusal")
+	_, err := sdkgo.RunMutation(ctx, client.CreateIssueComment(), githubConnection, triageNoteInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unreadable 422 body does not prove a refusal")
+	require.Equal(t, singledispatch.StateClaimed, lastMarker(t, ctx).State, "the send stays counted, with no canResend")
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateIssueComment(), githubConnection, triageNoteInput())
+	require.NoError(t, err)
+	require.Equal(t, github.CreateIssueCommentBranchCreated, result.Branch, result.Failure)
+	require.Equal(t, 2, provider.count(http.MethodPost))
+
+	atCap := newCommentProvider(t, comment422Cut)
+	atCapClient := newIssueClient(t, atCap.server.URL, github.RepositoryAuthMethodID)
+	result, err = sdkgo.RunMutation(singledispatchtest.NewContext("issues-flow", "comment-unreadable-cap"), atCapClient.CreateIssueComment(), githubConnection, triageNoteInput(), sdkgo.WithMaxSends(1))
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Equal(t, 1, atCap.count(http.MethodPost))
+}
+
 func TestCreateIssueCommentReadsTheSavedCommentIDAfterALostStepResult(t *testing.T) {
 	provider := newCommentProvider(t)
 	client := newIssueClient(t, provider.server.URL, github.RepositoryAuthMethodID)
@@ -183,6 +205,7 @@ const (
 	comment404          commentWriteBehavior = "answer 404"
 	comment410          commentWriteBehavior = "answer 410"
 	comment422          commentWriteBehavior = "answer 422"
+	comment422Cut       commentWriteBehavior = "answer 422 with an interrupted body"
 )
 
 // commentProvider is a local fake of GitHub's issue comment create, list, and get endpoints.
@@ -255,6 +278,13 @@ func (provider *commentProvider) serveCreate(response http.ResponseWriter, reque
 	behavior := commentStore201
 	if len(provider.behaviors) > 0 {
 		behavior, provider.behaviors = provider.behaviors[0], provider.behaviors[1:]
+	}
+	if behavior == comment422Cut {
+		// A declared length the handler never fills makes the server cut the body.
+		response.Header().Set("Content-Length", "4096")
+		response.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = response.Write([]byte(`{"message":"Validation`))
+		return
 	}
 	statuses := map[commentWriteBehavior]int{comment429: 429, comment503: 503, comment403: 403, comment404: 404, comment410: 410, comment422: 422, commentDrop502: 502}
 	if status, isScripted := statuses[behavior]; isScripted {

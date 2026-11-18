@@ -4,7 +4,7 @@
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
-import { BodyTooLargeError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { GitHubClient, PublicAuthMethodID, RepositoryAuthMethodID } from '../src/client.js';
 import { CreateIssueCommentDefinition, CreateIssueDefinition, ReplaceIssueLabelsDefinition, SetIssueStateDefinition } from '../src/generated/definitions.js';
 import { issueCallMarker } from '../src/issues.js';
@@ -69,6 +69,45 @@ it('records canResend for a definite first-send refusal and treats an unlisted s
   expect(refusedContext.marker).toMatchObject({ state: 'canResend' });
   const gone = await client([410], []).createIssue().invoke({ id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context: new FenceContext() } as unknown as Call, input);
   expect(gone.kind).toBe('retry');
+});
+
+it('treats an oversized or interrupted refusal body as an unknown outcome', async () => {
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  for (const operationId of ['createIssue', 'createIssueComment'] as const) {
+    for (const broken of [new BodyTooLargeError(422, {}), new ProviderTransportError(false, 422, {})]) {
+      const requests: string[] = [];
+      const github = new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, new StaticCredentialProvider([[connection, { authMethodId: RepositoryAuthMethodID, accessToken: new SecretString('token'), oauthClientId: 'id', oauthClientSecret: new SecretString('secret') }]]), {
+        send: async (request: ProviderRequest) => {
+          requests.push(request.method);
+          if (request.method === 'POST') throw broken;
+          return { status: 200, headers: { 'x-oauth-scopes': 'repo' }, body: new TextEncoder().encode(JSON.stringify(new URL(request.url).pathname === '/user' ? { login: 'octocat' } : [])) };
+        },
+      });
+      const run = (context: FenceContext, maxSendsOverride?: number) => {
+        const call = { id: callId, connection, operation: { connectorId: 'github', operationId }, context, ...(maxSendsOverride ? { maxSendsOverride } : {}) } as unknown as Call;
+        return operationId === 'createIssue' ? github.createIssue().invoke(call, input) : github.createIssueComment().invoke(call, { owner: 'octocat', repository: 'hello-world', issueNumber: 7, body: 'Note' });
+      };
+      const context = new FenceContext();
+      expect((await run(context)).kind).toBe('retry');
+      expect(context.marker).toMatchObject({ state: 'claimed' });
+      expect((await run(new FenceContext(), 1)).kind).toBe('uncertain');
+      expect(requests.filter(method => method === 'POST')).toHaveLength(2);
+    }
+  }
+});
+
+it('never resends an issue whose 2xx body stalled', async () => {
+  const requests: string[] = [];
+  const github = new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, new StaticCredentialProvider([[connection, { authMethodId: RepositoryAuthMethodID, accessToken: new SecretString('token'), oauthClientId: 'id', oauthClientSecret: new SecretString('secret') }]]), {
+    send: async (request: ProviderRequest) => {
+      requests.push(request.method);
+      if (request.method === 'POST') throw new ProviderStalledError(201, {});
+      return { status: 200, headers: { 'x-oauth-scopes': 'repo' }, body: new TextEncoder().encode(JSON.stringify(new URL(request.url).pathname === '/user' ? { login: 'octocat' } : [])) };
+    },
+  });
+  const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context: new FenceContext() } as unknown as Call;
+  expect((await github.createIssue().invoke(call, { owner: 'octocat', repository: 'hello-world', title: 'Crash' })).kind).toBe('uncertain');
+  expect(requests.filter(method => method === 'POST')).toHaveLength(1);
 });
 
 it('reads back before sending again below the cap', async () => {
