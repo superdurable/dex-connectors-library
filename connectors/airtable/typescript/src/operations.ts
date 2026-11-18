@@ -79,7 +79,7 @@ export class UpsertRecordsOperation implements Mutation<UpsertRecordsInput, Upse
       if ([...createdRecordIds, ...updatedRecordIds].some(id => !writtenIds.has(id)) || createdRecordIds.some(id => updatedRecordIds.includes(id))) throw new Error('invalid upsert IDs');
       const partialSuccessReasons = decodePartialSuccessReasons(body.details);
       return newMutationBranch('upserted', { records, createdRecordIds, updatedRecordIds, ...(partialSuccessReasons.length ? { partialSuccessReasons } : {}) }, this.client.receipt(call, objectId));
-    } catch { return mutationFailure('upsertRecords', 'invalidResponse', 'PROTOCOL', zeroUpserted, this.client.receipt(call, objectId)); }
+    } catch (error) { return unusableAnswerRetry('upsertRecords', error); }
   }
 }
 
@@ -104,7 +104,7 @@ export class UpdateRecordsOperation implements Mutation<UpdateRecordsInput, Upda
       if (records.some(record => !requestedIds.has(record.id))) throw new Error('unexpected updated record');
       const partialSuccessReasons = decodePartialSuccessReasons(body.details);
       return newMutationBranch('updated', { records, ...(partialSuccessReasons.length ? { partialSuccessReasons } : {}) }, this.client.receipt(call, objectId));
-    } catch { return mutationFailure('updateRecords', 'invalidResponse', 'PROTOCOL', zeroUpdated, this.client.receipt(call, objectId)); }
+    } catch (error) { return unusableAnswerRetry('updateRecords', error); }
   }
 }
 
@@ -120,7 +120,8 @@ const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404
 function mutationOutcome<T>(outcome: ExchangeFailure, zero: T, rejectedBranch: string, notFoundBranch = rejectedBranch): MutationAttempt<T> {
   // Both writes are repeat-safe, so a status that does not prove a refusal is retried.
   const isUnknownStatus = outcome.status !== undefined && (outcome.status < 200 || outcome.status >= 300) && !definiteRefusalStatuses.has(outcome.status);
-  if (outcome.disposition === 'retry' || isUnknownStatus) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+  // An oversized or unusable answer may follow an applied write, and repeating it is safe.
+  if (outcome.disposition === 'retry' || outcome.disposition === 'invalidResponse' || isUnknownStatus) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
   const branch = outcome.disposition === 'notFound' ? notFoundBranch : outcome.disposition === 'rejected' || outcome.disposition === 'offsetExpired' ? rejectedBranch : outcome.disposition;
   return newMutationBranch(branch, zero, outcome.receipt, outcome.failure);
 }
@@ -129,6 +130,10 @@ function queryDefect<T>(operation: string, zero: T, error: unknown): QueryAttemp
 function mutationDefect<T>(operation: string, zero: T, error: unknown): MutationAttempt<T> { return mutationFailure(operation, 'defect', 'VALIDATION', zero, {}, error); }
 function queryFailure<T>(operation: string, branch: string, kind: Failure['kind'], zero: T, receipt: ReceiptDraft, error?: unknown): QueryAttempt<T> {
   return newQueryBranch(branch, zero, receipt, { kind, provider: 'airtable', operation, message: error instanceof Error ? error.message : 'Airtable response is invalid' });
+}
+/** Retry a repeat-safe write whose accepted answer could not be decoded. */
+function unusableAnswerRetry<T>(operation: string, error: unknown): MutationAttempt<T> {
+  return newMutationRetry({ kind: 'PROTOCOL', provider: 'airtable', operation, message: error instanceof Error ? error.message : 'Airtable response is invalid' });
 }
 function mutationFailure<T>(operation: string, branch: string, kind: Failure['kind'], zero: T, receipt: ReceiptDraft, error?: unknown): MutationAttempt<T> {
   return newMutationBranch(branch, zero, receipt, { kind, provider: 'airtable', operation, message: error instanceof Error ? error.message : 'Airtable response is invalid' });

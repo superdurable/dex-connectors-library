@@ -435,7 +435,7 @@ var UpsertRecordsDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertRecordsBranchUpserted, Description: "Airtable created each record without a match and updated each record that matched."},
 		{ID: UpsertRecordsBranchProviderRejected, Description: "Airtable conclusively rejected the upsert, such as several existing records matching one merge key, an invalid cell value, a computed merge field, a missing scope, or a rejected token.", Optional: true},
-		{ID: UpsertRecordsBranchInvalidResponse, Description: "Airtable applied or rejected the upsert but returned an invalid or oversized response.", Optional: true},
+		{ID: UpsertRecordsBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe.", Optional: true},
 		{ID: UpsertRecordsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -513,7 +513,7 @@ var UpdateRecordsDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateRecordsBranchUpdated, Description: "Airtable updated every record and returned it."},
 		{ID: UpdateRecordsBranchNotFound, Description: "A record ID does not exist in the table.", Optional: true},
 		{ID: UpdateRecordsBranchProviderRejected, Description: "Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token.", Optional: true},
-		{ID: UpdateRecordsBranchInvalidResponse, Description: "Airtable applied or rejected the update but returned an invalid or oversized response.", Optional: true},
+		{ID: UpdateRecordsBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because repeating absolute values is safe.", Optional: true},
 		{ID: UpdateRecordsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

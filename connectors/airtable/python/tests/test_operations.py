@@ -274,13 +274,26 @@ async def test_invalid_upsert_is_defect(value: UpsertRecordsInput) -> None:
         {"records": [WIRE_RECORD], "createdRecords": [RECORD_ID], "updatedRecords": [RECORD_ID]},
     ],
 )
-async def test_inconsistent_upsert_answer_is_invalid(body: object) -> None:
-    result = await run_mutation(
-        make_client(fixed(httpx.Response(200, json=body))).upsert_records(),
-        call_for(UPSERT_RECORDS_DEFINITION),
-        UpsertRecordsInput(BASE, "Log", ("Case ID",), (RecordUpsert({"Case ID": "case-1"}),)),
-    )
-    assert result.branch == INVALID_RESPONSE
+async def test_inconsistent_upsert_answer_retries(body: object) -> None:
+    """The upsert may have applied, and repeating it converges on the same records."""
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(
+            make_client(fixed(httpx.Response(200, json=body))).upsert_records(),
+            call_for(UPSERT_RECORDS_DEFINITION),
+            UpsertRecordsInput(BASE, "Log", ("Case ID",), (RecordUpsert({"Case ID": "case-1"}),)),
+        )
+    assert raised.value.failure.kind == FailureKind.PROTOCOL
+
+
+@pytest.mark.asyncio
+async def test_oversized_write_answer_retries() -> None:
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(
+            make_client(fixed(httpx.Response(200, content=b"x" * 5000))).update_records(),
+            call_for(UPDATE_RECORDS_DEFINITION),
+            UpdateRecordsInput(BASE, "Policies", (RecordUpdate(RECORD_ID, {"a": 1}),)),
+        )
+    assert raised.value.failure.kind == FailureKind.RESPONSE_TOO_LARGE
 
 
 @pytest.mark.asyncio

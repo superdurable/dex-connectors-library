@@ -186,7 +186,8 @@ unknown record ID is never created; a `404` selects `notFound`.
 | `429` | Retry after at least 30 seconds | `RATE_LIMIT` |
 | `408`, `5xx` except `501`, a dropped connection | Retry, honoring `Retry-After` | `AVAILABILITY` or `TRANSPORT` |
 | `3xx`, `501`, other `4xx` | `providerRejected` on reads; Retry on `upsertRecords` and `updateRecords`, which only `400`, `401`, `403`, `404`, `411`, `413`, `414`, `415`, and `422` refuse | `PROTOCOL` or `PROVIDER_REJECTION` |
-| Malformed, inconsistent, or oversized `2xx` | `invalidResponse` | `PROTOCOL` or `RESPONSE_TOO_LARGE` |
+| Malformed, inconsistent, or oversized `2xx` | `invalidResponse` on reads; Retry on `upsertRecords` and `updateRecords`, which may have applied and are safe to repeat | `PROTOCOL` or `RESPONSE_TOO_LARGE` |
+| Oversized non-`2xx` | `invalidResponse` on reads; Retry on the writes | `RESPONSE_TOO_LARGE` |
 | Invalid input or connection | `defect`, with no request | `VALIDATION` or `AUTHENTICATION` |
 
 A Failure names only the HTTP status and Airtable's uppercase error type, such
@@ -232,7 +233,7 @@ whatever the connection's `endpoint`.
 | Connection field | Default | Purpose |
 | --- | --- | --- |
 | `endpoint` | `https://api.airtable.com` | Airtable Web API base URL for operations. |
-| `maxResponseBytes` | `4194304` | Largest complete response; larger ones select `invalidResponse`. |
+| `maxResponseBytes` | `4194304` | Largest complete response; larger ones select `invalidResponse` on reads and retry the writes. |
 | `pollInterval` | `30s` | Delay between `recordChanged` polls of each binding, at least `1s`. |
 | `pollPageSize` | `100` | Records one `recordChanged` poll request reads, 1 to 100. |
 | `personal_access_token` | none | Secret personal access token. |

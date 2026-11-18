@@ -101,7 +101,8 @@ func (operation UpdateRecordsOperation) Invoke(call sdkgo.Call, input UpdateReco
 	}
 	updated, err := decodeUpdatedRecords(response.body, recordIDs)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateRecordsBranchInvalidResponse, UpdatedRecords{}, providerFailurePointer("updateRecords", sdkgo.FailureProtocol, err.Error()), receipt)
+		// The update may have applied; repeating absolute values leaves the same records.
+		return sdkgo.NewMutationRetry[UpdatedRecords](providerFailure("updateRecords", sdkgo.FailureProtocol, err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateRecordsBranchUpdated, updated, nil, receipt)
 }

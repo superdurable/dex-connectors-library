@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Airtable Web API base URL; leave blank for Airtable's public API host. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server. The base and table pickers always call Airtable's public API host. */
   endpoint?: string;
-  /** Maximum complete Airtable API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of records carries very long text or many attachments. Oversized responses select invalidResponse. */
+  /** Maximum complete Airtable API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of records carries very long text or many attachments. Oversized read responses select invalidResponse; an oversized write response retries the repeat-safe write. */
   maxResponseBytes?: number;
   /** Delay between recordChanged Trigger polls of each picked table, as a Go duration of at least 1s such as 15s or 2m; leave blank for the shown interval, and lengthen it when many bindings share one base. Each poll normally makes one Airtable list request, and Airtable allows 5 requests per second per base and 50 per second per personal access token across every binding and Step. Runtime value in milliseconds. */
   pollIntervalMs?: number;

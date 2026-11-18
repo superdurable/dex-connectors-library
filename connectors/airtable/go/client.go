@@ -390,7 +390,8 @@ func mutationAttemptForOutcome[T any](outcome providerOutcome, response provider
 	var zero T
 	isHTTPOutcome := response.statusCode != 0
 	isUnknownStatus := isHTTPOutcome && (response.statusCode < 200 || response.statusCode >= 300) && !isDefiniteRefusalStatus(response.statusCode)
-	if outcome.disposition == outcomeRetry || isUnknownStatus {
+	// Both writes are safe to repeat, so an oversized or unusable response retries instead of failing.
+	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse || isUnknownStatus {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)

@@ -168,7 +168,12 @@ class _Outcome:
             and not 200 <= self.status < 300
             and self.status not in _DEFINITE_REFUSAL_STATUSES
         )
-        if self.disposition is _Disposition.RETRY or is_unknown_status:
+        # An oversized or unusable answer may follow an applied write, and repeating it is safe.
+        if (
+            self.disposition is _Disposition.RETRY
+            or self.disposition is _Disposition.INVALID_RESPONSE
+            or is_unknown_status
+        ):
             return MutationAttempt.retry(self.failure, self.retry_after_seconds)
         branch = self.branch(not_found, "", INVALID_RESPONSE)
         return MutationAttempt.branch_result(branch, empty, self.receipt, self.failure)
@@ -487,12 +492,8 @@ class UpsertRecordsOperation:
         try:
             upserted = _decode_upserted_records(response_body, len(input.records))
         except _DecodeError as error:
-            return MutationAttempt.branch_result(
-                INVALID_RESPONSE,
-                UpsertedRecords(),
-                receipt,
-                _failure(operation, FailureKind.PROTOCOL, str(error)),
-            )
+            # The upsert may have applied; repeating it converges on the same records.
+            return MutationAttempt.retry(_failure(operation, FailureKind.PROTOCOL, str(error)))
         return MutationAttempt.branch_result(UPSERTED, upserted, receipt)
 
 
@@ -538,12 +539,8 @@ class UpdateRecordsOperation:
                 [record["id"] if isinstance(record, dict) else record.id for record in input.records],
             )
         except _DecodeError as error:
-            return MutationAttempt.branch_result(
-                INVALID_RESPONSE,
-                UpdatedRecords(),
-                receipt,
-                _failure(operation, FailureKind.PROTOCOL, str(error)),
-            )
+            # The update may have applied; repeating absolute values leaves the same records.
+            return MutationAttempt.retry(_failure(operation, FailureKind.PROTOCOL, str(error)))
         return MutationAttempt.branch_result(UPDATED, updated, receipt)
 
 
