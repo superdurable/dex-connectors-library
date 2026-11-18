@@ -345,9 +345,10 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
                 "retry" if repeatable else "acceptedUnreadable",
                 failure(operation, FailureKind.TRANSPORT, "Notion response was interrupted"),
             )
+        # Repeating an absolute write is safe, so its unusable accepted response retries.
         if response.too_large:
             return Classification(
-                "invalid" if repeatable else "acceptedUnreadable",
+                "retry" if repeatable else "acceptedUnreadable",
                 failure(
                     operation,
                     FailureKind.RESPONSE_TOO_LARGE,
@@ -356,10 +357,21 @@ def classify_write(operation: str, response: ProviderResponse, repeatable: bool)
             )
         if response.reflects_secret:
             return Classification(
-                "invalid" if repeatable else "acceptedUnreadable",
+                "retry" if repeatable else "acceptedUnreadable",
                 failure(operation, FailureKind.PROTOCOL, "Notion response contains credential material"),
             )
         return Classification("accepted")
+    if status != 429 and (response.too_large or response.interrupted):
+        # An unreadable refusal cannot prove the write was refused.
+        return Classification(
+            "retry" if repeatable else "uncertain",
+            failure(
+                operation,
+                FailureKind.TRANSPORT,
+                f"Notion write outcome is unknown after an unreadable HTTP {status}",
+            ),
+            _retry_after(response),
+        )
     if (
         status == 429
         and _token(response.body, "/additional_data/rate_limit_reason") == "public_api_request_blocked"

@@ -316,7 +316,12 @@ have created the page.
   resend.
 - A 503 with a committed ID whose read-back conclusively fails, including 403
   or 404, selects `uncertain`; a transient read-back failure retries only GET
-  until the retry budget ends and the Flow fails.
+  until the retry budget ends and the Flow fails. When the accepted page ID
+  could not be checkpointed, a later attempt could not find it, so a transient
+  read-back failure selects `uncertain` instead of retrying. Terminal
+  credentials while a saved page ID awaits read-back also select `uncertain`.
+- A refusal whose body is oversized or breaks while it arrives proves nothing,
+  so it is an unknown outcome.
 - The 120-second Execute and heartbeat timeout leave a 70-second fence window
   for the 60-second HTTP request and time for read-back. Every request remains
   bounded by the Step deadline.
@@ -330,8 +335,11 @@ uncertain create.
 `updatePageProperties` sends absolute values, so a repeated `PATCH` leaves the
 page in the same state. It keeps async durability and retries every
 ambiguous outcome, including a 503 after Notion saved, a redirect, and any 4xx
-other than 400, 401, 403, 404, 411, 413, 414, 415, or 422. A retry can overwrite
-an edit someone else made to the same properties in between.
+other than 400, 401, 403, 404, 411, 413, 414, 415, or 422. An accepted 2xx
+whose page is oversized, credential-reflecting, interrupted, or unusable also
+retries, as does an unreadable refusal and a temporary credential failure, so
+its declared `invalidResponse` branch is no longer selected. A retry can
+overwrite an edit someone else made to the same properties in between.
 
 The connector's protection covers one Step execution. Across Flow runs, give
 each row a business key and query for it before creating, as the example does

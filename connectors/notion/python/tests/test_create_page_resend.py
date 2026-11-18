@@ -3,6 +3,7 @@
 """Bounded resend of Notion page creations whose outcome is unknown."""
 
 import json
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
 import dex_connectors.sdk as sdk
@@ -74,9 +75,32 @@ async def create_page(
             return httpx.Response(200, content=json.dumps(PAGE).encode())
         return httpx.Response(status, content=json.dumps(body).encode())
 
-    credentials = sdk.StaticCredentialProvider(
-        {CONNECTION: notion.Credentials(sdk.SecretString("ntn_test_token_value"))}
-    )
+    return await run_create_page(respond, context)
+
+
+class _BodyBreaksAfterHeaders(httpx.AsyncByteStream):
+    """A response body whose connection drops after the status and headers arrived."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        raise httpx.ReadError("connection reset after headers")
+        yield b""
+
+
+class _RevokedCredentials:
+    async def resolve(self, call: sdk.Call) -> notion.Credentials:
+        raise sdk.ReauthorizationRequiredError()
+
+
+async def run_create_page(
+    respond: Callable[[httpx.Request], httpx.Response],
+    context: AttemptContext,
+    credentials: sdk.CredentialProvider[notion.Credentials] | None = None,
+) -> sdk.MutationResult[CreatePageOutput] | sdk.RetryError:
+    """Run one Execute attempt of createPage against a provider handler."""
+    if credentials is None:
+        credentials = sdk.StaticCredentialProvider(
+            {CONNECTION: notion.Credentials(sdk.SecretString("ntn_test_token_value"))}
+        )
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         client = notion.Client(notion.Config(endpoint="http://127.0.0.1:12345"), credentials, transport)
         call = sdk.Call(
@@ -147,6 +171,64 @@ async def test_saved_page_id_is_read_back_instead_of_resent() -> None:
     result = await create_page(500, {}, context, requests)
     assert isinstance(result, sdk.MutationResult) and result.branch == "created"
     assert [request.method for request in requests] == ["GET"]
+
+
+@pytest.mark.asyncio
+async def test_accepted_post_whose_body_breaks_is_never_resent() -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, stream=_BodyBreaksAfterHeaders())
+
+    result = await run_create_page(respond, AttemptContext())
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_unsaved_accepted_page_id_with_failed_read_back_selects_uncertain() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    async def lose_heartbeat(value: object = None) -> None:
+        raise RuntimeError("heartbeat unavailable")
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.method == "GET":
+            return httpx.Response(503, json={"object": "error", "code": "service_unavailable"})
+        context.heartbeat = lose_heartbeat  # type: ignore[method-assign]
+        return httpx.Response(200, json={"object": "page", "id": PAGE_ID, "properties": "bad"})
+
+    result = await run_create_page(respond, context)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert [request.method for request in requests] == ["POST", "GET"]
+
+
+@pytest.mark.asyncio
+async def test_oversized_refusal_is_an_unknown_outcome() -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        refusal = {"object": "error", "code": "validation_error", "message": "x" * 70000}
+        return httpx.Response(400, json=refusal)
+
+    assert isinstance(await run_create_page(respond, AttemptContext()), sdk.RetryError)
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_terminal_credentials_during_read_back_select_uncertain() -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    context = AttemptContext()
+    context.attempt = 2
+    context.heartbeat_value = Marker(CALL_ID, 1, State.CLAIMED, PAGE_ID, 1)
+    result = await run_create_page(respond, context, _RevokedCredentials())
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
 
 
 @pytest.mark.asyncio

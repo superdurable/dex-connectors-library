@@ -176,9 +176,9 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 	switch classification.outcome {
 	case writeAccepted:
 	case writeCommitted:
-		// A lost accepted-ID checkpoint cannot authorize another write.
-		_ = fence.RecordProviderID(classification.committedResourceID)
-		return client.confirmCommittedPage(session, output, classification.committedResourceID, receipt, true)
+		// A lost accepted-ID checkpoint cannot authorize another write, so its read-back never retries.
+		isProviderIDSaved := fence.RecordProviderID(classification.committedResourceID) == nil
+		return client.confirmCommittedPage(session, output, classification.committedResourceID, receipt, true, isProviderIDSaved)
 	case writeRetry:
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion retry checkpoint could not be recorded"), classification.retryAfter)
@@ -210,9 +210,9 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 	page, err := decodePageBody(result.response.body)
 	if err != nil {
 		if pageID := readAcceptedPageID(result.response.body); pageID != "" {
-			// Read-back can still confirm this accepted page if its checkpoint is lost.
-			_ = fence.RecordProviderID(pageID)
-			return client.confirmCommittedPage(session, output, pageID, receipt, false)
+			// Read-back can still confirm this accepted page if its checkpoint is lost, but never retries then.
+			isProviderIDSaved := fence.RecordProviderID(pageID) == nil
+			return client.confirmCommittedPage(session, output, pageID, receipt, false, isProviderIDSaved)
 		}
 		return sdkgo.NewMutationUncertain(output, newFailure(createPageOperationID, sdkgo.FailureProtocol,
 			"Notion accepted the page creation but returned an unusable page"), receipt)
@@ -233,13 +233,14 @@ func resendOrSelectUncertainPage(canResendUnknownOutcome bool, output CreatePage
 	return sdkgo.NewMutationUncertain(output, failure, receipt)
 }
 
-// confirmCommittedPage reads a known accepted page without sending another write.
-func (client *Client) confirmCommittedPage(session *operationSession, output CreatePageOutput, pageID string, receipt sdkgo.Receipt, confirmedAfterTimeout bool) sdkgo.MutationAttempt[CreatePageOutput] {
+// confirmCommittedPage reads a known accepted page without sending another write. Without a saved
+// page ID, a later attempt could resend, so a transient read-back failure selects uncertain instead.
+func (client *Client) confirmCommittedPage(session *operationSession, output CreatePageOutput, pageID string, receipt sdkgo.Receipt, confirmedAfterTimeout bool, isProviderIDSaved bool) sdkgo.MutationAttempt[CreatePageOutput] {
 	output.PageID, output.IsConfirmedAfterTimeout = pageID, confirmedAfterTimeout
 	receipt.ProviderObjectID = pageID
 	result := client.exchange(session, notionRequest{method: http.MethodGet, path: "/pages/" + url.PathEscape(pageID)})
 	classification := client.classifyRead(createPageOperationID, createPageFailureSubject, result)
-	if classification.outcome == readRetry {
+	if classification.outcome == readRetry && isProviderIDSaved {
 		return sdkgo.NewMutationRetry[CreatePageOutput](classification.failure, classification.retryAfter)
 	}
 	if classification.outcome != readSucceeded {
@@ -257,12 +258,15 @@ func (client *Client) confirmCommittedPage(session *operationSession, output Cre
 }
 
 func (client *Client) readBackCreatedPage(call sdkgo.Call, pageID string) sdkgo.MutationAttempt[CreatePageOutput] {
-	session, cancel, failure := client.startSession(call, createPageOperationID, createPageOperationDeadline)
+	session, cancel, failure, isCredentialFailureTransient := client.startSessionWithCredentialStatus(call, createPageOperationID, createPageOperationDeadline)
+	if failure != nil && !isCredentialFailureTransient {
+		return sdkgo.NewMutationUncertain(CreatePageOutput{PageID: pageID}, newFailure(createPageOperationID, sdkgo.FailureAuthentication, "Notion accepted the page, and the connection credentials are unavailable to read it back; reconnect the connection"), sdkgo.Receipt{ProviderObjectID: pageID})
+	}
 	if failure != nil {
 		return sdkgo.NewMutationRetry[CreatePageOutput](*failure, 0)
 	}
 	defer cancel()
-	return client.confirmCommittedPage(session, CreatePageOutput{}, pageID, client.receipt(session, notionResponse{}, pageID), false)
+	return client.confirmCommittedPage(session, CreatePageOutput{}, pageID, client.receipt(session, notionResponse{}, pageID), false, true)
 }
 
 func readAcceptedPageID(body []byte) string {

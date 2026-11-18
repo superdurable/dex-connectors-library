@@ -326,7 +326,7 @@ spec:
         - {id: updated, goName: Updated, description: Notion applied the property values and returned the page.}
         - {id: notFound, goName: NotFound, description: "The page does not exist or is not shared with the connection; nothing was changed.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Notion applied the update but returned an invalid or oversized page., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 90s

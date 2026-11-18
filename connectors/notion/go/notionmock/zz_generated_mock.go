@@ -333,7 +333,7 @@ func UpdatePagePropertiesProviderRejected(value notion.UpdatePagePropertiesOutpu
 	return connectormock.Branch(notion.UpdatePagePropertiesBranchProviderRejected, value, failure)
 }
 
-// UpdatePagePropertiesInvalidResponse selects the invalidResponse branch: Notion applied the update but returned an invalid or oversized page.
+// UpdatePagePropertiesInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe.
 func UpdatePagePropertiesInvalidResponse(value notion.UpdatePagePropertiesOutput, failure *sdkgo.Failure) connectormock.Case[notion.UpdatePagePropertiesOutput] {
 	return connectormock.Branch(notion.UpdatePagePropertiesBranchInvalidResponse, value, failure)
 }
