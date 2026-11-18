@@ -327,7 +327,7 @@ export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteS
     const commitOnce = async (connection: PgClient): Promise<void> => {
       try { await fence.dispatch(() => commit(connection)); }
       catch (error) {
-        if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || error instanceof AggregateError) throw new CommitNotSentError();
+        if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error)) throw new CommitNotSentError();
         throw error;
       }
     };
@@ -355,6 +355,11 @@ type WriteOperation = 'execute' | 'executeNonIdempotent';
 interface WriteOutcome { failure?: ClassifiedFailure; receipt: ReceiptDraft; value: StatementExecution; isCommitPhase: boolean }
 
 class CommitNotSentError extends Error { constructor() { super('COMMIT not sent'); this.name = 'CommitNotSentError'; } }
+
+/** Match only the Fence's pre-send AggregateError; a driver AggregateError after dispatch stays unknown. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
+}
 
 /** Run one statement in its own transaction and commit it through `commitTransaction`; failures before it commit nothing. */
 async function runWrite(client: PostgreSQLClient, call: Call, input: ExecuteStatementInput, values: Array<string | null>, commitTransaction: (connection: PgClient) => Promise<void>): Promise<WriteOutcome> {

@@ -272,6 +272,7 @@ describe('PostgreSQL executeNonIdempotent', () => {
     ['connection lost', new Error('socket closed')],
     ['backend terminated', serverError('57P01')],
     ['completion unknown', serverError('40003')],
+    ['driver AggregateError', new AggregateError([new Error('socket closed')], 'driver failure')],
   ])('selects uncertain after a %s COMMIT and never runs the statement again', async (_name, commitError) => {
     const { client, driver } = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] }, { COMMIT: commitError });
     const context = new AttemptContext();
