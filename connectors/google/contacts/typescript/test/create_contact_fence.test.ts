@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ContactsClient } from '../src/client.js';
 import { CreateContactDefinition } from '../src/generated/definitions.js';
@@ -29,12 +30,12 @@ type Answer = (request: ProviderRequest) => ProviderResponse;
 
 const respond = (status: number, body = ''): ProviderResponse => ({ status, headers: {}, body: Buffer.from(body) });
 
-async function runAttempts(answer: Answer, attempts: number, failedResolution = 0): Promise<{ outcome: MutationResult<Contact> | RetryError; posts: number }> {
+async function runAttempts(answer: Answer, attempts: number, failedResolution = 0, failure: Error = new Error('credential refresh unavailable')): Promise<{ outcome: MutationResult<Contact> | RetryError; posts: number }> {
   let posts = 0;
   let resolutions = 0;
   const resolve = async () => {
     resolutions++;
-    if (resolutions === failedResolution) throw new Error('credential refresh unavailable');
+    if (resolutions === failedResolution) throw failure;
     return { accessToken: new SecretString(token), oauthClientId: 'client-id', oauthClientSecret: new SecretString('secret'), refreshToken: new SecretString('refresh') };
   };
   const client = new ContactsClient({ baseUrl: 'http://127.0.0.1:12345' }, { resolve }, {
@@ -105,5 +106,28 @@ describe('Google Contacts createContact never resends an accepted create', () =>
     const { outcome, posts } = await runAttempts(() => respond(statuses.shift() ?? 500), 4, 3);
     expect(outcome).toMatchObject({ branch: 'uncertain' });
     expect(posts).toBe(3);
+  });
+
+  const credentialFailures: Array<{ name: string; failure: Error; isTerminal: boolean }> = [
+    { name: 'reauthorization', failure: new ReauthorizationRequiredError(), isTerminal: true },
+    { name: 'object not found', failure: new ObjectNotFoundError(), isTerminal: true },
+    { name: 'connection not selected', failure: new ConnectionNotSelectedError(), isTerminal: true },
+    { name: 'broker rejected', failure: new CredentialBrokerRejectedError(), isTerminal: true },
+    { name: 'broker unavailable', failure: new CredentialBrokerUnavailableError(), isTerminal: false },
+    { name: 'static connection not configured', failure: new Error('connection is not configured'), isTerminal: false },
+  ];
+
+  it.each(credentialFailures)('classifies a $name credential failure on a first send', async ({ failure, isTerminal }) => {
+    const { outcome, posts } = await runAttempts(() => respond(500), 1, 1, failure);
+    if (isTerminal) expect(outcome).toMatchObject({ branch: 'defect' });
+    else expect(outcome).toBeInstanceOf(RetryError);
+    expect(posts).toBe(0);
+  });
+
+  it.each(credentialFailures)('classifies a $name credential failure after a possible send', async ({ failure, isTerminal }) => {
+    const { outcome, posts } = await runAttempts(() => respond(500), 2, 2, failure);
+    if (isTerminal) expect(outcome).toMatchObject({ branch: 'uncertain' });
+    else expect(outcome).toBeInstanceOf(RetryError);
+    expect(posts).toBe(1);
   });
 });

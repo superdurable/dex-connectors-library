@@ -10,6 +10,11 @@ from typing import TYPE_CHECKING
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -26,6 +31,14 @@ from ._generated.config import Credentials as Credentials
 
 if TYPE_CHECKING:
     from .operations import CreateContactOperation, GetContactOperation, ListContactsOperation
+
+# Credential failures that only reconnection repairs; any other resolve failure is transient.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,9 +96,10 @@ class Client:
         """Return a header-safe bearer token or a safe failure class."""
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except _TERMINAL_CREDENTIAL_ERRORS:
             return "", "credential"
-        except (ValueError, LookupError, OSError):
+        except Exception:  # noqa: BLE001
+            # Any unlisted resolve failure, such as an unconfigured connection, is transient.
             return "", "refresh"
         token = credentials.access_token.reveal()
         if not is_header_safe_credential(token):

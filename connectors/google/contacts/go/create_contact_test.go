@@ -16,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -389,4 +390,76 @@ func TestCreateContactPreSendRetryAfterAPossibleSendKeepsTheSendCount(t *testing
 	require.NoError(t, err)
 	require.Equal(t, CreateContactBranchUncertain, result.Branch)
 	require.Equal(t, 3, posts)
+}
+
+// sequencedResolutionCredentials returns errs[n] for the nth resolution and valid credentials for nil.
+type sequencedResolutionCredentials struct {
+	errs        []error
+	resolutions int
+}
+
+func (source *sequencedResolutionCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	err := source.errs[min(source.resolutions, len(source.errs)-1)]
+	source.resolutions++
+	if err != nil {
+		return Credentials{}, err
+	}
+	return Credentials{OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"), AccessToken: sdkgo.NewSecretString(testAccessToken), RefreshToken: sdkgo.NewSecretString("refresh-token")}, nil
+}
+
+func (source *sequencedResolutionCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestCreateContactClassifiesCredentialFailures(t *testing.T) {
+	for _, test := range []struct {
+		err        error
+		isTerminal bool
+	}{
+		{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), isTerminal: true},
+		{err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		{err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		{err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		{err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		{err: projectconfig.ErrCredentialBrokerUnavailable},
+		{err: errors.New("connection is not configured")},
+		{err: errors.New("unlisted resolve failure")},
+	} {
+		t.Run(test.err.Error(), func(t *testing.T) {
+			posts := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				posts++
+				w.WriteHeader(http.StatusInternalServerError)
+			}))
+			defer server.Close()
+			input := CreateContactInput{GivenName: "Ada"}
+			var retry *sdkgo.RetryError
+
+			firstSend, err := New(Config{BaseURL: server.URL}, &sequencedResolutionCredentials{errs: []error{test.err}})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("credential-first-contact-flow", "create-contact-step"), firstSend.CreateContact(), testConnection, input)
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, CreateContactBranchDefect, result.Branch)
+			} else {
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Zero(t, posts)
+
+			afterSend, err := New(Config{BaseURL: server.URL}, &sequencedResolutionCredentials{errs: []error{nil, test.err}})
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("credential-after-send-contact-flow", "create-contact-step")
+			_, err = sdkgo.RunMutation(ctx, afterSend.CreateContact(), testConnection, input)
+			require.ErrorAs(t, err, &retry)
+			ctx.AdvanceAttempt()
+			result, err = sdkgo.RunMutation(ctx, afterSend.CreateContact(), testConnection, input)
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, CreateContactBranchUncertain, result.Branch)
+			} else {
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Equal(t, 1, posts)
+		})
+	}
 }
