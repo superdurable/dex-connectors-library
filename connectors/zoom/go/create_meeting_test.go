@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoom/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
@@ -205,12 +206,9 @@ func TestCreateMeetingResendsEveryUnknownOutcomeUntilTheSendCap(t *testing.T) {
 		{name: "server error", status: http.StatusInternalServerError, body: `{"code":500,"message":"SENTINEL"}`, kind: sdkgo.FailureAvailability},
 		{name: "request timeout", status: http.StatusRequestTimeout, body: `{}`, kind: sdkgo.FailureAvailability},
 		{name: "conflict without a lookup key", status: http.StatusConflict, body: `{"code":409}`, kind: sdkgo.FailureConflict},
-		{name: "unlisted client error", status: http.StatusTooEarly, body: `{"code":425}`, kind: sdkgo.FailureProviderRejection},
+		{name: "unlisted client error", status: http.StatusTooEarly, body: `{"code":425}`, kind: sdkgo.FailureAvailability},
+		{name: "oversized refusal body", status: http.StatusBadRequest, body: `{"code":300,"message":"` + strings.Repeat("x", providerhttp.MaxErrorBodyBytes) + `"}`, kind: sdkgo.FailureAvailability},
 		{name: "redirect", status: http.StatusFound, body: ``, kind: sdkgo.FailureProtocol},
-		{name: "unusable created body", status: http.StatusCreated, body: `{"id":"not-a-number"}`, kind: sdkgo.FailureProtocol},
-		{name: "created body without ID", status: http.StatusCreated, body: `{}`, kind: sdkgo.FailureProtocol},
-		{name: "interrupted created body", status: http.StatusCreated, kind: sdkgo.FailureTransport, isInterrupted: true},
-		{name: "oversized created body", status: http.StatusCreated, body: `{"agenda":"` + strings.Repeat("x", 4096) + `"}`, kind: sdkgo.FailureResponseTooLarge},
 		{name: "no response before the request bound", isStall: true, kind: sdkgo.FailureTransport},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -383,6 +381,85 @@ func TestCreateMeetingAcceptedIDWithUnusableBodyIsNeverResent(t *testing.T) {
 	})
 	context := singledispatchtest.NewContext("zoom-flow", "accepted-unusable")
 	result, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err)
+	require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreateMeetingAcceptedUnusableResponseIsNeverResent(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		body          string
+		isInterrupted bool
+		kind          sdkgo.FailureKind
+	}{
+		{name: "unusable created body", body: `{"id":"not-a-number"}`, kind: sdkgo.FailureProtocol},
+		{name: "created body without ID", body: `{}`, kind: sdkgo.FailureProtocol},
+		{name: "interrupted created body", isInterrupted: true, kind: sdkgo.FailureTransport},
+		{name: "oversized created body", body: `{"agenda":"` + strings.Repeat("x", 4096) + `"}`, kind: sdkgo.FailureResponseTooLarge},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				if !test.isInterrupted {
+					writeJSON(t, response, http.StatusCreated, test.body)
+					return
+				}
+				response.Header().Set("Content-Length", "100")
+				response.WriteHeader(http.StatusCreated)
+				if _, err := response.Write([]byte(`{"id":926`)); err != nil {
+					t.Errorf("write partial accepted Zoom response: %v", err)
+					return
+				}
+				response.(http.Flusher).Flush()
+				connection, _, err := response.(http.Hijacker).Hijack()
+				if err != nil {
+					t.Errorf("interrupt accepted Zoom response: %v", err)
+					return
+				}
+				_ = connection.Close() // The response is intentionally interrupted.
+			})
+			client, err := zoom.New(zoom.Config{Endpoint: provider.URL, MaxResponseBytes: 2048}, staticZoomCredentials())
+			require.NoError(t, err)
+			context := singledispatchtest.NewContext("zoom-flow", "accepted-"+test.name)
+			result, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+			require.NoError(t, err)
+			require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
+			require.Equal(t, test.kind, result.Failure.Kind)
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
+}
+
+func TestCreateMeetingClientErrorWithACreatedIDIsReadBackNotResent(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusTooEarly, `{"id":92674392836}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, meetingJSON(92674392836, "Consultation with Priya", "2036-02-24T17:00:00Z"))
+	})
+	context := singledispatchtest.NewContext("zoom-flow", "client-error-with-id")
+	result, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err)
+	require.Equal(t, zoom.CreateMeetingBranchCreated, result.Branch)
+	require.Equal(t, int64(92674392836), result.Value.ID)
+	require.Equal(t, "92674392836", lastSingleDispatchMarker(t, context).ProviderID)
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(t, 1).method)
+}
+
+func TestCreateMeetingInvalidCredentialsAfterAPossibleSendSelectUncertain(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusInternalServerError, `{"code":500}`)
+	})
+	context := singledispatchtest.NewContext("zoom-flow", "invalid-credentials-after-send")
+	_, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	context.AdvanceAttempt()
+	invalid, err := zoom.New(zoom.Config{Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[zoom.Credentials]{zoomConnection: {}})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(context, invalid.CreateMeeting(), zoomConnection, validCreateMeetingInput())
 	require.NoError(t, err)
 	require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.requestCount())

@@ -76,7 +76,7 @@ export interface CreateMeetingStepConfig<StepInput, OperationInput = CreateMeeti
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Zoom may have created the meeting, but the send cap was reached, a resend was refused, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again. */
+  /** Zoom may have created the meeting, but the send cap was reached, a resend was refused or found invalid credentials, or Zoom accepted it without a usable meeting; check the user's meetings before creating it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid before any send. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

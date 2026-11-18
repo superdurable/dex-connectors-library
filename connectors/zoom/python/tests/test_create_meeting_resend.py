@@ -11,6 +11,7 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    FailureKind,
     MutationResult,
     OperationRef,
     RetryError,
@@ -105,23 +106,30 @@ async def create(
     *,
     max_sends: int = CREATE_MEETING_DEFINITION.max_sends,
     has_credentials: bool = True,
+    access_token: str = "zoom-test-access-token",
+    max_response_bytes: int = 1048576,
 ) -> MutationResult[zoom.Meeting] | RetryError:
     """Run one Execute attempt of createMeeting, as the Mutation Step passes the definition cap."""
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         status, body = answer(request)
+        if isinstance(body, httpx.AsyncByteStream):
+            return httpx.Response(status, stream=body)
+        if isinstance(body, bytes):
+            return httpx.Response(status, content=body)
         return httpx.Response(status, json=body)
 
     credentials = zoom.Credentials(
         "zoom-client-id",
         SecretString("zoom-client-secret"),
-        SecretString("zoom-test-access-token"),
+        SecretString(access_token),
         SecretString("zoom-refresh-token"),
     )
     provider = StaticCredentialProvider({CONNECTION: credentials} if has_credentials else {})
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
-        client = zoom.Client(zoom.Config(endpoint="https://zoom.example/v2"), provider, transport)
+        config = zoom.Config(endpoint="https://zoom.example/v2", max_response_bytes=max_response_bytes)
+        client = zoom.Client(config, provider, transport)
         call = Call(
             CALL_ID, CONNECTION, OperationRef("zoom", "createMeeting"), context=context, max_sends=max_sends
         )
@@ -203,6 +211,78 @@ async def test_accepted_id_with_unusable_body_is_never_resent() -> None:
     requests: list[httpx.Request] = []
     accepted = (201, {"id": 92674392836, "start_time": "not a time"})
     result = await create(lambda _: accepted, AttemptContext(), requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+class BrokenBodyStream(httpx.AsyncByteStream):
+    """Send part of a response body, then drop the connection."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        yield b'{"id":926'
+        raise httpx.ReadError("connection dropped")
+
+
+@pytest.mark.parametrize(
+    ("body", "max_response_bytes"),
+    [
+        (b'{"id":"not-a-number"}', 1048576),
+        (b"{}", 1048576),
+        (b'{"agenda":"' + b"x" * 4096 + b'"}', 2048),
+        (None, 1048576),
+    ],
+)
+async def test_accepted_unusable_response_is_never_resent(
+    body: bytes | None, max_response_bytes: int
+) -> None:
+    requests: list[httpx.Request] = []
+    payload: object = BrokenBodyStream() if body is None else body
+    result = await create(
+        lambda _: (201, payload), AttemptContext(), requests, max_response_bytes=max_response_bytes
+    )
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+async def test_client_error_with_created_id_is_read_back_not_resent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def answer(request: httpx.Request) -> tuple[int, object]:
+        return (425, {"id": 92674392836}) if request.method == "POST" else (200, CREATED[1])
+
+    result = await create(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "created"
+    assert context.marker is not None and context.marker.provider_id == "92674392836"
+    assert [request.method for request in requests] == ["POST", "GET"]
+
+
+async def test_unlisted_client_error_retries_with_an_unknown_outcome_kind() -> None:
+    requests: list[httpx.Request] = []
+    result = await create(lambda _: (425, {"code": 425}), AttemptContext(), requests)
+    assert isinstance(result, RetryError)
+    assert result.failure.kind == FailureKind.AVAILABILITY
+
+
+async def test_oversized_refusal_body_is_an_unknown_outcome() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    oversized = b'{"code":300,"message":"' + b"x" * 65536 + b'"}'
+    answer = sequence((400, oversized), CREATED)
+    assert isinstance(await create(answer, context, requests), RetryError)
+    assert context.marker is not None and context.marker.state == State.CLAIMED
+    context.attempt = 2
+    result = await create(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "created"
+    assert len(requests) == 2
+
+
+async def test_invalid_credentials_after_possible_send_select_uncertain() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert isinstance(await create(lambda _: SERVER_FAILURE, context, requests), RetryError)
+    context.attempt = 2
+    result = await create(lambda _: SERVER_FAILURE, context, requests, access_token="")
     assert isinstance(result, MutationResult) and result.branch == "uncertain"
     assert len(requests) == 1
 

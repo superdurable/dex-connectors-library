@@ -42,6 +42,7 @@ export function classify(client: ZoomClient, operation: string, exchange: ZoomEx
   if (successful(status)) {
     if (isTooLarge) return { outcome: 'invalid', failure: zoomFailure(operation, 'RESPONSE_TOO_LARGE', 'Zoom response exceeds the configured size limit'), errorCode: '', retryAfter: 0 };
     if (reflectsCredential) return { outcome: 'invalid', failure: zoomFailure(operation, 'PROTOCOL', 'Zoom response contained the connection credential'), errorCode: '', retryAfter: 0 };
+    if (exchange.hasBodyReadFailed) return { outcome: 'retry', failure: zoomFailure(operation, 'TRANSPORT', 'Zoom response was interrupted'), errorCode: '', retryAfter: 0 };
     return { outcome: 'usable', errorCode: '', retryAfter: 0 };
   }
   if (status >= 300 && status < 400) return { outcome: 'invalid', failure: zoomFailure(operation, 'PROTOCOL', statusMessage('Zoom redirected the request', status, '')), errorCode: '', retryAfter: 0 };
@@ -131,8 +132,10 @@ export class UpdateMeetingOperation implements Mutation<UpdateMeetingInput, Upda
     if ('error' in exchange) return exchange.error === 'notBuilt' ? newMutationBranch('defect', emptyUpdate, zeroReceipt(), zoomFailure('updateMeeting', 'LOCAL_DEFECT', 'Zoom request could not be built')) : newMutationRetry(zoomFailure('updateMeeting', 'TRANSPORT', 'Zoom could not be reached'), 0);
     if (successful(exchange.response.status)) return newMutationBranch('updated', updated, this.client.receipt(call, id));
     const result = classify(this.client, 'updateMeeting', exchange), receipt = this.client.receipt(call, id, result.errorCode);
-    if (result.outcome === 'notFound') return newMutationBranch('notFound', updated, receipt, result.failure);
     const status = exchange.response.status;
+    // An unreadable error body cannot prove a refusal, and repeating the absolute patch is safe.
+    if (exchange.isTooLarge || exchange.hasBodyReadFailed) return newMutationRetry(zoomFailure('updateMeeting', 'AVAILABILITY', statusMessage('Zoom patch outcome is unknown', status, '')), result.retryAfter);
+    if (result.outcome === 'notFound') return newMutationBranch('notFound', updated, receipt, result.failure);
     if (result.outcome === 'rejected' && (definiteRefusalStatuses.has(status) || status === 429)) return newMutationBranch('providerRejected', updated, receipt, result.failure);
     // A redirect or unlisted status leaves the outcome unknown, and repeating the absolute patch is safe.
     return newMutationRetry(result.failure!, result.retryAfter);
@@ -209,6 +212,8 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
     }
     const resolved = await this.client.resolveCredentials(call, 'createMeeting');
     if ('failure' in resolved) {
+      // Terminal credentials forbid the resend, so only the earlier possible create remains.
+      if (hasPossibleEarlierSend && !resolved.retry) return newMutationUncertain(built.requested, zoomFailure('createMeeting', resolved.failure.kind, `${resolved.failure.message}; an earlier attempt may have created the Zoom meeting`), this.client.receipt(call));
       // notSent would hide the earlier possible send, so nothing is recorded.
       if (hasPossibleEarlierSend) return newMutationRetry(resolved.failure, 0);
       try { await fence.recordNotSent(); } catch { return newMutationRetry(zoomFailure('createMeeting', 'AVAILABILITY', 'Zoom credentials and the not-sent checkpoint were unavailable'), 0); }
@@ -223,7 +228,8 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
     if ('error' in exchange) {
       if (exchange.error === 'notBuilt') {
         try { await fence.recordCanResend(); } catch { /* The request was never sent; a lost canResend checkpoint leaves a counted claim. */ }
-        if (hasPossibleEarlierSend) return newMutationRetry(zoomFailure('createMeeting', 'LOCAL_DEFECT', 'Zoom request could not be built; no meeting was created in this attempt'), 0);
+        // The same input cannot build a request later, so only the earlier possible create remains.
+        if (hasPossibleEarlierSend) return newMutationUncertain(built.requested, zoomFailure('createMeeting', 'LOCAL_DEFECT', 'Zoom request could not be built; an earlier attempt may have created the meeting'), this.client.receipt(call));
         return newMutationBranch('defect', emptyMeeting, zeroReceipt(), zoomFailure('createMeeting', 'LOCAL_DEFECT', 'Zoom request could not be built'));
       }
       if (exchange.error === 'beforeSend') {
@@ -233,19 +239,28 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
       return resendOrUncertain(zoomFailure('createMeeting', 'TRANSPORT', 'Zoom meeting outcome is unknown'));
     }
     if (successful(exchange.response.status)) {
-      if (exchange.isTooLarge) return resendOrUncertain(zoomFailure('createMeeting', 'RESPONSE_TOO_LARGE', 'Zoom meeting response exceeds the configured size limit'));
-      if (exchange.reflectsCredential) return resendOrUncertain(zoomFailure('createMeeting', 'PROTOCOL', 'Zoom meeting response contained the connection credential'));
+      // Zoom created the meeting, so an unusable body selects uncertain and is never resent.
+      const accepted = (kind: Failure['kind'], message: string) => newMutationUncertain(built.requested, zoomFailure('createMeeting', kind, message), this.client.receipt(call));
+      if (exchange.isTooLarge) return accepted('RESPONSE_TOO_LARGE', 'Zoom accepted the create, but its response exceeds the configured size limit');
+      if (exchange.hasBodyReadFailed) return accepted('TRANSPORT', 'Zoom accepted the create, but its response was interrupted');
+      if (exchange.reflectsCredential) return accepted('PROTOCOL', 'Zoom accepted the create, but its response contained the connection credential');
       let meeting: Meeting;
       try { meeting = decodeMeeting(responseObject(exchange.response.body)); }
       catch {
-        // A created meeting ID means a resend could duplicate the meeting.
-        if (createdMeetingID(exchange.response.body) > 0) return newMutationUncertain(built.requested, zoomFailure('createMeeting', 'PROTOCOL', 'Zoom accepted the request but returned an unusable meeting'), this.client.receipt(call));
-        return resendOrUncertain(zoomFailure('createMeeting', 'PROTOCOL', 'Zoom meeting response is malformed'));
+        if (createdMeetingID(exchange.response.body) > 0) return accepted('PROTOCOL', 'Zoom accepted the request but returned an unusable meeting');
+        return accepted('PROTOCOL', 'Zoom accepted the create, but its response is malformed');
       }
       try { await fence.recordProviderId(String(meeting.id)); } catch { /* A lost checkpoint leaves the claim, which still counts this send. */ }
       return newMutationBranch('created', meeting, this.client.receipt(call, String(meeting.id)));
     }
+    const createdId = createdMeetingID(exchange.response.body);
+    if (createdId > 0) {
+      // An error status naming a created meeting is contradictory, so it is read back, never resent.
+      try { await fence.recordProviderId(String(createdId)); } catch { /* Read-back still runs; a lost checkpoint leaves the claim, which counts this send. */ }
+      return this.readBack(call, built.requested, String(createdId));
+    }
     const result = classify(this.client, 'createMeeting', exchange), receipt = this.client.receipt(call, '', result.errorCode), status = exchange.response.status;
+    const isBodyUnreadable = exchange.isTooLarge || exchange.hasBodyReadFailed === true;
     if (status === 401) {
       const refreshed = await this.client.refreshAfterRejection(call, resolved.credentials.accessToken.reveal());
       if (refreshed === 'unsupported') return rejectOrUncertain(zoomFailure('createMeeting', 'AUTHENTICATION', 'Zoom rejected the connection credential; reconnect the connection'), receipt);
@@ -263,9 +278,10 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
       try { await fence.recordCanResend(); } catch { return newMutationRetry(zoomFailure('createMeeting', 'AVAILABILITY', 'Zoom rejected the create but the resend checkpoint failed'), 0); }
       return newMutationRetry(result.failure!, result.retryAfter);
     }
-    if (definiteRefusalStatuses.has(status) && createdMeetingID(exchange.response.body) === 0) return rejectOrUncertain(result.failure!, receipt);
-    // 408, 409, 5xx, redirects, and other 4xx responses do not prove whether Zoom applied the create.
-    return resendOrUncertain(result.failure!, result.retryAfter, result.errorCode);
+    if (definiteRefusalStatuses.has(status) && !isBodyUnreadable) return rejectOrUncertain(result.failure!, receipt);
+    // 408, 409, 5xx, redirects, other 4xx responses, and unreadable error bodies do not prove whether Zoom applied the create.
+    const unknownFailure = result.outcome === 'rejected' || isBodyUnreadable ? zoomFailure('createMeeting', 'AVAILABILITY', statusMessage('Zoom meeting outcome is unknown', status, result.errorCode)) : result.failure!;
+    return resendOrUncertain(unknownFailure, result.retryAfter, result.errorCode);
   }
 
   private async readBack(call: Call, requested: Meeting, providerId: string): Promise<MutationAttempt<Meeting>> {
