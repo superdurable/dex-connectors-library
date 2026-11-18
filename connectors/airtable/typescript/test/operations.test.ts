@@ -6,6 +6,7 @@ import { ReauthorizationRequiredError, SecretString, type Call } from '@superdur
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { AirtableClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const input = { baseId: 'appRefundBase0001', tableIdOrName: 'tblPolicies000001' };
 const call = {
@@ -67,6 +68,8 @@ it.each([
   ['object not found', new ObjectNotFoundError(), 'defect'],
   ['connection not selected', new ConnectionNotSelectedError(), 'defect'],
   ['broker rejected', new CredentialBrokerRejectedError(), 'defect'],
+  ['malformed stored material', new CredentialMaterialError('stored credential does not match the connector credential fields'), 'defect'],
+  ['SDK decoding failure', new TypeError('project credential decoding failed'), 'defect'],
 ])('selects a terminal branch for a terminal credential failure: %s', async (_name, error, branch) => {
   let requestCount = 0;
   const client = new AirtableClient({}, { resolve: async () => { throw error; } }, {

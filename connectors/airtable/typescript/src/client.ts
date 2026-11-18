@@ -4,7 +4,7 @@
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { GetRecordOperation, ListRecordsOperation, UpdateRecordsOperation, UpsertRecordsOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.airtable.com';
@@ -173,7 +173,8 @@ export class AirtableClient {
 /** Reports a credential failure no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
-    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || isCredentialMaterialError(error);
 }
 
 function header(response: ProviderResponse, name: string): string {
