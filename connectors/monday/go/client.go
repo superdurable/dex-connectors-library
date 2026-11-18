@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -283,11 +284,20 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return Credentials{}, &mondayExchange{outcome: exchangeRetry, isProvenNotProcessed: true,
 			failure: mondayFailure(sdkgo.FailureAvailability, operation, "monday.com OAuth token refresh is temporarily unavailable")}
+	case err != nil && !isTerminalCredentialError(err):
+		return Credentials{}, &mondayExchange{outcome: exchangeRetry, isProvenNotProcessed: true,
+			failure: mondayFailure(sdkgo.FailureAvailability, operation, "monday.com connection credentials could not be read, so nothing was sent")}
 	case err != nil || validateResolvedCredentials(credentials) != nil:
 		return Credentials{}, &mondayExchange{outcome: exchangeDefect, isDefiniteRefusal: true,
 			failure: mondayFailure(sdkgo.FailureAuthentication, operation, "monday.com connection credentials are unavailable")}
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as store reads, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) canRefreshAfterRejection(credentials Credentials) bool {
@@ -358,7 +368,12 @@ func (client *Client) send(ctx context.Context, call sdkgo.Call, credentials Cre
 	response.requestID = safeRequestID(body)
 	retryAfter := providerhttp.ParseRetryAfter(httpResponse.Header.Get("Retry-After"), client.now())
 	if !isSuccess {
-		return classifyFailedResponse(operation, response, summarizeGraphQLErrors(body, token), retryAfter)
+		result := classifyFailedResponse(operation, response, summarizeGraphQLErrors(body, token), retryAfter)
+		if request.isMutation && readErr != nil && result.isDefiniteRefusal {
+			// An oversized error body may hide an accepted write, so its refusal status proves nothing.
+			result.outcome, result.isDefiniteRefusal = exchangeRetry, false
+		}
+		return result
 	}
 	var envelope struct {
 		Data   json.RawMessage   `json:"data"`

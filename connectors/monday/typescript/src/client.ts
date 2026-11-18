@@ -4,6 +4,7 @@
 import { ReauthorizationRequiredError, RetryError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { AddUpdateOperation, CreateItemOperation, GetItemOperation, ListItemsOperation, UpdateItemColumnValuesOperation } from './operations.js';
@@ -120,10 +121,13 @@ export class MondayClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
-      return error instanceof ReauthorizationRequiredError
-        ? failureExchange(operation, 'rejected', 'AUTHENTICATION', 'monday.com authorization must be renewed', 0, '', false, { definiteRefusal: true })
-        : error instanceof RetryError ? failureExchange(operation, 'retry', 'AVAILABILITY', 'monday.com OAuth token refresh is temporarily unavailable', 0, '', false, { provenNotProcessed: true })
-          : failureExchange(operation, 'defect', 'AUTHENTICATION', 'monday.com connection credentials are unavailable', 0, '', false, { definiteRefusal: true });
+      if (error instanceof ReauthorizationRequiredError) return failureExchange(operation, 'rejected', 'AUTHENTICATION', 'monday.com authorization must be renewed', 0, '', false, { definiteRefusal: true });
+      if (error instanceof RetryError) return failureExchange(operation, 'retry', 'AVAILABILITY', 'monday.com OAuth token refresh is temporarily unavailable', 0, '', false, { provenNotProcessed: true });
+      if (error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError) {
+        return failureExchange(operation, 'defect', 'AUTHENTICATION', 'monday.com connection credentials are unavailable', 0, '', false, { definiteRefusal: true });
+      }
+      // A broker or store outage is transient; only a missing or refused connection is terminal.
+      return failureExchange(operation, 'retry', 'AVAILABILITY', 'monday.com connection credentials could not be read, so nothing was sent', 0, '', false, { provenNotProcessed: true });
     }
     const accessToken = credentials.authMethodId === 'monday-oauth' ? credentials.accessToken?.reveal() : credentials.apiToken?.reveal();
     if (!['personal-api-token', 'monday-oauth'].includes(credentials.authMethodId ?? '') || !accessToken || !isHeaderSafeCredential(accessToken)) {
@@ -172,14 +176,17 @@ export class MondayClient {
         Accept: 'application/json', 'Content-Type': 'application/json', Authorization: accessToken, 'API-Version': '2026-10',
         ...(request.isMutation ? { 'Idempotency-Key': call.idempotencyKey! } : {}),
       }, body: Buffer.from(JSON.stringify({ query: request.document, variables: request.variables })),
-      maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: this.maxResponseBytes, ignoreErrorBodyReadFailure: true,
+      // A broken or oversized error body throws, so a refusal status is never read from a partial body.
+      maxResponseBytes: this.maxResponseBytes,
       addressPolicy: this.apiURL === defaultAPIURL ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs, ...(signal ? { signal } : {}),
     };
     let response: ProviderResponse;
+    let isErrorBodyOversized = false;
     try { response = await this.send(providerRequest); }
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined) {
         response = { status: error.status, headers: error.headers, body: new Uint8Array() };
+        isErrorBodyOversized = true;
         if (response.status >= 200 && response.status < 300) return failureExchange(operation, 'invalid', 'RESPONSE_TOO_LARGE', 'monday.com response exceeds the configured maxResponseBytes limit', response.status, '', headerValue(response.headers['idempotency-replayed']).trim().toLowerCase() === 'true');
       } else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return failureExchange(operation, 'retry', 'TRANSPORT', 'monday.com could not be reached; no request was sent', 0, '', false, { provenNotProcessed: true });
       else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 200 && error.status < 300) {
@@ -200,7 +207,12 @@ export class MondayClient {
     try { const parsed: unknown = JSON.parse(Buffer.from(body).toString()); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) envelope = parsed as Record<string, unknown>; }
     catch { /* Status alone classifies non-success replies. */ }
     const data = envelope?.data === null ? undefined : envelope?.data;
-    if (status < 200 || status >= 300) return classifyFailure(operation, body, status, accessToken, retryAfterMs, base, data);
+    if (status < 200 || status >= 300) {
+      const classified = classifyFailure(operation, body, status, accessToken, retryAfterMs, base, data);
+      // An oversized error body may hide an accepted write, so its refusal status proves nothing.
+      if (request.isMutation && isErrorBodyOversized && classified.definiteRefusal) return { ...classified, outcome: 'retry', definiteRefusal: false };
+      return classified;
+    }
     if (!envelope) return { ...failureExchange(operation, 'invalid', 'PROTOCOL', 'monday.com returned a response that is not a GraphQL JSON object', status, safeRequestID, isReplayed), retryAfterMs };
     if (envelope.errors !== undefined && envelope.errors !== null && !Array.isArray(envelope.errors)) return failureExchange(operation, 'invalid', 'PROTOCOL', 'monday.com returned a response that is not a GraphQL JSON object', status, safeRequestID, isReplayed);
     if (Array.isArray(envelope.errors) && envelope.errors.length) return classifyFailure(operation, body, status, accessToken, retryAfterMs, base, data);

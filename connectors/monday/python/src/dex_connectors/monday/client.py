@@ -5,7 +5,7 @@
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -215,7 +215,18 @@ class Client:
                 ),
                 proven_not_processed=True,
             )
-        except (ValueError, LookupError, OSError):
+        except OSError:
+            # A broker or store outage is transient; only a missing or refused connection is terminal.
+            return None, Exchange(
+                "retry",
+                problem=failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "monday.com connection credentials could not be read, so nothing was sent",
+                ),
+                proven_not_processed=True,
+            )
+        except (ValueError, LookupError):
             return None, Exchange(
                 "defect",
                 problem=failure(
@@ -266,12 +277,16 @@ class Client:
         credentials: Credentials,
         mutation: bool,
         write_deadline: datetime | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
         """Send once and resend once after monday.com rejects an OAuth token.
 
         A fenced write passes its `write_deadline`, and resends only when it still fits a request.
+        ``observed_statuses`` receives each response status once its headers arrive.
         """
-        result = await self._send(call, operation, document, variables, credentials, mutation)
+        result = await self._send(
+            call, operation, document, variables, credentials, mutation, observed_statuses
+        )
         if result.status == 401 and credentials.auth_method_id == "monday-oauth":
             refresh = getattr(self.credentials, "resolve_after_rejection", None)
             if refresh is not None:
@@ -292,7 +307,9 @@ class Client:
                                 ),
                                 proven_not_processed=True,
                             )
-                        result = await self._send(call, operation, document, variables, replacement, mutation)
+                        result = await self._send(
+                            call, operation, document, variables, replacement, mutation, observed_statuses
+                        )
                 except (ReauthorizationRequiredError, RetryError, ValueError, LookupError, OSError):
                     pass  # The original credential rejection remains the terminal provider outcome.
         return result
@@ -305,6 +322,7 @@ class Client:
         variables: dict[str, Any],
         credentials: Credentials,
         mutation: bool,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
         token = (
             credentials.access_token
@@ -356,8 +374,11 @@ class Client:
                 proven_not_processed=error.provably_not_sent,
             )
         status = response.status_code
+        if observed_statuses is not None:
+            observed_statuses.append(status)
         replayed = response.headers.get("Idempotency-Replayed", "").strip().lower() == "true"
         retry_after = parse_retry_after(response.headers.get("Retry-After", ""), self.now())
+        is_error_body_oversized = False
         try:
             body = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:
@@ -373,6 +394,7 @@ class Client:
                     ),
                 )
             body = b""
+            is_error_body_oversized = True
         except ProviderTransportError:
             outcome = "invalid" if mutation and 200 <= status < 300 else "retry"
             return Exchange(
@@ -404,9 +426,13 @@ class Client:
             if isinstance(candidate, str) and _REQUEST_ID.fullmatch(candidate):
                 request_id = candidate
         if status < 200 or status >= 300:
-            return _classify_response(
+            classified = _classify_response(
                 operation, status, parsed, request_id, replayed, retry_after, token.reveal()
             )
+            if mutation and is_error_body_oversized and classified.definite_refusal:
+                # An oversized error body may hide an accepted write, so its refusal status proves nothing.
+                return replace(classified, outcome="retry", definite_refusal=False)
+            return classified
         if not isinstance(parsed, dict):
             return Exchange(
                 "invalid",
