@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -235,18 +236,29 @@ func (client *Client) QueryFreeBusy() QueryFreeBusyOperation {
 }
 
 // resolveCredentials returns the call's credentials and the Graph path of the mailbox they reach.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, string, *sdkgo.Failure) {
+// isRetryable reports a failure isTerminalCredentialError does not name, which a later attempt may clear.
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (credentials Credentials, mailboxRoot string, failure *sdkgo.Failure, isRetryable bool) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, "", failurePointer(sdkgo.FailureAvailability, operation, "connection credentials are temporarily unavailable; nothing was sent"), true
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, "", failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+		return Credentials{}, "", failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), false
 	}
 	if credentials.AuthMethodID == MicrosoftOAuthAuthMethodID {
-		return credentials, "/me", nil
+		return credentials, "/me", nil, false
 	}
 	if client.mailbox == "" {
-		return Credentials{}, "", failurePointer(sdkgo.FailureValidation, operation, "an app-only connection needs its mailbox configured")
+		return Credentials{}, "", failurePointer(sdkgo.FailureValidation, operation, "an app-only connection needs its mailbox configured"), false
 	}
-	return credentials, "/users/" + url.PathEscape(client.mailbox), nil
+	return credentials, "/users/" + url.PathEscape(client.mailbox), nil, false
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // readEvent performs one event GET and classifies it without choosing an operation branch.

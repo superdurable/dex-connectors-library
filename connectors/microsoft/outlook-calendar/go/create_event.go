@@ -77,7 +77,10 @@ func (operation CreateEventOperation) Invoke(call sdkgo.Call, input CreateEventI
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, mailboxRoot, failure := operation.client.resolveCredentials(call, operationID)
+	credentials, mailboxRoot, failure, isRetryable := operation.client.resolveCredentials(call, operationID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[CreateEventOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failure, sdkgo.Receipt{})
 	}

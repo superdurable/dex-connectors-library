@@ -21,9 +21,12 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     QueryAttempt,
+    ReauthorizationRequiredError,
     Receipt,
     RejectedCredentialRefreshingProvider,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     is_header_safe_credential,
     parse_retry_after,
@@ -331,6 +334,15 @@ class GraphResponse:
     body: bytes = b""
 
 
+# Only these credential failures need a person; every other one retries.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+
+
 class RequestFailure(Exception):
     def __init__(self, kind: FailureKind, message: str, response: GraphResponse | None = None) -> None:
         self.kind, self.response = kind, response or GraphResponse()
@@ -420,9 +432,23 @@ class Client:
         return QueryFreeBusyOperation(self)
 
     async def resolve_credentials(self, call: Call, operation: str) -> tuple[Credentials, str]:
-        """Resolve a current credential and the selected mailbox path."""
+        """Resolve a current credential and the selected mailbox path.
+
+        A credential failure that is not terminal raises an AVAILABILITY RequestFailure, which the
+        caller retries.
+        """
         try:
             material = await self.credentials.resolve(call)
+        except _TERMINAL_CREDENTIAL_ERRORS as error:
+            raise RequestFailure(
+                FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+            ) from error
+        except Exception as error:
+            raise RequestFailure(
+                FailureKind.AVAILABILITY,
+                "connection credentials are temporarily unavailable; nothing was sent",
+            ) from error
+        try:
             token = material.access_token.reveal() if material.access_token is not None else ""
             if not is_header_safe_credential(token) or material.auth_method_id not in (
                 "microsoft-oauth",
@@ -751,6 +777,8 @@ class ListEventsOperation:
                 raise ValueError("pageSize must be between 1 and 250, or zero for the default")
             credentials, root = await self.client.resolve_credentials(call, operation)
         except RequestFailure as error:
+            if error.kind is FailureKind.AVAILABILITY:
+                return QueryAttempt.retry(_failure(operation, error.kind, str(error)))
             return QueryAttempt.branch_result(
                 "defect", empty, Receipt(), _failure(operation, error.kind, str(error))
             )
@@ -838,6 +866,8 @@ class GetEventOperation:
             display = _display(input.time_zone)
             credentials, root = await self.client.resolve_credentials(call, operation)
         except RequestFailure as error:
+            if error.kind is FailureKind.AVAILABILITY:
+                return QueryAttempt.retry(_failure(operation, error.kind, str(error)))
             return QueryAttempt.branch_result(
                 "defect", Event(), Receipt(), _failure(operation, error.kind, str(error))
             )
@@ -933,6 +963,8 @@ class QueryFreeBusyOperation:
             first, last, interval, display = _validate_schedules(input)
             credentials, root = await self.client.resolve_credentials(call, operation)
         except RequestFailure as error:
+            if error.kind is FailureKind.AVAILABILITY:
+                return QueryAttempt.retry(_failure(operation, error.kind, str(error)))
             return QueryAttempt.branch_result(
                 "defect", empty, Receipt(), _failure(operation, error.kind, str(error))
             )
@@ -1127,6 +1159,8 @@ class CreateEventOperation:
             display = _display(input.start.time_zone)
             credentials, root = await self.client.resolve_credentials(call, operation)
         except RequestFailure as error:
+            if error.kind is FailureKind.AVAILABILITY:
+                return MutationAttempt.retry(_failure(operation, error.kind, str(error)))
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), _failure(operation, error.kind, str(error))
             )
@@ -1294,6 +1328,8 @@ class UpdateEventOperation:
             display = _display(input.time_zone or (input.start.time_zone if input.start else ""))
             credentials, root = await self.client.resolve_credentials(call, operation)
         except RequestFailure as error:
+            if error.kind is FailureKind.AVAILABILITY:
+                return MutationAttempt.retry(_failure(operation, error.kind, str(error)))
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), _failure(operation, error.kind, str(error))
             )
