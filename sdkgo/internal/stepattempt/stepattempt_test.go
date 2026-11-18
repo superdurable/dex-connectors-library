@@ -30,6 +30,24 @@ func TestRegistrySharesOneValuePerAttemptAndReplacesItOnRetry(t *testing.T) {
 	require.Equal(t, int32(2), second.attempt)
 }
 
+// nilEmbeddedContext is a test fake whose embedded Dex context is nil, so Done panics.
+type nilEmbeddedContext struct {
+	dex.Context
+	attempt int32
+}
+
+func (ctx *nilEmbeddedContext) Attempt() int32 { return ctx.attempt }
+
+func TestRegistrySharesValueOfContextWithNilEmbeddedContext(t *testing.T) {
+	registry := newCounterRegistry()
+	ctx := &nilEmbeddedContext{attempt: 1}
+	var first *counter
+	require.NotPanics(t, func() { first = registry.For(ctx) })
+	require.Same(t, first, registry.For(ctx))
+	ctx.attempt = 2
+	require.NotSame(t, first, registry.For(ctx), "a later attempt still replaces the value")
+}
+
 func TestRegistryReleasesValueWhenAttemptContextEnds(t *testing.T) {
 	registry := newCounterRegistry()
 	ctx := singledispatchtest.NewContext("flow-1", "step-1")

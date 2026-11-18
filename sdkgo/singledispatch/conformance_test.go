@@ -67,11 +67,14 @@ func TestConformanceMarkers(t *testing.T) {
 func recordCheckpointScenarios(t *testing.T) []checkpointScenario {
 	t.Helper()
 	entries := func(markers ...Marker) checkpointHeartbeat {
-		heartbeat := checkpointHeartbeat{SingleDispatchMarkers: map[sdkgo.CallID]Marker{}}
+		byCallID := map[sdkgo.CallID]Marker{}
 		for _, marker := range markers {
-			heartbeat.SingleDispatchMarkers[marker.CallID] = marker
+			byCallID[marker.CallID] = marker
 		}
-		return heartbeat
+		return encodeCheckpointHeartbeat(byCallID)
+	}
+	rawEntry := func(entry map[string]any) map[string]any {
+		return map[string]any{checkpointMarkersField: map[string]any{entry["callId"].(string): entry}}
 	}
 	call := func(callID sdkgo.CallID, maxSends int32, shouldDispatch bool) checkpointScenarioCall {
 		return checkpointScenarioCall{CallID: callID, MaxSends: maxSends, Dispatch: shouldDispatch}
@@ -85,7 +88,7 @@ func recordCheckpointScenarios(t *testing.T) []checkpointScenario {
 		{name: "two calls on attempt one both send", attempt: 1, calls: []checkpointScenarioCall{call(conformanceCallA, 1, true), call(conformanceCallB, 1, true)}},
 		{
 			name: "attempt two runs call B before call A", attempt: 2,
-			previous: entries(Marker{CallID: conformanceCallA, Attempt: 1, State: StateClaimed}, Marker{CallID: conformanceCallB, Attempt: 1, State: StateCanResend}),
+			previous: entries(Marker{CallID: conformanceCallA, Attempt: 1, State: StateClaimed, SendCount: 1}, Marker{CallID: conformanceCallB, Attempt: 1, State: StateCanResend}),
 			calls: []checkpointScenarioCall{
 				call(conformanceCallB, 1, true),
 				{CallID: conformanceCallA, MaxSends: 3, Dispatch: true, ProviderID: "object-42"},
@@ -93,7 +96,7 @@ func recordCheckpointScenarios(t *testing.T) []checkpointScenario {
 		},
 		{
 			name: "attempt two keeps call A's entry when only call B sends", attempt: 2,
-			previous: entries(Marker{CallID: conformanceCallA, Attempt: 1, State: StateClaimed}, Marker{CallID: conformanceCallB, Attempt: 1, State: StateNotSent}),
+			previous: entries(Marker{CallID: conformanceCallA, Attempt: 1, State: StateClaimed, SendCount: 1}, Marker{CallID: conformanceCallB, Attempt: 1, State: StateNotSent}),
 			calls:    []checkpointScenarioCall{call(conformanceCallB, 1, true), call(conformanceCallA, 1, true)},
 		},
 		{
@@ -125,13 +128,28 @@ func recordCheckpointScenarios(t *testing.T) []checkpointScenario {
 		},
 		{
 			name: "absent entry on attempt two uses the attempt-one bound", attempt: 2,
-			previous: entries(Marker{CallID: conformanceCallB, Attempt: 1, State: StateClaimed}),
+			previous: entries(Marker{CallID: conformanceCallB, Attempt: 1, State: StateClaimed, SendCount: 1}),
 			calls:    []checkpointScenarioCall{call(conformanceCallA, 3, true), call(conformanceCallC, 1, true)},
 		},
 		{
 			name: "impossible own entry fails closed", attempt: 2,
 			previous: entries(Marker{CallID: conformanceCallA, Attempt: 1, State: StateClaimed, SendCount: 2}),
 			calls:    []checkpointScenarioCall{call(conformanceCallA, 3, true)},
+		},
+		{
+			name: "claimed entry with a zero count fails closed", attempt: 2,
+			previous: rawEntry(map[string]any{"callId": string(conformanceCallA), "attempt": 1, "state": "claimed", "sendCount": 0}),
+			calls:    []checkpointScenarioCall{call(conformanceCallA, 3, true)},
+		},
+		{
+			name: "cap one keeps an exact zero count after two refused sends", attempt: 3,
+			previous: entries(Marker{CallID: conformanceCallA, Attempt: 2, State: StateCanResend}),
+			calls:    []checkpointScenarioCall{call(conformanceCallA, 1, true)},
+		},
+		{
+			name: "entry without a count is read conservatively", attempt: 3,
+			previous: rawEntry(map[string]any{"callId": string(conformanceCallA), "attempt": 2, "state": "canResend"}),
+			calls:    []checkpointScenarioCall{call(conformanceCallA, 1, true)},
 		},
 	}
 	recorded := make([]checkpointScenario, 0, len(scenarios))

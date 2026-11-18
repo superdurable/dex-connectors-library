@@ -6,6 +6,7 @@ package singledispatch_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -45,9 +46,25 @@ func TestTwoFencedCallsInOneStepBothSend(t *testing.T) {
 	}
 	require.Equal(t, map[sdkgo.CallID]int{"call-gmail": 1, "call-slack": 1}, sends)
 	require.Equal(t, map[sdkgo.CallID]singledispatch.Marker{
-		"call-gmail": {CallID: "call-gmail", Attempt: 1, State: singledispatch.StateClaimed},
-		"call-slack": {CallID: "call-slack", Attempt: 1, State: singledispatch.StateClaimed},
+		"call-gmail": {CallID: "call-gmail", Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1},
+		"call-slack": {CallID: "call-slack", Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1},
 	}, lastMarkers(t, ctx))
+}
+
+func TestProviderIDSurvivesItsFailedHeartbeatInLaterHeartbeats(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	accepted := newCallFence(t, ctx, "call-a", 3)
+	require.Equal(t, singledispatch.SendAllowed, accepted.Decide().Kind)
+	require.NoError(t, accepted.Dispatch(func(context.Context) error { return nil }))
+	ctx.SetWriteError(errors.New("heartbeat unavailable"))
+	require.Error(t, accepted.RecordProviderID("object-1"))
+	ctx.SetWriteError(nil)
+	require.ErrorIs(t, accepted.RecordCanResend(), singledispatch.ErrDispatchNotAllowed, "a kept provider ID forbids canResend")
+
+	other := newCallFence(t, ctx, "call-b", 3)
+	require.Equal(t, singledispatch.SendAllowed, other.Decide().Kind)
+	require.NoError(t, other.Dispatch(func(context.Context) error { return nil }))
+	require.Equal(t, singledispatch.Marker{CallID: "call-a", Attempt: 1, State: singledispatch.StateClaimed, ProviderID: "object-1", SendCount: 1}, lastMarkers(t, ctx)["call-a"])
 }
 
 func TestLaterCallKeepsEarlierCallsPreviousAttemptEntry(t *testing.T) {
@@ -64,7 +81,7 @@ func TestLaterCallKeepsEarlierCallsPreviousAttemptEntry(t *testing.T) {
 	retriedB := newCallFence(t, ctx, "call-b", 1)
 	require.Equal(t, singledispatch.SendAllowed, retriedB.Decide().Kind)
 	require.NoError(t, retriedB.Dispatch(func(context.Context) error { return nil }))
-	require.Equal(t, singledispatch.Marker{CallID: "call-a", Attempt: 1, State: singledispatch.StateClaimed}, lastMarkers(t, ctx)["call-a"])
+	require.Equal(t, singledispatch.Marker{CallID: "call-a", Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1}, lastMarkers(t, ctx)["call-a"])
 
 	ctx.AdvanceAttempt()
 	retriedA := newCallFence(t, ctx, "call-a", 1)

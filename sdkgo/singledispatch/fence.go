@@ -52,10 +52,11 @@ type Marker struct {
 	ProviderID string `json:"providerId,omitempty"`
 	// SendCount is the number of possibly effective sends this Call ID made up to and
 	// including Attempt. A claimed marker includes its own send; notSent and canResend
-	// markers carry the count from before their attempt's claim. Only a Fence with a
-	// WithMaxSends cap of 2 or more writes it, so other markers stay as before sdkgo
-	// v0.37.0. JSON omits zero, and Decide reads an absent count as Attempt for claimed
-	// and Attempt-1 otherwise, which can only overcount.
+	// markers carry the count from before their attempt's claim. Every Fence, whatever
+	// its cap, writes the exact count into its checkpoint entry, zero included, and
+	// Decide reads a present count exactly. A Marker's own JSON omits zero; Decide reads an
+	// entry without the count as Attempt for claimed and Attempt-1 otherwise, which can
+	// only overcount, and returns that bound in Decision.Marker.
 	SendCount int32 `json:"sendCount,omitempty"`
 }
 
@@ -192,7 +193,7 @@ func NewFence(call sdkgo.Call, executeTimeout time.Duration, options ...FenceOpt
 	return &Fence{
 		call:               call,
 		checkpoint:         stepCheckpointFor(call.Context),
-		writeDeadline:     startedAt.Add(time.Duration(float64(budget) * config.writeWindowFraction)),
+		writeDeadline:      startedAt.Add(time.Duration(float64(budget) * config.writeWindowFraction)),
 		minimumRequestTime: budget / 10, heartbeatInterval: 5 * time.Second,
 		maxSends: config.maxSends,
 	}, nil
@@ -279,13 +280,13 @@ func (fence *Fence) Dispatch(send func(context.Context) error) error {
 	}
 	fence.hasDispatched = true
 	fence.claimSendCount = fence.decision.MaximumPriorSends + 1
-	claim := Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateClaimed, SendCount: fence.markerSendCount(fence.claimSendCount)}
+	claim := Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateClaimed, SendCount: fence.claimSendCount}
 	if err := fence.record(claim); err != nil {
 		fence.hasPreSendRetry = true
 		// A failed claim never permits a send; a best-effort notSent may permit the next attempt.
 		// After a possible earlier send, notSent would let the next attempt skip read-back.
 		if fence.decision.Kind == SendAllowed {
-			_ = fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent, SendCount: fence.markerSendCount(fence.decision.MaximumPriorSends)})
+			_ = fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent, SendCount: fence.decision.MaximumPriorSends})
 		}
 		fence.mu.Unlock()
 		return errors.Join(ErrCheckpoint, err)
@@ -319,7 +320,7 @@ func (fence *Fence) RecordNotSent() error {
 		return ErrDispatchNotAllowed
 	}
 	fence.hasPreSendRetry = true
-	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent, SendCount: fence.markerSendCount(fence.decision.MaximumPriorSends)})
+	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent, SendCount: fence.decision.MaximumPriorSends})
 }
 
 // RecordCanResend checkpoints positive evidence that Dispatch was not processed.
@@ -331,26 +332,23 @@ func (fence *Fence) RecordCanResend() error {
 		return ErrDispatchNotAllowed
 	}
 	// The provider did not process this attempt's send, so the count before its claim stands.
-	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateCanResend, SendCount: fence.markerSendCount(fence.claimSendCount - 1)})
+	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateCanResend, SendCount: fence.claimSendCount - 1})
 }
 
 // RecordProviderID checkpoints the accepted resource identity for later read-back.
 // An empty provider ID is rejected; a lost heartbeat still never grants resend.
+// When the heartbeat fails, the provider ID still stays in this attempt's checkpoint, so a
+// later heartbeat of any Fence in the Step carries it, and RecordCanResend is refused.
 func (fence *Fence) RecordProviderID(providerID string) error {
 	fence.mu.Lock()
 	defer fence.mu.Unlock()
 	if !fence.hasSendFinished || fence.marker.State != StateClaimed || providerID == "" {
 		return ErrDispatchNotAllowed
 	}
-	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateClaimed, ProviderID: providerID, SendCount: fence.markerSendCount(fence.claimSendCount)})
-}
-
-// markerSendCount keeps markers of a Fence without bounded resend identical to earlier releases.
-func (fence *Fence) markerSendCount(sendCount int32) int32 {
-	if fence.maxSends < 2 {
-		return 0
-	}
-	return sendCount
+	accepted := Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateClaimed, ProviderID: providerID, SendCount: fence.claimSendCount}
+	err := fence.checkpoint.recordRetainingOnFailure(fence.call.Context, accepted)
+	fence.marker = accepted
+	return err
 }
 
 // resendOrReadBack applies the send cap to a decision that would otherwise require read-back.
@@ -408,7 +406,8 @@ func isValidMarker(marker Marker) bool {
 	}
 	switch marker.State {
 	case StateClaimed:
-		return marker.SendCount <= marker.Attempt
+		// A claim counts its own send.
+		return marker.SendCount >= 1 && marker.SendCount <= marker.Attempt
 	case StateNotSent, StateCanResend:
 		return marker.SendCount <= marker.Attempt-1
 	default:
@@ -416,14 +415,8 @@ func isValidMarker(marker Marker) bool {
 	}
 }
 
-// maximumPriorSends bounds the sends before attempt from a valid same-call marker.
+// maximumPriorSends bounds the sends before attempt from a valid same-call marker, whose
+// SendCount the decoder made exact or conservative.
 func maximumPriorSends(marker Marker, attempt int32) int32 {
-	sendCount := marker.SendCount
-	if sendCount == 0 {
-		sendCount = marker.Attempt
-		if marker.State != StateClaimed {
-			sendCount--
-		}
-	}
-	return sendCount + max(attempt-1-marker.Attempt, 0)
+	return marker.SendCount + max(attempt-1-marker.Attempt, 0)
 }

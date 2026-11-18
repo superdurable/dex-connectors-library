@@ -40,6 +40,7 @@ func NewRegistry[T any](create func(dex.Context) *T) *Registry[T] {
 }
 
 // For returns the value of ctx's current attempt, creating it under the registry lock.
+// A test fake embedding a nil context.Context shares its value until a later attempt replaces it.
 func (registry *Registry[T]) For(ctx dex.Context) *T {
 	key := contextKey(ctx)
 	attempt := ctx.Attempt()
@@ -50,7 +51,9 @@ func (registry *Registry[T]) For(ctx dex.Context) *T {
 	}
 	created := &entry[T]{attempt: attempt, value: registry.create(ctx)}
 	registry.byContext[key] = created
-	context.AfterFunc(ctx, func() { registry.release(key, created) })
+	if canReportEnd(ctx) {
+		context.AfterFunc(ctx, func() { registry.release(key, created) })
+	}
 	return created.value
 }
 
@@ -71,6 +74,17 @@ func (registry *Registry[T]) release(key any, released *entry[T]) {
 	if registry.byContext[key] == released {
 		delete(registry.byContext, key)
 	}
+}
+
+// canReportEnd reports whether ctx.Done can be called; a nil embedded context panics there.
+func canReportEnd(ctx dex.Context) (canReport bool) {
+	defer func() {
+		if recover() != nil {
+			canReport = false
+		}
+	}()
+	ctx.Done()
+	return true
 }
 
 func contextKey(ctx dex.Context) any {

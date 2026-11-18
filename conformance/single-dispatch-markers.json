@@ -73,7 +73,8 @@
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
               "attempt": 1,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             }
           }
         },
@@ -82,12 +83,14 @@
             "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
               "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
               "attempt": 1,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             },
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
               "attempt": 1,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             }
           }
         }
@@ -101,12 +104,14 @@
           "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
             "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
             "attempt": 1,
-            "state": "canResend"
+            "state": "canResend",
+            "sendCount": 0
           },
           "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
             "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
             "attempt": 1,
-            "state": "claimed"
+            "state": "claimed",
+            "sendCount": 1
           }
         }
       },
@@ -133,12 +138,14 @@
             "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
               "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
               "attempt": 2,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             },
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
               "attempt": 1,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             }
           }
         },
@@ -147,7 +154,8 @@
             "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
               "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
               "attempt": 2,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             },
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
@@ -162,7 +170,8 @@
             "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
               "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
               "attempt": 2,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             },
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
@@ -183,12 +192,14 @@
           "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
             "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
             "attempt": 1,
-            "state": "notSent"
+            "state": "notSent",
+            "sendCount": 0
           },
           "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
             "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
             "attempt": 1,
-            "state": "claimed"
+            "state": "claimed",
+            "sendCount": 1
           }
         }
       },
@@ -214,12 +225,14 @@
             "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
               "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
               "attempt": 2,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             },
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
               "attempt": 1,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             }
           }
         }
@@ -354,7 +367,8 @@
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
               "attempt": 1,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             }
           }
         }
@@ -430,7 +444,8 @@
           "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
             "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
             "attempt": 1,
-            "state": "claimed"
+            "state": "claimed",
+            "sendCount": 1
           }
         }
       },
@@ -456,7 +471,8 @@
             "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
               "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
               "attempt": 1,
-              "state": "claimed"
+              "state": "claimed",
+              "sendCount": 1
             },
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
@@ -491,6 +507,99 @@
         }
       ],
       "heartbeats": []
+    },
+    {
+      "name": "claimed entry with a zero count fails closed",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "singleDispatchMarkers": {
+          "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+            "attempt": 1,
+            "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+            "sendCount": 0,
+            "state": "claimed"
+          }
+        }
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
+          "dispatch": true,
+          "decision": "failClosed",
+          "maximumPriorSends": 0
+        }
+      ],
+      "heartbeats": []
+    },
+    {
+      "name": "cap one keeps an exact zero count after two refused sends",
+      "attempt": 3,
+      "previousHeartbeat": {
+        "singleDispatchMarkers": {
+          "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+            "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+            "attempt": 2,
+            "state": "canResend",
+            "sendCount": 0
+          }
+        }
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "sendAllowed",
+          "maximumPriorSends": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 3,
+              "state": "claimed",
+              "sendCount": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "entry without a count is read conservatively",
+      "attempt": 3,
+      "previousHeartbeat": {
+        "singleDispatchMarkers": {
+          "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+            "attempt": 2,
+            "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+            "state": "canResend"
+          }
+        }
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "sendAllowed",
+          "maximumPriorSends": 1
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 3,
+              "state": "claimed",
+              "sendCount": 2
+            }
+          }
+        }
+      ]
     }
   ]
 }

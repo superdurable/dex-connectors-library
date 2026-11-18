@@ -444,7 +444,9 @@ The Fences of one Step attempt share that checkpoint in process (Go: per Step
 context; Python: per context object; TypeScript: per context object in a
 registry on `globalThis`, shared by every loaded SDK copy) and serialize their
 heartbeats, so none loses another's entry. An entry is committed only after
-its heartbeat succeeds. Fences of the Go, Python, and TypeScript SDKs record
+its heartbeat succeeds, except that a provider ID stays in the in-process
+checkpoint even when its own heartbeat fails, so a later heartbeat of the Step
+carries it and the next attempt reads it back. Fences of the Go, Python, and TypeScript SDKs record
 the same JSON for the same calls; the cross-language
 [`single-dispatch-markers.json`](../conformance/single-dispatch-markers.json)
 scenarios pin it.
@@ -467,7 +469,13 @@ n-th appends the decimal `n` as a fifth length-prefixed field
 (`occurrenceCallIds` pins occurrences 1 to 3). The count restarts each attempt,
 so a Step must make its connector calls in a deterministic order; otherwise
 two calls of one operation could swap identities, and checkpoint entries,
-between attempts.
+between attempts. Concurrent Mutation calls of the same operation in one Step
+are therefore unsupported: a Mutation run (Go `RunMutation` and agent tools,
+Python `run_mutation`, TypeScript `runMutation`) that starts while an earlier
+call of the same operation in the Step attempt is still running selects
+`defect` before the operation is invoked, so it never sends. Mutations of
+different operations may run concurrently, and Queries are not restricted
+because they never fence a write.
 
 The checkpoint format is internal to the connector SDKs and may change. Hosts,
 including Dex agents and MCP servers, must not parse it; they classify a
@@ -477,16 +485,19 @@ result by the branch the connector selects.
 
 A `limited` operation constructs its Fence with
 `singledispatch.WithMaxSends(call.MaxSends())`. Without that option, or with
-1, the Fence behaves exactly as described above and its markers omit
-`sendCount`. With a cap of 2 or more, each marker also records `sendCount`, the number of
-possibly effective sends of the Call ID through that attempt: a claim counts its
-own send, `notSent` and `canResend` carry the count from before their claim, and
-a provider-ID claim keeps its claim's count. The next attempt computes an upper
-bound of earlier sends: none on attempt one; one per earlier attempt without a
-marker; otherwise the marker's count plus the attempts after it. A marker
-without a count, written by an uncapped Fence or an earlier release, counts its
-own attempt for a claim and the attempts before it otherwise. An own entry
-with a count larger than its attempt allows still fails closed.
+1, the Fence never resends after a possible send, as described above. Every
+Fence, whatever its cap, records the exact `sendCount` in each checkpoint
+entry, zero included: the number of possibly effective sends of the Call ID
+through that attempt. A claim counts its own send, `notSent` and `canResend`
+carry the count from before their claim, and a provider-ID claim keeps its
+claim's count. The next attempt computes an upper bound of earlier sends: none
+on attempt one; one per earlier attempt without an entry; otherwise the
+entry's count, read exactly, plus the attempts after it. So after two
+attempts whose sends both got a 429, the third attempt knows no earlier send
+may have taken effect, also with a cap of 1. An entry without a count counts
+its own attempt for a claim and the attempts before it otherwise. An own entry
+with a count that one send per attempt could not produce, including a claim
+with a count of 0, fails closed.
 
 A decision that would require read-back becomes `ReadBackThenResendAllowed`
 while that bound is below the cap. The connector reads back first when it can:

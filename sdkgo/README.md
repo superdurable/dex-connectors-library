@@ -611,9 +611,19 @@ operation in a Step attempt: the first keeps the Call ID derived from the Flow
 ID, Step execution ID, connector ID, and operation ID, and the n-th call mixes
 n into that derivation, so idempotency keys of single calls never change. The
 count restarts each attempt, so a Step must make its connector calls in a
-deterministic order, for example sequentially in input order; calls of the same
-operation started concurrently in a varying order can swap Call IDs between
-attempts.
+deterministic order, for example sequentially in input order. Calls of the same
+operation started concurrently in a varying order could swap Call IDs between
+attempts, so concurrent Mutation calls of one operation in a Step are
+unsupported: `RunMutation`, and an agent tool, selects `defect` without
+invoking the operation when an earlier call of the same operation in the Step
+attempt is still running. Mutations of different operations may run
+concurrently, and Queries are not restricted.
+
+When `RecordProviderID`'s heartbeat fails, the Fence returns the error but
+keeps the provider ID in the Step attempt's checkpoint, so a later heartbeat of
+any Fence in the Step carries it, and refuses `RecordCanResend`. A
+`dex.Context` test fake that embeds a nil `context.Context` still works with
+`RunQuery`, `RunMutation`, and Fences.
 
 The heartbeat format is internal to the connector SDKs and may change between
 releases. Hosts, including agent hosts, must not parse it; classify a result
@@ -661,8 +671,11 @@ saved `Marker.ProviderID` is read back before any resend. A connector without
 read-back may call `Dispatch` directly. A pre-send Retry under this decision
 records nothing, because `notSent` would let the next attempt skip read-back.
 At the cap, the decision is `ReadBackRequired` and an unconfirmed write selects
-`uncertain`. A capped Fence's markers record `sendCount`; an uncapped Fence's
-markers omit it, and a marker without the count is counted conservatively.
+`uncertain`. Every Fence, capped or not, records the exact `sendCount` in its
+checkpoint entry, zero included, and `Decide` reads it exactly, so two sends
+refused with 429 leave `MaximumPriorSends` at zero. An entry without the
+count, such as one seeded from a `Marker` whose JSON omits zero, is counted
+conservatively.
 
 An application raises or lowers the cap of one Step with
 `MutationStepConfig.MaxSends`, or the generated factory's `MaxSends` field, from

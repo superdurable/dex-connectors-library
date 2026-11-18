@@ -774,8 +774,8 @@ func TestTwoFencedAgentToolsInOneStepBothSend(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &checkpoint))
 	require.Equal(t, map[sdkgo.CallID]singledispatch.Marker{
-		gmail.callIDs[0]: {CallID: gmail.callIDs[0], Attempt: 1, State: singledispatch.StateClaimed},
-		slack.callIDs[0]: {CallID: slack.callIDs[0], Attempt: 1, State: singledispatch.StateClaimed},
+		gmail.callIDs[0]: {CallID: gmail.callIDs[0], Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1},
+		slack.callIDs[0]: {CallID: slack.callIDs[0], Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1},
 	}, checkpoint.SingleDispatchMarkers)
 }
 

@@ -326,12 +326,55 @@ func TestMaxSendsOneKeepsTodaysDecisions(t *testing.T) {
 			frames = append(frames, string(frame))
 		}
 		require.Equal(t, []string{
-			`{"singleDispatchMarkers":{"call-1":{"callId":"call-1","attempt":1,"state":"claimed"}}}`,
-			`{"singleDispatchMarkers":{"call-1":{"callId":"call-1","attempt":1,"state":"canResend"}}}`,
-			`{"singleDispatchMarkers":{"call-1":{"callId":"call-1","attempt":2,"state":"claimed"}}}`,
-			`{"singleDispatchMarkers":{"call-1":{"callId":"call-1","attempt":2,"state":"claimed","providerId":"object-1"}}}`,
-		}, frames, "markers without bounded resend omit sendCount")
+			`{"singleDispatchMarkers":{"call-1":{"callId":"call-1","attempt":1,"state":"claimed","sendCount":1}}}`,
+			`{"singleDispatchMarkers":{"call-1":{"callId":"call-1","attempt":1,"state":"canResend","sendCount":0}}}`,
+			`{"singleDispatchMarkers":{"call-1":{"callId":"call-1","attempt":2,"state":"claimed","sendCount":1}}}`,
+			`{"singleDispatchMarkers":{"call-1":{"callId":"call-1","attempt":2,"state":"claimed","providerId":"object-1","sendCount":1}}}`,
+		}, frames, "markers without bounded resend also write the exact sendCount")
 	}
+}
+
+func TestMaxSendsOneCountsRefusedSendsExactly(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	for range 2 {
+		fence, err := singledispatch.NewFence(sdkgo.Call{Context: ctx, ID: "call-1"}, time.Second, singledispatch.WithMaxSends(1))
+		require.NoError(t, err)
+		decision := fence.Decide()
+		require.Equal(t, singledispatch.SendAllowed, decision.Kind)
+		require.Zero(t, decision.MaximumPriorSends)
+		require.NoError(t, fence.Dispatch(func(context.Context) error { return nil }))
+		require.NoError(t, fence.RecordCanResend(), "a 429 proves the send was not processed")
+		ctx.AdvanceAttempt()
+	}
+	third, err := singledispatch.NewFence(sdkgo.Call{Context: ctx, ID: "call-1"}, time.Second, singledispatch.WithMaxSends(1))
+	require.NoError(t, err)
+	decision := third.Decide()
+	require.Equal(t, singledispatch.SendAllowed, decision.Kind)
+	require.Zero(t, decision.MaximumPriorSends, "two refused sends leave no possible earlier send, so a 422 is a definite rejection")
+}
+
+func TestCheckpointEntryWithoutSendCountIsCountedConservatively(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	require.NoError(t, ctx.SetPersistedCheckpoint(map[string]any{"singleDispatchMarkers": map[string]any{
+		"call-1": map[string]any{"callId": "call-1", "attempt": 2, "state": "canResend"},
+	}}))
+	ctx.AdvanceAttempt()
+	ctx.AdvanceAttempt()
+	decision := newFence(t, ctx).Decide()
+	require.Equal(t, singledispatch.SendAllowed, decision.Kind)
+	require.Equal(t, int32(1), decision.MaximumPriorSends)
+	require.Equal(t, int32(1), decision.Marker.SendCount)
+}
+
+func TestClaimedCheckpointEntryWithZeroSendCountFailsClosed(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	require.NoError(t, ctx.SetPersistedCheckpoint(map[string]any{"singleDispatchMarkers": map[string]any{
+		"call-1": map[string]any{"callId": "call-1", "attempt": 1, "state": "claimed", "sendCount": 0},
+	}}))
+	ctx.AdvanceAttempt()
+	fence, err := singledispatch.NewFence(sdkgo.Call{Context: ctx, ID: "call-1"}, time.Second, singledispatch.WithMaxSends(3))
+	require.NoError(t, err)
+	require.Equal(t, singledispatch.FailClosed, fence.Decide().Kind)
 }
 
 func TestWithMaxSendsRange(t *testing.T) {
