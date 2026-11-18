@@ -200,8 +200,10 @@ the next attempt sends again, and selects `uncertain` at the cap. An unsent
 request, HTTP 429 or 503, credentials the broker cannot load yet, or a definite
 refusal does not count as a create; a `cancelled` Response counts, since it may
 be billed. A refusal status counts as definite only when its error body was
-read in full and names no Response ID; an oversized, cut off, or
-Response-naming error body is an unknown outcome. Dex may lose heartbeat
+read in full and names no Response ID; an oversized or cut off error body is
+an unknown outcome. An error answer of any status whose body names a Response
+ID means OpenAI created that Response: the ID is checkpointed and read back
+like a `2xx` answer, and the create is never sent again. Dex may lose heartbeat
 details, for example when the Dex Server stops during an attempt. Every attempt
 a checkpoint cannot rule out then counts as a possible create, and a checkpoint
 from an earlier release without `sendCount` counts every earlier attempt.
