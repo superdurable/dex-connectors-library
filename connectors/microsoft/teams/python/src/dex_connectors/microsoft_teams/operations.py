@@ -556,29 +556,37 @@ class _PostOperation:
                 return reconciled
         payload = _go_json_body(post.body)
         observed_statuses: list[int] = []
+        has_send_started = False
+
+        async def send_post(deadline: datetime) -> tuple[Exchange, Any]:
+            nonlocal has_send_started
+            has_send_started = True
+            return await client.exchange(
+                call,
+                credentials,
+                "POST",
+                post.path,
+                payload,
+                retry_rejected=False,
+                timeout=max(0, (deadline - datetime.now(UTC)).total_seconds()),
+                observed_statuses=observed_statuses,
+            )
+
         try:
-            exchange, credentials = await fence.dispatch(
-                lambda deadline: client.exchange(
-                    call,
-                    credentials,
-                    "POST",
-                    post.path,
-                    payload,
-                    retry_rejected=False,
-                    timeout=max(0, (deadline - datetime.now(UTC)).total_seconds()),
-                    observed_statuses=observed_statuses,
+            exchange, credentials = await fence.dispatch(send_post)
+        except Exception as error:
+            # A Fence error raised before the POST started, such as a failed notSent write, sent nothing.
+            if not has_send_started or isinstance(
+                error, (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError)
+            ):
+                return MutationAttempt.retry(
+                    _failure(
+                        client,
+                        post.operation,
+                        FailureKind.AVAILABILITY,
+                        f"the {post.subject} was not sent before the dispatch deadline",
+                    )
                 )
-            )
-        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
-            return MutationAttempt.retry(
-                _failure(
-                    client,
-                    post.operation,
-                    FailureKind.AVAILABILITY,
-                    f"the {post.subject} was not sent before the dispatch deadline",
-                )
-            )
-        except Exception:
             if any(200 <= status < 300 for status in observed_statuses):
                 return self._retry_read_back_or_select_uncertain(
                     post,

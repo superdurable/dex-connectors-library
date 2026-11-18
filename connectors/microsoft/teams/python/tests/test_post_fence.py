@@ -86,7 +86,7 @@ Answer = Callable[[httpx.Request, int], httpx.Response]
 
 async def post(
     answer: Answer, context: AttemptContext, requests: list[httpx.Request], *, operation: str = "channel",
-    credentials: AttemptCredentials | None = None,
+    credentials: AttemptCredentials | None = None, max_sends: int = 3,
 ) -> MutationResult[PostMessageOutput] | RetryError:
     """Run one Execute attempt of a post operation against a scripted Graph."""
     def respond(request: httpx.Request) -> httpx.Response:
@@ -97,12 +97,12 @@ async def post(
         client = Client(Config(), credentials or AttemptCredentials(), transport)
         if operation == "chat":
             call = Call(CALL_ID, REFERENCE, OperationRef("microsoft-teams", "postChatMessage"),
-                        context=context, max_sends=3)
+                        context=context, max_sends=max_sends)
             mutation = client.post_chat_message()
             value: object = PostChatMessageInput(chat_id=CHAT_ID, content="Escalate")
         else:
             call = Call(CALL_ID, REFERENCE, OperationRef("microsoft-teams", "postChannelMessage"),
-                        context=context, max_sends=3)
+                        context=context, max_sends=max_sends)
             mutation = client.post_channel_message()
             value = PostChannelMessageInput(team_id=TEAM_ID, channel_id=CHANNEL_ID, content="Incident")
         try:
@@ -215,6 +215,16 @@ async def test_credential_failure_after_possible_send_records_nothing() -> None:
     request_count = len(requests)
     assert isinstance(await post(answer, context, requests, credentials=credentials), RetryError)
     assert methods(requests)[request_count] == "GET"
+
+
+async def test_short_write_window_with_failed_not_sent_checkpoint_retries_without_sending() -> None:
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(milliseconds=50)
+    context.heartbeat_error = RuntimeError("dex unavailable")
+    requests: list[httpx.Request] = []
+    result = await post(lambda _r, _i: BAD_GATEWAY, context, requests, operation="chat", max_sends=1)
+    assert isinstance(result, RetryError), "nothing was sent, so the last allowed send is never uncertain"
+    assert requests == []
 
 
 async def test_definite_refusal_is_never_resent() -> None:
