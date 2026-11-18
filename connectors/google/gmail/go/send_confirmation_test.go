@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -816,21 +817,46 @@ func TestGmailInvalidInputAfterPossibleSendRetries(t *testing.T) {
 	})
 }
 
-// TestGmailAllowlistedRefusalWithMessageIDRetries treats a refusal body naming a message as unknown.
-func TestGmailAllowlistedRefusalWithMessageIDRetries(t *testing.T) {
+// TestGmailRefusalNamingMessageIsReadBackByID confirms a message a refusal body names by its ID.
+func TestGmailRefusalNamingMessageIsReadBackByID(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
-		fake := newGmailSendFake(t, sendFakeBehavior{answerSend: func(response http.ResponseWriter) {
+		fake := newGmailSendFake(t, sendFakeBehavior{threadReadID: "thread-1", answerSend: func(response http.ResponseWriter) {
 			response.WriteHeader(http.StatusBadRequest)
 			_, _ = response.Write([]byte(`{"id":"sent-1","threadId":"thread-1"}`))
 		}})
 		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
 		result := runGmailSendAttempt(stepContext, newGmailClient(t, fake.URL), isReply)
-		var retry *sdkgo.RetryError
-		require.ErrorAs(t, result.err, &retry)
-		require.Contains(t, retry.Failure.Message, "Gmail may still have processed the request")
+		require.NoError(t, result.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), result.branch)
+		require.Equal(t, "sent-1", result.value.MessageID)
+		require.Equal(t, "thread-1", result.value.ThreadID)
+		sends, searches, threadReads, _ := fake.counts()
+		require.Equal(t, 1, sends)
+		require.Zero(t, searches)
+		require.Equal(t, 1, threadReads)
 		stepContext.AdvanceAttempt()
-		marker := readPersistedMarker(t, stepContext)
-		require.Equal(t, singledispatch.StateClaimed, marker.State)
+		require.Equal(t, "sent-1", readPersistedMarker(t, stepContext).ProviderID)
+	})
+}
+
+// TestGmailUnconfirmedRefusalNamingMessageIsNeverResent keeps reading back a named message instead of resending it.
+func TestGmailUnconfirmedRefusalNamingMessageIsNeverResent(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{answerSend: func(response http.ResponseWriter) {
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"id":"sent-1"}`))
+		}})
+		client := newGmailClient(t, fake.URL)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		for attempt := 1; attempt <= 4; attempt++ {
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, runGmailSendAttempt(stepContext, client, isReply).err, &retry)
+			stepContext.AdvanceAttempt()
+		}
+		require.Equal(t, "sent-1", readPersistedMarker(t, stepContext).ProviderID)
+		sends, _, threadReads, _ := fake.counts()
+		require.Equal(t, 1, sends, "a message the refusal named is read back, never resent")
+		require.Equal(t, 4, threadReads)
 	})
 }
 
@@ -1201,7 +1227,7 @@ func TestGmailMessageIDCheckIgnoresOtherFieldTypes(t *testing.T) {
 		wantsReject bool
 	}{
 		{name: "accepted_numeric_thread", statusCode: http.StatusOK, body: `{"id":"sent-1","threadId":7}`, wantsSent: true},
-		{name: "refusal_naming_message", statusCode: http.StatusBadRequest, body: `{"id":"sent-1","threadId":7}`, wantsRetry: true},
+		{name: "refusal_naming_message", statusCode: http.StatusBadRequest, body: `{"id":"sent-1","threadId":7}`, wantsSent: true},
 		{name: "refusal_numeric_id", statusCode: http.StatusBadRequest, body: `{"id":7}`, wantsReject: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -1299,18 +1325,46 @@ func TestGmailPreSendRetryAfterCountedCanResendRecordsNothing(t *testing.T) {
 	}
 }
 
-// TestGmailCredentialFailureOnFirstAttemptIsDefect keeps today's defect when nothing was sent.
-func TestGmailCredentialFailureOnFirstAttemptIsDefect(t *testing.T) {
-	forSendAndReply(t, func(t *testing.T, isReply bool) {
-		fake := newGmailSendFake(t, sendFakeBehavior{})
-		provider := &sequencedGmailCredentials{resolutions: []error{errors.New("credential store is unavailable")}}
-		client, err := gmail.New(gmail.Config{Endpoint: fake.URL}, provider)
-		require.NoError(t, err)
-		result := runGmailSendAttempt(singledispatchtest.NewContext("gmail-fence-test", t.Name()), client, isReply)
-		require.NoError(t, result.err)
-		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchDefect, gmail.ReplyToMessageBranchDefect), result.branch)
-		sends, searches, _, _ := fake.counts()
-		require.Zero(t, sends)
-		require.Zero(t, searches)
-	})
+// TestGmailTerminalCredentialFailureOnFirstAttemptIsDefect selects defect when nothing was sent.
+func TestGmailTerminalCredentialFailureOnFirstAttemptIsDefect(t *testing.T) {
+	for _, terminal := range []error{
+		sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked")),
+		projectconfig.ErrObjectNotFound, projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected,
+	} {
+		t.Run(terminal.Error(), func(t *testing.T) {
+			forSendAndReply(t, func(t *testing.T, isReply bool) {
+				fake := newGmailSendFake(t, sendFakeBehavior{})
+				client, err := gmail.New(gmail.Config{Endpoint: fake.URL}, &sequencedGmailCredentials{resolutions: []error{terminal}})
+				require.NoError(t, err)
+				result := runGmailSendAttempt(singledispatchtest.NewContext("gmail-fence-test", t.Name()), client, isReply)
+				require.NoError(t, result.err)
+				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchDefect, gmail.ReplyToMessageBranchDefect), result.branch)
+				sends, searches, _, _ := fake.counts()
+				require.Zero(t, sends)
+				require.Zero(t, searches)
+			})
+		})
+	}
+}
+
+// TestGmailTransientCredentialFailureOnFirstAttemptRetries records notSent instead of selecting defect.
+func TestGmailTransientCredentialFailureOnFirstAttemptRetries(t *testing.T) {
+	for _, transient := range []error{errors.New("credential store is unavailable"), projectconfig.ErrCredentialBrokerUnavailable} {
+		t.Run(transient.Error(), func(t *testing.T) {
+			forSendAndReply(t, func(t *testing.T, isReply bool) {
+				fake := newGmailSendFake(t, sendFakeBehavior{})
+				client, err := gmail.New(gmail.Config{Endpoint: fake.URL}, &sequencedGmailCredentials{resolutions: []error{transient}})
+				require.NoError(t, err)
+				stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+				result := runGmailSendAttempt(stepContext, client, isReply)
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, result.err, &retry)
+				sends, searches, _, _ := fake.counts()
+				require.Zero(t, sends)
+				require.Zero(t, searches)
+				stepContext.AdvanceAttempt()
+				require.Equal(t, singledispatch.StateNotSent, readPersistedMarker(t, stepContext).State)
+			})
+		})
+	}
 }

@@ -852,6 +852,53 @@ func TestSharedFenceAcceptedStatusWithUnreadableBodyIsNeverResent(t *testing.T) 
 	require.Equal(t, 1, posts)
 }
 
+func TestSharedFenceConflictWithUnusableBodyIsNeverResent(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+		body func() io.ReadCloser
+	}{
+		{name: "not JSON", body: func() io.ReadCloser { return io.NopCloser(strings.NewReader(`conflict`)) }},
+		{name: "oversized", body: func() io.ReadCloser {
+			return io.NopCloser(strings.NewReader(`{"ok":false,"error":"` + strings.Repeat("x", 4<<20) + `"}`))
+		}},
+		{name: "broken mid-body", body: func() io.ReadCloser { return &brokenSlackBody{} }},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			posts := 0
+			client := newSlackClientWithTransport(t, roundTripFunc(func(*http.Request) (*http.Response, error) {
+				posts++
+				return &http.Response{StatusCode: http.StatusConflict, Header: make(http.Header), Body: testCase.body()}, nil
+			}))
+			ctx := singledispatchtest.NewContext("shared-fence-conflict-"+testCase.name, "post")
+			result, retries := runUntilTerminal(t, ctx, func() (sdkgo.MutationResult[slack.PostMessageOutput], error) {
+				return sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
+			})
+			require.Equal(t, slack.PostThreadReplyBranchUncertain, result.Branch)
+			require.Zero(t, retries)
+			require.Equal(t, 1, posts)
+		})
+	}
+}
+
+func TestSharedFenceConflictNamingATimestampIsReadBack(t *testing.T) {
+	var methods []string
+	client := newSlackClientWithTransport(t, roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		methods = append(methods, request.Method)
+		if request.Method == http.MethodGet {
+			return slackTestResponse(http.StatusOK, `{"ok":true,"messages":[{"ts":"2.0","thread_ts":"1.0","user":"UBOT","text":"hello"}]}`), nil
+		}
+		return slackTestResponse(http.StatusConflict, `{"ok":false,"error":"conflict","ts":"2.0"}`), nil
+	}))
+	ctx := singledispatchtest.NewContext("shared-fence-conflict-ts", "post")
+	result, retries := runUntilTerminal(t, ctx, func() (sdkgo.MutationResult[slack.PostMessageOutput], error) {
+		return sdkgo.RunMutation(ctx, client.PostThreadReply(), slackConnection, slack.PostThreadReplyInput{ChannelID: "C123", ThreadTimestamp: "1.0", Text: "hello"})
+	})
+	require.Equal(t, slack.PostThreadReplyBranchSent, result.Branch)
+	require.Zero(t, retries)
+	require.Equal(t, []string{http.MethodPost, http.MethodGet}, methods)
+	require.Equal(t, "2.0", result.Value.Message.Timestamp)
+}
+
 func TestSharedFenceUnreadableUnauthorizedBodyIsAnUnknownOutcome(t *testing.T) {
 	posts := 0
 	provider := &rejectionRefreshingCredentialProvider{refreshError: projectconfig.ErrRejectedCredentialNotRefreshed}

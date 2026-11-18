@@ -168,10 +168,14 @@ export class GmailSender {
     catch (error) { return unavailableCredentials(fence, 'replyToMessage', error); }
     if (!ReplyToMessageInputSchema.safeParse(input).success || !input.messageId.trim() || !input.textBody.trim()) return defectBeforeAnySend(fence, 'replyToMessage', 'VALIDATION', 'message ID and text body are required');
     const priorProviderId = fence.decide().marker?.providerId;
-    if (isReadBackDecision(fence) && priorProviderId) {
-      return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes,
-        { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true, messageIdAddress },
-        { id: priorProviderId, threadId: '' }, this.#receipt(call, '', priorProviderId));
+    const hasSavedProviderId = isReadBackDecision(fence) && !!priorProviderId;
+    if (hasSavedProviderId) {
+      const saved = await this.#readMessageById(call, budget, credentials, priorProviderId!);
+      if (saved) {
+        return this.#sentMessage(call, budget, credentials, ReplyToMessageOutcomes,
+          { raw: new Uint8Array(), recipients: [], requestedThreadId: '', hasPreSendSearch: true, messageIdAddress },
+          saved, this.#receipt(call, '', priorProviderId));
+      }
     }
     if (call.context.attempt > 1 || fence.decide().kind === 'readBackRequired') {
       try {
@@ -184,7 +188,8 @@ export class GmailSender {
           return newMutationRetry(failure('replyToMessage', 'AVAILABILITY', 'Gmail sent-mail search did not answer before the reply'));
         }
       }
-      if (fence.decide().kind === 'readBackRequired') return newMutationRetry(failure('replyToMessage', 'AVAILABILITY', 'Gmail reply outcome is unknown; the sent-mail search found no message'));
+      // A saved provider ID proves Gmail accepted an earlier reply, so it is never resent.
+      if (fence.decide().kind === 'readBackRequired' || hasSavedProviderId) return newMutationRetry(failure('replyToMessage', 'AVAILABILITY', 'Gmail reply outcome is unknown; the sent-mail search found no message'));
     }
     let source;
     try { source = await this.#provider.readMessage(call, credentials, input.messageId, 'metadata', budget.preSendSignal()); }
@@ -219,9 +224,10 @@ export class GmailSender {
 
   async #sendAndConfirm(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage): Promise<MutationAttempt<SendMessageOutput>> {
     const priorProviderId = fence.decide().marker?.providerId;
-    if (isReadBackDecision(fence) && priorProviderId) {
-      return this.#sentMessage(call, budget, credentials, operation, message,
-        { id: priorProviderId, threadId: message.requestedThreadId }, this.#receipt(call, '', priorProviderId));
+    const hasSavedProviderId = isReadBackDecision(fence) && !!priorProviderId;
+    if (hasSavedProviderId && !message.hasPreSendSearch) {
+      const saved = await this.#readMessageById(call, budget, credentials, priorProviderId!);
+      if (saved) return this.#sentMessage(call, budget, credentials, operation, message, saved, this.#receipt(call, '', priorProviderId));
     }
     if ((call.context.attempt > 1 || fence.decide().kind === 'readBackRequired') && !message.hasPreSendSearch) {
       try {
@@ -235,7 +241,8 @@ export class GmailSender {
         }
       }
     }
-    if (fence.decide().kind === 'readBackRequired') return newMutationRetry(failure(operation.operationId, 'AVAILABILITY', `Gmail ${operation.requestName} outcome is unknown; the sent-mail search found no message`));
+    // A saved provider ID proves Gmail accepted an earlier send, so it is never resent.
+    if (fence.decide().kind === 'readBackRequired' || hasSavedProviderId) return newMutationRetry(failure(operation.operationId, 'AVAILABILITY', `Gmail ${operation.requestName} outcome is unknown; the sent-mail search found no message`));
     let response;
     try { response = await fence.dispatch(signal => this.#provider.sendMessage(call, credentials, message.raw, message.requestedThreadId, signal)); }
     catch (error) {
@@ -255,11 +262,12 @@ export class GmailSender {
     const sentResponse = isAccepted ? parseSentResponse(response.response) : undefined;
     if (sentResponse?.id) await recordProviderIdentity(fence, sentResponse.id);
     // A refusal body that still names a message contradicts its status.
-    const isRefusalBodyClean = !isAccepted && parseSentResponse(response.response) === undefined;
-    return this.#classifySendStatus(call, fence, budget, response.credentials, operation, message, response.response.status, response.response.headers, isRefusalBodyClean, sentResponse, receipt);
+    const refusalNamedMessage = isAccepted ? undefined : parseSentResponse(response.response);
+    const isRefusalBodyClean = !isAccepted && refusalNamedMessage === undefined;
+    return this.#classifySendStatus(call, fence, budget, response.credentials, operation, message, response.response.status, response.response.headers, isRefusalBodyClean, sentResponse, receipt, refusalNamedMessage);
   }
 
-  async #classifySendStatus(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, status: number, headers: Record<string, string | string[] | undefined>, isRefusalBodyClean: boolean, sentResponse?: SentMessageIdentity, receipt: ReceiptDraft = this.#receipt(call)): Promise<MutationAttempt<SendMessageOutput>> {
+  async #classifySendStatus(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, status: number, headers: Record<string, string | string[] | undefined>, isRefusalBodyClean: boolean, sentResponse?: SentMessageIdentity, receipt: ReceiptDraft = this.#receipt(call), refusalNamedMessage?: SentMessageIdentity): Promise<MutationAttempt<SendMessageOutput>> {
     if (status === 429) {
       await recordSafeResend(fence);
       return retryAfterRefusal(operation.operationId, 'RATE_LIMIT', `Gmail temporarily rejected the ${operation.requestName}`, headers);
@@ -272,6 +280,7 @@ export class GmailSender {
     }
     if (status >= 500) return this.#confirmPossiblySent(call, fence, budget, credentials, operation, message, 'AVAILABILITY', `Gmail ${operation.requestName} outcome is unknown`, receipt);
     if (status < 200 || status >= 300) {
+      if (refusalNamedMessage) return this.#confirmRefusalNamingMessage(call, fence, budget, credentials, operation, message, refusalNamedMessage.id, receipt);
       if (call.context.attempt > 1) {
         try {
           const found = await this.#provider.findSentMessage(call, credentials, message.messageIdAddress, budget.attemptSignal());
@@ -293,6 +302,22 @@ export class GmailSender {
     if (lookup.sent) return this.#sentAfterDispatch(call, fence, budget, credentials, operation, message, lookup.sent, receipt);
     const suffix = lookup.hadError ? 'the sent-mail search did not answer' : 'the sent-mail search found no message';
     return newMutationRetry(failure(operation.operationId, kind, `${reason}; ${suffix}`));
+  }
+
+  /** Read back a message a refusal body names; the saved ID makes later attempts read back only, never resend. */
+  async #confirmRefusalNamingMessage(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, providerId: string, receipt: ReceiptDraft): Promise<MutationAttempt<SendMessageOutput>> {
+    await recordProviderIdentity(fence, providerId);
+    const confirmed = await this.#readMessageById(call, budget, credentials, providerId);
+    if (confirmed) return this.#sentMessage(call, budget, credentials, operation, message, confirmed, receipt);
+    return newMutationRetry(failure(operation.operationId, 'PROTOCOL', `Gmail refused the ${operation.requestName} but named a message that read-back has not confirmed`));
+  }
+
+  /** Return the message with this ID, or undefined when Gmail does not confirm it. */
+  async #readMessageById(call: Call, budget: GmailSendAttemptBudget, credentials: Credentials, providerId: string): Promise<SentMessageIdentity | undefined> {
+    try {
+      const read = await this.#provider.readMessage(call, credentials, providerId, 'minimal', budget.attemptSignal());
+      return read.resource?.id === providerId ? { id: providerId, threadId: read.resource.threadId ?? '' } : undefined;
+    } catch { return undefined; } // An unconfirmed read-back never resends; the caller retries.
   }
 
   async #sentAfterDispatch(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, sent: SentMessageIdentity, receipt: ReceiptDraft): Promise<MutationAttempt<SendMessageOutput>> {
@@ -370,12 +395,17 @@ function retryAfterRefusal(operation: string, kind: Failure['kind'], message: st
 }
 
 /**
- * Classify a credential failure before any send in this attempt. After an earlier possible send, a transient
- * failure returns Retry without notSent, so later attempts still read back; a permanent one selects defect.
+ * Classify a credential failure before any send in this attempt. After an earlier possible send, any failure
+ * returns Retry without notSent, so later attempts still read back. On a clean first attempt a transient
+ * failure records notSent and returns Retry; only a permanent one selects defect.
  */
-function unavailableCredentials(fence: Fence, operation: 'sendMessage' | 'replyToMessage', error: unknown): MutationAttempt<SendMessageOutput> {
+async function unavailableCredentials(fence: Fence, operation: 'sendMessage' | 'replyToMessage', error: unknown): Promise<MutationAttempt<SendMessageOutput>> {
   const isPermanent = !(error instanceof GmailCredentialError) || error.isPermanent;
   if (isEarlierSendPossible(fence)) return newMutationRetry(failure(operation, 'AUTHENTICATION', `Gmail credentials ${isPermanent ? 'need reconnection' : 'are temporarily unavailable'}; an earlier send may still be delivered`));
+  if (!isPermanent) {
+    await recordPreSendRetry(fence);
+    return newMutationRetry(failure(operation, 'AVAILABILITY', 'Gmail credentials are temporarily unavailable; nothing was sent'));
+  }
   return defect(operation, 'AUTHENTICATION', 'connection credentials are unavailable');
 }
 

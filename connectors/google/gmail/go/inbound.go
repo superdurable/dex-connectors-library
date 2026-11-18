@@ -156,7 +156,7 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	defer budget.cancel()
 	credentials, err := operation.client.resolveCredentials(budget.attemptContext, call)
 	if err != nil {
-		return unavailableCredentialsAttempt(decision, ReplyToMessageBranchDefect, "replyToMessage", err)
+		return unavailableCredentialsAttempt(fence, decision, ReplyToMessageBranchDefect, "replyToMessage", err)
 	}
 	if strings.TrimSpace(input.MessageID) == "" || strings.TrimSpace(input.TextBody) == "" {
 		return defectBeforeAnySend(decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"))

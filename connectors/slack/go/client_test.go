@@ -273,7 +273,12 @@ func TestPostMessageRejectedCredentialRefreshesAcrossFencedAttempts(t *testing.T
 			require.False(t, provider.refreshDeadline.IsZero())
 			require.LessOrEqual(t, time.Until(provider.refreshDeadline), 27*time.Second)
 			require.Len(t, messageIDs, 1)
-			require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+			if testCase.name == "unauthorized_malformed_body" {
+				// An unreadable rejection cannot prove nothing was posted, so the send still counts.
+				require.Contains(t, string(ctx.heartbeat), `"state":"claimed"`)
+			} else {
+				require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+			}
 			ctx.attempt = 2
 			result, err := sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
 			require.NoError(t, err)

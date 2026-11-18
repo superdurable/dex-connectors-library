@@ -428,7 +428,12 @@ without recording it. An unknown outcome on the third possible send selects
 1 (never resend) to 10, with the factory config's `MaxSends`. A 409 and a
 successful response without a usable message identity still select `uncertain`
 at once and are never resent: they mean Slack accepted the post, so the outcome
-is not unknown and a resend would certainly duplicate it. Definite refusals are
+is not unknown and a resend would certainly duplicate it. From Go v1.8.1,
+TypeScript v0.8.1, and Python v0.6.1, a 409 selects `uncertain` whatever its
+body is, including an unreadable, oversized, or non-JSON body, and is never
+resent; a readable 409 body that names a message `ts` is read back first. In
+Python, a Step write window that cuts the body after the headers arrive keeps
+the observed status, so a 2xx or 409 selects `uncertain` there too. Definite refusals are
 never resent. A definite refusal of a first send selects `providerRejected`;
 a definite refusal of a resend selects `uncertain`, because an earlier send of
 the same call may have posted the message. From Go v1.8.1, TypeScript v0.8.1,
@@ -465,7 +470,9 @@ credential refresh within the Step deadline margin. If refresh supplies a
 changed valid bot token, the fence permits one retry on the next Step attempt
 with the same `client_msg_id`; a failed, invalid, or unchanged refresh selects
 `providerRejected` for a definite refusal, or `uncertain` after an earlier
-possible send; a 401 with an unreadable body is an unknown outcome instead. The
+possible send; a 401 with an unreadable body is an unknown outcome instead,
+so even after a successful refresh it records no `canResend` and its send
+counts toward the cap. The
 post is never sent twice in one attempt.
 Slack's 409 behavior remains unverified.
 The shared single-dispatch fence uses synchronous Step durability to persist

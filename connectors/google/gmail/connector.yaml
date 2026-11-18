@@ -259,7 +259,7 @@ spec:
         approval: recommended
         # No retry claim: Gmail has no idempotency key, so an unknown outcome is read back, then resent up to maxSends.
         # providerRejected follows a definite 4xx with no earlier possible send and is never resent.
-        # defect is also selected when the fence fails closed or credentials need reconnection after an earlier claimed POST.
+        # defect is selected only before any possible send; a fail-closed fence or later credential failure retries.
         branches: {providerRejected: rejected, defect: unknown}
         description: Send one new email from the connected Gmail account. Give the recipient email addresses, a one-line subject, and the plain-text body; an HTML body is optional.
       branches:
@@ -305,7 +305,7 @@ spec:
         approval: recommended
         # No retry claim: Gmail has no idempotency key, so an unknown outcome is read back, then resent up to maxSends.
         # providerRejected follows a definite source-read or send 4xx and is never resent; invalidResponse follows the source read, before the POST.
-        # defect is also selected when the fence fails closed or credentials need reconnection after an earlier claimed POST.
+        # defect is selected only before any possible send; a fail-closed fence or later credential failure retries.
         branches: {providerRejected: rejected, invalidResponse: rejected, defect: unknown}
         description: Reply in its existing Gmail thread to one message in the connected mailbox, addressed to that message's Reply-To or sender. Give the Gmail message ID to answer and the plain-text reply body; an HTML body is optional.
       branches:

@@ -1136,14 +1136,15 @@ async def _post_message(
             _failure(operation, FailureKind.AVAILABILITY, "Slack dispatch claim could not be recorded")
         )
     except TimeoutError:
-        if observed_statuses and 200 <= observed_statuses[-1] < 300:
-            return _select_uncertain_after_unreadable_success(client, call, operation)
-        return _resend_or_select_uncertain(
-            can_resend_unknown_outcome,
-            _failure(operation, FailureKind.TRANSPORT, "Slack message outcome is unknown"),
-            0,
-            client._receipt(call, _Response()),
-        )
+        if not observed_statuses:
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome,
+                _failure(operation, FailureKind.TRANSPORT, "Slack message outcome is unknown"),
+                0,
+                client._receipt(call, _Response()),
+            )
+        # The write window cut the body after headers arrived; classify the status as Go does.
+        response = _Response(observed_statuses[-1], error="transport")
     if response.status in (429, 503):
         try:
             await fence.record_can_resend()
@@ -1160,10 +1161,25 @@ async def _post_message(
         return MutationAttempt.retry(_failure(operation, kind, message), _retry_after(response))
     if response.error == "transport" and 200 <= response.status < 300:
         return _select_uncertain_after_unreadable_success(client, call, operation, response)
+    if response.status == 409:
+        # Slack's replay semantics are unverified, so a 409 may mean the post exists whatever its body is.
+        conflict_timestamp = "" if response.error else _accepted_timestamp(response)
+        if conflict_timestamp:
+            return await _read_back_after_recording_timestamp(
+                client, call, fence, operation, channel, thread, conflict_timestamp
+            )
+        return MutationAttempt.uncertain(
+            PostMessageOutput(),
+            _failure(
+                operation,
+                FailureKind.PROTOCOL,
+                "Slack returned a conflict without a confirmable message identity",
+            ),
+            client._receipt(call, response),
+        )
     if (
         not response.error
         and 200 <= response.status < 500
-        and response.status != 409
         and not _is_post_success(response)
         and _is_accepted_body(response)
     ):
@@ -1213,6 +1229,18 @@ async def _post_message(
                     "Slack rejected the connection credential; reconnect the connection",
                 ),
             )
+        if not _is_definite_refusal(response):
+            # An unreadable rejection cannot prove nothing was posted, so this send still counts.
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome,
+                _failure(
+                    operation,
+                    FailureKind.AUTHENTICATION,
+                    "Slack connection credential was refreshed after an unconfirmed rejection",
+                ),
+                0,
+                client._receipt(call, response),
+            )
         try:
             await fence.record_can_resend()
         except CheckpointError:
@@ -1243,16 +1271,6 @@ async def _post_message(
             can_resend_unknown_outcome,
             _failure(operation, FailureKind.TRANSPORT, "Slack message outcome is unknown"),
             0,
-            client._receipt(call, response),
-        )
-    if response.status == 409:
-        return MutationAttempt.uncertain(
-            PostMessageOutput(),
-            _failure(
-                operation,
-                FailureKind.PROTOCOL,
-                "Slack returned a conflict without a confirmable message identity",
-            ),
             client._receipt(call, response),
         )
     if _is_explicitly_not_ok(response):

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -113,6 +114,9 @@ type gmailSendDispatch struct {
 	response             *http.Response
 	isPossiblyDispatched bool
 	err                  error
+	// content is read inside the write window, before Dispatch cancels the request context.
+	content []byte
+	readErr error
 }
 
 // New validates configuration and constructs an authenticated Gmail client.
@@ -218,14 +222,17 @@ var errInvalidResolvedCredentials = errors.New("Gmail credential material is inv
 
 // isPermanentCredentialFailure reports a failure that needs reconnection rather than a retry.
 func isPermanentCredentialFailure(err error) bool {
-	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, errInvalidResolvedCredentials)
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, errInvalidResolvedCredentials) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // unavailableCredentialsAttempt classifies a credential failure before any send in this attempt.
 // After an earlier possible send, any failure, even one that needs reconnection, returns Retry
-// without notSent, so later attempts still read back; only a clean first attempt selects defect.
+// without notSent, so later attempts still read back. On a clean first attempt a transient
+// failure records notSent and returns Retry; only a permanent one selects defect.
 func unavailableCredentialsAttempt(
-	decision singledispatch.Decision, defectBranch sdkgo.BranchID, operationID string, err error,
+	fence *singledispatch.Fence, decision singledispatch.Decision, defectBranch sdkgo.BranchID, operationID string, err error,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
 	if decision.MaximumPriorSends > 0 {
 		message := "Gmail credentials are temporarily unavailable; an earlier send may still be delivered"
@@ -233,6 +240,11 @@ func unavailableCredentialsAttempt(
 			message = "Gmail credentials need reconnection; an earlier send may still be delivered"
 		}
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operationID, sdkgo.FailureAuthentication, message), 0)
+	}
+	if !isPermanentCredentialFailure(err) {
+		recordNotSentBeforeAnySend(fence, decision)
+		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operationID, sdkgo.FailureAvailability,
+			"Gmail credentials are temporarily unavailable; nothing was sent"), 0)
 	}
 	return sdkgo.NewMutationBranch(defectBranch, emptySendMessageOutput(),
 		gmailOperationFailurePointer(operationID, sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
@@ -344,7 +356,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	defer budget.cancel()
 	credential, err := operation.client.resolveCredentials(budget.attemptContext, call)
 	if err != nil {
-		return unavailableCredentialsAttempt(decision, SendMessageBranchDefect, "sendMessage", err)
+		return unavailableCredentialsAttempt(fence, decision, SendMessageBranchDefect, "sendMessage", err)
 	}
 	recipients, validationFailure := validateSendInput(input, credential.PrimaryEmail)
 	if validationFailure != nil {
@@ -400,12 +412,10 @@ func (client *Client) sendAndConfirm(
 	receipt := client.receipt(call, googleRequestID(response.Header), "")
 	switch {
 	case response.StatusCode == http.StatusTooManyRequests:
-		closeGmailResponse(response)
 		_ = fence.RecordCanResend() // A failed checkpoint leaves the claim in place.
 		return retryAfterGmailRefusal(response.Header, operation.operationID, sdkgo.FailureRateLimit,
 			"Gmail temporarily rejected the "+operation.requestName)
 	case response.StatusCode == http.StatusServiceUnavailable:
-		closeGmailResponse(response)
 		// Gmail documents 5xx as processing failures and Sent Mail search can lag, so the claim stays.
 		if sent, isFound, _ := client.pollSentMessageByRFCMessageID(budget.attemptContext, call, credentials); isFound {
 			return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
@@ -413,12 +423,13 @@ func (client *Client) sendAndConfirm(
 		return retryAfterGmailRefusal(response.Header, operation.operationID, sdkgo.FailureAvailability,
 			"Gmail "+operation.requestName+" is temporarily unavailable")
 	case response.StatusCode >= 500:
-		closeGmailResponse(response)
 		return client.confirmPossiblySentMessage(call, budget, credentials, operation, message, sdkgo.FailureAvailability,
 			"Gmail "+operation.requestName+" outcome is unknown", receipt, fence)
 	case response.StatusCode < 200 || response.StatusCode >= 300:
-		content, readErr := readAndCloseGmailResponse(response, client.maxResponseBytes)
-		isDefiniteRefusal := isRefusedBeforeProcessing(response.StatusCode) && readErr == nil && !hasAcceptedMessageID(content)
+		if named, isIdentified := acceptedMessageIdentity(dispatch.content); dispatch.readErr == nil && isIdentified {
+			return client.confirmRefusalNamingMessage(call, budget, credentials, operation, message, named.ID, receipt, fence)
+		}
+		isDefiniteRefusal := isRefusedBeforeProcessing(response.StatusCode) && dispatch.readErr == nil
 		if call.Context.Attempt() > 1 {
 			if sent, isFound, _ := client.findSentMessageByRFCMessageID(budget.attemptContext, call, credentials); isFound {
 				return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
@@ -427,11 +438,10 @@ func (client *Client) sendAndConfirm(
 		return rejectRefusedSend(fence, decision, isDefiniteRefusal, operation.providerRejectedBranch,
 			gmailOperationFailure(operation.operationID, statusFailureKind(response.StatusCode), operation.rejectionMessage), receipt)
 	}
-	content, err := readAndCloseGmailResponse(response, client.maxResponseBytes)
-	if err != nil {
+	if dispatch.readErr != nil {
 		return client.confirmAcceptedMessage(call, budget, credentials, operation, message, receipt, fence)
 	}
-	sent, isIdentified := acceptedMessageIdentity(content)
+	sent, isIdentified := acceptedMessageIdentity(dispatch.content)
 	if !isIdentified {
 		return client.confirmAcceptedMessage(call, budget, credentials, operation, message, receipt, fence)
 	}
@@ -524,12 +534,6 @@ func isRefusedBeforeProcessing(statusCode int) bool {
 	}
 }
 
-// hasAcceptedMessageID reports a refusal body that still names a Gmail message, which contradicts the status.
-func hasAcceptedMessageID(content []byte) bool {
-	_, isIdentified := acceptedMessageIdentity(content)
-	return isIdentified
-}
-
 // acceptedMessageIdentity returns the message a JSON object names when its exact "id" key is a
 // non-empty string, whatever its other fields are; a non-string "threadId" is dropped.
 func acceptedMessageIdentity(content []byte) (sendResponse, bool) {
@@ -590,6 +594,9 @@ func (dispatch *gmailSendDispatch) send(ctx context.Context) error {
 	dispatch.response, dispatch.credentials, dispatch.isPossiblyDispatched, dispatch.err = dispatch.client.doAuthenticatedRequestWithDispatch(
 		ctx, dispatch.call, dispatch.credentials, http.MethodPost, target, dispatch.message.payload, "application/json",
 	)
+	if dispatch.err == nil {
+		dispatch.content, dispatch.readErr = readAndCloseGmailResponse(dispatch.response, dispatch.client.maxResponseBytes)
+	}
 	return nil
 }
 
@@ -619,6 +626,20 @@ func (client *Client) confirmAcceptedMessage(
 		return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 	}
 	return client.sentMessage(call, budget, credentials, operation, message, sendResponse{ThreadID: message.requestedThreadID}, receipt)
+}
+
+// confirmRefusalNamingMessage reads back a message that a refusal body names, because Gmail may have
+// sent it. The saved ID makes later attempts read back only, so the message is never resent.
+func (client *Client) confirmRefusalNamingMessage(
+	call sdkgo.Call, budget sendAttemptBudget, credentials Credentials, operation gmailSendOperation, message gmailOutgoingMessage,
+	providerID string, receipt sdkgo.Receipt, fence *singledispatch.Fence,
+) sdkgo.MutationAttempt[SendMessageOutput] {
+	_ = fence.RecordProviderID(providerID) // A failed checkpoint leaves the claim, so the send cap still bounds resends.
+	if sent, isFound := client.readSavedSentMessage(budget.attemptContext, call, credentials, providerID); isFound {
+		return client.sentMessage(call, budget, credentials, operation, message, sent, receipt)
+	}
+	return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureProtocol,
+		"Gmail refused the "+operation.requestName+" but named a message that read-back has not confirmed"), 0)
 }
 
 func (client *Client) readSavedSentMessage(
