@@ -1,12 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, ReauthorizationRequiredError, type Call, type Failure, type FailureKind, type Mutation, type MutationAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { ConflictError, CredentialBrokerUnavailableError, ExchangePendingError, OutcomeUnknownError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, ReauthorizationRequiredError, SecretString, type Call, type Failure, type FailureKind, type Mutation, type MutationAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConflictError, ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ExchangePendingError, ObjectNotFoundError, OutcomeUnknownError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, ProviderTransportError, parseRetryAfter } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { PostNonIdempotentDefinition, SendRequestDefinition } from './generated/definitions.js';
-import type { PostNonIdempotentInput, SendRequestInput, SendRequestOutput } from './generated/models.js';
+import type { Credentials, PostNonIdempotentInput, SendRequestInput, SendRequestOutput } from './generated/models.js';
 import { planRequest, type APIResponse, type OAuth2HTTPClient, type RequestPlan } from './client.js';
 
 const zeroOutput: SendRequestOutput = { statusCode: 0 };
@@ -214,19 +214,28 @@ class PostOutcome {
 
 /** Resolve usable credentials, or return the attempt for a resolution that failed. */
 async function resolveToken(client: OAuth2HTTPClient, call: Call, signal: AbortSignal, operation: string): Promise<{ token: string } | { attempt: MutationAttempt<SendRequestOutput> }> {
+  const unusable = { attempt: newMutationBranch('defect', zeroOutput, {}, failure(operation, 'AUTHENTICATION', "the connection's credentials are unavailable or unusable")) };
+  let credentials: Credentials;
   try {
-    const credentials = await client.resolveCredentials(call, signal);
-    const token = credentials.accessToken.reveal();
-    if (!token || !credentials.oauthClientId || !credentials.oauthClientSecret.reveal()) return { attempt: newMutationBranch('defect', zeroOutput, {}, failure(operation, 'AUTHENTICATION', "the connection's credentials are unavailable or unusable")) };
-    return { token };
+    credentials = await client.resolveCredentials(call, signal);
   } catch (error) {
     if (error instanceof AddressRefusal) return { attempt: newMutationBranch('defect', zeroOutput, {}, failure(operation, 'VALIDATION', `the connection's tokenEndpoint resolves to an address the connector will not connect to: ${error.reason}`)) };
     if (error instanceof ReauthorizationRequiredError) return { attempt: newMutationBranch('rejected', zeroOutput, {}, failure(operation, 'AUTHENTICATION', 'the OAuth authorization must be renewed in Dex Web Connections')) };
-    if (isTemporaryRefreshFailure(error)) return { attempt: newMutationRetry(failure(operation, 'AVAILABILITY', 'the OAuth access token could not be refreshed now')) };
-    return { attempt: newMutationBranch('defect', zeroOutput, {}, failure(operation, 'AUTHENTICATION', "the connection's credentials are unavailable or unusable")) };
+    if (isTerminalCredentialError(error)) return unusable;
+    return { attempt: newMutationRetry(failure(operation, 'AVAILABILITY', 'the OAuth access token could not be refreshed now')) };
   }
+  const token = credentials?.accessToken instanceof SecretString ? credentials.accessToken.reveal() : '';
+  if (!token || !credentials.oauthClientId || !(credentials.oauthClientSecret instanceof SecretString) || !credentials.oauthClientSecret.reveal()) return unusable;
+  return { token };
 }
 
+/** Report a resolve failure no later attempt clears; a TypeError may be a fetch failure, so it is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
+
+/** Report a renewal failure after a 401 that may clear; any other keeps the definite 401. */
 function isTemporaryRefreshFailure(error: unknown): boolean {
   return error instanceof RefreshFailedError || error instanceof ProviderTransportError || error instanceof CredentialBrokerUnavailableError
     || error instanceof ExchangePendingError || error instanceof OutcomeUnknownError || error instanceof ConflictError

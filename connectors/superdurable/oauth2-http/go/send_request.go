@@ -148,9 +148,9 @@ func classifyCredentialResolution(ctx context.Context, err error, credentials Cr
 	switch {
 	case errors.As(err, &refusal):
 		return credentialProblem{kind: credentialAddressRefused, refusal: refusal}
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err), errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return credentialProblem{kind: credentialReauthorizationRequired}
-	case errors.Is(err, errCredentialRefreshUnavailable), isTransientCredentialError(err), ctx.Err() != nil:
+	case errors.Is(err, errCredentialRefreshUnavailable), err != nil && !isTerminalCredentialError(err), ctx.Err() != nil:
 		return credentialProblem{kind: credentialTemporarilyUnavailable}
 	case err != nil || credentials.Validate() != nil:
 		return credentialProblem{kind: credentialUnusable}
@@ -158,12 +158,11 @@ func classifyCredentialResolution(ctx context.Context, err error, credentials Cr
 	return credentialProblem{kind: credentialUsable}
 }
 
-// isTransientCredentialError reports a credential resolution failure that a later attempt may not repeat,
-// such as an unavailable credential broker; any other failure is terminal.
-func isTransientCredentialError(err error) bool {
-	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, projectconfig.ErrExchangePending) ||
-		errors.Is(err, projectconfig.ErrRefreshFailed) || errors.Is(err, projectconfig.ErrOutcomeUnknown) ||
-		errors.Is(err, projectconfig.ErrConflict) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (problem credentialProblem) isFailed() bool { return problem.kind != credentialUsable }

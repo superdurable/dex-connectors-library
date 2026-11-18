@@ -196,8 +196,13 @@ Branches, in the order the operation decides them:
 | `uncertain` (optional) | A later attempt of a POST, PUT, PATCH, or DELETE, which may follow a processed write, receives a definite refusal, or cannot send it again because the credentials can no longer be used or the API address is refused. Every unknown outcome is sent again instead. |
 | `defect` (optional) | The input or the settings are invalid, so no request was sent. |
 
-A credential broker, store, refresh, or exchange that is temporarily
-unavailable returns Retry before anything is sent, in both operations.
+A credential lookup is terminal only for reauthorization, a missing or
+unselected connection, a broker refusal, or credentials that fail local
+checks. Any other lookup failure, such as a temporarily unavailable credential
+broker, store, refresh, or exchange, a timeout, or a connection that is not
+configured yet, returns Retry before anything is sent, in both operations.
+After a 401, only a temporarily unavailable renewal returns Retry; any other
+renewal failure keeps the 401.
 
 `sendRequest` is `repeatOnUnknown: safe`: every unknown outcome is sent again,
 for every method, including a `POST` without `idempotencyKeyHeader`; use
