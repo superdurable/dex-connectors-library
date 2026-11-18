@@ -7,6 +7,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { PostgreSQLClient } from '../src/client.js';
+import { decodeCredentials } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const call = { id: '00000000-0000-4000-8000-000000000001', idempotencyKey: '00000000-0000-4000-8000-000000000001' } as Call;
 const configuration = { host: '127.0.0.1', database: 'app', user: 'dex_app', sslMode: 'disable' };
@@ -343,6 +351,7 @@ describe('PostgreSQL executeNonIdempotent', () => {
     ['connection object not found', new ObjectNotFoundError(), true],
     ['connection not selected', new ConnectionNotSelectedError(), true],
     ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed stored material', sdkWrappedMaterialError(), true],
     ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
     ['static connection not configured', new Error('connection is not configured'), false],
     ['rejected credential not refreshed', new RejectedCredentialNotRefreshedError(), false],

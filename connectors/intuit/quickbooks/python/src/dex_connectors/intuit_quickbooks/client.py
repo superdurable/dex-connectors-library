@@ -424,7 +424,18 @@ class Client:
                 ),
                 provably_unsent=True,
             )
-        except Exception:
+        except Exception as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return Exchange(
+                    "defect",
+                    _failure(
+                        operation, FailureKind.AUTHENTICATION, "QuickBooks stored credentials are malformed"
+                    ),
+                    provably_unsent=True,
+                )
             # Any other resolve failure, such as an unavailable broker, is transient.
             return Exchange(
                 "retry",

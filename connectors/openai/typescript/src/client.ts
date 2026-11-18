@@ -4,7 +4,7 @@
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, Credentials, Response } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type Response } from './generated/models.js';
 import { CreateResponseOperation, RetrieveResponseOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.openai.com/v1';
@@ -58,7 +58,7 @@ export class OpenAIClient {
     let resolved: Credentials;
     try { resolved = await this.credentials.resolve(call, call.context.cancellationSignal); }
     catch (error) {
-      if (error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError) throw new CredentialFailure('connection credentials are missing or need reauthorization');
+      if (error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error)) throw new CredentialFailure('connection credentials are missing or need reauthorization');
       throw new CredentialFailure('connection credentials are unavailable');
     }
     if (!(resolved.apiKey instanceof SecretString) || !isHeaderSafeCredential(resolved.apiKey.reveal())) throw new CredentialFailure('connection credentials are invalid');

@@ -166,7 +166,10 @@ class Client:
                         "Pipedrive authorization must be renewed; reconnect the connection",
                     ),
                 )
-            if isinstance(
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error) or isinstance(
                 error, ObjectNotFoundError | ConnectionNotSelectedError | CredentialBrokerRejectedError
             ):
                 return None, Exchange(

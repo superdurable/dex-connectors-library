@@ -15,7 +15,7 @@ from ._generated.definitions import (
     EXECUTE_NON_IDEMPOTENT_DEFINITION,
     QUERY_DEFINITION,
 )
-from .client import Client, Config, Credentials
+from .client import Client, Config, Credentials, _CredentialMaterialError
 from .models import ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution
 
 __all__ = ["Connection", "new_connection", "new_connection_with_operations", "new_project_connection"]
@@ -118,12 +118,14 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict) or set(material) - {"password"}:
-            raise ValueError("MySQL stored credential does not match the connector credential fields")
+            raise _CredentialMaterialError(
+                "MySQL stored credential does not match the connector credential fields"
+            )
         password = material.get("password")
         if password is not None and not isinstance(password, str):
-            raise ValueError("MySQL credential password has an invalid type")
+            raise _CredentialMaterialError("MySQL credential password has an invalid type")
         if not password:
-            raise ValueError("MySQL credential password is required")
+            raise _CredentialMaterialError("MySQL credential password is required")
         return Credentials(SecretString(password))
 
 

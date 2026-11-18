@@ -536,11 +536,16 @@ async def _commit(connection: psycopg.AsyncConnection[Any]) -> None:
             raise _CommitRolledBackError()
 
 
+class _CredentialMaterialError(ValueError):
+    """Stored credential material fails the connector credential checks, so no retry can succeed."""
+
+
 def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
     return isinstance(
         error,
         (
+            _CredentialMaterialError,
             ReauthorizationRequiredError,
             ObjectNotFoundError,
             ConnectionNotSelectedError,

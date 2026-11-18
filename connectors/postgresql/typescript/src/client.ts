@@ -6,7 +6,7 @@ import { isIP } from 'node:net';
 import pg, { type Client as PgClient } from 'pg';
 import { ReauthorizationRequiredError, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
 import { TransientCredentialError, type ClassifiedFailure } from './failures.js';
 
@@ -108,7 +108,7 @@ export class PostgreSQLClient {
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 function hasControlCharacter(value: string): boolean { return [...value].some(character => { const code = character.codePointAt(0) ?? 0; return code < 32 || code === 127; }); }

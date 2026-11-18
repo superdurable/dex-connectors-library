@@ -7,7 +7,14 @@ import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from 
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { MailchimpClient } from '../src/client.js';
 import { SendCampaignDefinition, UpsertMemberDefinition } from '../src/generated/definitions.js';
-import type { SendCampaignOutput } from '../src/generated/models.js';
+import { decodeCredentials, type SendCampaignOutput } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
 const campaignId = '42694e9e57';
@@ -96,6 +103,7 @@ describe('Mailchimp sendCampaign bounded resend', () => {
     ['an unselected connection selects uncertain', new ConnectionNotSelectedError(), false],
     ['a broker refusal selects uncertain', new CredentialBrokerRejectedError(), false],
     ['a fetch TypeError retries', new TypeError('fetch failed'), true],
+    ['malformed stored material selects uncertain', sdkWrappedMaterialError(), false],
   ])('after a possible send, %s without recording notSent', async (_name, resolveError, isRetryable) => {
     const script = new CampaignScript('save', [() => serverError]);
     const context = new AttemptContext();
@@ -229,6 +237,12 @@ describe('Mailchimp sendCampaign bounded resend', () => {
       const attempt = await newClient(() => answer).upsertMember().invoke(call, { listId, emailAddress: 'ben@example.com', statusIfNew: 'subscribed' });
       expect(attempt.kind).toBe('retry');
     }
+  });
+
+  it('selects defect for malformed stored material before any send', async () => {
+    const script = new CampaignScript('save');
+    expect(await send(script, new AttemptContext(), undefined, sdkWrappedMaterialError())).toMatchObject({ branch: 'defect' });
+    expect(script.requests).toHaveLength(0);
   });
 
   it('records notSent and retries a transient credential failure before any send', async () => {

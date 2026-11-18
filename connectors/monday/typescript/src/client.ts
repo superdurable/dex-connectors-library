@@ -6,7 +6,7 @@ import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHead
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { AddUpdateOperation, CreateItemOperation, GetItemOperation, ListItemsOperation, UpdateItemColumnValuesOperation } from './operations.js';
 
 const defaultAPIURL = 'https://api.monday.com/v2';
@@ -123,7 +123,7 @@ export class MondayClient {
     catch (error) {
       if (error instanceof ReauthorizationRequiredError) return failureExchange(operation, 'rejected', 'AUTHENTICATION', 'monday.com authorization must be renewed', 0, '', false, { definiteRefusal: true });
       if (error instanceof RetryError) return failureExchange(operation, 'retry', 'AVAILABILITY', 'monday.com OAuth token refresh is temporarily unavailable', 0, '', false, { provenNotProcessed: true });
-      if (error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError) {
+      if (error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error)) {
         return failureExchange(operation, 'defect', 'AUTHENTICATION', 'monday.com connection credentials are unavailable', 0, '', false, { definiteRefusal: true });
       }
       // A broker or store outage is transient; only a missing or refused connection is terminal.

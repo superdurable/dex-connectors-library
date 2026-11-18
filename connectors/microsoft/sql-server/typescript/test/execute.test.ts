@@ -7,6 +7,7 @@ import sql from 'mssql';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { SQLServerClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 import { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition } from '../src/generated/definitions.js';
 
 /** Keeps the last heartbeat across Execute attempts like Dex does. */
@@ -151,6 +152,7 @@ describe('SQL Server writes', () => {
     ['connection object not found', new ObjectNotFoundError(), true],
     ['connection not selected', new ConnectionNotSelectedError(), true],
     ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed stored password', new CredentialMaterialError('SQL Server password is unavailable'), true],
     ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
     ['static connection not configured', new Error('connection is not configured'), false],
     ['rejected credential not refreshed', new RejectedCredentialNotRefreshedError(), false],

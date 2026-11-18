@@ -6,7 +6,14 @@ import { ProviderTransportError, type ProviderRequest, type ProviderResponse } f
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type MutationAttempt } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { TeamsClient } from '../src/client.js';
-import type { Credentials, PostMessageOutput } from '../src/generated/models.js';
+import { decodeCredentials, type Credentials, type PostMessageOutput } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const connection = { provider: 'microsoft', name: 'teams' };
 const teamId = 'fbe2bf47-16c8-47cf-b4a5-4b9b187c508b';
@@ -142,7 +149,7 @@ describe('fenced Microsoft Teams posts', () => {
     expect(methods).toEqual(['POST']);
   });
 
-  const terminalCredentialErrors: Error[] = [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()];
+  const terminalCredentialErrors: Error[] = [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), sdkWrappedMaterialError()];
   const transientCredentialErrors: Error[] = [new CredentialBrokerUnavailableError(), new RejectedCredentialNotRefreshedError(), new Error('connection is not configured'), new TypeError('unlisted')];
 
   /** Resolves a static token before firstFailingAttempt and throws error from then on. */

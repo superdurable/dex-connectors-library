@@ -18,6 +18,7 @@ from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.intuit_quickbooks as quickbooks
+import dex_connectors.intuit_quickbooks._generated.connection as generated_connection
 from dex_connectors.intuit_quickbooks._generated.definitions import CREATE_CUSTOMER_DEFINITION
 
 CONNECTION = sdk.ConnectionRef("quickbooks", "quickbooks-test")
@@ -315,6 +316,30 @@ async def test_unavailable_credential_broker_retries_without_counting_a_send() -
     assert script.requests == []
 
 
+def sdk_wrapped_material_error() -> ValueError:
+    """Return the SDK refreshing provider's error for stored material the decoder rejects."""
+    try:
+        try:
+            generated_connection.decode_credentials({"unexpected_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed stored material decoded")
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_after_a_possible_send_select_uncertain() -> None:
+    """Malformed stored material is terminal: after a possible send it selects uncertain, sending nothing."""
+    script = Script(httpx.Response(500, json={"Fault": {}}))
+    context = AttemptContext()
+    assert isinstance(await create(script, context), sdk.RetryError)
+    context.attempt = 2
+    result = await create(script, context, credentials=FailingCredentials(sdk_wrapped_material_error()))
+    assert branch(result) == "uncertain"
+    assert len(script.requests) == 1
+
+
 class FailingCredentials:
     """Fail every credential read with error."""
 
@@ -337,6 +362,7 @@ class FailingCredentials:
         (ObjectNotFoundError(), False),
         (ConnectionNotSelectedError(), False),
         (CredentialBrokerRejectedError(), False),
+        (sdk_wrapped_material_error(), False),
     ],
 )
 async def test_credential_resolve_failures_split_into_terminal_and_transient(

@@ -5,7 +5,7 @@ import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransp
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { GetMemberOperation, ListMembersOperation, UpsertMemberOperation, UpdateMemberTagsOperation, SendCampaignOperation } from './operations.js';
 
 /** Injectable provider transport for deterministic tests. */
@@ -159,7 +159,7 @@ export class MailchimpClient {
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
     || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
-    || error instanceof z.ZodError;
+    || error instanceof z.ZodError || isCredentialMaterialError(error);
 }
 
 function header(headers: ProviderResponse['headers'], name: string): string {

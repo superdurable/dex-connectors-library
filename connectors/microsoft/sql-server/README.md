@@ -306,7 +306,7 @@ errors Microsoft lists (615, 926, 4221, 10928, 10929, 10936, 40197, 40501, 40613
 49920), a login during script upgrade mode (18401), any other error of severity 20 or higher,
 which ends the connection, and a transient credential failure, before connecting: anything other than
 a required reauthorization, a missing or unselected connection, a credential broker refusal, or an
-empty password, which select `defect`.
+empty or malformed stored password, which select `defect`.
 
 The server rolls back an open transaction when its connection ends, so a write that fails before
 `COMMIT` left nothing behind and is safe to retry. The connector counts the bytes it writes below

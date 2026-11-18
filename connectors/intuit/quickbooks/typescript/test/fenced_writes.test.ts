@@ -6,7 +6,14 @@ import { RetryError, runMutation, SecretString, type Call, type MutationResult }
 import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { QuickBooksClient } from '../src/client.js';
 import { CreateCustomerDefinition } from '../src/generated/definitions.js';
-import type { CreateCustomerOutput } from '../src/generated/models.js';
+import { decodeCredentials, type CreateCustomerOutput } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const callId = '0fda9033-4ba6-5462-98fa-01d400ec4987';
 const customer = { Customer: { Id: '58', SyncToken: '0', DisplayName: 'City Agency', PrimaryEmailAddr: { Address: 'accounts@cityagency.example.com' }, Active: true, Balance: 0 } };
@@ -39,8 +46,9 @@ class Script {
   }
 }
 
-async function create(script: Script, context: AttemptContext, maxSendsOverride?: number): Promise<MutationResult<CreateCustomerOutput> | RetryError> {
-  const client = new QuickBooksClient({ realmId: '9341453050298464' }, { resolve: async () => credentials, resolveWithRefresh: async () => credentials },
+async function create(script: Script, context: AttemptContext, maxSendsOverride?: number, resolveError?: Error): Promise<MutationResult<CreateCustomerOutput> | RetryError> {
+  const resolve = async (): Promise<typeof credentials> => { if (resolveError) throw resolveError; return credentials; };
+  const client = new QuickBooksClient({ realmId: '9341453050298464' }, { resolve, resolveWithRefresh: resolve },
     { send: request => script.send(request), localProviderURL: 'http://127.0.0.1:12345' });
   const call = { id: callId, connection: { provider: 'quickbooks', name: 'quickbooks-test' }, operation: CreateCustomerDefinition.operation, context,
     ...(maxSendsOverride === undefined ? {} : { maxSendsOverride }) } as unknown as Call;
@@ -64,6 +72,15 @@ describe('QuickBooks bounded resend of writes', () => {
       expect(await create(script, context)).toMatchObject({ branch: 'created' });
       expect(requestID(script.requests[0]!)).toBe(requestID(script.requests[1]!));
     }
+  });
+
+  it('selects uncertain for malformed stored credentials after a possible send', async () => {
+    const script = new Script([{ status: 500, body: {} }]);
+    const context = new AttemptContext();
+    expect(await create(script, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    expect(await create(script, context, undefined, sdkWrappedMaterialError())).toMatchObject({ branch: 'uncertain' });
+    expect(script.requests).toHaveLength(1);
   });
 
   it('selects uncertain only at the send cap', async () => {

@@ -23,9 +23,22 @@ from dex_connectors.sdk.projectconfig import (
     ObjectNotFoundError,
 )
 
+import dex_connectors.pipedrive._generated.connection as generated_connection
 from dex_connectors.pipedrive import Client, Config, Credentials, UpsertObjectInput
 from dex_connectors.pipedrive.models import decode_record_body, parse_go_rfc3339
 from dex_connectors.pipedrive.operations import _encode_query, _upsert_bodies
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Return the SDK refreshing provider's error for stored material the decoder rejects."""
+    try:
+        try:
+            generated_connection.decode_credentials({"unexpected_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed stored material decoded")
 
 
 @pytest.mark.parametrize(
@@ -61,6 +74,7 @@ class _FailingCredentials:
         (ObjectNotFoundError(), "defect", FailureKind.AUTHENTICATION),
         (ConnectionNotSelectedError(), "defect", FailureKind.AUTHENTICATION),
         (CredentialBrokerRejectedError(), "defect", FailureKind.AUTHENTICATION),
+        (_sdk_wrapped_material_error(), "defect", FailureKind.AUTHENTICATION),
     ],
 )
 async def test_credential_resolution_routes_terminal_and_transient_errors(

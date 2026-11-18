@@ -114,7 +114,10 @@ def _write_credential_failure(operation: str, error: Exception) -> tuple[Failure
 
 def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure no later attempt resolves without a person."""
-    return isinstance(
+    # Imported here because the generated connection module imports this one.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

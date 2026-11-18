@@ -26,6 +26,7 @@ from dex_connectors.sdk.projectconfig import (
 )
 from dex_connectors.sdk.projectconfig.broker import RejectedCredentialNotRefreshedError
 
+import dex_connectors.microsoft_outlook_mail._generated.connection as generated_connection
 from dex_connectors.microsoft_outlook_mail import (
     Client,
     Config,
@@ -129,6 +130,27 @@ async def test_credential_material_that_fails_local_checks_is_a_defect() -> None
     """A header-unsafe token is invalid material, so it never retries."""
     unsafe = StaticCredentialProvider({CONNECTION: Credentials(access_token=SecretString("bad\ntoken"))})
     assert await _send(unsafe, AttemptContext(1, None)) == "defect"
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Return the SDK refreshing provider's error for stored material the decoder rejects."""
+    try:
+        try:
+            generated_connection.decode_credentials({"unexpected_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed stored material decoded")
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_are_terminal() -> None:
+    """Malformed stored material selects defect before a send and uncertain after one, never retrying."""
+    dispatched = Checkpoint(phase="sendDispatched", draft_message_id="draft1", send_count=1)
+    first = await _send(FailingCredentials(_sdk_wrapped_material_error()), AttemptContext(1, None))
+    later = await _send(FailingCredentials(_sdk_wrapped_material_error()), AttemptContext(2, dispatched))
+    assert (first, later) == ("defect", "uncertain")
 
 
 @pytest.mark.asyncio

@@ -28,10 +28,12 @@ from dex_connectors.sdk.projectconfig import (
 )
 from dex_connectors.sdk.singledispatch import Marker
 
+import dex_connectors.meta_facebook_pages._generated.connection as generated_connection
 from dex_connectors.meta_facebook_pages import (
     Client,
     Config,
     Credentials,
+    GetPostInput,
     PublishedPost,
     PublishTextPostInput,
 )
@@ -63,6 +65,25 @@ class LateBodyStream(httpx.AsyncByteStream):
     async def __aiter__(self):  # type: ignore[no-untyped-def]
         await asyncio.sleep(self.delay_seconds)
         yield PUBLISHED[1]
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Return the error the SDK project provider raises when the decoder rejects stored material."""
+    try:
+        try:
+            raise generated_connection.CredentialMaterialError("stored credential is malformed")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
+class MalformedProject:
+    """Serve stored credential material that fails the generated decoder."""
+
+    async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+        """Return material with an undeclared field."""
+        return {"unexpected_field": "value"}
 
 
 class FailingCredentialProvider:
@@ -285,6 +306,8 @@ async def test_transient_credential_failure_before_send_retries_without_a_send(e
         ObjectNotFoundError(),
         ConnectionNotSelectedError(),
         CredentialBrokerRejectedError(),
+        generated_connection.CredentialMaterialError("stored credential is malformed"),
+        sdk_wrapped_material_error(),
     ],
 )
 async def test_terminal_credential_failure_before_send_selects_defect(error: Exception) -> None:
@@ -292,6 +315,42 @@ async def test_terminal_credential_failure_before_send_selects_defect(error: Exc
     result = await publish([PUBLISHED], AttemptContext(), requests, credential_error=error)
     assert isinstance(result, MutationResult) and result.branch == "defect"
     assert requests == []
+
+
+async def test_malformed_stored_credentials_are_terminal() -> None:
+    """The generated project source rejects malformed material: defect before a send, uncertain after one."""
+    malformed = generated_connection._ProjectCredentialSource(MalformedProject(), object())  # type: ignore[arg-type]
+    with pytest.raises(generated_connection.CredentialMaterialError):
+        await malformed.resolve(Call(CALL_ID, CONNECTION, OperationRef("facebook-pages", "publishTextPost")))
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert isinstance(await publish([SERVER_FAILURE], context, requests), RetryError)
+    context.attempt = 2
+    result = await publish([SERVER_FAILURE], context, requests, credential_error=sdk_wrapped_material_error())
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "is_retry"),
+    [
+        (CredentialBrokerUnavailableError("broker down"), True),
+        (RuntimeError("unlisted"), True),
+        (ObjectNotFoundError(), False),
+        (sdk_wrapped_material_error(), False),
+    ],
+)
+async def test_query_credential_failures_retry_unless_terminal(error: Exception, is_retry: bool) -> None:
+    """A Query retries a transient credential failure and selects defect only for a terminal one."""
+    transport_handler = httpx.MockTransport(lambda request: httpx.Response(500))
+    async with httpx.AsyncClient(transport=transport_handler) as transport:
+        config = Config(base_url="http://127.0.0.1:12345/v25.0")
+        client = Client(config, FailingCredentialProvider(error), transport)
+        call = Call(CALL_ID, CONNECTION, OperationRef("facebook-pages", "getPost"))
+        attempt = await client.get_post().invoke(call, GetPostInput("123456789_987654321"))
+    assert (attempt.kind == "retry") == is_retry
+    if not is_retry:
+        assert attempt.branch == "defect"
 
 
 async def test_unreadable_client_error_is_unknown() -> None:

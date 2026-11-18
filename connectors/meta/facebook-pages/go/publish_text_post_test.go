@@ -412,3 +412,20 @@ func TestPublishTextPostRejectsInvalidInput(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, PublishTextPostBranchDefect, invalid.Branch)
 }
+
+func TestGetPostRetriesTransientCredentialFailures(t *testing.T) {
+	for _, credentialErr := range []error{projectconfig.ErrCredentialBrokerUnavailable, errors.New("project store read failed")} {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, failingCredentialSource{err: credentialErr})
+			require.NoError(t, err)
+			_, err = sdkgo.RunQuery(queryContext{}, client.GetPost(), testConnection, GetPostInput{PostID: "123456789_987654321"})
+			var retryErr *sdkgo.RetryError
+			require.ErrorAs(t, err, &retryErr)
+		})
+	}
+	client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, failingCredentialSource{err: projectconfig.ErrObjectNotFound})
+	require.NoError(t, err)
+	terminal, err := sdkgo.RunQuery(queryContext{}, client.GetPost(), testConnection, GetPostInput{PostID: "123456789_987654321"})
+	require.NoError(t, err)
+	require.Equal(t, GetPostBranchDefect, terminal.Branch)
+}

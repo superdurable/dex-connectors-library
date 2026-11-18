@@ -7,7 +7,14 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBr
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { FacebookPagesClient } from '../src/client.js';
 import { PublishTextPostDefinition } from '../src/generated/definitions.js';
-import type { PublishedPost } from '../src/generated/models.js';
+import { CredentialMaterialError, decodeCredentials, type PublishedPost } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const callId = 'd2357ac8-f73e-5df4-952e-b68da926f540';
 const sendCap = PublishTextPostDefinition.maxSends!;
@@ -217,7 +224,29 @@ describe('Facebook Pages bounded resend of unconfirmed posts', () => {
     expect(laterRequests).toHaveLength(1);
   });
 
-  it.each([new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()])('selects defect for a terminal credential failure before any send: %s', async credentialError => {
+  it('selects uncertain for malformed stored credentials after a possible send', async () => {
+    const { client, requests } = newClient([serverFailure]);
+    const context = new AttemptContext();
+    expect(await publish(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    const { client: malformedClient } = newClient([serverFailure], undefined, undefined, new CredentialMaterialError('Facebook Pages Page token is unavailable'));
+    expect(await publish(malformedClient, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    [new CredentialBrokerUnavailableError(), 'retry'], [new TypeError('fetch failed'), 'retry'],
+    [new ObjectNotFoundError(), 'branch'], [sdkWrappedMaterialError(), 'branch'],
+  ] as const)('a Query retries a transient credential failure and selects defect for a terminal one: %s', async (credentialError, kind) => {
+    const { client, requests } = newClient([serverFailure], undefined, undefined, credentialError);
+    const call = { id: callId, connection: { provider: 'facebook-pages', name: 'facebook-pages' }, operation: { connectorId: 'facebook-pages', operationId: 'getPost' }, context: new AttemptContext() } as unknown as Call;
+    const attempt = await client.getPost().invoke(call, { postId: '123456789_987654321' });
+    expect(attempt.kind).toBe(kind);
+    if (kind === 'branch') expect(attempt).toMatchObject({ branch: 'defect' });
+    expect(requests).toHaveLength(0);
+  });
+
+  it.each([new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), sdkWrappedMaterialError(), new CredentialMaterialError('Facebook Pages Page token is unavailable')])('selects defect for a terminal credential failure before any send: %s', async credentialError => {
     const { client, requests } = newClient([published], undefined, undefined, credentialError);
     expect(await publish(client, new AttemptContext())).toMatchObject({ branch: 'defect' });
     expect(requests).toHaveLength(0);

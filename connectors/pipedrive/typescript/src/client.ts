@@ -7,7 +7,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { CreateObjectOperation, GetObjectOperation, ListObjectsOperation, SearchObjectsOperation, UpdateObjectOperation, UpsertObjectOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.pipedrive.com';
@@ -72,7 +72,7 @@ export class PipedriveClient {
     catch (error) {
       if (signal.aborted) return { kind: 'retry', failure: this.failure(operation, 'AVAILABILITY', 'Pipedrive connection credentials are temporarily unavailable') };
       if (error instanceof ReauthorizationRequiredError) return { kind: 'rejected', failure: this.failure(operation, 'AUTHENTICATION', 'Pipedrive authorization must be renewed; reconnect the connection') };
-      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) {
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) {
         return { kind: 'defect', failure: this.failure(operation, 'AUTHENTICATION', 'Pipedrive connection credentials are unavailable; reconnect the connection') };
       }
       return { kind: 'retry', failure: this.failure(operation, 'AVAILABILITY', 'Pipedrive connection credentials are temporarily unavailable') };

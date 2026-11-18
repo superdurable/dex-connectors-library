@@ -332,8 +332,12 @@ def _is_terminal_credential_error(error: Exception) -> bool:
 
     Missing, unselected, rejected, or reauthorization-bound connections are terminal; broker
     outages, store reads, a static provider without the connection, and other errors are transient.
+    Malformed stored credential material is terminal too.
     """
-    return isinstance(
+    # Imported here because the generated connection module imports this one.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

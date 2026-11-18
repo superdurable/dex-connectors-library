@@ -19,6 +19,7 @@ from dex_connectors.sdk.projectconfig import (
 from dex_connectors.sdk.projectconfig.broker import RejectedCredentialNotRefreshedError
 
 import dex_connectors.microsoft_excel as excel
+import dex_connectors.microsoft_excel._generated.connection as generated_connection
 
 CONNECTION = sdk.ConnectionRef("microsoft", "approvals")
 CALL_ID = sdk.CallID("6072a0ce-9ddb-5937-8998-675e48cfa407")
@@ -220,11 +221,24 @@ async def test_update_values_retries_a_transient_credential_failure() -> None:
     assert branches == ["retry", "defect"]
 
 
+def _sdk_wrapped_material_error() -> ValueError:
+    """Return the SDK refreshing provider's error for stored material the decoder rejects."""
+    try:
+        try:
+            generated_connection.decode_credentials({"unexpected_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed stored material decoded")
+
+
 _TERMINAL_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
     sdk.ReauthorizationRequiredError(),
     ObjectNotFoundError(),
     ConnectionNotSelectedError(),
     CredentialBrokerRejectedError(),
+    _sdk_wrapped_material_error(),
 )
 _TRANSIENT_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
     CredentialBrokerUnavailableError(),

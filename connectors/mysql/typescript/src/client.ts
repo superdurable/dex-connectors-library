@@ -7,7 +7,7 @@ import mysql, { type Connection, type ConnectionOptions } from 'mysql2/promise';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ClassifiedFailure } from './failures.js';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
 
 class MySQLIPIdentityError extends Error {
@@ -137,5 +137,5 @@ export class MySQLClient {
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }

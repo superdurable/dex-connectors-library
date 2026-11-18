@@ -65,8 +65,8 @@ refresh a rejected token and retry once. A post refreshes a rejected token when
 supported and records permission for the next Dex attempt to resend only when
 refresh returns a different valid token; otherwise 401 selects
 `providerRejected`. A terminal credential failure (reauthorization required, a
-missing or unselected connection, a broker refusal, or a token that fails local
-checks) selects `defect` with a reconnect hint after recording `notSent`; if an
+missing or unselected connection, a broker refusal, malformed stored credentials,
+or a token that fails local checks) selects `defect` with a reconnect hint after recording `notSent`; if an
 earlier post may have been sent, it selects `uncertain` with the reconnect
 hint. Every other credential failure, such as a broker outage, retries. A 429 or 503 on a post records permission for the
 immediately following attempt to retry; 409, 5xx, and other unknown write

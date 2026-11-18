@@ -241,7 +241,12 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_TERMINAL_MESSAGE)
-        except Exception:
+        except Exception as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_TERMINAL_MESSAGE)
             # Any other resolve failure is transient, as in the Go and TypeScript packages.
             return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_UNAVAILABLE_MESSAGE)
         api_key = credentials.api_key.reveal()

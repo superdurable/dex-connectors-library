@@ -6,6 +6,14 @@ import { ReauthorizationRequiredError, SecretString, type Call } from '@superdur
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext, scenarioCall } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { NotionClient } from '../src/client.js';
+import { decodeCredentials } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const connection = { provider: 'notion', name: 'notion-test' };
 function call(operation: string): Call {
@@ -21,7 +29,7 @@ it('keeps terminal credential errors distinct from transient broker errors', asy
   expect(rejected.kind).toBe('branch');
   if (rejected.kind === 'branch') { expect(rejected.branch).toBe('defect'); expect(rejected.failure?.kind).toBe('AUTHENTICATION'); }
   const update = { pageId: '1f3c9a2e-5b7d-4e8a-9c01-23456789abcd', properties: { Email: { type: 'email' as const, email: 'ada@example.com' } } };
-  for (const error of [new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+  for (const error of [new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), sdkWrappedMaterialError()]) {
     const unusable = new NotionClient({}, { resolve: async () => { throw error; } }, { send: sender });
     expect(await unusable.updatePageProperties().invoke(call('updatePageProperties'), update)).toMatchObject({ kind: 'branch', branch: 'defect' });
   }

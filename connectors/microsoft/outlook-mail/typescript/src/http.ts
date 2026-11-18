@@ -6,7 +6,7 @@ import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderS
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 
 /** Report a credential failure no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
@@ -76,6 +76,7 @@ export class GraphSession {
     let credentials: Credentials;
     try { credentials = await resolveCredential(source, call, driver, call.context.cancellationSignal); }
     catch (error) {
+      if (isCredentialMaterialError(error)) return zeroExchange('defect', graphFailure(operation, 'AUTHENTICATION', 'Outlook Mail stored connection credentials are malformed'));
       if (isTerminalCredentialError(error)) return zeroExchange('rejected', graphFailure(operation, 'AUTHENTICATION', 'Microsoft authorization must be renewed: authorize the connection again or replace the client secret'));
       if (error instanceof RetryError) return zeroExchange('retry', graphFailure(operation, 'AVAILABILITY', 'the Microsoft token endpoint is temporarily unavailable'));
       return zeroExchange('retry', graphFailure(operation, 'AVAILABILITY', 'Outlook Mail connection credentials are temporarily unavailable; nothing was sent'));

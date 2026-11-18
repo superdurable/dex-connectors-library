@@ -7,6 +7,7 @@ import type { ConnectionOptions } from 'mysql2/promise';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { MySQLClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 import { classifyDriverError } from '../src/failures.js';
 
 const call = { id: 'de4b2ac7-66a0-4547-b4c8-6d44a12d6029', idempotencyKey: 'de4b2ac7-66a0-4547-b4c8-6d44a12d6029', connection: { provider: 'mysql', name: 'mysql-refunds' }, operation: { connectorId: 'mysql', operationId: 'query' }, context: { cancellationSignal: new AbortController().signal } } as Call;
@@ -340,6 +341,7 @@ describe('executeNonIdempotent', () => {
     ['connection object not found', new ObjectNotFoundError(), true],
     ['connection not selected', new ConnectionNotSelectedError(), true],
     ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed stored password', new CredentialMaterialError('MySQL password is unavailable'), true],
     ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
     ['static connection not configured', new Error('connection is not configured'), false],
     ['rejected credential not refreshed', new RejectedCredentialNotRefreshedError(), false],

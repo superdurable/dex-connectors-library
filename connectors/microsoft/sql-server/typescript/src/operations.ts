@@ -6,7 +6,7 @@ import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUnc
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition, QueryRowsDefinition } from './generated/definitions.js';
-import type { Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution } from './generated/models.js';
+import { isCredentialMaterialError, type Column, type ExecuteStatementInput, type QueryRowsInput, type RowSet, type StatementExecution } from './generated/models.js';
 import { AttemptDeadline, classifyDriverError, InvalidCredentialMaterialError, type ClassifiedFailure, type ResponseBudget, type SQLServerClient } from './client.js';
 
 const emptyRows = (): RowSet => ({ columns: [], rows: [] });
@@ -461,7 +461,7 @@ function credentialFailure(error: unknown): ClassifiedFailure {
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof InvalidCredentialMaterialError || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 function bindExecuteValues(call: Call, input: ExecuteStatementInput): unknown[] | ClassifiedFailure {

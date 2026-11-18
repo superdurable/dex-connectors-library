@@ -6,6 +6,14 @@ import { ReauthorizationRequiredError, SecretString, type Call } from '@superdur
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { QuickBooksClient } from '../src/client.js';
+import { decodeCredentials } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 // A fenced write needs a UUID Call ID and an attempt context; maxSendsOverride 1 makes one attempt final.
 const call = { id: '5af8fafa-06ff-5b2d-bb13-04693809fabf', idempotencyKey: 'quickbooks-unit-call', connection: { provider: 'quickbooks', name: 'test' }, operation: { connectorId: 'quickbooks', operationId: 'createInvoice' }, maxSendsOverride: 1,
@@ -36,6 +44,7 @@ describe('QuickBooks provider boundaries', () => {
       [new Error('connection is not configured'), { kind: 'retry' }], [new CredentialBrokerUnavailableError(), { kind: 'retry' }],
       [new ReauthorizationRequiredError(), { kind: 'branch', branch: 'providerRejected' }], [new ObjectNotFoundError(), { kind: 'branch', branch: 'defect' }],
       [new ConnectionNotSelectedError(), { kind: 'branch', branch: 'defect' }], [new CredentialBrokerRejectedError(), { kind: 'branch', branch: 'defect' }],
+      [sdkWrappedMaterialError(), { kind: 'branch', branch: 'defect' }],
     ] as const) {
       const provider = { resolve: async (): Promise<typeof credentials> => { throw error; }, resolveWithRefresh: async (): Promise<typeof credentials> => { throw error; } };
       const result = await client(async () => { throw new Error('must not send'); }, provider).getInvoice().invoke(call, { invoiceId: '130' });

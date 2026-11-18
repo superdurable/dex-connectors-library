@@ -14,7 +14,7 @@ import {
   type ProviderHTTPClient, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { queryEncode, safeToken } from './message.js';
 import { ListThreadRepliesOperation, PostChannelMessageOperation, PostChatMessageOperation, PostThreadReplyOperation } from './operations.js';
 
@@ -88,7 +88,7 @@ export class TeamsClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, signal); }
     catch (error) {
-      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) {
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) {
         throw new ReauthorizationRequiredError();
       }
       throw error;
