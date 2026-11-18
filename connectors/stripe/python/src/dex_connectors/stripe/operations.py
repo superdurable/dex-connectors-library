@@ -333,7 +333,7 @@ class GetCheckoutSessionOperation:
             )
         credentials, failure = await self._client.resolve_credentials(call, operation)
         if failure is not None or credentials is None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _unavailable_credentials_query(empty, failure)
         try:
             response = await self._client.request(
                 call,
@@ -421,7 +421,7 @@ class GetPaymentIntentOperation:
             )
         credentials, failure = await self._client.resolve_credentials(call, operation)
         if failure is not None or credentials is None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _unavailable_credentials_query(empty, failure)
         try:
             response = await self._client.request(
                 call,
@@ -706,10 +706,22 @@ def _denied_refund_readback_failure(status_code: int) -> Failure:
 
 
 def _unavailable_credentials_attempt(call: Call, empty: T, failure: Failure | None) -> MutationAttempt[T]:
-    """Select defect for a local failure only on attempt one; a later attempt may follow a send."""
-    if failure is not None and is_later_attempt(call):
+    """Retry a transient credential failure; a terminal one is defect first, then uncertain.
+
+    A later attempt may follow a created object, so it never selects defect.
+    """
+    if failure is not None and failure.kind == FailureKind.AVAILABILITY:
         return MutationAttempt.retry(failure)
+    if failure is not None and is_later_attempt(call):
+        return MutationAttempt.uncertain(empty, failure, Receipt())
     return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
+
+
+def _unavailable_credentials_query(empty: T, failure: Failure | None) -> QueryAttempt[T]:
+    """Retry a credential broker outage; every other credential failure selects defect."""
+    if failure is not None and failure.kind == FailureKind.AVAILABILITY:
+        return QueryAttempt.retry(failure)
+    return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
 
 
 def _is_checkout_session_body(body: bytes) -> bool:

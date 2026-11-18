@@ -19,6 +19,7 @@ from dex_connectors.sdk import (
     FailureKind,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     new_provider_http_client,
@@ -124,12 +125,22 @@ class Client:
     async def resolve_credentials(
         self, call: Call, operation: str
     ) -> tuple[Credentials | None, Failure | None]:
-        """Resolve a secret key at call time, returning a safe authentication failure."""
+        """Resolve a secret key at call time, returning a safe failure.
+
+        A credential broker outage, which another attempt may clear, returns an AVAILABILITY
+        failure; every terminal credential problem returns an AUTHENTICATION failure.
+        """
         try:
             credentials = await self._credentials.resolve(call)
             if not isinstance(credentials, Credentials) or not credentials.secret_key.reveal():
                 raise ValueError("empty Stripe key")
             return credentials, None
+        except CredentialBrokerUnavailableError:
+            return None, stripe_failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                "Stripe connection credentials are temporarily unavailable; nothing was sent",
+            )
         except Exception:
             return None, stripe_failure(
                 operation, FailureKind.AUTHENTICATION, "Stripe connection credentials are unavailable"

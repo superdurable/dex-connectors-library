@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 
 from dex_connectors.stripe import (
     Client,
@@ -823,8 +824,8 @@ class _LaterAttemptContext:
 @pytest.mark.parametrize(
     "operation", ["createCardCheckoutSession", "createACHCheckoutSession", "createRefund"]
 )
-async def test_missing_credentials_retry_after_first_attempt(operation: str) -> None:
-    """A later attempt may follow a send, so unavailable credentials retry instead of defect."""
+async def test_missing_credentials_select_uncertain_after_first_attempt(operation: str) -> None:
+    """A later attempt may follow a created object, so terminal credentials select uncertain."""
     result: Any
     credentials: StaticCredentialProvider[Credentials] = StaticCredentialProvider({})
     client = Client(
@@ -841,7 +842,36 @@ async def test_missing_credentials_retry_after_first_attempt(operation: str) -> 
         result = await client.create_ach_checkout_session().invoke(call, checkout_input())
     else:
         result = await client.create_refund().invoke(call, CreateRefundInput("pi_test_123", 2500))
-    assert result.kind == "retry" and result.failure.kind == FailureKind.AUTHENTICATION
+    assert result.branch == "uncertain" and result.failure.kind == FailureKind.AUTHENTICATION
+
+
+class _UnavailableBrokerCredentials:
+    async def resolve(self, _call: Call) -> Credentials:
+        raise CredentialBrokerUnavailableError()
+
+
+@pytest.mark.parametrize(
+    "operation", ["createCardCheckoutSession", "createACHCheckoutSession", "createRefund"]
+)
+async def test_unavailable_credential_broker_retries_on_every_attempt(operation: str) -> None:
+    """A broker outage sends nothing, so neither defect nor uncertain may be selected."""
+    result: Any
+    client = Client(
+        Config("http://127.0.0.1:12345/v1"),
+        _UnavailableBrokerCredentials(),  # type: ignore[arg-type]
+        httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: pytest.fail("sent without credentials"))
+        ),
+    )
+    first = make_call(operation, True)
+    for call in (first, replace(first, context=_LaterAttemptContext())):  # type: ignore[arg-type]
+        if operation == "createCardCheckoutSession":
+            result = await client.create_card_checkout_session().invoke(call, checkout_input(True))
+        elif operation == "createACHCheckoutSession":
+            result = await client.create_ach_checkout_session().invoke(call, checkout_input())
+        else:
+            result = await client.create_refund().invoke(call, CreateRefundInput("pi_test_123", 2500))
+        assert result.kind == "retry" and result.failure.kind == FailureKind.AVAILABILITY
 
 
 def test_definitions_match_manifest_branches() -> None:
