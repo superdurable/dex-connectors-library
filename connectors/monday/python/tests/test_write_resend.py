@@ -15,6 +15,7 @@ from dex_connectors.sdk import projectconfig
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.monday as monday
+import dex_connectors.monday._generated.connection as generated_connection
 from dex_connectors.monday._generated.definitions import CREATE_ITEM_DEFINITION
 
 CONNECTION = sdk.ConnectionRef("monday", "monday-test")
@@ -246,6 +247,18 @@ async def test_two_xx_headers_then_the_write_deadline_cuts_the_body_is_uncertain
     assert len(requests) == 1
 
 
+def sdk_wrapped_material_error() -> ValueError:
+    """Return the SDK refreshing provider's error for stored material the decoder rejects."""
+    try:
+        try:
+            generated_connection.decode_credentials({"unexpected_field": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed stored material decoded")
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("error", "is_transient"),
@@ -257,6 +270,7 @@ async def test_two_xx_headers_then_the_write_deadline_cuts_the_body_is_uncertain
         (projectconfig.ObjectNotFoundError("absent"), False),
         (projectconfig.ConnectionNotSelectedError("not selected"), False),
         (projectconfig.CredentialBrokerRejectedError("rejected"), False),
+        (sdk_wrapped_material_error(), False),
     ],
 )
 async def test_transient_credential_failure_retries_and_only_a_terminal_one_is_defect(

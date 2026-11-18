@@ -6,6 +6,14 @@ import { RetryError, runMutation, SecretString, type Call, type MutationResult }
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { MondayClient } from '../src/client.js';
+import { decodeCredentials } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 import { AddUpdateDefinition, CreateItemDefinition, UpdateItemColumnValuesDefinition } from '../src/generated/definitions.js';
 
 const callId = 'd2f0e0a4-68c7-541e-aa07-d5ec3d088f1e';
@@ -156,6 +164,7 @@ describe('monday.com bounded resend of unconfirmed writes', () => {
     ['object not found', () => new ObjectNotFoundError(), false],
     ['connection not selected', () => new ConnectionNotSelectedError(), false],
     ['broker rejected', () => new CredentialBrokerRejectedError(), false],
+    ['malformed stored material', () => sdkWrappedMaterialError(), false],
   ] as const)('retries a transient credential failure and selects defect only for a terminal one: %s', async (_name, newError, isTransient) => {
     const failing = async () => { throw newError(); };
     const requests: ProviderRequest[] = [];
