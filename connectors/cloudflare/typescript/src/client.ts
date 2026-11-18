@@ -4,7 +4,7 @@
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type FailureKind } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { ListZonesOperation, PurgeCacheByURLsOperation } from './operations.js';
 
 const defaultBaseURL = 'https://api.cloudflare.com/client/v4';
@@ -27,6 +27,8 @@ export type CloudflareExchange = { response: ProviderResponse } | {
   disposition: 'retry' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect';
   failure: Failure;
   retryAfterMs: number;
+  /** HTTP status of a non-200 answer; absent otherwise. */
+  status?: number;
 };
 
 /** Authenticated Cloudflare client resolving credentials for each invocation. */
@@ -112,7 +114,7 @@ export class CloudflareClient {
     }
     if (status !== 200) {
       const kind: FailureKind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 404 ? 'NOT_FOUND' : status === 400 || status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION';
-      return outcome(status === 404 && hasNotFound ? 'notFound' : 'providerRejected', operation, kind, `Cloudflare returned HTTP ${status}`);
+      return { ...outcome(status === 404 && hasNotFound ? 'notFound' : 'providerRejected', operation, kind, `Cloudflare returned HTTP ${status}`), status };
     }
     return undefined;
   }
@@ -120,7 +122,7 @@ export class CloudflareClient {
 
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
     error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 

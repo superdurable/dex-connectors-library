@@ -97,6 +97,23 @@ func TestPurgeCacheByURLsClassifiesProviderRejection(t *testing.T) {
 	require.Equal(t, PurgeCacheByURLsBranchProviderRejected, result.Branch)
 	require.NotContains(t, result.Failure.Message, "SENTINEL")
 }
+func TestPurgeCacheByURLsRetriesUnknownOutcomesBecauseAPurgeRepeats(t *testing.T) {
+	for _, answer := range []struct {
+		status int
+		body   string
+	}{{http.StatusMethodNotAllowed, `{}`}, {http.StatusTooEarly, `{}`}, {http.StatusOK, `not json`}} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(answer.status)
+			_, err := fmt.Fprint(w, answer.body)
+			require.NoError(t, err)
+		}))
+		_, err := sdkgo.RunMutation(testContext{}, testClient(t, server.URL).PurgeCacheByURLs(), testConnection, PurgeCacheByURLsInput{ZoneID: "zone-meridian", URLs: []string{"https://meridian.example/index.html"}})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "HTTP %d %s retries", answer.status, answer.body)
+		server.Close()
+	}
+}
+
 func TestPurgeCacheByURLsRetriesRateLimit(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTooManyRequests) }))
 	defer server.Close()
