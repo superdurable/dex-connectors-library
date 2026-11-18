@@ -132,9 +132,10 @@ material that fails the generated credential checks is terminal like a
 reauthorization. A blank `webhook_secret` selects `defect` before any request,
 and Typeform's `webhook_url_https_required` selects `providerRejected` with
 `VALIDATION`. The manifest declares `repeatOnUnknown: safe`: only `400`,
-`401`, `403`, `404`, `411`, `413`, `414`, `415`, or `422` with a fully read body
-that carries no webhook `id` select `notFound` or `providerRejected`. Every
-other status, such as `402` or `409`, an oversized or unreadable error body, and
+`401`, `402` (Typeform's documented plan without the feature), `403`, `404`,
+`411`, `413`, `414`, `415`, or `422` with a fully read body that carries no
+webhook `id` select `notFound` or `providerRejected`, and such a refusal is
+never repeated. Every other status, such as `405` or `409`, an oversized or unreadable error body, and
 a malformed, oversized, or mismatched `2xx` body return Retry, so the PUT
 repeats; `invalidResponse` stays declared for compatibility but is no longer
 selected.

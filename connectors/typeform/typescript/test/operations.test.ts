@@ -80,7 +80,7 @@ it('encodes a form search with Go query escaping and sorted keys', async () => {
 });
 
 it.each([
-  ['an unlisted refusal status', 402, '{"code":"PAYMENT_REQUIRED"}'],
+  ['an unlisted refusal status', 405, '{"code":"METHOD_NOT_ALLOWED"}'],
   ['a conflict', 409, '{"code":"CONFLICT"}'],
   ['a refusal carrying a webhook', 400, '{"id":"webhook_1","code":"VALIDATION_ERROR"}'],
   ['a malformed 2xx', 200, '{"id":'],
@@ -91,6 +91,15 @@ it.each([
   const attempt = await client.upsertWebhook().invoke(call, { formId: 'u6nXL7', tag: 'hook', url: 'https://hooks.example.com/t' });
   expect(attempt.kind).toBe('retry');
   expect(attempt.failure?.kind).toBe('PROTOCOL');
+});
+
+it('selects providerRejected for a 402 plan refusal without repeating the PUT', async () => {
+  let requests = 0;
+  const client = new TypeformClient({}, { resolve: async () => ({ accessToken: new SecretString('test-token'), webhookSecret: new SecretString('secret') }) },
+    { send: async () => { requests++; return { status: 402, headers: {}, body: Buffer.from('{"code":"PAYMENT_REQUIRED"}') }; } });
+  const attempt = await client.upsertWebhook().invoke(call, { formId: 'u6nXL7', tag: 'hook', url: 'https://hooks.example.com/t' });
+  expect(attempt).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'PROVIDER_REJECTION' } });
+  expect(requests).toBe(1);
 });
 
 it('repeats the idempotent webhook PUT when a refusal body is oversized', async () => {

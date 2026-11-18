@@ -154,7 +154,9 @@ func isDefiniteTypeformRefusal(response typeformResponse) bool {
 	switch response.statusCode {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
 		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
-		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity,
+		// Typeform documents 402 as a plan without the feature, a definite refusal.
+		http.StatusPaymentRequired:
 	default:
 		return false
 	}

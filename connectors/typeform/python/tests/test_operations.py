@@ -232,7 +232,7 @@ async def test_every_credential_resolve_failure_shares_one_classification(
 @pytest.mark.parametrize(
     ("status", "body"),
     [
-        (402, b'{"code":"PAYMENT_REQUIRED"}'),
+        (405, b'{"code":"METHOD_NOT_ALLOWED"}'),
         (409, b'{"code":"CONFLICT"}'),
         (400, b'{"id":"webhook_1","code":"VALIDATION_ERROR"}'),
         (200, b'{"id":'),
@@ -255,3 +255,25 @@ async def test_upsert_webhook_repeats_an_unsettled_put(status: int, body: bytes)
         attempt = await client.upsert_webhook().invoke(call, upsert_input)
     assert attempt.kind == "retry"
     assert attempt.failure is not None and attempt.failure.kind == sdk.FailureKind.PROTOCOL
+
+
+@pytest.mark.asyncio
+async def test_upsert_webhook_selects_provider_rejected_for_a_plan_refusal_without_repeating() -> None:
+    """Typeform documents 402 as a plan without the feature, a definite refusal."""
+    connection = sdk.ConnectionRef("typeform", "forms")
+    stored = Credentials(access_token=sdk.SecretString("inert-token"), webhook_secret=sdk.SecretString("s"))
+    credentials = sdk.StaticCredentialProvider({connection: stored})
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(402, content=b'{"code":"PAYMENT_REQUIRED"}')
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = Client(Config(), credentials, transport)
+        call = sdk.Call(sdk.CallID("test-call"), connection, sdk.OperationRef("typeform", "upsertWebhook"))
+        upsert_input = UpsertWebhookInput(form_id="form123", tag="hook", url="https://hooks.example.com/t")
+        attempt = await client.upsert_webhook().invoke(call, upsert_input)
+    assert attempt.kind == "branch" and attempt.branch == "providerRejected"
+    assert attempt.failure is not None and attempt.failure.kind == sdk.FailureKind.PROVIDER_REJECTION
+    assert len(requests) == 1

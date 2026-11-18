@@ -78,7 +78,8 @@ def _is_terminal_credential_error(error: BaseException) -> bool:
     )
 
 
-_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+# Typeform documents 402 as a plan without the feature, a definite refusal.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 402, 403, 404, 411, 413, 414, 415, 422))
 
 
 def _is_definite_refusal(status: int, body: bytes) -> bool:

@@ -12,7 +12,8 @@ function isTerminalCredentialError(error: unknown): boolean {
     || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
-const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+// Typeform documents 402 as a plan without the feature, a definite refusal.
+const definiteRefusalStatuses = new Set([400, 401, 402, 403, 404, 411, 413, 414, 415, 422]);
 
 /** An allowlisted refusal status whose fully read body does not carry a stored webhook. */
 function isDefiniteRefusal(status: number, body: Uint8Array): boolean {
