@@ -117,6 +117,7 @@ func TestAddEmployeeFenceRejectsTerminalOrUnusableCredentialsBeforeSending(t *te
 	provider := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no provider request is permitted") })
 	for name, credentials := range map[string]sdkgo.CredentialProvider[bamboohr.Credentials]{
 		"reauthorization required": addEmployeeCredentialErrorProvider{fmt.Errorf("credential refresh: %w", sdkgo.ErrReauthorizationRequired)},
+		"project reauthorization":  addEmployeeCredentialErrorProvider{projectconfig.ErrReauthorizationRequired},
 		"connection not selected":  addEmployeeCredentialErrorProvider{projectconfig.ErrConnectionNotSelected},
 		"broker rejected":          addEmployeeCredentialErrorProvider{projectconfig.ErrCredentialBrokerRejected},
 		"credential missing":       addEmployeeCredentialErrorProvider{projectconfig.ErrObjectNotFound},
@@ -143,12 +144,22 @@ func TestAddEmployeeFenceRejectsTerminalOrUnusableCredentialsBeforeSending(t *te
 }
 
 func TestAddEmployeeFenceRecordsTransientCredentialFailureBeforeRetry(t *testing.T) {
+	for name, resolveErr := range map[string]error{
+		"broker unavailable":    projectconfig.ErrCredentialBrokerUnavailable,
+		"static not configured": errors.New("connection is not configured"),
+		"unlisted error":        errors.New("credential store hiccup"),
+	} {
+		t.Run(name, func(t *testing.T) { testAddEmployeeFenceRecordsTransientCredentialFailure(t, resolveErr) })
+	}
+}
+
+func testAddEmployeeFenceRecordsTransientCredentialFailure(t *testing.T, resolveErr error) {
 	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusCreated, `{"id":"140"}`)
 	})
 	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-credentials")
 	transientCredentials, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain},
-		addEmployeeCredentialErrorProvider{projectconfig.ErrCredentialBrokerUnavailable}, bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
+		addEmployeeCredentialErrorProvider{resolveErr}, bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
 	require.NoError(t, err)
 	_, err = sdkgo.RunMutation(ctx, transientCredentials.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
 	var retry *sdkgo.RetryError

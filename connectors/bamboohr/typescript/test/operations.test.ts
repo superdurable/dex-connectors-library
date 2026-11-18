@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
-import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BambooHRClient } from '../src/client.js';
 import { buildTimeOffRequestFilter } from '../src/operations.js';
 import type { Credentials } from '../src/generated/models.js';
@@ -47,10 +47,14 @@ describe('BambooHR client', () => {
   });
 
   it('updateEmployee retries a transient credential failure and selects defect for a terminal one', async () => {
-    const transient = await invokeOperation(clientWithCredentialError(new Error('temporary credential store failure')), 'updateEmployee');
-    expect(transient.kind).toBe('retry');
-    const terminal = await invokeOperation(clientWithCredentialError(new ReauthorizationRequiredError()), 'updateEmployee');
-    expect(terminal).toMatchObject({ kind: 'branch', branch: 'defect' });
+    for (const error of [new Error('temporary credential store failure'), new Error('connection is not configured'), new CredentialBrokerUnavailableError()]) {
+      const transient = await invokeOperation(clientWithCredentialError(error), 'updateEmployee');
+      expect(transient.kind).toBe('retry');
+    }
+    for (const error of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+      const terminal = await invokeOperation(clientWithCredentialError(error), 'updateEmployee');
+      expect(terminal).toMatchObject({ kind: 'branch', branch: 'defect' });
+    }
   });
 
   it('updateEmployee retries every failed read-back after an accepted write', async () => {

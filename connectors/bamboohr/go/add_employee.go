@@ -225,7 +225,7 @@ func addEmployeeUncertain(receipt sdkgo.Receipt, kind sdkgo.FailureKind, message
 }
 
 func isTerminalCredentialError(err error) bool {
-	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
 		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 

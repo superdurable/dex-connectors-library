@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     StaticCredentialProvider,
     run_mutation,
 )
+from dex_connectors.sdk.projectconfig import CredentialBrokerUnavailableError
 from dex_connectors.sdk.singledispatch import Marker, State
 
 from dex_connectors.bamboohr import AddEmployeeInput, Client, Config, Credentials
@@ -258,12 +259,22 @@ async def test_accepted_body_echoing_the_credential_uses_the_location_id() -> No
 
 
 @pytest.mark.asyncio
-async def test_transient_credential_failure_before_any_send_retries_and_records_not_sent() -> None:
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError("store unavailable"),
+        ValueError("connection is not configured"),
+        CredentialBrokerUnavailableError("credential broker is unavailable"),
+    ],
+)
+async def test_transient_credential_failure_before_any_send_retries_and_records_not_sent(
+    error: Exception,
+) -> None:
     def respond(request: httpx.Request) -> httpx.Response:
         raise AssertionError("no request may be sent")
 
     context = AttemptContext()
-    result = await run_add(respond, context, _FailingCredentialProvider(RuntimeError("store unavailable")))
+    result = await run_add(respond, context, _FailingCredentialProvider(error))
     assert isinstance(result, RetryError)
     assert context.marker is not None and context.marker.state == "notSent"
 
