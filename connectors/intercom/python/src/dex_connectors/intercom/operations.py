@@ -5,7 +5,7 @@
 import html
 import json
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from email._header_value_parser import get_addr_spec
 from email.errors import HeaderParseError
@@ -17,6 +17,7 @@ from urllib.parse import quote
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -27,6 +28,7 @@ from dex_connectors.sdk import (
 )
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
+    Decision,
     DecisionKind,
     DispatchNotAllowedError,
     Fence,
@@ -40,7 +42,7 @@ from ._generated.definitions import (
     SEARCH_CONVERSATIONS_DEFINITION,
     UPDATE_CONVERSATION_STATE_DEFINITION,
 )
-from .client import Client, Exchange
+from .client import Client, CredentialProblem, Exchange
 from .models import (
     Contact,
     Conversation,
@@ -770,6 +772,17 @@ def _find_reply_part(
     )[1]
 
 
+@dataclass(frozen=True)
+class _ReplyReadBack:
+    """One read-back: found, absent, retryable, or unconfirmed; failure explains all but found."""
+
+    outcome: str
+    output: ReplyToConversationOutput
+    receipt: Receipt
+    failure: Failure | None = None
+    retry_after_seconds: float = 0.0
+
+
 class ReplyToConversationOperation:
     """Send an admin reply under the send cap, reading back before every resend."""
 
@@ -818,34 +831,42 @@ class ReplyToConversationOperation:
                     "dispatch checkpoint could not be read; nothing was sent in this attempt",
                 )
             )
-        credentials, failure = await self.client.resolve_credentials(call, operation)
-        if decision.kind in (DecisionKind.READ_BACK_REQUIRED, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED):
-            if failure:
-                # defect would hide an earlier possible send; Intercom cannot tell a transient failure apart.
-                return MutationAttempt.retry(failure)
-            assert credentials is not None
-            read_back = await self._reconcile(call, input, credentials)
-            if decision.kind == DecisionKind.READ_BACK_REQUIRED or read_back.kind != "uncertain":
-                return read_back
-            # The read-back found no matching part, so this attempt resends below the cap.
-        elif failure:
-            if decision.prior_send_upper_bound > 0:
-                return MutationAttempt.retry(failure)
-            try:
-                await fence.record_not_sent()
-            except Exception:
-                return MutationAttempt.retry(
+        has_possible_earlier_send = _has_possible_earlier_reply_send(decision)
+        credentials, credential_problem = await self.client.resolve_write_credentials(call, operation)
+        if credential_problem:
+            return await _reply_credential_failure_attempt(
+                self.client, fence, has_possible_earlier_send, credential_problem, output
+            )
+        assert credentials is not None
+        if has_possible_earlier_send:
+            read_back = await self._read_back(call, input, credentials)
+            if read_back.outcome == "found":
+                found = read_back.output
+                return MutationAttempt.branch_result(
+                    "replied",
+                    ReplyToConversationOutput(
+                        found.conversation_id, found.part, found.conversation_state, True
+                    ),
+                    read_back.receipt,
+                )
+            assert read_back.failure is not None
+            if read_back.outcome == "retryable":
+                return MutationAttempt.retry(read_back.failure, read_back.retry_after_seconds)
+            if read_back.outcome != "absent" or not _can_resend_after_absent_read_back(decision):
+                return MutationAttempt.uncertain(
+                    read_back.output,
                     self.client.failure(
                         operation,
-                        FailureKind.AVAILABILITY,
-                        "credential checkpoint could not be recorded; nothing was sent",
-                    )
+                        read_back.failure.kind,
+                        "an earlier attempt of this Step may have sent the reply, and "
+                        + read_back.failure.message,
+                    ),
+                    read_back.receipt,
                 )
-            return MutationAttempt.branch_result("defect", output, Receipt(), failure)
-        assert credentials is not None
+            # The read-back found no matching part, so this attempt resends below the cap.
         is_first_send = decision.prior_send_upper_bound == 0
-        can_resend = decision.prior_send_upper_bound + 1 < call.max_sends
         dispatched_at = int(self.client.now().timestamp())
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _: self.client.exchange(
@@ -860,6 +881,7 @@ class ReplyToConversationOperation:
                         "admin_id": input.admin_id,
                         "body": _reply_html(input.body),
                     },
+                    on_response_status=observed_statuses.append,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
@@ -872,30 +894,49 @@ class ReplyToConversationOperation:
                 )
             )
         except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[0] < 300:
+                return await self._confirm_accepted(
+                    call,
+                    input,
+                    credentials,
+                    self.client.failure(
+                        operation,
+                        FailureKind.TRANSPORT,
+                        "Intercom accepted the reply, but its answer did not arrive within the write window",
+                    ),
+                )
             # The claim stays, so the next attempt counts this send and reads back first.
             return MutationAttempt.retry(
                 self.client.failure(
                     operation, FailureKind.TRANSPORT, "Intercom request failed before a response arrived"
                 )
             )
+        exchange = exchange.with_oversized_refusal_as_unknown(operation)
         receipt = self.client.receipt(call, input.conversation_id, exchange.request_id)
-        if exchange.outcome == "invalid":
-            # An oversized or credential-reflecting 2xx may follow an applied reply, so it is read back now.
-            return _resend_when_unconfirmed(await self._reconcile(call, input, credentials), can_resend)
+        if exchange.outcome != "succeeded" and exchange.has_success_status():
+            # An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
+            assert exchange.failure is not None
+            return await self._confirm_accepted(call, input, credentials, exchange.failure)
         classified = await _classify_sent_reply(self.client, fence, is_first_send, exchange, output, receipt)
         if classified is not None:
             return classified
-        try:
-            wire = _envelope(exchange, input.conversation_id)
-        except (ValueError, TypeError, OverflowError):
-            return _resend_when_unconfirmed(await self._reconcile(call, input, credentials), can_resend)
         since = dispatched_at - _REPLY_RECONCILIATION_SKEW_SECONDS
         try:
+            wire = _envelope(exchange, input.conversation_id)
             part_wire = _find_reply_part(wire, input, since, True)
             if part_wire is None:
                 part_wire = _find_reply_part(wire, input, since, True, False)
-        except (ValueError, TypeError, OverflowError):
-            return _resend_when_unconfirmed(await self._reconcile(call, input, credentials), can_resend)
+        except (ValueError, TypeError, OverflowError) as error:
+            return await self._confirm_accepted(
+                call,
+                input,
+                credentials,
+                self.client.failure(
+                    operation,
+                    FailureKind.PROTOCOL,
+                    "Intercom accepted the reply but returned an invalid conversation: " + str(error),
+                ),
+            )
         state = _string(wire.get("state")) or None
         if part_wire is None:
             return MutationAttempt.branch_result(
@@ -904,10 +945,10 @@ class ReplyToConversationOperation:
         try:
             part = _part(part_wire)
         except (ValueError, TypeError, OverflowError) as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                ReplyToConversationOutput(input.conversation_id, conversation_state=state),
-                receipt,
+            return await self._confirm_accepted(
+                call,
+                input,
+                credentials,
                 self.client.failure(
                     operation,
                     FailureKind.PROTOCOL,
@@ -920,28 +961,49 @@ class ReplyToConversationOperation:
             replace(receipt, metadata={"partId": part.id}),
         )
 
-    async def _reconcile(
-        self, call: Call, input: ReplyToConversationInput, credentials: Any
+    async def _confirm_accepted(
+        self, call: Call, input: ReplyToConversationInput, credentials: Any, answer_failure: Failure
     ) -> MutationAttempt[ReplyToConversationOutput]:
-        """Never send; report an earlier reply found in the conversation, or uncertain when unconfirmed."""
+        """Read back once after a 2xx; with no provider ID to guard a resend, never Retry."""
+        read_back = await self._read_back(call, input, credentials)
+        if read_back.outcome == "found":
+            return MutationAttempt.branch_result("replied", read_back.output, read_back.receipt)
+        assert read_back.failure is not None
+        return MutationAttempt.uncertain(
+            read_back.output,
+            self.client.failure(
+                "replyToConversation",
+                answer_failure.kind,
+                answer_failure.message
+                + "; the reply was accepted and is never resent, and "
+                + read_back.failure.message,
+            ),
+            read_back.receipt,
+        )
+
+    async def _read_back(
+        self, call: Call, input: ReplyToConversationInput, credentials: Any
+    ) -> _ReplyReadBack:
+        """Never send; look for a part by the input's admin, type, and words since the first attempt."""
         operation = "replyToConversation"
         output = ReplyToConversationOutput(conversation_id=input.conversation_id)
         exchange = await self.client.read_conversation(call, credentials, operation, input.conversation_id)
         receipt = self.client.receipt(call, input.conversation_id, exchange.request_id)
         if _retryable(exchange):
-            assert exchange.failure is not None
-            return MutationAttempt.retry(exchange.failure, exchange.retry_after.total_seconds())
+            return _ReplyReadBack(
+                "retryable", output, receipt, exchange.failure, exchange.retry_after.total_seconds()
+            )
         if exchange.outcome != "succeeded":
             assert exchange.failure is not None
-            return MutationAttempt.uncertain(
+            return _ReplyReadBack(
+                "unconfirmed",
                 output,
+                receipt,
                 self.client.failure(
                     operation,
                     exchange.failure.kind,
-                    "an earlier attempt of this Step may have sent the reply, and the conversation "
-                    "could not be read back: " + exchange.failure.message,
+                    "the conversation could not be read back: " + exchange.failure.message,
                 ),
-                receipt,
             )
         try:
             wire = _envelope(exchange, input.conversation_id)
@@ -957,32 +1019,28 @@ class ReplyToConversationOperation:
             )
             part_wire = _find_reply_part(wire, input, since, False)
         except (ValueError, TypeError, OverflowError) as error:
-            return MutationAttempt.uncertain(
+            return _ReplyReadBack(
+                "unconfirmed",
                 output,
-                self.client.failure(
-                    operation,
-                    FailureKind.PROTOCOL,
-                    "an earlier attempt of this Step may have sent the reply, and the conversation "
-                    "read back is invalid: " + str(error),
-                ),
                 receipt,
+                self.client.failure(
+                    operation, FailureKind.PROTOCOL, "the conversation read back is invalid: " + str(error)
+                ),
             )
         if part_wire is None:
-            return MutationAttempt.uncertain(
+            return _ReplyReadBack(
+                "absent",
                 output,
-                self.client.failure(
-                    operation,
-                    FailureKind.TRANSPORT,
-                    "an earlier attempt of this Step may have sent the reply without a confirmed outcome, "
-                    "and the conversation shows no matching part",
-                ),
                 receipt,
+                self.client.failure(
+                    operation, FailureKind.TRANSPORT, "the conversation shows no matching part"
+                ),
             )
         try:
             part = _part(part_wire)
         except (ValueError, TypeError, OverflowError) as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
+            return _ReplyReadBack(
+                "unconfirmed",
                 output,
                 receipt,
                 self.client.failure(
@@ -991,22 +1049,63 @@ class ReplyToConversationOperation:
                     "the conversation shows the reply, but its part is invalid: " + str(error),
                 ),
             )
-        return MutationAttempt.branch_result(
-            "replied",
-            ReplyToConversationOutput(input.conversation_id, part, output.conversation_state, True),
+        return _ReplyReadBack(
+            "found",
+            ReplyToConversationOutput(input.conversation_id, part, output.conversation_state),
             replace(receipt, metadata={"partId": part.id}),
         )
 
 
-def _resend_when_unconfirmed(
-    read_back: MutationAttempt[ReplyToConversationOutput], can_resend: bool
+def _has_possible_earlier_reply_send(decision: Decision) -> bool:
+    """Report that an earlier attempt may have sent, so the conversation is read back first."""
+    return (
+        decision.kind != DecisionKind.SEND_ALLOWED
+        or decision.prior_send_upper_bound > 0
+        or (decision.marker is not None and bool(decision.marker.provider_id))
+    )
+
+
+def _can_resend_after_absent_read_back(decision: Decision) -> bool:
+    """Report room under the cap and no saved ID proving Intercom accepted a send."""
+    return decision.kind != DecisionKind.READ_BACK_REQUIRED and not (
+        decision.marker is not None and decision.marker.provider_id
+    )
+
+
+async def _reply_credential_failure_attempt(
+    client: Client,
+    fence: Fence,
+    has_possible_earlier_send: bool,
+    problem: CredentialProblem,
+    output: ReplyToConversationOutput,
 ) -> MutationAttempt[ReplyToConversationOutput]:
-    """Retry an unconfirmed read-back while the send cap allows another send."""
-    if read_back.kind == "uncertain" and can_resend:
-        assert read_back.failure is not None
-        # The claim stays the last marker, so the next attempt reads back again before it resends.
-        return MutationAttempt.retry(read_back.failure)
-    return read_back
+    """Map unusable credentials before this send; after a possible send record nothing and never defect."""
+    if has_possible_earlier_send:
+        if problem.is_transient:
+            return MutationAttempt.retry(problem.failure)
+        return MutationAttempt.uncertain(
+            output,
+            client.failure(
+                "replyToConversation",
+                problem.failure.kind,
+                "an earlier attempt of this Step may have sent the reply, and the connection credentials "
+                "cannot read it back",
+            ),
+            Receipt(),
+        )
+    try:
+        await fence.record_not_sent()
+    except Exception:
+        return MutationAttempt.retry(
+            client.failure(
+                "replyToConversation",
+                FailureKind.AVAILABILITY,
+                "credential checkpoint could not be recorded; nothing was sent",
+            )
+        )
+    if problem.is_transient:
+        return MutationAttempt.retry(problem.failure)
+    return MutationAttempt.branch_result("defect", output, Receipt(), problem.failure)
 
 
 async def _classify_sent_reply(
@@ -1100,9 +1199,11 @@ class UpdateConversationStateOperation:
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), self.client.failure(operation, FailureKind.VALIDATION, problem)
             )
-        credentials, failure = await self.client.resolve_credentials(call, operation)
-        if failure:
-            return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
+        credentials, credential_problem = await self.client.resolve_write_credentials(call, operation)
+        if credential_problem and credential_problem.is_transient:
+            return MutationAttempt.retry(credential_problem.failure)
+        if credential_problem:
+            return MutationAttempt.branch_result("defect", empty, Receipt(), credential_problem.failure)
         assert credentials is not None
         first = await self.client.read_conversation(call, credentials, operation, input.conversation_id)
         bad = _mutation_failure(self.client, call, first, empty, input.conversation_id)
@@ -1148,6 +1249,7 @@ class UpdateConversationStateOperation:
             "/conversations/" + quote(input.conversation_id, safe="-._~$&+=:@") + "/parts",
             payload,
         )
+        write = write.with_oversized_refusal_as_unknown(operation)
         write_receipt = self.client.receipt(call, input.conversation_id, write.request_id)
         if write.outcome == "rejected" and write.status in _DEFINITE_REFUSAL_STATUSES:
             reread = await self.client.read_conversation(call, credentials, operation, input.conversation_id)

@@ -15,12 +15,14 @@ import {
   type MutationAttempt,
   type Query,
   type QueryAttempt,
+  type ReceiptDraft,
 } from "@superdurable/connectors-sdk";
 import {
   CheckpointError,
   DispatchNotAllowedError,
   InsufficientTimeError,
   newFence,
+  type Decision,
 } from "@superdurable/connectors-sdk/singledispatch";
 import {
   SearchConversationsDefinition,
@@ -681,43 +683,43 @@ export class ReplyToConversationOperation
         ),
       );
     const priorSends = decision.priorSendUpperBound ?? 0;
-    const token = await this.client.resolveAccessToken(call);
-    if (
-      decision.kind === "readBackRequired" ||
-      decision.kind === "readBackThenResendAllowed"
-    ) {
-      // defect would hide an earlier possible send; Intercom cannot tell a transient failure apart.
-      if (token === undefined)
-        return newMutationRetry(this.client.credentialsUnavailable(operation));
-      const readBack = await this.reconcile(call, input, token);
-      if (decision.kind === "readBackRequired" || readBack.kind !== "uncertain")
-        return readBack;
-      // The read-back found no matching part, so this attempt resends below the cap.
-    } else if (token === undefined) {
-      if (priorSends > 0)
-        return newMutationRetry(this.client.credentialsUnavailable(operation));
-      try {
-        await fence.recordNotSent();
-      } catch {
-        return newMutationRetry(
+    const hasPossibleEarlierSend = hasPossibleEarlierReplySend(decision);
+    const resolution = await this.client.resolveAccessTokenResolution(call);
+    if (!("accessToken" in resolution))
+      return replyCredentialFailureAttempt(
+        this.client,
+        hasPossibleEarlierSend,
+        resolution.isTransient,
+        output,
+        () => fence.recordNotSent(),
+      );
+    const token = resolution.accessToken;
+    if (hasPossibleEarlierSend) {
+      const readBack = await this.readBack(call, input, token);
+      if (readBack.outcome === "found")
+        return newMutationBranch(
+          "replied",
+          { ...readBack.output, wasAlreadyApplied: true },
+          readBack.receipt,
+        );
+      if (readBack.outcome === "retryable")
+        return newMutationRetry(readBack.failure, readBack.retryAfterMs);
+      if (
+        readBack.outcome !== "absent" ||
+        !canResendAfterAbsentReadBack(decision)
+      )
+        return newMutationUncertain(
+          readBack.output,
           this.client.failure(
             operation,
-            "AVAILABILITY",
-            "credential checkpoint could not be recorded; nothing was sent",
+            readBack.failure.kind,
+            `an earlier attempt of this Step may have sent the reply, and ${readBack.failure.message}`,
           ),
+          readBack.receipt,
         );
-      }
-      return newMutationBranch(
-        "defect",
-        output,
-        zeroReceipt(),
-        this.client.credentialsUnavailable(operation),
-      );
+      // The read-back found no matching part, so this attempt resends below the cap.
     }
-    if (token === undefined) throw new TypeError("unresolved credentials");
     const isFirstSend = priorSends === 0;
-    const canResend =
-      priorSends + 1 < effectiveMaxSends(call, operationMaxSends);
     const dispatchedAt = Math.floor(this.client.now().getTime() / 1000);
     let exchange: IntercomExchange;
     try {
@@ -741,12 +743,10 @@ export class ReplyToConversationOperation
     } catch (dispatchError) {
       return replyDispatchErrorAttempt(this.client, operation, dispatchError);
     }
-    if (exchange.outcome === "invalid")
-      // An oversized or credential-reflecting 2xx may follow an applied reply, so it is read back now.
-      return resendWhenUnconfirmed(
-        await this.reconcile(call, input, token),
-        canResend,
-      );
+    exchange = withOversizedRefusalAsUnknown(this.client, exchange, operation);
+    if (exchange.outcome !== "succeeded" && hasSuccessStatus(exchange))
+      // An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
+      return this.confirmAccepted(call, input, token, exchange.failure);
     const terminal = await classifySentReply(
       this.client,
       exchange,
@@ -769,10 +769,16 @@ export class ReplyToConversationOperation
             id(obj(w.author ?? {}).id) === input.adminId &&
             sec(w.created_at) >= dispatchedAt - replyReconciliationSkewSeconds,
         ));
-    } catch {
-      return resendWhenUnconfirmed(
-        await this.reconcile(call, input, token),
-        canResend,
+    } catch (error) {
+      return this.confirmAccepted(
+        call,
+        input,
+        token,
+        this.client.failure(
+          operation,
+          "PROTOCOL",
+          `Intercom accepted the reply but returned an invalid conversation: ${errorText(error)}`,
+        ),
       );
     }
     if (str(wire.state)) output.conversationState = str(wire.state);
@@ -780,10 +786,10 @@ export class ReplyToConversationOperation
     try {
       output.part = part(found);
     } catch (error) {
-      return newMutationBranch(
-        "invalidResponse",
-        output,
-        exchange.receipt,
+      return this.confirmAccepted(
+        call,
+        input,
+        token,
         this.client.failure(
           operation,
           "PROTOCOL",
@@ -796,36 +802,59 @@ export class ReplyToConversationOperation
       metadata: { partId: output.part.id },
     });
   }
-  /** Never send; report an earlier reply found in the conversation, or uncertain when unconfirmed. */
-  private async reconcile(
+  /** Read back once after a 2xx; with no provider ID to guard a resend, never Retry. */
+  private async confirmAccepted(
     call: Call,
     input: ReplyToConversationInput,
     accessToken: string,
+    answerFailure: Failure,
   ): Promise<MutationAttempt<ReplyToConversationOutput>> {
+    const readBack = await this.readBack(call, input, accessToken);
+    if (readBack.outcome === "found")
+      return newMutationBranch("replied", readBack.output, readBack.receipt);
+    return newMutationUncertain(
+      readBack.output,
+      this.client.failure(
+        "replyToConversation",
+        answerFailure.kind,
+        `${answerFailure.message}; the reply was accepted and is never resent, and ${readBack.failure.message}`,
+      ),
+      readBack.receipt,
+    );
+  }
+  /** Never send; look for a part by the input's admin, type, and words since the first attempt. */
+  private async readBack(
+    call: Call,
+    input: ReplyToConversationInput,
+    accessToken: string,
+  ): Promise<ReplyReadBack> {
     const operation = "replyToConversation",
       output = zeroReply(input.conversationId),
-      exchange = await this.client.exchange(
+      exchange = await this.client.readConversation(
         call,
         operation,
-        "GET",
-        `/conversations/${input.conversationId}`,
-        new URLSearchParams({ display_as: "plaintext" }),
-        undefined,
         input.conversationId,
         { accessToken, signal: call.context.cancellationSignal },
       );
     if (exchange.outcome !== "succeeded" && retryable(exchange))
-      return newMutationRetry(exchange.failure, exchange.retryAfterMs);
-    if (exchange.outcome !== "succeeded")
-      return newMutationUncertain(
+      return {
+        outcome: "retryable",
         output,
-        this.client.failure(
+        receipt: exchange.receipt,
+        failure: exchange.failure,
+        retryAfterMs: exchange.retryAfterMs,
+      };
+    if (exchange.outcome !== "succeeded")
+      return {
+        outcome: "unconfirmed",
+        output,
+        receipt: exchange.receipt,
+        failure: this.client.failure(
           operation,
           exchange.failure.kind,
-          `an earlier attempt of this Step may have sent the reply, and the conversation could not be read back: ${exchange.failure.message}`,
+          `the conversation could not be read back: ${exchange.failure.message}`,
         ),
-        exchange.receipt,
-      );
+      };
     let found: Wire | undefined;
     try {
       const wire = envelope(exchange, input.conversationId);
@@ -837,70 +866,155 @@ export class ReplyToConversationOperation
         : 0;
       found = matchingPart(wire, input, since, false);
     } catch (error) {
-      return newMutationUncertain(
+      return {
+        outcome: "unconfirmed",
         output,
-        this.client.failure(
+        receipt: exchange.receipt,
+        failure: this.client.failure(
           operation,
           "PROTOCOL",
-          `an earlier attempt of this Step may have sent the reply, and the conversation read back is invalid: ${errorText(error)}`,
+          `the conversation read back is invalid: ${errorText(error)}`,
         ),
-        exchange.receipt,
-      );
+      };
     }
     if (!found)
-      return newMutationUncertain(
+      return {
+        outcome: "absent",
         output,
-        this.client.failure(
+        receipt: exchange.receipt,
+        failure: this.client.failure(
           operation,
           "TRANSPORT",
-          "an earlier attempt of this Step may have sent the reply without a confirmed outcome, and the conversation shows no matching part",
+          "the conversation shows no matching part",
         ),
-        exchange.receipt,
-      );
+      };
     try {
       output.part = part(found);
     } catch (error) {
-      return newMutationBranch(
-        "invalidResponse",
+      return {
+        outcome: "unconfirmed",
         output,
-        exchange.receipt,
-        this.client.failure(
+        receipt: exchange.receipt,
+        failure: this.client.failure(
           operation,
           "PROTOCOL",
           `the conversation shows the reply, but its part is invalid: ${errorText(error)}`,
         ),
-      );
+      };
     }
-    output.wasAlreadyApplied = true;
-    return newMutationBranch("replied", output, {
-      ...exchange.receipt,
-      metadata: { partId: output.part.id },
-    });
+    return {
+      outcome: "found",
+      output,
+      receipt: { ...exchange.receipt, metadata: { partId: output.part.id } },
+    };
   }
+}
+
+/** One read-back; failure explains every outcome except found. */
+type ReplyReadBack =
+  | {
+      outcome: "found";
+      output: ReplyToConversationOutput;
+      receipt: ReceiptDraft;
+    }
+  | {
+      outcome: "absent" | "retryable" | "unconfirmed";
+      output: ReplyToConversationOutput;
+      receipt: ReceiptDraft;
+      failure: Failure;
+      retryAfterMs?: number;
+    };
+
+/** An earlier attempt may have sent, so the conversation is read back first. */
+function hasPossibleEarlierReplySend(decision: Decision): boolean {
+  return (
+    decision.kind !== "sendAllowed" ||
+    (decision.priorSendUpperBound ?? 0) > 0 ||
+    Boolean(decision.marker?.providerId)
+  );
+}
+
+/** Room under the cap and no saved ID proving Intercom accepted a send. */
+function canResendAfterAbsentReadBack(decision: Decision): boolean {
+  return decision.kind !== "readBackRequired" && !decision.marker?.providerId;
+}
+
+/** A 2xx proves Intercom accepted a write even when its body is unusable. */
+function hasSuccessStatus(exchange: IntercomExchange): boolean {
+  const status =
+    exchange.outcome === "succeeded" ? exchange.response.status : exchange.status;
+  return status !== undefined && status >= 200 && status < 300;
+}
+
+/** A refusal whose body was too large to inspect is an unknown write outcome. */
+function withOversizedRefusalAsUnknown(
+  client: IntercomClient,
+  exchange: IntercomExchange,
+  operation: string,
+): IntercomExchange {
+  if (
+    exchange.outcome === "succeeded" ||
+    !exchange.isBodyOversized ||
+    (exchange.outcome !== "rejected" && exchange.outcome !== "notFound")
+  )
+    return exchange;
+  return {
+    ...exchange,
+    outcome: "unconfirmed",
+    failure: client.failure(
+      operation,
+      "RESPONSE_TOO_LARGE",
+      `Intercom answered HTTP ${exchange.status ?? 0} with a body larger than maxResponseBytes, so the outcome is unknown`,
+    ),
+  };
+}
+
+/** Map unusable credentials before this send; after a possible send record nothing and never defect. */
+async function replyCredentialFailureAttempt(
+  client: IntercomClient,
+  hasPossibleEarlierSend: boolean,
+  isTransient: boolean,
+  output: ReplyToConversationOutput,
+  recordNotSent: () => Promise<void>,
+): Promise<MutationAttempt<ReplyToConversationOutput>> {
+  const operation = "replyToConversation";
+  if (hasPossibleEarlierSend)
+    return isTransient
+      ? newMutationRetry(client.credentialsUnavailable(operation))
+      : newMutationUncertain(
+          output,
+          client.failure(
+            operation,
+            "AUTHENTICATION",
+            "an earlier attempt of this Step may have sent the reply, and the connection credentials cannot read it back",
+          ),
+          zeroReceipt(),
+        );
+  try {
+    await recordNotSent();
+  } catch {
+    return newMutationRetry(
+      client.failure(
+        operation,
+        "AVAILABILITY",
+        "credential checkpoint could not be recorded; nothing was sent",
+      ),
+    );
+  }
+  return isTransient
+    ? newMutationRetry(client.credentialsUnavailable(operation))
+    : newMutationBranch(
+        "defect",
+        output,
+        zeroReceipt(),
+        client.credentialsUnavailable(operation),
+      );
 }
 
 /** The reply read-back tolerates a difference between the Worker's and Intercom's clocks, in seconds. */
 const replyReconciliationSkewSeconds = 300;
 /** Only these statuses prove Intercom applied nothing; any other non-2xx answer may have been applied. */
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
-
-/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
-function effectiveMaxSends(call: Call, operationMaxSends: number): number {
-  return operationMaxSends >= 2
-    ? (call.maxSendsOverride ?? operationMaxSends)
-    : 1;
-}
-
-/** Retry an unconfirmed read-back while the send cap allows another send. */
-function resendWhenUnconfirmed<Output>(
-  readBack: MutationAttempt<Output>,
-  canResend: boolean,
-): MutationAttempt<Output> {
-  // The claim stays the last marker, so the next attempt reads back again before it resends.
-  return readBack.kind === "uncertain" && canResend
-    ? newMutationRetry(readBack.failure)
-    : readBack;
-}
 
 /** Map a Dispatch error: a refused dispatch sent nothing, and a cut-off send stays counted. */
 function replyDispatchErrorAttempt<Output>(
@@ -1053,10 +1167,25 @@ export class UpdateConversationStateOperation
         zeroReceipt(),
         failure(this.client, operation, snoozedUntil),
       );
+    const resolution = await this.client.resolveAccessTokenResolution(call);
+    if (!("accessToken" in resolution))
+      return resolution.isTransient
+        ? newMutationRetry(this.client.credentialsUnavailable(operation))
+        : newMutationBranch(
+            "defect",
+            zeroUpdate(),
+            zeroReceipt(),
+            this.client.credentialsUnavailable(operation),
+          );
+    const dispatch = {
+      accessToken: resolution.accessToken,
+      signal: call.context.cancellationSignal,
+    };
     const first = await this.client.readConversation(
         call,
         operation,
         input.conversationId,
+        dispatch,
       ),
       bad = mutationFailure(first, zeroUpdate());
     if (bad) return bad;
@@ -1081,14 +1210,19 @@ export class UpdateConversationStateOperation
         { conversation: current, wasAlreadyApplied: true },
         this.client.receipt(call, input.conversationId),
       );
-    const write = await this.client.exchange(
-      call,
+    const write = withOversizedRefusalAsUnknown(
+      this.client,
+      await this.client.exchange(
+        call,
+        operation,
+        "POST",
+        `/conversations/${input.conversationId}/parts`,
+        undefined,
+        stateRequest(input, snoozedUntil),
+        input.conversationId,
+        dispatch,
+      ),
       operation,
-      "POST",
-      `/conversations/${input.conversationId}/parts`,
-      undefined,
-      stateRequest(input, snoozedUntil),
-      input.conversationId,
     );
     if (
       write.outcome === "rejected" &&
@@ -1098,6 +1232,7 @@ export class UpdateConversationStateOperation
         call,
         operation,
         input.conversationId,
+        dispatch,
       );
       // A failed reread retries, because the absolute change is safe to repeat.
       if (reread.outcome !== "succeeded")

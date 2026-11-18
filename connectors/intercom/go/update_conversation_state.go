@@ -69,9 +69,12 @@ func (operation UpdateConversationStateOperation) Invoke(call sdkgo.Call, input 
 	if err != nil {
 		return sdkgo.NewMutationBranch(UpdateConversationStateBranchDefect, UpdateConversationStateOutput{}, intercomFailurePointer(sdkgo.FailureValidation, updateConversationStateOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, updateConversationStateOperation)
-	if failure != nil {
-		return sdkgo.NewMutationBranch(UpdateConversationStateBranchDefect, UpdateConversationStateOutput{}, failure, sdkgo.Receipt{})
+	credentials, credentialProblem := operation.client.resolveWriteCredentials(call, updateConversationStateOperation)
+	if credentialProblem != nil && credentialProblem.isTransient {
+		return sdkgo.NewMutationRetry[UpdateConversationStateOutput](credentialProblem.failure, 0)
+	}
+	if credentialProblem != nil {
+		return sdkgo.NewMutationBranch(UpdateConversationStateBranchDefect, UpdateConversationStateOutput{}, &credentialProblem.failure, sdkgo.Receipt{})
 	}
 	current, attempt, isTerminal := operation.readCurrentState(call, credentials, input)
 	if isTerminal {
@@ -83,7 +86,7 @@ func (operation UpdateConversationStateOperation) Invoke(call sdkgo.Call, input 
 	}
 	result := operation.client.exchange(call, credentials, updateConversationStateOperation, intercomRequest{
 		method: http.MethodPost, path: conversationPath(input.ConversationID) + "/parts", payload: conversationStateRequest(input, snoozedUntil),
-	})
+	}).withOversizedRefusalAsUnknown(updateConversationStateOperation)
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
 	switch {
 	case result.outcome == exchangeSucceeded:

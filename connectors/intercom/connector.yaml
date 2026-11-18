@@ -35,7 +35,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Largest complete Intercom API response, in bytes. getConversation reads a conversation with up to 500 of its most recent parts in one response, so raise it only when conversations with very long messages select invalidResponse; enter a positive integer. Blank keeps the displayed safety limit."
+        description: "Largest complete Intercom API response, in bytes. getConversation reads a conversation with up to 500 of its most recent parts in one response, so raise it only when conversations with very long messages select invalidResponse, or replies select uncertain after Intercom accepted them; enter a positive integer. Blank keeps the displayed safety limit."
         required: false
         default: 4194304
       - name: webhookMaxBodyBytes
@@ -187,14 +187,14 @@ spec:
       inputType: ReplyToConversationInput
       outputType: ReplyToConversationOutput
       kind: mutation
-      description: "Add one admin reply or internal note to a conversation. Intercom has no idempotency key, so the Step runs with sync durability and reconciles an unconfirmed attempt by reading the conversation back for a part by the same admin with the same type and text; when none is found it resends while the send cap allows and selects uncertain at the cap. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send."
+      description: "Add one admin reply or internal note to a conversation. Intercom has no idempotency key, so the Step runs with sync durability and, whenever an earlier attempt may have sent, first reads the conversation back for a part by the same admin with the same type and text; only a read that shows no such part permits a resend while the send cap allows, and any other unconfirmed read, or one at the cap, selects uncertain. A 2xx whose answer is unusable is read back once and never resent. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send."
       idempotency: required
       branches:
         - {id: replied, goName: Replied, description: "The reply or note is in the conversation; a retried attempt that found its own earlier reply reports it instead of sending again."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist or is not visible to the connection's token; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, and the conversation shows no part by the admin with the reply's type and text after sends whose outcome could not be confirmed, so the reply may still appear. Below the cap, an unconfirmed send is read back and then resent.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Intercom shows the reply in the conversation, but its part is invalid, such as a part without an ID; the reply exists, so do not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The reply may exist but could not be confirmed: the send cap is reached and the conversation shows no part by the admin with the reply's type and text; or, after a possible send, the conversation could not be read back, is missing, or shows the reply with an invalid part; or Intercom accepted the reply with an unusable answer that a read-back could not confirm. Do not send it again without checking the conversation. Below the cap, a read-back that shows no matching part resends.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "No longer selected. A reply whose part is invalid may exist, so the connector selects uncertain instead; the branch stays declared for compatibility.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -222,7 +222,7 @@ spec:
       inputType: UpdateConversationStateInput
       outputType: UpdateConversationStateOutput
       kind: mutation
-      description: "Close, reopen, or snooze one conversation as an admin. Every attempt reads the conversation first and writes only when its state differs, so a repeated Step is safe."
+      description: "Close, reopen, or snooze one conversation as an admin. Every attempt reads the conversation first and writes only when its state differs, so a repeated Step is safe. An unknown, unusable, or oversized answer to the write, and a credential lookup that may succeed later, retry."
       idempotency: required
       branches:
         - {id: updated, goName: Updated, description: "The conversation is in the requested state; a repeated attempt that finds it there writes nothing."}

@@ -750,10 +750,34 @@
             ]
           },
           "status": 200
+        },
+        {
+          "body": "{\"type\":\"conversation\",\"id\":\"2002\",\"title\":\"Duplicate refund question\",\"state\":\"open\",\"open\":true,\"read\":false,\"source\":{\"type\":\"conversation\",\"body\":\"I need help with my refund\",\"author\":{\"type\":\"user\",\"id\":\"contact-1\",\"name\":\"Ada Lovelace\",\"email\":\"ada@example.com\"}},\"contacts\":{\"contacts\":[{\"id\":\"contact-1\"}]},\"tags\":{\"tags\":[]},\"created_at\":1793008800,\"updated_at\":1793318400,\"conversation_parts\":{\"conversation_parts\":[{\"id\":\"\",\"part_type\":\"comment\",\"body\":\"We are working on your earlier conversation\",\"author\":{\"type\":\"admin\",\"id\":\"77\"},\"created_at\":1793318400}],\"total_count\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/2002",
+          "query": {
+            "display_as": [
+              "plaintext"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
+            ],
+            "Intercom-Version": [
+              "2.16"
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -771,10 +795,10 @@
             "partType": ""
           }
         },
-        "requestCount": 1,
+        "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
@@ -784,7 +808,7 @@
         "conversationId": "2002",
         "messageType": "comment"
       },
-      "name": "replyToConversation-invalidResponse",
+      "name": "replyToConversation-acceptedInvalidPartUncertain",
       "operation": "replyToConversation"
     },
     {
@@ -826,13 +850,12 @@
           "body": "{\"type\":\"error.list\",\"errors\":[{\"code\":\"server_error\"}],\"request_id\":\"req-123\"}",
           "headers": {},
           "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/2002/reply",
-          "requestBody": {
-            "admin_id": "77",
-            "body": "\u003cp\u003eWe are working on your earlier conversation\u003c/p\u003e",
-            "message_type": "comment",
-            "type": "admin"
+          "method": "GET",
+          "path": "/conversations/2002",
+          "query": {
+            "display_as": [
+              "plaintext"
+            ]
           },
           "requestHeaders": {
             "Accept": [
@@ -840,9 +863,6 @@
             ],
             "Authorization": [
               "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
             ],
             "Intercom-Version": [
               "2.16"
@@ -905,12 +925,6 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
-          "heartbeat": {
-            "attempt": 4,
-            "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
-            "sendCount": 3,
-            "state": "claimed"
-          },
           "retryAfterMs": 0
         }
       ],
@@ -1297,8 +1311,7 @@
             "createdAt": "2026-10-30T00:00:00Z",
             "id": "3001",
             "partType": "comment"
-          },
-          "wasAlreadyApplied": true
+          }
         },
         "requestCount": 2,
         "retry": false,
@@ -5345,6 +5358,362 @@
         }
       ],
       "name": "replyToConversation-provablyNotSentResent",
+      "operation": "replyToConversation"
+    },
+    {
+      "attempts": 3,
+      "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
+      "exchanges": [
+        {
+          "body": "{\"type\":\"error.list\",\"errors\":[{\"code\":\"server_error\"}],\"request_id\":\"req-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/2002/reply",
+          "requestBody": {
+            "admin_id": "77",
+            "body": "\u003cp\u003eWe are working on your earlier conversation\u003c/p\u003e",
+            "message_type": "comment",
+            "type": "admin"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Intercom-Version": [
+              "2.16"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"type\":\"conversation\",\"id\":\"2002\",\"title\":\"Duplicate refund question\",\"state\":\"open\",\"open\":true,\"read\":false,\"source\":{\"type\":\"conversation\",\"body\":\"I need help with my refund\",\"author\":{\"type\":\"user\",\"id\":\"contact-1\",\"name\":\"Ada Lovelace\",\"email\":\"ada@example.com\"}},\"contacts\":{\"contacts\":[{\"id\":\"contact-1\"}]},\"tags\":{\"tags\":[]},\"created_at\":1793008800,\"updated_at\":1793008800,\"conversation_parts\":{\"conversation_parts\":[],\"total_count\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/2002",
+          "query": {
+            "display_as": [
+              "plaintext"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
+            ],
+            "Intercom-Version": [
+              "2.16"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"type\":\"error.list\",\"errors\":[{\"code\":\"rate_limit_exceeded\"}],\"request_id\":\"req-125\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/2002/reply",
+          "requestBody": {
+            "admin_id": "77",
+            "body": "\u003cp\u003eWe are working on your earlier conversation\u003c/p\u003e",
+            "message_type": "comment",
+            "type": "admin"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Intercom-Version": [
+              "2.16"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"type\":\"conversation\",\"id\":\"2002\",\"title\":\"Duplicate refund question\",\"state\":\"open\",\"open\":true,\"read\":false,\"source\":{\"type\":\"conversation\",\"body\":\"I need help with my refund\",\"author\":{\"type\":\"user\",\"id\":\"contact-1\",\"name\":\"Ada Lovelace\",\"email\":\"ada@example.com\"}},\"contacts\":{\"contacts\":[{\"id\":\"contact-1\"}]},\"tags\":{\"tags\":[]},\"created_at\":1793008800,\"updated_at\":1793318400,\"conversation_parts\":{\"conversation_parts\":[{\"id\":\"3001\",\"part_type\":\"comment\",\"body\":\"We are working on your earlier conversation\",\"author\":{\"type\":\"admin\",\"id\":\"77\"},\"created_at\":1793318400}],\"total_count\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/2002",
+          "query": {
+            "display_as": [
+              "plaintext"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
+            ],
+            "Intercom-Version": [
+              "2.16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "conversationId": "2002",
+          "conversationState": "open",
+          "part": {
+            "author": {
+              "id": "77",
+              "type": "admin"
+            },
+            "body": "We are working on your earlier conversation",
+            "createdAt": "2026-10-30T00:00:00Z",
+            "id": "3001",
+            "partType": "comment"
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-30T00:00:00Z",
+      "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
+      "input": {
+        "adminId": "77",
+        "body": "We are working on your earlier conversation",
+        "conversationId": "2002",
+        "messageType": "comment"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
+            "sendCount": 1,
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "replyToConversation-readBackAfterRateLimitedResend",
+      "operation": "replyToConversation"
+    },
+    {
+      "attempts": 2,
+      "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
+      "exchanges": [
+        {
+          "body": "{\"type\":\"error.list\",\"errors\":[{\"code\":\"server_error\"}],\"request_id\":\"req-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/2002/reply",
+          "requestBody": {
+            "admin_id": "77",
+            "body": "\u003cp\u003eWe are working on your earlier conversation\u003c/p\u003e",
+            "message_type": "comment",
+            "type": "admin"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Intercom-Version": [
+              "2.16"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"type\":\"error.list\",\"errors\":[{\"code\":\"not_found\"}],\"request_id\":\"req-126\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/2002",
+          "query": {
+            "display_as": [
+              "plaintext"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
+            ],
+            "Intercom-Version": [
+              "2.16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "conversationId": "2002",
+          "part": {
+            "author": {},
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "partType": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "fixedClock": "2026-10-30T00:00:00Z",
+      "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
+      "input": {
+        "adminId": "77",
+        "body": "We are working on your earlier conversation",
+        "conversationId": "2002",
+        "messageType": "comment"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "replyToConversation-missingConversationReadBackUncertain",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
+      "exchanges": [
+        {
+          "body": "{\"type\":\"conversation\",\"id\":\"another\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/2002/reply",
+          "requestBody": {
+            "admin_id": "77",
+            "body": "\u003cp\u003eWe are working on your earlier conversation\u003c/p\u003e",
+            "message_type": "comment",
+            "type": "admin"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Intercom-Version": [
+              "2.16"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"type\":\"conversation\",\"id\":\"2002\",\"title\":\"Duplicate refund question\",\"state\":\"open\",\"open\":true,\"read\":false,\"source\":{\"type\":\"conversation\",\"body\":\"I need help with my refund\",\"author\":{\"type\":\"user\",\"id\":\"contact-1\",\"name\":\"Ada Lovelace\",\"email\":\"ada@example.com\"}},\"contacts\":{\"contacts\":[{\"id\":\"contact-1\"}]},\"tags\":{\"tags\":[]},\"created_at\":1793008800,\"updated_at\":1793008800,\"conversation_parts\":{\"conversation_parts\":[],\"total_count\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/2002",
+          "query": {
+            "display_as": [
+              "plaintext"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer dG9rOjBiMjY3intercomTestToken0123456789"
+            ],
+            "Intercom-Version": [
+              "2.16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "conversationId": "2002",
+          "conversationState": "open",
+          "part": {
+            "author": {},
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "partType": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "fixedClock": "2026-10-30T00:00:00Z",
+      "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
+      "input": {
+        "adminId": "77",
+        "body": "We are working on your earlier conversation",
+        "conversationId": "2002",
+        "messageType": "comment"
+      },
+      "name": "replyToConversation-acceptedUnusableAnswerUncertain",
       "operation": "replyToConversation"
     }
   ],

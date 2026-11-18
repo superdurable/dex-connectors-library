@@ -78,9 +78,9 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached, and the conversation shows no part by the admin with the reply's type and text after sends whose outcome could not be confirmed, so the reply may still appear. Below the cap, an unconfirmed send is read back and then resent. */
+  /** The reply may exist but could not be confirmed: the send cap is reached and the conversation shows no part by the admin with the reply's type and text; or, after a possible send, the conversation could not be read back, is missing, or shows the reply with an invalid part; or Intercom accepted the reply with an unusable answer that a read-back could not confirm. Do not send it again without checking the conversation. Below the cap, a read-back that shows no matching part resends. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Intercom shows the reply in the conversation, but its part is invalid, such as a part without an ID; the reply exists, so do not send it again. */
+  /** No longer selected. A reply whose part is invalid may exist, so the connector selects uncertain instead; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

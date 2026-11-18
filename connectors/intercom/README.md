@@ -16,7 +16,7 @@ operation-specific Dex Step factories:
 | --- | --- | --- | --- |
 | `intercom.NewSearchConversationsStep` | Query | `searched` | `providerRejected`, `invalidResponse`, `defect` |
 | `intercom.NewGetConversationStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `intercom.NewReplyToConversationStep` | Mutation | `replied` | `notFound`, `providerRejected`, `uncertain`, `invalidResponse`, `defect` |
+| `intercom.NewReplyToConversationStep` | Mutation | `replied` | `notFound`, `providerRejected`, `uncertain`, `invalidResponse` (no longer selected), `defect` |
 | `intercom.NewUpdateConversationStateStep` | Mutation | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `intercom.NewFindContactByEmailStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
@@ -189,25 +189,34 @@ default, per Step execution. An application lowers or raises the cap, from 1 to
    cannot be read or trusted sends nothing and retries.
 2. A 429, a 503, or a connection that never opened records that the reply can
    be resent and retries, because Intercom did not apply the request.
-3. A lost connection, an unreadable response, a 3xx, 408, 409, 410, another
-   5xx, or an unlisted status may follow an applied reply, so the attempt
-   retries. The next attempt, including one on a new Worker after the first
-   was lost, reads the conversation first and selects `replied` with
-   `wasAlreadyApplied: true` when a part by the same admin, of the same type,
-   with the same words, was created at most five minutes before the Step's
-   first attempt or later. When none is found it resends while fewer than
-   `maxSends` sends may have taken effect, and at the cap it selects
-   `uncertain`: the reply may exist, and the Flow must decide, for example by
-   asking a teammate.
-4. An oversized, credential-reflecting, or undecodable 2xx is read back in
-   the same attempt, then resent on the next attempt below the cap.
+3. A lost connection, a 3xx, 408, 409, 410, another 5xx, an unlisted status,
+   or a refusal whose body exceeds `maxResponseBytes` may follow an applied
+   reply, so the attempt retries. Every later attempt that may follow a send,
+   including one after a resend that got a 429, and one on a new Worker after
+   the first was lost, reads the conversation first and selects `replied`
+   with `wasAlreadyApplied: true` when a part by the same admin, of the same
+   type, with the same words, was created at most five minutes before the
+   Step's first attempt or later. Only a read that shows no such part permits
+   a resend, while fewer than `maxSends` sends may have taken effect; at the
+   cap it selects `uncertain`: the reply may exist, and the Flow must decide,
+   for example by asking a teammate. A read-back that gets a 429, a 5xx, or a
+   lost connection retries the read. Any other read-back, such as a missing
+   conversation, a refused token, an invalid conversation, or the reply with
+   an invalid part, selects `uncertain` and never resends.
+4. A 2xx means Intercom accepted the reply, so it is never resent. When its
+   answer is oversized, credential-reflecting, undecodable, cut off while its
+   body is read, or shows the reply with an invalid part, the same attempt
+   reads the conversation back once: a matching part selects `replied`, and
+   anything else selects `uncertain`.
 5. A definite refusal of a first send, 400, 401, 403, 404, 411, 413, 414, 415,
    or 422, selects `notFound` or `providerRejected`. After a possible earlier
    send the same answer selects `uncertain`, because that send may have
    applied the reply.
-6. A reply that Intercom shows, in its answer or in a read-back, with an
-   invalid part such as one without an ID selects `invalidResponse`; the reply
-   exists and is never resent.
+6. Connection credentials that cannot be resolved retry when the lookup may
+   succeed later. A token that is unusable or needs reauthorization selects
+   `defect` before any send, and `uncertain` after a possible earlier send.
+   `invalidResponse` stays declared for compatibility but is no longer
+   selected.
 
 Version v0.23.0 recorded its own checkpoint, which this release cannot trust.
 A Step execution that began on v0.23.0 and retries on this release sends
@@ -227,8 +236,10 @@ selects `updated` with `wasAlreadyApplied: true` and nothing is written.
 The write sets one final state, so the manifest declares `repeatOnUnknown:
 safe`; it keeps async durability and has no `uncertain` branch. Every unknown
 write outcome retries, including a lost answer, a 3xx, 408, 409, 410, 5xx, or
-unlisted status, and an invalid or oversized answer after the write, and the
-retry reads first. `invalidResponse` covers only the read before the change,
+unlisted status, an invalid or oversized answer after the write, and a refusal
+whose body exceeds `maxResponseBytes`, and the retry reads first. A credential
+lookup that may succeed later also retries; an unusable token selects
+`defect`. `invalidResponse` covers only the read before the change,
 so the attempt changed nothing. Two attempts after a Worker loss can both
 write the same state if the first result is unknown. A close without a message
 sends the customer nothing, so the only trace is a second close event in the
@@ -336,8 +347,9 @@ non-2xx answer, as their sections describe.
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed; writes retry |
 | 429 | Retry after `X-RateLimit-Reset`, at most one minute |
 | 408, 5xx, transport failure | Retry; `replyToConversation` reads back before resending |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; writes read back or retry |
-| invalid input or connection credentials | `defect`, with no request |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; `replyToConversation` reads back and selects `replied` or `uncertain`; `updateConversationState` retries after the write |
+| invalid input or unusable connection credentials | `defect`, with no request; after a possible reply send, `uncertain` |
+| credential lookup that may succeed later | Retry for writes |
 
 ## Not in this release
 

@@ -4,7 +4,9 @@
 package intercom_test
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -156,6 +158,51 @@ func TestStateWriteFailuresRetryOrSelectBranches(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
+		})
+	}
+}
+
+func TestOversizedStateWriteAnswersRetry(t *testing.T) {
+	for name, status := range map[string]int{"accepted": http.StatusOK, "refused": http.StatusBadRequest, "missing": http.StatusNotFound} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.Method == http.MethodGet {
+					writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil))
+					return
+				}
+				writeJSON(t, response, status, `{"type":"error.list","padding":"`+strings.Repeat("a", 8000)+`"}`)
+			})
+			client, err := intercom.New(intercom.Config{MaxResponseBytes: 4096}, testCredentialProvider(), intercom.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newTestDexContext("state-oversized-"+name), client.UpdateConversationState(), intercomConnection,
+				intercom.UpdateConversationStateInput{ConversationID: testConversation, AdminID: testAdminID, State: intercom.ConversationStateClosed})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an answer too large to inspect leaves the absolute change unknown, so it retries")
+		})
+	}
+}
+
+func TestStateCredentialFailures(t *testing.T) {
+	for name, test := range map[string]struct {
+		err     error
+		isRetry bool
+	}{
+		"transient": {err: errors.New("credential store unavailable"), isRetry: true},
+		"terminal":  {err: sdkgo.NewReauthorizationRequiredError(errors.New("token revoked"))},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingIntercom(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request may be sent") })
+			client, err := intercom.New(intercom.Config{}, failingCredentialProvider{err: test.err}, intercom.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newTestDexContext("state-credentials-"+name), client.UpdateConversationState(), intercomConnection,
+				intercom.UpdateConversationStateInput{ConversationID: testConversation, AdminID: testAdminID, State: intercom.ConversationStateClosed})
+			if test.isRetry {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, intercom.UpdateConversationStateBranchDefect, result.Branch)
 		})
 	}
 }
