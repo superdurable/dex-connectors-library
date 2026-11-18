@@ -6,7 +6,7 @@ import { AddressRefusal, ProviderStalledError, ProviderTransportError } from '@s
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { CreateEnvelopeFromTemplateDefinition, DownloadCombinedDocumentDefinition, GetEnvelopeDefinition, ListEnvelopeRecipientsDefinition, VoidEnvelopeDefinition } from './generated/definitions.js';
 import type { CombinedDocument, CreatedEnvelope, CreateEnvelopeFromTemplateInput, DownloadCombinedDocumentInput, Envelope, EnvelopeRecipients, GetEnvelopeInput, ListEnvelopeRecipientsInput, Recipient, VoidEnvelopeInput, VoidedEnvelope } from './generated/models.js';
-import { DocuSignClient, ResponseTooLargeError, SessionError, escapePath, failure, isGuid, type DocuSignOutcome, type DocuSignResponse, type DocuSignSession } from './client.js';
+import { DocuSignClient, ResponseTooLargeError, SessionError, acceptedEnvelopeId, escapePath, failure, isGuid, type DocuSignOutcome, type DocuSignResponse, type DocuSignSession } from './client.js';
 
 const zeroCreated: CreatedEnvelope = { envelopeId: '', status: '' };
 const zeroEnvelope: Envelope = { envelopeId: '', status: '' };
@@ -60,10 +60,13 @@ export class CreateEnvelopeFromTemplateOperation implements Mutation<CreateEnvel
       return recoverCreated(this.client, call, session, marker, checkpoint, sends.canResendLater, failure(operation, 'TRANSPORT', "DocuSign's answer to the create request was lost"));
     }
     if (response.status >= 200 && response.status < 300) {
-      if (response.status !== 200 && response.status !== 201) return recoverAccepted(this.client, call, session, marker, checkpoint, sends, failure(operation, 'PROTOCOL', `DocuSign accepted the create request with HTTP ${response.status} instead of 201`));
+      if (response.status !== 200 && response.status !== 201) return recoverAccepted(this.client, call, session, marker, checkpoint, sends, failure(operation, 'PROTOCOL', `DocuSign accepted the create request with HTTP ${response.status} instead of 201`), acceptedEnvelopeId(response.body));
       try { const created = decodeCreated(response.body, input.isDraft ?? false); return newMutationBranch('created', created, this.client.receipt(created.envelopeId)); }
-      catch { return recoverAccepted(this.client, call, session, marker, checkpoint, sends, failure(operation, 'PROTOCOL', 'DocuSign accepted the create request but returned an unusable envelope summary')); }
+      catch { return recoverAccepted(this.client, call, session, marker, checkpoint, sends, failure(operation, 'PROTOCOL', 'DocuSign accepted the create request but returned an unusable envelope summary'), acceptedEnvelopeId(response.body)); }
     }
+    const namedEnvelopeId = acceptedEnvelopeId(response.body);
+    // An error answer that names an envelope means DocuSign created it, so it is never sent again.
+    if (namedEnvelopeId) return recoverAccepted(this.client, call, session, marker, checkpoint, sends, failure(operation, 'PROTOCOL', `DocuSign answered the create request with HTTP ${response.status} but named the envelope it created`), namedEnvelopeId);
     const outcome = this.client.classify(operation, response);
     // DocuSign answers a rate limit or 503 before it processes the request.
     if (response.status === 503 || (outcome.retry && response.status < 500 && response.status !== 408)) { await recordUnsent(); return newMutationRetry(outcome.failure, outcome.retryAfterMs); }
@@ -83,13 +86,7 @@ function isDefiniteCreateRefusal(response: DocuSignResponse): boolean {
 }
 
 /** Report a body whose envelopeId is a GUID, which means DocuSign created the envelope. */
-function hasEnvelopeId(body: Uint8Array): boolean {
-  let decoded: unknown;
-  try { decoded = JSON.parse(Buffer.from(body).toString('utf8')); }
-  catch { return false; }
-  const envelopeId = typeof decoded === 'object' && decoded !== null ? (decoded as Record<string, unknown>).envelopeId : undefined;
-  return typeof envelopeId === 'string' && isGuid(envelopeId);
-}
+function hasEnvelopeId(body: Uint8Array): boolean { return acceptedEnvelopeId(body) !== ''; }
 
 /** The create heartbeat; attempt 0 marks a checkpoint from an earlier release, which has no exact send count. */
 interface CreateCheckpoint { isDispatched: boolean; dispatchedAt: string; attempt: number; sendCount: number; isAccepted: boolean }
@@ -431,12 +428,31 @@ async function recoverCreated(client: DocuSignClient, call: Call, session: DocuS
   // Listings can lag, so a miss is not proof; the next attempt reads back again before it sends.
   return await findTaggedEnvelope(client, call, session, marker, checkpoint.dispatchedAt) ?? resendLaterOrSelectUncertain(client, canResendLater, unknown);
 }
-/** Mark a 2xx create accepted, so no attempt sends it again, and read it back. When the accepted marker could not be recorded, a later attempt could resend, so a miss selects uncertain. */
-async function recoverAccepted(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, checkpoint: CreateCheckpoint, sends: CreateSendBudget, unknown: Failure): Promise<MutationAttempt<CreatedEnvelope>> {
+/**
+ * Mark an accepted create, so no attempt sends it again, and read it back: by envelopeId when the
+ * answer named one, then by its marker. When the accepted marker could not be recorded, a later
+ * attempt could resend, so a miss selects uncertain.
+ */
+async function recoverAccepted(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, checkpoint: CreateCheckpoint, sends: CreateSendBudget, unknown: Failure, envelopeId = ''): Promise<MutationAttempt<CreatedEnvelope>> {
   let isAcceptedMarkerRecorded = true;
   try { await call.context.recordHeartbeat({ ...checkpoint, isAccepted: true }); }
   catch { isAcceptedMarkerRecorded = false; }
-  return await findTaggedEnvelope(client, call, session, marker, checkpoint.dispatchedAt) ?? readBackLaterOrSelectUncertain(client, isAcceptedMarkerRecorded && sends.canReadBackLater, unknown);
+  const found = envelopeId ? await findEnvelopeById(client, call, session, marker, envelopeId) : undefined;
+  return found ?? await findTaggedEnvelope(client, call, session, marker, checkpoint.dispatchedAt) ?? readBackLaterOrSelectUncertain(client, isAcceptedMarkerRecorded && sends.canReadBackLater, unknown);
+}
+/** Adopt the named envelope when it carries this Step's marker; undefined is inconclusive. */
+async function findEnvelopeById(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, envelopeId: string): Promise<MutationAttempt<CreatedEnvelope> | undefined> {
+  const timeoutMs = recoveryRequestTimeout(call);
+  if (timeoutMs === undefined) return undefined;
+  let response: DocuSignResponse;
+  try { response = await client.requestAPI(call, session, 'GET', `/envelopes/${escapePath(envelopeId)}`, { include: 'custom_fields' }, undefined, 'application/json', client.maxResponseBytes, timeoutMs); }
+  catch { return undefined; }
+  if (response.status !== 200) return undefined;
+  try {
+    const envelope = decodeEnvelope(response.body);
+    if (envelope.envelopeId !== envelopeId || !envelope.customFields?.some(field => field.name === 'dexIdempotencyKey' && field.value === marker)) return undefined;
+    return newMutationBranch('created', { envelopeId: envelope.envelopeId, status: envelope.status, ...(envelope.statusChangedAt ? { statusChangedAt: envelope.statusChangedAt } : {}), wasRecovered: true }, client.receipt(envelope.envelopeId));
+  } catch { return undefined; }
 }
 /** Adopt exactly one tagged envelope or select uncertain for several; undefined is inconclusive. */
 async function findTaggedEnvelope(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, since: string): Promise<MutationAttempt<CreatedEnvelope> | undefined> {

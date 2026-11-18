@@ -73,6 +73,16 @@ def is_guid(value: str) -> bool:
     return bool(_GUID.fullmatch(value))
 
 
+def accepted_envelope_id(body: bytes) -> str:
+    """Return the lowercase envelopeId GUID a body names, which means DocuSign created it, or ""."""
+    try:
+        decoded = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return ""
+    envelope_id = decoded.get("envelopeId") if isinstance(decoded, dict) else None
+    return envelope_id.lower() if isinstance(envelope_id, str) and is_guid(envelope_id) else ""
+
+
 def path_escape(value: str) -> str:
     """Apply Go url.PathEscape's segment character set."""
     return quote(value, safe="-._~$&+=:@")
@@ -516,11 +526,11 @@ class Client:
                 is_incomplete = False
                 try:
                     rejected_body = await read_bounded_body(response, MAX_ERROR_BODY_BYTES)
-                except BodyTooLargeError:
+                except (BodyTooLargeError, ProviderTransportError):
                     rejected_body, is_incomplete = b"", True
                 rejected = ProviderResponse(401, response.headers, rejected_body, is_incomplete)
-                if is_incomplete and method == "POST":
-                    # An incomplete 401 body proves no refusal, so the create is not sent again.
+                if method == "POST" and (is_incomplete or accepted_envelope_id(rejected_body)):
+                    # An incomplete or envelope-naming 401 body proves no refusal, so no second POST.
                     return rejected, credentials
                 try:
                     replacement = await self.credentials.resolve_after_rejection(call)

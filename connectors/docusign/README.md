@@ -91,9 +91,10 @@ authentication and permission codes select `providerRejected`, and
 404, 411, 413, 414, 415, or 422 is a definite refusal, and only when its error
 body was read in full; any other status a write receives, such as a `3xx` or
 `409`, and a refusal status whose body is oversized or breaks mid-read, is an
-unknown outcome. A create refusal whose body names an `envelopeId` is unknown
-too. An incomplete `401` body to a create is not followed by a token refresh
-and a second `POST`. `voidEnvelope`
+unknown outcome. A create answer whose error body names an `envelopeId`, at
+any status, means DocuSign created the envelope: it is accepted, as in step 6
+below. An incomplete `401` body to a create, or one that names an
+`envelopeId`, is not followed by a token refresh and a second `POST`. `voidEnvelope`
 declares `repeatOnUnknown: safe` and retries every unknown outcome without a
 send cap, because voiding sets an absolute status and an already voided
 envelope selects `voided`. A malformed or oversized status read-back after a
@@ -131,10 +132,13 @@ contract. The operation therefore:
    at the cap it selects `uncertain` without sending. Each attempt sends at
    most once, so the checkpoint's count plus the attempts after it bounds the
    earlier sends;
-6. a `2xx` answer means DocuSign accepted the create, so it is never sent
-   again, even when the summary is unreadable, oversized, or cut off after the
-   headers. The checkpoint records the acceptance; this and later attempts only
-   list the envelope, retrying below `maxSends` attempts and selecting
+6. a `2xx` answer, or an error answer whose body names an `envelopeId`, means
+   DocuSign accepted the create, so it is never sent again, even when the
+   summary is unreadable, oversized, or cut off after the headers. The
+   checkpoint records the acceptance. When the answer names the envelope, this
+   attempt first reads it with `GET /envelopes/{envelopeId}` and adopts it when
+   it carries the `dexIdempotencyKey` field; otherwise this and later attempts
+   only list the envelope, retrying below `maxSends` attempts and selecting
    `uncertain` at it. When Dex did not keep the acceptance checkpoint and the
    listing misses, the attempt selects `uncertain` at once, because a later
    attempt could not know the create was accepted;

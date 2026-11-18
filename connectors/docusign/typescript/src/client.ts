@@ -78,6 +78,14 @@ export class ResponseTooLargeError extends Error {}
 
 /** Return whether a provider identifier is a DocuSign GUID. */
 export function isGuid(value: string): boolean { return guidPattern.test(value); }
+/** Return the lowercase envelopeId GUID a body names, which means DocuSign created it, or ''. */
+export function acceptedEnvelopeId(body: Uint8Array): string {
+  let decoded: unknown;
+  try { decoded = JSON.parse(Buffer.from(body).toString('utf8')); }
+  catch { return ''; }
+  const envelopeId = typeof decoded === 'object' && decoded !== null ? (decoded as Record<string, unknown>).envelopeId : undefined;
+  return typeof envelopeId === 'string' && isGuid(envelopeId) ? envelopeId.toLowerCase() : '';
+}
 /** Escape a path segment with Go url.PathEscape semantics. */
 export function escapePath(value: string): string {
   return Array.from(Buffer.from(value)).map(byte => {
@@ -309,6 +317,8 @@ export class DocuSignClient {
       const answer = { ...response, isTooLarge: !isError && response.body.length > limit, ...(isError && response.body.length > maximumErrorBodyBytes ? { isErrorBodyIncomplete: true } : {}) };
       if (answer.isTooLarge) throw new ResponseTooLargeError();
       if (response.status !== 401 || attempt !== 0 || !('resolveAfterRejection' in this.credentials)) return answer;
+      // An incomplete or envelope-naming 401 body proves no refusal, so the create is not sent again.
+      if (method === 'POST' && (answer.isErrorBodyIncomplete === true || acceptedEnvelopeId(answer.body) !== '')) return answer;
       try { current = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
       catch { return answer; }
       if (!isHeaderSafeCredential(current.accessToken.reveal())) return answer;
