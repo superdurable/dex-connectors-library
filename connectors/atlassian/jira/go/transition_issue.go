@@ -143,7 +143,7 @@ func (operation TransitionIssueOperation) Invoke(call sdkgo.Call, input Transiti
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[TransitionIssueOutput](newFailure(transitionIssueOperationID, sdkgo.FailureAvailability, "Jira dispatch checkpoint is unreadable, so nothing was sent in this attempt"), 0)
 	}
-	attempt := transitionAttempt{fence: fence, hasPossibleEarlierTransition: needsReadBack(decision)}
+	attempt := transitionAttempt{fence: fence, hasPossibleEarlierTransition: hasPossibleEarlierTransition(decision)}
 	session, cancel, sessionErr := client.startSession(call, transitionIssueOperationID)
 	if sessionErr != nil {
 		if sessionErr.isRetryable || attempt.hasPossibleEarlierTransition {
@@ -216,6 +216,11 @@ const unprovenEarlierTransitionMessage = "an earlier attempt may have transition
 type transitionAttempt struct {
 	fence                        *singledispatch.Fence
 	hasPossibleEarlierTransition bool
+}
+
+// hasPossibleEarlierTransition ignores MaximumPriorSends: a cap-1 fence writes no send count, so SendAllowed proves no earlier send.
+func hasPossibleEarlierTransition(decision singledispatch.Decision) bool {
+	return decision.Kind != singledispatch.SendAllowed || decision.Marker.ProviderID != ""
 }
 
 // retryBeforeSend returns Retry before any send; a first attempt records notSent so the next may send.

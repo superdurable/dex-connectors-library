@@ -373,7 +373,9 @@ The manifest declares `repeatOnUnknown: safe` because a repeated attempt never
 sends the transition again after a possible earlier send: a workflow can offer
 a transition with the same name back, so a second POST could undo the first. A
 429, 503, refusal, or provably unsent request records `canResend`, and only
-then may the next attempt transition. After a possible earlier send, the
+then may the next attempt transition. Any number of such Retries in a row still
+let the next attempt send, because a cap-one fence permits a send only when no
+earlier send can have taken effect. After a possible earlier send, the
 attempt rereads the issue and selects `transitioned` when its status equals
 `DestinationStatusName` or the matched transition leads to the current status.
 Otherwise it returns Retry, never `notFound`, `transitionUnavailable`,

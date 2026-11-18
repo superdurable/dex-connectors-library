@@ -357,6 +357,47 @@ func TestTransitionRateLimitAllowsTheNextAttemptToSend(t *testing.T) {
 	require.Equal(t, 2, provider.posts())
 }
 
+func TestTransitionSendsOnTheThirdAttemptAfterTwoRateLimits(t *testing.T) {
+	provider := newWorkflowJira(t, "1")
+	provider.postResponse = func(response http.ResponseWriter, post int) bool {
+		if post <= 2 {
+			writeJSON(provider.t, response, http.StatusTooManyRequests, `{}`)
+			return true
+		}
+		return false
+	}
+	ctx := singledispatchtest.NewContext("jira-flow", "transition-two-rate-limits")
+	input := jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"}
+	for range 2 {
+		_, err := runTransitionInContext(t, ctx, provider, input)
+		requireRetry(t, err, sdkgo.FailureRateLimit)
+		ctx.AdvanceAttempt()
+	}
+	result, err := runTransitionInContext(t, ctx, provider, input)
+	require.NoError(t, err)
+	require.Equal(t, jira.TransitionIssueBranchTransitioned, result.Branch)
+	require.Equal(t, 3, provider.posts(), "Jira processed neither rate-limited send")
+}
+
+func TestTransitionSendsOnTheThirdAttemptAfterTwoPreSendRetries(t *testing.T) {
+	provider := newWorkflowJira(t, "1")
+	credentials := &delayedJiraCredentials{}
+	client, err := jira.New(jira.Config{CloudID: testCloudID, Endpoint: provider.URL}, credentials)
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("jira-flow", "transition-two-pre-send-retries")
+	input := jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"}
+	for range 2 {
+		_, err = sdkgo.RunMutation(ctx, client.TransitionIssue(), jiraConnection, input)
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		ctx.AdvanceAttempt()
+	}
+	credentials.isReady = true
+	result, err := sdkgo.RunMutation(ctx, client.TransitionIssue(), jiraConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jira.TransitionIssueBranchTransitioned, result.Branch)
+	require.Equal(t, 1, provider.posts())
+}
+
 func TestTransitionCredentialFailureAfterAPossibleSendRetries(t *testing.T) {
 	ctx := laterFenceContext("transition-credential")
 	credentials := &delayedJiraCredentials{isReady: true, hasInvalidCredentials: true}
