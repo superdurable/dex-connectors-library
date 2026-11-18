@@ -77,8 +77,10 @@ func TestErrorsMapToBranchesWithoutLinearText(t *testing.T) {
 		{name: "internal error", status: 500, body: linearError("INTERNAL_SERVER_ERROR", "internal error"), isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "bare 502", status: 502, body: "<html>bad gateway</html>", isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "bare 400", status: 400, body: `{}`, branch: linear.GetIssueBranchDefect, kind: sdkgo.FailureProtocol},
-		{name: "redirect", status: 302, body: ``, branch: linear.GetIssueBranchProviderRejected, kind: sdkgo.FailureProtocol},
-		{name: "unknown code", status: 200, body: linearError("SOMETHING_NEW", "unrecognized"), branch: linear.GetIssueBranchProviderRejected, kind: sdkgo.FailureProviderRejection, messagePart: "[SOMETHING_NEW]"},
+		{name: "redirect", status: 302, body: ``, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "unlisted status", status: 425, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "unknown code", status: 200, body: linearError("SOMETHING_NEW", "unrecognized"), isRetry: true, kind: sdkgo.FailureAvailability, messagePart: "[SOMETHING_NEW]"},
+		{name: "unknown code with 422", status: 422, body: linearError("SOMETHING_NEW", "unrecognized"), branch: linear.GetIssueBranchProviderRejected, kind: sdkgo.FailureProviderRejection, messagePart: "[SOMETHING_NEW]"},
 		{name: "malformed 2xx", status: 200, body: `not json`, branch: linear.GetIssueBranchInvalidResponse, kind: sdkgo.FailureProtocol},
 		{name: "reflected key", status: 200, body: `{"data":{"issues":{"nodes":[]}},"echo":"` + testAPIKey + `"}`, branch: linear.GetIssueBranchInvalidResponse, kind: sdkgo.FailureProtocol},
 	}

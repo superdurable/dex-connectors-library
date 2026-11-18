@@ -14,6 +14,7 @@ from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.linear import Client, Config, Credentials, ListWorkflowStatesInput
+from dex_connectors.linear._generated.connection import CredentialMaterialError
 from dex_connectors.linear.client import Exchange, _classify_failure
 
 CONNECTION = ConnectionRef("linear", "linear-test")
@@ -69,6 +70,25 @@ async def test_refresh_failure_retries_without_provider_request() -> None:
     assert resolved.failure is not None and resolved.failure.kind == FailureKind.AVAILABILITY
 
 
+@pytest.mark.parametrize(
+    ("status", "expected"), [(302, "retry"), (425, "retry"), (409, "retry"), (422, "rejected")]
+)
+def test_unlisted_status_is_unknown_and_retries(status: int, expected: str) -> None:
+    """Only a definite refusal status rejects; a redirect or unlisted status retries."""
+    assert _classify_failure("updateIssue", status, "", None, 0).outcome == expected
+
+
+def _sdk_decoding_failure() -> ValueError:
+    """Build the SDK project provider's wrapper around a malformed stored credential."""
+    try:
+        try:
+            raise CredentialMaterialError("Linear credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
 class _FailingCredentials:
     def __init__(self, error: Exception) -> None:
         self.error = error
@@ -84,6 +104,8 @@ class _FailingCredentials:
         (ObjectNotFoundError("absent"), "defect"),
         (ConnectionNotSelectedError(), "defect"),
         (CredentialBrokerRejectedError(), "defect"),
+        (CredentialMaterialError("Linear credential api_key is required"), "defect"),
+        (_sdk_decoding_failure(), "defect"),
         (CredentialBrokerUnavailableError(), "retry"),
         (ValueError("connection is not configured"), "retry"),
         (LookupError("unlisted"), "retry"),

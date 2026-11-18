@@ -771,7 +771,7 @@ class UpdateIssueOperation:
         credential = await self.client.resolve(call, "updateIssue")
         if isinstance(credential, Exchange):
             return _write_outcome(
-                credential, requested, self.client.receipt(call, credential), invalid_is_retry=False
+                credential, requested, self.client.receipt(call, credential), invalid_is_retry=True
             )
         result = await self.client.exchange(
             call,
@@ -813,7 +813,8 @@ class UpdateIssueOperation:
             if read.outcome == "retry":
                 assert read.failure is not None
                 return MutationAttempt.retry(read.failure, read.retry_after)
-        return _write_outcome(result, requested, receipt, invalid_is_retry=False)
+        # Repeating the absolute update is safe, so an unusable answer retries.
+        return _write_outcome(result, requested, receipt, invalid_is_retry=True)
 
 
 class AddCommentOperation:

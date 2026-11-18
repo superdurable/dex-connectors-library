@@ -85,7 +85,7 @@ UPDATE_ISSUE_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Linear applied the change and returned the issue.", False),
         BranchDefinition(NOT_FOUND, "The issue does not exist, was deleted, or the connection cannot see its team; nothing was changed.", True),
         BranchDefinition(PROVIDER_REJECTED, "Linear conclusively rejected the change, such as a workflow state or label of another team, an unknown assignee, or missing permission.", True),
-        BranchDefinition(INVALID_RESPONSE, "Linear returned an invalid or oversized issue, so the change may have been applied; repeating the Step is safe.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized issue after the change now retries, because repeating the absolute update is safe.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

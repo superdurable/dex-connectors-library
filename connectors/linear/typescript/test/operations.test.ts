@@ -6,6 +6,7 @@ import { SecretString, StaticCredentialProvider, type Call } from '@superdurable
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { LinearClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const connection = { provider: 'linear', name: 'linear-test' };
 const credentials = new StaticCredentialProvider([[connection, { authMethodId: 'personal-api-key', apiKey: new SecretString('linear-test-key') }]]);
@@ -24,6 +25,8 @@ describe('Linear input and configuration validation', () => {
     ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
     ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
     ['object not found', () => new ObjectNotFoundError(), 'defect'],
+    ['malformed material', () => new CredentialMaterialError('credential api_key is required'), 'defect'],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
     ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
     ['not configured', () => new Error('connection is not configured'), 'retry'],
     ['unlisted type error', () => new TypeError('unlisted'), 'retry'],
