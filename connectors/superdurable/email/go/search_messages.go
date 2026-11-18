@@ -94,6 +94,9 @@ func (operation SearchMessagesOperation) Invoke(call sdkgo.Call, input SearchMes
 	}
 	credentials, failure := operation.client.resolveCredentials(call, searchMessagesOperation)
 	if failure != nil {
+		if isTransientCredentialFailure(*failure) {
+			return sdkgo.NewQueryRetry[SearchMessagesOutput](*failure, 0)
+		}
 		return sdkgo.NewQueryBranch(SearchMessagesBranchDefect, SearchMessagesOutput{}, failure, sdkgo.Receipt{})
 	}
 	ctx, cancel := context.WithTimeout(call.Context, imapOperationTimeout)

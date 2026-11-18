@@ -56,6 +56,9 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	decision := decideSubmission(call)
 	credentials, failure := operation.client.resolveCredentials(call, replyToMessageOperation)
 	if failure != nil {
+		if isTransientCredentialFailure(*failure) {
+			return retryWithoutSubmitting(call, decision, replyToMessageOperation, SentMessage{}, *failure)
+		}
 		return operation.refuseBeforeReading(decision, ReplyToMessageBranchDefect, *failure, SentMessage{})
 	}
 	sender, err := operation.client.messageSender(credentials)
@@ -79,10 +82,14 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	defer cancel()
 	source, readFailure := operation.readReplySource(ctx, credentials, input.Message)
 	if readFailure != nil {
+		if readFailure.outcome == outcomeRetryable {
+			// An accepted reply keeps its marker, so a later attempt rebuilds the output and never resubmits.
+			return retryWithoutSubmitting(call, decision, replyToMessageOperation, identity, readFailure.failure)
+		}
 		if decision.isAlreadyAccepted() {
 			return acceptedReplyWithoutOutput(identity)
 		}
-		return replyAttemptForReadFailure(call, decision, readFailure, identity)
+		return replyAttemptForReadFailure(decision, readFailure, identity)
 	}
 	message, err := buildReply(sender, messageID, source, input)
 	if err != nil {
@@ -225,10 +232,8 @@ func acceptedReplyWithoutOutput(identity SentMessage) sdkgo.MutationAttempt[Sent
 		"an earlier attempt of this Step submitted the reply and the server accepted it, but its result was lost and the source message can no longer be read; it is not submitted again")
 }
 
-func replyAttemptForReadFailure(call sdkgo.Call, decision submissionDecision, failure *serverFailure, identity SentMessage) sdkgo.MutationAttempt[SentMessage] {
+func replyAttemptForReadFailure(decision submissionDecision, failure *serverFailure, identity SentMessage) sdkgo.MutationAttempt[SentMessage] {
 	switch failure.outcome {
-	case outcomeRetryable:
-		return retryBeforeSubmitting(call, decision, failure.failure)
 	case outcomeNotFound:
 		return refuseBeforeSubmitting(decision, ReplyToMessageBranchNotFound, failure.failure, replyToMessageOperation, identity)
 	case outcomeInvalidResponse:
