@@ -181,7 +181,7 @@ func TestExecuteStatementNonIdempotentRetriesAnUnavailableCredentialBroker(t *te
 	require.Equal(t, singledispatch.StateNotSent, lastMarker(t, step).State, "the next attempt may send")
 	require.Empty(t, server.EventsOfKind(scriptedmysql.EventHandshake))
 
-	withoutPassword := newClientWithCredentials(t, server, sdkgo.StaticCredentialProvider[mysql.Credentials]{})
+	withoutPassword := newClientWithCredentials(t, server, sdkgo.StaticCredentialProvider[mysql.Credentials]{scriptedConnection: {}})
 	result, err := executeNonIdempotent(t, withoutPassword, newFencedStep(), addToBalanceInput)
 	require.NoError(t, err)
 	require.Equal(t, mysql.ExecuteStatementNonIdempotentBranchDefect, result.Branch, "a missing password is terminal before any COMMIT")

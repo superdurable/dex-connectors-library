@@ -362,7 +362,7 @@ func TestQueryRowsSelectsDefectBeforeContactingTheServer(t *testing.T) {
 	require.Empty(t, server.EventsOfKind(scriptedmysql.EventExecute), "a placeholder mismatch is caught after COM_STMT_PREPARE")
 
 	withoutCredentials, err := mysql.New(mysql.Config{Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", SSLMode: mysql.SSLModeDisabled},
-		sdkgo.StaticCredentialProvider[mysql.Credentials]{})
+		sdkgo.StaticCredentialProvider[mysql.Credentials]{scriptedConnection: {}})
 	require.NoError(t, err)
 	missing, err := query(t, withoutCredentials, mysql.QueryRowsInput{Statement: "SELECT 1"})
 	require.NoError(t, err)

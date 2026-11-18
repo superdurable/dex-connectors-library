@@ -8,8 +8,22 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from dex_connectors.sdk import Call, CallID, ConnectionRef, OperationRef, RepeatOnUnknown, SecretString
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk import (
+    Call,
+    CallID,
+    ConnectionRef,
+    OperationRef,
+    ReauthorizationRequiredError,
+    RepeatOnUnknown,
+    SecretString,
+)
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    RejectedCredentialNotRefreshedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker, State
 from mysql.connector.constants import FieldType
 from mysql.connector.errors import DatabaseError
@@ -452,6 +466,51 @@ async def test_an_unavailable_credential_broker_returns_retry(monkeypatch: pytes
         assert attempt.kind == "retry" and attempt.failure is not None
         assert attempt.failure.kind.value == "AVAILABILITY"
     assert context.marker is not None and context.marker.state == State.NOT_SENT
+    assert opened == []
+
+
+_CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (ReauthorizationRequiredError(), True),
+    (ObjectNotFoundError(), True),
+    (ConnectionNotSelectedError(), True),
+    (CredentialBrokerRejectedError(), True),
+    (CredentialBrokerUnavailableError(), False),
+    (ValueError("connection is not configured"), False),
+    (RejectedCredentialNotRefreshedError(), False),
+    (TimeoutError(), False),
+    (RuntimeError("unlisted"), False),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("error", "is_terminal"), _CREDENTIAL_FAILURES)
+async def test_credential_failures_are_classified_before_and_after_a_possible_commit(
+    monkeypatch: pytest.MonkeyPatch, error: Exception, is_terminal: bool
+) -> None:
+    class _FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    client = Client(Config("db.example.com", "app", "dex_app"), _FailingCredentials())
+    opened: list[str] = []
+    monkeypatch.setattr(client, "_open", lambda password: opened.append(password))
+    execute = await client.execute().invoke(_call("execute"), _BALANCE_INPUT)
+    context = _AttemptContext()
+    first = await client.execute_non_idempotent().invoke(_fenced_call(context), _BALANCE_INPUT)
+    expected_first = "defect" if is_terminal else "retry"
+    assert (execute.branch if is_terminal else execute.kind) == expected_first
+    assert (first.branch if is_terminal else first.kind) == expected_first
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+
+    later_context = _AttemptContext()
+    later_call = _fenced_call(later_context)
+    later_context.heartbeat_value = Marker(later_call.id, 2, State.CAN_RESEND, send_count=1)
+    later_context.attempt = 3
+    later = await client.execute_non_idempotent().invoke(later_call, _BALANCE_INPUT)
+    if is_terminal:
+        assert later.kind == "uncertain"
+    else:
+        assert later.kind == "retry"
     assert opened == []
 
 
