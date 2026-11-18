@@ -680,7 +680,13 @@ async def test_deadline_after_accepted_headers_is_never_resent(operation_id: str
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 @pytest.mark.parametrize(
-    "error", [RuntimeError("store unavailable"), CredentialBrokerUnavailableError(), TimeoutError()]
+    "error",
+    [
+        RuntimeError("store unavailable"),
+        CredentialBrokerUnavailableError(),
+        TimeoutError(),
+        ValueError("connection is not configured"),
+    ],
 )
 async def test_transient_credential_failure_on_first_attempt_retries(
     operation_id: str, error: Exception

@@ -118,6 +118,9 @@ func (operation GetMessageOperation) Invoke(call sdkgo.Call, input GetMessageInp
 		return sdkgo.NewQueryBranch(GetMessageBranchDefect, Message{}, gmailOperationFailurePointer("getMessage", sdkgo.FailureValidation, "message ID is required"), sdkgo.Receipt{})
 	}
 	credentials, err := operation.client.resolveCredentials(call.Context, call)
+	if err != nil && !isPermanentCredentialFailure(err) {
+		return sdkgo.NewQueryRetry[Message](gmailOperationFailure("getMessage", sdkgo.FailureAvailability, "Gmail credentials are temporarily unavailable"), 0)
+	}
 	if err != nil {
 		return sdkgo.NewQueryBranch(GetMessageBranchDefect, Message{}, gmailOperationFailurePointer("getMessage", sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}

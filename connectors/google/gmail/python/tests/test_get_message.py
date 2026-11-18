@@ -5,6 +5,7 @@
 import base64
 import json
 from datetime import UTC, datetime
+from typing import Any, cast
 from uuid import uuid4
 
 import httpx
@@ -19,6 +20,13 @@ from dex_connectors.sdk import (
     OperationRef,
     SecretString,
     StaticCredentialProvider,
+)
+from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
 )
 
 from dex_connectors.google_gmail import (
@@ -240,10 +248,45 @@ async def test_get_message_empty_id_never_reaches_provider(call: Call) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_message_missing_connection_is_authentication_defect(call: Call) -> None:
-    """Missing credential material remains a local authentication defect."""
+async def test_get_message_unconfigured_static_connection_retries(call: Call) -> None:
+    """A static provider without the connection is transient, so the read retries."""
     provider = GmailProvider(Config(), StaticCredentialProvider({}), NoRefreshDriver())
     result = await GetMessageOperation(provider).invoke(call, GetMessageInput("message-1"))
-    assert result.branch == "defect"
-    assert result.failure is not None and result.failure.kind == FailureKind.AUTHENTICATION
+    assert result.kind == "retry"
+    await provider.close()
+
+
+class FailingCredentials:
+    """Raise one credential error on every resolve."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        """Raise the configured credential error."""
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("unlisted"), False),
+    ],
+)
+async def test_get_message_credential_failures_retry_unless_terminal(
+    call: Call, error: Exception, is_terminal: bool
+) -> None:
+    """Only reconnection-only credential failures select defect."""
+    provider = GmailProvider(Config(), cast(Any, FailingCredentials(error)), NoRefreshDriver())
+    result = await GetMessageOperation(provider).invoke(call, GetMessageInput("message-1"))
+    if is_terminal:
+        assert result.branch == "defect"
+    else:
+        assert result.kind == "retry"
     await provider.close()
