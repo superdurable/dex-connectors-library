@@ -89,9 +89,9 @@ export const ReplyToConversationBranchReplied = ReplyToConversationBranch.Replie
 export const ReplyToConversationBranchNotFound = ReplyToConversationBranch.NotFound;
 /** Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent. */
 export const ReplyToConversationBranchProviderRejected = ReplyToConversationBranch.ProviderRejected;
-/** The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows. */
+/** The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent. */
 export const ReplyToConversationBranchUncertain = ReplyToConversationBranch.Uncertain;
-/** Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry. */
+/** Local input, connection credentials that require reauthorization or are unusable before a first send, or the connector definition is invalid; transient credential failures Retry. */
 export const ReplyToConversationBranchDefect = ReplyToConversationBranch.Defect;
 /** Manifest definition for replyToConversation. */
 export const ReplyToConversationDefinition: MutationDefinition = {
@@ -100,8 +100,8 @@ export const ReplyToConversationDefinition: MutationDefinition = {
     { id: "replied", description: "Front accepted the reply for delivery or created the comment." },
     { id: "notFound", description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", optional: true },
     { id: "providerRejected", description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", optional: true },
-    { id: "uncertain", description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows.", optional: true },
-    { id: "defect", description: "Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.", optional: true },
+    { id: "uncertain", description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent.", optional: true },
+    { id: "defect", description: "Local input, connection credentials that require reauthorization or are unusable before a first send, or the connector definition is invalid; transient credential failures Retry.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
   repeatOnUnknown: "limited",
@@ -126,7 +126,7 @@ export const UpdateConversationBranchNotFound = UpdateConversationBranch.NotFoun
 export const UpdateConversationBranchProviderRejected = UpdateConversationBranch.ProviderRejected;
 /** Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing. */
 export const UpdateConversationBranchInvalidResponse = UpdateConversationBranch.InvalidResponse;
-/** Local input, connection configuration, or connector definition is invalid. */
+/** Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries. */
 export const UpdateConversationBranchDefect = UpdateConversationBranch.Defect;
 /** Manifest definition for updateConversation. */
 export const UpdateConversationDefinition: MutationDefinition = {
@@ -136,7 +136,7 @@ export const UpdateConversationDefinition: MutationDefinition = {
     { id: "notFound", description: "The conversation does not exist, was merged, or is not visible to the API token.", optional: true },
     { id: "providerRejected", description: "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", optional: true },
     { id: "invalidResponse", description: "Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", optional: true },
-    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 60000, executeDurability: "async" },
   repeatOnUnknown: "safe",

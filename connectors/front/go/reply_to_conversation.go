@@ -244,8 +244,8 @@ func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, 
 		ReplyToConversationDefinition.Operation.OperationID, message), client.receipt(call, output.ConversationID))
 }
 
-// classifyReplyExchange maps the sent request. Only a definite refusal selects a refusal branch; any
-// other outcome may have been applied, so it resends while the send cap allows.
+// classifyReplyExchange maps the sent request. A 2xx is never resent, and only a definite refusal selects
+// a refusal branch; any other outcome may have been applied, so it resends while the send cap allows.
 func (client *Client) classifyReplyExchange(call sdkgo.Call, output ConversationReply, result frontExchange, credentials Credentials, permit replySendPermit) sdkgo.MutationAttempt[ConversationReply] {
 	receipt := client.receipt(call, output.ConversationID)
 	if result.response.statusCode >= 200 && result.response.statusCode < 300 {
@@ -256,19 +256,25 @@ func (client *Client) classifyReplyExchange(call sdkgo.Call, output Conversation
 			if kind == "" {
 				kind = sdkgo.FailureProtocol
 			}
-			// Without a provider ID the answer cannot be read back, so it counts as an unknown outcome.
-			return client.resendOrSelectUncertain(call, output, permit, frontFailure(kind,
-				ReplyToConversationDefinition.Operation.OperationID, "Front answered the reply or comment without a usable provider ID"), 0)
+			// A 2xx means Front accepted the write; without an ID nothing can confirm it, so it is never resent.
+			return sdkgo.NewMutationUncertain(output, frontFailure(kind, ReplyToConversationDefinition.Operation.OperationID,
+				"Front accepted the reply or comment but answered without a usable provider ID; it is not resent"), receipt)
 		}
 		_ = permit.fence.RecordProviderID(providerID) // Acceptance is already known if this extra checkpoint fails.
 		receipt.ProviderObjectID = providerID
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt)
 	}
+	if result.isErrorBodyUnreadable && (result.outcome == exchangeRejected || result.outcome == exchangeNotFound || result.outcome == exchangeMerged) {
+		// An unreadable refusal body cannot rule out acceptance, so the outcome is unknown.
+		failure := result.failure
+		failure.Message += "; its error body could not be read, so the reply or comment may exist"
+		return client.resendOrSelectUncertain(call, output, permit, failure, 0)
+	}
 	switch result.outcome {
 	case exchangeDefect:
 		if !permit.isFirstSend {
-			// defect would hide an earlier possible send.
-			return client.resendOrSelectUncertain(call, output, permit, result.failure, 0)
+			// A local request failure repeats, and defect would hide an earlier possible send.
+			return sdkgo.NewMutationUncertain(output, result.failure, receipt)
 		}
 		return client.rejectReply(call, output, permit, ReplyToConversationBranchDefect, result.failure)
 	case exchangeNotSent, exchangeRateLimited:

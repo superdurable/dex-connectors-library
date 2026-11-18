@@ -104,6 +104,9 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
     const zero = zeroUpdate();
     try { validateUpdate(input); } catch (error) { return mutationFailure(this.client, 'updateConversation', 'defect', zero, {}, 'VALIDATION', errorMessage(error)); }
     const selected = await this.client.resolveToken(call);
+    if (!('token' in selected) && !selected.terminal) return newMutationRetry(fail(this.client, 'updateConversation', 'AVAILABILITY', 'Front credentials were temporarily unavailable; nothing was written in this attempt'));
+    // defect would hide writes an earlier attempt may have sent; repeating them after reconnection is safe.
+    if (!('token' in selected) && call.context.attempt > 1) return newMutationRetry(fail(this.client, 'updateConversation', 'AUTHENTICATION', 'Reconnect the Front connection; an earlier attempt may have written some changes'));
     if (!('token' in selected)) return newMutationBranch('defect', zero, {}, selected.failure);
     const path = `/conversations/${input.conversationId}`;
     const receipt = this.client.receipt(call, input.conversationId);
@@ -122,6 +125,8 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
     const writes = planWrites(input, initial.conversation, path);
     for (let index = 0; index < writes.length; index++) {
       const result = await this.client.exchange(call, selected.token, 'updateConversation', writes[index]!);
+      // An unreadable refusal body cannot rule out the write, and repeating it is safe.
+      if (result.isErrorBodyUnreadable && !isRetry(result)) return newMutationRetry(result.failure!, result.retryAfterMs);
       if (result.outcome === 'notFound') result.outcome = 'rejected';
       // Every write sets a final value, so an unknown outcome repeats it.
       if (result.outcome === 'invalid' || (result.outcome === 'rejected' && !definiteRefusalStatuses.has(result.response?.status ?? 0))) return newMutationRetry(result.failure!, result.retryAfterMs);
@@ -193,12 +198,16 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
       let identity = '';
       try { const answer = decode(result.response.body); identity = string(output.isInternalNote ? answer.id : answer.message_uid); }
       catch { /* An answer without a usable ID counts as an unknown outcome. */ }
-      if (!(output.isInternalNote ? identifiers.comment : /^[A-Za-z0-9]{1,64}$/).test(identity)) return this.resendOrUncertain(call, output, permit, fail(this.client, 'replyToConversation', result.failure?.kind ?? 'PROTOCOL', 'Front answered the reply or comment without a usable provider ID'));
+      // A 2xx means Front accepted the write; without an ID nothing can confirm it, so it is never resent.
+      if (!(output.isInternalNote ? identifiers.comment : /^[A-Za-z0-9]{1,64}$/).test(identity)) return this.uncertain(call, output, result.failure?.kind ?? 'PROTOCOL', 'Front accepted the reply or comment but answered without a usable provider ID; it is not resent');
       try { await permit.fence.recordProviderId(identity); } catch { /* Acceptance is already known; failure cannot authorize a resend. */ }
       return newMutationBranch('replied', { ...output, ...(output.isInternalNote ? { commentId: identity } : { messageUid: identity }) }, this.client.receipt(call, identity));
     }
     const status = result.response?.status ?? 0;
-    if (result.outcome === 'defect') return permit.isFirstSend ? this.reject(call, output, permit, 'defect', result.failure!) : this.resendOrUncertain(call, output, permit, result.failure!);
+    // An unreadable refusal body cannot rule out acceptance, so the outcome is unknown.
+    if (result.isErrorBodyUnreadable && (result.outcome === 'rejected' || result.outcome === 'notFound' || result.outcome === 'merged')) return this.resendOrUncertain(call, output, permit, { ...result.failure!, message: `${result.failure!.message}; its error body could not be read, so the reply or comment may exist` });
+    // A local request failure repeats, and defect would hide an earlier possible send.
+    if (result.outcome === 'defect') return permit.isFirstSend ? this.reject(call, output, permit, 'defect', result.failure!) : newMutationUncertain(output, result.failure!, this.client.receipt(call, output.conversationId));
     if (result.outcome === 'notSent' || result.outcome === 'rateLimited' || (result.outcome === 'unconfirmed' && status === 503)) {
       // A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
       try { await permit.fence.recordCanResend(); } catch { /* counted as a possible send */ }

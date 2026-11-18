@@ -226,13 +226,18 @@ returns Retry without sending. A `429`, `503`, or traced DNS/connect/TLS
 failure before a connection was obtained records `canResend` and retries;
 Front's non-application of a `503` remains **unverified against a live
 Front account**. Other unknown outcomes, including `408`, `409`, other `5xx`,
-an unlisted status, transport loss, and a 2xx without a usable provider ID,
+an unlisted status, transport loss, a refusal status whose error body is
+oversized or unreadable, and a request cut off by the fence's write window,
 return Retry so the next attempt resends while fewer sends than the cap may
 have taken effect, which can deliver a duplicate reply; the send that reaches
-the cap selects `uncertain`. A `404` or merged-conversation `301` selects
-`notFound`, and a `400`, `401`, `403`, `411`, `413`, `414`, `415`, or `422`
-selects `providerRejected`; each records `canResend` first. After a possible
-earlier send, any of these refusals selects `uncertain` instead.
+the cap selects `uncertain`. A later attempt counts every earlier possible
+send, also after a `429` or `503` recorded `canResend`. A `404` or
+merged-conversation `301` selects `notFound`, and a `400`, `401`, `403`,
+`411`, `413`, `414`, `415`, or `422` selects `providerRejected`; each records
+`canResend` first. After a possible earlier send, any of these refusals, and
+a local request or credential failure that requires reconnection, selects
+`uncertain` instead; a transient credential failure then Retries without
+recording anything.
 
 The fence bounds each request to 7/12 of the smaller of the 30-second Execute
 timeout and the remaining Step deadline, and refuses a send without one tenth
@@ -257,6 +262,9 @@ remains unverified with a live Front account. If that `404` persists, the
 five-attempt/five-minute retry budget expires and the Flow fails without
 another POST. A lost answer without an ID cannot be read back, because content
 and author are not unique identifiers, so it is resent within the send cap.
+A 2xx answer means Front accepted the write, so it is never resent: when its
+body is malformed, oversized, reflects the token, breaks while being read, or
+carries no usable provider ID, the reply selects `uncertain` at once.
 
 Every in-flight reply retry from v0.21.x has an untrusted checkpoint, so it
 returns Retry without sending until its retry budget expires. Reconcile those
@@ -389,11 +397,12 @@ Failure names only the HTTP status.
 | other 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for an `updateConversation` write; resend within the send cap for `replyToConversation`; redirects are never followed |
 | 429 | Retry after `Retry-After` seconds, capped at an hour; without it, at the `X-Ratelimit-Reset` second, one second to a minute later |
 | 408, 5xx, transport failure | Retry for reads and repeat-safe writes; `replyToConversation` Retries a 503 or provably unsent failure and resends other unknown outcomes within the send cap, then selects `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `replyToConversation` resends within the send cap when no provider ID decodes, then selects `uncertain`; `updateConversation` selects `invalidResponse` only for its read before any write and otherwise Retries; reads select `invalidResponse` |
+| oversized, malformed, unreadable, or credential-reflecting 2xx | `replyToConversation` selects `uncertain` without resending when no provider ID decodes; `updateConversation` selects `invalidResponse` only for its read before any write and otherwise Retries; reads select `invalidResponse` |
+| refusal status with an oversized or unreadable error body | Reads use the status; `updateConversation` Retries a write; `replyToConversation` resends within the send cap, then selects `uncertain` |
 | unreadable or foreign fence checkpoint | Retry without sending for `replyToConversation` |
 | invalid input | `defect`, with no request |
-| transient credential resolution failure | Before sending, `replyToConversation` records not-sent and Retries; during accepted-write read-back, it Retries without another POST. Other operations select `defect` |
-| reauthorization required or unusable resolved token | Before sending, `replyToConversation` records not-sent and selects `defect`; during accepted-write read-back, it selects `uncertain` with the saved provider ID and reconnect guidance. Other operations select `defect` |
+| transient credential resolution failure | Before a first send, `replyToConversation` records not-sent and Retries; after a possible earlier send or during accepted-write read-back, it Retries without recording or sending. `updateConversation` Retries; queries select `defect` |
+| reauthorization required or unusable resolved token | Before a first send, `replyToConversation` records not-sent and selects `defect`; after a possible earlier send, it selects `uncertain`; during accepted-write read-back, it selects `uncertain` with the saved provider ID and reconnect guidance. `updateConversation` selects `defect` on its first attempt and Retries on later ones, which may follow earlier writes; queries select `defect` |
 
 Front's rate limit is per company: 50, 100, or 200 requests a minute on the
 Starter, Professional, and Enterprise plans, plus a burst allowance. Per

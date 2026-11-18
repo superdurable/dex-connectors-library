@@ -186,8 +186,8 @@ spec:
         - {id: replied, goName: Replied, description: "Front accepted the reply for delivery or created the comment."}
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a 2xx without a provider ID, or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection credentials that require reauthorization or are unusable before a first send, or the connector definition is invalid; transient credential failures Retry.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
@@ -219,7 +219,7 @@ spec:
         - {id: notFound, goName: NotFound, description: "The conversation does not exist, was merged, or is not visible to the API token.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Front returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", optional: true}
       execution:
         executeMethodTimeout: 60s
         durability: async

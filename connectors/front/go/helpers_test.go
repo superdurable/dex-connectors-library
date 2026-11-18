@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -167,6 +168,12 @@ func writeJSON(t *testing.T, response http.ResponseWriter, status int, body stri
 	response.WriteHeader(status)
 	_, err := io.WriteString(response, body)
 	require.NoError(t, err)
+}
+
+// writeOversizedRefusal answers 400 with a body above the error limit; the client may hang up mid-write.
+func writeOversizedRefusal(response http.ResponseWriter) {
+	response.WriteHeader(http.StatusBadRequest)
+	_, _ = io.WriteString(response, `{"_error":"`+strings.Repeat("x", 128<<10)+`"}`) // The client stops reading at its limit.
 }
 
 // writeFrontError answers with Front's _error envelope, whose message the connector must never repeat.

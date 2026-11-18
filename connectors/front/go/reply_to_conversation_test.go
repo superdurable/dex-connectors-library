@@ -582,25 +582,84 @@ func TestReplyToConversationFenceCountsAStaleCanResendTowardTheCap(t *testing.T)
 	require.Equal(t, 3, provider.requestCount())
 }
 
-func TestReplyToConversationAnswerWithoutProviderIDIsResentBelowTheCap(t *testing.T) {
-	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, index int) {
-		if index == 0 {
-			writeJSON(t, response, http.StatusAccepted, `{"status":"accepted"}`)
-			return
-		}
-		writeJSON(t, response, http.StatusAccepted, `{"status":"accepted","message_uid":"1eab543f84a0785f7b6b8967cck18f4d"}`)
+func TestReplyToConversationAcceptedAnswerWithoutProviderIDIsNeverResent(t *testing.T) {
+	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusAccepted, `{"status":"accepted"}`)
 	})
-	dexContext := singledispatchtest.NewContext("front-flow", "lost-claim")
+	dexContext := singledispatchtest.NewContext("front-flow", "accepted-without-id")
+	result, err := sdkgo.RunMutation(dexContext, newFrontClient(t, provider.URL).ReplyToConversation(), frontConnection,
+		front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"})
+	require.NoError(t, err)
+	require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch, "a 2xx accepted the reply even without a provider ID")
+	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestReplyToConversationResendAfterCanResendStillCountsTheEarlierSend(t *testing.T) {
+	statuses := []int{http.StatusInternalServerError, http.StatusTooManyRequests, http.StatusBadRequest}
+	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		writeFrontError(t, response, statuses[index])
+	})
+	dexContext := singledispatchtest.NewContext("front-flow", "can-resend-after-unknown")
 	client := newFrontClient(t, provider.URL)
 	input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"}
-	_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "an answer without a provider ID cannot be read back")
-	dexContext.AdvanceAttempt()
+	for range 2 {
+		_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+		dexContext.AdvanceAttempt()
+	}
 	result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, front.ReplyToConversationBranchReplied, result.Branch)
-	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch, "the 429 recorded canResend, but the first send may have delivered")
+	require.Equal(t, 3, provider.requestCount())
+}
+
+func TestReplyToConversationCredentialFailureAfterAPossibleSendNeverSelectsDefect(t *testing.T) {
+	for name, test := range map[string]struct {
+		failure     error
+		isUncertain bool
+	}{
+		"reauthorization required": {failure: sdkgo.ErrReauthorizationRequired, isUncertain: true},
+		"broker unavailable":       {failure: projectconfig.ErrCredentialBrokerUnavailable},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeFrontError(t, response, http.StatusBadGateway)
+			})
+			dexContext := singledispatchtest.NewContext("front-flow", "credential-after-send-"+name)
+			input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"}
+			_, err := sdkgo.RunMutation(dexContext, newFrontClient(t, provider.URL).ReplyToConversation(), frontConnection, input)
+			require.Error(t, err)
+			heartbeatCount := len(dexContext.Heartbeats())
+			dexContext.AdvanceAttempt()
+			client, err := front.New(front.Config{}, failingFrontCredentials{failure: test.failure}, front.WithAPIBaseURL(provider.URL))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+			if test.isUncertain {
+				require.NoError(t, err)
+				require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Len(t, dexContext.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible send")
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
+}
+
+func TestReplyToConversationUnreadableRefusalBodyIsAnUnknownOutcome(t *testing.T) {
+	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeOversizedRefusal(response)
+	})
+	dexContext := singledispatchtest.NewContext("front-flow", "oversized-refusal")
+	_, err := sdkgo.RunMutation(dexContext, newFrontClient(t, provider.URL).ReplyToConversation(), frontConnection,
+		front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an oversized 400 body cannot prove the reply was refused")
+	frames := dexContext.Heartbeats()
+	require.Equal(t, singledispatch.StateClaimed, decodeRecordedMarker(t, frames[len(frames)-1]).State)
 }
 
 func TestReplyToConversationFenceRetriesReadBackFailureWithoutResending(t *testing.T) {
@@ -695,26 +754,7 @@ func TestReplyToConversationFenceSelectsUncertainWhenReadBackCannotConfirm(t *te
 	require.Equal(t, http.MethodGet, provider.request(1).method)
 }
 
-func TestReplyToConversationAcceptedWithoutIDSelectsUncertainAtTheCap(t *testing.T) {
-	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusAccepted, `{"status":"accepted"}`)
-	})
-	dexContext := singledispatchtest.NewContext("front-flow", "accepted-without-id")
-	client := newFrontClient(t, provider.URL)
-	input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"}
-	for range 2 {
-		_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
-		require.Error(t, err)
-		dexContext.AdvanceAttempt()
-	}
-	result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
-	require.Equal(t, 3, provider.requestCount())
-}
-
-func TestReplyToConversationUnusableAcceptedBodyIsResentBelowTheCap(t *testing.T) {
+func TestReplyToConversationUnusableAcceptedBodyIsNeverResent(t *testing.T) {
 	for name, test := range map[string]struct {
 		body             string
 		maxResponseBytes int64
@@ -722,19 +762,27 @@ func TestReplyToConversationUnusableAcceptedBodyIsResentBelowTheCap(t *testing.T
 	}{
 		"unparsable": {body: "{invalid", failureKind: sdkgo.FailureProtocol},
 		"oversized":  {body: `{"status":"accepted"}`, maxResponseBytes: 8, failureKind: sdkgo.FailureResponseTooLarge},
+		"broken":     {failureKind: sdkgo.FailureTransport},
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				if test.body == "" {
+					// The 2xx headers arrive, then the body breaks before its declared length.
+					response.Header().Set("Content-Length", "64")
+					response.WriteHeader(http.StatusAccepted)
+					_, _ = response.Write([]byte(`{"status":`))
+					return
+				}
 				writeJSON(t, response, http.StatusAccepted, test.body)
 			})
 			client, err := front.New(front.Config{MaxResponseBytes: test.maxResponseBytes}, testCredentialProvider(), front.WithAPIBaseURL(provider.URL))
 			require.NoError(t, err)
 			dexContext := singledispatchtest.NewContext("front-flow", "unusable-"+name)
 			input := front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"}
-			_, err = sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
-			var retry *sdkgo.RetryError
-			require.ErrorAs(t, err, &retry, "an unusable body has no provider ID to read back")
-			require.Equal(t, test.failureKind, retry.Failure.Kind)
+			result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
+			require.NoError(t, err)
+			require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch, "a 2xx accepted the reply, so it is never resent")
+			require.Equal(t, test.failureKind, result.Failure.Kind)
 			require.Equal(t, 1, provider.requestCount())
 		})
 	}

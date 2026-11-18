@@ -77,7 +77,16 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	if err := validateUpdateConversationInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateConversationBranchDefect, output, frontFailurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := client.resolveCredentials(call, operationID)
+	credentials, failure, credentialError := client.resolveCredentialsWithCause(call, operationID)
+	if failure != nil && !isTerminalCredentialFailure(credentialError) {
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](frontFailure(sdkgo.FailureAvailability, operationID,
+			"Front credentials were temporarily unavailable; nothing was written in this attempt"), 0)
+	}
+	if failure != nil && call.Context.Attempt() > 1 {
+		// defect would hide writes an earlier attempt may have sent; repeating them after reconnection is safe.
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](frontFailure(sdkgo.FailureAuthentication, operationID,
+			"Reconnect the Front connection; an earlier attempt may have written some changes"), 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateConversationBranchDefect, output, failure, sdkgo.Receipt{})
 	}
@@ -90,6 +99,10 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	writes := planConversationWrites(input, current, conversationPath)
 	for index, write := range writes {
 		result := client.exchange(call.Context, credentials, operationID, write)
+		if result.isErrorBodyUnreadable && !result.isRetryable() {
+			// An unreadable refusal body cannot rule out the write, and repeating it is safe.
+			return sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter)
+		}
 		if result.outcome == exchangeNotFound {
 			// The read just found the conversation, so a 404 most likely names an unknown teammate, tag, or status.
 			result.outcome = exchangeRejected
