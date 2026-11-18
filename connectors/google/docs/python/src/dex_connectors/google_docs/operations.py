@@ -139,7 +139,15 @@ class GetDocumentTextOperation:
                     "documentId must be a Google Docs document ID and format must be markdown or plainText",
                 ),
             )
-        credential = await self.client.credential(call)
+        credential, is_credential_failure_retryable = await self.client.write_credential(call)
+        if credential is None and is_credential_failure_retryable:
+            return QueryAttempt.retry(
+                failure(
+                    "getDocumentText",
+                    FailureKind.AUTHENTICATION,
+                    "connection credentials are temporarily unavailable",
+                )
+            )
         if credential is None:
             return QueryAttempt.branch_result(
                 "defect",

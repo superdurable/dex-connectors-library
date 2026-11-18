@@ -3,6 +3,7 @@
 
 import { SecretString, ReauthorizationRequiredError, resolveCredential, type Call, type CredentialProvider, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials } from './generated/models.js';
@@ -60,7 +61,7 @@ export class ContactsClient {
       if (!token || !isHeaderSafeCredential(token)) return { token: '', error: 'credential' };
       return { token };
     } catch (error) {
-      return { token: '', error: error instanceof ReauthorizationRequiredError ? 'credential' : 'refresh' };
+      return { token: '', error: isTerminalCredentialError(error) ? 'credential' : 'refresh' };
     }
   }
 
@@ -95,6 +96,12 @@ export class ContactsClient {
     if (Buffer.from(response.body).includes(token)) return { ...failedExchange('credential'), status: response.status, retryAfterMs };
     return { status: response.status, body: response.body, retryAfterMs };
   }
+}
+
+/** Report a resolve failure that only reconnection repairs; any other one is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
 function failedExchange(error: NonNullable<ContactsExchange['error']>): ContactsExchange {

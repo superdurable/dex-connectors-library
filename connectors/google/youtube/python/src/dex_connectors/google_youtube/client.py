@@ -22,7 +22,13 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
 )
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -77,6 +83,13 @@ from .models import (
 )
 from .query_values import encode_query_values
 
+# Resolve failures that only reconnection repairs; any other resolve failure is transient.
+TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 _VIDEO_ID = re.compile(r"[A-Za-z0-9_-]{11}\Z")
 _CHANNEL_ID = re.compile(r"UC[A-Za-z0-9_-]{22}\Z")
 _PLAYLIST_ID = re.compile(r"[A-Za-z0-9_-]{2,64}\Z")
@@ -365,9 +378,7 @@ class Client:
         try:
             credential = await self.credentials.resolve(call)
         except Exception as error:
-            from dex_connectors.sdk import ReauthorizationRequiredError
-
-            if isinstance(error, ReauthorizationRequiredError):
+            if isinstance(error, TERMINAL_CREDENTIAL_ERRORS):
                 failure = _failure(
                     operation, FailureKind.AUTHENTICATION, "the YouTube connection must be authorized again"
                 )
@@ -375,10 +386,10 @@ class Client:
             failure = _failure(
                 operation,
                 FailureKind.AUTHENTICATION,
-                "YouTube connection credentials are unavailable or invalid",
+                "YouTube connection credentials are temporarily unavailable",
             )
             return b"", _empty_receipt(), _Outcome(
-                "defect", failure, _empty_receipt(), is_transient_credential_failure=True
+                "retry", failure, _empty_receipt(), is_transient_credential_failure=True
             )
         token = credential.access_token.reveal() if credential.access_token is not None else ""
         if not is_header_safe_credential(token):
@@ -502,9 +513,7 @@ class Client:
                     )
                     return b"", _empty_receipt(), _Outcome("defect", failure, _empty_receipt())
                 except Exception as error:
-                    from dex_connectors.sdk import ReauthorizationRequiredError
-
-                    if isinstance(error, ReauthorizationRequiredError):
+                    if isinstance(error, TERMINAL_CREDENTIAL_ERRORS):
                         failure = _failure(
                             operation,
                             FailureKind.AUTHENTICATION,
@@ -514,10 +523,10 @@ class Client:
                     failure = _failure(
                         operation,
                         FailureKind.AUTHENTICATION,
-                        "YouTube connection credentials are unavailable or invalid",
+                        "YouTube connection credentials are temporarily unavailable",
                     )
                     return b"", _empty_receipt(), _Outcome(
-                        "defect", failure, _empty_receipt(), is_transient_credential_failure=True
+                        "retry", failure, _empty_receipt(), is_transient_credential_failure=True
                     )
             break
         receipt = self._receipt(call, object_id, response.headers)
@@ -1151,6 +1160,18 @@ class AddPlaylistItemOperation:
             write_fence=fence,
         )
         if outcome is not None:
+            if outcome.is_transient_credential_failure:
+                # A 401 or an unstarted insert changed nothing, and the next attempt lists first.
+                if decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send:
+                    try:
+                        await fence.record_not_sent()
+                    except Exception:
+                        pass  # After a dispatched 401 the Fence refuses notSent; canResend below covers it.
+                try:
+                    await fence.record_can_resend()
+                except Exception:
+                    pass  # Before dispatch the Fence refuses canResend; a lost marker only overcounts.
+                return MutationAttempt.retry(outcome.failure)
             if outcome.disposition == "retry":
                 # The insert was not started, so the fence counts no send for this attempt.
                 return MutationAttempt.retry(outcome.failure, outcome.retry_after)
@@ -1168,18 +1189,6 @@ class AddPlaylistItemOperation:
                 return await self._confirm_accepted_insert(
                     call, fence, list_input, query, outcome.failure, _inserted_item_id(body)
                 )
-            if outcome.is_transient_credential_failure:
-                # A 401 or an unstarted insert changed nothing, and the next attempt lists first.
-                if decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send:
-                    try:
-                        await fence.record_not_sent()
-                    except Exception:
-                        pass  # After a dispatched 401 the Fence refuses notSent; canResend below covers it.
-                try:
-                    await fence.record_can_resend()
-                except Exception:
-                    pass  # Before dispatch the Fence refuses canResend; a lost marker only overcounts.
-                return MutationAttempt.retry(outcome.failure)
             if not has_possible_earlier_send:
                 try:
                     await fence.record_can_resend()

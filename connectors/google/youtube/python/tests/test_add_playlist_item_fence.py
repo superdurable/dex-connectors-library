@@ -9,6 +9,13 @@ from pathlib import Path
 
 import dex_connectors.sdk as sdk
 import httpx
+import pytest
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.google_youtube as youtube
@@ -71,12 +78,13 @@ async def test_ambiguous_resend_after_refresh_counts_toward_the_send_cap() -> No
 class StaticManageCredentials:
     """Authorize the manage method until is_unavailable is set."""
 
-    def __init__(self) -> None:
+    def __init__(self, error: Exception | None = None) -> None:
         self.is_unavailable = False
+        self.error = error or RuntimeError("credential store unavailable")
 
     async def resolve(self, call: sdk.Call) -> youtube.Credentials:
         if self.is_unavailable:
-            raise RuntimeError("credential store unavailable")
+            raise self.error
         return youtube.Credentials("google-oauth-manage", access_token=sdk.SecretString("youtube-token"))
 
 
@@ -285,6 +293,50 @@ async def test_transient_credential_failure_after_possible_insert_retries() -> N
         )
         second = await client.add_playlist_item().invoke(call, input_value)
     assert second.kind == "retry"
+    assert inserts == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (sdk.ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+    ],
+)
+async def test_credential_failures_follow_one_classification(error: Exception, is_terminal: bool) -> None:
+    inserts = 0
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal inserts
+        if request.method == "GET":
+            return httpx.Response(200, json=EMPTY_LISTING)
+        inserts += 1
+        return httpx.Response(500)
+
+    unavailable = StaticManageCredentials(error)
+    unavailable.is_unavailable = True
+    first_send, _ = await run_attempts(answer, 1, unavailable)
+    assert first_send[0].kind == ("branch" if is_terminal else "retry")
+    credentials = StaticManageCredentials(error)
+    first, context = await run_attempts(answer, 1, credentials)
+    assert first[0].kind == "retry"
+    credentials.is_unavailable = True
+    context.attempt = 2
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        config = youtube.Config(endpoint="http://127.0.0.1/youtube/v3")
+        client = youtube.Client(config, credentials, http_client)  # type: ignore[arg-type]
+        call = sdk.Call(
+            sdk.CallID(CALL_ID), CONNECTION, sdk.OperationRef("google-youtube", "addPlaylistItem"),
+            sdk.IdempotencyKey(CALL_ID), context=context, max_sends=3,
+        )
+        later = await client.add_playlist_item().invoke(
+            call, youtube.AddPlaylistItemInput("PLexample123", "dQw4w9WgXcQ")
+        )
+    assert later.kind == ("uncertain" if is_terminal else "retry")
     assert inserts == 1
 
 

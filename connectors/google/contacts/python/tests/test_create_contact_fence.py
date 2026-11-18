@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import pytest
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -14,9 +15,16 @@ from dex_connectors.sdk import (
     CredentialProvider,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     run_mutation,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
 )
 
 from dex_connectors.google_contacts import Client, Config, Contact, CreateContactInput, Credentials
@@ -58,15 +66,16 @@ class AttemptContext:
 class FailingResolutionCredentials(CredentialProvider[Credentials]):
     """Fail one numbered credential resolution transiently."""
 
-    def __init__(self, failed_resolution: int = 0) -> None:
+    def __init__(self, failed_resolution: int = 0, error: Exception | None = None) -> None:
         self.failed_resolution = failed_resolution
+        self.error = error or OSError("credential refresh unavailable")
         self.resolutions = 0
 
     async def resolve(self, call: Call) -> Credentials:
         """Resolve a static token, except on the failed resolution."""
         self.resolutions += 1
         if self.resolutions == self.failed_resolution:
-            raise OSError("credential refresh unavailable")
+            raise self.error
         return Credentials("client-id", SecretString("secret"), SecretString(TOKEN), SecretString("refresh"))
 
 
@@ -82,7 +91,11 @@ Answer = Callable[[httpx.Request], httpx.Response]
 
 
 async def run_attempts(
-    answer: Answer, requests: list[httpx.Request], attempts: int, failed_resolution: int = 0
+    answer: Answer,
+    requests: list[httpx.Request],
+    attempts: int,
+    failed_resolution: int = 0,
+    error: Exception | None = None,
 ) -> MutationResult[Contact] | RetryError:
     """Run attempts that must Retry, then return the final attempt's outcome."""
 
@@ -91,7 +104,7 @@ async def run_attempts(
         return answer(request)
 
     context = AttemptContext()
-    credentials = FailingResolutionCredentials(failed_resolution)
+    credentials = FailingResolutionCredentials(failed_resolution, error)
     outcome: MutationResult[Contact] | RetryError | None = None
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         client = Client(Config(base_url="http://127.0.0.1:12345"), credentials, transport)
@@ -224,3 +237,38 @@ async def test_pre_send_retry_after_a_possible_send_keeps_the_send_count() -> No
     assert isinstance(outcome, MutationResult)
     assert outcome.branch == "uncertain"
     assert posts(requests) == 3
+
+
+CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (ReauthorizationRequiredError(), True),
+    (ObjectNotFoundError(), True),
+    (ConnectionNotSelectedError(), True),
+    (CredentialBrokerRejectedError(), True),
+    (CredentialBrokerUnavailableError(), False),
+    (ValueError("connection is not configured"), False),
+    (RuntimeError("unlisted"), False),
+]
+
+
+@pytest.mark.parametrize(("error", "is_terminal"), CREDENTIAL_FAILURES)
+async def test_credential_failure_on_a_first_send(error: Exception, is_terminal: bool) -> None:
+    """Only a reconnection-only failure selects defect; nothing is sent either way."""
+    requests: list[httpx.Request] = []
+    outcome = await run_attempts(lambda _request: httpx.Response(500), requests, 1, 1, error)
+    if is_terminal:
+        assert isinstance(outcome, MutationResult) and outcome.branch == "defect"
+    else:
+        assert isinstance(outcome, RetryError)
+    assert posts(requests) == 0
+
+
+@pytest.mark.parametrize(("error", "is_terminal"), CREDENTIAL_FAILURES)
+async def test_credential_failure_after_a_possible_send(error: Exception, is_terminal: bool) -> None:
+    """After an unknown send, a terminal failure selects uncertain and a transient one Retries."""
+    requests: list[httpx.Request] = []
+    outcome = await run_attempts(lambda _request: httpx.Response(500), requests, 2, 2, error)
+    if is_terminal:
+        assert isinstance(outcome, MutationResult) and outcome.branch == "uncertain"
+    else:
+        assert isinstance(outcome, RetryError)
+    assert posts(requests) == 1

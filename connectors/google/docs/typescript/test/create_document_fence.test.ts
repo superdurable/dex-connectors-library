@@ -3,6 +3,7 @@
 
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { DocsClient } from '../src/client.js';
 import { HeartbeatContext } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
@@ -91,6 +92,29 @@ it('selects defect for a terminal credential failure before a send and uncertain
   const first = (await runAttempts(noRequest, 1, { provider })).results[0]!;
   expect(first.kind === 'branch' && first.branch).toBe('defect');
   expect((await runAttempts(noRequest, 1, { firstAttempt: 2, provider })).results[0]!.kind).toBe('uncertain');
+});
+
+it.each([
+  { name: 'object not found', failure: new ObjectNotFoundError(), isTerminal: true },
+  { name: 'connection not selected', failure: new ConnectionNotSelectedError(), isTerminal: true },
+  { name: 'broker rejected', failure: new CredentialBrokerRejectedError(), isTerminal: true },
+  { name: 'broker unavailable', failure: new CredentialBrokerUnavailableError(), isTerminal: false },
+  { name: 'static connection not configured', failure: new Error('connection is not configured'), isTerminal: false },
+])('classifies a $name resolve failure before and after a possible send', async ({ failure, isTerminal }) => {
+  const provider = { resolve: async () => { throw failure; } };
+  const lookupOnly = async (request: ProviderRequest): Promise<ProviderResponse> => {
+    if (request.method !== 'GET') throw new Error('no create is expected');
+    return reply(200, emptyLookup);
+  };
+  const first = (await runAttempts(lookupOnly, 1, { provider })).results[0]!;
+  const later = (await runAttempts(lookupOnly, 1, { firstAttempt: 2, provider })).results[0]!;
+  if (isTerminal) {
+    expect(first.kind === 'branch' && first.branch).toBe('defect');
+    expect(later.kind).toBe('uncertain');
+  } else {
+    expect(first.kind).toBe('retry');
+    expect(later.kind).toBe('retry');
+  }
 });
 
 it('reads an accepted create back by the ID its unusable body carries', async () => {

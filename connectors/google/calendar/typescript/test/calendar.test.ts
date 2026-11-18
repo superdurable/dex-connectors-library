@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { CalendarClient, pathEscape } from '../src/client.js';
 import { parseDate, parseInstant, validateEventTimes } from '../src/event.js';
 
@@ -38,5 +39,20 @@ describe('Google-compatible input validation', () => {
     const invalid = await client.createEvent().invoke(call, { ...input, attendees: [{ email: 'a..b@example.com' }] });
     expect(invalid.kind).toBe('branch');
     if (invalid.kind === 'branch') expect(invalid.branch).toBe('defect');
+  });
+});
+
+describe('credential resolve failures', () => {
+  it.each([
+    { name: 'reauthorization', failure: new ReauthorizationRequiredError(), isTerminal: true },
+    { name: 'object not found', failure: new ObjectNotFoundError(), isTerminal: true },
+    { name: 'connection not selected', failure: new ConnectionNotSelectedError(), isTerminal: true },
+    { name: 'broker rejected', failure: new CredentialBrokerRejectedError(), isTerminal: true },
+    { name: 'broker unavailable', failure: new CredentialBrokerUnavailableError(), isTerminal: false },
+    { name: 'static connection not configured', failure: new Error('connection is not configured'), isTerminal: false },
+  ])('selects defect only for a terminal $name failure', async ({ failure, isTerminal }) => {
+    const client = new CalendarClient({}, { resolve: async () => { throw failure; } } as never, { send: async () => { throw new Error('unexpected provider call'); } });
+    const result = await client.createEvent().invoke(call, input);
+    expect(result).toMatchObject(isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry' });
   });
 });

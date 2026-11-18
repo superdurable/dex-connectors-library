@@ -58,7 +58,7 @@ func (operation UploadObjectOperation) Invoke(call sdkgo.Call, input UploadObjec
 		return uploadFailure(UploadObjectBranchDefect, sdkgo.FailureValidation, "object content is invalid or too large")
 	}
 	credentials, err := sdkgo.ResolveCredential(call.Context, operation.client.credentials, call, operation.client.refreshDriver)
-	if sdkgo.IsReauthorizationRequired(err) {
+	if isTerminalCredentialError(err) {
 		return uploadFailure(UploadObjectBranchDefect, sdkgo.FailureAuthentication, "connection requires reauthorization")
 	}
 	if err != nil {

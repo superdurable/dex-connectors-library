@@ -12,6 +12,13 @@ from typing import Any
 
 import dex_connectors.sdk as sdk
 import httpx
+import pytest
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import MAX_ERROR_BODY_BYTES
 
 import dex_connectors.google_docs as docs
@@ -189,6 +196,36 @@ async def test_terminal_credential_failure_is_defect_before_a_send_and_uncertain
     assert first[0].kind == "branch" and first[0].branch == "defect"
     later, _ = await run_attempts(answer, 1, revoked, first_attempt=2)
     assert later[0].kind == "uncertain"
+
+
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (sdk.ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_credential_resolve_failures_follow_one_classification(
+    error: Exception, is_terminal: bool
+) -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            raise AssertionError("no create is expected")
+        return httpx.Response(200, json=EMPTY_LOOKUP)
+
+    credentials = FailingCredentials(error)
+    first, _ = await run_attempts(answer, 1, credentials)
+    later, _ = await run_attempts(answer, 1, credentials, first_attempt=2)
+    if is_terminal:
+        assert first[0].kind == "branch" and first[0].branch == "defect"
+        assert later[0].kind == "uncertain"
+    else:
+        assert first[0].kind == "retry" and later[0].kind == "retry"
 
 
 async def test_accepted_body_with_an_id_is_read_back_by_id() -> None:

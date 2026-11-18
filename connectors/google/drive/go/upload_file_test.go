@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/google/drive/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -623,7 +624,8 @@ func TestUploadFileUnusableSuccessAndTransientReadBackRetriesWithGETOnly(t *test
 }
 
 type uploadRefreshingCredentialProvider struct {
-	refreshed bool
+	refreshed  bool
+	refreshErr error
 }
 
 func (provider *uploadRefreshingCredentialProvider) Resolve(sdkgo.Call) (drive.Credentials, error) {
@@ -638,6 +640,9 @@ func (provider *uploadRefreshingCredentialProvider) ResolveWithRefresh(_ context
 }
 
 func (provider *uploadRefreshingCredentialProvider) ResolveAfterRejection(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[drive.Credentials]) (drive.Credentials, error) {
+	if provider.refreshErr != nil {
+		return drive.Credentials{}, provider.refreshErr
+	}
 	provider.refreshed = true
 	return provider.Resolve(call)
 }
@@ -660,6 +665,34 @@ func TestUploadFile401RefreshesThenRetriesWithOneMorePOST(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
 	require.Equal(t, 2, provider.uploadCount())
+}
+
+func TestUploadFile401RefreshFailureRetriesUnlessTerminal(t *testing.T) {
+	for _, test := range []struct {
+		err        error
+		isTerminal bool
+	}{
+		{err: projectconfig.ErrCredentialBrokerUnavailable},
+		{err: errors.New("token endpoint unavailable")},
+		{err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		{err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+	} {
+		t.Run(test.err.Error(), func(t *testing.T) {
+			provider := newUploadDrive(t, uploadRejectsWith401)
+			client, err := drive.New(drive.Config{Endpoint: provider.fake.URL}, &uploadRefreshingCredentialProvider{refreshErr: test.err})
+			require.NoError(t, err)
+			input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("drive-flow", "upload-401-refresh-failure"), client.UploadFile(), driveConnection, input)
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, drive.UploadFileBranchProviderRejected, result.Branch)
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Equal(t, 1, provider.uploadCount())
+		})
+	}
 }
 
 func TestUploadFile401WithoutRefreshIsProviderRejected(t *testing.T) {

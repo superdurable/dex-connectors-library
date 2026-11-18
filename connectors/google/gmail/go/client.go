@@ -222,8 +222,8 @@ var errInvalidResolvedCredentials = errors.New("Gmail credential material is inv
 
 // isPermanentCredentialFailure reports a failure that needs reconnection rather than a retry.
 func isPermanentCredentialFailure(err error) bool {
-	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, errInvalidResolvedCredentials) ||
-		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, errInvalidResolvedCredentials) || errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
 		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 

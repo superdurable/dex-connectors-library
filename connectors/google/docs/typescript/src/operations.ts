@@ -30,7 +30,10 @@ export class GetDocumentTextOperation implements Query<GetDocumentTextInput, Get
     if (!isDriveID(input.documentId) || !['markdown', 'plainText'].includes(format)) return newQueryBranch('defect', zeroRead, {}, docsFailure('getDocumentText', 'VALIDATION', 'documentId must be a Google Docs document ID and format must be markdown or plainText'));
     let credentials: Credentials;
     try { credentials = await this.client.resolveCredentials(call); }
-    catch { return newQueryBranch('defect', zeroRead, {}, docsFailure('getDocumentText', 'AUTHENTICATION', 'connection credentials are unavailable')); }
+    catch (error) {
+      if (!(error instanceof ReauthorizationRequiredError)) return newQueryRetry(docsFailure('getDocumentText', 'AUTHENTICATION', 'connection credentials are temporarily unavailable'));
+      return newQueryBranch('defect', zeroRead, {}, docsFailure('getDocumentText', 'AUTHENTICATION', 'connection credentials are unavailable'));
+    }
     const url = documentURL(this.client, input.documentId, 'PREVIEW_WITHOUT_SUGGESTIONS', readFields);
     const read = await sendRead(this.client, call, credentials, 'getDocumentText', url, 'tooLarge', 'notFound', zeroRead);
     if ('attempt' in read) return read.attempt;
@@ -422,7 +425,7 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
   if (response?.status === 401 && !response.isErrorBodyTooLarge) {
     try { await client.refreshCredentialsAfterRejection(call); }
     catch (error) {
-      if (error instanceof ReauthorizationRequiredError || error instanceof TypeError) return rejectOrSelectUncertain('providerRejected', 'AUTHENTICATION', 'provider rejected the create credential', receipt);
+      if (error instanceof ReauthorizationRequiredError) return rejectOrSelectUncertain('providerRejected', 'AUTHENTICATION', 'provider rejected the create credential', receipt);
       // Google refuses an unauthenticated create before processing it, so a transient refresh failure retries.
       try { await fence.recordCanResend(); }
       catch { /* A lost canResend marker makes the next attempt count this send. */ }

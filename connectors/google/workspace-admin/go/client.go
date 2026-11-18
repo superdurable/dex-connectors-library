@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -246,12 +247,24 @@ func (client *Client) RemoveUserFromGroup() RemoveUserFromGroupOperation {
 	return RemoveUserFromGroupOperation{client: client}
 }
 
-func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (Credentials, *sdkgo.Failure) {
+// resolveCredential resolves the call's credential. isRetryable reports a transient failure that
+// needs no reconnection.
+func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credential) != nil {
-		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable")
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are temporarily unavailable"), true
 	}
-	return credential, nil
+	if err != nil || validateResolvedCredentials(credential) != nil {
+		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable"), false
+	}
+	return credential, nil, false
+}
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // readUser performs one users.get request; an undecodable account becomes an invalid-response exchange.

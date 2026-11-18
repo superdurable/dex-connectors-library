@@ -37,7 +37,10 @@ func (operation GetFileOperation) Invoke(call sdkgo.Call, input GetFileInput) sd
 	if !isDriveID(input.FileID) {
 		return sdkgo.NewQueryBranch(GetFileBranchDefect, File{}, driveFailurePointer(sdkgo.FailureValidation, getFileOperationID, "fileId must be a Drive file ID"), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, getFileOperationID)
+	credential, failure, isCredentialFailureRetryable := client.resolveCredential(call, getFileOperationID)
+	if failure != nil && isCredentialFailureRetryable {
+		return sdkgo.NewQueryRetry[File](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetFileBranchDefect, File{}, failure, sdkgo.Receipt{})
 	}

@@ -6,6 +6,7 @@ package spreadsheet_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -176,13 +178,46 @@ func TestGetValuesRejectsMalformedRetryAfter(t *testing.T) {
 	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
 }
 
-func TestGetValuesMissingConnectionUsesDefectBranch(t *testing.T) {
-	client, err := spreadsheet.New(spreadsheet.Config{}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{})
-	require.NoError(t, err)
-	result, err := sdkgo.RunQuery(newDexContext("missing-connection"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
-	require.NoError(t, err)
-	require.Equal(t, spreadsheet.GetValuesBranchDefect, result.Branch)
-	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
+// resolveErrorCredentials fails every resolution with one error.
+type resolveErrorCredentials struct{ err error }
+
+func (credentials resolveErrorCredentials) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
+	return spreadsheet.Credentials{}, credentials.err
+}
+
+func (credentials resolveErrorCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[spreadsheet.Credentials]) (spreadsheet.Credentials, error) {
+	return spreadsheet.Credentials{}, credentials.err
+}
+
+func TestGetValuesCredentialFailuresRetryUnlessTerminal(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		source     spreadsheet.CredentialSource
+		isTerminal bool
+	}{
+		{name: "unconfigured static connection", source: sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{}},
+		{name: "broker unavailable", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerUnavailable}},
+		{name: "unlisted", source: resolveErrorCredentials{err: errors.New("unlisted resolve failure")}},
+		{name: "reauthorization", source: resolveErrorCredentials{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))}, isTerminal: true},
+		{name: "project reauthorization", source: resolveErrorCredentials{err: projectconfig.ErrReauthorizationRequired}, isTerminal: true},
+		{name: "object not found", source: resolveErrorCredentials{err: projectconfig.ErrObjectNotFound}, isTerminal: true},
+		{name: "connection not selected", source: resolveErrorCredentials{err: projectconfig.ErrConnectionNotSelected}, isTerminal: true},
+		{name: "broker rejected", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerRejected}, isTerminal: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			client, err := spreadsheet.New(spreadsheet.Config{}, test.source)
+			require.NoError(t, err)
+			result, err := sdkgo.RunQuery(newDexContext("credentials-"+test.name), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, spreadsheet.GetValuesBranchDefect, result.Branch)
+				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
 }
 
 func TestGetValuesRejectsOversizedResponseWithoutRetry(t *testing.T) {

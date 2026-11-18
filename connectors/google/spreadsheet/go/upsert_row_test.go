@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
@@ -197,6 +198,8 @@ func TestUpsertUnauthorizedRefreshFailureExplainsCredentialRecovery(t *testing.T
 	}{
 		{name: "append terminal", rows: [][]string{{"accountId", "name"}}, refreshError: sdkgo.NewReauthorizationRequiredError(errors.New("consent revoked")), wantMessage: "reconnect"},
 		{name: "append transient", rows: [][]string{{"accountId", "name"}}, refreshError: errors.New("token endpoint unavailable"), wantMessage: "temporarily unavailable"},
+		{name: "append broker rejected", rows: [][]string{{"accountId", "name"}}, refreshError: projectconfig.ErrCredentialBrokerRejected, wantMessage: "reconnect"},
+		{name: "append broker unavailable", rows: [][]string{{"accountId", "name"}}, refreshError: projectconfig.ErrCredentialBrokerUnavailable, wantMessage: "temporarily unavailable"},
 		{name: "replacement terminal", rows: [][]string{{"accountId", "name"}, {"a-1", "Old"}}, refreshError: sdkgo.NewReauthorizationRequiredError(errors.New("consent revoked")), wantMessage: "reconnect"},
 		{name: "replacement transient", rows: [][]string{{"accountId", "name"}, {"a-1", "Old"}}, refreshError: errors.New("token endpoint unavailable"), wantMessage: "temporarily unavailable"},
 	} {
@@ -564,7 +567,12 @@ func TestUpsertClaimedAppendCredentialFailureNeverReportsDefectOrResends(t *test
 		uncertain bool
 	}{
 		{name: "terminal", failure: sdkgo.NewReauthorizationRequiredError(errors.New("reauthorization required")), uncertain: true},
+		{name: "project reauthorization", failure: projectconfig.ErrReauthorizationRequired, uncertain: true},
+		{name: "object not found", failure: projectconfig.ErrObjectNotFound, uncertain: true},
+		{name: "connection not selected", failure: projectconfig.ErrConnectionNotSelected, uncertain: true},
+		{name: "broker rejected", failure: projectconfig.ErrCredentialBrokerRejected, uncertain: true},
 		{name: "transient", failure: errors.New("credential refresh unavailable")},
+		{name: "broker unavailable", failure: projectconfig.ErrCredentialBrokerUnavailable},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			rows := [][]string{{"accountId", "name"}}

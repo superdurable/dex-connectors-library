@@ -198,7 +198,9 @@ class GetValuesOperation:
                 Receipt(),
                 failure(operation, FailureKind.VALIDATION, "spreadsheet ID and range are required"),
             )
-        credential, credential_failure, _ = await self.client.resolve(call, operation)
+        credential, credential_failure, is_terminal = await self.client.resolve(call, operation)
+        if credential_failure is not None and not is_terminal:
+            return QueryAttempt.retry(credential_failure)
         if credential_failure is not None or credential is None:
             return QueryAttempt.branch_result("defect", empty, Receipt(), credential_failure)
         try:
@@ -292,7 +294,9 @@ class FindRowOperation:
                     "spreadsheet ID, sheet name, key column, and key value are required",
                 ),
             )
-        credential, credential_failure, _ = await self.client.resolve(call, operation)
+        credential, credential_failure, is_terminal = await self.client.resolve(call, operation)
+        if credential_failure is not None and not is_terminal:
+            return QueryAttempt.retry(credential_failure)
         if credential_failure is not None or credential is None:
             return QueryAttempt.branch_result("defect", empty, Receipt(), credential_failure)
         try:

@@ -38,6 +38,7 @@ from ._generated.definitions import (
 )
 from .client import (
     FULL_FILE_FIELDS,
+    TERMINAL_CREDENTIAL_ERRORS,
     Client,
     Exchange,
     error_reasons,
@@ -367,7 +368,9 @@ class SearchFilesOperation:
                 Receipt(),
                 failure("searchFiles", FailureKind.VALIDATION, "search input is invalid"),
             )
-        credentials, problem = await self.client.resolve_credentials(call, "searchFiles")
+        credentials, problem, is_retryable = await self.client.resolve_write_credentials(call, "searchFiles")
+        if problem and is_retryable:
+            return QueryAttempt.retry(problem)
         if problem:
             return QueryAttempt.branch_result("defect", empty, Receipt(), problem)
         assert credentials is not None
@@ -462,7 +465,9 @@ class GetFileOperation:
                 Receipt(),
                 failure("getFile", FailureKind.VALIDATION, "fileId must be a Drive file ID"),
             )
-        credentials, problem = await self.client.resolve_credentials(call, "getFile")
+        credentials, problem, is_retryable = await self.client.resolve_write_credentials(call, "getFile")
+        if problem and is_retryable:
+            return QueryAttempt.retry(problem)
         if problem:
             return QueryAttempt.branch_result("defect", empty, Receipt(), problem)
         assert credentials is not None
@@ -507,7 +512,9 @@ class ReadFileTextOperation:
                 Receipt(),
                 failure("readFileText", FailureKind.VALIDATION, "fileId must be a Drive file ID"),
             )
-        credentials, problem = await self.client.resolve_credentials(call, "readFileText")
+        credentials, problem, is_retryable = await self.client.resolve_write_credentials(call, "readFileText")
+        if problem and is_retryable:
+            return QueryAttempt.retry(problem)
         if problem:
             return QueryAttempt.branch_result("defect", empty, Receipt(), problem)
         assert credentials is not None
@@ -1134,8 +1141,16 @@ class UploadFileOperation:
                         "provider rejected the upload credential",
                         0,
                     )
-                except Exception:
+                except TERMINAL_CREDENTIAL_ERRORS:
                     pass
+                except Exception:
+                    # Google refuses an unauthenticated upload unprocessed, so a transient refresh retries.
+                    return await self._retry_after_rejection(
+                        fence,
+                        FailureKind.AUTHENTICATION,
+                        "provider rejected the upload credential, and its refresh is temporarily unavailable",
+                        0,
+                    )
             return await self._reject_or_select_uncertain(
                 call,
                 fence,

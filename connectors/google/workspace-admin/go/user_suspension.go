@@ -80,7 +80,10 @@ func setUserSuspension(client *Client, call sdkgo.Call, rawUserKey string, isSus
 	if err != nil {
 		return sdkgo.NewMutationBranch(branches.failure.defect, User{}, failurePointer(sdkgo.FailureValidation, branches.operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, branches.operationID)
+	credential, failure, isCredentialFailureRetryable := client.resolveCredential(call, branches.operationID)
+	if failure != nil && isCredentialFailureRetryable {
+		return sdkgo.NewMutationRetry[User](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(branches.failure.defect, User{}, failure, sdkgo.Receipt{})
 	}

@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { SpreadsheetClient } from '../src/client.js';
 import { UpsertRowDefinition } from '../src/generated/definitions.js';
-import type { UpsertRowOutput } from '../src/generated/models.js';
+import type { Credentials, UpsertRowOutput } from '../src/generated/models.js';
 
 const callId = '74390522-858d-5ed6-bdf7-04e979ba9e4f';
 const header = ['accountId', 'name'];
@@ -52,12 +53,12 @@ function appendStatus(status: number, ...addedRows: string[][]): AppendAnswer {
   return sheet => { sheet.rows.push(...addedRows); return { status, headers: {}, body: Buffer.from('') }; };
 }
 
-function newClient(sheet: ScriptedSheet, failedResolution = 0): SpreadsheetClient {
+function newClient(sheet: ScriptedSheet, failedResolution = 0, failure: Error = new Error('credential refresh unavailable')): SpreadsheetClient {
   let resolutions = 0;
   const credential = { accessToken: new SecretString('sheets-token'), oauthClientId: '', oauthClientSecret: new SecretString(''), refreshToken: new SecretString('') };
   const resolve = async () => {
     resolutions++;
-    if (resolutions === failedResolution) throw new Error('credential refresh unavailable');
+    if (resolutions === failedResolution) throw failure;
     return credential;
   };
   return new SpreadsheetClient({ endpoint: 'http://localhost' }, { resolve, resolveWithRefresh: resolve }, { send: async request => sheet.respond(request) });
@@ -137,5 +138,40 @@ describe('Google Sheets upsertRow bounded append resend', () => {
     const sheet = new ScriptedSheet([current => { current.rows.push(ada); throw new ProviderTransportError(false, 200, {}); }]);
     expect(await runAttempts(newClient(sheet), 1)).toMatchObject({ branch: 'upserted', value: { action: 'inserted' } });
     expect(sheet.posts).toBe(1);
+  });
+
+  const credentialFailures = [
+    { name: 'reauthorization', failure: new ReauthorizationRequiredError(), isTerminal: true },
+    { name: 'object not found', failure: new ObjectNotFoundError(), isTerminal: true },
+    { name: 'connection not selected', failure: new ConnectionNotSelectedError(), isTerminal: true },
+    { name: 'broker rejected', failure: new CredentialBrokerRejectedError(), isTerminal: true },
+    { name: 'broker unavailable', failure: new CredentialBrokerUnavailableError(), isTerminal: false },
+    { name: 'static connection not configured', failure: new Error('connection is not configured'), isTerminal: false },
+  ];
+
+  it.each(credentialFailures)('classifies a $name credential failure on a first send', async ({ failure, isTerminal }) => {
+    const sheet = new ScriptedSheet([]);
+    const outcome = await upsert(newClient(sheet, 1, failure), new AttemptContext());
+    if (isTerminal) expect(outcome).toMatchObject({ branch: 'defect' });
+    else expect(outcome).toBeInstanceOf(RetryError);
+    expect(sheet.posts).toBe(0);
+  });
+
+  it.each(credentialFailures)('classifies a $name credential failure after a possible append', async ({ failure, isTerminal }) => {
+    const sheet = new ScriptedSheet([appendStatus(500)]);
+    const client = newClient(sheet, 2, failure);
+    const context = new AttemptContext();
+    expect(await upsert(client, context)).toBeInstanceOf(RetryError);
+    context.advance();
+    const outcome = await upsert(client, context);
+    if (isTerminal) expect(outcome).toMatchObject({ branch: 'uncertain' });
+    else expect(outcome).toBeInstanceOf(RetryError);
+    expect(sheet.posts).toBe(1);
+  });
+
+  it('retries getValues when a static provider has no connection', async () => {
+    const client = new SpreadsheetClient({ endpoint: 'http://localhost' }, new StaticCredentialProvider<Credentials>([]), { send: async () => { throw new Error('no request is expected'); } });
+    const call = { id: callId, connection: { provider: 'google-sheets', name: 'workspace' }, operation: { connectorId: 'google-spreadsheet', operationId: 'getValues' }, context: new AttemptContext() } as unknown as Call;
+    expect(await client.getValues().invoke(call, { spreadsheetId: 'sheet', range: 'Customers!A:B' })).toMatchObject({ kind: 'retry' });
   });
 });

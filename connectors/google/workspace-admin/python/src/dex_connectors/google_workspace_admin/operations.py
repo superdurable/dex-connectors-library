@@ -46,7 +46,7 @@ from ._generated.models import (
     User,
     UserName,
 )
-from .client import Client, Exchange, path_escape
+from .client import Client, Exchange, is_transient_credential_failure, path_escape
 from .json_values import strict_json_loads
 
 _USER_ID = re.compile(r"[0-9]{1,64}\Z")
@@ -56,6 +56,13 @@ _PHONE = re.compile(r"\+[1-9][0-9]{1,14}\Z")
 _CUSTOMER = re.compile(r"C[0-9A-Za-z]{1,32}\Z")
 _DOMAIN_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.I)
 _PAGE_TOKEN = re.compile(r"[A-Za-z0-9._~+/=-]+\Z")
+
+
+def _credential_outage(operation: str) -> Failure:
+    """Describe a transient credential failure that the next attempt retries."""
+    return _failure(
+        operation, FailureKind.AUTHENTICATION, "connection credentials are temporarily unavailable"
+    )
 
 
 class _WrongType(ValueError):
@@ -256,7 +263,9 @@ class GetUserOperation(_Operation):
             )
         try:
             credential = await self.credential(call)
-        except Exception:
+        except Exception as error:
+            if is_transient_credential_failure(error):
+                return QueryAttempt.retry(_credential_outage("getUser"))
             return QueryAttempt.branch_result(
                 "defect",
                 User(),
@@ -336,7 +345,9 @@ class ListUsersOperation(_Operation):
             )
         try:
             credential = await self.credential(call)
-        except Exception:
+        except Exception as error:
+            if is_transient_credential_failure(error):
+                return QueryAttempt.retry(_credential_outage("listUsers"))
             return QueryAttempt.branch_result(
                 "defect",
                 ListUsersOutput(),
@@ -452,7 +463,9 @@ class CreateUserOperation(_Operation):
             )
         try:
             credential = await self.credential(call)
-        except Exception:
+        except Exception as error:
+            if is_transient_credential_failure(error):
+                return MutationAttempt.retry(_credential_outage(operation))
             return MutationAttempt.branch_result(
                 "defect",
                 CreateUserOutput(),
@@ -572,7 +585,9 @@ class _SuspensionOperation(_Operation):
             )
         try:
             credential = await self.credential(call)
-        except Exception:
+        except Exception as error:
+            if is_transient_credential_failure(error):
+                return MutationAttempt.retry(_credential_outage(self.operation_name))
             return MutationAttempt.branch_result(
                 "defect",
                 User(),
@@ -666,7 +681,9 @@ class AddUserToGroupOperation(_Operation):
             )
         try:
             credential = await self.credential(call)
-        except Exception:
+        except Exception as error:
+            if is_transient_credential_failure(error):
+                return MutationAttempt.retry(_credential_outage(operation))
             return MutationAttempt.branch_result(
                 "defect",
                 AddUserToGroupOutput(GroupMembership(role="")),
@@ -760,7 +777,9 @@ class RemoveUserFromGroupOperation(_Operation):
             )
         try:
             credential = await self.credential(call)
-        except Exception:
+        except Exception as error:
+            if is_transient_credential_failure(error):
+                return MutationAttempt.retry(_credential_outage(operation))
             return MutationAttempt.branch_result(
                 "defect",
                 RemoveUserFromGroupOutput(),

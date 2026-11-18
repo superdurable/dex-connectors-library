@@ -3,6 +3,7 @@
 
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call } from '@superdurable/connectors-sdk';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -60,8 +61,8 @@ export class YouTubeClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
-      if (error instanceof ReauthorizationRequiredError) throw new YouTubeExchangeError('providerRejected', 'AUTHENTICATION', 'the YouTube connection must be authorized again');
-      throw new YouTubeExchangeError('defect', 'AUTHENTICATION', 'YouTube connection credentials are unavailable or invalid', undefined, 0, true);
+      if (isTerminalCredentialError(error)) throw new YouTubeExchangeError('providerRejected', 'AUTHENTICATION', 'the YouTube connection must be authorized again');
+      throw new YouTubeExchangeError('retry', 'AUTHENTICATION', 'YouTube connection credentials are temporarily unavailable', undefined, 0, true);
     }
     if (!credentials.accessToken || !isHeaderSafeCredential(credentials.accessToken.reveal())) throw new YouTubeExchangeError('defect', 'AUTHENTICATION', 'YouTube connection credentials are unavailable or invalid');
     if (requiresManage && credentials.authMethodId !== 'google-oauth-manage') throw new YouTubeExchangeError('providerRejected', 'AUTHORIZATION', 'addPlaylistItem requires a YouTube connection authorized with the google-oauth-manage method and its youtube scope');
@@ -90,8 +91,8 @@ export class YouTubeClient {
         response = await this.request(url, credentials.accessToken.reveal(), body, signal, isFencedWrite);
       } catch (error) {
         if (error instanceof YouTubeExchangeError) throw error;
-        if (error instanceof ReauthorizationRequiredError) throw new YouTubeExchangeError('providerRejected', 'AUTHENTICATION', 'the YouTube connection must be authorized again');
-        throw new YouTubeExchangeError('defect', 'AUTHENTICATION', 'YouTube connection credentials are unavailable or invalid', undefined, 0, true);
+        if (isTerminalCredentialError(error)) throw new YouTubeExchangeError('providerRejected', 'AUTHENTICATION', 'the YouTube connection must be authorized again');
+        throw new YouTubeExchangeError('retry', 'AUTHENTICATION', 'YouTube connection credentials are temporarily unavailable', undefined, 0, true);
       }
     }
     if (response.isTooLarge) throw new YouTubeExchangeError(isFencedWrite ? 'acceptedUnreadable' : 'invalidResponse', 'RESPONSE_TOO_LARGE', 'YouTube response exceeds the configured size limit', response);
@@ -144,6 +145,12 @@ export function insertedItemID(body: Uint8Array | undefined): string {
 
 /** Encode one query component exactly as Go url.QueryEscape. */
 export function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
+
+/** Report a resolve failure that only reconnection repairs; any other one is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 
 function header(response: YouTubeResponse, name: string): string {
   const value = response.headers[name.toLowerCase()];

@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { DriveClient } from '../src/client.js';
 import { UploadFileDefinition } from '../src/generated/definitions.js';
@@ -134,5 +135,28 @@ describe('Drive uploadFile never resends an accepted upload', () => {
     const revoked = failingSource(new ReauthorizationRequiredError());
     expect(await run(new FakeDrive(), new AttemptContext(), revoked)).toBe('defect');
     expect(await run(new FakeDrive(), new AttemptContext(2), revoked)).toBe('uncertain');
+  });
+
+  const credentialFailures = [
+    { name: 'object not found', failure: new ObjectNotFoundError(), isTerminal: true },
+    { name: 'connection not selected', failure: new ConnectionNotSelectedError(), isTerminal: true },
+    { name: 'broker rejected', failure: new CredentialBrokerRejectedError(), isTerminal: true },
+    { name: 'reauthorization', failure: new ReauthorizationRequiredError(), isTerminal: true },
+    { name: 'broker unavailable', failure: new CredentialBrokerUnavailableError(), isTerminal: false },
+    { name: 'static connection not configured', failure: new Error('connection is not configured'), isTerminal: false },
+  ];
+
+  it.each(credentialFailures)('classifies a $name resolve failure', async ({ failure, isTerminal }) => {
+    const source = failingSource(failure);
+    const first = await run(new FakeDrive(), new AttemptContext(), source);
+    const later = await run(new FakeDrive(), new AttemptContext(2), source);
+    expect([first, later]).toEqual(isTerminal ? ['defect', 'uncertain'] : ['retry', 'retry']);
+  });
+
+  it.each(credentialFailures)('retries a 401 whose refresh fails with $name unless it is terminal', async ({ failure, isTerminal }) => {
+    const fake = new FakeDrive([async () => json(401, { error: { code: 401 } })]);
+    const source = { resolve: async () => credentials, resolveWithRefresh: async () => credentials, resolveAfterRejection: async () => { throw failure; } } as unknown as CredentialSource;
+    expect(await run(fake, new AttemptContext(), source)).toBe(isTerminal ? 'providerRejected' : 'retry');
+    expect(fake.uploads).toBe(1);
   });
 });

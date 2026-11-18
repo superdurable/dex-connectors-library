@@ -4,6 +4,7 @@
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, CredentialSource } from './generated/models.js';
 import { GetDocumentTextOperation, CreateDocumentOperation, ReplaceDocumentTextOperation, AppendTextOperation } from './operations.js';
@@ -90,7 +91,7 @@ export class DocsClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); }
     catch (error) {
-      if (error instanceof ReauthorizationRequiredError) throw new ReauthorizationRequiredError();
+      if (isTerminalCredentialError(error)) throw new ReauthorizationRequiredError();
       throw new TypeError('connection credentials are unavailable');
     }
     if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? '') || !['google-oauth', 'workspace-domain-delegation', ''].includes(credentials.authMethodId ?? '')) throw new ReauthorizationRequiredError();
@@ -98,9 +99,15 @@ export class DocsClient {
   }
 
   /** Ask the host to refresh after one rejected access token. */
+  /** Throws ReauthorizationRequiredError for a terminal or unusable refresh, and a TypeError for a transient one. */
   async refreshCredentialsAfterRejection(call: Call): Promise<Credentials> {
-    const credentials = await resolveCredentialAfterRejection(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal);
-    if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? '')) throw new TypeError('connection credentials are unavailable');
+    let credentials: Credentials;
+    try { credentials = await resolveCredentialAfterRejection(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); }
+    catch (error) {
+      if (isTerminalCredentialError(error)) throw new ReauthorizationRequiredError();
+      throw new TypeError('connection credentials are temporarily unavailable');
+    }
+    if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? '')) throw new ReauthorizationRequiredError();
     return credentials;
   }
 
@@ -154,6 +161,12 @@ export class DocsClient {
 }
 
 /** Read a case-insensitive single HTTP header. */
+/** Report a resolve failure that only reconnection repairs; any other one is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
+
 export function header(headers: ProviderResponse['headers'], name: string): string {
   const value = headers[name] ?? headers[name.toLowerCase()] ?? headers[name.toUpperCase()];
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';

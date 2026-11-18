@@ -1328,7 +1328,7 @@ func TestGmailPreSendRetryAfterCountedCanResendRecordsNothing(t *testing.T) {
 // TestGmailTerminalCredentialFailureOnFirstAttemptIsDefect selects defect when nothing was sent.
 func TestGmailTerminalCredentialFailureOnFirstAttemptIsDefect(t *testing.T) {
 	for _, terminal := range []error{
-		sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked")),
+		sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked")), projectconfig.ErrReauthorizationRequired,
 		projectconfig.ErrObjectNotFound, projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected,
 	} {
 		t.Run(terminal.Error(), func(t *testing.T) {
@@ -1349,7 +1349,10 @@ func TestGmailTerminalCredentialFailureOnFirstAttemptIsDefect(t *testing.T) {
 
 // TestGmailTransientCredentialFailureOnFirstAttemptRetries records notSent instead of selecting defect.
 func TestGmailTransientCredentialFailureOnFirstAttemptRetries(t *testing.T) {
-	for _, transient := range []error{errors.New("credential store is unavailable"), projectconfig.ErrCredentialBrokerUnavailable} {
+	for _, transient := range []error{
+		errors.New("credential store is unavailable"), errors.New("connection is not configured"),
+		projectconfig.ErrCredentialBrokerUnavailable, projectconfig.ErrRejectedCredentialNotRefreshed,
+	} {
 		t.Run(transient.Error(), func(t *testing.T) {
 			forSendAndReply(t, func(t *testing.T, isReply bool) {
 				fake := newGmailSendFake(t, sendFakeBehavior{})

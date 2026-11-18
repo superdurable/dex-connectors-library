@@ -23,6 +23,12 @@ function defect<T>(operation: string, value: T, kind: Failure['kind'], message: 
   return newQueryBranch('defect', value, zeroReceipt(), failure(kind, operation, message));
 }
 
+/** Select defect for a terminal credential failure; any other resolve failure retries. */
+function credentialFailure<T>(operation: string, value: T, error: unknown): QueryAttempt<T> {
+  if (error instanceof CredentialError) return defect(operation, value, 'AUTHENTICATION', 'connection credentials are unavailable');
+  return newQueryRetry(failure('AUTHENTICATION', operation, 'connection credentials are temporarily unavailable'));
+}
+
 /** Search one bounded page of visible Drive files. */
 export class SearchFilesOperation implements Query<SearchFilesInput, SearchFilesOutput> {
   constructor(readonly client: DriveClient) { if (!client) throw new TypeError('Drive client is required'); }
@@ -38,7 +44,7 @@ export class SearchFilesOperation implements Query<SearchFilesInput, SearchFiles
     if ((input.pageToken && (Buffer.byteLength(input.pageToken) > 4096 || /[ \r\n\t]/.test(input.pageToken)))) return defect('searchFiles', emptySearch(), 'VALIDATION', 'pageToken is not a Drive page token');
     if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) return defect('searchFiles', emptySearch(), 'VALIDATION', 'pageSize must be from 1 to 100');
     let credentials: Credentials;
-    try { credentials = await this.client.resolve(call); } catch { return defect('searchFiles', emptySearch(), 'AUTHENTICATION', 'connection credentials are unavailable'); }
+    try { credentials = await this.client.resolve(call); } catch (error) { return credentialFailure('searchFiles', emptySearch(), error); }
     const terms: string[] = [];
     if (input.name) terms.push(`name ${input.nameMatch === 'contains' ? 'contains' : '='} ${quoteDriveQuery(input.name)}`);
     if (input.mimeType) terms.push(`mimeType = ${quoteDriveQuery(input.mimeType)}`);
@@ -69,7 +75,7 @@ export class GetFileOperation implements Query<GetFileInput, File> {
   async invoke(call: Call, input: GetFileInput): Promise<QueryAttempt<File>> {
     if (!isDriveId(input.fileId)) return defect('getFile', emptyFile(), 'VALIDATION', 'fileId must be a Drive file ID');
     let credentials: Credentials;
-    try { credentials = await this.client.resolve(call); } catch { return defect('getFile', emptyFile(), 'AUTHENTICATION', 'connection credentials are unavailable'); }
+    try { credentials = await this.client.resolve(call); } catch (error) { return credentialFailure('getFile', emptyFile(), error); }
     const { result, outcome } = await this.client.read(call, credentials, this.client.fileMetadataURL(input.fileId, fullFileFields), this.client.maxResponseBytes, 'notFound', 'invalidResponse', 'providerRejected', 'defect', 'getFile');
     if (outcome) return queryOutcome(outcome, emptyFile());
     const receipt = this.client.receipt(call, result!.requestId, input.fileId);
@@ -89,7 +95,7 @@ export class ReadFileTextOperation implements Query<ReadFileTextInput, ReadFileT
   async invoke(call: Call, input: ReadFileTextInput): Promise<QueryAttempt<ReadFileTextOutput>> {
     if (!isDriveId(input.fileId)) return defect('readFileText', emptyRead(), 'VALIDATION', 'fileId must be a Drive file ID');
     let credentials: Credentials;
-    try { credentials = await this.client.resolve(call); } catch { return defect('readFileText', emptyRead(), 'AUTHENTICATION', 'connection credentials are unavailable'); }
+    try { credentials = await this.client.resolve(call); } catch (error) { return credentialFailure('readFileText', emptyRead(), error); }
     const metadata = await this.client.read(call, credentials, this.client.fileMetadataURL(input.fileId, 'id,name,mimeType,size'), this.client.maxResponseBytes, 'notFound', 'invalidResponse', 'providerRejected', 'defect', 'readFileText');
     if (metadata.outcome) return queryOutcome(metadata.outcome, emptyRead());
     const metadataReceipt = this.client.receipt(call, metadata.result!.requestId, input.fileId);
@@ -209,7 +215,10 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
     const reasons = readErrorTokens(response.body, ['/error/errors/0/reason', '/error/status']);
     const hasAcceptedFile = hasFileID(response.body);
     if (response.status === 401 && !hasAcceptedFile) {
-      if (await this.client.refreshAfterRejection(call)) return this.retryAfterRejection(fence, 'AUTHENTICATION', 'provider rejected the upload credential', 0);
+      const refresh = await this.client.classifyRefreshAfterRejection(call);
+      if (refresh === 'refreshed') return this.retryAfterRejection(fence, 'AUTHENTICATION', 'provider rejected the upload credential', 0);
+      // Google refuses an unauthenticated upload unprocessed, so a transient refresh failure retries.
+      if (refresh === 'transient') return this.retryAfterRejection(fence, 'AUTHENTICATION', 'provider rejected the upload credential, and its refresh is temporarily unavailable', 0);
       return this.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, 'AUTHENTICATION', 'provider rejected the upload credential', receipt);
     }
     if (isRateLimited(response.status, reasons) && !hasAcceptedFile) return this.retryAfterRejection(fence, 'RATE_LIMIT', 'provider returned a retryable upload status', this.client.retryDelay(response.headers));

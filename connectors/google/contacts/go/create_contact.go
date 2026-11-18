@@ -98,7 +98,7 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := sdkgo.ResolveCredential(call.Context, operation.client.credentials, call, operation.client.refreshDriver)
 	if err != nil {
-		if sdkgo.IsReauthorizationRequired(err) {
+		if isTerminalCredentialError(err) {
 			return createLocalFailure(hasPossibleEarlierSend, sdkgo.FailureAuthentication, "connection requires reauthorization")
 		}
 		// After a possible earlier send, notSent would let the next attempt drop that send from the count.

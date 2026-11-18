@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const providerName = "google-calendar"
@@ -193,12 +194,24 @@ func (client *Client) QueryFreeBusy() QueryFreeBusyOperation {
 	return QueryFreeBusyOperation{client: client}
 }
 
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+// resolveCredentials resolves the call's credentials. isRetryable reports a transient failure that
+// needs no reconnection.
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (credentials Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are temporarily unavailable"), true
 	}
-	return credentials, nil
+	if err != nil || validateResolvedCredentials(credentials) != nil {
+		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), false
+	}
+	return credentials, nil, false
+}
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // readEvent performs one events.get request and classifies it without choosing an operation branch.
