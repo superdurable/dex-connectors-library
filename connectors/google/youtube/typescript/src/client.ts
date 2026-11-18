@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call } from '@superdurable/connectors-sdk';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, type Fence } from '@superdurable/connectors-sdk/singledispatch';
@@ -19,10 +19,11 @@ export interface YouTubeClientOptions { send?: (request: ProviderRequest) => Pro
 export interface YouTubeResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; isTooLarge: boolean; }
 /**
  * One classified provider exchange. A fenced write reports `retryUnprocessed` only when YouTube
- * provably did not act on it, and `writeUnconfirmed` when it may have taken effect.
+ * provably did not act on it, `writeUnconfirmed` when it may have taken effect, and
+ * `acceptedUnreadable` when YouTube accepted it with a 2xx whose body could not be read.
  */
 export class YouTubeExchangeError extends Error {
-  constructor(readonly disposition: 'retry' | 'retryUnprocessed' | 'writeUnconfirmed' | 'quotaExhausted' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect', readonly kind: string, message: string, readonly response?: YouTubeResponse, readonly retryAfterMs = 0) { super(message); }
+  constructor(readonly disposition: 'retry' | 'retryUnprocessed' | 'writeUnconfirmed' | 'acceptedUnreadable' | 'quotaExhausted' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect', readonly kind: string, message: string, readonly response?: YouTubeResponse, readonly retryAfterMs = 0) { super(message); }
 }
 
 /** YouTube API client using the generated OAuth refresh declaration. */
@@ -75,7 +76,8 @@ export class YouTubeClient {
 
   /**
    * Send once, resending after one refreshed 401, and classify the response. A fenced write retries as
-   * unprocessed only after a rate-limit refusal or a connection that never opened; any other failure, including 503, may have applied it.
+   * unprocessed only after a rate-limit refusal, 503, or a connection that never opened; any other failure may have
+   * applied it. A 2xx whose body cannot be read is accepted and never resent.
    */
   private async sendAndClassify(call: Call, operation: string, url: string, initialCredentials: Credentials, body: string | undefined, signal: AbortSignal, isFencedWrite: boolean): Promise<YouTubeResponse> {
     let credentials = initialCredentials;
@@ -90,12 +92,14 @@ export class YouTubeClient {
         throw new YouTubeExchangeError('defect', 'AUTHENTICATION', 'YouTube connection credentials are unavailable or invalid');
       }
     }
-    if (response.isTooLarge) throw new YouTubeExchangeError(isFencedWrite ? 'writeUnconfirmed' : 'invalidResponse', 'RESPONSE_TOO_LARGE', 'YouTube response exceeds the configured size limit', response);
+    if (response.isTooLarge) throw new YouTubeExchangeError(isFencedWrite ? 'acceptedUnreadable' : 'invalidResponse', 'RESPONSE_TOO_LARGE', 'YouTube response exceeds the configured size limit', response);
     if (response.status >= 200 && response.status < 300) return response;
     const classified = classifyError(response, operation, this.now());
     if (!isFencedWrite) throw classified;
-    if (classified.disposition === 'retry')
-      throw new YouTubeExchangeError(classified.kind === 'RATE_LIMIT' ? 'retryUnprocessed' : 'writeUnconfirmed', classified.kind, classified.message, response, classified.retryAfterMs);
+    if (classified.disposition === 'retry') {
+      const isUnprocessed = (classified.kind === 'RATE_LIMIT' || response.status === 503) && !bodyIndicatesInsertedItem(response.body);
+      throw new YouTubeExchangeError(isUnprocessed ? 'retryUnprocessed' : 'writeUnconfirmed', classified.kind, classified.message, response, classified.retryAfterMs);
+    }
     // Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert.
     if (classified.disposition !== 'quotaExhausted' && (!definiteRefusalStatuses.has(response.status) || bodyIndicatesInsertedItem(response.body)))
       throw new YouTubeExchangeError('writeUnconfirmed', classified.kind, classified.message, response);
@@ -111,6 +115,9 @@ export class YouTubeClient {
         return { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: true };
       }
       if (isFencedWrite && error instanceof ProviderTransportError && error.isProvablyNotSent) throw new YouTubeExchangeError('retryUnprocessed', 'TRANSPORT', 'YouTube could not be reached before sending');
+      const statusBeforeFailure = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+      if (isFencedWrite && statusBeforeFailure !== undefined && statusBeforeFailure >= 200 && statusBeforeFailure < 300)
+        throw new YouTubeExchangeError('acceptedUnreadable', 'TRANSPORT', 'YouTube accepted the insert but its response body could not be read');
       throw new YouTubeExchangeError(isFencedWrite ? 'writeUnconfirmed' : 'retry', 'TRANSPORT', 'YouTube did not return a complete response');
     }
   }

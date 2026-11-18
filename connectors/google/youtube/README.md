@@ -50,27 +50,33 @@ attempt of `AddPlaylistItem` lists the playlist filtered to the video and
 returns `added` with `wasAlreadyPresent: true` when the playlist already holds
 it. Otherwise it sends one insert through a single-dispatch fence
 (`execution.dispatchFence`, which requires sync durability) that counts the
-inserts that may have reached YouTube. An insert that YouTube provably did not
-process, after HTTP 429, a `rateLimitExceeded` or `userRateLimitExceeded`
-refusal, or a connection that never opened, is sent again without counting.
+inserts that may have reached YouTube. An insert refused with HTTP 429, 503, a
+`rateLimitExceeded` or `userRateLimitExceeded` reason, or a connection that
+never opened, is sent again without counting.
 
 After an unknown outcome that may have applied the insert, such as a timeout,
-HTTP 500 or 503 (Google documents `backendError` without saying the write did
-not happen), HTTP 409, a redirect, another unlisted status, or a malformed or
-oversized 2xx response, the next attempt lists the playlist first. It returns
-`added` when the video is shown and otherwise inserts again while the possible
-inserts stay below the send cap (`execution.maxSends`, default 3, overridable
-per Step with `MaxSends`). Because the listing can lag behind an insert, such a
-resend can add the video twice. At the cap, or after YouTube returned the new
-item's ID, the attempt only lists the playlist and selects `uncertain` when the
-video is not shown. Wire `uncertain` to a Step that checks the playlist before
-adding the video again. An interrupted attempt that leaves no checkpoint also
-leads to this read-back.
+HTTP 500, HTTP 409, a redirect, or another unlisted status, every later attempt
+lists the playlist first, also after a resend that YouTube rate limited. It
+returns `added` when the video is shown and otherwise inserts again while the
+possible inserts stay below the send cap (`execution.maxSends`, default 3,
+overridable per Step with `MaxSends`). A listing that fails below the cap
+returns Retry. Because the listing can lag behind an insert, such a resend can
+add the video twice. At the cap, or after YouTube returned the new item's ID,
+an attempt only lists the playlist. When the video is not shown, it selects
+`uncertain` at the cap and returns Retry below it. Wire `uncertain` to a Step that checks the playlist before adding
+the video again. An interrupted attempt that leaves no checkpoint also leads to
+this read-back.
+
+A 2xx insert response that is malformed, oversized, or breaks while its body is
+read means YouTube accepted the insert, so it is never resent: the attempt lists
+the playlist once and selects `added` when the video is shown and `uncertain`
+otherwise.
 
 Only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, or Google's
 `quotaExceeded` reason, is a definite refusal of the insert. On a first insert
 it selects its branch and is never resent; after an earlier insert that may have
-taken effect it selects `uncertain`.
+taken effect it selects `uncertain`. Credentials that cannot be resolved after
+an earlier possible insert return Retry; a revoked grant selects `uncertain`.
 
 ## Agent tools
 
