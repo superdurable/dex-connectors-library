@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
-import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
+import { newFence, CheckpointError, DispatchNotAllowedError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import { ZoomClient, zoomFailure, type ZoomExchange } from './client.js';
 import { CreateMeetingDefinition, GetMeetingDefinition, ListMeetingsDefinition, ListPastMeetingParticipantsDefinition, UpdateMeetingDefinition } from './generated/definitions.js';
 import type { CreateMeetingInput, GetMeetingInput, ListMeetingsInput, Meeting, MeetingPage, ListPastMeetingParticipantsInput, ParticipantPage, UpdateMeetingInput, UpdatedMeeting } from './generated/models.js';
@@ -222,7 +222,8 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
     let exchange: ZoomExchange;
     try { exchange = await fence.dispatch(signal => this.client.exchange(call, resolved.credentials, 'POST', '/users/me/meetings', undefined, built.payload, true, signal)); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(zoomFailure('createMeeting', 'AVAILABILITY', 'Zoom create was not sent before the attempt deadline or checkpoint'), 0);
+      // The Fence raises these before sending, including AggregateError for a short window and a failed notSent.
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || error instanceof AggregateError) return newMutationRetry(zoomFailure('createMeeting', 'AVAILABILITY', 'Zoom create was not sent before the attempt deadline or checkpoint'), 0);
       return resendOrUncertain(zoomFailure('createMeeting', 'TRANSPORT', 'Zoom meeting outcome is unknown'));
     }
     if ('error' in exchange) {
@@ -263,7 +264,8 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
     }
     const result = classify(this.client, 'createMeeting', exchange), receipt = this.client.receipt(call, '', result.errorCode), status = exchange.response.status;
     const isBodyUnreadable = exchange.isTooLarge || exchange.hasBodyReadFailed === true;
-    if (status === 401) {
+    // An unreadable 401 body cannot prove a refusal, so it falls through to the unknown outcome.
+    if (status === 401 && !isBodyUnreadable) {
       const refreshed = await this.client.refreshAfterRejection(call, resolved.credentials.accessToken.reveal());
       if (refreshed === 'unsupported') return rejectOrUncertain(zoomFailure('createMeeting', 'AUTHENTICATION', 'Zoom rejected the connection credential; reconnect the connection'), receipt);
       if (refreshed === 'replaced') {
