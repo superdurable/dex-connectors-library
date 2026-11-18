@@ -148,11 +148,13 @@ type writeOutcome uint8
 const (
 	// writeAccepted is a 2xx whose body was read in full.
 	writeAccepted writeOutcome = iota + 1
+	// writeAcceptedUnreadable is a 2xx whose body was interrupted, oversized, or unsafe: Graph stored the message.
+	writeAcceptedUnreadable
 	// writeNotApplied is a 429 or an undispatched request: Graph cannot have stored the message.
 	writeNotApplied
 	// writeRejected is a conclusive 400, 401, 403, 404, 411, 413, 414, 415, or 422: Graph refused before storing anything.
 	writeRejected
-	// writeAmbiguous may have been stored: a lost response, 3xx, 408, 409, another 4xx, 5xx, or an unusable 2xx body.
+	// writeAmbiguous may have been stored: a lost response, 3xx, 408, 409, another 4xx, or 5xx.
 	writeAmbiguous
 	writeDefect
 )
@@ -396,11 +398,11 @@ func (client *Client) classifyWrite(operationID string, subject string, result e
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureTransport, "Microsoft Graph accepted the "+subject+" but its response was interrupted")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureTransport, "Microsoft Graph accepted the "+subject+" but its response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Microsoft Graph accepted the "+subject+" but its response exceeds the configured size limit")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Microsoft Graph accepted the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureProtocol, "Microsoft Graph accepted the "+subject+" but its response contains credential material")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureProtocol, "Microsoft Graph accepted the "+subject+" but its response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:

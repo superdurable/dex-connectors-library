@@ -87,9 +87,11 @@ or a result lost before commit, so every post:
    sends and to count possible sends against the operation's send cap
    (`maxSends`, default 3; the factory's `MaxSends` overrides it);
 3. sends again without a read-back after a recorded `notSent` or `canResend`
-   checkpoint. Graph's 401 after a successful token refresh, 429 and 503
-   responses, and a traced connection failure before any connection opened,
-   permit a retry;
+   checkpoint, unless an earlier attempt may already have posted. Graph's 401
+   after a successful token refresh, 429 and 503 responses, and a traced
+   connection failure before any connection opened, permit a retry. A
+   credential failure after a possible earlier post records nothing, so the
+   next attempt still reads back;
 4. after an unknown outcome, reads a known message ID when possible and never
    resends a message Graph confirmed storing. Without one, a channel post
    searches the 50 most recently active root messages and a reply searches the
@@ -99,13 +101,19 @@ or a result lost before commit, so every post:
    cap it selects `uncertain`.
 
 An unknown outcome (timeout, 408, 409, 5xx other than 503, another unlisted
-status, an unreadable or oversized 2xx) keeps the claim and retries after at
-least five seconds so the read-back can see the message. Reading back needs
+status) keeps the claim and retries after at least five seconds so the
+read-back can see the message. Reading back needs
 `ChannelMessage.Read.All`. The connection cannot read chat messages (that
 needs [delegated `Chat.Read`](https://learn.microsoft.com/graph/api/chatmessage-get)),
 so an unconfirmed chat message is resent without a read-back until the cap and
-then selects `uncertain`; a chat response that names a stored message but is
-otherwise unusable selects `uncertain` at once. A Flow must treat `uncertain`
+then selects `uncertain`.
+
+A 2xx means Graph stored the message, so it is never resent. When its body is
+interrupted, oversized, echoes the access token, or is otherwise unusable, a
+channel post or reply that returned a valid message ID saves that ID and
+retries, and later attempts read only that ID back. Every other unusable 2xx,
+including any chat response, selects `uncertain` at once. A refusal whose body
+carries a message ID is handled the same way. A Flow must treat `uncertain`
 as "may have been posted" and never resend it automatically.
 
 [Microsoft Graph's error reference](https://learn.microsoft.com/graph/errors)

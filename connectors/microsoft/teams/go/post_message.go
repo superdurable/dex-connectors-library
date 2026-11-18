@@ -81,7 +81,8 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 	session, cancel, failure := client.startSession(call, post.operationID)
 	if failure != nil {
 		credentialFailure := failure.failure
-		if decision.Kind == singledispatch.SendAllowed {
+		// notSent after a possible earlier send would erase the evidence that the next attempt must read back.
+		if decision.Kind == singledispatch.SendAllowed && !hasPossibleEarlierSend {
 			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 				credentialFailure.Message += "; the not-sent checkpoint also failed"
 			}
@@ -95,12 +96,13 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 		return sdkgo.NewMutationBranch(post.branches.defect, post.requested, &credentialFailure, sdkgo.Receipt{})
 	}
 	defer cancel()
-	switch decision.Kind {
-	case singledispatch.ReadBackRequired:
+	if decision.Kind == singledispatch.ReadBackRequired {
 		reconciled, _ := client.reconcileEarlierPost(session, post, call.Context.FirstAttemptAt(), decision.Marker.ProviderID, false)
 		return reconciled
-	case singledispatch.ReadBackThenResendAllowed:
-		// A saved message ID proves Graph stored an earlier post, so it is read back and never resent.
+	}
+	// SendAllowed after a canResend marker can still follow an earlier unknown send, so it reads back too.
+	// A saved message ID proves Graph stored an earlier post, so it is read back and never resent.
+	if hasPossibleEarlierSend || decision.Marker.ProviderID != "" {
 		if post.readBackPath != "" || decision.Marker.ProviderID != "" {
 			reconciled, shouldResend := client.reconcileEarlierPost(session, post, call.Context.FirstAttemptAt(), decision.Marker.ProviderID, true)
 			if !shouldResend {
@@ -110,7 +112,8 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 	}
 	attempt := &messageSendAttempt{client: client, session: session, post: post}
 	if err := fence.Dispatch(attempt.send); err != nil {
-		if !errors.Is(err, singledispatch.ErrCheckpoint) && !errors.Is(err, singledispatch.ErrInsufficientTime) {
+		if !errors.Is(err, singledispatch.ErrCheckpoint) && !errors.Is(err, singledispatch.ErrInsufficientTime) &&
+			!errors.Is(err, singledispatch.ErrDispatchNotAllowed) {
 			return client.resendOrSelectUncertain(post, canResendUnknownOutcome, newFailure(post.operationID, sdkgo.FailureTransport,
 				"Microsoft Teams message dispatch outcome is unknown"), 0, sdkgo.Receipt{})
 		}
@@ -139,34 +142,29 @@ func (client *Client) send(call sdkgo.Call, post messagePost) sdkgo.MutationAtte
 	receipt := client.receipt(session, result.response, "")
 	switch classification.outcome {
 	case writeAccepted:
+		messageID := acceptedMessageID(result.response.body)
+		isMessageIDSaved := messageID != "" && fence.RecordProviderID(messageID) == nil
 		var resource chatMessageResource
-		if json.Unmarshal(result.response.body, &resource) == nil {
-			isMessageIDSaved := false
-			if messageIDPattern.MatchString(resource.ID) {
-				// Acceptance is known; a lost read-back checkpoint still counts this send against the cap.
-				isMessageIDSaved = fence.RecordProviderID(resource.ID) == nil
-			}
+		if messageID != "" && json.Unmarshal(result.response.body, &resource) == nil {
 			if message, err := decodeMessage(resource, 0); err == nil {
 				return sdkgo.NewMutationBranch(post.branches.sent, postedOutput(post.requested, message, false), nil, client.receipt(session, result.response, message.ID))
 			}
-			if isMessageIDSaved && post.readBackPath == "" {
-				// Graph stored this message, and a resend would duplicate it; it cannot be read back.
-				return sdkgo.NewMutationUncertain(post.requested, newFailure(post.operationID, sdkgo.FailureProtocol,
-					"Microsoft Graph stored the "+post.subject+" but returned an unusable message, and the connection cannot read it back"), receipt)
-			}
 		}
-		classification.failure = newFailure(post.operationID, sdkgo.FailureProtocol, "Microsoft Graph accepted the "+post.subject+" but returned an unusable message")
+		return client.retryReadBackOrSelectUncertain(post, isMessageIDSaved, newFailure(post.operationID, sdkgo.FailureProtocol,
+			"Microsoft Graph accepted the "+post.subject+" but returned an unusable message"), receipt)
+	case writeAcceptedUnreadable:
+		return client.retryReadBackOrSelectUncertain(post, false, classification.failure, receipt)
 	case writeNotApplied:
 		if err := fence.RecordCanResend(); err != nil {
 			classification.failure.Message += "; the safe-resend checkpoint failed"
 		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](classification.failure, classification.retryAfter)
 	case writeRejected:
-		var rejectedResource chatMessageResource
-		if json.Unmarshal(result.response.body, &rejectedResource) == nil && messageIDPattern.MatchString(rejectedResource.ID) {
-			// A message ID in a refusal contradicts it, so the outcome is unknown.
-			return client.resendOrSelectUncertain(post, canResendUnknownOutcome, newFailure(post.operationID, sdkgo.FailureProtocol,
-				"Microsoft Graph refused the "+post.subject+" but returned a message ID"), classification.retryAfter, receipt)
+		if rejectedMessageID := acceptedMessageID(result.response.body); rejectedMessageID != "" {
+			// A message ID in a refusal shows Graph stored the post, so it is never resent.
+			isMessageIDSaved := fence.RecordProviderID(rejectedMessageID) == nil
+			return client.retryReadBackOrSelectUncertain(post, isMessageIDSaved, newFailure(post.operationID, sdkgo.FailureProtocol,
+				"Microsoft Graph refused the "+post.subject+" but returned a message ID"), receipt)
 		}
 		if result.response.statusCode == http.StatusUnauthorized && refreshFailure != nil && !sdkgo.IsReauthorizationRequired(refreshFailure) {
 			classification.failure.Message = strings.TrimSuffix(classification.failure.Message, "; reconnect the connection") + "; credential refresh is temporarily unavailable"
@@ -199,6 +197,32 @@ func (client *Client) resendOrSelectUncertain(post messagePost, canResendUnknown
 	}
 	failure.Message += "; the send cap is reached, so the " + post.subject + " is not sent again"
 	return sdkgo.NewMutationUncertain(post.requested, failure, receipt)
+}
+
+// retryReadBackOrSelectUncertain handles a post Graph stored: it is never resent. A saved message ID
+// that can be read back retries, and the next attempt reads that ID only; otherwise uncertain is selected.
+func (client *Client) retryReadBackOrSelectUncertain(post messagePost, isMessageIDSaved bool, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[PostMessageOutput] {
+	if isMessageIDSaved && post.readBackPath != "" {
+		failure.Message += "; the next attempt reads the stored message back by its ID"
+		return sdkgo.NewMutationRetry[PostMessageOutput](failure, 0)
+	}
+	failure.Message += "; Graph stored the " + post.subject + ", so it is not sent again"
+	return sdkgo.NewMutationUncertain(post.requested, failure, receipt)
+}
+
+// acceptedMessageID returns the body's message ID when it matches Graph's format, whatever the other fields hold.
+func acceptedMessageID(body []byte) string {
+	var identity struct {
+		ID json.RawMessage `json:"id"`
+	}
+	if json.Unmarshal(body, &identity) != nil {
+		return ""
+	}
+	var messageID string
+	if json.Unmarshal(identity.ID, &messageID) != nil || !messageIDPattern.MatchString(messageID) {
+		return ""
+	}
+	return messageID
 }
 
 // reconcileEarlierPost only reads the provider. When isResendAllowed, a definite absence or an
