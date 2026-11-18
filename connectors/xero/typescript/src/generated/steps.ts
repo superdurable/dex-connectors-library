@@ -152,7 +152,7 @@ export interface CreateInvoiceStepConfig<StepInput, OperationInput = CreateInvoi
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds. */
   dailyLimitReached?: StepTarget<MutationResult<OperationOutput>>;
-  /** On a later attempt, which may follow a created invoice, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read back with listInvoices by reference. An internal error or an unusable invoice repeats the identical keyed request instead. */
+  /** Xero answered HTTP 500, which it caches under the key and replays to every resend, or, on a later attempt that may follow a created invoice, Xero refused the credentials or the connection became unusable; the outcome cannot be confirmed, so read back with listInvoices by reference. An unusable invoice repeats the identical keyed request instead. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid on the Step's first attempt. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -186,7 +186,7 @@ export interface RecordPaymentStepConfig<StepInput, OperationInput = RecordPayme
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds. */
   dailyLimitReached?: StepTarget<MutationResult<OperationOutput>>;
-  /** On a later attempt, which may follow a recorded payment, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read the invoice back with getInvoice. An internal error or an unusable payment repeats the identical keyed request instead. */
+  /** Xero answered HTTP 500, which it caches under the key and replays to every resend, or, on a later attempt that may follow a recorded payment, Xero refused the credentials or the connection became unusable; the outcome cannot be confirmed, so read the invoice back with getInvoice. An unusable payment repeats the identical keyed request instead. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid on the Step's first attempt. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

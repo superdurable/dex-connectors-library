@@ -376,8 +376,11 @@ _DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 
 def _mutation_outcome(client: Client, call: Call, result: Exchange, empty: _T) -> MutationAttempt[_T] | None:
     if result.outcome == "success":
         return None
-    if result.outcome in ("retry", "server", "invalid"):
-        # A 500 or an unusable answer is unknown; the key makes the identical resend safe.
+    if result.outcome == "server":
+        # Xero caches a 500 under the key and replays it, so no resend can learn the outcome.
+        return MutationAttempt.uncertain(empty, _require_failure(result), client.receipt(call, result))
+    if result.outcome in ("retry", "invalid"):
+        # An unusable answer is unknown; the key makes the identical resend safe.
         return MutationAttempt.retry(_require_failure(result), result.retry_after)
     if (
         result.outcome == "rejected"

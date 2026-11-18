@@ -204,9 +204,6 @@ func TestCreateInvoiceRetriesEveryUnknownOutcomeUnderTheKey(t *testing.T) {
 			response.Header().Set("Location", "https://example.com/")
 			response.WriteHeader(http.StatusTemporaryRedirect)
 		}, kind: sdkgo.FailureProtocol},
-		{name: "internal error", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusInternalServerError, `{"Message":"SENTINEL"}`)
-		}, kind: sdkgo.FailureAvailability},
 		{name: "unusable accepted answer", reply: func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, `{"Invoices":[{"InvoiceID":"not-a-uuid"}]}`)
 		}, kind: sdkgo.FailureProtocol},
@@ -270,6 +267,11 @@ func TestCreateInvoiceMapsRejectionsLimitsAndUnknownOutcomes(t *testing.T) {
 			invoice["HasErrors"], invoice["ValidationErrors"] = true, []any{map[string]any{"Message": "SENTINEL"}}
 			writeValue(t, response, http.StatusOK, map[string]any{"Invoices": []any{invoice}})
 		}, branch: xero.CreateInvoiceBranchProviderRejected, kind: sdkgo.FailureValidation},
+		// Xero caches a 500 under the key, so a resend would only replay it.
+		{name: "cached internal error", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusInternalServerError, `{"Message":"SENTINEL"}`)
+		}, branch: xero.CreateInvoiceBranchUncertain, kind: sdkgo.FailureAvailability,
+			message: "Xero failed internally (HTTP 500)"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { test.reply(response) })

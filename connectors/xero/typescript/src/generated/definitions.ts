@@ -167,7 +167,7 @@ export const CreateInvoiceBranchCreated = CreateInvoiceBranch.Created;
 export const CreateInvoiceBranchProviderRejected = CreateInvoiceBranch.ProviderRejected;
 /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds. */
 export const CreateInvoiceBranchDailyLimitReached = CreateInvoiceBranch.DailyLimitReached;
-/** On a later attempt, which may follow a created invoice, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read back with listInvoices by reference. An internal error or an unusable invoice repeats the identical keyed request instead. */
+/** Xero answered HTTP 500, which it caches under the key and replays to every resend, or, on a later attempt that may follow a created invoice, Xero refused the credentials or the connection became unusable; the outcome cannot be confirmed, so read back with listInvoices by reference. An unusable invoice repeats the identical keyed request instead. */
 export const CreateInvoiceBranchUncertain = CreateInvoiceBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid on the Step's first attempt. */
 export const CreateInvoiceBranchDefect = CreateInvoiceBranch.Defect;
@@ -178,7 +178,7 @@ export const CreateInvoiceDefinition: MutationDefinition = {
     { id: "created", description: "Xero created the invoice, or returned the invoice this Step already created, with its number and totals." },
     { id: "providerRejected", description: "Xero conclusively rejected the invoice, such as an unknown contact or account code, a locked period, a plan's invoice limit, or a missing scope; nothing was created.", optional: true },
     { id: "dailyLimitReached", description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds.", optional: true },
-    { id: "uncertain", description: "On a later attempt, which may follow a created invoice, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read back with listInvoices by reference. An internal error or an unusable invoice repeats the identical keyed request instead.", optional: true },
+    { id: "uncertain", description: "Xero answered HTTP 500, which it caches under the key and replays to every resend, or, on a later attempt that may follow a created invoice, Xero refused the credentials or the connection became unusable; the outcome cannot be confirmed, so read back with listInvoices by reference. An unusable invoice repeats the identical keyed request instead.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid on the Step's first attempt.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 240000 } },
@@ -201,7 +201,7 @@ export const RecordPaymentBranchRecorded = RecordPaymentBranch.Recorded;
 export const RecordPaymentBranchProviderRejected = RecordPaymentBranch.ProviderRejected;
 /** Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds. */
 export const RecordPaymentBranchDailyLimitReached = RecordPaymentBranch.DailyLimitReached;
-/** On a later attempt, which may follow a recorded payment, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read the invoice back with getInvoice. An internal error or an unusable payment repeats the identical keyed request instead. */
+/** Xero answered HTTP 500, which it caches under the key and replays to every resend, or, on a later attempt that may follow a recorded payment, Xero refused the credentials or the connection became unusable; the outcome cannot be confirmed, so read the invoice back with getInvoice. An unusable payment repeats the identical keyed request instead. */
 export const RecordPaymentBranchUncertain = RecordPaymentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid on the Step's first attempt. */
 export const RecordPaymentBranchDefect = RecordPaymentBranch.Defect;
@@ -212,7 +212,7 @@ export const RecordPaymentDefinition: MutationDefinition = {
     { id: "recorded", description: "Xero recorded the payment, or returned the payment this Step already recorded, with the invoice's remaining amount due." },
     { id: "providerRejected", description: "Xero conclusively rejected the payment, such as an amount above the amount due, an invoice that is not approved, an account that cannot take payments, or a locked period; nothing was recorded.", optional: true },
     { id: "dailyLimitReached", description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds.", optional: true },
-    { id: "uncertain", description: "On a later attempt, which may follow a recorded payment, Xero refused the credentials or the connection became unusable, so the outcome cannot be confirmed; read the invoice back with getInvoice. An internal error or an unusable payment repeats the identical keyed request instead.", optional: true },
+    { id: "uncertain", description: "Xero answered HTTP 500, which it caches under the key and replays to every resend, or, on a later attempt that may follow a recorded payment, Xero refused the credentials or the connection became unusable; the outcome cannot be confirmed, so read the invoice back with getInvoice. An unusable payment repeats the identical keyed request instead.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid on the Step's first attempt.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 240000 } },

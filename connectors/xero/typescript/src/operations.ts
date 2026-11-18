@@ -225,8 +225,10 @@ function queryExchange<T>(result: XeroExchange, zero: T, receipt: ReceiptDraft, 
 /** Statuses that prove a write was refused; 409, 501, 3xx, and other statuses are unknown. */
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 function mutationExchange<T>(call: Call, result: XeroExchange, zero: T, receipt: ReceiptDraft): MutationAttempt<T> {
-  // A 500 or an unusable answer is unknown; the key makes the identical resend safe.
-  if (result.outcome === 'retry' || result.outcome === 'serverError' || result.outcome === 'invalid') return newMutationRetry(result.failure!, result.retryAfterMs);
+  // Xero caches a 500 under the key and replays it, so no resend can learn the outcome.
+  if (result.outcome === 'serverError') return newMutationUncertain(zero, result.failure!, receipt);
+  // An unusable answer is unknown; the key makes the identical resend safe.
+  if (result.outcome === 'retry' || result.outcome === 'invalid') return newMutationRetry(result.failure!, result.retryAfterMs);
   const status = result.response?.status ?? 0;
   // A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
   if (result.outcome === 'rejected' && status >= 300 && !definiteRefusalStatuses.has(status)) return newMutationRetry(result.failure!, result.retryAfterMs);

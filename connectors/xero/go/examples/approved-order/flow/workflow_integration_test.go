@@ -283,19 +283,18 @@ func TestRejectedInvoiceFailsTheFlowWithoutXeroTextWithRealDex(t *testing.T) {
 	t.Logf("rejected create failure: %s", result.ErrorMessage)
 }
 
-func TestInternalErrorOnCreateRepeatsOnlyTheKeyedRequestWithRealDex(t *testing.T) {
+func TestInternalErrorOnCreateEndsUncertainWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeXero(t)
 	provider.failsCreateInternally = true
 	harness := newOrderHarness(t, provider, customConnection, defaultRequestTimeout)
 
 	result := harness.waitForFlow(t, harness.startOrder(t, "internal-error", integrationOrder()))
-	require.Equal(t, dex.FlowFailed, result.Status, "the safe create retries the unknown 500 until the retry budget runs out")
-	creates := provider.count("createInvoice")
-	require.Greater(t, creates, 1, "a 500 is an unknown outcome, so the identical keyed request is repeated")
-	require.Equal(t, creates-1, provider.count("replay"), "every repeat carries the same Idempotency-Key, so Xero replays the cached 500")
+	require.Equal(t, dex.FlowFailed, result.Status, "the unwired optional uncertain branch fails the Flow")
+	require.Equal(t, 1, provider.count("createInvoice"), "Xero caches a 500 under the key, so the Step does not resend")
+	require.Zero(t, provider.count("replay"))
 	require.Zero(t, provider.invoiceCount())
 	require.Zero(t, provider.count("recordPayment"))
-	t.Logf("create failure after repeats: %s", result.ErrorMessage)
+	t.Logf("uncertain create failure: %s", result.ErrorMessage)
 }
 
 func TestOAuthConnectionSendsTheNamedOrganisationTenantWithRealDex(t *testing.T) {

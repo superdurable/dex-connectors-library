@@ -3103,12 +3103,24 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "output": {
+          "invoice": {
+            "contact": {
+              "contactId": ""
+            },
+            "invoiceId": "",
+            "status": "",
+            "type": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          },
+          "reference": "ORDER-1042"
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
       "input": {
@@ -3609,12 +3621,25 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "output": {
+          "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+          "payment": {
+            "account": {},
+            "amount": "",
+            "invoice": {
+              "invoiceId": ""
+            },
+            "paymentId": "",
+            "status": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
       "input": {

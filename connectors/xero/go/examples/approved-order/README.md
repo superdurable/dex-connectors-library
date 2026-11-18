@@ -146,10 +146,9 @@ request, and replays it:
 - a missing contact fails the Flow on the unwired `notFound` branch without
   writing;
 - a minute limit waits for `Retry-After`;
-- the daily limit and a validation rejection each fail the Flow through an
-  unwired optional branch after one request, without Xero's message text;
-- a cached 500 repeats only the identical keyed request, which Xero replays,
-  until the retry budget fails the Flow, and creates no invoice;
+- the daily limit, a validation rejection, and a 500, which Xero caches under
+  the key, each fail the Flow through an unwired optional branch after one
+  request, without Xero's message text;
 - an OAuth connection sends the tenant of the named organisation, read once
   from `/connections`;
 - an invalid email fails the Flow before any Xero request.

@@ -196,7 +196,7 @@ const (
 	exchangeDailyLimit
 	// exchangeInvalid is an unusable 2xx: invalidResponse for a read, Retry for a keyed mutation.
 	exchangeInvalid
-	// exchangeServerError is HTTP 500: Retry for a read and for a keyed mutation.
+	// exchangeServerError is HTTP 500: Retry for a read, uncertain for a keyed mutation, whose key replays it.
 	exchangeServerError
 	exchangeDefect
 )
@@ -638,7 +638,8 @@ type mutationBranches struct {
 	defect            sdkgo.BranchID
 }
 
-// mutationAttemptForExchange retries every unknown outcome, including a 500 or an unusable answer, under the key.
+// mutationAttemptForExchange retries every unknown outcome, including an unusable answer, under the key. A 500
+// selects uncertain because Xero caches it under the key, so every resend would replay the same 500.
 // On a later attempt, which may follow a created write, a local failure or a credential refusal selects
 // uncertain: Xero checks credentials before it replays the keyed answer, so they cannot prove nothing was written.
 func mutationAttemptForExchange[OUT any](call sdkgo.Call, result xeroExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
@@ -646,8 +647,11 @@ func mutationAttemptForExchange[OUT any](call sdkgo.Call, result xeroExchange, r
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
-	case exchangeRetry, exchangeServerError, exchangeInvalid:
+	case exchangeRetry, exchangeInvalid:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+	case exchangeServerError:
+		// Xero caches a 500 under the key and replays it, so no resend can learn the outcome.
+		return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
 	case exchangeDailyLimit:
 		return sdkgo.NewMutationBranch(branches.dailyLimitReached, requested, &result.failure, receipt), true
 	case exchangeDefect:
