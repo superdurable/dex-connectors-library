@@ -784,6 +784,25 @@ func TestReplyFenceRefusalWithAnIncompleteErrorBodyIsAnUnknownOutcome(t *testing
 	}
 }
 
+func TestReplyFenceCredentialEchoingRefusalResendsBelowTheCapAndIsUncertainAtTheCap(t *testing.T) {
+	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"POST /v2/conversations/501/notes": respondJSON(http.StatusUnprocessableEntity, `{"message":"`+sentinelToken+`"}`),
+	})
+	client := newFakeBackedClient(t, fake)
+	step := singledispatchtest.NewContext("helpscout-test-flow", "echoing-refusal")
+	input := helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Note", IsInternalNote: true}
+	for sendCount := 1; sendCount < 3; sendCount++ {
+		_, err := replyToConversation(t, client, step, input)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "a refusal that echoes the token may hide a created thread")
+		step.AdvanceAttempt()
+	}
+	result, err := replyToConversation(t, client, step, input)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "the third send reaches the cap")
+	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/notes"), 3)
+}
+
 func TestReplyFenceRefusalThatNamesAThreadIsReadBackAndNeverResent(t *testing.T) {
 	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
 		"POST /v2/conversations/501/notes": func(response http.ResponseWriter, _ *http.Request) {

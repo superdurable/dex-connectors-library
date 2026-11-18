@@ -182,8 +182,9 @@ operation uses the Connector SDK's single-dispatch fence with sync durability:
   Each records `canResend` first, and nothing was added. After a possible
   earlier send, any of these refusals selects `uncertain` instead. A refusal
   whose error body is larger than 64 KiB or breaks while it is read, including
-  one the write window cuts off, is an unknown outcome and resends within the
-  send cap;
+  one the write window cuts off, or whose body echoes the access token, is an
+  unknown outcome: it records nothing, resends within the send cap, and the
+  send that reaches the cap selects `uncertain`;
 - a non-2xx that carries a valid `Resource-Id` names a thread that may exist:
   the connector saves that ID and returns Retry, so the next attempt reads
   the thread back and never resends; when the ID cannot be saved it selects
@@ -228,8 +229,11 @@ again or finds them applied and reports `wasAlreadyApplied`. The real-Dex test
 lets Dex dispatch the Step again while a status write answers after nine
 seconds, and the conversation ends with the status and one copy of the tag. A
 tag that someone else changes between the read and the `PUT` is overwritten.
-A write refusal whose error body is larger than 64 KiB or breaks while it is
-read is an unknown outcome, so the attempt returns Retry and repeats the write.
+A write refusal whose error body is larger than 64 KiB, breaks while it is
+read, or echoes the access token is an unknown outcome, so the attempt returns
+Retry and repeats the write. The read before the writes reads its error body in
+full, as a write does, so a truncated or broken refusal body is never taken as
+definite.
 The read before the writes follows one rule on every attempt: a 301 for a
 merged conversation, or a readable 400, 401, 403, 404, 411, 413, 414, 415, or
 422 that does not echo the token, selects its branch; any other answer, such as

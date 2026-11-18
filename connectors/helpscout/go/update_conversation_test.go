@@ -159,11 +159,13 @@ func TestUpdateConversationUnassignsAndClearsEveryTag(t *testing.T) {
 
 func TestUpdateConversationRetriesAnInconclusiveReadBeforeTheUpdate(t *testing.T) {
 	cases := map[string]http.HandlerFunc{
-		"unlisted 409":           respondJSON(http.StatusConflict, helpScoutErrorBody("Conflict", nil)),
-		"unlisted 410":           respondJSON(http.StatusGone, helpScoutErrorBody("Gone", nil)),
-		"oversized 404 body":     incompleteErrorBody(http.StatusNotFound, true),
-		"unreadable 403 body":    incompleteErrorBody(http.StatusForbidden, false),
-		"unparseable 200 body":   func(response http.ResponseWriter, _ *http.Request) { writeJSON(response, http.StatusOK, `{"id":"broken"`) },
+		"unlisted 409":        respondJSON(http.StatusConflict, helpScoutErrorBody("Conflict", nil)),
+		"unlisted 410":        respondJSON(http.StatusGone, helpScoutErrorBody("Gone", nil)),
+		"oversized 404 body":  incompleteErrorBody(http.StatusNotFound, true),
+		"unreadable 403 body": incompleteErrorBody(http.StatusForbidden, false),
+		"unparseable 200 body": func(response http.ResponseWriter, _ *http.Request) {
+			writeJSON(response, http.StatusOK, `{"id":"broken"`)
+		},
 		"credential-echoing 404": respondJSON(http.StatusNotFound, `{"message":"`+sentinelToken+`"}`),
 	}
 	for name, read := range cases {
@@ -233,6 +235,13 @@ func TestUpdateConversationMapsFailuresAndRetriesALostWrite(t *testing.T) {
 		_, err = updateConversation(t, newFakeBackedClient(t, incomplete), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
 		requireRetry(t, err, sdkgo.FailureAvailability) // A refusal whose body was not read in full is unknown, so the write repeats.
 	}
+
+	echoed := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501":   stored.read,
+		"PATCH /v2/conversations/501": respondJSON(http.StatusUnprocessableEntity, `{"message":"`+sentinelToken+`"}`),
+	})
+	_, err = updateConversation(t, newFakeBackedClient(t, echoed), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+	requireRetry(t, err, sdkgo.FailureAvailability) // A refusal that echoes the token is unknown, so the write repeats.
 
 	var reads atomic.Int32
 	invalidReadBack := newFakeHelpScout(t, map[string]http.HandlerFunc{
