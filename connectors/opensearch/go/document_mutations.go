@@ -161,10 +161,10 @@ type documentExchange struct {
 
 func exchangeDocument(client *Client, call sdkgo.Call, method, index, documentID string, source []byte) documentExchange {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil {
-		return documentExchange{shouldRetry: true, retryKind: sdkgo.FailureAuthentication, retryMessage: "OpenSearch credentials are temporarily unavailable"}
+	if err != nil && !isTerminalCredentialError(err) {
+		return documentExchange{shouldRetry: true, retryKind: sdkgo.FailureAvailability, retryMessage: "OpenSearch credentials are temporarily unavailable"}
 	}
-	if credentials.Validate() != nil || !validUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(credentials.Password.Reveal()) {
+	if err != nil || credentials.Validate() != nil || !validUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(credentials.Password.Reveal()) {
 		return documentExchange{requestFailure: &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Provider: "opensearch", Message: "OpenSearch credentials are invalid"}}
 	}
 	endpoint := client.clusterURL + "/" + index + "/_doc/" + url.PathEscape(documentID)
