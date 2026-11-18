@@ -299,6 +299,10 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 		rejectedFailure := statusFailure(response, operation)
 		return sdkgo.NewMutationBranch(notFound, zero, &rejectedFailure, sdkgo.Receipt{})
 	}
+	if response.StatusCode != http.StatusOK && !isDefiniteRefusalStatus(response.StatusCode) {
+		// Replacing the complete label set is safe to repeat, so an unknown answer retries.
+		return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureAvailability, operation, fmt.Sprintf("GitLab answered HTTP %d, so the outcome is unknown", response.StatusCode)), 0)
+	}
 	if response.StatusCode != http.StatusOK {
 		rejectedFailure := statusFailure(response, operation)
 		return sdkgo.NewMutationBranch(rejected, zero, &rejectedFailure, sdkgo.Receipt{})
@@ -306,15 +310,25 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if err != nil {
 		if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-			return sdkgo.NewMutationBranch(invalid, zero, failure(sdkgo.FailureResponseTooLarge, operation, "response exceeded the configured limit"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureResponseTooLarge, operation, "response exceeded the configured limit"), 0)
 		}
 		return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "gitlab", Operation: operation, Message: "response was interrupted"}, 0)
 	}
 	value, err := decode(body)
 	if err != nil {
-		return sdkgo.NewMutationBranch(invalid, zero, failure(sdkgo.FailureProtocol, operation, "response was malformed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureProtocol, operation, "response was malformed"), 0)
 	}
 	return sdkgo.NewMutationBranch(happy, value, nil, sdkgo.Receipt{})
+}
+
+// isDefiniteRefusalStatus reports a status that proves GitLab refused the write.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) (*http.Response, *sdkgo.Failure, error) {

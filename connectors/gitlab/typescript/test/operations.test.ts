@@ -6,6 +6,7 @@ import { ReauthorizationRequiredError, SecretString, type Call } from '@superdur
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { GitLabClient, pathEscape } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const call = { id: 'test', connection: { provider: 'gitlab', name: 'gitlab' }, operation: { connectorId: 'gitlab', operationId: 'getProject' }, context: { cancellationSignal: new AbortController().signal } } as Call;
 const credentials = { resolve: async () => ({ accessToken: new SecretString('test-accesstoken') }) };
@@ -28,6 +29,8 @@ it.each([
   ['reauthorization', () => new ReauthorizationRequiredError(), 'defect'],
   ['not selected', () => new ConnectionNotSelectedError(), 'defect'],
   ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
+  ['malformed material', () => new CredentialMaterialError('credential access_token is required'), 'defect'],
+  ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
   ['broker unavailable', () => new CredentialBrokerUnavailableError(), 'retry'],
   ['not configured', () => new Error('connection is not configured'), 'retry'],
 ])('classifies a credential resolve failure (%s) for the label write', async (_name, newError, expected) => {
@@ -35,6 +38,23 @@ it.each([
   const client = new GitLabClient({}, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('unexpected request'); } });
   const attempt = await client.updateIssueLabels().invoke(call, { projectId: '42', issueIid: 7, labels: ['review'] });
   expect(attempt.kind === 'branch' ? attempt.branch : attempt.kind).toBe(expected);
+});
+
+it.each([
+  [302, '', 'retry'],
+  [425, '{}', 'retry'],
+  [200, '{"id":1,"iid":0,"title":"x","labels":[],"web_url":"https://gitlab.com/x"}', 'retry'],
+  [422, '{}', 'providerRejected'],
+])('classifies the label write after HTTP %i as %s', async (status, body, expected) => {
+  const client = new GitLabClient({}, credentials, { send: async () => ({ status, headers: {}, body: Buffer.from(body) }) });
+  const attempt = await client.updateIssueLabels().invoke(call, { projectId: '42', issueIid: 7, labels: ['review'] });
+  expect(attempt.kind === 'branch' ? attempt.branch : attempt.kind).toBe(expected);
+});
+
+it('retries an oversized label write answer', async () => {
+  const client = new GitLabClient({}, credentials, { send: async () => { throw new BodyTooLargeError(200, {}); } });
+  const attempt = await client.updateIssueLabels().invoke(call, { projectId: '42', issueIid: 7, labels: ['review'] });
+  expect(attempt).toMatchObject({ kind: 'retry', failure: { kind: 'RESPONSE_TOO_LARGE' } });
 });
 
 it('retries a refused local connection', async () => {

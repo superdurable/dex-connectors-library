@@ -134,6 +134,48 @@ func TestListInsightsBearerPaginationAndRateLimit(t *testing.T) {
 	require.NotContains(t, err.Error(), "phx_test-key")
 }
 
+func TestCaptureEventRetriesUnknownStatusesAndRejectsOnlyDefiniteRefusals(t *testing.T) {
+	for status, isDefinite := range map[int]bool{
+		http.StatusCreated: false, http.StatusFound: false, http.StatusConflict: false, http.StatusTooEarly: false,
+		http.StatusUnavailableForLegalReasons: false, http.StatusBadRequest: true, http.StatusUnauthorized: true, http.StatusUnprocessableEntity: true,
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(status) }))
+		result, err := sdkgo.RunMutation(providerContext{}, newProviderClient(t, server.URL).CaptureEvent(), testConnection, CaptureEventInput{Event: "Signed Up", DistinctID: "member-1", Timestamp: "2026-10-29T00:00:00Z"})
+		server.Close()
+		if isDefinite {
+			require.NoError(t, err, status)
+			require.Equal(t, CaptureEventBranchProviderRejected, result.Branch, status)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, status)
+	}
+}
+
+func TestListInsightsClassifiesCredentialFailures(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		resolveErr error
+		isTerminal bool
+	}{
+		"broker unavailable": {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"unlisted error":     {errors.New("credential store hiccup"), false},
+		"reauthorization":    {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":   {projectconfig.ErrObjectNotFound, true},
+		"broker rejected":    {projectconfig.ErrCredentialBrokerRejected, true},
+	} {
+		client, err := New(Config{CaptureURL: "http://127.0.0.1:1", AppURL: "http://127.0.0.1:1"}, failingCredentials{resolveErr: testCase.resolveErr})
+		require.NoError(t, err)
+		result, err := sdkgo.RunQuery(providerContext{}, client.ListInsights(), testConnection, ListInsightsInput{ProjectID: 42})
+		if testCase.isTerminal {
+			require.NoError(t, err, name)
+			require.Equal(t, ListInsightsBranchDefect, result.Branch, name)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
+}
+
 type failingCredentials struct{ resolveErr error }
 
 func (credentials failingCredentials) Resolve(sdkgo.Call) (Credentials, error) {

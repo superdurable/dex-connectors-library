@@ -12,8 +12,20 @@ from dex_connectors.sdk.projectconfig.broker import (
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.discord import Client, Config, Credentials
+from dex_connectors.discord._generated.connection import CredentialMaterialError
 
 REFERENCE = ConnectionRef("discord", "discord")
+
+
+def _sdk_decoding_failure() -> ValueError:
+    """Build the SDK project provider's wrapper around a malformed stored credential."""
+    try:
+        try:
+            raise CredentialMaterialError("Discord credential bot_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 
 @pytest.mark.asyncio
@@ -24,6 +36,8 @@ REFERENCE = ConnectionRef("discord", "discord")
         (ObjectNotFoundError(), "defect"),
         (ConnectionNotSelectedError(), "defect"),
         (CredentialBrokerRejectedError(), "defect"),
+        (CredentialMaterialError("Discord credential bot_token is required"), "defect"),
+        (_sdk_decoding_failure(), "defect"),
         (CredentialBrokerUnavailableError(), "retry"),
         (ValueError("connection is not configured"), "retry"),
         (RuntimeError("unlisted"), "retry"),

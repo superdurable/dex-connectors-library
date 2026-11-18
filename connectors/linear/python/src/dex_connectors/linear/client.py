@@ -407,9 +407,15 @@ class Client:
         return Exchange("succeeded", data=data, status=status, request_id=request_id)
 
 
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential resolution failure that no retry fixes; every other error is transient."""
-    return isinstance(
+    # Imported here because the generated connection module imports this client.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,
@@ -476,10 +482,11 @@ def _classify_failure(
         outcome, kind, verb = "rejected", FailureKind.AUTHORIZATION, "denied permission"
     elif status == 400 and not code and not error_type:
         outcome, kind, verb = "defect", FailureKind.PROTOCOL, "rejected the connector's GraphQL request"
-    elif 300 <= status < 400:
-        outcome, kind, verb = "rejected", FailureKind.PROTOCOL, "redirected the request"
-    else:
+    elif status in _DEFINITE_REFUSAL_STATUSES:
         outcome, kind, verb = "rejected", FailureKind.PROVIDER_REJECTION, "rejected the request"
+    else:
+        # A redirect or unlisted status proves nothing, so the request is retried.
+        outcome, kind, verb = "retry", FailureKind.AVAILABILITY, "answered with an unexpected status"
     return Exchange(
         outcome,
         status=status,

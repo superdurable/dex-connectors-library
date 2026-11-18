@@ -157,12 +157,13 @@ func (operation TrackEventOperation) Invoke(call sdkgo.Call, input TrackEventInp
 		if status == 0 {
 			return sdkgo.NewMutationBranch(TrackEventBranchDefect, EventImportResult{}, failure, sdkgo.Receipt{})
 		}
-		if status < 0 {
-			return sdkgo.NewMutationRetry[EventImportResult](*failure, retryAfter)
-		}
-		return sdkgo.NewMutationBranch(TrackEventBranchInvalidResponse, EventImportResult{}, failure, sdkgo.Receipt{})
+		// The $insert_id deduplicates a resend, so an oversized confirmation retries instead of selecting invalidResponse.
+		return sdkgo.NewMutationRetry[EventImportResult](*failure, retryAfter)
 	}
 	if status != http.StatusOK {
+		if !isDefiniteRefusalStatus(status) {
+			return sdkgo.NewMutationRetry[EventImportResult](*mixpanelFailure(name, sdkgo.FailureAvailability, "Mixpanel answered event import with HTTP "+strconv.Itoa(status)+", so its outcome is unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(TrackEventBranchProviderRejected, EventImportResult{}, mixpanelFailure(name, rejectionKind(status), "Mixpanel rejected event import with HTTP "+strconv.Itoa(status)), sdkgo.Receipt{})
 	}
 	var answer struct {
@@ -171,7 +172,7 @@ func (operation TrackEventOperation) Invoke(call sdkgo.Call, input TrackEventInp
 		Status   string `json:"status"`
 	}
 	if json.Unmarshal(body, &answer) != nil || answer.Code != 200 || answer.Imported != 1 || answer.Status != "OK" {
-		return sdkgo.NewMutationBranch(TrackEventBranchInvalidResponse, EventImportResult{}, mixpanelFailure(name, sdkgo.FailureProtocol, "Mixpanel returned an invalid import confirmation"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[EventImportResult](*mixpanelFailure(name, sdkgo.FailureProtocol, "Mixpanel returned an unusable import confirmation"), 0)
 	}
 	return sdkgo.NewMutationBranch(TrackEventBranchImported, EventImportResult{Imported: true}, nil, sdkgo.Receipt{})
 }
@@ -269,6 +270,16 @@ func (client *Client) send(call sdkgo.Call, method, address string, payload []by
 		return nil, -1, mixpanelFailure(operation, sdkgo.FailureAvailability, "Mixpanel response was interrupted"), 0
 	}
 	return body, response.StatusCode, nil, 0
+}
+
+// isDefiniteRefusalStatus reports a status that proves Mixpanel refused the import.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func rejectionKind(status int) sdkgo.FailureKind {

@@ -185,10 +185,24 @@ func (operation CreateEventOperation) Invoke(call sdkgo.Call, input CreateEventI
 	if retryStatus(response.StatusCode) {
 		return sdkgo.NewMutationRetry[EventAcceptance](*klaviyoFailure(name, sdkgo.FailureAvailability, "Klaviyo event submission is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
-	if response.StatusCode != http.StatusAccepted {
-		return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, EventAcceptance{}, klaviyoFailure(name, rejectionKind(response.StatusCode), "Klaviyo rejected event submission with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+	if response.StatusCode == http.StatusAccepted {
+		return sdkgo.NewMutationBranch(CreateEventBranchAccepted, EventAcceptance{Accepted: true}, nil, sdkgo.Receipt{})
 	}
-	return sdkgo.NewMutationBranch(CreateEventBranchAccepted, EventAcceptance{Accepted: true}, nil, sdkgo.Receipt{})
+	if !isDefiniteRefusalStatus(response.StatusCode) {
+		// The unique_id deduplicates a resend, so an unknown answer retries.
+		return sdkgo.NewMutationRetry[EventAcceptance](*klaviyoFailure(name, sdkgo.FailureAvailability, "Klaviyo answered event submission with HTTP "+strconv.Itoa(response.StatusCode)+", so its outcome is unknown"), 0)
+	}
+	return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, EventAcceptance{}, klaviyoFailure(name, rejectionKind(response.StatusCode), "Klaviyo rejected event submission with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
+}
+
+// isDefiniteRefusalStatus reports a status that proves Klaviyo refused the request.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func (client *Client) newRequest(call sdkgo.Call, method, path string, payload []byte, operation string) (*http.Request, *sdkgo.Failure) {

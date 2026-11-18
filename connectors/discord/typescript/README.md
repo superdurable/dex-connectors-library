@@ -1,6 +1,6 @@
 # Discord TypeScript connector
 
-`@superdurable/connector-discord` provides typed Dex Query Steps for `getChannel` and `listChannelMessages`, and Mutation Steps for `createMessage` and `addReaction`. It implements the Discord connector manifest at TypeScript package version `0.1.0`.
+`@superdurable/connector-discord` provides typed Dex Query Steps for `getChannel` and `listChannelMessages`, and Mutation Steps for `createMessage` and `addReaction`. It implements the Discord connector manifest at TypeScript package version `0.1.1`.
 
 Install the package with `npm install @superdurable/connector-discord`. Import `newGetChannelStep`, `newListChannelMessagesStep`, `newCreateMessageStep`, or `newAddReactionStep`, and bind a `DiscordClient` with `newConnection` or a Dex Web connection with `newProjectConnection`. The [runnable channel announcement Flow](examples/channel-announcement/flow/workflow.ts) uses the static `discord-announcements` connection.
 

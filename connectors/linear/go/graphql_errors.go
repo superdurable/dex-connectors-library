@@ -103,11 +103,22 @@ func classifyFailedResponse(operation string, response linearResponse, summary g
 		return outcome(exchangeRejected, sdkgo.FailureAuthorization, describe("denied permission"))
 	case status == http.StatusBadRequest && code == "" && errorType == "":
 		return outcome(exchangeDefect, sdkgo.FailureProtocol, describe("rejected the connector's GraphQL request"))
-	case status >= 300 && status < 400:
-		return outcome(exchangeRejected, sdkgo.FailureProtocol, describe("redirected the request"))
-	default:
+	case isDefiniteRefusalStatus(status):
 		return outcome(exchangeRejected, sdkgo.FailureProviderRejection, describe("rejected the request"))
+	default:
+		// A redirect or unlisted status proves nothing, so the request is retried.
+		return outcome(exchangeRetry, sdkgo.FailureAvailability, describe("answered with an unexpected status"))
 	}
+}
+
+// isDefiniteRefusalStatus reports a status that proves Linear refused the request.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func withErrorSummary(message string, summary graphQLErrorSummary) string {

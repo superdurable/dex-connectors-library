@@ -6,16 +6,16 @@ metadata:
   description: Import a deduplicated event and export a bounded day of raw events.
   company: Mixpanel
   categories: [analytics]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: mixpanel
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [trackEvent, exportEvents]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-mixpanel'
       operations: [trackEvent, exportEvents]
       triggers: []
@@ -80,9 +80,13 @@ spec:
       branches:
         - {id: imported, goName: Imported, description: Mixpanel accepted the event for ingestion.}
         - {id: providerRejected, goName: ProviderRejected, description: Mixpanel rejected the event or credentials., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Mixpanel returned malformed or oversized data., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: a malformed or oversized import confirmation now retries, because the $insert_id makes a resend safe.", optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # Mixpanel deduplicates a resent event by the $insert_id that every attempt derives from the call ID.
+        repeatOnUnknown: safe
       mocks:
         - name: importedDefaultEvent
           branch: imported

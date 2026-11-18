@@ -4,7 +4,7 @@
 import { BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { AddReactionOperation, CreateMessageOperation, GetChannelOperation, ListChannelMessagesOperation } from './operations.js';
 
 const defaultEndpoint = 'https://discord.com/api/v10';
@@ -73,7 +73,7 @@ export class DiscordClient {
       credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: this.failure('rejected', operation, 'AUTHENTICATION', 'the Discord connection must be authorized again') };
-      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError)
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error))
         return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Discord connection credentials are unavailable or invalid') };
       // Nothing reached Discord, so a transient credential failure retries.
       return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'Discord connection credentials are temporarily unavailable') };
@@ -111,13 +111,14 @@ export class DiscordClient {
     const detail = code ? `, code ${code}` : '';
     const retryAfter = parseRetryAfter(header(response, 'retry-after'), this.now());
     if (status === 429) return this.failure('retry', operation, 'RATE_LIMIT', 'Discord rate limited the request', receipt, rateLimitDelay(response.body, retryAfter));
-    if (status === 408 || (status >= 500 && status !== 501)) return this.failure('retry', operation, 'AVAILABILITY', `Discord is temporarily unavailable (HTTP ${status}${detail})`, receipt, retryAfter);
+    if (status === 408 || status >= 500) return this.failure('retry', operation, 'AVAILABILITY', `Discord is temporarily unavailable (HTTP ${status}${detail})`, receipt, retryAfter);
     if (status === 401) return this.failure('rejected', operation, 'AUTHENTICATION', `Discord rejected the bot token (HTTP 401${detail})`, receipt);
     if (status === 403) return this.failure('rejected', operation, 'AUTHORIZATION', `Discord denied access: check that the bot is in the server and has the channel permissions (HTTP 403${detail})`, receipt);
     if (status === 404 && (!code || notFoundCodes.has(code))) return this.failure('notFound', operation, 'NOT_FOUND', `Discord found no such channel, message, or emoji (HTTP 404${detail})`, receipt);
     if (status === 400 || status === 413) return this.failure('rejected', operation, 'VALIDATION', `Discord rejected the request as invalid (HTTP ${status}${detail})`, receipt);
-    if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `Discord redirected the request (HTTP ${status})`, receipt);
-    return this.failure('rejected', operation, 'PROVIDER_REJECTION', `Discord rejected the request (HTTP ${status}${detail})`, receipt);
+    if ([404, 411, 414, 415, 422].includes(status)) return this.failure('rejected', operation, 'PROVIDER_REJECTION', `Discord rejected the request (HTTP ${status}${detail})`, receipt);
+    // A redirect or unlisted status proves nothing, so the request is retried.
+    return this.failure('retry', operation, 'AVAILABILITY', `Discord answered with an unexpected status (HTTP ${status}${detail})`, receipt);
   }
 
   private failure(disposition: ExchangeFailure['disposition'], operation: string, kind: Failure['kind'], message: string, receipt: ReceiptDraft = {}, retryAfterMs = 0): ExchangeFailure {

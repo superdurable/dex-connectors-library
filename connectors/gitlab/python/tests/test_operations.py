@@ -45,6 +45,7 @@ from dex_connectors.gitlab import (
     Project,
     UpdateIssueLabelsInput,
 )
+from dex_connectors.gitlab._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("gitlab", "gitlab")
 TOKEN = "glpat-test"
@@ -183,9 +184,6 @@ async def test_blank_project_is_defect_without_request() -> None:
         (httpx.Response(400), PROVIDER_REJECTED, FailureKind.VALIDATION),
         (httpx.Response(401), PROVIDER_REJECTED, FailureKind.AUTHENTICATION),
         (httpx.Response(403), PROVIDER_REJECTED, FailureKind.AUTHORIZATION),
-        (httpx.Response(200, json={**ISSUE, "iid": 0}), INVALID_RESPONSE, FailureKind.PROTOCOL),
-        (httpx.Response(200, json={**ISSUE, "labels": "review"}), INVALID_RESPONSE, FailureKind.PROTOCOL),
-        (httpx.Response(200, content=b"x" * 400), INVALID_RESPONSE, FailureKind.RESPONSE_TOO_LARGE),
     ],
 )
 async def test_update_branches(response: httpx.Response, branch: str, kind: FailureKind) -> None:
@@ -194,6 +192,25 @@ async def test_update_branches(response: httpx.Response, branch: str, kind: Fail
     )
     assert result.branch == branch
     assert result.failure is not None and result.failure.kind == kind
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("response", "kind"),
+    [
+        (httpx.Response(200, json={**ISSUE, "iid": 0}), FailureKind.PROTOCOL),
+        (httpx.Response(200, json={**ISSUE, "labels": "review"}), FailureKind.PROTOCOL),
+        (httpx.Response(200, content=b"x" * 400), FailureKind.RESPONSE_TOO_LARGE),
+        (httpx.Response(302), FailureKind.AVAILABILITY),
+        (httpx.Response(425), FailureKind.AVAILABILITY),
+    ],
+)
+async def test_update_retries_unknown_answers(response: httpx.Response, kind: FailureKind) -> None:
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(
+            make_client(response).update_issue_labels(), call_for(UPDATE_ISSUE_LABELS_DEFINITION), UPDATE
+        )
+    assert raised.value.failure.kind == kind
 
 
 @pytest.mark.asyncio
@@ -251,6 +268,17 @@ async def test_blank_token_is_defect_without_request() -> None:
     assert requests == []
 
 
+def _sdk_decoding_failure() -> ValueError:
+    """Build the SDK project provider's wrapper around a malformed stored credential."""
+    try:
+        try:
+            raise CredentialMaterialError("GitLab credential access_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
 class _FailingCredentials:
     def __init__(self, error: Exception) -> None:
         self.error = error
@@ -267,6 +295,8 @@ class _FailingCredentials:
         (ObjectNotFoundError("absent"), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("GitLab credential access_token is required"), True),
+        (_sdk_decoding_failure(), True),
         (CredentialBrokerUnavailableError(), False),
         (ValueError("connection is not configured"), False),
         (LookupError("unlisted"), False),

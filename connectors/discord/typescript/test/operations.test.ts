@@ -7,6 +7,7 @@ import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { DiscordClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const call = { id: 'deb1de08-84b3-554e-91d5-e46e685d1f56', idempotencyKey: 'test-key',
   connection: { provider: 'discord', name: 'discord' }, operation: { connectorId: 'discord', operationId: 'addReaction' },
@@ -30,6 +31,8 @@ it.each([
   { error: new ObjectNotFoundError(), branch: 'defect' },
   { error: new ConnectionNotSelectedError(), branch: 'defect' },
   { error: new CredentialBrokerRejectedError(), branch: 'defect' },
+  { error: new CredentialMaterialError('credential bot_token is required'), branch: 'defect' },
+  { error: new TypeError('project credential decoding failed'), branch: 'defect' },
   { error: new CredentialBrokerUnavailableError(), branch: undefined },
   { error: new Error('connection is not configured'), branch: undefined },
   { error: new TypeError('fetch failed'), branch: undefined },
@@ -42,6 +45,12 @@ it.each([
   if (branch) expect(result).toMatchObject({ kind: 'branch', branch });
   else expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
   expect(requestCount).toBe(0);
+});
+
+it.each([[302, 'retry'], [425, 'retry'], [501, 'retry'], [200, 'retry'], [422, 'providerRejected']])('classifies a createMessage HTTP %i answer as %s', async (status, expected) => {
+  const client = new DiscordClient({}, credential, { send: async () => ({ status, headers: {}, body: Buffer.from('{"code":0}') }) });
+  const result = await client.createMessage().invoke(call, { channelId, content: 'hello' });
+  expect(result.kind === 'branch' ? result.branch : result.kind).toBe(expected);
 });
 
 it('uses Go PathEscape for Unicode reactions and retries a refused local connection', async () => {

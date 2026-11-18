@@ -143,17 +143,12 @@ class CaptureEventOperation:
             return _capture_failure(DEFECT, FailureKind.VALIDATION, "timestamp must be an RFC3339 instant")
         try:
             credentials = await self.client.credentials.resolve(call)
-        except (
-            ReauthorizationRequiredError,
-            ObjectNotFoundError,
-            ConnectionNotSelectedError,
-            CredentialBrokerRejectedError,
-        ):
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                return _capture_retry(
+                    FailureKind.AVAILABILITY, "PostHog project token is temporarily unavailable"
+                )
             credentials = None
-        except Exception:
-            return _capture_retry(
-                FailureKind.AVAILABILITY, "PostHog project token is temporarily unavailable"
-            )
         try:
             token = "" if credentials is None else credentials.project_token.reveal()
         except AttributeError:
@@ -190,6 +185,13 @@ class CaptureEventOperation:
             if status == 408 or status >= 500:
                 return _capture_retry(
                     FailureKind.AVAILABILITY, "PostHog capture is temporarily unavailable", after
+                )
+            if status != 200 and status not in _DEFINITE_REFUSAL_STATUSES:
+                # The event uuid deduplicates a resend, so an unknown answer retries.
+                return _capture_retry(
+                    FailureKind.AVAILABILITY,
+                    f"PostHog answered capture with HTTP {status}, so its outcome is unknown",
+                    after,
                 )
             if status != 200:
                 return _capture_failure(
@@ -247,8 +249,15 @@ class ListInsightsOperation:
         limit = input.limit or 20
         try:
             credentials = await self.client.credentials.resolve(call)
-            key = credentials.personal_api_key.reveal()
-        except (ValueError, LookupError, OSError, AttributeError):
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                return _insights_retry(
+                    FailureKind.AVAILABILITY, "PostHog personal API key is temporarily unavailable"
+                )
+            credentials = None
+        try:
+            key = "" if credentials is None else credentials.personal_api_key.reveal()
+        except AttributeError:
             key = ""
         if not key or not is_header_safe_credential(key):
             return _insights_failure(
@@ -347,6 +356,25 @@ def _decode_insights_page(answer: Any, offset: int, limit: int) -> InsightsPage:
             raise ValueError("invalid insight metadata")
         insights.append(InsightMetadata(item["id"], item.get("name") or ""))
     return InsightsPage(tuple(insights), bool(answer.get("next")), offset, limit)
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure no later attempt clears; every other resolve error is transient."""
+    # Imported here because the generated connection module imports this client.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _rejection_kind(status: int) -> FailureKind:

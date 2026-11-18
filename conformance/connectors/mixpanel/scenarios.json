@@ -309,13 +309,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "imported": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -328,7 +325,7 @@
         },
         "time": 1793232000
       },
-      "name": "trackEvent-invalid-response",
+      "name": "trackEvent-invalid-confirmation-retries",
       "operation": "trackEvent"
     },
     {
@@ -457,6 +454,69 @@
         "time": 1793232000
       },
       "name": "trackEvent-server-unavailable",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 425
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-unlisted-status-retries",
       "operation": "trackEvent"
     },
     {

@@ -123,6 +123,35 @@ func (credentials failingCredentials) Resolve(sdkgo.Call) (Credentials, error) {
 	return Credentials{}, credentials.err
 }
 
+func TestUpdateIssueLabelsRetriesUnknownAnswers(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		status     int
+		body       string
+		isRejected bool
+	}{
+		"redirect":     {status: http.StatusFound},
+		"unlisted":     {status: http.StatusTooEarly, body: `{}`},
+		"malformed":    {status: http.StatusOK, body: `{"id":1,"iid":0}`},
+		"definite 422": {status: http.StatusUnprocessableEntity, body: `{}`, isRejected: true},
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			writer.WriteHeader(testCase.status)
+			_, _ = io.WriteString(writer, testCase.body)
+		}))
+		client, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {AccessToken: sdkgo.NewSecretString("test-accesstoken")}})
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(testContext{}, client.UpdateIssueLabels(), testConnection, UpdateIssueLabelsInput{ProjectID: "meridian/web", IssueIID: 7, Labels: []string{"review"}})
+		server.Close()
+		if testCase.isRejected {
+			require.NoError(t, err, name)
+			require.Equal(t, UpdateIssueLabelsBranchProviderRejected, result.Branch, name)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
+}
+
 func TestCredentialResolveErrorsUseTheSharedTerminalSet(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("no request may be sent") }))
 	defer server.Close()

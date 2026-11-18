@@ -122,6 +122,37 @@ func TestUpdateIssueStatusHTTPAndFailure(t *testing.T) {
 	require.NotNil(t, rejected.Failure)
 }
 
+func TestUpdateIssueStatusRetriesUnknownAnswers(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		status     int
+		body       string
+		isRejected bool
+	}{
+		"conflict name": {status: http.StatusConflict, body: `{"name":"invalid_idempotent_request"}`},
+		"unlisted":      {status: http.StatusTooEarly, body: `{}`},
+		"redirect":      {status: http.StatusFound},
+		"malformed":     {status: http.StatusOK, body: `[]`},
+		"definite 422":  {status: http.StatusUnprocessableEntity, body: `{}`, isRejected: true},
+		"definite 400":  {status: http.StatusBadRequest, body: `{}`, isRejected: true},
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			writer.WriteHeader(testCase.status)
+			_, _ = io.WriteString(writer, testCase.body)
+		}))
+		client, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIKey: sdkgo.NewSecretString("test-secret-token")}})
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(providerTestContext{}, client.UpdateIssueStatus(), testConnection, UpdateIssueStatusInput{Organization: "acme", ID: "123", Status: "resolved"})
+		server.Close()
+		if testCase.isRejected {
+			require.NoError(t, err, name)
+			require.Equal(t, UpdateIssueStatusBranchProviderRejected, result.Branch, name)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
+}
+
 // failingCredentials fails every resolution with one error.
 type failingCredentials struct{ err error }
 

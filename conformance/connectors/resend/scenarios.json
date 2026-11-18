@@ -153,13 +153,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -172,7 +169,7 @@
           "reader@example.test"
         ]
       },
-      "name": "sendEmail-invalid",
+      "name": "sendEmail-invalid-answer-retries",
       "operation": "sendEmail"
     },
     {

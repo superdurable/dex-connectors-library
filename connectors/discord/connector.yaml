@@ -6,16 +6,16 @@ metadata:
   description: Read Discord channels and bounded pages of channel messages, send nonce-deduplicated bot messages, and add reactions.
   company: Discord
   categories: [communication]
-  version: v0.3.0
+  version: v0.3.1
 spec:
   provider: discord
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [getChannel, listChannelMessages, createMessage, addReaction]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-discord"
       operations: [getChannel, listChannelMessages, createMessage, addReaction]
       triggers: []
@@ -133,13 +133,15 @@ spec:
         - {id: created, goName: Created, description: "Discord created the message, or returned the message an earlier attempt created with the same nonce."}
         - {id: notFound, goName: NotFound, description: Discord knows no channel with the ID., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Discord applied or rejected the message but returned an invalid or oversized response., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized answer now retries, because a resend inside the nonce window returns the same message.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
         # Discord enforces a nonce for only a few minutes, so every retry must fit that window.
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Discord enforces the message nonce for only a few minutes, so stop createMessage retries within two minutes before that deduplication expires."}}
+        # Every attempt sends the same enforced nonce, and the two-minute budget keeps resends inside Discord's deduplication window.
+        repeatOnUnknown: safe
       mocks:
         - name: releaseAnnouncement
           branch: created
@@ -170,6 +172,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Discord keeps one reaction per user and emoji, so a repeated PUT leaves one reaction.
+        repeatOnUnknown: safe
       mocks:
         - name: announcementReaction
           branch: added

@@ -99,6 +99,32 @@ func TestCreateEventUsesStableUniqueIDAndAccepts202(t *testing.T) {
 	}
 }
 
+func TestCreateEventRetriesUnknownAnswersAndRejectsOnlyDefiniteRefusals(t *testing.T) {
+	input := CreateEventInput{Email: "member@meridian.co", MetricName: "Signed Up"}
+	for status, isDefinite := range map[int]bool{
+		http.StatusOK: false, http.StatusFound: false, http.StatusConflict: false, http.StatusTooEarly: false,
+		http.StatusUnavailableForLegalReasons: false, http.StatusBadGateway: false,
+		http.StatusBadRequest: true, http.StatusForbidden: true, http.StatusUnprocessableEntity: true,
+	} {
+		requests := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			requests++
+			w.WriteHeader(status)
+		}))
+		client := newProviderClient(t, server.URL)
+		result, err := sdkgo.RunMutation(providerContext{}, client.CreateEvent(), testConnection, input)
+		server.Close()
+		require.Equal(t, 1, requests, status)
+		if isDefinite {
+			require.NoError(t, err, status)
+			require.Equal(t, CreateEventBranchProviderRejected, result.Branch, status)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, status)
+	}
+}
+
 // failingResolveCredentials fails every resolve with resolveErr.
 type failingResolveCredentials struct{ resolveErr error }
 

@@ -93,8 +93,8 @@ func (operation CreateMessageOperation) Invoke(call sdkgo.Call, input CreateMess
 		message, err = convertProviderMessage(decoded, input.ChannelID)
 	}
 	if err != nil {
-		receipt := operation.client.receipt(call, input.ChannelID)
-		return sdkgo.NewMutationBranch(CreateMessageBranchInvalidResponse, Message{}, providerFailurePointer("createMessage", sdkgo.FailureProtocol, err.Error()), receipt)
+		// A resend inside the nonce window returns the same message, so a malformed answer retries.
+		return sdkgo.NewMutationRetry[Message](providerFailure("createMessage", sdkgo.FailureProtocol, err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateMessageBranchCreated, message, nil, operation.client.receipt(call, message.ID))
 }

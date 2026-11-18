@@ -203,7 +203,7 @@ func CreateMessageProviderRejected(value discord.Message, failure *sdkgo.Failure
 	return connectormock.Branch(discord.CreateMessageBranchProviderRejected, value, failure)
 }
 
-// CreateMessageInvalidResponse selects the invalidResponse branch: Discord applied or rejected the message but returned an invalid or oversized response.
+// CreateMessageInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized answer now retries, because a resend inside the nonce window returns the same message.
 func CreateMessageInvalidResponse(value discord.Message, failure *sdkgo.Failure) connectormock.Case[discord.Message] {
 	return connectormock.Branch(discord.CreateMessageBranchInvalidResponse, value, failure)
 }

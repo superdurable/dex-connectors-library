@@ -292,6 +292,33 @@ func TestCreateMessageValidatesContentAndClassifiesRejections(t *testing.T) {
 	requireSecretSafeFailure(t, result.Failure)
 }
 
+func TestCreateMessageRetriesUnknownAnswers(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		status     int
+		body       string
+		isRejected bool
+	}{
+		"redirect":        {status: http.StatusFound, body: `{}`},
+		"unlisted":        {status: http.StatusTooEarly, body: `{}`},
+		"not implemented": {status: http.StatusNotImplemented, body: `{}`},
+		"malformed 2xx":   {status: http.StatusOK, body: `{"id":"x"}`},
+		"definite 422":    {status: http.StatusUnprocessableEntity, body: `{"code":50035}`, isRejected: true},
+	} {
+		provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {
+			writeJSON(t, response, testCase.status, testCase.body)
+		})
+		client := newTestClient(t, provider.URL, discord.Config{})
+		result, err := sdkgo.RunMutation(newStepDexContext("post-"+name), client.CreateMessage(), discordConnection, discord.CreateMessageInput{ChannelID: testChannelID, Content: "hello"})
+		if testCase.isRejected {
+			require.NoError(t, err, name)
+			require.Equal(t, discord.CreateMessageBranchProviderRejected, result.Branch, name)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
+}
+
 func TestAddReactionPutsTheEscapedEmojiForTheBot(t *testing.T) {
 	provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {
 		response.WriteHeader(http.StatusNoContent)

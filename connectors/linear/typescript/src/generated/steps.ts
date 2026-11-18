@@ -103,7 +103,7 @@ export interface UpdateIssueStepConfig<StepInput, OperationInput = UpdateIssueIn
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Linear conclusively rejected the change, such as a workflow state or label of another team, an unknown assignee, or missing permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Linear returned an invalid or oversized issue, so the change may have been applied; repeating the Step is safe. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized issue after the change now retries, because repeating the absolute update is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

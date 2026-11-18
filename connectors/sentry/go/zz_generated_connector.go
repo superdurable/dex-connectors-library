@@ -354,7 +354,7 @@ var UpdateIssueStatusDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateIssueStatusBranchUpdated, Description: "Sentry returned the requested result."},
 		{ID: UpdateIssueStatusBranchNotFound, Description: "The requested resource does not exist.", Optional: true},
 		{ID: UpdateIssueStatusBranchProviderRejected, Description: "The provider definitively rejected the request.", Optional: true},
-		{ID: UpdateIssueStatusBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateIssueStatusBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because repeating the absolute status update is safe.", Optional: true},
 		{ID: UpdateIssueStatusBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

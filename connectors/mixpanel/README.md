@@ -1,6 +1,6 @@
 # Mixpanel connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/mixpanel/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/mixpanel/go@v0.2.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/mixpanel`.
 
@@ -27,11 +27,11 @@ Sign in at [Mixpanel Organization Settings](https://mixpanel.com/settings/org/),
 | Condition | Route |
 | --- | --- |
 | Strict import confirms one event or export returns valid JSONL | `imported` or `exported` |
-| Definite provider rejection | `providerRejected` |
-| Malformed or oversized response | `invalidResponse` |
-| Invalid input, unusable credentials, reauthorization, or an absent, unselected, or broker-refused connection | `defect` |
+| Definite provider rejection; for `trackEvent` only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 | `providerRejected` |
+| Malformed or oversized export response | `invalidResponse` |
+| Invalid input, unusable or malformed stored credentials, reauthorization, or an absent, unselected, or broker-refused connection | `defect` |
 | Any other credential read failure, such as a broker outage | Retry |
-| Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
+| Transport failure, 408, 409, 429, or 5xx; for `trackEvent` (declared `repeatOnUnknown: safe`), also any other status and a malformed or oversized confirmation | Retry with Dex's default one-hour budget |
 
 Only the happy branch is wired in the [event track example](go/examples/event-track). Optional branches fail its Flow. There is no `uncertain` branch because Mixpanel deduplicates the stable event tuple in queries.
 

@@ -64,6 +64,9 @@ func (operation ListInsightsOperation) Invoke(call sdkgo.Call, input ListInsight
 		input.Limit = 20
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return insightsRetry(sdkgo.FailureAvailability, "PostHog personal API key is temporarily unavailable", 0)
+	}
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.PersonalAPIKey.Reveal()) || credentials.PersonalAPIKey.Reveal() == "" {
 		return insightsFailure(ListInsightsBranchDefect, sdkgo.FailureAuthentication, "PostHog personal API key is unavailable or invalid")
 	}

@@ -76,12 +76,21 @@ export class CreateEventOperation implements Mutation<CreateEventInput, EventAcc
       if (error instanceof BodyTooLargeError && error.status !== undefined) {
         if (isRetryStatus(error.status)) return newMutationRetry(failure('createEvent', 'AVAILABILITY', 'Klaviyo event submission is temporarily unavailable'), parseRetryAfter(retryHeader(error.headers ?? {}), this.client.now()));
         if (error.status === 202) return newMutationBranch('accepted', { accepted: true });
-        return mutationFailure('providerRejected', rejectionKind(error.status), `Klaviyo rejected event submission with HTTP ${error.status}`);
+        // An oversized refusal body is not a readable refusal, and the unique_id makes a resend safe.
+        return unknownEventOutcome(error.status);
       }
       return newMutationRetry(failure('createEvent', 'TRANSPORT', 'Klaviyo event response is unavailable'));
     }
     if (isRetryStatus(response.status)) return newMutationRetry(failure('createEvent', 'AVAILABILITY', 'Klaviyo event submission is temporarily unavailable'), parseRetryAfter(retryHeader(response.headers), this.client.now()));
-    if (response.status !== 202) return mutationFailure('providerRejected', rejectionKind(response.status), `Klaviyo rejected event submission with HTTP ${response.status}`);
-    return newMutationBranch('accepted', { accepted: true });
+    if (response.status === 202) return newMutationBranch('accepted', { accepted: true });
+    if (!definiteRefusalStatuses.has(response.status)) return unknownEventOutcome(response.status);
+    return mutationFailure('providerRejected', rejectionKind(response.status), `Klaviyo rejected event submission with HTTP ${response.status}`);
   }
+}
+
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Retry an answer that proves neither acceptance nor refusal; the unique_id deduplicates the resend. */
+function unknownEventOutcome(status: number): MutationAttempt<EventAcceptance> {
+  return newMutationRetry(failure('createEvent', 'AVAILABILITY', `Klaviyo answered event submission with HTTP ${status}, so its outcome is unknown`));
 }

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -85,6 +86,22 @@ func TestTrackEventRejectsInvalidInputBeforeDispatch(t *testing.T) {
 	result, err := sdkgo.RunMutation(providerContext{}, newProviderClient(t, server.URL).TrackEvent(), testConnection, TrackEventInput{Event: "Signed Up", Time: 1793232000})
 	require.NoError(t, err)
 	require.Equal(t, TrackEventBranchDefect, result.Branch)
+}
+
+func TestTrackEventRetriesUnknownOutcomes(t *testing.T) {
+	for name, respond := range map[string]func(http.ResponseWriter){
+		"unlisted status":    func(w http.ResponseWriter) { w.WriteHeader(http.StatusTooEarly) },
+		"legal status":       func(w http.ResponseWriter) { w.WriteHeader(http.StatusUnavailableForLegalReasons) },
+		"zero imported":      func(w http.ResponseWriter) { _, _ = w.Write([]byte(`{"code":200,"num_records_imported":0,"status":"OK"}`)) },
+		"malformed":          func(w http.ResponseWriter) { _, _ = w.Write([]byte(`not json`)) },
+		"oversized response": func(w http.ResponseWriter) { _, _ = w.Write([]byte(strings.Repeat("x", 3<<20))) },
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { respond(w) }))
+		_, err := sdkgo.RunMutation(providerContext{}, newProviderClient(t, server.URL).TrackEvent(), testConnection, TrackEventInput{Event: "Signed Up", DistinctID: "member-1", Time: 1793232000})
+		server.Close()
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
 }
 
 func TestTrackEventClassifiesProviderRejection(t *testing.T) {

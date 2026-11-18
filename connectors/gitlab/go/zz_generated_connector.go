@@ -360,7 +360,7 @@ var UpdateIssueLabelsDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateIssueLabelsBranchUpdated, Description: "Replace one GitLab issue's complete label set; repeating the request is safe."},
 		{ID: UpdateIssueLabelsBranchNotFound, Description: "The requested resource does not exist or is inaccessible.", Optional: true},
 		{ID: UpdateIssueLabelsBranchProviderRejected, Description: "The provider rejected the request.", Optional: true},
-		{ID: UpdateIssueLabelsBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateIssueLabelsBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because replacing the complete label set again is safe.", Optional: true},
 		{ID: UpdateIssueLabelsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

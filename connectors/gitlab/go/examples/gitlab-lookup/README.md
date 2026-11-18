@@ -22,7 +22,7 @@ mkdir -p /tmp/gitlab-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/gitlab/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/gitlab/go \
-  --version v0.2.0 --tag connectors/gitlab/go/v0.2.0 \
+  --version v0.2.1 --tag connectors/gitlab/go/v0.2.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/gitlab-release/connector-release.json \
   --digest-output /tmp/gitlab-release/connector-release.json.sha256
