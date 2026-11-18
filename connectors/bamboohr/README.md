@@ -400,8 +400,13 @@ take these positions:
   documented duplicate-email 409, of the first send records `canResend` and
   selects `providerRejected`. After an earlier possible send, a refusal cannot
   prove nothing was added, and a duplicate-email 409 may come from that earlier
-  send succeeding, so both select `uncertain` without another POST. An accepted 2xx without a usable employee ID also selects
-  `uncertain`, because a resend would add a second employee. The connector
+  send succeeding, so both select `uncertain` without another POST. A 2xx is
+  accepted even when its body is oversized or the connection breaks while the
+  body arrives: the connector takes the ID from the body or the `Location`
+  header, and a 2xx without a usable employee ID selects `uncertain`, because a
+  resend would add a second employee. An oversized refusal proves nothing about
+  the POST, so it is an unknown outcome. Terminal credentials while a saved
+  employee ID awaits read-back select `uncertain`. The connector
   cannot associate an email or name lookup with its specific POST. The
   onboarding example looks up the hire by personal email; a missing or
   ambiguous result fails the Flow.
@@ -436,10 +441,12 @@ the API key is dropped. An oversized error body contributes no code.
 | connection refused before sending | Retry | Retry | Retry |
 | 503 | Retry, after `Retry-After` when present | same | Retry |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | same | Retry below the send cap, then `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | `uncertain` |
-| invalid input | `defect`, with no request | `defect`, with no request |
-| reauthorization required or unusable connection credentials | `defect`, with no request | `defect` after a `notSent` checkpoint, with no request; Retry while reading back an earlier attempt's write |
-| transient credential resolution failure | `defect`, with no request | Retry after a `notSent` checkpoint, with no request |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | the ID from `Location`, otherwise `uncertain` |
+| oversized non-2xx other than 429 and 503 | by status | Retry | Retry below the send cap, then `uncertain` |
+| any failed read-back after an accepted updateEmployee write | | Retry | |
+| invalid input | `defect`, with no request | `defect`, with no request | `defect`, with no request |
+| reauthorization required or unusable connection credentials | `defect`, with no request | `defect`, with no request | `defect` after a `notSent` checkpoint, with no request; `uncertain` after an earlier possible send or while a saved employee ID awaits read-back |
+| transient credential resolution failure | `defect`, with no request | Retry, with no request | Retry after a `notSent` checkpoint, with no request; Retry without a checkpoint after an earlier possible send |
 
 BambooHR returned 503 for rate limiting until September 16, 2026, and returns
 429 with `Retry-After` since; 503 now means the API is unavailable. The

@@ -63,13 +63,16 @@ func (operation UpdateEmployeeOperation) Invoke(call sdkgo.Call, input UpdateEmp
 	if err := validateUpdateEmployeeInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateEmployeeBranchDefect, UpdateEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureValidation, updateEmployeeOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, updateEmployeeOperation)
-	if failure != nil {
-		return sdkgo.NewMutationBranch(UpdateEmployeeBranchDefect, UpdateEmployeeOutput{}, failure, sdkgo.Receipt{})
+	credentials, credentialErr := operation.client.credentials.Resolve(call)
+	if credentialErr != nil && !isTerminalCredentialError(credentialErr) {
+		return sdkgo.NewMutationRetry[UpdateEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, updateEmployeeOperation, "connection credentials could not be read; nothing was sent"), 0)
+	}
+	if credentialErr != nil || validateResolvedCredentials(credentials) != nil {
+		return sdkgo.NewMutationBranch(UpdateEmployeeBranchDefect, UpdateEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureAuthentication, updateEmployeeOperation, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	fieldNames := sortedFieldNames(input.Fields)
 	receipt := operation.client.receipt(call, input.EmployeeID)
-	current, attempt, isTerminal := operation.readFields(call, credentials, input.EmployeeID, fieldNames, receipt, UpdateEmployeeOutput{})
+	current, attempt, isTerminal := operation.readFields(call, credentials, input.EmployeeID, fieldNames, receipt, UpdateEmployeeOutput{}, false)
 	if isTerminal {
 		return attempt
 	}
@@ -85,7 +88,7 @@ func (operation UpdateEmployeeOperation) Invoke(call sdkgo.Call, input UpdateEmp
 		return attempt
 	}
 	output := UpdateEmployeeOutput{WrittenFields: sortedFieldNames(writes)}
-	stored, attempt, isTerminal := operation.readFields(call, credentials, input.EmployeeID, fieldNames, receipt, output)
+	stored, attempt, isTerminal := operation.readFields(call, credentials, input.EmployeeID, fieldNames, receipt, output, true)
 	if isTerminal {
 		return attempt
 	}
@@ -93,17 +96,24 @@ func (operation UpdateEmployeeOperation) Invoke(call sdkgo.Call, input UpdateEmp
 	return sdkgo.NewMutationBranch(UpdateEmployeeBranchUpdated, output, nil, receipt)
 }
 
-// readFields reads the requested fields, or returns the terminal attempt for a failed read.
+// readFields reads the requested fields, or returns the terminal attempt for a failed read. After
+// an accepted write, every failed read-back retries, because repeating the absolute write is safe.
 func (operation UpdateEmployeeOperation) readFields(call sdkgo.Call, credentials Credentials, employeeID string, fieldNames []string,
-	receipt sdkgo.Receipt, value UpdateEmployeeOutput) (EmployeeRecord, sdkgo.MutationAttempt[UpdateEmployeeOutput], bool) {
+	receipt sdkgo.Receipt, value UpdateEmployeeOutput, isAfterWrite bool) (EmployeeRecord, sdkgo.MutationAttempt[UpdateEmployeeOutput], bool) {
 	result := operation.client.exchange(call, credentials, updateEmployeeOperation, buildGetEmployeeRequest(employeeID, fieldNames, false))
+	if isAfterWrite && result.outcome != exchangeSucceeded {
+		return EmployeeRecord{}, sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+	}
 	if attempt, isTerminal := updateEmployeeAttemptForExchange(result, receipt, value); isTerminal {
 		return EmployeeRecord{}, attempt, true
 	}
 	record, err := decodeEmployeeRecord(result.response.body, employeeID, fieldNames)
 	if err != nil {
-		return EmployeeRecord{}, sdkgo.NewMutationBranch(UpdateEmployeeBranchInvalidResponse, value,
-			bambooHRFailurePointer(sdkgo.FailureProtocol, updateEmployeeOperation, "BambooHR returned an invalid employee: "+err.Error()), receipt), true
+		failure := bambooHRFailure(sdkgo.FailureProtocol, updateEmployeeOperation, "BambooHR returned an invalid employee: "+err.Error())
+		if isAfterWrite {
+			return EmployeeRecord{}, sdkgo.NewMutationRetry[UpdateEmployeeOutput](failure, 0), true
+		}
+		return EmployeeRecord{}, sdkgo.NewMutationBranch(UpdateEmployeeBranchInvalidResponse, value, &failure, receipt), true
 	}
 	return record, sdkgo.MutationAttempt[UpdateEmployeeOutput]{}, false
 }

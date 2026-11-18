@@ -19,6 +19,7 @@ from dex_connectors.bamboohr import (
     Credentials,
     GetEmployeeInput,
     ListTimeOffRequestsInput,
+    UpdateEmployeeInput,
 )
 
 CONNECTION = ConnectionRef("bamboohr", "bamboohr-test")
@@ -114,6 +115,33 @@ async def test_reflected_key_selects_invalid_response_without_persisting_key() -
         assert result.branch == "invalidResponse"
         assert result.failure is not None and key not in result.failure.message
         assert result.value is not None and key not in repr(result.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("read_back", "expected_kind"),
+    [(httpx.Response(200, json={"id": "999"}), "retry"), (httpx.Response(404, json={}), "retry")],
+)
+async def test_update_read_back_after_accepted_write_never_selects_a_failure_branch(
+    read_back: httpx.Response, expected_kind: str
+) -> None:
+    """After BambooHR accepted the write, every failed read-back retries the safe absolute write."""
+    answers = [httpx.Response(200, json={"id": "123", "firstName": "Sam"}), httpx.Response(200), read_back]
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        return answers.pop(0)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
+        client = Client(Config("acme"), credentials, http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(
+            CallID("472485d6-a578-50af-a4d2-124cf93b188f"),
+            CONNECTION,
+            OperationRef("bamboohr", "updateEmployee"),
+        )
+        result = await client.update_employee().invoke(call, UpdateEmployeeInput("123", {"firstName": "Ava"}))
+        assert result.kind == expected_kind
+        assert answers == []
 
 
 @pytest.mark.asyncio

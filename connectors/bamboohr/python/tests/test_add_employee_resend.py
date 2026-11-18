@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of BambooHR employee additions whose outcome is unknown."""
 
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -10,8 +11,10 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    CredentialProvider,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
@@ -75,7 +78,33 @@ async def add(
         requests.append(request)
         return httpx.Response(status, json=body)
 
-    credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
+    return await run_add(respond, context)
+
+
+class _BodyBreaksAfterHeaders(httpx.AsyncByteStream):
+    """A response body whose connection drops after the status and headers arrived."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        raise httpx.ReadError("connection reset after headers")
+        yield b""
+
+
+class _FailingCredentialProvider:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+async def run_add(
+    respond: Callable[[httpx.Request], httpx.Response],
+    context: AttemptContext,
+    credentials: CredentialProvider[Credentials] | None = None,
+) -> MutationResult[AddEmployeeOutput] | RetryError:
+    """Run one Execute attempt of addEmployee against a provider handler."""
+    if credentials is None:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         client = Client(Config("acme"), credentials, transport, "http://127.0.0.1:22180/api/v1")
         call = Call(
@@ -146,6 +175,66 @@ async def test_saved_employee_id_is_read_back_instead_of_resent() -> None:
     result = await add(200, {"id": "142"}, context, requests)
     assert isinstance(result, MutationResult) and result.branch == "created"
     assert [request.method for request in requests] == ["GET"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("headers", "branch"),
+    [({"Location": "https://acme.bamboohr.com/api/v1/employees/142"}, "created"), ({}, "uncertain")],
+)
+async def test_accepted_post_whose_body_breaks_is_never_resent(headers: dict[str, str], branch: str) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(201, headers=headers, stream=_BodyBreaksAfterHeaders())
+
+    result = await run_add(respond, AttemptContext())
+    assert isinstance(result, MutationResult) and result.branch == branch
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_send_before_a_429_still_counts_for_a_later_refusal() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    for attempt, status in ((1, 500), (2, 429)):
+        context.attempt = attempt
+        assert isinstance(await add(status, {}, context, requests), RetryError)
+    context.attempt = 3
+    result = await add(400, {}, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert [request.method for request in requests] == ["POST", "POST", "POST"]
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_after_a_possible_send_retries_only_when_transient() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert isinstance(await add(502, {}, context, requests), RetryError)
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    context.attempt = 2
+    transient = await run_add(respond, context, _FailingCredentialProvider(RuntimeError("store unavailable")))
+    assert isinstance(transient, RetryError)
+    context.attempt = 3
+    terminal = await run_add(respond, context, _FailingCredentialProvider(ReauthorizationRequiredError()))
+    assert isinstance(terminal, MutationResult) and terminal.branch == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_terminal_credentials_during_read_back_select_uncertain() -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    context = AttemptContext()
+    context.attempt = 2
+    context.heartbeat_value = Marker(CALL_ID, 1, State.CLAIMED, "142", 1)
+    result = await run_add(respond, context, _FailingCredentialProvider(ReauthorizationRequiredError()))
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
 
 
 @pytest.mark.asyncio

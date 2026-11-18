@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { BambooHRClient } from '../src/client.js';
 import { AddEmployeeDefinition } from '../src/generated/definitions.js';
 import type { AddEmployeeOutput } from '../src/generated/models.js';
@@ -93,6 +93,42 @@ describe('BambooHR addEmployee bounded resend', () => {
     context.marker = { callId, attempt: 1, state: 'claimed', providerId: '142', sendCount: 1 };
     expect(await add(client, context)).toMatchObject({ branch: 'created', value: { employeeId: '142' } });
     expect(requests.map(request => request.method)).toEqual(['GET']);
+  });
+
+  it.each([
+    [{ location: 'https://acme.bamboohr.com/api/v1/employees/142' }, 'created'],
+    [{}, 'uncertain'],
+  ] as const)('never resends a 2xx whose body breaks after the headers (%o)', async (headers, branch) => {
+    const requests: ProviderRequest[] = [];
+    const client = new BambooHRClient({ companyDomain: 'acme' }, { resolve: async () => ({ apiKey: new SecretString('inert-key') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 201, { ...headers }); },
+    });
+    expect(await add(client, new AttemptContext())).toMatchObject({ branch });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('counts a send before a 429 and selects uncertain for a later refusal', async () => {
+    const statuses = [500, 429, 400];
+    const { client, requests } = newClient(() => ({ status: statuses[requests.length - 1]!, body: '{}' }));
+    const context = new AttemptContext();
+    expect(await add(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    expect(await add(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 3;
+    expect(await add(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'POST', 'POST']);
+  });
+
+  it('selects uncertain when a saved employee cannot be read back with terminal credentials', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = new BambooHRClient({ companyDomain: 'acme' }, { resolve: async () => { throw new ReauthorizationRequiredError(); } }, {
+      send: async (request: ProviderRequest) => { requests.push(request); return { status: 200, headers: {}, body: Buffer.from('{}') }; },
+    });
+    const context = new AttemptContext();
+    context.attempt = 2;
+    context.marker = { callId, attempt: 1, state: 'claimed', providerId: '142', sendCount: 1 };
+    expect(await add(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(0);
   });
 
   it('returns Retry without sending for an untrusted checkpoint', async () => {
