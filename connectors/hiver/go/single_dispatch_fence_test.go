@@ -176,6 +176,94 @@ func TestSharedFencePacerWaitEndsBeforeStepDeadline(t *testing.T) {
 	require.Equal(t, 2, provider.requestCount())
 }
 
+// sendUnknownThenRateLimited runs attempt 1 to an unknown outcome and attempt 2 to a 429 that records canResend.
+func sendUnknownThenRateLimited(t *testing.T, ctx *singledispatchtest.Context, client *hiver.Client, input hiver.AddNoteInput) {
+	t.Helper()
+	_, err := sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
+	require.Error(t, err, "the lost response is resent below the cap")
+	ctx.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
+	require.Error(t, err, "the 429 is retried")
+	require.Equal(t, singledispatch.StateCanResend, latestFenceMarker(t, ctx).State)
+	ctx.AdvanceAttempt()
+}
+
+func TestSharedFenceRefusalAfterACanResendMarkerWithAPriorSendIsUncertain(t *testing.T) {
+	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		switch index {
+		case 0:
+			dropConnection(t, response)
+		case 1:
+			writeJSON(t, response, http.StatusTooManyRequests, `{"Message":"busy"}`)
+		default:
+			writeJSON(t, response, http.StatusBadRequest, `{"Message":"duplicate"}`)
+		}
+	})
+	client := newHiverClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("hiver-fence-canresend-prior-send", "add-note")
+	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
+	sendUnknownThenRateLimited(t, ctx, client, input)
+
+	result, err := sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch, "the first send may have added the note")
+	require.Equal(t, 3, provider.requestCount())
+}
+
+func TestSharedFenceCredentialFailureAfterACanResendMarkerWithAPriorSend(t *testing.T) {
+	for name, test := range map[string]struct {
+		credentials sdkgo.CredentialProvider[hiver.Credentials]
+		isTerminal  bool
+	}{
+		"transient failure retries":     {credentials: sdkgo.StaticCredentialProvider[hiver.Credentials]{}},
+		"terminal failure is uncertain": {credentials: reauthorizationRequiredCredentials{}, isTerminal: true},
+		"unusable API key is uncertain": {credentials: sdkgo.StaticCredentialProvider[hiver.Credentials]{hiverConnection: {APIKey: sdkgo.NewSecretString("bad key")}}, isTerminal: true},
+	} {
+		provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+			if index == 0 {
+				dropConnection(t, response)
+				return
+			}
+			writeJSON(t, response, http.StatusTooManyRequests, `{"Message":"busy"}`)
+		})
+		ctx := singledispatchtest.NewContext("hiver-fence-credential-prior-send", "add-note")
+		input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
+		sendUnknownThenRateLimited(t, ctx, newHiverClient(t, provider.URL), input)
+		heartbeatCount := len(ctx.Heartbeats())
+		failingClient, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1}, test.credentials, hiver.WithAPIBaseURL(provider.URL+"/v1"))
+		require.NoError(t, err, name)
+
+		result, err := sdkgo.RunMutation(ctx, failingClient.AddNote(), hiverConnection, input)
+		if test.isTerminal {
+			require.NoError(t, err, name)
+			require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch, "%s: defect would hide the first possible send", name)
+		} else {
+			require.Error(t, err, name)
+		}
+		require.Len(t, ctx.Heartbeats(), heartbeatCount, "%s: notSent would hide the earlier possible send", name)
+		require.Equal(t, 2, provider.requestCount(), name)
+	}
+}
+
+func TestSharedFenceTerminalCredentialFailureOnAFirstSendIsDefect(t *testing.T) {
+	provider := newRecordingHiver(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request expected") })
+	client, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1}, reauthorizationRequiredCredentials{}, hiver.WithAPIBaseURL(provider.URL+"/v1"))
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("hiver-fence-terminal-credential", "create-draft")
+	result, err := sdkgo.RunMutation(ctx, client.CreateSharedDraft(), hiverConnection,
+		hiver.CreateSharedDraftInput{InboxID: "105902", HiverMessageID: "834466048", Body: "Thanks."})
+	require.NoError(t, err)
+	require.Equal(t, hiver.CreateSharedDraftBranchDefect, result.Branch)
+	require.Equal(t, singledispatch.StateNotSent, latestFenceMarker(t, ctx).State)
+}
+
+// reauthorizationRequiredCredentials resolves no credentials, as a revoked connection does.
+type reauthorizationRequiredCredentials struct{}
+
+func (reauthorizationRequiredCredentials) Resolve(sdkgo.Call) (hiver.Credentials, error) {
+	return hiver.Credentials{}, sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))
+}
+
 func latestFenceMarker(t *testing.T, ctx *singledispatchtest.Context) singledispatch.Marker {
 	t.Helper()
 	frames := ctx.Heartbeats()

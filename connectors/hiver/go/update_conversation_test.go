@@ -130,6 +130,24 @@ func TestUpdateConversationRejectsUnknownNamesBeforeAnyChange(t *testing.T) {
 	}
 }
 
+func TestUpdateConversationCredentialFailureSelectsDefectOnlyWhenTerminalOnTheFirstAttempt(t *testing.T) {
+	provider := newRecordingHiver(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request expected") })
+	input := hiver.UpdateConversationInput{InboxID: "105902", ConversationID: "1", Status: hiver.ConversationStatusOpen}
+	terminalClient, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1}, reauthorizationRequiredCredentials{}, hiver.WithAPIBaseURL(provider.URL+"/v1"))
+	require.NoError(t, err)
+	transientClient, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1}, sdkgo.StaticCredentialProvider[hiver.Credentials]{}, hiver.WithAPIBaseURL(provider.URL+"/v1"))
+	require.NoError(t, err)
+
+	first := newHiverDexContext("update")
+	result, err := sdkgo.RunMutation(first, terminalClient.UpdateConversation(), hiverConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, hiver.UpdateConversationBranchDefect, result.Branch)
+	_, err = sdkgo.RunMutation(first.nextAttempt(), terminalClient.UpdateConversation(), hiverConnection, input)
+	require.Error(t, err, "an earlier attempt may have applied the change, so defect would hide it")
+	_, err = sdkgo.RunMutation(newHiverDexContext("update"), transientClient.UpdateConversation(), hiverConnection, input)
+	require.Error(t, err, "a transient credential failure retries")
+}
+
 func TestUpdateConversationValidatesInputBeforeAnyRequest(t *testing.T) {
 	provider := newRecordingHiver(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request expected") })
 	client := newHiverClient(t, provider.URL)

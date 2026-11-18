@@ -301,13 +301,24 @@ so the operations take these positions:
   outcome returns Retry and the next attempt resends while fewer sends than
   the cap may have taken effect; the send that reaches the cap selects
   `uncertain`, and the fence refuses any further send. An unreadable or
-  untrusted checkpoint returns Retry without sending. A 2xx whose note or
-  draft ID decodes is never resent, even when another field is invalid.
-  Credential failure and a pacer wait that cannot fit record `notSent` before
-  Retry on a first send; definite 429, 503, and traced pre-connection failure
-  record `canResend` before Retry. A definite refusal of a first send records
-  `canResend` and selects its branch; after a possible earlier send it
-  selects `uncertain`.
+  untrusted checkpoint returns Retry without sending. A 2xx proves Hiver
+  accepted the write, so it is never resent: when its body is cut off,
+  oversized, undecodable, or reflects the credential, or when the Python
+  write window ends after the 2xx headers arrived, the Step selects
+  `uncertain`, saving the note or draft ID first when one decodes. A later
+  attempt that finds a saved ID selects `uncertain`, because Hiver cannot read
+  a note or draft back by ID. The fence can save no marker for a 2xx without
+  an ID, so if Dex replays that Step after losing its `uncertain` result, the
+  replay may resend within the send cap.
+  An attempt counts as a possible resend whenever the fence reports earlier
+  sends, including after a `canResend` marker. A transient credential failure
+  and a pacer wait that cannot fit record `notSent` before Retry on a first
+  send; after a possible earlier send they record nothing and retry. A
+  revoked, absent, or malformed credential selects `defect` on a first send
+  and `uncertain` after a possible earlier send. Definite 429, 503, and traced
+  pre-connection failure record `canResend` before Retry. A definite refusal
+  of a first send records `canResend` and selects its branch; after a possible
+  earlier send it selects `uncertain`.
 - The pacer wait ends by half the initial attempt budget, before the fence's
   write deadline. With no note or draft read-back, the fence gives the write
   at most five sixths of that budget and reserves at least one tenth as
@@ -316,9 +327,9 @@ so the operations take these positions:
   but says nothing about whether a 503 could follow an applied write. The
   connector retries 503 under the connector retry contract; duplicate effects
   after a 503 remain **unverified** with Hiver. A 408, other 5xx, 409, any
-  status other than 400, 401, 403, 404, 411, 413, 414, 415, and 422, a lost
-  response, or an unreadable, invalid, or oversized 2xx without a decodable ID
-  is resent within the send cap, which can add a duplicate note or draft. Hiver's published [shared draft](https://developer.hiverhq.com/hiver-api/conversations/update-conversation-in-the-inbox-copy)
+  status other than 400, 401, 403, 404, 411, 413, 414, 415, and 422, or a lost
+  response is resent within the send cap, which can add a duplicate note or
+  draft. Hiver's published [shared draft](https://developer.hiverhq.com/hiver-api/conversations/update-conversation-in-the-inbox-copy)
   and [conversation read](https://developer.hiverhq.com/hiver-api/conversations/get-a-conversation-in-the-inbox)
   APIs offer no Call ID lookup for a draft or note.
 - Both writes send `X-Dex-Call-ID` as a stable correlation value across retries.
@@ -358,11 +369,12 @@ the HTTP status, such as `Hiver rejected the request (HTTP 400)`.
 | traced DNS, connect, or TLS failure before a connection | Retry | Retry with `canResend` checkpoint |
 | cancelled wait for a slot | Retry | Retry with `notSent` checkpoint |
 | 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
-| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | resend within the send cap, then `uncertain` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads before the `PATCH`; Retry after it | `uncertain` when the note or draft ID decodes; otherwise resend within the send cap, then `uncertain` |
+| 408, other 5xx, lost response | Retry, after `Retry-After` when present | resend within the send cap, then `uncertain` |
+| oversized, malformed, cut-off, or credential-reflecting 2xx | `invalidResponse` for reads before the `PATCH`; Retry after it | `uncertain`, never resent |
 | unreadable or untrusted fence checkpoint | not applicable | Retry without sending |
 | invalid input | `defect`, with no request | `defect`, with no request |
-| unavailable connection credentials | `defect`, with no request | `notSent` checkpoint, then Retry |
+| credentials temporarily unavailable | `defect` for reads; Retry for updateConversation | `notSent` checkpoint on a first send, then Retry |
+| revoked, absent, or malformed credentials | `defect`; updateConversation retries after its first attempt | `notSent` checkpoint and `defect` on a first send, otherwise `uncertain` |
 
 Hiver documents IDs as JSON strings in some responses and numbers in others;
 the connector accepts both and reports every ID as a string. The Receipt
