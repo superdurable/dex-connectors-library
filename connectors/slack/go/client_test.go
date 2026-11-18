@@ -298,7 +298,6 @@ func TestPostMessageRejectedCredentialWithoutRefreshSelectsProviderRejected(t *t
 		wantsReconnect   bool
 	}{
 		{name: "not_refreshed", refreshError: projectconfig.ErrRejectedCredentialNotRefreshed},
-		{name: "broker_unavailable", refreshError: errors.New("credential broker unavailable")},
 		{name: "reauthorization_required", refreshError: sdkgo.NewReauthorizationRequiredError(errors.New("authorization revoked")), wantsReconnect: true},
 		{name: "unchanged_token", unchangedRefresh: true, wantsReconnect: true},
 	} {
@@ -323,6 +322,41 @@ func TestPostMessageRejectedCredentialWithoutRefreshSelectsProviderRejected(t *t
 			}
 			require.Equal(t, 1, requests)
 			require.Equal(t, 1, provider.forcedRefreshes)
+		})
+	}
+}
+
+func TestPostMessageDefiniteRejectionWithTransientRefreshFailureRetries(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		statusCode int
+		body       string
+	}{
+		{name: "unauthorized", statusCode: http.StatusUnauthorized, body: `{"ok":false,"error":"not_authed"}`},
+		{name: "token_expired", statusCode: http.StatusOK, body: `{"ok":false,"error":"token_expired"}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				requests++
+				if requests == 1 {
+					response.WriteHeader(testCase.statusCode)
+					_, _ = response.Write([]byte(testCase.body))
+					return
+				}
+				_, _ = response.Write([]byte(`{"ok":true,"channel":"C123","ts":"2.0"}`))
+			}))
+			t.Cleanup(server.Close)
+			provider := &rejectionRefreshingCredentialProvider{refreshError: projectconfig.ErrCredentialBrokerUnavailable}
+			client, err := slack.New(slack.Config{Endpoint: server.URL}, provider)
+			require.NoError(t, err)
+			ctx := newSlackDexContext("post-refresh-transient-" + testCase.name)
+			input := slack.PostChannelMessageInput{ChannelID: "C123", Text: "hello"}
+			_, err = sdkgo.RunMutation(ctx, client.PostChannelMessage(), slackConnection, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "a definite rejection posted nothing, so a transient refresh failure retries")
+			require.Contains(t, string(ctx.heartbeat), `"state":"canResend"`)
+			require.Equal(t, 1, requests)
 		})
 	}
 }

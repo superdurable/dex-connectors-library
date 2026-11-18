@@ -3,7 +3,7 @@
 
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { ReauthorizationRequiredError, defaultTriggerLogger, newQueryBranch, newQueryRetry, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type QueryAttempt, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { MaxSlackSocketMessageBytes, dialSlackSocket, type SlackSocketDialer } from './socket_mode.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -130,13 +130,20 @@ export class SlackClient {
     }
   }
 
-  /** Refresh once after Slack rejects an access token; the host owns persistence. */
-  async refreshRejectedToken(call: Call, kind: 'bot' | 'user', currentToken: string): Promise<{ token?: string; terminal: boolean }> {
+  /**
+   * Refresh once after Slack rejects an access token; the host owns persistence. `isTransient` marks a
+   * refresh failure a later attempt may resolve; an unrefreshed or unrefreshable credential is not transient.
+   */
+  async refreshRejectedToken(call: Call, kind: 'bot' | 'user', currentToken: string): Promise<{ token?: string; terminal: boolean; isTransient?: boolean }> {
     try {
       const credential = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       const token = (kind === 'bot' ? credential.botToken : credential.userToken)?.reveal();
       return { ...(token && token !== currentToken && isHeaderSafeCredential(token) ? { token } : {}), terminal: !token || token === currentToken || !isHeaderSafeCredential(token) };
-    } catch (error) { return { terminal: isTerminalCredentialError(error) }; }
+    } catch (error) {
+      const terminal = isTerminalCredentialError(error);
+      const isTransient = !terminal && !(error instanceof RejectedCredentialNotRefreshedError) && typeof (this.credentials as { resolveAfterRejection?: unknown }).resolveAfterRejection === 'function';
+      return { terminal, ...(isTransient ? { isTransient } : {}) };
+    }
   }
 
   /** Make one Slack HTTP request with Go-compatible body and status handling. */

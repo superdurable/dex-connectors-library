@@ -468,9 +468,14 @@ never resent. A complete HTTP 2xx explicit `ok:false` post with
 `invalid_auth`, `token_expired`, or `token_revoked`, or any HTTP 401, forces a
 credential refresh within the Step deadline margin. If refresh supplies a
 changed valid bot token, the fence permits one retry on the next Step attempt
-with the same `client_msg_id`; a failed, invalid, or unchanged refresh selects
-`providerRejected` for a definite refusal, or `uncertain` after an earlier
-possible send; a 401 with an unreadable body is an unknown outcome instead,
+with the same `client_msg_id`. A transient refresh failure, such as an
+unavailable credential broker, after a definite refusal records `canResend`
+and retries, because the refusal proves nothing was posted. A terminal
+refresh failure (reauthorization required, a missing, unselected, or
+broker-refused connection), a credential the broker did not refresh, a
+credential source that cannot refresh, or an invalid or unchanged replacement
+selects `providerRejected` for a definite refusal, or `uncertain` after an
+earlier possible send; a 401 with an unreadable body is an unknown outcome instead,
 so even after a successful refresh it records no `canResend` and its send
 counts toward the cap. The
 post is never sent twice in one attempt.
