@@ -101,8 +101,13 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             return "", "credential"
-        except Exception:  # noqa: BLE001
-            # Any unlisted resolve failure, such as an unconfigured connection, is transient.
+        except Exception as error:  # noqa: BLE001
+            # The generated connection module imports this one, so the predicate loads lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return "", "credential"
+            # Any other unlisted resolve failure, such as an unconfigured connection, is transient.
             return "", "refresh"
         token = credentials.access_token.reveal()
         if not is_header_safe_credential(token):

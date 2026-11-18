@@ -157,6 +157,42 @@ func TestUploadObjectRetriesTransientResponsesAndRejectsInvalidInput(t *testing.
 	require.EqualValues(t, 2, uploads.Load())
 }
 
+func TestUploadObjectRetriesAnUnlistedStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusConflict) }))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	input := UploadObjectInput{Bucket: "example-bucket", Name: "a", ContentBase64: "aGVsbG8=", ContentType: "text/plain"}
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("unlisted-flow", "upload-step"), client.UploadObject(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "HTTP 409 is not a definite refusal")
+}
+
+func TestUploadObjectRetriesAnUnreadableObjectAfterAnEarlierAttempt(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			w.WriteHeader(http.StatusPreconditionFailed)
+			return
+		}
+		if r.URL.Query().Get("alt") == "media" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		_, err := w.Write([]byte(`{"name":"a","generation":"123"}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	input := UploadObjectInput{Bucket: "example-bucket", Name: "a", ContentBase64: "aGVsbG8=", ContentType: "text/plain"}
+	ctx := singledispatchtest.NewContext("unreadable-flow", "upload-step")
+	first, err := sdkgo.RunMutation(ctx, client.UploadObject(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, UploadObjectBranchProviderRejected, first.Branch, "with no earlier attempt the object is not this Step's")
+	ctx.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(ctx, client.UploadObject(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the unreadable object may be this Step's earlier upload")
+}
+
 // resolveErrorCredentials fails every resolution with one error.
 type resolveErrorCredentials struct{ err error }
 
