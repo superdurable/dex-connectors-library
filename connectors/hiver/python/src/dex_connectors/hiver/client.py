@@ -223,8 +223,11 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             return None, True
-        except Exception:
-            return None, False
+        except Exception as error:
+            # The generated connection module imports this module, so import it lazily.
+            from ._generated.connection import is_credential_material_error
+
+            return None, is_credential_material_error(error)
         if not isinstance(credentials, Credentials):
             return None, True
         token = credentials.api_key.reveal()

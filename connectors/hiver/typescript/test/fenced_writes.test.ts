@@ -198,6 +198,8 @@ describe('credential failures on a first send', () => {
     ['missing connection object', new ObjectNotFoundError(), true],
     ['unselected connection', new ConnectionNotSelectedError(), true],
     ['broker refusal', new CredentialBrokerRejectedError(), true],
+    // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+    ['malformed stored material', new TypeError('project credential decoding failed'), true],
     ['broker outage', new CredentialBrokerUnavailableError(), false],
     ['unlisted error', new TypeError('unlisted'), false],
   ] as const)('classifies a %s credential failure on a first send', async (_name, error, isTerminal) => {

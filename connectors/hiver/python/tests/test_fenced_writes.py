@@ -15,6 +15,7 @@ import pytest
 from dex_connectors.sdk import projectconfig
 
 import dex_connectors.hiver as hiver
+from dex_connectors.hiver._generated.connection import CredentialMaterialError
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
@@ -338,6 +339,8 @@ class FailingCredentials:
         (projectconfig.ObjectNotFoundError("connection"), True),
         (projectconfig.ConnectionNotSelectedError("connection"), True),
         (projectconfig.CredentialBrokerRejectedError("broker"), True),
+        # The generated project credential source raises this for malformed stored material.
+        (CredentialMaterialError("Hiver stored credential does not match the credential fields"), True),
         (projectconfig.CredentialBrokerUnavailableError("broker"), False),
         (ValueError("connection is not configured"), False),
         (KeyError("unlisted"), False),

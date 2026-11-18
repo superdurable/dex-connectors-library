@@ -4,7 +4,7 @@
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { AddNoteOperation, CreateSharedDraftOperation, GetConversationOperation, ListConversationsOperation, ListInboxesOperation, UpdateConversationOperation } from './operations.js';
 
 /** Provider sender for replay and local testing. */
@@ -111,7 +111,7 @@ export class HiverClient {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
     catch (error) {
-      return { kind: error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError ? 'terminal' : 'transient' };
+      return { kind: error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error) ? 'terminal' : 'transient' };
     }
     if (!(credentials?.apiKey instanceof SecretString)) return { kind: 'terminal' };
     const key = credentials.apiKey.reveal();
