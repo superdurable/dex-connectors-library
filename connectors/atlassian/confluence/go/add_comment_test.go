@@ -170,6 +170,100 @@ func TestCommentRejectionsAndRateLimits(t *testing.T) {
 	require.Contains(t, string(dexContext.heartbeat), `"state":"canResend"`, "a 429 added nothing, so the next attempt may send")
 }
 
+func TestCommentServiceUnavailableRecordsCanResend(t *testing.T) {
+	provider := newRecordingConfluence(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusServiceUnavailable, `{"message":"SENTINEL unavailable"}`)
+	})
+	dexContext := newTestDexContext("comment-service-unavailable")
+	_, err := sdkgo.RunMutation(dexContext, newConfluenceClient(t, provider.URL).AddComment(), confluenceConnection, validAddCommentInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Contains(t, string(dexContext.heartbeat), `"state":"canResend"`, "a 503 added nothing, so it is not counted as a send")
+}
+
+func TestCommentReadsBackAfterARateLimitedResend(t *testing.T) {
+	var mutex sync.Mutex
+	posts, reads := 0, 0
+	provider := newRecordingConfluence(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		mutex.Lock()
+		defer mutex.Unlock()
+		if request.Method == http.MethodPost {
+			posts++
+			if posts == 1 {
+				writeJSON(t, response, http.StatusInternalServerError, `{}`)
+				return
+			}
+			writeJSON(t, response, http.StatusTooManyRequests, `{}`)
+			return
+		}
+		reads++
+		if reads == 1 {
+			writeJSON(t, response, http.StatusOK, `{"results":[]}`)
+			return
+		}
+		// The first send's comment becomes visible only on the third attempt's read-back.
+		writeJSON(t, response, http.StatusOK, `{"results":[`+footerCommentJSON(t, "720900", testCommentStorage, time.Now())+`]}`)
+	})
+	client := newConfluenceClient(t, provider.URL)
+	dexContext := newTestDexContext("comment-rate-limited-resend")
+	_, err := sdkgo.RunMutation(dexContext, client.AddComment(), confluenceConnection, validAddCommentInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	dexContext.attempt = 2
+	_, err = sdkgo.RunMutation(dexContext, client.AddComment(), confluenceConnection, validAddCommentInput())
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	dexContext.attempt = 3
+	result, err := sdkgo.RunMutation(dexContext, client.AddComment(), confluenceConnection, validAddCommentInput())
+	require.NoError(t, err)
+	require.Equal(t, confluence.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, "720900", result.Value.CommentID)
+	require.Equal(t, 2, provider.countRequests(http.MethodPost, testContentPath+"/footer-comments"), "the third attempt read back instead of resending")
+}
+
+func TestCommentReadBackOfAMissingPageAfterAPossibleSendIsUncertain(t *testing.T) {
+	provider := newRecordingConfluence(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		require.Equal(t, http.MethodGet, request.Method, "a missing page is never resent to")
+		writeJSON(t, response, http.StatusNotFound, `{"message":"SENTINEL missing"}`)
+	})
+	dexContext := newTestDexContext("comment-read-back-missing-page")
+	dexContext.attempt = 2
+	result, err := sdkgo.RunMutation(dexContext, newConfluenceClient(t, provider.URL).AddComment(), confluenceConnection, validAddCommentInput())
+	require.NoError(t, err)
+	require.Equal(t, confluence.AddCommentBranchUncertain, result.Branch)
+	requireNoSentinel(t, result)
+}
+
+func TestCommentAcceptedWithABrokenBodyIsNeverResent(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		visible      bool
+		expectBranch sdkgo.BranchID
+	}{
+		{"confirmed by read-back", true, confluence.AddCommentBranchAdded},
+		{"not confirmed", false, confluence.AddCommentBranchUncertain},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingConfluence(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.Method == http.MethodPost {
+					// The headers promise more bytes than arrive, so the body read fails after a 201.
+					response.Header().Set("Content-Length", "4096")
+					response.WriteHeader(http.StatusCreated)
+					_, _ = response.Write([]byte(`{"id":"72`))
+					return
+				}
+				comments := `{"results":[]}`
+				if test.visible {
+					comments = `{"results":[` + footerCommentJSON(t, "720901", testCommentStorage, time.Now()) + `]}`
+				}
+				writeJSON(t, response, http.StatusOK, comments)
+			})
+			dexContext := newTestDexContext("comment-broken-body")
+			result, err := sdkgo.RunMutation(dexContext, newConfluenceClient(t, provider.URL).AddComment(), confluenceConnection, validAddCommentInput())
+			require.NoError(t, err)
+			require.Equal(t, test.expectBranch, result.Branch)
+			require.Equal(t, 1, provider.countRequests(http.MethodPost, testContentPath+"/footer-comments"))
+		})
+	}
+}
+
 func TestCommentWithoutARecordedCheckpointSendsNothing(t *testing.T) {
 	provider := newRecordingConfluence(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	dexContext := newTestDexContext("comment-no-checkpoint")

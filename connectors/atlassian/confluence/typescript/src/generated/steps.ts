@@ -82,11 +82,14 @@ export interface CreatePageStepConfig<StepInput, OperationInput = CreatePageInpu
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the createPage Step from a named connection. */
 export function newCreatePageStep<StepInput, OperationInput = CreatePageInput, OperationOutput = CreatePageOutput>(configuration: CreatePageStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, created, titleConflict, notFound, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, created, titleConflict, notFound, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createPage(), connection: connection.reference, branches: [
     goToBranch("created", created),
@@ -113,11 +116,14 @@ export interface UpdatePageStepConfig<StepInput, OperationInput = UpdatePageInpu
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updatePage Step from a named connection. */
 export function newUpdatePageStep<StepInput, OperationInput = UpdatePageInput, OperationOutput = UpdatePageOutput>(configuration: UpdatePageStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, versionConflict, notFound, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, versionConflict, notFound, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updatePage(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -140,7 +146,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically. */
+  /** The send cap is reached, Confluence accepted the comment without a usable answer, or the page vanished after a possible send, and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

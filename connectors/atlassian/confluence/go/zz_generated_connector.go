@@ -496,8 +496,7 @@ var CreatePageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type CreatePageResult = sdkgo.MutationResult[CreatePageOutput]
@@ -519,7 +518,7 @@ type CreatePageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreatePageResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatePageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -556,7 +555,6 @@ func NewCreatePageStep[IN any](config CreatePageStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -580,8 +578,7 @@ var UpdatePageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdatePageResult = sdkgo.MutationResult[UpdatePageOutput]
@@ -603,7 +600,7 @@ type UpdatePageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdatePageResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatePageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -640,7 +637,6 @@ func NewUpdatePageStep[IN any](config UpdatePageStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -656,7 +652,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "The comment is on the page, including one an earlier attempt of this Step execution sent."},
 		{ID: AddCommentBranchNotFound, Description: "The page does not exist or the connection cannot view it; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Confluence conclusively rejected the comment, such as an invalid body or missing Add comments permission; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The send cap is reached and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The send cap is reached, Confluence accepted the comment without a usable answer, or the page vanished after a possible send, and the page's comments do not confirm the comment; Confluence has no idempotency key, so it is not sent again automatically.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

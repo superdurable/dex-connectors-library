@@ -455,7 +455,7 @@ class Client:
         if 200 <= status < 300:
             if response.body_failed:
                 return Classification(
-                    "ambiguous",
+                    "acceptedUnreadable",
                     failure(
                         operation, FailureKind.TRANSPORT,
                         f"Confluence accepted the {subject} but its response was interrupted",
@@ -463,7 +463,7 @@ class Client:
                 )
             if response.is_too_large or response.reflects_secret:
                 return Classification(
-                    "ambiguous",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.RESPONSE_TOO_LARGE if response.is_too_large else FailureKind.PROTOCOL,
@@ -478,6 +478,16 @@ class Client:
                     operation,
                     FailureKind.RATE_LIMIT,
                     f"Confluence rate limited the {subject} before writing it",
+                ),
+                self.retry_after(response),
+            )
+        if status == 503:
+            return Classification(
+                "notApplied",
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    f"Confluence was unavailable, so no {subject} was written",
                 ),
                 self.retry_after(response),
             )

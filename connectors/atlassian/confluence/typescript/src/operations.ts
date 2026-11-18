@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { CheckpointError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { createHash } from 'node:crypto';
 import { convertWrittenBody } from './markdown.js';
 import { documentComparisonText, renderDocumentText } from './document.js';
@@ -279,26 +279,31 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     const refusalOrUncertain = (branch: string, receipt: ReceiptDraft, cause: Failure): MutationAttempt<AddCommentOutput> => hasPossibleEarlierSend ? newMutationUncertain(requested, cause, receipt) : newMutationBranch(branch, requested, receipt, cause);
     const started = await this.client.startSession(call, operation);
     if ('error' in started) {
-      // notSent after a possible earlier send would hide it, so only a first-send decision records it.
-      if (decision.kind === 'sendAllowed') {
+      // notSent after a possible earlier send would hide it, so only a first send records it.
+      if (decision.kind === 'sendAllowed' && !hasPossibleEarlierSend) {
         try { await fence.recordNotSent(); } catch { return newMutationRetry(confluenceFailure(operation, 'AVAILABILITY', 'Confluence setup failed and the not-sent checkpoint could not be recorded'), started.error.retryAfterMs); }
       }
       return started.error.isRetryable ? newMutationRetry(started.error.failure, started.error.retryAfterMs) : refusalOrUncertain('defect', zeroReceipt(), started.error.failure);
     }
     const session = started.session;
     const earliestSendAt = earliestDispatchTime(call, this.client.now());
-    if (decision.kind === 'readBackRequired' || decision.kind === 'readBackThenResendAllowed') {
+    // A canResend marker yields sendAllowed while earlier sends may still have taken effect.
+    const needsReadBack = decision.kind !== 'sendAllowed' || hasPossibleEarlierSend || !!decision.marker?.providerId;
+    if (needsReadBack) {
       const readBack = await this.readBackEarlierComment(session, requested, comparisonText!, earliestSendAt);
       if (readBack.attempt) return readBack.attempt;
       if (decision.kind === 'readBackRequired' || decision.marker?.providerId) return newMutationUncertain(requested, confluenceFailure(operation, 'TRANSPORT', 'earlier attempts of this Step sent the comment up to the send cap, and the page shows no matching comment, so it is not sent again'), readBack.receipt);
     }
     let response: ConfluenceExchange;
-    try { response = await fence.dispatch(() => this.client.exchange(session, 'POST', 'content', '/footer-comments', undefined, { pageId: pageId!, body: { representation: 'storage', value: storage! } })); }
+    try { response = await fence.dispatch(signal => this.client.exchange(session, 'POST', 'content', '/footer-comments', undefined, { pageId: pageId!, body: { representation: 'storage', value: storage! } }, signal)); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(confluenceFailure(operation, 'AVAILABILITY', 'the comment checkpoint or request budget is unavailable, so nothing was sent to Confluence'));
-      return refusalOrUncertain('defect', zeroReceipt(), confluenceFailure(operation, 'LOCAL_DEFECT', 'Confluence dispatch was not allowed'));
+      if (error instanceof DispatchNotAllowedError) return refusalOrUncertain('defect', zeroReceipt(), confluenceFailure(operation, 'LOCAL_DEFECT', 'Confluence dispatch was not allowed'));
+      // The fence's AggregateError joins InsufficientTimeError with a failed notSent checkpoint.
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError)) return newMutationRetry(confluenceFailure(operation, 'AVAILABILITY', 'the comment checkpoint or request budget is unavailable, so nothing was sent to Confluence'));
+      // The request may have left after the claim, so the next attempt reads back first.
+      return newMutationRetry(confluenceFailure(operation, 'TRANSPORT', 'Confluence comment outcome is unknown'), 5000);
     }
-    let classification = this.client.classifyWrite(operation, 'comment', response);
+    const classification = this.client.classifyWrite(operation, 'comment', response);
     const receipt = this.client.receipt(session, response);
     if (classification.outcome === 'accepted') {
       try {
@@ -307,11 +312,12 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
           try { await fence.recordProviderId(id); } catch { /* The accepted comment stands; a lost checkpoint keeps the claim. */ }
           return newMutationBranch('added', addedCommentOutput(requested, comment, false), this.client.receipt(session, response, id));
         }
-      } catch { /* Unusable success is reconciled after a retry. */ }
-      classification = { outcome: 'ambiguous', failure: confluenceFailure(operation, 'PROTOCOL', 'Confluence accepted the comment but returned an unusable comment'), retryAfterMs: 0 };
+      } catch { /* An unusable accepted comment is confirmed by read-back below. */ }
+      return this.confirmAcceptedComment(session, requested, comparisonText!, earliestSendAt, confluenceFailure(operation, 'PROTOCOL', 'Confluence accepted the comment but returned an unusable comment'));
     }
+    if (classification.outcome === 'acceptedUnreadable') return this.confirmAcceptedComment(session, requested, comparisonText!, earliestSendAt, classification.failure!);
     if (classification.outcome === 'notApplied' || classification.outcome === 'notFound' || classification.outcome === 'rejected' || classification.outcome === 'defect') {
-      if (classification.outcome === 'defect' || !hasPossibleEarlierSend) {
+      if (classification.outcome === 'notApplied' || classification.outcome === 'defect' || !hasPossibleEarlierSend) {
         try { await fence.recordCanResend(); }
         catch { if (classification.outcome !== 'defect') return newMutationRetry(confluenceFailure(operation, 'AVAILABILITY', 'Confluence checkpoint could not be recorded'), classification.retryAfterMs); }
       }
@@ -322,14 +328,22 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     return newMutationRetry(classification.failure!, Math.max(classification.retryAfterMs, 5000));
   }
 
-  /** Report an earlier comment, a transient Retry, or a missing page; no attempt means read-back is unconfirmed. */
+  /** Read back a comment Confluence accepted without a usable answer; it is never resent. */
+  private async confirmAcceptedComment(session: ConfluenceSession, requested: AddCommentOutput, comparisonText: string, earliestSendAt: number, cause: Failure): Promise<MutationAttempt<AddCommentOutput>> {
+    const readBack = await this.readBackEarlierComment(session, requested, comparisonText, earliestSendAt);
+    if (readBack.attempt?.kind === 'branch' && readBack.attempt.branch === 'added') return readBack.attempt;
+    return newMutationUncertain(requested, { ...cause, message: cause.message + "; the page's comments do not confirm it, so it is not sent again" }, readBack.receipt);
+  }
+
+  /** Report an earlier comment, a transient Retry, or uncertain for a missing page; no attempt means read-back is unconfirmed. */
   private async readBackEarlierComment(session: ConfluenceSession, requested: AddCommentOutput, comparisonText: string, earliestSendAt: number): Promise<{ attempt?: MutationAttempt<AddCommentOutput>; receipt: ReceiptDraft }> {
     const operation = 'addComment';
     const response = await this.client.exchange(session, 'GET', 'content', `/pages/${pathEscape(requested.pageId)}/footer-comments`, { 'body-format': 'storage', sort: '-created-date', limit: '25' });
     const classification = this.client.classifyRead(operation, 'page comments', response);
     const receipt = this.client.receipt(session, response);
     if (classification.outcome === 'retry') return { attempt: newMutationRetry(classification.failure!, classification.retryAfterMs), receipt };
-    if (classification.outcome === 'notFound') return { attempt: newMutationBranch('notFound', requested, receipt, classification.failure), receipt };
+    // Read-back follows a possible send, so a missing page cannot prove nothing was added.
+    if (classification.outcome === 'notFound') return { attempt: newMutationUncertain(requested, classification.failure!, receipt), receipt };
     if (classification.outcome !== 'accepted') return { receipt };
     let results: unknown[];
     try { const decoded = decodeObject(response); if (!Array.isArray(decoded.results)) throw new TypeError(); results = decoded.results; }
