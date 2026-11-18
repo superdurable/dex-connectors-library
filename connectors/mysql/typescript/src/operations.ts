@@ -158,6 +158,8 @@ export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteS
       : { failure: { disposition: 'defect', kind: 'AUTHENTICATION', message: 'MySQL connection credentials are unavailable' }, receipt: {}, value: emptyExecution(), isCommitPhase: false };
     if (!outcome.failure) return newMutationBranch('completed', outcome.value, outcome.receipt);
     let classified = outcome.failure;
+    // notSent would hide the earlier possible COMMIT, and the cap forbids another one.
+    if (!outcome.isCommitPhase && hasPossibleEarlierSend) return writeAttempt('executeNonIdempotent', { ...classified, disposition: 'uncertain' }, outcome.receipt);
     if (!outcome.isCommitPhase) {
       // A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
       await fence.recordNotSent().catch(() => undefined);

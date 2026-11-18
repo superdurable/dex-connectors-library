@@ -122,6 +122,27 @@ func TestExecuteStatementNonIdempotentResendsOnlyAfterAProvenRollback(t *testing
 	}
 }
 
+func TestExecuteStatementNonIdempotentNeverRecordsNotSentAfterAPossibleEarlierCommit(t *testing.T) {
+	dropping := newBalanceDatabase(scriptedmysql.Execution{DropConnection: true}, scriptedmysql.CommitAndReply)
+	_, client := startScriptedDatabase(t, dropping, scriptedmysql.Options{}, nil)
+	step := newFencedStep()
+	_, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	marker := lastMarker(t, step)
+	// A canResend marker that still counts one possibly effective send keeps SendAllowed.
+	step.AdvanceAttempt()
+	require.NoError(t, step.SetPersistedCheckpoint(singledispatch.Marker{CallID: marker.CallID, Attempt: 2, State: singledispatch.StateCanResend, SendCount: 1}))
+	step.AdvanceAttempt()
+	heartbeatCount := len(step.Heartbeats())
+
+	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, mysql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the earlier attempt counts as a possible COMMIT")
+	require.False(t, dropping.hasCommitted.Load())
+	require.Len(t, step.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible COMMIT")
+}
+
 func TestExecuteStatementNonIdempotentSelectsUncertainAfterALostWorker(t *testing.T) {
 	database := newBalanceDatabase(scriptedmysql.Execution{AffectedRows: 1}, scriptedmysql.CommitAndReply)
 	server, client := startScriptedDatabase(t, database, scriptedmysql.Options{}, nil)
