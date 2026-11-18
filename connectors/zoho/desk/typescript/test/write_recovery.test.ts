@@ -6,7 +6,7 @@ import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type Prov
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { describe, expect, it } from 'vitest';
 import { ZohoDeskClient } from '../src/client.js';
-import type { CredentialSource, Credentials } from '../src/generated/models.js';
+import { CredentialMaterialError, type CredentialSource, type Credentials } from '../src/generated/models.js';
 
 const callId = '6b0f5c4e-3d1e-5c55-9d0e-6e8a7f0c2b11';
 const ticketId = '1892000000099004';
@@ -118,6 +118,8 @@ describe('Zoho Desk write recovery', () => {
     ['broker refusal', () => new CredentialBrokerRejectedError(), 'uncertain'],
     ['broker outage', () => new CredentialBrokerUnavailableError(), 'retry'],
     ['unconfigured static connection', () => new Error('connection is not configured'), 'retry'],
+    ['malformed stored material', () => new CredentialMaterialError('credential access_token is required'), 'uncertain'],
+    ['SDK-wrapped malformed material', () => new TypeError('project credential decoding failed'), 'uncertain'],
   ] as const)('maps a %s after a possible send without recording a checkpoint', async (_name, error, outcome) => {
     const requests: ProviderRequest[] = [];
     const step = new StepExecution();

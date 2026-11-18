@@ -15,7 +15,20 @@ from dex_connectors.sdk import projectconfig
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.zoho_desk as desk
+from dex_connectors.zoho_desk._generated.connection import CredentialMaterialError
 from dex_connectors.zoho_desk.client import ResponseObservation
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Zoho Desk credential access_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
 
 CONNECTION = sdk.ConnectionRef("zoho", "zoho-desk-test")
 CALL_ID = sdk.CallID("6b0f5c4e-3d1e-5c55-9d0e-6e8a7f0c2b11")
@@ -469,6 +482,8 @@ class FailingCredentials:
         (projectconfig.CredentialBrokerRejectedError("broker"), "uncertain"),
         (projectconfig.CredentialBrokerUnavailableError("broker"), "retry"),
         (ValueError("connection is not configured"), "retry"),
+        (CredentialMaterialError("Zoho Desk credential access_token is required"), "uncertain"),
+        (sdk_wrapped_material_error(), "uncertain"),
     ],
 )
 async def test_every_credential_class_after_a_possible_send(error: Exception, branch: str) -> None:

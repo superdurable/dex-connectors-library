@@ -10,9 +10,9 @@ import { Authorization, CredentialFields } from './generated/refresh.js';
 /** A credential failure no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
-    || error instanceof CredentialBrokerRejectedError;
+    || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { SearchTicketsOperation, GetTicketOperation, CreateTicketOperation, UpdateTicketOperation, AddCommentOperation } from './operations.js';
 
 const dataCenterHosts: Record<string, string> = {
