@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, CredentialSource } from './generated/models.js';
@@ -113,7 +113,9 @@ export class DocsClient {
           else throw new DocsRequestError(false, true, error.status ?? 0, error.headers ?? {});
         } else {
           const isBeforeSend = !!error && typeof error === 'object' && ('beforeSend' in error && error.beforeSend === true || 'isProvablyNotSent' in error && error.isProvablyNotSent === true);
-          throw new DocsRequestError(isBeforeSend);
+          // A status means headers arrived before the body failed; a 2xx write was accepted.
+          const isHeaderFailure = error instanceof ProviderTransportError || error instanceof ProviderStalledError;
+          throw new DocsRequestError(isBeforeSend, false, isHeaderFailure ? error.status ?? 0 : 0, isHeaderFailure ? error.headers ?? {} : {});
         }
       }
       if (response.status >= 200 && response.status < 300 && response.body.byteLength > this.maxResponseBytes) {

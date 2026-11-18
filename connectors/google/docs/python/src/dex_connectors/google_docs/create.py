@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
 
-from dex_connectors.sdk import Call, FailureKind, MutationAttempt, Receipt
+from dex_connectors.sdk import Call, FailureKind, MutationAttempt, ReauthorizationRequiredError, Receipt
 from dex_connectors.sdk.providerhttp import parse_retry_after
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
@@ -252,7 +252,7 @@ async def create_document(
         )
     credential = await client.credential(call)
     if credential is None:
-        if decision.kind == DecisionKind.SEND_ALLOWED:
+        if decision.kind == DecisionKind.SEND_ALLOWED and decision.prior_send_upper_bound == 0:
             try:
                 await fence.record_not_sent()
             except Exception:
@@ -291,11 +291,14 @@ async def create_document(
             )
         )
     # Drive returns a file ID only for a document it created, so a saved one is never resent.
-    has_saved_document_id = (
-        decision.kind != DecisionKind.SEND_ALLOWED and decision.marker is not None
-        and bool(decision.marker.provider_id)
-    )
+    has_saved_document_id = decision.marker is not None and bool(decision.marker.provider_id)
     is_at_send_cap = decision.kind == DecisionKind.READ_BACK_REQUIRED
+    # Only a first send with no saved ID may record notSent before a lookup Retry.
+    is_first_send = (
+        decision.kind == DecisionKind.SEND_ALLOWED
+        and not send.has_possible_earlier_send
+        and not has_saved_document_id
+    )
     if (
         has_saved_document_id
         and decision.marker
@@ -336,8 +339,9 @@ async def create_document(
     lookup, branch, problem, receipt, delay, earlier, incomplete = await _lookup(
         client, call, credential, key
     )
+    has_possible_create = send.has_possible_earlier_send or has_saved_document_id
     if branch != "success":
-        if decision.kind == DecisionKind.SEND_ALLOWED and branch == "retry":
+        if is_first_send and branch == "retry":
             try:
                 await fence.record_not_sent()
             except Exception:
@@ -346,28 +350,20 @@ async def create_document(
                 failure("createDocument", FailureKind.AVAILABILITY, "duplicate lookup is unavailable")
             )
         if branch == _INVALID_LOOKUP:
-            if is_at_send_cap or has_saved_document_id:
-                return MutationAttempt.uncertain(
-                    empty,
-                    failure(
-                        "createDocument",
-                        FailureKind.PROTOCOL,
-                        "a prior create cannot be confirmed because duplicate lookup was invalid",
-                    ),
+            if has_possible_create:
+                # A later attempt repeats the read; each attempt counts toward the send cap.
+                return _retry_lookup_or_select_uncertain(
+                    is_at_send_cap,
+                    FailureKind.PROTOCOL,
+                    "a prior create cannot be confirmed because duplicate lookup was invalid",
                     receipt or Receipt(),
                 )
-            if send.has_possible_earlier_send:
-                # A later attempt repeats the read; each attempt counts toward the send cap.
-                return MutationAttempt.retry(problem)
             return MutationAttempt.branch_result("invalidResponse", empty, receipt or Receipt(), problem)
-        if send.has_possible_earlier_send and branch != "retry":
-            return MutationAttempt.uncertain(
-                empty,
-                failure(
-                    "createDocument",
-                    problem.kind,
-                    "a prior create cannot be confirmed because duplicate lookup was rejected",
-                ),
+        if has_possible_create and branch != "retry":
+            return _retry_lookup_or_select_uncertain(
+                is_at_send_cap,
+                problem.kind,
+                "a prior create cannot be confirmed because duplicate lookup was rejected",
                 receipt or Receipt(),
             )
         if branch == "retry":
@@ -377,19 +373,9 @@ async def create_document(
         return MutationAttempt.branch_result(
             "created", CreateDocumentOutput(earlier, True), client.receipt(call, lookup, earlier.document_id)
         )
-    if is_at_send_cap or has_saved_document_id:
-        return MutationAttempt.uncertain(
-            empty,
-            failure(
-                "createDocument",
-                FailureKind.TRANSPORT,
-                "an earlier attempt of this Step may have created the document, "
-                "the duplicate lookup does not show it, and no further send is allowed",
-            ),
-            receipt or Receipt(),
-        )
+    # An incomplete search proves nothing, so it is repeated before any cap decision.
     if incomplete:
-        if decision.kind == DecisionKind.SEND_ALLOWED:
+        if is_first_send:
             try:
                 await fence.record_not_sent()
             except Exception:
@@ -398,6 +384,15 @@ async def create_document(
             failure(
                 "createDocument", FailureKind.AVAILABILITY, "provider did not complete the duplicate lookup"
             )
+        )
+    if is_at_send_cap or has_saved_document_id:
+        # A saved ID proves Drive created the document, so it is looked up again and never resent.
+        return _retry_lookup_or_select_uncertain(
+            is_at_send_cap,
+            FailureKind.TRANSPORT,
+            "an earlier attempt of this Step may have created the document, "
+            "the duplicate lookup does not show it, and no further send is allowed",
+            receipt or Receipt(),
         )
     try:
         url, body, content_type = _create_request(client, input, format_name, key)
@@ -445,15 +440,8 @@ async def _after_create(
                 client.receipt(call, response, document.document_id),
             )
         except (ValueError, TypeError):
-            return await _reconcile(
-                client,
-                call,
-                send,
-                credential,
-                key,
-                response,
-                FailureKind.PROTOCOL,
-                "provider returned an unusable accepted create response",
+            return await _reconcile_accepted(
+                client, call, send, credential, key, response, FailureKind.PROTOCOL
             )
     if response.status == 429 or response.status == 403 and retryable(403, tokens) or response.status == 503:
         if found_document := await _find_after_send(client, call, credential, key):
@@ -491,9 +479,22 @@ async def _after_create(
             )
         try:
             await client._credentials.resolve_after_rejection(call)
-        except Exception:
+        except ReauthorizationRequiredError:
             return await _reject_or_select_uncertain(
                 send, FailureKind.AUTHENTICATION, "provider rejected the create credential", receipt
+            )
+        except Exception:
+            # Google refuses an unauthenticated create unprocessed, so a transient refresh failure retries.
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                pass  # A lost canResend marker makes the next attempt count this send.
+            return MutationAttempt.retry(
+                failure(
+                    "createDocument",
+                    FailureKind.AUTHENTICATION,
+                    "provider rejected the create credential, and its refresh is temporarily unavailable",
+                )
             )
         try:
             await fence.record_can_resend()
@@ -513,10 +514,8 @@ async def _after_create(
             )
         )
     if 200 <= response.status < 300 and response.error:
-        return await _reconcile(
-            client, call, send, credential, key, response, FailureKind.PROTOCOL,
-            "provider returned an unusable accepted create response",
-        )
+        kind = FailureKind.RESPONSE_TOO_LARGE if response.error == "tooLarge" else FailureKind.TRANSPORT
+        return await _reconcile_accepted(client, call, send, credential, key, response, kind)
     if response.error == "beforeSend":
         try:
             await fence.record_can_resend()
@@ -591,6 +590,73 @@ async def _reconcile(
         CreateDocumentOutput(),
         failure("createDocument", kind, message + "; the send cap is reached"),
         client.receipt(call, response),
+    )
+
+
+async def _reconcile_accepted(
+    client: Client,
+    call: Call,
+    send: "_CreateSend",
+    credential: Credentials,
+    key: str,
+    response: Exchange,
+    kind: FailureKind,
+) -> MutationAttempt[CreateDocumentOutput]:
+    """Handle a 2xx create whose body is unusable or unreadable; Drive created it, so it is never resent.
+
+    The lookup confirms it, or a saved file ID makes the next attempt read it back; otherwise
+    uncertain is selected.
+    """
+    if document := await _find_after_send(client, call, credential, key):
+        try:
+            await send.fence.record_provider_id(document.document_id)
+        except Exception:
+            pass  # The duplicate lookup confirmed this document.
+        return MutationAttempt.branch_result(
+            "created", CreateDocumentOutput(document), client.receipt(call, response, document.document_id)
+        )
+    document_id = ""
+    try:
+        value: Any = strict_json_loads(response.body)
+        if isinstance(value, dict) and isinstance(value.get("id"), str) and DRIVE_ID.fullmatch(value["id"]):
+            document_id = value["id"]
+    except (ValueError, TypeError):
+        pass  # A body without a usable ID cannot be read back by ID.
+    if document_id:
+        try:
+            await send.fence.record_provider_id(document_id)
+            return MutationAttempt.retry(
+                failure(
+                    "createDocument",
+                    kind,
+                    "provider accepted the create with an unusable response; "
+                    "the next attempt reads the document back",
+                )
+            )
+        except Exception:
+            pass  # Without the saved ID a later attempt could resend, so select uncertain.
+    return MutationAttempt.uncertain(
+        CreateDocumentOutput(),
+        failure(
+            "createDocument",
+            kind,
+            "provider accepted the create with an unusable response, and the duplicate lookup "
+            "does not show it, so it is not sent again",
+        ),
+        client.receipt(call, response),
+    )
+
+
+def _retry_lookup_or_select_uncertain(
+    is_at_send_cap: bool, kind: FailureKind, message: str, receipt: Receipt
+) -> MutationAttempt[CreateDocumentOutput]:
+    """Repeat an inconclusive lookup below the send cap; select uncertain at the cap. It never sends."""
+    if is_at_send_cap:
+        return MutationAttempt.uncertain(
+            CreateDocumentOutput(), failure("createDocument", kind, message), receipt
+        )
+    return MutationAttempt.retry(
+        failure("createDocument", kind, message + "; the next attempt looks it up again")
     )
 
 
