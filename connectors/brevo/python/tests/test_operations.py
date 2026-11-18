@@ -12,12 +12,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.brevo import (
     CREATE_OR_UPDATE_CONTACT_DEFINITION,
@@ -170,3 +177,40 @@ async def test_invalid_upsert_is_defect_without_request(value: CreateOrUpdateCon
     )
     assert result.branch == DEFECT
     assert requests == []
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, _call: object) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_transient"),
+    [
+        (CredentialBrokerUnavailableError(), True),
+        (ValueError("connection is not configured"), True),
+        (RuntimeError("unlisted"), True),
+        (ReauthorizationRequiredError(), False),
+        (ObjectNotFoundError(), False),
+        (ConnectionNotSelectedError(), False),
+        (CredentialBrokerRejectedError(), False),
+    ],
+)
+async def test_upsert_classifies_credential_resolve_failures(error: Exception, is_transient: bool) -> None:
+    client = Client(
+        Config(base_url="http://localhost:8848/v3"),
+        _FailingCredentials(error),  # type: ignore[arg-type]
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda request: pytest.fail("sent"))),
+    )
+    upsert = CreateOrUpdateContactInput("a@x.test")
+    if is_transient:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.create_or_update_contact(), upsert_call(), upsert)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+        return
+    result = await run_mutation(client.create_or_update_contact(), upsert_call(), upsert)
+    assert result.branch == DEFECT

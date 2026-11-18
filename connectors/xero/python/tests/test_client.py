@@ -7,8 +7,13 @@ from typing import NoReturn
 import pytest
 from dex_connectors.sdk import Call, CallID, ConnectionRef, FailureKind, IdempotencyKey, OperationRef
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.xero import Client, Config
 from dex_connectors.xero.client import _error_summary, go_path_escape, go_query
@@ -101,7 +106,11 @@ def test_local_provider_url_rejects_non_loopback_host() -> None:
         (ReauthorizationRequiredError(), "rejected", FailureKind.AUTHENTICATION),
         (RefreshFailedError("unavailable"), "retry", FailureKind.AVAILABILITY),
         (CredentialBrokerUnavailableError(), "retry", FailureKind.AVAILABILITY),
-        (ValueError("broken"), "defect", FailureKind.AUTHENTICATION),
+        (ValueError("connection is not configured"), "retry", FailureKind.AVAILABILITY),
+        (RuntimeError("unlisted"), "retry", FailureKind.AVAILABILITY),
+        (ObjectNotFoundError(), "defect", FailureKind.AUTHENTICATION),
+        (ConnectionNotSelectedError(), "defect", FailureKind.AUTHENTICATION),
+        (CredentialBrokerRejectedError(), "defect", FailureKind.AUTHENTICATION),
     ],
 )
 async def test_credential_errors_keep_terminal_and_transient_outcomes(
@@ -236,7 +245,15 @@ def test_later_write_attempt_selects_uncertain_for_a_credential_or_local_failure
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("error", [CredentialBrokerUnavailableError(), TimeoutError()])
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError(),
+        TimeoutError(),
+        ValueError("connection is not configured"),
+        RuntimeError("unlisted"),
+    ],
+)
 async def test_write_retries_a_transient_credential_failure_on_every_attempt(error: Exception) -> None:
     """A broker outage sends nothing, so neither defect nor uncertain may be selected."""
     from dataclasses import replace

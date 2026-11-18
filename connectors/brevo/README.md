@@ -32,8 +32,8 @@ Sign in at [Brevo API keys](https://app.brevo.com/settings/keys/api), open **Set
 | Missing contact | `notFound` |
 | Definite provider rejection, including invalid credentials | `providerRejected` |
 | Malformed or oversized response | `invalidResponse` |
-| Invalid local input or missing credentials | `defect` |
-| Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
+| Invalid local input or credentials, or a connection that needs reauthorization, is missing or no longer selected, or that the credential broker refused | `defect` |
+| Transport failure, 408, 409, 429, 5xx, or any other credential lookup failure, such as an unavailable broker | Retry with Dex's default one-hour budget |
 
 Only the happy branch is wired in the [contact sync example](go/examples/contact-sync); selecting an optional branch fails its Flow. No `uncertain` branch is needed because contact creation or update is repeatable by email.
 

@@ -16,8 +16,12 @@ from urllib.parse import quote, urlencode
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 from dex_connectors.sdk.projectconfig.provider import ExchangePendingError, RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -100,6 +104,19 @@ def _error_summary(body: bytes, token: str) -> str:
     except (ValueError, TypeError, AttributeError):
         pass
     return " [" + "; ".join(parts) + "]" if parts else ""
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure no later attempt clears; every other resolve error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -237,7 +254,14 @@ class Client:
                     "Xero access token request is temporarily unavailable",
                 ),
             )
-        except (CredentialBrokerUnavailableError, TimeoutError):
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return Exchange(
+                    "defect",
+                    error=failure(
+                        operation, FailureKind.AUTHENTICATION, "Xero connection credentials are unavailable"
+                    ),
+                )
             # Nothing reached Xero, so every attempt retries instead of selecting defect or uncertain.
             return Exchange(
                 "retry",
@@ -245,13 +269,6 @@ class Client:
                     operation,
                     FailureKind.AVAILABILITY,
                     "Xero connection credentials are temporarily unavailable; nothing was sent",
-                ),
-            )
-        except Exception:
-            return Exchange(
-                "defect",
-                error=failure(
-                    operation, FailureKind.AUTHENTICATION, "Xero connection credentials are unavailable"
                 ),
             )
         if not isinstance(credentials, Credentials) or not credentials.access_token.reveal():

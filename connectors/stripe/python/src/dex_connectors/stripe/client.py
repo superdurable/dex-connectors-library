@@ -17,9 +17,11 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
+    ReauthorizationRequiredError,
     Receipt,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     new_provider_http_client,
@@ -127,24 +129,33 @@ class Client:
     ) -> tuple[Credentials | None, Failure | None]:
         """Resolve a secret key at call time, returning a safe failure.
 
-        A credential broker outage, which another attempt may clear, returns an AVAILABILITY
-        failure; every terminal credential problem returns an AUTHENTICATION failure.
+        A resolve failure another attempt may clear returns an AVAILABILITY failure; every
+        terminal credential problem returns an AUTHENTICATION failure.
         """
+        unavailable = stripe_failure(
+            operation, FailureKind.AUTHENTICATION, "Stripe connection credentials are unavailable"
+        )
         try:
             credentials = await self._credentials.resolve(call)
-            if not isinstance(credentials, Credentials) or not credentials.secret_key.reveal():
-                raise ValueError("empty Stripe key")
-            return credentials, None
-        except CredentialBrokerUnavailableError:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            return None, unavailable
+        except Exception:
             return None, stripe_failure(
                 operation,
                 FailureKind.AVAILABILITY,
                 "Stripe connection credentials are temporarily unavailable; nothing was sent",
             )
-        except Exception:
-            return None, stripe_failure(
-                operation, FailureKind.AUTHENTICATION, "Stripe connection credentials are unavailable"
-            )
+        try:
+            if not isinstance(credentials, Credentials) or not credentials.secret_key.reveal():
+                return None, unavailable
+        except (AttributeError, TypeError):
+            return None, unavailable
+        return credentials, None
 
     async def request(
         self,

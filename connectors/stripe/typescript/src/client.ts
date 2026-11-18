@@ -3,8 +3,8 @@
 
 import { z } from 'zod';
 import { BodyTooLargeError, isHeaderSafeCredential, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Call, CredentialProvider, Receipt } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Receipt } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { CheckoutSession, Config, Credentials, PaymentIntent, Refund } from './models.js';
 import { CreateACHCheckoutSessionOperation, CreateCardCheckoutSessionOperation, CreateRefundOperation, GetCheckoutSessionOperation, GetPaymentIntentOperation } from './operations.js';
 
@@ -67,16 +67,16 @@ export class StripeClient {
 
   /**
    * Resolve one current API key and report why none is available. `isCredentialBrokerUnavailable` marks a
-   * temporary credential broker outage that another attempt may clear; any other missing key is terminal.
+   * resolve failure, such as a broker outage, that another attempt may clear; any other missing key is terminal.
    */
   async resolveSecretKeyResolution(call: Call): Promise<{ secretKey?: string; isCredentialBrokerUnavailable: boolean }> {
-    try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (credentials.authMethodId !== 'api-key-only' && credentials.authMethodId !== 'api-key-with-webhook') return { isCredentialBrokerUnavailable: false };
-      const key = credentials.secretKey?.reveal();
-      if (!key || !isHeaderSafeCredential(key)) return { isCredentialBrokerUnavailable: false };
-      return { secretKey: key, isCredentialBrokerUnavailable: false };
-    } catch (error) { return { isCredentialBrokerUnavailable: error instanceof CredentialBrokerUnavailableError }; }
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) { return { isCredentialBrokerUnavailable: !isTerminalCredentialError(error) }; }
+    if (credentials?.authMethodId !== 'api-key-only' && credentials?.authMethodId !== 'api-key-with-webhook') return { isCredentialBrokerUnavailable: false };
+    const key = credentials.secretKey instanceof SecretString ? credentials.secretKey.reveal() : undefined;
+    if (!key || !isHeaderSafeCredential(key)) return { isCredentialBrokerUnavailable: false };
+    return { secretKey: key, isCredentialBrokerUnavailable: false };
   }
 
   /** Make one provider request with Go's sorted form encoding and Stripe headers. */
@@ -122,6 +122,13 @@ export class StripeClient {
       ...(stripeResponseHeader(response, 'request-id') ? { providerRequestId: stripeResponseHeader(response, 'request-id') } : {}),
     };
   }
+}
+
+/** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || error instanceof z.ZodError;
 }
 
 /** Read one case-insensitive provider header without revealing request headers. */

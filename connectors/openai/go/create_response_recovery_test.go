@@ -485,6 +485,9 @@ func TestCreateResponseClassifiesTransientAndTerminalCredentialFailures(t *testi
 		"broker unavailable after a send":  {err: projectconfig.ErrCredentialBrokerUnavailable, attempt: 2, wantSendCount: 1},
 		"reauthorization before a send":    {err: sdkgo.ErrReauthorizationRequired, attempt: 1, wantBranch: openai.CreateResponseBranchDefect},
 		"reauthorization after a send":     {err: sdkgo.ErrReauthorizationRequired, attempt: 2, wantBranch: openai.CreateResponseBranchUncertain},
+		"project reauthorization":          {err: projectconfig.ErrReauthorizationRequired, attempt: 1, wantBranch: openai.CreateResponseBranchDefect},
+		"not selected after a send":        {err: projectconfig.ErrConnectionNotSelected, attempt: 2, wantBranch: openai.CreateResponseBranchUncertain},
+		"not configured before a send":     {err: errors.New("connection is not configured"), attempt: 1, wantSendCount: 0},
 	} {
 		t.Run(name, func(t *testing.T) {
 			client, err := openai.New(openai.Config{Endpoint: "https://api.openai.example/v1"}, failingCredentials{err: test.err})

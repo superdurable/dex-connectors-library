@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { StripeClient, type StripeRequestSender } from '../src/client.js';
 import { CheckoutSessionSchema, PaymentIntentSchema, RefundSchema, type CreateACHCheckoutSessionInput, type CreateRefundInput, type Credentials } from '../src/models.js';
 import { noProgress } from './call.js';
@@ -227,6 +227,15 @@ describe('refund mutation', () => {
       { send: async () => { throw new Error('provider must not be called'); } });
     for (const refundCall of [call('createRefund', true), laterCall]) {
       expect(await broker.createRefund().invoke(refundCall, refundInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    }
+    for (const error of [new Error('connection is not configured'), new RangeError('unlisted'), new TypeError('fetch failed')]) {
+      const transient = new StripeClient({ endpoint: 'http://localhost:12121/v1' }, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('provider must not be called'); } });
+      expect(await transient.createRefund().invoke(laterCall, refundInput), error.message).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    }
+    for (const error of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+      const terminal = new StripeClient({ endpoint: 'http://localhost:12121/v1' }, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('provider must not be called'); } });
+      expect(await terminal.createRefund().invoke(call('createRefund', true), refundInput), error.name).toMatchObject({ kind: 'branch', branch: 'defect' });
+      expect(await terminal.createRefund().invoke(laterCall, refundInput), error.name).toMatchObject({ kind: 'uncertain' });
     }
   });
   it('retries safe keyed failures and read-back availability', async () => {

@@ -6,6 +6,7 @@ package klaviyo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -94,6 +96,43 @@ func TestCreateEventUsesStableUniqueIDAndAccepts202(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, CreateEventBranchAccepted, result.Branch)
 		require.True(t, result.Value.Accepted)
+	}
+}
+
+// failingResolveCredentials fails every resolve with resolveErr.
+type failingResolveCredentials struct{ resolveErr error }
+
+func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, credentials.resolveErr
+}
+
+func TestCreateEventClassifiesCredentialResolveFailures(t *testing.T) {
+	input := CreateEventInput{Email: "member@meridian.co", MetricName: "Signed Up"}
+	for name, test := range map[string]struct {
+		credentials sdkgo.CredentialProvider[Credentials]
+		isTransient bool
+	}{
+		"broker unavailable":      {credentials: failingResolveCredentials{projectconfig.ErrCredentialBrokerUnavailable}, isTransient: true},
+		"not configured":          {credentials: sdkgo.StaticCredentialProvider[Credentials]{}, isTransient: true},
+		"unlisted":                {credentials: failingResolveCredentials{errors.New("unlisted resolve failure")}, isTransient: true},
+		"sdk reauthorization":     {credentials: failingResolveCredentials{sdkgo.NewReauthorizationRequiredError(nil)}},
+		"project reauthorization": {credentials: failingResolveCredentials{projectconfig.ErrReauthorizationRequired}},
+		"object not found":        {credentials: failingResolveCredentials{projectconfig.ErrObjectNotFound}},
+		"not selected":            {credentials: failingResolveCredentials{projectconfig.ErrConnectionNotSelected}},
+		"broker rejected":         {credentials: failingResolveCredentials{projectconfig.ErrCredentialBrokerRejected}},
+		"blank key":               {credentials: sdkgo.StaticCredentialProvider[Credentials]{testConnection: {}}},
+	} {
+		client, err := New(Config{BaseURL: "http://127.0.0.1:1/api"}, test.credentials)
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(providerContext{}, client.CreateEvent(), testConnection, input)
+		if test.isTransient {
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, name)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind, name)
+			continue
+		}
+		require.NoError(t, err, name)
+		require.Equal(t, CreateEventBranchDefect, result.Branch, name)
 	}
 }
 

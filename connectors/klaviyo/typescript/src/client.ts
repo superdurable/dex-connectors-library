@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { isHeaderSafeCredential, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { z } from 'zod';
 import type { Config, Credentials } from './generated/models.js';
 import { CreateEventOperation, GetProfileOperation } from './operations.js';
 
@@ -47,7 +49,7 @@ export class KlaviyoClient {
   async request(call: Call, method: 'GET' | 'POST', path: string, body?: Uint8Array): Promise<ProviderResponse> {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
-    catch { throw new InvalidKlaviyoCredentialError(); }
+    catch (error) { throw isTerminalCredentialError(error) ? new InvalidKlaviyoCredentialError() : new UnavailableKlaviyoCredentialError(); }
     if (!(credentials.privateApiKey instanceof SecretString) || !isHeaderSafeCredential(credentials.privateApiKey.reveal())) throw new InvalidKlaviyoCredentialError();
     const request: ProviderRequest = {
       url: `${this.baseUrl}${path}`, method,
@@ -66,4 +68,17 @@ export class KlaviyoClient {
 export class InvalidKlaviyoCredentialError extends Error {
   /** Construct a secret-safe credential error. */
   constructor() { super('Klaviyo credentials are unavailable or invalid'); }
+}
+
+/** A credential lookup failed in a way a later attempt may clear; no provider request was sent. */
+export class UnavailableKlaviyoCredentialError extends Error {
+  /** Construct a secret-safe transient credential error. */
+  constructor() { super('Klaviyo credentials are temporarily unavailable'); }
+}
+
+/** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || error instanceof z.ZodError;
 }

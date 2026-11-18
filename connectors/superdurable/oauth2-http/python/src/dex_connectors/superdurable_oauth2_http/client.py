@@ -26,7 +26,8 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
-from dex_connectors.sdk.projectconfig.storage import ObjectConflictError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     AddressRefusal,
     RequestTrace,
@@ -73,8 +74,8 @@ _SEND_REQUEST = "sendRequest"
 _POST_NON_IDEMPOTENT = "postNonIdempotent"
 # The POST gets most of the Execute budget, because no read-back follows it.
 _POST_WRITE_WINDOW = 5 / 6
-# A credential broker, store, refresh, or exchange that is unavailable now may answer on a later attempt.
-_TRANSIENT_CREDENTIAL_ERRORS = (OSError, ObjectConflictError)
+# Only these resolve failures need a person; every other resolve error is transient.
+_TERMINAL_CREDENTIAL_ERRORS = (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError)
 _OPERATION_SECONDS = 25
 
 
@@ -391,16 +392,16 @@ class Client:
         self, call: Call, deadline: float, operation: str
     ) -> tuple[Credentials | None, MutationAttempt[SendRequestOutput] | None]:
         """Resolve usable credentials, or return the attempt for a resolution that failed."""
+        unusable = _branch(
+            operation,
+            "defect",
+            SendRequestOutput(),
+            FailureKind.AUTHENTICATION,
+            "the connection's credentials are unavailable or unusable",
+        )
         try:
             async with asyncio.timeout_at(deadline):
                 credentials = await resolve_credential(self._credentials, call, self._refresh_driver)
-            if (
-                not credentials.oauth_client_id
-                or not credentials.oauth_client_secret.reveal()
-                or not credentials.access_token.reveal()
-            ):
-                raise ValueError("unusable credentials")
-            return credentials, None
         except AddressRefusal as error:
             return None, _branch(
                 operation,
@@ -418,21 +419,25 @@ class Client:
                 FailureKind.AUTHENTICATION,
                 "the OAuth authorization must be renewed in Dex Web Connections",
             )
-        except _TRANSIENT_CREDENTIAL_ERRORS:
-            # Includes TimeoutError, an unavailable broker or store, and a failed or pending refresh.
+        except _TERMINAL_CREDENTIAL_ERRORS:
+            return None, unusable
+        except Exception:
+            # Includes TimeoutError, an unavailable broker or store, a failed or pending refresh,
+            # and an unconfigured connection.
             return None, MutationAttempt.retry(
                 _failure(
                     operation, FailureKind.AVAILABILITY, "the OAuth access token could not be refreshed now"
                 )
             )
-        except Exception:
-            return None, _branch(
-                operation,
-                "defect",
-                SendRequestOutput(),
-                FailureKind.AUTHENTICATION,
-                "the connection's credentials are unavailable or unusable",
+        try:
+            is_usable = bool(
+                credentials.oauth_client_id
+                and credentials.oauth_client_secret.reveal()
+                and credentials.access_token.reveal()
             )
+        except (AttributeError, TypeError):
+            is_usable = False
+        return (credentials, None) if is_usable else (None, unusable)
 
 
 class SendRequestOperation:

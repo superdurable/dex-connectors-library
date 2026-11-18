@@ -275,8 +275,8 @@ A token that contains the API key is dropped.
 | 408, other 5xx, lost or unreadable response | Retry | Retry | unknown |
 | non-2xx whose body exceeds `maxResponseBytes` | branch by status | Retry | unknown |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | Retry | `sent`, never resent |
-| credential lookup that may succeed later | `defect`, with no request | Retry, with no request | Retry; before any send it records that nothing was sent |
-| invalid input or connection credentials, reauthorization required | `defect`, with no request | same | `defect` when no earlier send is possible |
+| credential lookup that may succeed later: any failure except those in the next row, such as an unavailable broker or a connection that is not configured yet | `defect`, with no request | Retry, with no request | Retry; before any send it records that nothing was sent |
+| invalid input or connection credentials, reauthorization required, a missing or unselected connection, or a broker refusal | `defect`, with no request | same | `defect` when no earlier send is possible |
 
 An unknown sendCampaign outcome is retried below the send cap and selects
 `uncertain` at it, as [Duplicate safety](#duplicate-safety) describes. The

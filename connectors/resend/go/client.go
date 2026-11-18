@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -164,8 +165,21 @@ func (operation GetEmailOperation) Invoke(call sdkgo.Call, input GetEmailInput) 
 	})
 }
 
+// errCredentialsTemporarilyUnavailable marks a resolve failure a later attempt may clear; nothing was sent.
+var errCredentialsTemporarilyUnavailable = errors.New("credentials temporarily unavailable")
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func (client *Client) newRequest(call sdkgo.Call, method, path string, body []byte) (*http.Request, error) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return nil, errCredentialsTemporarilyUnavailable
+	}
 	if err != nil {
 		return nil, fmt.Errorf("credentials unavailable")
 	}
@@ -187,6 +201,9 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, body []by
 
 func runQuery[T any](client *Client, call sdkgo.Call, operation, path string, success, notFound, rejected, invalid, defect sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.QueryAttempt[T] {
 	request, err := client.newRequest(call, http.MethodGet, path, nil)
+	if errors.Is(err, errCredentialsTemporarilyUnavailable) {
+		return sdkgo.NewQueryRetry[T](newFailure(operation, sdkgo.FailureAvailability, "connection credentials are temporarily unavailable"), 0)
+	}
 	if err != nil {
 		return queryFailure[T](operation, defect, sdkgo.FailureAuthentication, "connection credentials or request are invalid")
 	}
@@ -223,6 +240,9 @@ func runQuery[T any](client *Client, call sdkgo.Call, operation, path string, su
 
 func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path string, body []byte, extraHeader, extraValue string, success, notFound, rejected, invalid, defect sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.MutationAttempt[T] {
 	request, err := client.newRequest(call, method, path, body)
+	if errors.Is(err, errCredentialsTemporarilyUnavailable) {
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "connection credentials are temporarily unavailable; nothing was sent"), 0)
+	}
 	if err != nil {
 		return mutationFailure[T](operation, defect, sdkgo.FailureAuthentication, "connection credentials or request are invalid")
 	}

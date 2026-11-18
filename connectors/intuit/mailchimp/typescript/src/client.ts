@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { z } from 'zod';
 import type { Config, Credentials } from './generated/models.js';
 import { GetMemberOperation, ListMembersOperation, UpsertMemberOperation, UpdateMemberTagsOperation, SendCampaignOperation } from './operations.js';
 
@@ -85,12 +87,13 @@ export class MailchimpClient {
 
   /**
    * Resolve the API key and report whether a failure may succeed on a later attempt: only a lookup
-   * error other than a reauthorization requirement is transient.
+   * error outside the terminal SDK credential errors is transient.
    */
   async resolveClassifiedConnection(call: Call): Promise<{ connection: { key: string; baseURL: string } } | { isTransient: boolean }> {
-    let key: string;
-    try { key = (await this.credentials.resolve(call, call.context.cancellationSignal)).apiKey.reveal(); }
-    catch (error) { return { isTransient: !(error instanceof ReauthorizationRequiredError) }; }
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) { return { isTransient: !isTerminalCredentialError(error) }; }
+    const key = credentials?.apiKey instanceof SecretString ? credentials.apiKey.reveal() : '';
     const match = /^([A-Za-z0-9]{8,128})-([a-z]{2,10}[0-9]{1,4})$/.exec(key);
     if (!match || !isHeaderSafeCredential(key)) return { isTransient: false };
     return { connection: { key, baseURL: this.apiBaseURL ?? `https://${match[2]}.api.mailchimp.com/3.0` } };
@@ -150,6 +153,13 @@ export class MailchimpClient {
       ...(objectID ? { providerObjectId: objectID } : {}),
       ...(/^[A-Za-z0-9._:-]{1,128}$/.test(requestID) ? { providerRequestId: requestID } : {}) };
   }
+}
+
+/** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || error instanceof z.ZodError;
 }
 
 function header(headers: ProviderResponse['headers'], name: string): string {

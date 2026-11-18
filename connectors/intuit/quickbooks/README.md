@@ -267,8 +267,11 @@ write also runs under the SDK single-dispatch fence, which records a Dex
 heartbeat claim with the possible send count of the Call ID before the request:
 
 - HTTP 429, 503, and a request that provably never left the process, such as a
-  refused connection, a failed token refresh, or an unavailable Dex credential
-  broker, are retried without counting the send;
+  refused connection, a failed token refresh, or any credential lookup failure
+  other than reauthorization, a missing or unselected connection, a broker
+  refusal, or malformed credentials (such as an unavailable Dex credential
+  broker or a connection that is not configured yet), are retried without
+  counting the send;
 - any other unknown outcome is resent with the identical request while the
   possible sends stay below `maxSends` (3 unless the application sets the
   factory's `MaxSends`), and selects `uncertain` at the cap: a lost response, a

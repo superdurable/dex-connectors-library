@@ -532,17 +532,24 @@ func unavailableCredentialsAttempt[T any](call sdkgo.Call, defect sdkgo.BranchID
 	return sdkgo.NewMutationBranch(defect, zero, failure, sdkgo.Receipt{})
 }
 
-// resolveCredentials returns a FailureAvailability failure for a credential broker outage, which another
-// attempt may clear, and a FailureAuthentication failure for every terminal credential problem.
+// resolveCredentials returns a FailureAvailability failure for a resolve failure another attempt may
+// clear, and a FailureAuthentication failure for every terminal credential problem.
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
-	if errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) {
+	if err != nil && !isTerminalCredentialError(err) {
 		return Credentials{}, stripeFailurePointer(operation, sdkgo.FailureAvailability, "Stripe connection credentials are temporarily unavailable; nothing was sent")
 	}
 	if err != nil || credentials.SecretKey.Reveal() == "" {
 		return Credentials{}, stripeFailurePointer(operation, sdkgo.FailureAuthentication, "Stripe connection credentials are unavailable")
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func decodeCheckoutSession(contents []byte) (CheckoutSession, error) {

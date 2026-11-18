@@ -8,7 +8,12 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.superdurable_oauth2_http as oauth2_http
@@ -202,14 +207,42 @@ class UnavailableBroker:
         raise CredentialBrokerUnavailableError("credential broker is unavailable")
 
 
-class MissingConnection(UnavailableBroker):
-    """Fail every resolution with a terminal configuration error."""
+class FailingCredentials(UnavailableBroker):
+    """Fail every resolution with error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
 
     async def resolve(self, call: sdk.Call) -> oauth2_http.Credentials:
-        raise ValueError("connection is not configured")
+        raise self.error
 
     async def resolve_with_refresh(self, call: sdk.Call, driver: object) -> oauth2_http.Credentials:
-        raise ValueError("connection is not configured")
+        raise self.error
+
+
+class MissingConnection(FailingCredentials):
+    """Fail every resolution with a terminal configuration error."""
+
+    def __init__(self) -> None:
+        super().__init__(ConnectionNotSelectedError())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "kind"),
+    [
+        (ValueError("connection is not configured"), "retry"),
+        (RuntimeError("unlisted"), "retry"),
+        (CredentialBrokerUnavailableError(), "retry"),
+        (ObjectNotFoundError(), "defect"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+        (sdk.ReauthorizationRequiredError(), "rejected"),
+    ],
+)
+async def test_send_request_classifies_credential_resolve_failures(error: Exception, kind: str) -> None:
+    attempt = await invoke_with(FailingCredentials(error), "sendRequest", 1)
+    assert (attempt.kind if attempt.kind == "retry" else attempt.branch) == kind
 
 
 async def invoke_with(

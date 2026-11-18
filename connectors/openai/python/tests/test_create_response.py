@@ -25,7 +25,7 @@ from dex_connectors.sdk import (
     StaticCredentialProvider,
     run_mutation,
 )
-from dex_connectors.sdk.projectconfig import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig import ConnectionNotSelectedError, CredentialBrokerUnavailableError
 
 import dex_connectors.openai.client as openai_client
 from dex_connectors.openai import (
@@ -477,10 +477,12 @@ _REAUTHORIZATION = _FailingCredentialProvider(ReauthorizationRequiredError())
     [
         (_UNAVAILABLE, "retry"),
         (StaticCredentialProvider({}), "retry"),
+        (_FailingCredentialProvider(RuntimeError("unlisted")), "retry"),
         (_REAUTHORIZATION, UNCERTAIN),
+        (_FailingCredentialProvider(ConnectionNotSelectedError()), UNCERTAIN),
         (StaticCredentialProvider({CONNECTION: Credentials(SecretString(""))}), UNCERTAIN),
     ],
-    ids=["unavailable", "not configured", "reauthorization", "invalid"],
+    ids=["unavailable", "not configured", "unlisted", "reauthorization", "not selected", "invalid"],
 )
 async def test_credential_failure_after_a_possible_create(credentials: Any, expected: str) -> None:
     """Unavailable credentials retry; lasting failures select uncertain, never defect."""

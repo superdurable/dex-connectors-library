@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError, ExchangePendingError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerUnavailableError, ExchangePendingError } from '@superdurable/connectors-sdk/projectconfig';
 import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { OAuth2HTTPClient } from '../src/client.js';
 import { PostNonIdempotentDefinition } from '../src/generated/definitions.js';
@@ -142,7 +142,7 @@ describe('postNonIdempotent single dispatch', () => {
   });
 
   it('selects uncertain for a terminal credential failure of a later sendRequest write', async () => {
-    const client = new OAuth2HTTPClient(config, { resolve: async () => { throw new Error('connection is not configured'); }, resolveWithRefresh: async () => { throw new Error('connection is not configured'); } },
+    const client = new OAuth2HTTPClient(config, { resolve: async () => { throw new ConnectionNotSelectedError(); }, resolveWithRefresh: async () => { throw new ConnectionNotSelectedError(); } },
       { send: async () => { throw new Error('sent'); } });
     for (const [method, attempt, branch] of [['POST', 1, 'defect'], ['POST', 2, 'uncertain'], ['DELETE', 2, 'uncertain'], ['GET', 2, 'defect']] as const) {
       const context = new AttemptContext();

@@ -6,6 +6,7 @@ package quickbooks_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -223,29 +224,54 @@ func TestRefusalStatusWithAnIncompleteErrorBodyIsAnUnknownOutcome(t *testing.T) 
 	}
 }
 
-func TestUnavailableCredentialBrokerRetriesWithoutCountingASend(t *testing.T) {
+func TestTransientCredentialFailuresRetryWithoutCountingASend(t *testing.T) {
 	provider := newRecordingQuickBooks(t, func(http.ResponseWriter, recordedRequest, int) { t.Fatal("no request is expected") })
-	client, err := quickbooks.New(quickbooks.Config{}, unavailableBrokerCredentials{}, quickbooks.WithLocalProviderURL(provider.URL))
-	require.NoError(t, err)
-	ctx := newQuickBooksDexContext("customer-broker-unavailable")
-	_, err = sdkgo.RunMutation(ctx, client.CreateCustomer(), quickbooksConnection, cityAgencyCustomerInput)
-	retry := requireQuickBooksRetry(t, err)
-	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind, "a transient broker failure is never a defect")
-	marker := recordedQuickBooksMarker(t, ctx)
-	require.Equal(t, singledispatch.StateCanResend, marker.State)
-	require.Zero(t, marker.SendCount)
+	for name, resolveErr := range map[string]error{
+		"broker unavailable": projectconfig.ErrCredentialBrokerUnavailable,
+		"not configured":     errors.New("connection is not configured"),
+		"deadline":           context.DeadlineExceeded,
+		"unlisted":           errors.New("unlisted resolve failure"),
+	} {
+		client, err := quickbooks.New(quickbooks.Config{}, failingResolveCredentials{resolveErr}, quickbooks.WithLocalProviderURL(provider.URL))
+		require.NoError(t, err)
+		ctx := newQuickBooksDexContext("customer-transient-" + name)
+		_, err = sdkgo.RunMutation(ctx, client.CreateCustomer(), quickbooksConnection, cityAgencyCustomerInput)
+		retry := requireQuickBooksRetry(t, err)
+		require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind, "%s is never a defect", name)
+		marker := recordedQuickBooksMarker(t, ctx)
+		require.Equal(t, singledispatch.StateCanResend, marker.State)
+		require.Zero(t, marker.SendCount)
+	}
 }
 
-// unavailableBrokerCredentials fails every Resolve as a transient credential broker outage.
-type unavailableBrokerCredentials struct{}
-
-func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (quickbooks.Credentials, error) {
-	return quickbooks.Credentials{}, projectconfig.ErrCredentialBrokerUnavailable
+func TestTerminalCredentialFailuresSelectABranchBeforeAnySend(t *testing.T) {
+	provider := newRecordingQuickBooks(t, func(http.ResponseWriter, recordedRequest, int) { t.Fatal("no request is expected") })
+	for name, resolveErr := range map[string]error{
+		"sdk reauthorization":     sdkgo.NewReauthorizationRequiredError(nil),
+		"project reauthorization": projectconfig.ErrReauthorizationRequired,
+		"object not found":        projectconfig.ErrObjectNotFound,
+		"not selected":            projectconfig.ErrConnectionNotSelected,
+		"broker rejected":         projectconfig.ErrCredentialBrokerRejected,
+	} {
+		client, err := quickbooks.New(quickbooks.Config{}, failingResolveCredentials{resolveErr}, quickbooks.WithLocalProviderURL(provider.URL))
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(newQuickBooksDexContext("customer-terminal-"+name), client.CreateCustomer(), quickbooksConnection, cityAgencyCustomerInput)
+		require.NoError(t, err, name)
+		require.NotEqual(t, quickbooks.CreateCustomerBranchUncertain, result.Branch, name)
+		require.NotEqual(t, quickbooks.CreateCustomerBranchCreated, result.Branch, name)
+	}
 }
 
-func (provider unavailableBrokerCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call,
+// failingResolveCredentials fails every Resolve with resolveErr.
+type failingResolveCredentials struct{ resolveErr error }
+
+func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (quickbooks.Credentials, error) {
+	return quickbooks.Credentials{}, credentials.resolveErr
+}
+
+func (credentials failingResolveCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call,
 	_ sdkgo.CredentialRefreshDriver[quickbooks.Credentials]) (quickbooks.Credentials, error) {
-	return provider.Resolve(call)
+	return credentials.Resolve(call)
 }
 
 func TestUnreadableWriteCheckpointIsRetriedWithoutARequest(t *testing.T) {

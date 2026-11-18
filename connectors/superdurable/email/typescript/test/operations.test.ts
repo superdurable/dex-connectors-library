@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, test, vi } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ImapFlow } from 'imapflow';
 import { EmailClient, MailFailure } from '../src/index.js';
 import { classifyMailError, hasControls, isBareAddress } from '../src/client.js';
@@ -22,10 +22,22 @@ function fakeIMAP(overrides: Record<string, unknown> = {}): ImapFlow {
 describe('email operation decisions', () => {
   test('rejects malformed config and credentials without contacting a provider', async () => {
     expect(() => new EmailClient({ imapHost: 'https://mail.example.com', smtpHost: 'smtp.example.com' }, { resolve: async () => ({ username: 'x', password: new SecretString('x') }) })).toThrow();
-    const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => { throw new Error('secret text'); } });
+    const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => ({ username: 'x\r\nsecret text', password: new SecretString('x') }) });
     const result = await email.searchMessages().invoke(fakeCall('searchMessages').call, {});
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') { expect(result.branch).toBe('defect'); expect(result.failure?.message).not.toContain('secret text'); }
+  });
+
+  test('classifies credential resolve failures as terminal or transient', async () => {
+    for (const [error, kind] of [
+      [new Error('connection is not configured'), 'retry'], [new CredentialBrokerUnavailableError(), 'retry'], [new RangeError('unlisted'), 'retry'],
+      [new TypeError('fetch failed'), 'retry'], [new ReauthorizationRequiredError(), 'branch'], [new ObjectNotFoundError(), 'branch'], [new ConnectionNotSelectedError(), 'branch'], [new CredentialBrokerRejectedError(), 'branch'],
+    ] as const) {
+      const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost', fromAddress: 'support@example.com' }, { resolve: async () => { throw error; } });
+      const attempt = await email.sendMessage().invoke(fakeCall('sendMessage').call, { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' });
+      expect(attempt.kind, error.name).toBe(kind);
+      if (attempt.kind === 'branch') expect(attempt.branch).toBe('defect');
+    }
   });
 
   test('search returns newest-first bounded summaries and rejects stale pagination', async () => {
@@ -186,7 +198,7 @@ describe('email operation decisions', () => {
   });
 
   test('a terminal credential failure selects defect only on the first attempt of a repeat-safe write', async () => {
-    const missing = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => { throw new Error('connection is not configured'); } });
+    const missing = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => { throw new ConnectionNotSelectedError(); } });
     const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
     const first = await missing.setFlags().invoke(fakeCall('setFlags').call, { message: reference, isSeen: true });
     expect(first.kind === 'branch' && first.branch).toBe('defect');

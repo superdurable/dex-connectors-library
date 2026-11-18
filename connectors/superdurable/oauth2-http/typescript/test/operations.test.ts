@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { OAuth2HTTPClient, planRequest } from '../src/client.js';
 
@@ -131,10 +132,19 @@ describe('Go URL and operation budget regressions', () => {
     expect(planRequest(client, { url: 'http://127.0.0.1:45880/v1/profile?bad=1;evil=2&ok=a+b&broken=%GG', query: { added: ['x'] } }).url)
       .toBe('http://127.0.0.1:45880/v1/profile?added=x&ok=a+b');
   });
-  it('does not treat an arbitrary refresh-word error as a retryable token failure', async () => {
-    const client = new OAuth2HTTPClient(config, { resolve: async () => { throw new Error('refresh policy is invalid'); }, resolveWithRefresh: async () => { throw new Error('refresh policy is invalid'); } });
-    const result = await client.sendRequest().invoke(call, { path: '/userinfo' });
-    expect(result).toMatchObject({ kind: 'branch', branch: 'defect' });
+  it('treats only the terminal credential errors as terminal', async () => {
+    for (const [error, expected] of [
+      [new Error('refresh policy is invalid'), { kind: 'retry' }], [new Error('connection is not configured'), { kind: 'retry' }],
+      [new CredentialBrokerUnavailableError(), { kind: 'retry' }], [new ReauthorizationRequiredError(), { kind: 'branch', branch: 'rejected' }],
+      [new ObjectNotFoundError(), { kind: 'branch', branch: 'defect' }], [new ConnectionNotSelectedError(), { kind: 'branch', branch: 'defect' }],
+      [new CredentialBrokerRejectedError(), { kind: 'branch', branch: 'defect' }], [new TypeError('fetch failed'), { kind: 'retry' }],
+    ] as const) {
+      const client = new OAuth2HTTPClient(config, { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } });
+      const result = await client.sendRequest().invoke(call, { path: '/userinfo' });
+      expect(result, error.name).toMatchObject(expected);
+    }
+    const unusable = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, { ...firstCredentials, accessToken: new SecretString('') }]]));
+    expect(await unusable.sendRequest().invoke(call, { path: '/userinfo' })).toMatchObject({ kind: 'branch', branch: 'defect' });
   });
   it('caps a request by the remaining total operation budget', async () => {
     let timeout = 0;

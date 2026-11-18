@@ -19,6 +19,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -154,12 +156,17 @@ class Client:
     ) -> tuple[tuple[str, str] | Failure, bool]:
         """Resolve a Mailchimp key and report whether a failure may succeed on a later attempt.
 
-        Only a lookup error other than a reauthorization requirement is transient.
+        Only a lookup error outside the terminal SDK credential errors is transient.
         """
         unavailable = failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
         try:
             credentials = await self._credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             return unavailable, False
         except Exception:
             return unavailable, True

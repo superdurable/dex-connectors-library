@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -175,12 +176,21 @@ func (outcome postOutcome) renewAfterRejection(
 	replacement, err := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, outcome.call, client.refreshDriver)
 	problem := classifyCredentialResolution(ctx, err, replacement)
 	isReplacementUsable := !problem.isFailed() && replacement.AccessToken.Reveal() != credentials.AccessToken.Reveal()
-	if isReplacementUsable || problem.kind == credentialTemporarilyUnavailable {
+	if isReplacementUsable || isRenewalTemporarilyUnavailable(ctx, err) {
 		return outcome.retryUnprocessed(sdkgo.FailureAuthentication,
 			"the API answered HTTP 401 without processing the POST; it is sent again with a renewed token", 0)
 	}
 	return outcome.refuse(PostNonIdempotentBranchRejected, output, sdkgo.FailureAuthentication,
 		"the API answered HTTP 401 and the OAuth authorization could not be renewed", answer)
+}
+
+// isRenewalTemporarilyUnavailable reports a renewal failure that may clear; any other keeps the definite 401,
+// because the resolver answers a renewal it will not perform with an unlisted error.
+func isRenewalTemporarilyUnavailable(ctx context.Context, err error) bool {
+	return errors.Is(err, errCredentialRefreshUnavailable) || errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) ||
+		errors.Is(err, projectconfig.ErrExchangePending) || errors.Is(err, projectconfig.ErrRefreshFailed) ||
+		errors.Is(err, projectconfig.ErrOutcomeUnknown) || errors.Is(err, projectconfig.ErrConflict) ||
+		errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || ctx.Err() != nil
 }
 
 // retryUnprocessed records that the API did not process this send, then returns Retry.

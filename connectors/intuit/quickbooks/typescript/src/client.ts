@@ -5,6 +5,7 @@ import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransp
 import { isIP } from 'node:net';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { CreateCustomerOperation, CreateInvoiceOperation, FindCustomerOperation, GetInvoiceOperation, ListInvoicesOperation, RecordPaymentOperation, SendInvoiceOperation } from './operations.js';
@@ -122,7 +123,8 @@ export class QuickBooksClient {
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
       const isReauthorization = error instanceof ReauthorizationRequiredError;
-      const isMalformed = error instanceof TypeError;
+      // The listed SDK errors need a person; a TypeError may be a fetch failure, so it is transient.
+      const isMalformed = error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
       return this.localFailure(call, isReauthorization ? 'rejected' : isMalformed ? 'defect' : 'retry',
         isReauthorization || isMalformed ? 'AUTHENTICATION' : 'AVAILABILITY', operation,
         isReauthorization ? 'QuickBooks authorization must be renewed: connect the company again' : isMalformed ? 'QuickBooks connection credentials are unavailable' : 'Intuit access token refresh is temporarily unavailable', objectID);

@@ -335,13 +335,13 @@ func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, 
 func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, *xeroExchange) {
 	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, &xeroExchange{outcome: exchangeRejected,
 			failure: xeroFailure(sdkgo.FailureAuthentication, operation, "Xero authorization must be renewed: reconnect the app or replace the client secret")}
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return Credentials{}, &xeroExchange{outcome: exchangeRetry,
 			failure: xeroFailure(sdkgo.FailureAvailability, operation, "Xero access token request is temporarily unavailable")}
-	case isTransientCredentialResolveError(err):
+	case err != nil && !isTerminalCredentialError(err):
 		// Nothing reached Xero, so every attempt retries instead of selecting defect or uncertain.
 		return Credentials{}, &xeroExchange{outcome: exchangeRetry,
 			failure: xeroFailure(sdkgo.FailureAvailability, operation, "Xero connection credentials are temporarily unavailable; nothing was sent")}
@@ -352,10 +352,11 @@ func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, o
 	return credentials, nil
 }
 
-// isTransientCredentialResolveError reports a broker outage or an expired resolve context, which another attempt may clear.
-func isTransientCredentialResolveError(err error) bool {
-	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) ||
-		errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // resolveTenant returns the Xero-Tenant-Id an OAuth connection sends; a Custom Connection sends none.

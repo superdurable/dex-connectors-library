@@ -39,7 +39,8 @@ func newClientWithCredentials(t *testing.T, session *testSession, credentials oa
 
 func TestSendRequestRetriesATransientCredentialFailure(t *testing.T) {
 	session := newTestSession(t, nil, time.Hour)
-	for _, transient := range []error{projectconfig.ErrCredentialBrokerUnavailable, projectconfig.ErrExchangePending, projectconfig.ErrOutcomeUnknown} {
+	for _, transient := range []error{projectconfig.ErrCredentialBrokerUnavailable, projectconfig.ErrExchangePending, projectconfig.ErrOutcomeUnknown,
+		errors.New("connection is not configured"), errors.New("unlisted resolve failure")} {
 		client := newClientWithCredentials(t, session, failingCredentials{err: transient})
 		_, err := sendRequest(t, client, "transient-"+transient.Error(), oauth2http.SendRequestInput{Method: http.MethodPost, Path: "/orders"})
 		var retry *sdkgo.RetryError
@@ -51,20 +52,29 @@ func TestSendRequestRetriesATransientCredentialFailure(t *testing.T) {
 
 func TestSendRequestSelectsUncertainForATerminalCredentialFailureOfALaterWriteAttempt(t *testing.T) {
 	session := newTestSession(t, nil, time.Hour)
-	client := newClientWithCredentials(t, session, failingCredentials{err: errors.New("connection is not configured")})
-	for method, expected := range map[string]sdkgo.BranchID{
-		http.MethodGet: oauth2http.SendRequestBranchDefect, http.MethodPost: oauth2http.SendRequestBranchUncertain,
-		http.MethodDelete: oauth2http.SendRequestBranchUncertain,
+	for name, terminal := range map[string]error{
+		"object not found": projectconfig.ErrObjectNotFound, "not selected": projectconfig.ErrConnectionNotSelected,
+		"broker rejected": projectconfig.ErrCredentialBrokerRejected,
 	} {
-		context := testsupport.NewDexContext("oauth2-http-flow", "later-"+method)
-		context.AttemptNo = 2
-		result, err := sdkgo.RunMutation(context, client.SendRequest(), testConnection, oauth2http.SendRequestInput{Method: method, Path: "/orders"})
-		require.NoError(t, err, method)
-		require.Equal(t, expected, result.Branch, "%s: a later write may follow a processed one", method)
+		client := newClientWithCredentials(t, session, failingCredentials{err: terminal})
+		for method, expected := range map[string]sdkgo.BranchID{
+			http.MethodGet: oauth2http.SendRequestBranchDefect, http.MethodPost: oauth2http.SendRequestBranchUncertain,
+			http.MethodDelete: oauth2http.SendRequestBranchUncertain,
+		} {
+			context := testsupport.NewDexContext("oauth2-http-flow", "later-"+name+method)
+			context.AttemptNo = 2
+			result, err := sdkgo.RunMutation(context, client.SendRequest(), testConnection, oauth2http.SendRequestInput{Method: method, Path: "/orders"})
+			require.NoError(t, err, method)
+			require.Equal(t, expected, result.Branch, "%s %s: a later write may follow a processed one", name, method)
+		}
+		first, err := sendRequest(t, client, "first-post-"+name, oauth2http.SendRequestInput{Method: http.MethodPost, Path: "/orders"})
+		require.NoError(t, err)
+		require.Equal(t, oauth2http.SendRequestBranchDefect, first.Branch, "nothing was sent before the first attempt")
 	}
-	first, err := sendRequest(t, client, "first-post", oauth2http.SendRequestInput{Method: http.MethodPost, Path: "/orders"})
+	reauthorization := newClientWithCredentials(t, session, failingCredentials{err: projectconfig.ErrReauthorizationRequired})
+	first, err := sendRequest(t, reauthorization, "first-post-reauthorization", oauth2http.SendRequestInput{Method: http.MethodPost, Path: "/orders"})
 	require.NoError(t, err)
-	require.Equal(t, oauth2http.SendRequestBranchDefect, first.Branch, "nothing was sent before the first attempt")
+	require.Equal(t, oauth2http.SendRequestBranchRejected, first.Branch, "a revoked authorization needs a person")
 	require.Empty(t, session.server.requests())
 }
 

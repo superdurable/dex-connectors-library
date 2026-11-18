@@ -86,7 +86,7 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 		return sendEventDefect(call, output, sdkgo.FailureValidation, "sendEvent payload exceeds the connection's maxBodyBytes")
 	}
 	credentials, err := client.credentials.Resolve(call)
-	if isTransientCredentialError(err) {
+	if err != nil && !isTerminalCredentialError(err) {
 		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability,
 			"the credential broker or store is temporarily unavailable, so nothing was sent"), 0)
 	}
@@ -205,12 +205,11 @@ func sendEventDefect(call sdkgo.Call, output SendEventOutput, kind sdkgo.Failure
 	return sdkgo.NewMutationBranch(SendEventBranchDefect, output, &failure, sdkgo.Receipt{})
 }
 
-// isTransientCredentialError reports a credential resolution failure that a later attempt may not repeat,
-// such as an unavailable credential broker; any other failure is terminal.
-func isTransientCredentialError(err error) bool {
-	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, projectconfig.ErrExchangePending) ||
-		errors.Is(err, projectconfig.ErrRefreshFailed) || errors.Is(err, projectconfig.ErrOutcomeUnknown) ||
-		errors.Is(err, projectconfig.ErrConflict) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // hasPossibleEarlierSend reports whether an earlier attempt of this Step may have delivered the event.

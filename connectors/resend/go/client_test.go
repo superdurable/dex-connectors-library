@@ -5,6 +5,7 @@ package resend
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -94,4 +96,41 @@ func TestGetEmailHTTPAndFailure(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, GetEmailBranchNotFound, rejected.Branch)
 	require.NotNil(t, rejected.Failure)
+}
+
+// failingResolveCredentials fails every resolve with resolveErr.
+type failingResolveCredentials struct{ resolveErr error }
+
+func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, credentials.resolveErr
+}
+
+func TestSendEmailClassifiesCredentialResolveFailures(t *testing.T) {
+	input := SendEmailInput{From: "Acme <hello@example.test>", To: []string{"reader@example.test"}, Subject: "Welcome", HTML: "<p>Hello</p>"}
+	for name, credentials := range map[string]sdkgo.CredentialProvider[Credentials]{
+		"broker unavailable": failingResolveCredentials{projectconfig.ErrCredentialBrokerUnavailable},
+		"not configured":     sdkgo.StaticCredentialProvider[Credentials]{},
+		"unlisted":           failingResolveCredentials{errors.New("unlisted resolve failure")},
+	} {
+		client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, credentials)
+		require.NoError(t, err)
+		_, err = sdkgo.RunMutation(providerTestContext{}, client.SendEmail(), testConnection, input)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+		require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind, name)
+	}
+	for name, credentials := range map[string]sdkgo.CredentialProvider[Credentials]{
+		"sdk reauthorization":     failingResolveCredentials{sdkgo.NewReauthorizationRequiredError(nil)},
+		"project reauthorization": failingResolveCredentials{projectconfig.ErrReauthorizationRequired},
+		"object not found":        failingResolveCredentials{projectconfig.ErrObjectNotFound},
+		"not selected":            failingResolveCredentials{projectconfig.ErrConnectionNotSelected},
+		"broker rejected":         failingResolveCredentials{projectconfig.ErrCredentialBrokerRejected},
+		"blank key":               sdkgo.StaticCredentialProvider[Credentials]{testConnection: {}},
+	} {
+		client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, credentials)
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(providerTestContext{}, client.SendEmail(), testConnection, input)
+		require.NoError(t, err, name)
+		require.Equal(t, SendEmailBranchDefect, result.Branch, name)
+	}
 }

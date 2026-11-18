@@ -12,12 +12,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.resend import (
     DEFECT,
@@ -115,6 +122,44 @@ async def test_send_email_blank_key_is_defect_without_request() -> None:
     assert result.branch == DEFECT
     assert result.failure is not None and result.failure.kind == FailureKind.AUTHENTICATION
     assert requests == []
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, _call: object) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_transient"),
+    [
+        (CredentialBrokerUnavailableError(), True),
+        (ValueError("connection is not configured"), True),
+        (RuntimeError("unlisted"), True),
+        (ReauthorizationRequiredError(), False),
+        (ObjectNotFoundError(), False),
+        (ConnectionNotSelectedError(), False),
+        (CredentialBrokerRejectedError(), False),
+    ],
+)
+async def test_send_email_classifies_credential_resolve_failures(
+    error: Exception, is_transient: bool
+) -> None:
+    client = Client(
+        Config(base_url="http://localhost:8848"),
+        _FailingCredentials(error),  # type: ignore[arg-type]
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda request: pytest.fail("sent"))),
+    )
+    if is_transient:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.send_email(), send_call(), INPUT)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+        return
+    result = await run_mutation(client.send_email(), send_call(), INPUT)
+    assert result.branch == DEFECT
 
 
 @pytest.mark.asyncio

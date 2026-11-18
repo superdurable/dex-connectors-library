@@ -22,8 +22,9 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -395,16 +396,6 @@ class Client:
         """
         try:
             credentials = await self.credentials.resolve(call)
-        except CredentialBrokerUnavailableError:
-            return Exchange(
-                "retry",
-                _failure(
-                    operation,
-                    FailureKind.AVAILABILITY,
-                    "the Dex credential broker is temporarily unavailable; nothing was sent",
-                ),
-                provably_unsent=True,
-            )
         except ReauthorizationRequiredError:
             return Exchange(
                 "rejected",
@@ -425,11 +416,22 @@ class Client:
                 ),
                 provably_unsent=True,
             )
-        except Exception:
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
             return Exchange(
                 "defect",
                 _failure(
                     operation, FailureKind.AUTHENTICATION, "QuickBooks connection credentials are unavailable"
+                ),
+                provably_unsent=True,
+            )
+        except Exception:
+            # Any other resolve failure, such as an unavailable broker, is transient.
+            return Exchange(
+                "retry",
+                _failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "the Dex credential broker is temporarily unavailable; nothing was sent",
                 ),
                 provably_unsent=True,
             )

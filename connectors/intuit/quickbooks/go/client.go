@@ -263,13 +263,13 @@ func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, 
 func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, string, *quickbooksExchange) {
 	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err), errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRejected, isProvablyUnsent: true,
 			failure: quickbooksFailure(sdkgo.FailureAuthentication, operation, "QuickBooks authorization must be renewed: connect the company again")}
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true,
 			failure: quickbooksFailure(sdkgo.FailureAvailability, operation, "Intuit access token refresh is temporarily unavailable")}
-	case errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable):
+	case err != nil && !isTerminalCredentialError(err):
 		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true,
 			failure: quickbooksFailure(sdkgo.FailureAvailability, operation, "the Dex credential broker is temporarily unavailable; nothing was sent")}
 	case err != nil || validateResolvedCredentials(credentials) != nil:
@@ -282,6 +282,13 @@ func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, o
 			failure: quickbooksFailure(sdkgo.FailureAuthentication, operation, err.Error())}
 	}
 	return credentials, realmID, nil
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) canRefreshAfterRejection() bool {

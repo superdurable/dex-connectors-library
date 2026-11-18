@@ -4,6 +4,8 @@
 package email_test
 
 import (
+	"context"
+	"errors"
 	"net"
 	"testing"
 
@@ -18,6 +20,42 @@ type unavailableCredentialBroker struct{}
 
 func (unavailableCredentialBroker) Resolve(sdkgo.Call) (email.Credentials, error) {
 	return email.Credentials{}, projectconfig.ErrCredentialBrokerUnavailable
+}
+
+// failingResolveCredentials fails every resolution with resolveErr.
+type failingResolveCredentials struct{ resolveErr error }
+
+func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (email.Credentials, error) {
+	return email.Credentials{}, credentials.resolveErr
+}
+
+func TestSendMessageClassifiesCredentialResolveFailures(t *testing.T) {
+	fixture := newMailFixture(t)
+	for name, resolveErr := range map[string]error{
+		"broker unavailable": projectconfig.ErrCredentialBrokerUnavailable,
+		"not configured":     errors.New("connection is not configured"),
+		"deadline":           context.DeadlineExceeded,
+		"unlisted":           errors.New("unlisted resolve failure"),
+	} {
+		client, err := email.New(fixture.config, failingResolveCredentials{resolveErr}, email.WithTLSRootCAs(fixture.certificates.RootCAs))
+		require.NoError(t, err)
+		_, err = sdkgo.RunMutation(newEmailDexContext("send-transient-"+name), client.SendMessage(), emailConnection, validSendMessageInput())
+		requireRetry(t, err, sdkgo.FailureAvailability)
+	}
+	for name, resolveErr := range map[string]error{
+		"sdk reauthorization":     sdkgo.NewReauthorizationRequiredError(nil),
+		"project reauthorization": projectconfig.ErrReauthorizationRequired,
+		"object not found":        projectconfig.ErrObjectNotFound,
+		"not selected":            projectconfig.ErrConnectionNotSelected,
+		"broker rejected":         projectconfig.ErrCredentialBrokerRejected,
+	} {
+		client, err := email.New(fixture.config, failingResolveCredentials{resolveErr}, email.WithTLSRootCAs(fixture.certificates.RootCAs))
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(newEmailDexContext("send-terminal-"+name), client.SendMessage(), emailConnection, validSendMessageInput())
+		require.NoError(t, err, name)
+		require.Equal(t, email.SendMessageBranchDefect, result.Branch, name)
+	}
+	require.Empty(t, fixture.smtp.Submissions(), "nothing is submitted without credentials")
 }
 
 func (fixture *mailFixture) clientWithUnavailableBroker(t *testing.T) *email.Client {

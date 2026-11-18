@@ -159,9 +159,11 @@ Session; increase `maxResponseBytes` if the expected provider response exceeds
 the limit. `invalidResponse` stays declared for compatibility but is no longer
 selected. An oversized error response is an unknown outcome, whatever its
 status, because its unread body may carry the created Session, so it retries
-under the same key. A temporarily unavailable credential broker retries on
-every attempt, because nothing was sent. Other unavailable credentials and a
-request that cannot be built select `defect` only on the first attempt; a
+under the same key. A credential lookup failure retries on every attempt,
+because nothing was sent, unless the connection needs reauthorization, is
+missing or no longer selected, or the broker refused it. Those, unusable
+credentials, and a request that cannot be built select `defect` only on the
+first attempt; a
 later attempt selects `uncertain`, because an earlier attempt may have created
 the Session.
 
@@ -225,9 +227,10 @@ true`, which Stripe replays for every resend, so it selects `uncertain`. An
 oversized or malformed successful response also selects `uncertain`, because
 Stripe accepted the refund and a resend under the same key would only replay
 it; `invalidResponse` is no longer selected. An oversized error response is an
-unknown outcome that reads back like a 5xx. Transient read-back failures retry. A temporarily unavailable
-credential broker retries on every attempt. Other unavailable credentials select `defect` only on the first
-attempt and `uncertain` on later attempts, which may follow a created refund.
+unknown outcome that reads back like a 5xx. Transient read-back failures retry. A credential lookup failure
+retries on every attempt unless it is terminal, as described for Checkout Sessions. Terminal or unusable
+credentials select `defect` only on the first attempt and `uncertain` on later attempts, which may follow a
+created refund.
 
 The key needs PaymentIntent and Charge read access plus Refund read and write
 access in addition to the Checkout Session permissions.
