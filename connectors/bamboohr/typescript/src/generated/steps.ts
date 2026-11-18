@@ -140,7 +140,7 @@ export interface UpdateEmployeeStepConfig<StepInput, OperationInput = UpdateEmpl
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit, or with its documented duplicate-email 409. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** BambooHR returned an invalid or oversized employee record, so the change may have been applied. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized employee record now retries, because repeating the absolute write is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

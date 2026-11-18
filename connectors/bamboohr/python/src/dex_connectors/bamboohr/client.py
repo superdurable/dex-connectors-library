@@ -5,7 +5,7 @@
 import base64
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -67,6 +67,14 @@ class Exchange:
     body: bytes = b""
     failure: Failure | None = None
     retry_after: float = 0
+    # An error body cut at max_response_bytes, or one echoing the key, proves no refusal.
+    is_body_incomplete: bool = False
+    is_credential_echoed: bool = False
+
+    @property
+    def is_readable_refusal(self) -> bool:
+        """Report an error answer read in full without echoing the credential."""
+        return not self.is_body_incomplete and not self.is_credential_echoed
 
 
 def bamboohr_failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -237,6 +245,7 @@ class Client:
             response, _ = await send_traced(self._http_client, request)
             if observed_heads is not None:
                 observed_heads.append((response.status_code, response.headers))
+            is_body_incomplete = False
             try:
                 body = await read_bounded_body(response, self.config.max_response_bytes)
             except BodyTooLargeError:
@@ -265,6 +274,7 @@ class Client:
                         ),
                     )
                 body = b""
+                is_body_incomplete = True
             if 200 <= response.status_code < 300:
                 if key.encode() in body:
                     return Exchange(
@@ -278,7 +288,12 @@ class Client:
                         ),
                     )
                 return Exchange("succeeded", response.status_code, response.headers, body)
-            return self._classify_status(operation, response.status_code, response.headers, body, key)
+            classified = self._classify_status(operation, response.status_code, response.headers, body, key)
+            return replace(
+                classified,
+                is_body_incomplete=is_body_incomplete,
+                is_credential_echoed=bool(key) and key.encode() in body,
+            )
         except ProviderTransportError as error:
             if error.status_code is not None:
                 # Keep the status, so a 2xx whose body broke counts as accepted and is never resent.

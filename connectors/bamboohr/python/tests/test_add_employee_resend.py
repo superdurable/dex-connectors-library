@@ -157,6 +157,17 @@ async def test_definite_refusal_of_first_send_records_can_resend(status: int) ->
 
 
 @pytest.mark.asyncio
+async def test_refusal_that_echoes_the_credential_is_an_unknown_outcome() -> None:
+    """A refusal body that echoes the key proves nothing, so it resends below the cap."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await add(400, {"echo": "inert-key"}, context, requests)
+    assert isinstance(result, RetryError)
+    assert context.marker is not None and context.marker.state != "canResend"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("status", [400, 409])
 async def test_refusal_after_a_possible_send_selects_uncertain(status: int) -> None:
     requests: list[httpx.Request] = []

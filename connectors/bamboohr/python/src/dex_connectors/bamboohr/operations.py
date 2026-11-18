@@ -661,7 +661,21 @@ def _mutation_write_exchange(
     # A write without a definite refusal may have applied; the next attempt reads first.
     is_unknown_outcome = exchange.outcome == "invalid" or (
         exchange.outcome in ("rejected", "not_found")
-        and exchange.status_code not in _DEFINITE_WRITE_STATUSES
+        and (exchange.status_code not in _DEFINITE_WRITE_STATUSES or not exchange.is_readable_refusal)
+    )
+    if is_unknown_outcome:
+        assert exchange.failure is not None
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+    return _mutation_exchange(exchange, value, receipt)
+
+
+def _pre_write_read_exchange(
+    exchange: Exchange, value: UpdateEmployeeOutput, receipt: Receipt
+) -> MutationAttempt[UpdateEmployeeOutput] | None:
+    # Only a readable allowlisted refusal or a 404 selects a branch; anything else is unknown.
+    is_unknown_outcome = exchange.outcome == "invalid" or (
+        exchange.outcome in ("rejected", "not_found")
+        and (exchange.status_code not in DEFINITE_REFUSAL_STATUSES or not exchange.is_readable_refusal)
     )
     if is_unknown_outcome:
         assert exchange.failure is not None
@@ -722,19 +736,16 @@ class UpdateEmployeeOperation:
             f"/employees/{input.employee_id}",
             {"fields": ",".join(names)},
         )
-        terminal = _mutation_exchange(current_exchange, empty, receipt)
+        terminal = _pre_write_read_exchange(current_exchange, empty, receipt)
         if terminal is not None:
             return terminal
         try:
             current = _employee_record(current_exchange.body, input.employee_id, names)
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                receipt,
+            return MutationAttempt.retry(
                 bamboohr_failure(
                     "updateEmployee", FailureKind.PROTOCOL, "BambooHR returned an invalid employee"
-                ),
+                )
             )
         writes = {
             name: value
@@ -986,6 +997,7 @@ class AddEmployeeOperation:
         if (
             exchange.outcome in ("rejected", "not_found")
             and exchange.status_code in _DEFINITE_WRITE_STATUSES
+            and exchange.is_readable_refusal
         ):
             # An earlier send may have added the employee, so a refusal of this resend proves nothing.
             if has_possible_earlier_send:

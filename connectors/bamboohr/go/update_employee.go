@@ -104,18 +104,30 @@ func (operation UpdateEmployeeOperation) readFields(call sdkgo.Call, credentials
 	if isAfterWrite && result.outcome != exchangeSucceeded {
 		return EmployeeRecord{}, sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
 	}
-	if attempt, isTerminal := updateEmployeeAttemptForExchange(result, receipt, value); isTerminal {
+	if attempt, isTerminal := updateEmployeeAttemptForPreWriteRead(result, receipt, value); isTerminal {
 		return EmployeeRecord{}, attempt, true
 	}
 	record, err := decodeEmployeeRecord(result.response.body, employeeID, fieldNames)
 	if err != nil {
+		// An unreadable answer is unknown on every attempt, before or after the write.
 		failure := bambooHRFailure(sdkgo.FailureProtocol, updateEmployeeOperation, "BambooHR returned an invalid employee: "+err.Error())
-		if isAfterWrite {
-			return EmployeeRecord{}, sdkgo.NewMutationRetry[UpdateEmployeeOutput](failure, 0), true
-		}
-		return EmployeeRecord{}, sdkgo.NewMutationBranch(UpdateEmployeeBranchInvalidResponse, value, &failure, receipt), true
+		return EmployeeRecord{}, sdkgo.NewMutationRetry[UpdateEmployeeOutput](failure, 0), true
 	}
 	return record, sdkgo.MutationAttempt[UpdateEmployeeOutput]{}, false
+}
+
+// updateEmployeeAttemptForPreWriteRead selects a branch only for a readable allowlisted refusal or a
+// 404; an oversized, unparseable, credential-echoing, or unlisted answer retries.
+func updateEmployeeAttemptForPreWriteRead(result bambooHRExchange, receipt sdkgo.Receipt, value UpdateEmployeeOutput) (sdkgo.MutationAttempt[UpdateEmployeeOutput], bool) {
+	switch result.outcome {
+	case exchangeInvalid:
+		return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+	case exchangeRejected, exchangeNotFound:
+		if !isDefiniteRefusalStatus(result.response.statusCode) || !result.response.isReadableRefusal() {
+			return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
+		}
+	}
+	return updateEmployeeAttemptForExchange(result, receipt, value)
 }
 
 // updateEmployeeAttemptForExchange retries every unconfirmed outcome, because the write sets absolute values.
@@ -144,7 +156,8 @@ func updateEmployeeAttemptForWrite(result bambooHRExchange, receipt sdkgo.Receip
 		return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
 	case exchangeRejected, exchangeNotFound:
 		// The documented duplicate-email 409 is a definite business outcome, not an unknown one.
-		if !isDefiniteRefusalStatus(result.response.statusCode) && !isDocumentedConflictStatus(result.response.statusCode) {
+		isRefusalStatus := isDefiniteRefusalStatus(result.response.statusCode) || isDocumentedConflictStatus(result.response.statusCode)
+		if !isRefusalStatus || !result.response.isReadableRefusal() {
 			return sdkgo.NewMutationRetry[UpdateEmployeeOutput](result.failure, result.retryAfter), true
 		}
 	}

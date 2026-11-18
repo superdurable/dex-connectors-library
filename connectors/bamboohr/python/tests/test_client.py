@@ -207,6 +207,66 @@ async def test_update_read_back_after_accepted_write_never_selects_a_failure_bra
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "first_read",
+    [
+        httpx.Response(200, content=b'{"id":'),
+        httpx.Response(200, json={"id": "123", "firstName": "a" * 64}),
+        httpx.Response(200, json={"id": "123", "firstName": "inert-key"}),
+        httpx.Response(403, json={"error": "inert-key"}),
+        httpx.Response(404, content=b"x" * 64),
+        httpx.Response(409, json={}),
+        httpx.Response(302, json={}),
+    ],
+    ids=["unparseable", "oversized", "echo-2xx", "echo-403", "oversized-404", "unlisted-409", "unlisted-302"],
+)
+async def test_update_retries_an_unknown_pre_write_read(first_read: httpx.Response) -> None:
+    """Only a readable allowlisted refusal or a 404 selects a branch before the write."""
+    answers = [first_read]
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        return answers.pop(0)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
+        client = Client(Config("acme", max_response_bytes=60), credentials, http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(
+            CallID("472485d6-a578-50af-a4d2-124cf93b188f"),
+            CONNECTION,
+            OperationRef("bamboohr", "updateEmployee"),
+        )
+        result = await client.update_employee().invoke(call, UpdateEmployeeInput("123", {"firstName": "Ava"}))
+        assert result.kind == "retry"
+        assert result.failure is not None
+        assert "inert-key" not in result.failure.message
+        assert answers == []
+
+
+@pytest.mark.asyncio
+async def test_update_retries_a_write_refusal_that_echoes_the_credential() -> None:
+    """A refusal body that echoes the key proves nothing about the write."""
+    answers = [
+        httpx.Response(200, json={"id": "123", "firstName": "Sam"}),
+        httpx.Response(400, json={"e": "inert-key"}),
+    ]
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        return answers.pop(0)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
+        client = Client(Config("acme"), credentials, http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(
+            CallID("472485d6-a578-50af-a4d2-124cf93b188f"),
+            CONNECTION,
+            OperationRef("bamboohr", "updateEmployee"),
+        )
+        result = await client.update_employee().invoke(call, UpdateEmployeeInput("123", {"firstName": "Ava"}))
+        assert result.kind == "retry"
+        assert answers == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     ("amount", "daily_amount", "expected_amount", "expected_daily_amount"),
     [(2, 1, 2, 1), (2.5, 1.25, 2.5, 1.25), (2.0, 1.0, 2, 1),
      (1e23, 1e20, 1e23, 100000000000000000000)],

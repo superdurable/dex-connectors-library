@@ -25,7 +25,9 @@ export interface BambooHRClientOptions {
 /** One classified provider exchange; acceptedResponse keeps a 2xx's headers when its body was unusable. */
 export type BambooHRExchange =
   | { kind: 'success'; response: ProviderResponse }
-  | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status?: number; acceptedResponse?: ProviderResponse };
+  | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status?: number; acceptedResponse?: ProviderResponse;
+      // An error body that was cut, broke, or echoes the key proves no refusal.
+      isBodyIncomplete?: boolean; isCredentialEchoed?: boolean };
 
 /** Credential outcome before any provider request. */
 /** Statuses that prove BambooHR refused a write; any other failure leaves its outcome unknown. */
@@ -99,6 +101,7 @@ export class BambooHRClient {
       catch { return this.failure('defect', operation, 'LOCAL_DEFECT', 'BambooHR request could not be built'); }
     }
     let response: ProviderResponse;
+    let isBodyIncomplete = false;
     try {
       response = await this.send({ url, method, headers, ...(body ? { body } : {}), maxResponseBytes: this.maxResponseBytes,
         addressPolicy: endpointURL.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(endpointURL.hostname) ? 'publicHTTPS' : 'privateNetworkHTTP',
@@ -116,8 +119,10 @@ export class BambooHRClient {
       // An oversized write refusal proves nothing about the write; 429 and 503 still prove no processing.
       if (error instanceof BodyTooLargeError && status !== undefined && method !== 'GET' && status !== 429 && status !== 503) return this.failure('unavailable', operation, 'RESPONSE_TOO_LARGE', `BambooHR write response exceeds the configured maxResponseBytes limit (HTTP ${status})`, 0, status);
       // A 429 or 503 proves no processing even when its body broke, so it keeps its status classification.
-      if ((error instanceof BodyTooLargeError && status !== undefined && status > 0 && headers) || status === 429 || status === 503) response = { status: status!, headers: headers ?? {}, body: Buffer.alloc(0) };
-      else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.failure('notSent', operation, 'TRANSPORT', 'BambooHR could not be reached; no request was sent');
+      if ((error instanceof BodyTooLargeError && status !== undefined && status > 0 && headers) || status === 429 || status === 503) {
+        response = { status: status!, headers: headers ?? {}, body: Buffer.alloc(0) };
+        isBodyIncomplete = true;
+      } else if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.failure('notSent', operation, 'TRANSPORT', 'BambooHR could not be reached; no request was sent');
       else if (status !== undefined && status > 0) return this.failure('unavailable', operation, 'TRANSPORT', `BambooHR response could not be read (HTTP ${status})`, 0, status);
       else if (error instanceof BodyTooLargeError) return this.failure('unavailable', operation, 'TRANSPORT', 'BambooHR response could not be read');
       else return this.failure('unavailable', operation, 'TRANSPORT', 'BambooHR request failed before a response arrived');
@@ -127,6 +132,12 @@ export class BambooHRClient {
       if (Buffer.from(response.body).includes(Buffer.from(key))) return { ...this.failure('invalid', operation, 'PROTOCOL', 'BambooHR response reflected the connection credential', 0, response.status), acceptedResponse: { status: response.status, headers: response.headers, body: Buffer.alloc(0) } };
       return { kind: 'success', response };
     }
+    const classified = this.classifyFailureStatus(response, operation, key);
+    const isCredentialEchoed = key !== '' && Buffer.from(response.body).includes(Buffer.from(key));
+    return { ...classified, ...(isBodyIncomplete ? { isBodyIncomplete } : {}), ...(isCredentialEchoed ? { isCredentialEchoed } : {}) };
+  }
+
+  private classifyFailureStatus(response: ProviderResponse, operation: string, key: string): Exclude<BambooHRExchange, { kind: 'success' }> {
     const retryAfterMs = parseRetryAfter(header(response, 'retry-after'), this.now());
     const code = errorCode(response.body, key);
     const suffix = code ? ` [${code}]` : '';

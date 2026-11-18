@@ -164,7 +164,7 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 		return sdkgo.NewMutationRetry[AddEmployeeOutput](result.failure, result.retryAfter)
 	case result.outcome == exchangeDefect && !hasPossibleEarlierSend:
 		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, &result.failure, receipt)
-	case (result.outcome == exchangeRejected || result.outcome == exchangeNotFound) &&
+	case (result.outcome == exchangeRejected || result.outcome == exchangeNotFound) && result.response.isReadableRefusal() &&
 		(isDefiniteRefusalStatus(result.response.statusCode) || isDocumentedConflictStatus(result.response.statusCode)):
 		// An earlier send may have added the employee, so a refusal or a duplicate-email conflict
 		// of this resend proves nothing; resending would only meet the same conflict.

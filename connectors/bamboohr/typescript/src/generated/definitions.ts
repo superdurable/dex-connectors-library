@@ -151,7 +151,7 @@ export const UpdateEmployeeBranchUpdated = UpdateEmployeeBranch.Updated;
 export const UpdateEmployeeBranchNotFound = UpdateEmployeeBranch.NotFound;
 /** BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit, or with its documented duplicate-email 409. */
 export const UpdateEmployeeBranchProviderRejected = UpdateEmployeeBranch.ProviderRejected;
-/** BambooHR returned an invalid or oversized employee record, so the change may have been applied. */
+/** Kept for compatibility and no longer selected: an invalid or oversized employee record now retries, because repeating the absolute write is safe. */
 export const UpdateEmployeeBranchInvalidResponse = UpdateEmployeeBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateEmployeeBranchDefect = UpdateEmployeeBranch.Defect;
@@ -162,7 +162,7 @@ export const UpdateEmployeeDefinition: MutationDefinition = {
     { id: "updated", description: "The employee holds the requested values, written now or by an earlier attempt, as read back from BambooHR." },
     { id: "notFound", description: "No employee has this internal ID.", optional: true },
     { id: "providerRejected", description: "BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit, or with its documented duplicate-email 409.", optional: true },
-    { id: "invalidResponse", description: "BambooHR returned an invalid or oversized employee record, so the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized employee record now retries, because repeating the absolute write is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

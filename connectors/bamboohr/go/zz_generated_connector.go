@@ -571,7 +571,7 @@ var UpdateEmployeeDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateEmployeeBranchUpdated, Description: "The employee holds the requested values, written now or by an earlier attempt, as read back from BambooHR."},
 		{ID: UpdateEmployeeBranchNotFound, Description: "No employee has this internal ID.", Optional: true},
 		{ID: UpdateEmployeeBranchProviderRejected, Description: "BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit, or with its documented duplicate-email 409.", Optional: true},
-		{ID: UpdateEmployeeBranchInvalidResponse, Description: "BambooHR returned an invalid or oversized employee record, so the change may have been applied.", Optional: true},
+		{ID: UpdateEmployeeBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized employee record now retries, because repeating the absolute write is safe.", Optional: true},
 		{ID: UpdateEmployeeBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

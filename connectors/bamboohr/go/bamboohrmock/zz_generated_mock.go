@@ -351,7 +351,7 @@ func UpdateEmployeeProviderRejected(value bamboohr.UpdateEmployeeOutput, failure
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchProviderRejected, value, failure)
 }
 
-// UpdateEmployeeInvalidResponse selects the invalidResponse branch: BambooHR returned an invalid or oversized employee record, so the change may have been applied.
+// UpdateEmployeeInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized employee record now retries, because repeating the absolute write is safe.
 func UpdateEmployeeInvalidResponse(value bamboohr.UpdateEmployeeOutput, failure *sdkgo.Failure) connectormock.Case[bamboohr.UpdateEmployeeOutput] {
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchInvalidResponse, value, failure)
 }

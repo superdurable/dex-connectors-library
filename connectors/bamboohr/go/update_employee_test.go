@@ -5,6 +5,7 @@ package bamboohr_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -188,6 +189,57 @@ func TestUpdateEmployeeRetriesAWriteWithoutADefiniteRefusal(t *testing.T) {
 			require.Equal(t, 2, provider.requestCount())
 		})
 	}
+}
+
+func TestUpdateEmployeeRetriesAnUnknownPreWriteRead(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(http.ResponseWriter)
+	}{
+		{name: "unparseable 2xx", reply: func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"id":`) }},
+		{name: "oversized 2xx", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":"123","workEmail":"`+strings.Repeat("a", 64)+`"}`)
+		}},
+		{name: "credential echo 2xx", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"id":"123","workEmail":"`+testAPIKey+`"}`)
+		}},
+		{name: "credential echo 403", reply: func(response http.ResponseWriter) {
+			writeBambooHRError(t, response, http.StatusForbidden, `{"error":"`+testAPIKey+`"}`)
+		}},
+		{name: "oversized 404", reply: func(response http.ResponseWriter) {
+			writeBambooHRError(t, response, http.StatusNotFound, strings.Repeat("x", 64))
+		}},
+		{name: "unlisted 409", reply: func(response http.ResponseWriter) { writeBambooHRError(t, response, http.StatusConflict, ``) }},
+		{name: "unlisted 302", reply: func(response http.ResponseWriter) { writeBambooHRError(t, response, http.StatusFound, ``) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
+			client, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain, MaxResponseBytes: 60},
+				testCredentialProvider(), bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newBambooHRDexContext("update-read-"+test.name), client.UpdateEmployee(), bambooHRConnection,
+				bamboohr.UpdateEmployeeInput{EmployeeID: "123", Fields: map[string]string{"workEmail": "ava.nguyen@acme.example.com"}})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "only a readable allowlisted refusal or 404 selects a branch")
+			require.NotContains(t, retry.Failure.Message, testAPIKey)
+			require.Equal(t, 1, provider.requestCount(), "nothing is written after an unknown read")
+		})
+	}
+}
+
+func TestUpdateEmployeeRetriesAWriteRefusalThatEchoesTheCredential(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusOK, `{"id":"123","workEmail":""}`)
+			return
+		}
+		writeBambooHRError(t, response, http.StatusBadRequest, `{"error":"`+testAPIKey+`"}`)
+	})
+	_, err := sdkgo.RunMutation(newBambooHRDexContext("update-echo"), newBambooHRClient(t, provider.URL).UpdateEmployee(), bambooHRConnection,
+		bamboohr.UpdateEmployeeInput{EmployeeID: "123", Fields: map[string]string{"workEmail": "ava.nguyen@acme.example.com"}})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestUpdateEmployeeRefusesHistoryTableAndIdentityFields(t *testing.T) {

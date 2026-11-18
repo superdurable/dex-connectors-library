@@ -1725,16 +1725,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "employee": {
-            "employeeId": "",
-            "fields": {}
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1745,7 +1739,7 @@
           "mobilePhone": "801-555-0100"
         }
       },
-      "name": "updateEmployee-invalid-response",
+      "name": "updateEmployee-mismatched-read-retry",
       "operation": "updateEmployee"
     },
     {

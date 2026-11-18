@@ -282,6 +282,17 @@ func TestAddEmployeeFenceTreatsAnOversizedRefusalAsUnknown(t *testing.T) {
 	require.ErrorAs(t, err, &retry, "an unreadable refusal is resent below the send cap")
 }
 
+func TestAddEmployeeFenceTreatsARefusalThatEchoesTheCredentialAsUnknown(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeBambooHRError(t, response, http.StatusBadRequest, `{"echo":"`+testAPIKey+`"}`)
+	})
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("bamboohr-flow", "add-echo-refusal"), newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a refusal that echoes the key is resent below the send cap")
+	require.NotContains(t, retry.Failure.Message, testAPIKey)
+	require.Equal(t, 1, provider.requestCount())
+}
+
 func TestAddEmployeeFenceSelectsUncertainWhenTerminalCredentialsBlockReadBack(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusCreated, `{"id":"140"}`)

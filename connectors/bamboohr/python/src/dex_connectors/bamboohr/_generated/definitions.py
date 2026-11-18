@@ -105,7 +105,7 @@ UPDATE_EMPLOYEE_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The employee holds the requested values, written now or by an earlier attempt, as read back from BambooHR.", False),
         BranchDefinition(NOT_FOUND, "No employee has this internal ID.", True),
         BranchDefinition(PROVIDER_REJECTED, "BambooHR conclusively rejected the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as an invalid list value or a field the connection cannot edit, or with its documented duplicate-email 409.", True),
-        BranchDefinition(INVALID_RESPONSE, "BambooHR returned an invalid or oversized employee record, so the change may have been applied.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized employee record now retries, because repeating the absolute write is safe.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
