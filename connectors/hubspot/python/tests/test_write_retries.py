@@ -7,7 +7,12 @@ from datetime import UTC, datetime
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 
 import dex_connectors.hubspot as hubspot
 
@@ -93,30 +98,66 @@ async def test_writes_retry_a_malformed_or_oversized_answer(body: bytes) -> None
             )
 
 
-@pytest.mark.asyncio
-async def test_write_retries_temporarily_unavailable_credentials() -> None:
-    """An earlier attempt may have applied the write, so a broker outage must not select defect."""
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
 
-    class BrokerOutage:
-        async def resolve(self, call: sdk.Call) -> hubspot.Credentials:
-            raise CredentialBrokerUnavailableError("credential broker is unavailable")
+    async def resolve(self, call: sdk.Call) -> hubspot.Credentials:
+        raise self.error
 
+
+async def _update_with_failing_credentials(
+    error: Exception,
+) -> sdk.MutationResult[object] | sdk.RetryError:
     def respond(request: httpx.Request) -> httpx.Response:
         raise AssertionError("no request may be sent")
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         client = hubspot.Client(
             hubspot.Config(endpoint="http://127.0.0.1:42701"),
-            BrokerOutage(),
+            _FailingCredentials(error),
             transport,
             lambda: datetime(2026, 10, 30, tzinfo=UTC),
         )
-        with pytest.raises(sdk.RetryError):
-            await sdk.run_mutation(
+        try:
+            return await sdk.run_mutation(
                 client.update_object(),
                 call("updateObject"),
                 hubspot.UpdateObjectInput("deals", "9001", {"dealstage": "qualifiedtobuy"}),
             )
+        except sdk.RetryError as retry:
+            return retry
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError("credential broker is unavailable"),
+        ValueError("connection is not configured"),
+        RuntimeError("credential store hiccup"),
+    ],
+)
+async def test_write_retries_temporarily_unavailable_credentials(error: Exception) -> None:
+    """An earlier attempt may have applied the write, so a broker outage must not select defect."""
+    assert isinstance(await _update_with_failing_credentials(error), sdk.RetryError)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "branch"),
+    [
+        (sdk.ReauthorizationRequiredError(), "providerRejected"),
+        (ObjectNotFoundError(), "defect"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+    ],
+)
+async def test_write_selects_a_terminal_branch_for_terminal_credentials(
+    error: Exception, branch: str
+) -> None:
+    result = await _update_with_failing_credentials(error)
+    assert isinstance(result, sdk.MutationResult) and result.branch == branch
 
 
 @pytest.mark.asyncio
