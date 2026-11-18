@@ -67,6 +67,25 @@ async function schedule(client: HootsuiteClient, context: AttemptContext, maxSen
   }
 }
 
+describe('Hootsuite Query credential failures', () => {
+  it.each([
+    ['reauthorization', new ReauthorizationRequiredError(), true],
+    ['missing connection', new ObjectNotFoundError(), true],
+    ['unselected connection', new ConnectionNotSelectedError(), true],
+    ['broker refusal', new CredentialBrokerRejectedError(), true],
+    ['malformed stored material', new TypeError('project credential decoding failed'), true],
+    ['broker outage', new CredentialBrokerUnavailableError(), false],
+    ['unlisted error', new Error('unlisted'), false],
+  ] as const)('retries a %s unless it is terminal, without a request', async (_name, error, isTerminal) => {
+    const { client, requests } = newClient([serverFailure], undefined, error);
+    const call = { id: callId, connection, operation: { connectorId: 'hootsuite', operationId: 'listSocialProfiles' }, context: new AttemptContext() } as unknown as Call;
+    const attempt = await client.listSocialProfiles().invoke(call, {});
+    expect(attempt.kind).toBe(isTerminal ? 'branch' : 'retry');
+    if (attempt.kind === 'branch') expect(attempt.branch).toBe('defect');
+    expect(requests).toHaveLength(0);
+  });
+});
+
 describe('Hootsuite bounded resend of unconfirmed scheduled messages', () => {
   it.each([500, 502, 408, 409, 425, 418])('resends an unknown HTTP %i outcome below the send cap', async status => {
     const { client, requests } = newClient([{ status, body: '{"errors":[]}' }, scheduled]);
@@ -207,6 +226,8 @@ describe('Hootsuite bounded resend of unconfirmed scheduled messages', () => {
   it.each([
     new ReauthorizationRequiredError(), new ObjectNotFoundError(),
     new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(),
+    // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+    new TypeError('project credential decoding failed'),
   ])('selects defect before any send and uncertain after one for a terminal credential failure: %s', async error => {
     const { client, requests } = newClient([serverFailure]);
     const { client: terminal } = newClient([serverFailure], undefined, error);

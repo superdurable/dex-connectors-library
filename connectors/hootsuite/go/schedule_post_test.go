@@ -322,6 +322,33 @@ func TestSchedulePostTerminalCredentialFailure(t *testing.T) {
 	require.Equal(t, len(terminalErrors), *requests)
 }
 
+func TestQueryCredentialFailureRetriesUnlessTerminal(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusInternalServerError}, []string{`{}`})
+	cases := []struct {
+		err        error
+		isTerminal bool
+	}{
+		{projectconfig.ErrReauthorizationRequired, true}, {projectconfig.ErrObjectNotFound, true},
+		{projectconfig.ErrConnectionNotSelected, true}, {projectconfig.ErrCredentialBrokerRejected, true},
+		{projectconfig.ErrCredentialBrokerUnavailable, false}, {errors.New("unlisted"), false},
+	}
+	for _, test := range cases {
+		t.Run(test.err.Error(), func(t *testing.T) {
+			client, err := New(Config{BaseURL: server.URL}, failingCredentialProvider{test.err})
+			require.NoError(t, err)
+			result, err := sdkgo.RunQuery(queryContext{}, client.ListSocialProfiles(), testConnection, ListSocialProfilesInput{})
+			if !test.isTerminal {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, ListSocialProfilesBranchDefect, result.Branch)
+		})
+	}
+	require.Zero(t, *requests)
+}
+
 func TestSchedulePostReadsALateBodyInsideTheWriteWindow(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

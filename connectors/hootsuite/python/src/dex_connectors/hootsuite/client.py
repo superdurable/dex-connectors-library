@@ -83,14 +83,8 @@ class Client:
         await self.http_client.aclose()
 
     async def resolve_token(self, call: Call) -> tuple[str, str]:
-        """Return a header-safe bearer token or a safe failure class."""
-        try:
-            credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
-            return "", "credential"
-        except (ValueError, LookupError, OSError):
-            return "", "refresh"
-        return _header_safe_token(credentials)
+        """Return a header-safe bearer token or a safe failure class, as resolve_write_token does."""
+        return await self.resolve_write_token(call)
 
     async def resolve_write_token(self, call: Call) -> tuple[str, str]:
         """Return a header-safe bearer token for a write, or a safe failure class.
@@ -102,7 +96,7 @@ class Client:
         try:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
-            return "", "credential" if isinstance(error, _TERMINAL_CREDENTIAL_ERRORS) else "refresh"
+            return "", "credential" if _is_terminal_credential_error(error) else "refresh"
         try:
             return _header_safe_token(credentials)
         except (ValueError, AttributeError):
@@ -178,6 +172,14 @@ _TERMINAL_CREDENTIAL_ERRORS = (
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
 )
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure only reconnecting fixes, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, _TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
 
 
 def _header_safe_token(credentials: Credentials) -> tuple[str, str]:

@@ -8,6 +8,7 @@ import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ListSocialProfilesDefinition, ListScheduledPostsDefinition, SchedulePostDefinition } from './generated/definitions.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
+import { isCredentialMaterialError } from './generated/models.js';
 import type { Config, Credentials, ListSocialProfilesInput, SocialProfile, SocialProfilesPage, ListScheduledPostsInput, ScheduledPost, ScheduledPostsPage, SchedulePostInput, ScheduledPostReceipt } from './generated/models.js';
 
 const emptyProfiles = (): SocialProfilesPage => ({ profiles: [] });
@@ -59,9 +60,9 @@ export class HootsuiteClient {
   /** Bind the scheduled message Query. */ listScheduledPosts(): ListScheduledPostsOperation { return new ListScheduledPostsOperation(this); }
   /** Bind the scheduled message Mutation. */ schedulePost(): SchedulePostOperation { return new SchedulePostOperation(this); }
 
-  /** Resolve a header-safe access token for the current call. */
+  /** Resolve a header-safe access token for the current call, classified as for a write. */
   async resolveToken(call: Call): Promise<string | HootsuiteExchange> {
-    return this.resolveTokenClassifying(call, error => error instanceof ReauthorizationRequiredError);
+    return this.resolveTokenClassifying(call, isTerminalCredentialError);
   }
 
   /**
@@ -297,7 +298,7 @@ async function localScheduleFailure(fence: ReturnType<typeof newFence>, hasPossi
 /** Report a credential failure that only reconnecting the connection can fix. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 function rejectionKind(status: number): Failure['kind'] {

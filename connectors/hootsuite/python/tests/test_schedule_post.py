@@ -36,7 +36,22 @@ from dex_connectors.hootsuite import (
     ScheduledPostReceipt,
     SchedulePostInput,
 )
+from dex_connectors.hootsuite._generated.connection import CredentialMaterialError, decode_credentials
 from dex_connectors.hootsuite._generated.definitions import SCHEDULE_POST_DEFINITION
+from dex_connectors.hootsuite.models import ListSocialProfilesInput
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
 
 CONNECTION = ConnectionRef("hootsuite", "hootsuite")
 CALL_ID = CallID("58f21093-ca67-5b5a-b692-0443b2041e5f")
@@ -309,6 +324,7 @@ async def test_transient_credential_failure_before_send_retries(error: Exception
         ObjectNotFoundError("missing"),
         ConnectionNotSelectedError("unselected"),
         CredentialBrokerRejectedError("refused"),
+        sdk_wrapped_material_error(),
     ],
 )
 async def test_terminal_credential_failure(error: Exception) -> None:
@@ -324,6 +340,37 @@ async def test_terminal_credential_failure(error: Exception) -> None:
     result = await schedule(lambda _: SERVER_FAILURE, context, requests, credential_provider=terminal)
     assert isinstance(result, MutationResult) and result.branch == "uncertain"
     assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError("revoked"), True),
+        (ObjectNotFoundError("missing"), True),
+        (ConnectionNotSelectedError("unselected"), True),
+        (CredentialBrokerRejectedError("refused"), True),
+        (sdk_wrapped_material_error(), True),
+        (CredentialBrokerUnavailableError("outage"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_query_credential_failure_retries_unless_terminal(error: Exception, is_terminal: bool) -> None:
+    """A Query selects defect only when reconnection is required and never contacts Hootsuite."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = Client(Config(), FailingCredentialProvider(error), transport)
+        call = Call(CALL_ID, CONNECTION, OperationRef("hootsuite", "listSocialProfiles"))
+        result = await client.list_social_profiles().invoke(call, ListSocialProfilesInput())
+    if is_terminal:
+        assert result.kind == "branch" and result.branch == "defect"
+    else:
+        assert result.kind == "retry"
+    assert requests == []
 
 
 class StalledBodyStream(httpx.AsyncByteStream):
