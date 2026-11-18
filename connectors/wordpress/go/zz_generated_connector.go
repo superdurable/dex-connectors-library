@@ -217,7 +217,7 @@ var CreatePostDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreatePostBranchCreated, Description: "WordPress created the post and returned its numeric ID."},
 		{ID: CreatePostBranchProviderRejected, Description: "WordPress conclusively rejected the new post.", Optional: true},
-		{ID: CreatePostBranchUncertain, Description: "WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another.", Optional: true},
+		{ID: CreatePostBranchUncertain, Description: "WordPress may have created the post, but the send cap was reached, a resend was refused or found invalid credentials, or WordPress accepted it without a complete confirmation; inspect Posts before creating another.", Optional: true},
 		{ID: CreatePostBranchDefect, Description: "Local post input, connection credentials, or dispatch fence is invalid before any send.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

@@ -17,7 +17,7 @@ export interface CreatePostStepConfig<StepInput, OperationInput = CreatePostInpu
   created: StepTarget<MutationResult<OperationOutput>>;
   /** WordPress conclusively rejected the new post. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another. */
+  /** WordPress may have created the post, but the send cap was reached, a resend was refused or found invalid credentials, or WordPress accepted it without a complete confirmation; inspect Posts before creating another. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local post input, connection credentials, or dispatch fence is invalid before any send. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

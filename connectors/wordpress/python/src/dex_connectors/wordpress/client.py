@@ -98,7 +98,9 @@ class Client:
     """Resolve application credentials per attempt and send redirect-safe requests."""
 
     def __init__(
-        self, config: Config, credentials: CredentialProvider[Credentials],
+        self,
+        config: Config,
+        credentials: CredentialProvider[Credentials],
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         if config is None or credentials is None:
@@ -131,18 +133,25 @@ class Client:
 
     async def _authorization(self, call: Call) -> str:
         """Build one Basic authorization value without returning secrets in failures."""
+        return (await self._authorization_or_reason(call))[0]
+
+    async def _authorization_or_reason(self, call: Call) -> tuple[str, bool]:
+        """Return the Basic authorization value, or empty and whether the credentials are invalid."""
         try:
             credentials = await self.credentials.resolve(call)
+        except (ValueError, LookupError, OSError, AttributeError):
+            return "", False
+        try:
             username = credentials.username
             password = credentials.application_password.reveal().replace(" ", "")
-        except (ValueError, LookupError, OSError, AttributeError):
-            return ""
+        except (ValueError, AttributeError):
+            return "", True
         if not username or any(character in username for character in ":\r\n\x00"):
-            return ""
+            return "", True
         if not password or any(character in password for character in "\r\n\x00"):
-            return ""
+            return "", True
         token = base64.b64encode(f"{username}:{password}".encode()).decode("ascii")
-        return f"Basic {token}"
+        return f"Basic {token}", False
 
     async def request(self, request: httpx.Request) -> Exchange:
         """Read a bounded response while preserving positive no-send evidence."""
@@ -190,8 +199,11 @@ class CreatePostOperation:
         status = input.status or "draft"
         if not input.title.strip() or status not in {"draft", "publish"}:
             return _create_failure(DEFECT, FailureKind.VALIDATION, "title, content, or status is invalid")
-        payload = json.dumps({"title": input.title, "content": input.content, "status": status},
-                             ensure_ascii=False, separators=(",", ":")).encode()
+        payload = json.dumps(
+            {"title": input.title, "content": input.content, "status": status},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode()
         if len(payload) > self.client.max_post_bytes:
             return _create_failure(
                 DEFECT, FailureKind.VALIDATION, "post exceeds the configured request limit"
@@ -229,16 +241,26 @@ class CreatePostOperation:
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         # An earlier send may have created the post, so a refusal of a resend proves nothing.
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
-        authorization = await self.client._authorization(call)
+        authorization, is_invalid = await self.client._authorization_or_reason(call)
         if not authorization:
             return await _local_create_failure(
-                fence, has_possible_earlier_send, FailureKind.AUTHENTICATION,
-                "connection credentials are invalid",
+                fence,
+                has_possible_earlier_send,
+                is_invalid,
+                FailureKind.AUTHENTICATION,
+                "connection credentials are invalid"
+                if is_invalid
+                else "connection credentials are unavailable",
             )
         request = self.client.http_client.build_request(
-            "POST", self.client.site_url + "/wp-json/wp/v2/posts",
-            headers={"Accept": "application/json", "Content-Type": "application/json",
-                     "Authorization": authorization}, content=payload,
+            "POST",
+            self.client.site_url + "/wp-json/wp/v2/posts",
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": authorization,
+            },
+            content=payload,
         )
 
         async def send(_deadline: datetime) -> Exchange:
@@ -269,39 +291,41 @@ class CreatePostOperation:
                 return _create_retry(FailureKind.AVAILABILITY, "WordPress retry checkpoint is unavailable")
             kind = FailureKind.RATE_LIMIT if exchange.status == 429 else FailureKind.AVAILABILITY
             return _create_retry(kind, "WordPress did not create the post", exchange.retry_after)
-        is_definite_refusal_status = exchange.status in _DEFINITE_REFUSAL_STATUSES
-        if not is_definite_refusal_status and not 200 <= exchange.status < 300:
+        is_success_status = 200 <= exchange.status < 300
+        is_body_readable = not exchange.error
+        try:
+            body = json.loads(exchange.body) if is_body_readable else None
+        except (ValueError, UnicodeDecodeError):
+            body = None
+        # A positive post ID in the body means WordPress created the post.
+        is_accepted = isinstance(body, dict) and type(body.get("id")) is int and body["id"] > 0
+        if is_success_status and not is_body_readable:
+            # WordPress accepted the post, so a resend could duplicate it.
+            return _create_uncertain(
+                FailureKind.TRANSPORT, "WordPress accepted the post, but its response could not be read"
+            )
+        if is_success_status and not is_accepted:
+            return _create_uncertain(
+                FailureKind.PROTOCOL, "WordPress accepted the post, but its response is malformed"
+            )
+        if not is_success_status and is_accepted:
+            return _create_uncertain(FailureKind.PROTOCOL, "WordPress returned a contradictory post response")
+        if not is_success_status:
+            # An unreadable or oversized error body cannot prove a refusal.
+            if is_body_readable and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+                return await _reject_or_select_uncertain(
+                    fence,
+                    has_possible_earlier_send,
+                    _rejection_kind(exchange.status),
+                    f"WordPress rejected the post with HTTP {exchange.status}",
+                )
             return _resend_or_select_uncertain(
                 can_resend_unknown_outcome,
                 FailureKind.AVAILABILITY,
                 f"WordPress post outcome is unknown after HTTP {exchange.status}",
                 exchange.retry_after,
             )
-        if exchange.error:
-            return _resend_or_select_uncertain(
-                can_resend_unknown_outcome, FailureKind.TRANSPORT, "WordPress post response could not be read"
-            )
-        try:
-            body = json.loads(exchange.body)
-        except (ValueError, UnicodeDecodeError):
-            body = None
-        # A positive post ID in the body means WordPress created the post.
-        is_accepted = isinstance(body, dict) and type(body.get("id")) is int and body["id"] > 0
-        if is_definite_refusal_status:
-            if is_accepted:
-                return _create_uncertain(
-                    FailureKind.PROTOCOL, "WordPress returned a contradictory post response"
-                )
-            return await _reject_or_select_uncertain(
-                fence,
-                has_possible_earlier_send,
-                _rejection_kind(exchange.status),
-                f"WordPress rejected the post with HTTP {exchange.status}",
-            )
-        if not isinstance(body, dict) or not is_accepted:
-            return _resend_or_select_uncertain(
-                can_resend_unknown_outcome, FailureKind.PROTOCOL, "WordPress post response is malformed"
-            )
+        assert isinstance(body, dict)
         try:
             await fence.record_provider_id(str(body["id"]))
         except Exception:
@@ -330,8 +354,9 @@ class GetPostOperation:
         """Return only published post data."""
         if input.post_id <= 0:
             return _query_failure("getPost", DEFECT, FailureKind.VALIDATION, Post())
-        return await _query(self.client, call, "getPost", f"/wp-json/wp/v2/posts/{input.post_id}",
-                            "", Post(), FOUND)
+        return await _query(
+            self.client, call, "getPost", f"/wp-json/wp/v2/posts/{input.post_id}", "", Post(), FOUND
+        )
 
 
 class ListPostsOperation:
@@ -361,12 +386,28 @@ class ListPostsOperation:
             parameters["per_page"] = str(input.per_page)
         if input.after:
             parameters["after"] = input.after
-        return await _query(self.client, call, "listPosts", "/wp-json/wp/v2/posts",
-                            urlencode(parameters), PostPage(), LISTED, page)
+        return await _query(
+            self.client,
+            call,
+            "listPosts",
+            "/wp-json/wp/v2/posts",
+            urlencode(parameters),
+            PostPage(),
+            LISTED,
+            page,
+        )
 
 
-async def _query(client: Client, call: Call, operation: str, path: str, query: str,
-                 empty: _Output, success_branch: str, page: int = 1) -> QueryAttempt[_Output]:
+async def _query(
+    client: Client,
+    call: Call,
+    operation: str,
+    path: str,
+    query: str,
+    empty: _Output,
+    success_branch: str,
+    page: int = 1,
+) -> QueryAttempt[_Output]:
     authorization = await client._authorization(call)
     if not authorization:
         return _query_failure(operation, DEFECT, FailureKind.AUTHENTICATION, empty)
@@ -414,8 +455,12 @@ def _decode_post(value: Any) -> Post:
         raise ValueError("post is not an object")
     if value.get("status") != "publish":
         raise _PrivatePostError("post is not published")
-    if type(value.get("id")) is not int or value["id"] <= 0 or not all(
-        isinstance(value.get(field), str) and value[field] for field in ("slug", "link", "date_gmt")
+    if (
+        type(value.get("id")) is not int
+        or value["id"] <= 0
+        or not all(
+            isinstance(value.get(field), str) and value[field] for field in ("slug", "link", "date_gmt")
+        )
     ):
         raise ValueError("post is incomplete")
     datetime.strptime(value["date_gmt"], "%Y-%m-%dT%H:%M:%S")
@@ -425,9 +470,15 @@ def _decode_post(value: Any) -> Post:
         title = {}
     if not isinstance(content, dict):
         content = {}
-    return Post(value["id"], value["slug"], "publish", value["link"],
-                RenderedText(str(title.get("rendered", ""))), RenderedText(str(content.get("rendered", ""))),
-                value["date_gmt"])
+    return Post(
+        value["id"],
+        value["slug"],
+        "publish",
+        value["link"],
+        RenderedText(str(title.get("rendered", ""))),
+        RenderedText(str(content.get("rendered", ""))),
+        value["date_gmt"],
+    )
 
 
 def _decode_page(value: Any, headers: httpx.Headers | None, page: int) -> PostPage:
@@ -445,8 +496,9 @@ def _failure(operation: str, kind: FailureKind) -> Failure:
 
 
 def _create_failure(branch: str, kind: FailureKind, message: str) -> MutationAttempt[CreatedPost]:
-    return MutationAttempt.branch_result(branch, CreatedPost(), Receipt(),
-                                         Failure(kind, CONNECTOR_ID, "createPost", message))
+    return MutationAttempt.branch_result(
+        branch, CreatedPost(), Receipt(), Failure(kind, CONNECTOR_ID, "createPost", message)
+    )
 
 
 def _create_retry(kind: FailureKind, message: str, after: float = 0) -> MutationAttempt[CreatedPost]:
@@ -491,9 +543,14 @@ async def _reject_or_select_uncertain(
 
 
 async def _local_create_failure(
-    fence: Fence, has_possible_earlier_send: bool, kind: FailureKind, message: str
+    fence: Fence, has_possible_earlier_send: bool, is_terminal: bool, kind: FailureKind, message: str
 ) -> MutationAttempt[CreatedPost]:
-    """Select defect only when no earlier send may have created the post."""
+    """Select defect only when no earlier send may have created the post.
+
+    After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+    """
+    if has_possible_earlier_send and is_terminal:
+        return _create_uncertain(kind, message + "; an earlier attempt may have created the post")
     if has_possible_earlier_send:
         # notSent would hide the earlier possible send, so nothing is recorded.
         return _create_retry(kind, message + "; no post was created in this attempt")
@@ -504,8 +561,7 @@ async def _local_create_failure(
     return _create_failure(DEFECT, kind, message)
 
 
-def _query_failure(operation: str, branch: str, kind: FailureKind,
-                   empty: _Output) -> QueryAttempt[_Output]:
+def _query_failure(operation: str, branch: str, kind: FailureKind, empty: _Output) -> QueryAttempt[_Output]:
     return QueryAttempt.branch_result(branch, empty, Receipt(), _failure(operation, kind))
 
 
