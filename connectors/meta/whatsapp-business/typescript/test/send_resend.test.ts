@@ -203,7 +203,7 @@ describe('WhatsApp bounded resend of unconfirmed messages', () => {
     expect(await send(invalidClient, new AttemptContext())).toMatchObject({ branch: 'defect' });
   });
 
-  it.each([new CredentialBrokerUnavailableError(), new Error('project store read failed')])('retries a transient credential failure before any send without counting a send: %s', async credentialError => {
+  it.each([new CredentialBrokerUnavailableError(), new Error('project store read failed'), new Error('connection is not configured'), new TypeError('fetch failed')])('retries a transient credential failure before any send without counting a send: %s', async credentialError => {
     const { client: unavailableClient, requests } = newClient([sent], undefined, undefined, credentialError);
     const context = new AttemptContext();
     expect(await send(unavailableClient, context)).toBeInstanceOf(RetryError);

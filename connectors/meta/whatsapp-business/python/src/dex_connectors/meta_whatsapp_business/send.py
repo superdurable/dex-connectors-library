@@ -20,6 +20,11 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     ProviderTransportError,
     is_header_safe_credential,
@@ -171,9 +176,17 @@ def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential resolution failure that no retry fixes.
 
     Missing, unselected, rejected, or reauthorization-bound connections are terminal; broker
-    outages, store reads, and other errors are transient.
+    outages, store reads, a static provider without the connection, and other errors are transient.
     """
-    return isinstance(error, (ValueError, LookupError, AttributeError, ReauthorizationRequiredError))
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 async def _send_message(
