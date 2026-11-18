@@ -64,10 +64,12 @@ class ProviderResponse:
 class RequestError(Exception):
     """Classified transport or local request failure without secret details."""
 
-    def __init__(self, kind: FailureKind, message: str, *, not_sent: bool = False) -> None:
+    def __init__(self, kind: FailureKind, message: str, *, not_sent: bool = False, status: int = 0) -> None:
         super().__init__(message)
         self.kind = kind
         self.not_sent = not_sent
+        # The HTTP status when the response headers arrived before the body failed; otherwise 0.
+        self.status = status
 
 
 class Client:
@@ -209,7 +211,10 @@ class Client:
                     result = ProviderResponse(status, response_headers, too_large=True)
             except ProviderTransportError as error:
                 raise RequestError(
-                    FailureKind.TRANSPORT, "provider request failed", not_sent=error.provably_not_sent
+                    FailureKind.TRANSPORT,
+                    "provider request failed",
+                    not_sent=error.provably_not_sent,
+                    status=error.status_code or 0,
                 ) from error
             if (
                 result.status == 401

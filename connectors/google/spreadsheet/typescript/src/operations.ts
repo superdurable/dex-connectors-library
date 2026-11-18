@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type MutationAttempt, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { newFence, CheckpointError, InsufficientTimeError, DispatchNotAllowedError, type Fence } from '@superdurable/connectors-sdk/singledispatch';
+import { newFence, CheckpointError, InsufficientTimeError, DispatchNotAllowedError, type Decision, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import type { GetValuesInput, GetValuesOutput, FindRowInput, FindRowOutput, UpsertRowInput, UpsertRowOutput, Credentials } from './generated/models.js';
 import { GetValuesDefinition, FindRowDefinition, UpsertRowDefinition } from './generated/definitions.js';
 import { goPathEscape, type SpreadsheetClient, type SpreadsheetExchange } from './client.js';
@@ -98,31 +98,35 @@ export class UpsertRowOperation {
         }
         return newMutationUncertain(emptyUpsert(), this.client.failure(operation, 'AUTHENTICATION', 'prior append cannot be checked; reconnect the connection'), this.client.receipt(call, undefined, decision.marker?.providerId));
       }
-      return this.retryBeforeWrite(fence, decision.kind, selected.failure!);
+      return this.retryBeforeWrite(fence, decision, selected.failure!);
     }
     const credential = selected.credential;
     const lookup = await this.client.request(call, credential, 'GET', input.spreadsheetId, `/values/${goPathEscape(quoteSheet(input.sheetName))}`, { majorDimension: 'ROWS', valueRenderOption: 'FORMATTED_VALUE' });
     const exchange = lookup.exchange;
     if (exchange.isTooLarge) {
-      if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'read-back response is oversized');
+      if (hasPossibleEarlierSend) return this.retryReadBackOrSelectUncertain(call, decision, exchange, 'read-back response is oversized');
       return newMutationBranch('invalidResponse', emptyUpsert(), this.client.receipt(call, exchange), this.client.failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds configured limit'));
     }
-    if (exchange.error) return this.retryBeforeWrite(fence, decision.kind, this.client.failure(operation, 'AVAILABILITY', 'sheet lookup is unavailable'));
+    if (exchange.error) return this.retryBeforeWrite(fence, decision, this.client.failure(operation, 'AVAILABILITY', 'sheet lookup is unavailable'));
     const retry = retryStatus(exchange);
-    if (retry.kind === 'invalid') return this.retryBeforeWrite(fence, decision.kind, this.client.failure(operation, 'PROTOCOL', 'provider returned an invalid Retry-After header'));
-    if (retry.kind === 'retry') return this.retryBeforeWrite(fence, decision.kind, this.client.failure(operation, statusKind(exchange.status), 'sheet lookup is temporarily unavailable'), retry.delay);
+    if (retry.kind === 'invalid') return this.retryBeforeWrite(fence, decision, this.client.failure(operation, 'PROTOCOL', 'provider returned an invalid Retry-After header'));
+    if (retry.kind === 'retry') return this.retryBeforeWrite(fence, decision, this.client.failure(operation, statusKind(exchange.status), 'sheet lookup is temporarily unavailable'), retry.delay);
     if (exchange.status < 200 || exchange.status >= 300) {
-      if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'read-back was rejected');
+      if (hasPossibleEarlierSend) return this.retryReadBackOrSelectUncertain(call, decision, exchange, 'read-back was rejected');
       return newMutationBranch('providerRejected', emptyUpsert(), this.client.receipt(call, exchange), this.client.failure(operation, statusKind(exchange.status), 'provider rejected the pre-write query'));
     }
     const decoded = this.client.decodeValues(exchange, operation);
     if (!decoded.value) {
-      if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'read-back response is invalid');
+      if (hasPossibleEarlierSend) return this.retryReadBackOrSelectUncertain(call, decision, exchange, 'read-back response is invalid');
       return newMutationBranch('invalidResponse', emptyUpsert(), this.client.receipt(call, exchange), decoded.failure);
     }
     const rows = decoded.value.values;
     const found = findRow(rows, input.keyColumn, input.keyValue, operation, this.client);
-    if (found.branch === 'conflict') return newMutationBranch('conflict', emptyUpsert(), this.client.receipt(call, exchange), found.failure);
+    if (found.branch === 'conflict') {
+      // An earlier append of ours may be one of the duplicate key rows.
+      if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'duplicate key rows were found after an earlier unconfirmed append');
+      return newMutationBranch('conflict', emptyUpsert(), this.client.receipt(call, exchange), found.failure);
+    }
     if (found.branch === 'defect') {
       if (hasPossibleEarlierSend) return this.uncertain(call, exchange, 'prior append cannot be checked against the row key');
       return newMutationBranch('defect', emptyUpsert(), this.client.receipt(call, exchange), found.failure);
@@ -138,7 +142,7 @@ export class UpsertRowOperation {
       return newMutationBranch('upserted', upsertOutput(action, found.value.rowNumber!, input.sheetName, row.length), this.client.receipt(call, exchange));
     }
     if (decision.kind === 'readBackRequired' && (decision.marker?.state === 'claimed' || found.branch === 'notFound')) return this.uncertain(call, exchange, 'prior append cannot be confirmed by the row key');
-    if (found.branch === 'found') return this.replace(call, lookup.credential, input, row, found.value.rowNumber!, fence, decision.kind, hasPossibleEarlierSend);
+    if (found.branch === 'found') return this.replace(call, lookup.credential, input, row, found.value.rowNumber!, fence, decision, hasPossibleEarlierSend);
     // Google accepted an earlier append, so a missing row is read lag and never resent.
     if (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId) return this.uncertain(call, exchange, 'accepted append is not yet visible by the row key');
     const effectiveMaxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
@@ -146,7 +150,7 @@ export class UpsertRowOperation {
     return this.append(call, lookup.credential, input, row, fence, appendSend);
   }
 
-  private async replace(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], rowNumber: number, fence: Fence, decision: string, hasPossibleEarlierSend: boolean): Promise<MutationAttempt<UpsertRowOutput>> {
+  private async replace(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], rowNumber: number, fence: Fence, decision: Decision, hasPossibleEarlierSend: boolean): Promise<MutationAttempt<UpsertRowOutput>> {
     const targetRange = `${quoteSheet(input.sheetName)}!A${rowNumber}`;
     const payload = { range: targetRange, majorDimension: 'ROWS', values: [row] };
     const executeTimeout = UpsertRowDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000;
@@ -161,8 +165,8 @@ export class UpsertRowOperation {
     }
     const exchange = response.exchange;
     if (exchange.status === 0) return this.retryBeforeWrite(fence, decision, this.client.failure('upsertRow', 'TRANSPORT', 'row replacement response is unavailable'));
-    // An absolute replacement is repeatable, so every outcome except a definite refusal retries.
-    if ((exchange.status < 200 || exchange.status >= 300) && !definiteRefusalStatuses.has(exchange.status)) {
+    // An absolute replacement is repeatable, so every outcome except a readable definite refusal retries.
+    if ((exchange.status < 200 || exchange.status >= 300) && (!definiteRefusalStatuses.has(exchange.status) || exchange.error)) {
       const retry = retryStatus(exchange, true);
       if (retry.kind === 'invalid') return this.retryBeforeWrite(fence, decision, this.client.failure('upsertRow', 'PROTOCOL', 'provider returned an invalid Retry-After header'));
       return this.retryBeforeWrite(fence, decision, this.client.failure('upsertRow', statusKind(exchange.status), 'row replacement is temporarily unavailable'), retry.delay);
@@ -185,17 +189,21 @@ export class UpsertRowOperation {
       return this.reconcile(call, credential, input, row, appendSend);
     }
     const exchange = response.exchange;
+    // A 2xx status survives a broken or oversized body, and it proves Google accepted the append.
+    const isSuccessStatus = exchange.status >= 200 && exchange.status < 300;
     const isAppendAccepted = !exchange.error && hasAppendAcceptance(exchange);
-    if (exchange.status === 401 && !isAppendAccepted) {
+    // A refusal is definite only when its whole body was read and names no appended range.
+    const isReadableRefusal = !exchange.error && !isAppendAccepted;
+    if (exchange.status === 401 && isReadableRefusal) {
       const refreshed = await this.client.refreshAfterRejection(call, credential);
       if (refreshed.credential) return this.retryAfterRejectedAppend(fence, exchange);
       return this.rejectAppendOrSelectUncertain(fence, appendSend, this.client.receipt(call, exchange), this.client.failure('upsertRow', 'AUTHENTICATION', rejectedMessage(refreshed.reauthorization)));
     }
     if ([429, 503].includes(exchange.status)) return this.retryAfterRejectedAppend(fence, exchange);
     if (exchange.status === 0) return exchange.isProvablyNotSent ? this.retryAfterRejectedAppend(fence, exchange) : this.reconcile(call, credential, input, row, appendSend);
-    if (definiteRefusalStatuses.has(exchange.status) && !isAppendAccepted) return this.rejectAppendOrSelectUncertain(fence, appendSend, this.client.receipt(call, exchange), this.client.failure('upsertRow', statusKind(exchange.status), 'provider rejected the append'));
-    if (exchange.status < 200 || exchange.status >= 300) return this.reconcile(call, credential, input, row, appendSend);
-    if (!exchange.error) {
+    if (definiteRefusalStatuses.has(exchange.status) && isReadableRefusal) return this.rejectAppendOrSelectUncertain(fence, appendSend, this.client.receipt(call, exchange), this.client.failure('upsertRow', statusKind(exchange.status), 'provider rejected the append'));
+    if (!isSuccessStatus && !isAppendAccepted) return this.reconcile(call, credential, input, row, appendSend);
+    if (isSuccessStatus && !exchange.error) {
       try {
         const payload = JSON.parse(Buffer.from(exchange.body).toString('utf8')) as { updates?: { updatedRange?: unknown } };
         const updatedRange = payload.updates?.updatedRange;
@@ -206,27 +214,60 @@ export class UpsertRowOperation {
         }
       } catch { /* Read-back confirms a successful append without a usable response. */ }
     }
-    return this.reconcile(call, credential, input, row, appendSend);
+    return this.reconcileAccepted(call, credential, input, row, fence, targetRange, appendSend);
   }
 
-  /** Read back an append with an unknown outcome and resend it below the send cap. */
-  private async reconcile(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], appendSend: AppendSend): Promise<MutationAttempt<UpsertRowOutput>> {
+  /**
+   * Read back an append Google accepted without a usable response; never resend it.
+   * The sheet range is the locator: a saved one makes later attempts read back only.
+   */
+  private async reconcileAccepted(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], fence: Fence, targetRange: string, appendSend: AppendSend): Promise<MutationAttempt<UpsertRowOutput>> {
+    let isLocatorSaved = true;
+    try { await fence.recordProviderId(targetRange); } catch { isLocatorSaved = false; }
+    return this.reconcile(call, credential, input, row, appendSend, { isAccepted: true, isLocatorSaved });
+  }
+
+  /**
+   * Read back an append with an unknown outcome and resend it below the send cap.
+   * An accepted append is never resent: it is read back again only when its locator is saved.
+   */
+  private async reconcile(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], appendSend: AppendSend, accepted: AcceptedAppend = { isAccepted: false, isLocatorSaved: false }): Promise<MutationAttempt<UpsertRowOutput>> {
     const { exchange } = await this.client.request(call, credential, 'GET', input.spreadsheetId, `/values/${goPathEscape(quoteSheet(input.sheetName))}`, { majorDimension: 'ROWS', valueRenderOption: 'FORMATTED_VALUE' });
-    if (exchange.error) return newMutationRetry(this.client.failure('upsertRow', 'AVAILABILITY', 'append read-back is unavailable'));
+    if (exchange.error) return this.retryAppendReadBack(call, accepted, exchange, this.client.failure('upsertRow', 'AVAILABILITY', 'append read-back is unavailable'));
     const retry = retryStatus(exchange);
-    if (retry.kind === 'invalid') return newMutationRetry(this.client.failure('upsertRow', 'PROTOCOL', 'read-back returned an invalid Retry-After header'));
-    if (retry.kind === 'retry') return newMutationRetry(this.client.failure('upsertRow', statusKind(exchange.status), 'append read-back is temporarily unavailable'), retry.delay);
-    if (exchange.status < 200 || exchange.status >= 300) return this.resendOrSelectUncertain(call, appendSend, exchange, 'append read-back was rejected');
+    if (retry.kind === 'invalid') return this.retryAppendReadBack(call, accepted, exchange, this.client.failure('upsertRow', 'PROTOCOL', 'read-back returned an invalid Retry-After header'));
+    if (retry.kind === 'retry') return this.retryAppendReadBack(call, accepted, exchange, this.client.failure('upsertRow', statusKind(exchange.status), 'append read-back is temporarily unavailable'), retry.delay);
+    if (exchange.status < 200 || exchange.status >= 300) return this.resendOrSelectUncertain(call, appendSend, accepted, exchange, 'append read-back was rejected');
     const decoded = this.client.decodeValues(exchange, 'upsertRow');
-    if (!decoded.value) return this.resendOrSelectUncertain(call, appendSend, exchange, 'append read-back is invalid');
+    if (!decoded.value) return this.resendOrSelectUncertain(call, appendSend, accepted, exchange, 'append read-back is invalid');
     const found = findRow(decoded.value.values, input.keyColumn, input.keyValue, 'upsertRow', this.client);
-    if (found.branch === 'conflict') return newMutationBranch('conflict', emptyUpsert(), this.client.receipt(call, exchange), found.failure);
-    if (found.branch !== 'found' || !rowMatches(found.value, input)) return this.resendOrSelectUncertain(call, appendSend, exchange, 'append cannot be confirmed by the row key');
+    // This attempt's append may be one of the duplicate key rows.
+    if (found.branch === 'conflict') return this.uncertain(call, exchange, 'duplicate key rows were found after an unconfirmed append');
+    if (found.branch !== 'found' || !rowMatches(found.value, input)) {
+      if (accepted.isAccepted) return this.uncertain(call, exchange, 'accepted append cannot be confirmed by the row key');
+      return this.resendOrSelectUncertain(call, appendSend, accepted, exchange, 'append cannot be confirmed by the row key');
+    }
     return newMutationBranch('upserted', upsertOutput('inserted', found.value.rowNumber!, input.sheetName, row.length), this.client.receipt(call, exchange));
   }
 
-  /** Retry an unconfirmed append while the send cap allows another send. */
-  private resendOrSelectUncertain(call: Call, appendSend: AppendSend, exchange: SpreadsheetExchange, message: string): MutationAttempt<UpsertRowOutput> {
+  /** Retry a read-back unless an accepted append could be resent by the next attempt. */
+  private retryAppendReadBack(call: Call, accepted: AcceptedAppend, exchange: SpreadsheetExchange, failure: Failure, delay = 0): MutationAttempt<UpsertRowOutput> {
+    if (accepted.isAccepted && !accepted.isLocatorSaved) return this.uncertain(call, exchange, 'accepted append could not be read back, and its checkpoint failed');
+    return newMutationRetry(failure, delay);
+  }
+
+  /**
+   * Retry a failed lookup after a possible append below the send cap, and select uncertain at it.
+   * The Fence counts this read-back-only attempt as a possible send.
+   */
+  private retryReadBackOrSelectUncertain(call: Call, decision: Decision, exchange: SpreadsheetExchange, message: string): MutationAttempt<UpsertRowOutput> {
+    if (decision.kind === 'readBackRequired') return this.uncertain(call, exchange, `${message}; the send cap is reached`);
+    return newMutationRetry(this.client.failure('upsertRow', 'TRANSPORT', message));
+  }
+
+  /** Retry an unconfirmed append while the send cap allows another send; an accepted append retries only its read-back. */
+  private resendOrSelectUncertain(call: Call, appendSend: AppendSend, accepted: AcceptedAppend, exchange: SpreadsheetExchange, message: string): MutationAttempt<UpsertRowOutput> {
+    if (accepted.isAccepted) return this.retryAppendReadBack(call, accepted, exchange, this.client.failure('upsertRow', 'TRANSPORT', message));
     // The claim stays the last marker, so the next attempt counts this append and reads back first.
     if (appendSend.canResendUnknownOutcome) return newMutationRetry(this.client.failure('upsertRow', 'TRANSPORT', message));
     return this.uncertain(call, exchange, `${message}; the send cap is reached`);
@@ -241,8 +282,9 @@ export class UpsertRowOperation {
     return rejectOrSelectUncertain(appendSend.hasPossibleEarlierSend, receipt, failure);
   }
 
-  private async retryBeforeWrite(fence: Fence, decision: string, failure: Failure, delay = 0): Promise<MutationAttempt<UpsertRowOutput>> {
-    if (decision === 'sendAllowed') { try { await fence.recordNotSent(); } catch { failure = this.client.failure('upsertRow', 'AVAILABILITY', 'pre-send checkpoint failed; retry remains fail-closed'); } }
+  /** Record notSent only when no earlier append may have happened, then retry. */
+  private async retryBeforeWrite(fence: Fence, decision: Decision, failure: Failure, delay = 0): Promise<MutationAttempt<UpsertRowOutput>> {
+    if (decision.kind === 'sendAllowed' && (decision.priorSendUpperBound ?? 0) === 0) { try { await fence.recordNotSent(); } catch { failure = this.client.failure('upsertRow', 'AVAILABILITY', 'pre-send checkpoint failed; retry remains fail-closed'); } }
     return newMutationRetry(failure, delay);
   }
 
@@ -260,6 +302,11 @@ export class UpsertRowOperation {
 interface AppendSend {
   /** False when this append is the last one the cap allows. */ canResendUnknownOutcome: boolean;
   /** An earlier append of this call may have taken effect. */ hasPossibleEarlierSend: boolean;
+}
+/** Google returned 2xx for this attempt's append, so it is never resent. */
+interface AcceptedAppend {
+  /** The append was accepted. */ isAccepted: boolean;
+  /** The next attempt sees the acceptance and only reads back. */ isLocatorSaved: boolean;
 }
 // Only these statuses prove Google refused a write; every other status is an unknown outcome.
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);

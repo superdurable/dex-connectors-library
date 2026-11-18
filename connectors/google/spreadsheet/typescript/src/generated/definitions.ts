@@ -90,13 +90,13 @@ export const UpsertRowBranch = {
 } as const;
 /** One row was inserted or updated. */
 export const UpsertRowBranchUpserted = UpsertRowBranch.Upserted;
-/** Existing duplicate key rows prevent a safe write. */
+/** Existing duplicate key rows prevent a safe write before any append of this Step. */
 export const UpsertRowBranchConflict = UpsertRowBranch.Conflict;
 /** Google conclusively rejected the row write. */
 export const UpsertRowBranchProviderRejected = UpsertRowBranch.ProviderRejected;
 /** Google returned an invalid or oversized pre-write response. */
 export const UpsertRowBranchInvalidResponse = UpsertRowBranch.InvalidResponse;
-/** The dispatched append was still not confirmed by its key when the send cap was reached. */
+/** A possible append was not confirmed by its key: at the send cap, after Google accepted it, or beside duplicate key rows. */
 export const UpsertRowBranchUncertain = UpsertRowBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpsertRowBranchDefect = UpsertRowBranch.Defect;
@@ -105,10 +105,10 @@ export const UpsertRowDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "upsertRow" },
   branches: [
     { id: "upserted", description: "One row was inserted or updated." },
-    { id: "conflict", description: "Existing duplicate key rows prevent a safe write.", optional: true },
+    { id: "conflict", description: "Existing duplicate key rows prevent a safe write before any append of this Step.", optional: true },
     { id: "providerRejected", description: "Google conclusively rejected the row write.", optional: true },
     { id: "invalidResponse", description: "Google returned an invalid or oversized pre-write response.", optional: true },
-    { id: "uncertain", description: "The dispatched append was still not confirmed by its key when the send cap was reached.", optional: true },
+    { id: "uncertain", description: "A possible append was not confirmed by its key: at the send cap, after Google accepted it, or beside duplicate key rows.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
