@@ -11,11 +11,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     OperationRef,
+    ReauthorizationRequiredError,
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    RejectedCredentialNotRefreshedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
-from dex_connectors.microsoft_entra_id import Client, Config, Credentials, GetUserInput
+from dex_connectors.microsoft_entra_id import AddUserToGroupInput, Client, Config, Credentials, GetUserInput
 from dex_connectors.microsoft_entra_id.client import convert_user, odata_query, path_escape, query_escape
 
 USER_ID = "11111111-2222-4333-8444-555555555555"
@@ -79,3 +87,63 @@ async def test_error_status_survives_small_success_body_limit() -> None:
     assert attempt.failure is not None
     assert attempt.failure.kind.value == "RATE_LIMIT"
     assert attempt.retry_after_seconds == 7
+
+
+class FailingCredentials:
+    """A credential provider that always fails with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        """Raise the configured error."""
+        raise self.error
+
+
+TERMINAL_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
+    ReauthorizationRequiredError(),
+    ObjectNotFoundError(),
+    ConnectionNotSelectedError(),
+    CredentialBrokerRejectedError(),
+)
+TRANSIENT_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
+    CredentialBrokerUnavailableError(),
+    RejectedCredentialNotRefreshedError(),
+    ValueError("connection is not configured"),
+    TimeoutError(),
+    RuntimeError("unlisted"),
+)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error", TERMINAL_CREDENTIAL_ERRORS + TRANSIENT_CREDENTIAL_ERRORS)
+async def test_every_operation_classifies_credential_failures_the_same_way(error: Exception) -> None:
+    """Only the four terminal classes select defect; every other failure retries without a request."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    expected = "branch" if error in TERMINAL_CREDENTIAL_ERRORS else "retry"
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        client = Client(Config(), FailingCredentials(error), http_client, local_provider_url="http://127.0.0.1:44888")
+        query_call = Call(CallID("query-call"), CONNECTION, OperationRef("microsoft-entra-id", "getUser"))
+        read = await client.get_user().invoke(query_call, GetUserInput(USER_ID))
+        add_operation = OperationRef("microsoft-entra-id", "addUserToGroup")
+        mutation_call = Call(CallID("mutation-call"), CONNECTION, add_operation)
+        added = await client.add_user_to_group().invoke(mutation_call, AddUserToGroupInput(USER_ID, USER_ID))
+    assert (read.kind, added.kind) == (expected, expected)
+
+
+@pytest.mark.asyncio
+async def test_invalid_credential_material_is_a_defect() -> None:
+    """A header-unsafe token fails local checks, so it never retries."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    unsafe = StaticCredentialProvider({CONNECTION: Credentials(access_token=SecretString("bad\ntoken"))})
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        client = Client(Config(), unsafe, http_client, local_provider_url="http://127.0.0.1:44888")
+        call = Call(CallID("mutation-call"), CONNECTION, OperationRef("microsoft-entra-id", "addUserToGroup"))
+        added = await client.add_user_to_group().invoke(call, AddUserToGroupInput(USER_ID, USER_ID))
+    assert added.kind == "branch" and added.branch == "defect"

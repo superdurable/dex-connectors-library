@@ -82,7 +82,10 @@ func setAccountEnabled(client *Client, call sdkgo.Call, rawUserKey string, isEna
 	if err != nil {
 		return sdkgo.NewMutationBranch(branches.failure.defect, User{}, failurePointer(sdkgo.FailureValidation, branches.operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, branches.operationID)
+	credential, failure, isRetryable := client.resolveCredential(call, branches.operationID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[User](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(branches.failure.defect, User{}, failure, sdkgo.Receipt{})
 	}
