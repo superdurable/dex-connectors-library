@@ -3,7 +3,7 @@
 
 import { expect, it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { loadScenarios, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { HubSpotClient } from '../src/client.js';
 
@@ -79,6 +79,17 @@ it('selects conflict for a lasting documented CONFLICT to an upsert after one re
 
 it.each([501, 302, 418, 409])('retries a write answered with HTTP %i, which does not prove a refusal', async status => {
   const hubspot = client(async () => ({ status, headers: {}, body: Buffer.from('{"category":"UNKNOWN"}') }));
+  const update = await hubspot.updateObject().invoke(callFor('updateObject'), { objectType: 'deals', objectId: '9001', properties: { dealstage: 'qualifiedtobuy' } });
+  expect(update.kind).toBe('retry');
+  const upsert = await hubspot.upsertObject().invoke(callFor('upsertObject'), { objectType: 'contacts', idProperty: 'email', idValue: 'ada@example.com' });
+  expect(upsert.kind).toBe('retry');
+});
+
+it.each([
+  ['a malformed answer', async () => ({ status: 200, headers: {}, body: Buffer.from('{"results":') })],
+  ['an oversized answer', async () => { throw new BodyTooLargeError(200, {}); }],
+])('retries a repeat-safe write for %s', async (_name, send) => {
+  const hubspot = client(send);
   const update = await hubspot.updateObject().invoke(callFor('updateObject'), { objectType: 'deals', objectId: '9001', properties: { dealstage: 'qualifiedtobuy' } });
   expect(update.kind).toBe('retry');
   const upsert = await hubspot.upsertObject().invoke(callFor('upsertObject'), { objectType: 'contacts', idProperty: 'email', idValue: 'ada@example.com' });

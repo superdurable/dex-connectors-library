@@ -336,14 +336,11 @@ func TestUpsertObjectClassifiesBatchErrorsAndMalformedResults(t *testing.T) {
 		{name: "multi-status validation error", status: http.StatusMultiStatus,
 			body:       `{"status":"COMPLETE","results":[],"numErrors":1,"errors":[{"status":"error","category":"VALIDATION_ERROR","message":"` + providerMessageSentinel + `"}]}`,
 			wantBranch: hubspot.UpsertObjectBranchProviderRejected, wantKind: sdkgo.FailureValidation},
-		{name: "no record", status: http.StatusOK, body: `{"status":"COMPLETE","results":[]}`,
-			wantBranch: hubspot.UpsertObjectBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
-		{name: "two records", status: http.StatusOK, body: `{"results":[{"id":"1"},{"id":"2"}]}`,
-			wantBranch: hubspot.UpsertObjectBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
-		{name: "record without ID", status: http.StatusOK, body: `{"results":[{"id":"x"}]}`,
-			wantBranch: hubspot.UpsertObjectBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
-		{name: "malformed JSON", status: http.StatusOK, body: `{"results":`,
-			wantBranch: hubspot.UpsertObjectBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
+		// An unusable accepted answer retries the repeat-safe upsert; an empty wantBranch means Retry.
+		{name: "no record", status: http.StatusOK, body: `{"status":"COMPLETE","results":[]}`, wantKind: sdkgo.FailureProtocol},
+		{name: "two records", status: http.StatusOK, body: `{"results":[{"id":"1"},{"id":"2"}]}`, wantKind: sdkgo.FailureProtocol},
+		{name: "record without ID", status: http.StatusOK, body: `{"results":[{"id":"x"}]}`, wantKind: sdkgo.FailureProtocol},
+		{name: "malformed JSON", status: http.StatusOK, body: `{"results":`, wantKind: sdkgo.FailureProtocol},
 		{name: "unknown ID property", status: http.StatusBadRequest, body: `{"category":"VALIDATION_ERROR"}`,
 			wantBranch: hubspot.UpsertObjectBranchProviderRejected, wantKind: sdkgo.FailureValidation},
 	} {
@@ -356,6 +353,13 @@ func TestUpsertObjectClassifiesBatchErrorsAndMalformedResults(t *testing.T) {
 				ObjectType: hubspot.ObjectTypeCompanies, IDProperty: "erp_company_id", IDValue: "ERP-1",
 				Properties: map[string]string{"name": "Acme"},
 			})
+			if test.wantBranch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, test.wantKind, retry.Failure.Kind)
+				require.Len(t, provider.recordedRequests(), 1)
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, test.wantBranch, result.Branch)
 			require.Equal(t, test.wantKind, result.Failure.Kind)

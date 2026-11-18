@@ -450,7 +450,8 @@ func (operation UpdateObjectOperation) Invoke(call sdkgo.Call, input UpdateObjec
 	receipt := operation.client.receipt(call, response, input.ObjectID)
 	object, err := decodeObject(input.ObjectType, response.body)
 	if err != nil || object.ID != input.ObjectID {
-		return sdkgo.NewMutationBranch(UpdateObjectBranchInvalidResponse, CRMObject{}, providerFailurePointer(operationID, sdkgo.FailureProtocol, "HubSpot returned an invalid record"), receipt)
+		// The update may have applied; setting the same values again is safe.
+		return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, sdkgo.FailureProtocol, "HubSpot returned an invalid record"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateObjectBranchUpdated, object, nil, receipt)
 }

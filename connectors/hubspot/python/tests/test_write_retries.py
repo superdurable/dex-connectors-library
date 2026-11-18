@@ -62,6 +62,37 @@ async def test_lasting_documented_conflict_selects_conflict_for_both_writes() ->
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("body", [b'{"results":', b"x" * 5000])
+async def test_writes_retry_a_malformed_or_oversized_answer(body: bytes) -> None:
+    """The write may have applied, and repeating it is safe."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = hubspot.Client(
+            hubspot.Config(endpoint="http://127.0.0.1:42701", max_response_bytes=1024),
+            sdk.StaticCredentialProvider(
+                {CONNECTION: hubspot.Credentials(access_token=sdk.SecretString("pat-na1-test-token"))}
+            ),
+            transport,
+            lambda: datetime(2026, 10, 30, tzinfo=UTC),
+        )
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.update_object(),
+                call("updateObject"),
+                hubspot.UpdateObjectInput("deals", "9001", {"dealstage": "qualifiedtobuy"}),
+            )
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.upsert_object(),
+                call("upsertObject"),
+                hubspot.UpsertObjectInput("contacts", "email", "ada@example.com"),
+            )
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("status", [501, 302, 418, 409])
 async def test_writes_retry_a_status_that_does_not_prove_a_refusal(status: int) -> None:
     client, transport = make_client(status, [])

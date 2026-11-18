@@ -86,7 +86,7 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
         const object = decodeCRMObject(input.objectType, providerObject);
         const created = booleanField(providerObject, 'new');
         return newMutationBranch('upserted', { object, created }, { ...receipt, providerObjectId: object.id });
-      } catch (error) { return mutationFailure('upsertObject', 'invalidResponse', 'PROTOCOL', zeroUpsert, receipt, error); }
+      } catch (error) { return unusableAnswerRetry('upsertObject', error); }
     }
     throw new TypeError('unreachable upsert attempt');
   }
@@ -107,7 +107,7 @@ export class UpdateObjectOperation implements Mutation<UpdateObjectInput, CRMObj
     if ('outcome' in result) return mutationOutcome(result.outcome, zeroObject, 'providerRejected', 'notFound', 'conflict');
     const receipt = this.client.receipt(call, result.response, input.objectId);
     try { const object = decodeCRMObject(input.objectType, jsonObject(result.response.body)); if (object.id !== input.objectId) throw new TypeError('HubSpot returned an invalid record'); return newMutationBranch('updated', object, receipt); }
-    catch { return mutationFailure('updateObject', 'invalidResponse', 'PROTOCOL', zeroObject, receipt, new Error('HubSpot returned an invalid record')); }
+    catch { return unusableAnswerRetry('updateObject', new Error('HubSpot returned an invalid record')); }
   }
 }
 
@@ -123,12 +123,17 @@ function mutationOutcome<T>(outcome: ExchangeFailure, zero: T, rejected: string,
   // Both writes are repeat-safe, so an HTTP status that does not prove a refusal, such as a bare 409, is retried.
   // A documented CONFLICT is definite even after an earlier send: repeating our own write cannot conflict with it.
   const isUnknownStatus = outcome.disposition !== 'conflict' && outcome.status !== undefined &&(outcome.status < 200 || outcome.status >= 300) && !definiteRefusalStatuses.has(outcome.status) && outcome.failure.kind !== 'QUOTA_EXHAUSTED';
-  if (outcome.disposition === 'retry' || isUnknownStatus) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+  // An oversized or unusable answer may follow an applied write, and repeating it is safe.
+  if (outcome.disposition === 'retry' || outcome.disposition === 'invalidResponse' || isUnknownStatus) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
   const branch = outcome.disposition === 'notFound' ? notFound : outcome.disposition === 'conflict' ? conflict : outcome.disposition === 'rejected' ? rejected : outcome.disposition;
   return newMutationBranch(branch, zero, outcome.receipt, outcome.failure);
 }
 function queryFailure<T>(operation: string, branch: string, kind: Failure['kind'], zero: T, receipt: ReceiptDraft, error: unknown): QueryAttempt<T> {
   return newQueryBranch(branch, zero, receipt, { kind, provider: 'hubspot', operation, message: error instanceof Error ? error.message : 'HubSpot returned a malformed response' });
+}
+/** Retry a repeat-safe write whose accepted answer could not be decoded. */
+function unusableAnswerRetry<T>(operation: string, error: unknown): MutationAttempt<T> {
+  return newMutationRetry({ kind: 'PROTOCOL', provider: 'hubspot', operation, message: error instanceof Error ? error.message : 'HubSpot returned a malformed response' });
 }
 function mutationFailure<T>(operation: string, branch: string, kind: Failure['kind'], zero: T, receipt: ReceiptDraft, error: unknown): MutationAttempt<T> {
   return newMutationBranch(branch, zero, receipt, { kind, provider: 'hubspot', operation, message: error instanceof Error ? error.message : 'HubSpot returned a malformed response' });

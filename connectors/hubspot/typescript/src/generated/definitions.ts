@@ -85,7 +85,7 @@ export const UpsertObjectBranchUpserted = UpsertObjectBranch.Upserted;
 export const UpsertObjectBranchConflict = UpsertObjectBranch.Conflict;
 /** HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit. */
 export const UpsertObjectBranchProviderRejected = UpsertObjectBranch.ProviderRejected;
-/** HubSpot applied or rejected the upsert but returned an invalid or oversized response. */
+/** Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe. */
 export const UpsertObjectBranchInvalidResponse = UpsertObjectBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpsertObjectBranchDefect = UpsertObjectBranch.Defect;
@@ -96,7 +96,7 @@ export const UpsertObjectDefinition: MutationDefinition = {
     { id: "upserted", description: "HubSpot created the record or updated the record that owns the unique value." },
     { id: "conflict", description: "HubSpot reports with a documented CONFLICT, in its batch answer or in a second HTTP 409, that the properties conflict with another record, such as an email that another contact already owns; a 409 without that category is retried.", optional: true },
     { id: "providerRejected", description: "HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit.", optional: true },
-    { id: "invalidResponse", description: "HubSpot applied or rejected the upsert but returned an invalid or oversized response.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
@@ -122,7 +122,7 @@ export const UpdateObjectBranchNotFound = UpdateObjectBranch.NotFound;
 export const UpdateObjectBranchConflict = UpdateObjectBranch.Conflict;
 /** HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit. */
 export const UpdateObjectBranchProviderRejected = UpdateObjectBranch.ProviderRejected;
-/** HubSpot applied or rejected the update but returned an invalid or oversized response. */
+/** Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because setting the same values again is safe. */
 export const UpdateObjectBranchInvalidResponse = UpdateObjectBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateObjectBranchDefect = UpdateObjectBranch.Defect;
@@ -134,7 +134,7 @@ export const UpdateObjectDefinition: MutationDefinition = {
     { id: "notFound", description: "No unarchived record of that object type has the record ID.", optional: true },
     { id: "conflict", description: "HubSpot answered 409 with its documented CONFLICT category: the properties conflict with another record, such as an email that another contact already owns.", optional: true },
     { id: "providerRejected", description: "HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit.", optional: true },
-    { id: "invalidResponse", description: "HubSpot applied or rejected the update but returned an invalid or oversized response.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because setting the same values again is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

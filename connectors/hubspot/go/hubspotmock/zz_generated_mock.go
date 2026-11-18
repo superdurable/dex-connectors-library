@@ -197,7 +197,7 @@ func UpsertObjectProviderRejected(value hubspot.UpsertedObject, failure *sdkgo.F
 	return connectormock.Branch(hubspot.UpsertObjectBranchProviderRejected, value, failure)
 }
 
-// UpsertObjectInvalidResponse selects the invalidResponse branch: HubSpot applied or rejected the upsert but returned an invalid or oversized response.
+// UpsertObjectInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe.
 func UpsertObjectInvalidResponse(value hubspot.UpsertedObject, failure *sdkgo.Failure) connectormock.Case[hubspot.UpsertedObject] {
 	return connectormock.Branch(hubspot.UpsertObjectBranchInvalidResponse, value, failure)
 }
@@ -255,7 +255,7 @@ func UpdateObjectProviderRejected(value hubspot.CRMObject, failure *sdkgo.Failur
 	return connectormock.Branch(hubspot.UpdateObjectBranchProviderRejected, value, failure)
 }
 
-// UpdateObjectInvalidResponse selects the invalidResponse branch: HubSpot applied or rejected the update but returned an invalid or oversized response.
+// UpdateObjectInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because setting the same values again is safe.
 func UpdateObjectInvalidResponse(value hubspot.CRMObject, failure *sdkgo.Failure) connectormock.Case[hubspot.CRMObject] {
 	return connectormock.Branch(hubspot.UpdateObjectBranchInvalidResponse, value, failure)
 }
