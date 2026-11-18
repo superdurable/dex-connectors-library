@@ -5,6 +5,7 @@ import pg, { type Client as PgClient } from 'pg';
 import Cursor from 'pg-cursor';
 import { describe, expect, it, vi } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import { PostgreSQLClient } from '../src/client.js';
 
 const call = { id: '00000000-0000-4000-8000-000000000001', idempotencyKey: '00000000-0000-4000-8000-000000000001' } as Call;
@@ -308,9 +309,33 @@ describe('PostgreSQL executeNonIdempotent', () => {
     const seeded = { callId: fencedCall(context).id, attempt: 2, state: 'canResend', sendCount: 1 };
     context.marker = seeded;
     context.attempt = 3;
-    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    // A transient failure returns Retry; the attempt after it still treats the earlier send as possible.
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry' });
     expect(commitCount(lost.queries)).toBe(0);
     expect(context.marker).toBe(seeded);
+    context.attempt = 4;
+    lost.driver.connect.mockClear();
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(lost.driver.connect).not.toHaveBeenCalled();
+
+    const refused = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] }, { [balanceInput.statement]: serverError('23514') });
+    const refusedContext = new AttemptContext();
+    refusedContext.marker = seeded;
+    refusedContext.attempt = 3;
+    expect(await refused.client.executeNonIdempotent().invoke(fencedCall(refusedContext), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(commitCount(refused.queries)).toBe(0);
+    expect(refusedContext.marker).toBe(seeded);
+  });
+
+  it('returns Retry and records notSent when the credential broker is temporarily unavailable', async () => {
+    const { driver } = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] });
+    const unavailable = new PostgreSQLClient(configuration, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } }, { createDriver: () => driver as unknown as PgClient });
+    expect(await unavailable.query().invoke(call, { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(await unavailable.execute().invoke(call, balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    const context = new AttemptContext();
+    expect(await unavailable.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(context.marker?.state).toBe('notSent');
+    expect(driver.connect).not.toHaveBeenCalled();
   });
 
   it('selects uncertain after a lost Worker and retries an unreadable checkpoint without connecting', async () => {

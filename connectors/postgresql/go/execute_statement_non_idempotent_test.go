@@ -146,11 +146,60 @@ func TestExecuteStatementNonIdempotentNeverRecordsNotSentAfterAPossibleEarlierCo
 
 	dropping := &scriptedDatabase{shape: scriptedpostgresql.Shape{ParameterCount: 2}, execution: scriptedpostgresql.Execution{DropConnection: true}}
 	server, client := startScriptedDatabase(t, dropping, nil)
-	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
-	require.NoError(t, err)
-	require.Equal(t, postgresql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the earlier attempt counts as a possible COMMIT")
+	_, err = executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.ErrorAs(t, err, &retry, "a transient failure before COMMIT returns Retry also after a possible earlier COMMIT")
 	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventCommit))
 	require.Len(t, step.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible COMMIT")
+
+	step.AdvanceAttempt()
+	startups := len(server.EventsOfKind(scriptedpostgresql.EventStartup))
+	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, postgresql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the earlier attempt still counts as a possible COMMIT")
+	require.Len(t, server.EventsOfKind(scriptedpostgresql.EventStartup), startups, "the attempt after the Retry never connects")
+	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventCommit))
+}
+
+func TestExecuteStatementNonIdempotentSelectsUncertainForATerminalFailureAfterAPossibleEarlierCommit(t *testing.T) {
+	rejecting := &scriptedDatabase{shape: scriptedpostgresql.Shape{ParameterCount: 2}, execution: scriptedpostgresql.Execution{CommandTag: "UPDATE 1"}, commit: scriptedpostgresql.RejectCommitWithSerializationFailure}
+	_, client := startScriptedDatabase(t, rejecting, nil)
+	step := newFencedStep()
+	_, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	marker := lastMarker(t, step)
+	step.AdvanceAttempt()
+	require.NoError(t, step.SetPersistedCheckpoint(singledispatch.Marker{CallID: marker.CallID, Attempt: 2, State: singledispatch.StateCanResend, SendCount: 1}))
+	step.AdvanceAttempt()
+	heartbeatCount := len(step.Heartbeats())
+	violation := &scriptedDatabase{shape: scriptedpostgresql.Shape{ParameterCount: 2}, execution: scriptedpostgresql.Execution{Error: &scriptedpostgresql.ServerError{
+		Code: "23514", Message: "new row violates check constraint", ConstraintName: "balances_amount_check",
+	}}}
+	server, client := startScriptedDatabase(t, violation, nil)
+	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, postgresql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "a refusal cannot undo an earlier possible COMMIT")
+	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventCommit))
+	require.Len(t, step.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible COMMIT")
+}
+
+func TestExecuteStatementNonIdempotentRetriesAnUnavailableCredentialBroker(t *testing.T) {
+	database := &scriptedDatabase{shape: scriptedpostgresql.Shape{ParameterCount: 2}, execution: scriptedpostgresql.Execution{CommandTag: "UPDATE 1"}}
+	server, _ := startScriptedDatabase(t, database, nil)
+	client := newClientWithCredentials(t, server, unavailableBrokerCredentials{})
+	step := newFencedStep()
+	_, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Equal(t, singledispatch.StateNotSent, lastMarker(t, step).State, "the next attempt may send")
+	require.Empty(t, server.EventsOfKind(scriptedpostgresql.EventStartup))
+
+	withoutPassword := newClientWithCredentials(t, server, sdkgo.StaticCredentialProvider[postgresql.Credentials]{})
+	result, err := executeNonIdempotent(t, withoutPassword, newFencedStep(), addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, postgresql.ExecuteStatementNonIdempotentBranchDefect, result.Branch, "a missing password is terminal before any COMMIT")
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 }
 
 func TestExecuteStatementNonIdempotentSelectsUncertainAfterALostWorker(t *testing.T) {
