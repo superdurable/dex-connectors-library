@@ -82,6 +82,26 @@ async function runAttempts(send: (request: ProviderRequest) => Promise<{ status:
   return { results, context };
 }
 
+it.each([
+  ['{"kind":"youtube#playlistItem"}', 'dex:acceptedWithoutItemId'],
+  ['{"id":"UExpdGVt","snippet":7}', 'UExpdGVt'],
+])('saves the acceptance of %s before the listing that follows it', async (acceptedBody, expectedMarker) => {
+  const context = new HeartbeatContext(undefined, undefined, `youtube-${Math.random()}`);
+  let isInserted = false;
+  const markersSeenByListing: string[] = [];
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') {
+      if (isInserted) markersSeenByListing.push(JSON.stringify(context.marker));
+      return { status: 200, headers: {}, body: emptyListing };
+    }
+    isInserted = true;
+    return { status: 200, headers: {}, body: new TextEncoder().encode(acceptedBody) };
+  };
+  const { results } = await runAttempts(send, 1, undefined, context);
+  expect(results[0]!.kind).toBe('retry');
+  expect(markersSeenByListing[0]).toContain(`"providerId":"${expectedMarker}"`);
+});
+
 it('reads the playlist back before resending after a rate-limited resend', async () => {
   const methods: string[] = [];
   const statuses = [500, 429, 500];

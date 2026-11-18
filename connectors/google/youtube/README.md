@@ -69,10 +69,11 @@ this read-back.
 
 A 2xx insert response that is malformed, oversized, or breaks while its body is
 read, and a response of any other status whose body names an item ID, means
-YouTube accepted the insert, so it is never resent: the attempt lists the
-playlist and selects `added` when the video is shown. Otherwise it saves the
-item ID, or the acceptance itself, and later attempts only list the playlist
-until the send cap, where `uncertain` is selected.
+YouTube accepted the insert, so it is never resent: before listing, the attempt
+saves the item ID, or the acceptance itself, so an attempt that ends during the
+listing can never insert again. It then lists the playlist and selects `added`
+when the video is shown, saving the listed item ID; otherwise later attempts
+only list the playlist until the send cap, where `uncertain` is selected.
 
 Only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 whose body was read in
 full, or Google's `quotaExceeded` reason, is a definite refusal of the insert.

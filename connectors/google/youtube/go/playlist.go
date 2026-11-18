@@ -376,16 +376,20 @@ func failBeforeInsertOrSelectUncertain(hasPossibleEarlierSend bool, outcome prov
 // body. The insert is never resent: a saved item ID, or the saved acceptance itself, makes later
 // attempts list again up to the send cap; uncertain is selected here only when neither could be saved.
 func (operation AddPlaylistItemOperation) confirmAcceptedInsert(call sdkgo.Call, fence *singledispatch.Fence, listInput ListPlaylistItemsInput, query url.Values, acceptance sdkgo.Failure, acceptedItemID string) sdkgo.MutationAttempt[AddedPlaylistItem] {
-	existing, receipt, outcome := operation.client.listPlaylistItems(call, "addPlaylistItem", listInput, query, true)
-	if outcome == nil && len(existing.Items) > 0 {
-		receipt.ProviderObjectID = existing.Items[0].ID
-		return sdkgo.NewMutationBranch(AddPlaylistItemBranchAdded, AddedPlaylistItem{Item: existing.Items[0]}, nil, receipt)
-	}
 	savedID := acceptedItemID
 	if savedID == "" {
 		savedID = acceptedInsertWithoutItemID
 	}
-	if fence.RecordProviderID(savedID) == nil {
+	// Saved before the listing, so an attempt that ends during it can never insert again.
+	isAcceptanceSaved := fence.RecordProviderID(savedID) == nil
+	existing, receipt, outcome := operation.client.listPlaylistItems(call, "addPlaylistItem", listInput, query, true)
+	if outcome == nil && len(existing.Items) > 0 {
+		receipt.ProviderObjectID = existing.Items[0].ID
+		// The listed item is authoritative even if this extra checkpoint is lost.
+		_ = fence.RecordProviderID(existing.Items[0].ID)
+		return sdkgo.NewMutationBranch(AddPlaylistItemBranchAdded, AddedPlaylistItem{Item: existing.Items[0]}, nil, receipt)
+	}
+	if isAcceptanceSaved {
 		acceptance.Message += "; YouTube accepted the insert, so it is not sent again, and the playlist listing does not show it yet; the next attempt lists again"
 		return sdkgo.NewMutationRetry[AddedPlaylistItem](acceptance, 0)
 	}
