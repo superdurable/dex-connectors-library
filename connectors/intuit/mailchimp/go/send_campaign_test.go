@@ -193,9 +193,6 @@ func TestSendCampaignRetriesAnUnknownSendOutcomeAndReadsBeforeResending(t *testi
 			writeProblem(t, response, http.StatusRequestTimeout, "Request Timeout")
 		}, kind: sdkgo.FailureAvailability},
 		{name: "lost response", reply: func(response http.ResponseWriter) { dropConnection(t, response) }, kind: sdkgo.FailureTransport},
-		{name: "reflected key", reply: func(response http.ResponseWriter) {
-			writeJSON(t, response, http.StatusOK, `{"echo":"`+testAPIKey+`"}`)
-		}, kind: sdkgo.FailureProtocol},
 		{name: "conflict", reply: func(response http.ResponseWriter) { writeProblem(t, response, http.StatusConflict, "Conflict") },
 			kind: sdkgo.FailureConflict},
 		{name: "too early", reply: func(response http.ResponseWriter) { writeProblem(t, response, http.StatusTooEarly, "Too Early") },
@@ -234,6 +231,66 @@ func TestSendCampaignRetriesAnUnknownSendOutcomeAndReadsBeforeResending(t *testi
 	require.NoError(t, err)
 	require.Equal(t, mailchimp.SendCampaignBranchAlreadySent, result.Branch, "the read-back confirms the earlier send, so nothing is resent")
 	require.Equal(t, 1, provider.sendCount())
+}
+
+func TestSendCampaignSelectsSentForAnAccepted2xxWhoseBodyIsUnusable(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(http.ResponseWriter)
+	}{
+		{name: "reflected key", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"echo":"`+testAPIKey+`"}`)
+		}},
+		{name: "body broken after 2xx headers", reply: func(response http.ResponseWriter) {
+			response.Header().Set("Content-Length", "4096")
+			response.WriteHeader(http.StatusOK)
+			_, _ = response.Write([]byte(`{"partial":`)) // The declared length is never reached.
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newCampaignScript(t, "save", test.reply)
+			result, err := runSendCampaign(t, newMailchimpDexContext("send-accepted-"+test.name), provider.URL)
+			require.NoError(t, err)
+			require.Equal(t, mailchimp.SendCampaignBranchSent, result.Branch, "a 2xx accepted the send, so it is never resent")
+			require.Nil(t, result.Failure)
+			require.Equal(t, 1, provider.sendCount())
+		})
+	}
+}
+
+func TestSendCampaignKeepsTheEarlierSendCountWhenAReadFailsAfterAResendWasThrottled(t *testing.T) {
+	provider := newRecordingMailchimp(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch {
+		case index == 1:
+			writeProblem(t, response, http.StatusInternalServerError, "Internal Server Error")
+		case index == 3:
+			writeProblem(t, response, http.StatusTooManyRequests, "Too Many Requests")
+		case index == 4:
+			writeProblem(t, response, http.StatusServiceUnavailable, "Service Unavailable")
+		case request.Method == http.MethodGet:
+			writeJSON(t, response, http.StatusOK, campaignBody("save"))
+		default:
+			response.WriteHeader(http.StatusNoContent)
+		}
+	})
+	first := newMailchimpDexContext("send-throttled-resend")
+	_, err := runSendCampaign(t, first, provider.URL)
+	requireRetry(t, err)
+	second := first.nextAttempt()
+	_, err = runSendCampaign(t, second, provider.URL)
+	requireRetry(t, err)
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, second).State)
+	third := second.nextAttempt()
+	_, err = runSendCampaign(t, third, provider.URL)
+	requireRetry(t, err)
+	require.Empty(t, third.recordedHeartbeat, "notSent after a possible earlier send could hide it, so nothing is recorded")
+	fourth := third.nextAttempt()
+	// Dex keeps the last recorded heartbeat, the second attempt's canResend marker.
+	fourth.previousHeartbeat = second.recordedHeartbeat
+	result, err := runSendCampaign(t, fourth, provider.URL)
+	require.NoError(t, err)
+	require.Equal(t, mailchimp.SendCampaignBranchSent, result.Branch)
+	require.Equal(t, int32(3), recordedMarker(t, fourth).SendCount, "the unknown first send and the unmarked third attempt both count")
 }
 
 func TestSendCampaignSelectsUncertainOnlyAtTheSendCap(t *testing.T) {
