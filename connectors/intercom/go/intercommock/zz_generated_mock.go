@@ -268,7 +268,7 @@ func UpdateConversationStateProviderRejected(value intercom.UpdateConversationSt
 	return connectormock.Branch(intercom.UpdateConversationStateBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationStateInvalidResponse selects the invalidResponse branch: Intercom returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.
+// UpdateConversationStateInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid, oversized, or credential-reflecting conversation read before the change returns Retry, because the change is safe to repeat.
 func UpdateConversationStateInvalidResponse(value intercom.UpdateConversationStateOutput, failure *sdkgo.Failure) connectormock.Case[intercom.UpdateConversationStateOutput] {
 	return connectormock.Branch(intercom.UpdateConversationStateBranchInvalidResponse, value, failure)
 }

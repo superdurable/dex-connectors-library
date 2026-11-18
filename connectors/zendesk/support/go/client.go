@@ -147,6 +147,8 @@ type zendeskResponse struct {
 	hasOversizedBody bool
 	// hasTicketIdentity means a non-2xx body carries a ticket ID, which contradicts a refusal.
 	hasTicketIdentity bool
+	// hasCredentialEcho means a non-2xx body contains the API token, so it cannot prove a refusal.
+	hasCredentialEcho bool
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Zendesk request that each operation maps to a branch.
@@ -357,6 +359,8 @@ func (client *Client) buildRequest(ctx context.Context, credentials Credentials,
 func (client *Client) classifyFailureStatus(response zendeskResponse, credentials Credentials, operation string) zendeskExchange {
 	summary := describeZendeskError(response.body, credentials)
 	response.hasTicketIdentity = hasTicketIdentity(response.body)
+	apiToken := credentials.APIToken.Reveal()
+	response.hasCredentialEcho = apiToken != "" && bytes.Contains(response.body, []byte(apiToken))
 	response.body = nil
 	retryAfter := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 	switch status := response.statusCode; {

@@ -146,7 +146,7 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 		return sdkgo.NewMutationRetry[ReplyToConversationOutput](intercomFailure(sdkgo.FailureAvailability, replyToConversationOperation,
 			"the reply was not sent before the attempt deadline or checkpoint"), 0)
 	}
-	result := send.result.withOversizedRefusalAsUnknown(replyToConversationOperation)
+	result := send.result.withUntrustedRefusalAsUnknown(replyToConversationOperation)
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
 	if result.outcome != exchangeSucceeded && result.hasSuccessStatus() {
 		// An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.

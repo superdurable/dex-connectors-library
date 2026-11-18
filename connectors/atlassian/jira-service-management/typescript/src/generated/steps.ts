@@ -137,7 +137,7 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Jira returned an invalid or oversized issue. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

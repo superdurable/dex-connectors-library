@@ -640,6 +640,36 @@ func TestOversizedReplyRefusalIsAnUnknownOutcome(t *testing.T) {
 	require.Equal(t, "claimed", fenceState(t, dexContext))
 }
 
+func TestCredentialEchoingReplyRefusalResendsBelowTheCapAndIsUncertainAtTheCap(t *testing.T) {
+	provider := newRecordingIntercom(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, conversationJSON(t, testConversation, "open", nil))
+			return
+		}
+		writeJSON(t, response, http.StatusUnprocessableEntity, `{"type":"error.list","errors":[{"message":"`+testAccessToken+`"}]}`)
+	})
+	client := newIntercomClient(t, provider.URL)
+	dexContext := newTestDexContext("reply-echoing-refusal")
+	for attempt := 1; attempt <= 3; attempt++ {
+		_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d: a refusal that echoes the token may hide an applied reply", attempt)
+		require.NotContains(t, retry.Failure.Message, testAccessToken)
+		require.Equal(t, "claimed", fenceState(t, dexContext), "nothing records canResend")
+		dexContext.startNextAttempt()
+	}
+	result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), intercomConnection, validReplyInput())
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	posts := 0
+	for index := range provider.requestCount() {
+		if provider.request(index).method == http.MethodPost {
+			posts++
+		}
+	}
+	require.Equal(t, 3, posts)
+}
+
 func TestReplyValidatesInputBeforeAnyRequest(t *testing.T) {
 	provider := newRecordingIntercom(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request may be sent") })
 	client := newIntercomClient(t, provider.URL)

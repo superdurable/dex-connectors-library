@@ -603,7 +603,7 @@ var UpdateTicketDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTicketBranchUpdated, Description: "The request holds the requested labels and priority, written now or by an earlier attempt."},
 		{ID: UpdateTicketBranchNotFound, Description: "The issue does not exist or the connection cannot browse it.", Optional: true},
 		{ID: UpdateTicketBranchProviderRejected, Description: "Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission.", Optional: true},
-		{ID: UpdateTicketBranchInvalidResponse, Description: "Jira returned an invalid or oversized issue.", Optional: true},
+		{ID: UpdateTicketBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry.", Optional: true},
 		{ID: UpdateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

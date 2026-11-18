@@ -86,7 +86,7 @@ func (operation UpdateConversationStateOperation) Invoke(call sdkgo.Call, input 
 	}
 	result := operation.client.exchange(call, credentials, updateConversationStateOperation, intercomRequest{
 		method: http.MethodPost, path: conversationPath(input.ConversationID) + "/parts", payload: conversationStateRequest(input, snoozedUntil),
-	}).withOversizedRefusalAsUnknown(updateConversationStateOperation)
+	}).withUntrustedRefusalAsUnknown(updateConversationStateOperation)
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
 	switch {
 	case result.outcome == exchangeSucceeded:
@@ -121,20 +121,20 @@ func (operation UpdateConversationStateOperation) Invoke(call sdkgo.Call, input 
 func (operation UpdateConversationStateOperation) readCurrentState(
 	call sdkgo.Call, credentials Credentials, input UpdateConversationStateInput,
 ) (Conversation, sdkgo.MutationAttempt[UpdateConversationStateOutput], bool) {
-	result := operation.client.readConversation(call, credentials, updateConversationStateOperation, input.ConversationID)
+	result := operation.client.readConversation(call, credentials, updateConversationStateOperation, input.ConversationID).
+		withUntrustedRefusalAsUnknown(updateConversationStateOperation)
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
-	switch {
+	// Only a readable listed refusal selects a branch; any other unusable read returns Retry.
+	switch statusCode := result.response.statusCode; {
 	case result.outcome == exchangeSucceeded:
-	case result.isRetryableRead():
-		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationStateOutput](result.failure, result.retryAfter), true
-	case result.outcome == exchangeNotFound:
-		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchNotFound, UpdateConversationStateOutput{}, &result.failure, receipt), true
-	case result.outcome == exchangeInvalid:
-		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchInvalidResponse, UpdateConversationStateOutput{}, &result.failure, receipt), true
 	case result.outcome == exchangeDefect:
 		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchDefect, UpdateConversationStateOutput{}, &result.failure, receipt), true
-	default:
+	case result.outcome == exchangeNotFound && statusCode == http.StatusNotFound:
+		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchNotFound, UpdateConversationStateOutput{}, &result.failure, receipt), true
+	case result.outcome == exchangeRejected && isDefiniteRefusalStatus(statusCode):
 		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchProviderRejected, UpdateConversationStateOutput{}, &result.failure, receipt), true
+	default:
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationStateOutput](result.failure, result.retryAfter), true
 	}
 	wire, err := decodeConversationEnvelope(result.response.body, input.ConversationID)
 	var current Conversation
@@ -142,8 +142,9 @@ func (operation UpdateConversationStateOperation) readCurrentState(
 		current, err = decodeConversationWire(wire, false)
 	}
 	if err != nil {
-		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchInvalidResponse, UpdateConversationStateOutput{}, intercomFailurePointer(sdkgo.FailureProtocol, updateConversationStateOperation,
-			"Intercom returned an invalid conversation: "+err.Error()), receipt), true
+		// An unusable 2xx read before the change proves nothing, so the attempt repeats.
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationStateOutput](intercomFailure(sdkgo.FailureProtocol, updateConversationStateOperation,
+			"Intercom returned an invalid conversation: "+err.Error()), 0), true
 	}
 	return current, sdkgo.MutationAttempt[UpdateConversationStateOutput]{}, false
 }

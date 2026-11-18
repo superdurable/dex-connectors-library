@@ -606,6 +606,16 @@ _UNPROVEN_EARLIER_TRANSITION = (
 )
 
 
+def _has_possible_earlier_transition(decision: Decision) -> bool:
+    """Ignore prior_send_upper_bound: a cap-1 fence writes no send count.
+
+    SEND_ALLOWED at cap 1 already proves that no earlier send took effect.
+    """
+    return decision.kind != DecisionKind.SEND_ALLOWED or bool(
+        decision.marker and decision.marker.provider_id
+    )
+
+
 class _TransitionAttempt:
     """One attempt's fence and whether an earlier attempt may have transitioned the issue."""
 
@@ -720,7 +730,7 @@ class TransitionIssueOperation:
                     "Jira dispatch checkpoint is unreadable, so nothing was sent in this attempt",
                 )
             )
-        attempt = _TransitionAttempt(fence, _needs_read_back(decision))
+        attempt = _TransitionAttempt(fence, _has_possible_earlier_transition(decision))
         try:
             credentials, cloud_id = await self.client.session(call, "transitionIssue")
         except SessionError as error:

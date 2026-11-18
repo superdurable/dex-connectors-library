@@ -526,10 +526,6 @@ func TestCreateResponseRefusalThatProvesNothingResendsBelowTheCap(t *testing.T) 
 			response.WriteHeader(http.StatusBadRequest)
 			_, _ = response.Write([]byte(`{"error":`))
 		},
-		"names a response": func(response http.ResponseWriter, _ *http.Request) {
-			response.WriteHeader(http.StatusBadRequest)
-			_, _ = response.Write([]byte(`{"id":"resp_123","error":{"code":"x"}}`))
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			script, server := newProviderScript(t, reply, reply)
@@ -546,6 +542,49 @@ func TestCreateResponseRefusalThatProvesNothingResendsBelowTheCap(t *testing.T) 
 			require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
 		})
 	}
+}
+
+func replyStatusJSON(status int, body string) func(http.ResponseWriter, *http.Request) {
+	return func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(status)
+		_, _ = response.Write([]byte(body))
+	}
+}
+
+// An error answer that names a response means OpenAI created it, so it is read back and never resent.
+func TestCreateResponseErrorAnswerNamingAResponseIsReadBackAndNeverResent(t *testing.T) {
+	for _, status := range []int{http.StatusBadRequest, http.StatusTooManyRequests, http.StatusInternalServerError} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			script, server := newProviderScript(t,
+				replyStatusJSON(status, `{"id":"resp_named","error":{"code":"x"}}`),
+				replyJSON(`{"id":"resp_named","status":"completed"}`),
+			)
+			result, err := runCreateResponse(testsupport.NewDexContext("flow-1", fmt.Sprint("named-", status)), newClient(t, server.URL))
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+			require.Equal(t, "resp_named", result.Value.ID)
+			require.Equal(t, []string{http.MethodPost, http.MethodGet}, script.requestMethods())
+		})
+	}
+}
+
+// The named response's ID is checkpointed, so a later attempt reads it back instead of sending.
+func TestCreateResponseErrorAnswerNamingAResponseKeepsItsIDForLaterAttempts(t *testing.T) {
+	script, server := newProviderScript(t,
+		replyStatusJSON(http.StatusBadRequest, `{"id":"resp_named","error":{"code":"x"}}`),
+		replyStatus(http.StatusNotFound),
+		replyJSON(`{"id":"resp_named","status":"completed"}`),
+	)
+	client := newClient(t, server.URL)
+	ctx := testsupport.NewDexContext("flow-1", "named-kept")
+	result, err := runCreateResponse(ctx, client)
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "a read-back miss cannot confirm the named response")
+	ctx.AttemptNo = 2
+	result, err = runCreateResponse(ctx, client)
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchCompleted, result.Branch)
+	require.Equal(t, []string{http.MethodPost, http.MethodGet, http.MethodGet}, script.requestMethods(), "the create is never sent again")
 }
 
 // A later attempt treats a foreign checkpoint or an invalid saved ID as no checkpoint, never as a defect.

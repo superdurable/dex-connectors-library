@@ -17,7 +17,7 @@ operation-specific Dex Step factories:
 | `intercom.NewSearchConversationsStep` | Query | `searched` | `providerRejected`, `invalidResponse`, `defect` |
 | `intercom.NewGetConversationStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `intercom.NewReplyToConversationStep` | Mutation | `replied` | `notFound`, `providerRejected`, `uncertain`, `invalidResponse` (no longer selected), `defect` |
-| `intercom.NewUpdateConversationStateStep` | Mutation | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `intercom.NewUpdateConversationStateStep` | Mutation | `updated` | `notFound`, `providerRejected`, `invalidResponse` (no longer selected), `defect` |
 | `intercom.NewFindContactByEmailStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
@@ -214,7 +214,9 @@ default, per Step execution. An application lowers or raises the cap, from 1 to
 5. A definite refusal of a first send, 400, 401, 403, 404, 411, 413, 414, 415,
    or 422, selects `notFound` or `providerRejected`. After a possible earlier
    send the same answer selects `uncertain`, because that send may have
-   applied the reply.
+   applied the reply. A refusal whose body exceeds `maxResponseBytes` or
+   reflects the access token is not definite: it records nothing and retries,
+   and the next attempt reads back first, as after a lost answer.
 6. A token that is unusable, needs reauthorization, or belongs to a missing or
    unselected connection, or that the credential broker refuses, selects
    `defect` before any send, and `uncertain` after a possible earlier send.
@@ -242,10 +244,13 @@ The write sets one final state, so the manifest declares `repeatOnUnknown:
 safe`; it keeps async durability and has no `uncertain` branch. Every unknown
 write outcome retries, including a lost answer, a 3xx, 408, 409, 410, 5xx, or
 unlisted status, an invalid or oversized answer after the write, and a refusal
-whose body exceeds `maxResponseBytes`, and the retry reads first. A credential
-lookup that may succeed later also retries; an unusable token selects
-`defect`. `invalidResponse` covers only the read before the change,
-so the attempt changed nothing. Two attempts after a Worker loss can both
+whose body exceeds `maxResponseBytes` or reflects the access token, and the
+retry reads first. A credential lookup that may succeed later also retries; an
+unusable token selects `defect`. The read before the change follows one rule
+on every attempt: only a readable 400, 401, 403, 404, 411, 413, 414, 415, or
+422 selects its branch, and any other answer, such as a 3xx, 409, 410, an
+oversized, invalid, or credential-reflecting body, retries without writing.
+`invalidResponse` stays declared for compatibility but is no longer selected. Two attempts after a Worker loss can both
 write the same state if the first result is unknown. A close without a message
 sends the customer nothing, so the only trace is a second close event in the
 conversation. When Intercom definitely refuses a write with 400, 401, 403,
@@ -352,7 +357,7 @@ non-2xx answer, as their sections describe.
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed; writes retry |
 | 429 | Retry after `X-RateLimit-Reset`, at most one minute |
 | 408, 5xx, transport failure | Retry; `replyToConversation` reads back before resending |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; `replyToConversation` reads back, never resends, and selects `replied` or `uncertain` or retries the read; `updateConversationState` retries after the write |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`; `replyToConversation` reads back, never resends, and selects `replied` or `uncertain` or retries the read; `updateConversationState` retries before and after the write |
 | invalid input or unusable connection credentials | `defect`, with no request; after a possible reply send, `uncertain` |
 | any other credential failure, such as a broker outage | Retry for writes |
 

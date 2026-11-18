@@ -229,6 +229,40 @@ func TestTransitionTicketRateLimitAllowsTheNextAttemptToSend(t *testing.T) {
 	require.Equal(t, 2, provider.transitionPosts)
 }
 
+func TestTransitionTicketSendsOnTheThirdAttemptAfterTwoRateLimits(t *testing.T) {
+	provider := newWorkflowProvider(t, "1")
+	provider.postReply = unappliedReply(provider, http.StatusTooManyRequests)
+	input := jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"}
+	ctx := newTestDexContext("transition-two-rate-limits")
+	for range 2 {
+		_, err := runTransitionTicket(t, ctx, provider, input)
+		requireRetry(t, err, sdkgo.FailureRateLimit)
+		ctx = ctx.nextAttempt()
+	}
+	provider.postReply = nil
+	result, err := runTransitionTicket(t, ctx, provider, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.TransitionTicketBranchTransitioned, result.Branch)
+	require.Equal(t, 3, provider.transitionPosts, "Jira processed neither rate-limited send")
+}
+
+func TestTransitionTicketSendsOnTheThirdAttemptAfterTwoPreSendRetries(t *testing.T) {
+	provider := newWorkflowProvider(t, "1")
+	unavailable, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL}, unavailableCredentials{})
+	require.NoError(t, err)
+	input := jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"}
+	ctx := newTestDexContext("transition-two-pre-send-retries")
+	for range 2 {
+		_, err = sdkgo.RunMutation(ctx, unavailable.TransitionTicket(), jsmConnection, input)
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		ctx = ctx.nextAttempt()
+	}
+	result, err := runTransitionTicket(t, ctx, provider, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.TransitionTicketBranchTransitioned, result.Branch)
+	require.Equal(t, 1, provider.transitionPosts)
+}
+
 // unavailableCredentials fails every lookup, transiently or terminally.
 type unavailableCredentials struct{ isTerminal bool }
 

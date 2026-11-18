@@ -513,6 +513,51 @@ async def test_transition_rate_limit_allows_the_next_attempt_to_send() -> None:
 
 
 @pytest.mark.asyncio
+async def test_transition_sends_on_the_third_attempt_after_two_rate_limits() -> None:
+    requests: list[httpx.Request] = []
+    statuses = [(429, "{}"), (429, "{}"), (204, "")]
+
+    def answer(request: httpx.Request) -> tuple[int, str]:
+        if request.method == "GET":
+            return 200, IN_PROGRESS_ISSUE
+        return statuses.pop(0)
+
+    context = AttemptContext()
+    for attempt in (1, 2):
+        context.attempt = attempt
+        retried = await run("transitionIssue", answer, context, requests, transition=TRANSITION)
+        assert isinstance(retried, sdk.RetryError)
+    context.attempt = 3
+    result = await run("transitionIssue", answer, context, requests, transition=TRANSITION)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "transitioned"
+    assert posts(requests, "/transitions") == 3
+
+
+@pytest.mark.asyncio
+async def test_transition_sends_on_the_third_attempt_after_two_pre_send_retries() -> None:
+    requests: list[httpx.Request] = []
+    credentials = ScriptedCredentials()
+    credentials.mode = "transient"
+    answer = issue_then_post([IN_PROGRESS_ISSUE], (204, ""))
+    context = AttemptContext()
+    for attempt in (1, 2):
+        context.attempt = attempt
+        retried = await run(
+            "transitionIssue", answer, context, requests,
+            credential_provider=credentials, transition=TRANSITION,
+        )
+        assert isinstance(retried, sdk.RetryError)
+    credentials.mode = "ready"
+    context.attempt = 3
+    result = await run(
+        "transitionIssue", answer, context, requests,
+        credential_provider=credentials, transition=TRANSITION,
+    )
+    assert isinstance(result, sdk.MutationResult) and result.branch == "transitioned"
+    assert posts(requests, "/transitions") == 1
+
+
+@pytest.mark.asyncio
 async def test_transition_success_headers_then_the_write_deadline_cuts_the_body_is_transitioned() -> None:
     requests: list[httpx.Request] = []
     result = await run(

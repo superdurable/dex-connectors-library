@@ -297,6 +297,60 @@ async def test_update_refusal_with_an_incomplete_error_body_retries() -> None:
             )
 
 
+async def test_credential_echoing_refusal_resends_below_the_cap_and_is_uncertain_at_the_cap() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def respond(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(422, json={"message": "inert-access-token"})
+
+    for _attempt in range(2):
+        assert await run(respond, context, requests) == "retry"
+        assert context.marker is not None and context.marker.state == State.CLAIMED
+        context.advance()
+    assert branch_of(await run(respond, context, requests)) == "uncertain"
+    assert posts(requests) == 3
+
+
+async def test_update_write_refusal_that_echoes_the_access_token_retries() -> None:
+    conversation_body = {
+        "id": 501,
+        "number": 12,
+        "threads": 1,
+        "type": "email",
+        "status": "active",
+        "state": "published",
+        "subject": "Billing question",
+        "mailboxId": 123,
+        "tags": [],
+        "createdAt": "2026-09-29T22:46:22Z",
+    }
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return httpx.Response(200, json=conversation_body)
+        return httpx.Response(422, json={"message": "inert-access-token"})
+
+    source = sdk.StaticCredentialProvider(
+        {
+            CONNECTION: Credentials(
+                "app-id",
+                sdk.SecretString("app-secret"),
+                sdk.SecretString("inert-access-token"),
+                sdk.SecretString("webhook-secret"),
+            )
+        }
+    )
+    client = Client(Config(), source, httpx.AsyncClient(transport=httpx.MockTransport(respond)))
+    call = sdk.Call(
+        CALL_ID, CONNECTION, sdk.OperationRef("helpscout", "updateConversation"), context=AttemptContext()
+    )
+    with pytest.raises(sdk.RetryError):
+        await sdk.run_mutation(
+            client.update_conversation(), call, UpdateConversationInput(501, status="closed")
+        )
+
+
 async def test_refusal_that_names_a_thread_is_read_back_and_never_resent() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()

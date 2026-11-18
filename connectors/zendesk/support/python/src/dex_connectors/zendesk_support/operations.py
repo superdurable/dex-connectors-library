@@ -913,12 +913,13 @@ class _AcceptedTicketWrite:
 
 
 def _is_definite_refusal(exchange: Exchange) -> bool:
-    """Report a refusal status whose readable body carries no ticket, proving Zendesk applied nothing."""
+    """Report a refusal whose readable body carries no ticket and no API token, proving nothing applied."""
     return (
         exchange.outcome in ("rejected", "notFound")
         and exchange.status in _DEFINITE_REFUSAL_STATUSES
         and not exchange.has_oversized_body
         and not exchange.has_ticket_identity
+        and not exchange.has_credential_echo
     )
 
 

@@ -33,6 +33,7 @@ from .client import (
     SessionFailure,
     _strict_object,
     _string,
+    accepted_envelope_id,
     failure,
     is_guid,
 )
@@ -847,7 +848,25 @@ class CreateEnvelopeFromTemplateOperation:
                     dispatched,
                     sends,
                     failure(operation, FailureKind.PROTOCOL, message),
+                    accepted_envelope_id(response.body),
                 )
+        named_envelope_id = accepted_envelope_id(response.body)
+        if named_envelope_id:
+            # An error answer that names an envelope means DocuSign created it, so it is never sent again.
+            return await self._recover_accepted(
+                call,
+                session,
+                marker_value,
+                dispatched,
+                sends,
+                failure(
+                    operation,
+                    FailureKind.PROTOCOL,
+                    f"DocuSign answered the create request with HTTP {response.status} "
+                    "but named the envelope it created",
+                ),
+                named_envelope_id,
+            )
         outcome = self.client.classify(operation, response)
         if response.status == 503 or (outcome.retry and response.status < 500 and response.status != 408):
             # DocuSign answers a rate limit or 503 before it processes the request.
@@ -1056,21 +1075,71 @@ class CreateEnvelopeFromTemplateOperation:
         dispatched: _CreateDispatchCheckpoint,
         sends: "_CreateSendBudget",
         reason: Failure,
+        envelope_id: str = "",
     ) -> MutationAttempt[CreatedEnvelope]:
-        """Mark a 2xx create accepted, so no attempt sends it again, and read it back.
+        """Mark an accepted create, so no attempt sends it again, and read it back.
 
-        When the accepted marker could not be recorded, a later attempt could resend, so a miss
-        selects uncertain.
+        The read-back uses envelope_id when the answer named one, then the marker. When the
+        accepted marker could not be recorded, a later attempt could resend, so a miss selects
+        uncertain.
         """
         accepted = replace(dispatched, is_accepted=True)
         is_accepted_marker_recorded = call.context is not None and await _record_checkpoint(
             call.context, accepted
         )
+        if envelope_id:
+            found = await self._read_by_id(call, session, marker_value, envelope_id)
+            if found is not None:
+                return found
         recovered = await self._read_back(call, session, marker_value, "after", accepted)
         if recovered is not None:
             return recovered
         return self._read_back_later_or_uncertain(
             is_accepted_marker_recorded and sends.can_read_back_later, reason
+        )
+
+    async def _read_by_id(
+        self, call: Call, session: Session, marker_value: str, envelope_id: str
+    ) -> MutationAttempt[CreatedEnvelope] | None:
+        """Adopt the named envelope when it carries this Step's marker; anything else is inconclusive."""
+        context = call.context
+        timeout = 25.0
+        if context is not None and context.deadline is not None:
+            timeout = min(timeout, (context.deadline - datetime.now(UTC)).total_seconds() - 2)
+        if timeout < 2:
+            return None
+        try:
+            response = await self.client.request(
+                call,
+                session,
+                "GET",
+                "/envelopes/" + envelope_id,
+                {"include": "custom_fields"},
+                timeout=timeout,
+            )
+        except (BodyTooLargeError, ProviderTransportError):
+            return None
+        if response.status != 200:
+            return None
+        try:
+            envelope = _decode_envelope(response.body)
+        except ValueError:
+            return None
+        is_marked = any(
+            field.name == "dexIdempotencyKey" and field.value == marker_value
+            for field in envelope.custom_fields
+        )
+        if envelope.envelope_id != envelope_id or not is_marked:
+            return None
+        return MutationAttempt.branch_result(
+            "created",
+            CreatedEnvelope(
+                envelope.envelope_id,
+                status=envelope.status,
+                status_changed_at=envelope.status_changed_at,
+                was_recovered=True,
+            ),
+            self.client.receipt(envelope.envelope_id),
         )
 
 
@@ -1185,12 +1254,7 @@ def _is_definite_create_refusal(response: ProviderResponse) -> bool:
 
 def _has_envelope_id(body: bytes) -> bool:
     """Report a body whose envelopeId is a GUID, which means DocuSign created the envelope."""
-    try:
-        decoded = json.loads(body)
-    except (ValueError, UnicodeDecodeError):
-        return False
-    envelope_id = decoded.get("envelopeId") if isinstance(decoded, dict) else None
-    return isinstance(envelope_id, str) and is_guid(envelope_id)
+    return accepted_envelope_id(body) != ""
 
 
 def _create_body(input: CreateEnvelopeFromTemplateInput, marker_value: str) -> dict[str, Any]:

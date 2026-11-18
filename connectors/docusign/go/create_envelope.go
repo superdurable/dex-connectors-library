@@ -190,7 +190,7 @@ func (operation CreateEnvelopeFromTemplateOperation) Invoke(
 		}
 		return sdkgo.NewMutationBranch(CreateEnvelopeFromTemplateBranchDefect, CreatedEnvelope{}, docusignFailurePointer(createEnvelopeFromTemplateOperationID, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 	case err != nil && isAccepted:
-		return client.recoverAcceptedEnvelope(call, &session, marker, dispatched, sends,
+		return client.recoverAcceptedEnvelope(call, &session, marker, "", dispatched, sends,
 			docusignFailure(createEnvelopeFromTemplateOperationID, responseFailureKind(err), "DocuSign accepted the create request but its answer could not be read"))
 	case err != nil && !isDispatched.Load():
 		client.recordUnsentAttempt(call, checkpoint, hasCheckpoint, sends)
@@ -201,13 +201,17 @@ func (operation CreateEnvelopeFromTemplateOperation) Invoke(
 	case response.statusCode == http.StatusCreated || response.statusCode == http.StatusOK:
 		created, decodeErr := decodeCreatedEnvelope(response.body, input.IsDraft)
 		if decodeErr != nil {
-			return client.recoverAcceptedEnvelope(call, &session, marker, dispatched, sends,
+			return client.recoverAcceptedEnvelope(call, &session, marker, acceptedEnvelopeID(response.body), dispatched, sends,
 				docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureProtocol, "DocuSign accepted the create request but returned an unusable envelope summary"))
 		}
 		return sdkgo.NewMutationBranch(CreateEnvelopeFromTemplateBranchCreated, created, nil, client.receipt(created.EnvelopeID, ""))
 	case isAccepted:
-		return client.recoverAcceptedEnvelope(call, &session, marker, dispatched, sends,
+		return client.recoverAcceptedEnvelope(call, &session, marker, acceptedEnvelopeID(response.body), dispatched, sends,
 			docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureProtocol, fmt.Sprintf("DocuSign accepted the create request with HTTP %d instead of 201", response.statusCode)))
+	case hasEnvelopeID(response.body):
+		// An error answer that names an envelope means DocuSign created it, so it is never sent again.
+		return client.recoverAcceptedEnvelope(call, &session, marker, acceptedEnvelopeID(response.body), dispatched, sends,
+			docusignFailure(createEnvelopeFromTemplateOperationID, sdkgo.FailureProtocol, fmt.Sprintf("DocuSign answered the create request with HTTP %d but named the envelope it created", response.statusCode)))
 	}
 	outcome := client.classifyDocuSignFailure(createEnvelopeFromTemplateOperationID, response)
 	switch {
@@ -223,8 +227,8 @@ func (operation CreateEnvelopeFromTemplateOperation) Invoke(
 		client.recordUnsentAttempt(call, checkpoint, hasCheckpoint, sends)
 		return sdkgo.NewMutationBranch(CreateEnvelopeFromTemplateBranchProviderRejected, CreatedEnvelope{}, &outcome.failure, client.receipt("", outcome.errorCode))
 	default:
-		// A 3xx, 408, 409, other 4xx, 5xx, or a refusal with an incomplete or envelope-bearing body
-		// can follow a create DocuSign already applied.
+		// A 3xx, 408, 409, other 4xx, 5xx, or a refusal with an incomplete body can follow a
+		// create DocuSign already applied.
 		return client.recoverCreatedEnvelope(call, &session, marker, dispatched, sends, outcome.failure)
 	}
 }
@@ -292,14 +296,22 @@ func isDefiniteCreateRefusal(response docusignResponse) bool {
 
 // hasEnvelopeID reports a body whose envelopeId is a GUID, which means DocuSign created the envelope.
 func hasEnvelopeID(body []byte) bool {
+	return acceptedEnvelopeID(body) != ""
+}
+
+// acceptedEnvelopeID returns the lowercase envelopeId GUID a body names, or "" when it names none.
+func acceptedEnvelopeID(body []byte) string {
 	var decoded struct {
 		EnvelopeID any `json:"envelopeId"`
 	}
 	if json.Unmarshal(body, &decoded) != nil {
-		return false
+		return ""
 	}
 	envelopeID, isString := decoded.EnvelopeID.(string)
-	return isString && isDocuSignGUID(envelopeID)
+	if !isString || !isDocuSignGUID(envelopeID) {
+		return ""
+	}
+	return lowercaseGUID(envelopeID)
 }
 
 // reportSessionFailureAfterPossibleSend never claims nothing was created, since an earlier attempt may have
@@ -345,18 +357,50 @@ func (client *Client) recoverCreatedEnvelope(
 	return client.resendLaterOrSelectUncertain(sends.canResendLater(), unknownOutcome)
 }
 
-// recoverAcceptedEnvelope marks a 2xx create accepted, so no attempt sends it again, and reads it back.
-// When the accepted marker could not be recorded, a later attempt could resend, so a miss selects uncertain.
+// recoverAcceptedEnvelope marks an accepted create, so no attempt sends it again, and reads it back:
+// by envelopeID when the answer named one, otherwise by its marker. When the accepted marker could not
+// be recorded, a later attempt could resend, so a miss selects uncertain.
 func (client *Client) recoverAcceptedEnvelope(
-	call sdkgo.Call, session *docusignSession, marker string, checkpoint createDispatchCheckpoint,
+	call sdkgo.Call, session *docusignSession, marker string, envelopeID string, checkpoint createDispatchCheckpoint,
 	sends createSendBudget, unknownOutcome sdkgo.Failure,
 ) sdkgo.MutationAttempt[CreatedEnvelope] {
 	checkpoint.IsAccepted = true
 	isAcceptedMarkerRecorded := call.Context.RecordHeartbeat(checkpoint) == nil
+	if envelopeID != "" {
+		if attempt, isFound := client.findEnvelopeByID(call, session, marker, envelopeID); isFound {
+			return attempt
+		}
+	}
 	if attempt, isFound := client.findTaggedEnvelope(call, session, marker, checkpoint.DispatchedAt); isFound {
 		return attempt
 	}
 	return client.readBackLaterOrSelectUncertain(isAcceptedMarkerRecorded && sends.canReadBackLater(), unknownOutcome)
+}
+
+// findEnvelopeByID adopts the named envelope when it carries this Step's marker; any other result is inconclusive.
+func (client *Client) findEnvelopeByID(
+	call sdkgo.Call, session *docusignSession, marker string, envelopeID string,
+) (sdkgo.MutationAttempt[CreatedEnvelope], bool) {
+	timeout, canRead := recoveryRequestTimeout(call)
+	if !canRead {
+		return sdkgo.MutationAttempt[CreatedEnvelope]{}, false
+	}
+	response, err := client.sendAPIRequest(call, session, docusignRequest{
+		method: http.MethodGet, path: "/envelopes/" + url.PathEscape(envelopeID), query: url.Values{"include": {"custom_fields"}}, timeout: timeout,
+	}, nil)
+	if err != nil || response.statusCode != http.StatusOK {
+		return sdkgo.MutationAttempt[CreatedEnvelope]{}, false
+	}
+	envelope, err := decodeEnvelope(response.body)
+	if err != nil || envelope.EnvelopeID != envelopeID {
+		return sdkgo.MutationAttempt[CreatedEnvelope]{}, false
+	}
+	for _, field := range envelope.CustomFields {
+		if field.Name == idempotencyCustomFieldName && field.Value == marker {
+			return client.adoptRecoveredEnvelope(CreatedEnvelope{EnvelopeID: envelope.EnvelopeID, Status: envelope.Status, StatusChangedAt: envelope.StatusChangedAt}), true
+		}
+	}
+	return sdkgo.MutationAttempt[CreatedEnvelope]{}, false
 }
 
 // findTaggedEnvelope adopts exactly one tagged envelope, or selects uncertain for several; any

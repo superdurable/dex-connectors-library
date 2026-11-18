@@ -70,27 +70,37 @@ class Exchange:
     status: int = 0
     # is_body_oversized means the body exceeded max_response_bytes, so only its first bytes were kept.
     is_body_oversized: bool = False
+    # is_credential_echoed means a non-2xx body contained the access token, so it cannot be trusted.
+    is_credential_echoed: bool = False
 
     def has_success_status(self) -> bool:
         """Report a 2xx, which proves Intercom accepted a write even when its body is unusable."""
         return 200 <= self.status < 300
 
-    def with_oversized_refusal_as_unknown(self, operation: str) -> Exchange:
-        """Treat a refusal whose body was too large to inspect as an unknown write outcome."""
-        if not self.is_body_oversized or self.outcome not in ("rejected", "notFound"):
+    def with_untrusted_refusal_as_unknown(self, operation: str) -> Exchange:
+        """Treat a refusal whose body was too large to inspect, or echoed the token, as unknown."""
+        if self.outcome not in ("rejected", "notFound"):
+            return self
+        if self.is_body_oversized:
+            kind = FailureKind.RESPONSE_TOO_LARGE
+            reason = "a body larger than maxResponseBytes"
+        elif self.is_credential_echoed:
+            kind = FailureKind.PROTOCOL
+            reason = "a body that reflected the connection credential"
+        else:
             return self
         return Exchange(
             "unconfirmed",
             failure=Failure(
-                FailureKind.RESPONSE_TOO_LARGE,
+                kind,
                 "intercom",
                 operation,
-                f"Intercom answered HTTP {self.status} with a body larger than maxResponseBytes, "
-                "so the outcome is unknown",
+                f"Intercom answered HTTP {self.status} with {reason}, so the outcome is unknown",
             ),
             request_id=self.request_id,
             status=self.status,
-            is_body_oversized=True,
+            is_body_oversized=self.is_body_oversized,
+            is_credential_echoed=self.is_credential_echoed,
         )
 
 
@@ -345,6 +355,8 @@ class Client:
                 )
             return Exchange("succeeded", body=body, status=status)
         is_body_oversized = len(body) > self.max_response_bytes
+        access_token = credentials.access_token.reveal().encode()
+        is_credential_echoed = bool(access_token) and access_token in body
         body = body[: self.max_response_bytes]
         summary, request_id = _error_summary(body)
 
@@ -398,6 +410,7 @@ class Client:
                 request_id=request_id,
                 status=status,
                 is_body_oversized=is_body_oversized,
+                is_credential_echoed=is_credential_echoed,
             )
         if 300 <= status < 400:
             kind = FailureKind.PROTOCOL
@@ -422,6 +435,7 @@ class Client:
             request_id=request_id,
             status=status,
             is_body_oversized=is_body_oversized,
+            is_credential_echoed=is_credential_echoed,
         )
 
     async def read_conversation(

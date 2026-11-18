@@ -297,6 +297,11 @@ func (client *Client) classifyReplyExchange(
 		failure := outcome.failure
 		failure.Message += "; the error body could not be read in full, so the thread may exist"
 		return client.resendOrSelectUncertain(call, output, permit, failure, 0, receipt)
+	case isDefiniteRefusalStatus(status) && isCredentialEchoingBody(response.body, credentials.AccessToken.Reveal()):
+		// A refusal body that echoes the access token is untrustworthy, so the thread may exist.
+		failure := outcome.failure
+		failure.Message += "; the error body echoed the access token, so the thread may exist"
+		return client.resendOrSelectUncertain(call, output, permit, failure, 0, receipt)
 	case status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable:
 		_ = permit.fence.RecordCanResend() // A lost checkpoint leaves the claim, so the next attempt counts this send.
 		return sdkgo.NewMutationRetry[ConversationReply](outcome.failure, outcome.retryAfter)

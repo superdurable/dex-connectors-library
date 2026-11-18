@@ -185,6 +185,33 @@ describe('Help Scout fenced reply decisions', () => {
     expect(requests.filter(request => request.method !== 'GET')).toHaveLength(0);
   });
 
+  it.each(preWriteLookupRefusals)('retries a 404 on the read before the update whose body %s, without writing', async (_name, read) => {
+    const { client, requests } = newClient(async request => request.method === 'GET' ? read(request) : { status: 204, headers: {}, body: new Uint8Array() });
+    const call = { id: callId, connection: { provider: 'helpscout', name: 'helpscout-test' }, operation: UpdateConversationDefinition.operation, context: new AttemptContext() } as unknown as Call;
+    await expect(runMutation(client.updateConversation(), call, { conversationId: 501, status: 'closed' })).rejects.toBeInstanceOf(RetryError);
+    expect(requests.filter(request => request.method !== 'GET')).toHaveLength(0);
+  });
+
+  it('resends a credential-echoing refusal below the cap and selects uncertain at the cap', async () => {
+    const { client, requests } = newClient(async () => ({ status: 422, headers: {}, body: Buffer.from('{"message":"inert-access-token"}') }));
+    const context = new AttemptContext();
+    for (let attempt = 1; attempt < 3; attempt++) {
+      expect(await run(client, context)).toBe('retry');
+      expect(context.markerState()).toBe('claimed');
+      context.advance();
+    }
+    expect(branchOf(await run(client, context))).toBe('uncertain');
+    expect(posts(requests)).toBe(3);
+  });
+
+  it('retries an update whose write refusal echoes the access token', async () => {
+    const { client } = newClient(async request => request.method === 'GET'
+      ? { status: 200, headers: {}, body: Buffer.from(JSON.stringify(conversation)) }
+      : { status: 422, headers: {}, body: Buffer.from('{"message":"inert-access-token"}') });
+    const call = { id: callId, connection: { provider: 'helpscout', name: 'helpscout-test' }, operation: UpdateConversationDefinition.operation, context: new AttemptContext() } as unknown as Call;
+    await expect(runMutation(client.updateConversation(), call, { conversationId: 501, status: 'closed' })).rejects.toBeInstanceOf(RetryError);
+  });
+
   it('keeps a readable listed refusal on the read before the update definite', async () => {
     const { client } = newClient(async () => errorResponse(403));
     const call = { id: callId, connection: { provider: 'helpscout', name: 'helpscout-test' }, operation: UpdateConversationDefinition.operation, context: new AttemptContext() } as unknown as Call;
@@ -202,6 +229,31 @@ async function oversizedRefusal(request: ProviderRequest): Promise<ProviderRespo
   }
   return { status: 422, headers: {}, body: Buffer.concat(chunks) };
 }
+
+/** A 404 whose body streams past MaxErrorBodyBytes, truncated as the sender does when the request caps error bodies. */
+async function oversizedNotFound(request: ProviderRequest): Promise<ProviderResponse> {
+  const chunk = Buffer.alloc(16 << 10, 'a');
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (let index = 0; index < 8; index++) {
+    if (request.onResponseChunk?.(chunk, 404, {}) === false) break;
+    chunks.push(chunk); length += chunk.length;
+    if (request.maxErrorResponseBytes !== undefined && length >= request.maxErrorResponseBytes) break;
+  }
+  const body = Buffer.concat(chunks);
+  return { status: 404, headers: {}, body: request.maxErrorResponseBytes === undefined ? body : body.subarray(0, request.maxErrorResponseBytes) };
+}
+
+/** A 404 whose body breaks after the headers; the sender hides the break only when asked to. */
+async function brokenNotFound(request: ProviderRequest): Promise<ProviderResponse> {
+  if (request.ignoreErrorBodyReadFailure) return { status: 404, headers: {}, body: new Uint8Array() };
+  throw new ProviderTransportError(false, 404, {});
+}
+
+const preWriteLookupRefusals = [
+  ['streams past the error limit', oversizedNotFound],
+  ['breaks after the headers', brokenNotFound],
+] as const;
 
 const incompleteRefusals = [
   ['body streams past the error limit', oversizedRefusal],

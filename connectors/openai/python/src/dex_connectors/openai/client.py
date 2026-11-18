@@ -506,10 +506,15 @@ class CreateResponseOperation:
         try:
             request_id = response.headers.get("X-Request-Id", "")
             if not 200 <= response.status_code < 300:
-                is_definite_refusal = (
-                    response.status_code in _DEFINITE_REFUSAL_STATUSES
-                    and await _is_definite_refusal_body(response)
-                )
+                named_response_id, is_complete = await _read_create_error_body(response)
+                if named_response_id:
+                    # An error answer naming a response means OpenAI created it: read back, never resend.
+                    # A lost checkpoint leaves the claim, so a later attempt counts this send.
+                    await heartbeat.record_response_id(named_response_id)
+                    return await self._read_back_response(
+                        call, heartbeat, named_response_id, response.headers, request_id
+                    )
+                is_definite_refusal = response.status_code in _DEFINITE_REFUSAL_STATUSES and is_complete
                 return await _create_status_attempt(
                     call,
                     heartbeat,
@@ -852,18 +857,24 @@ def _resend_or_select_uncertain(
 _DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
 
 
-async def _is_definite_refusal_body(response: httpx.Response) -> bool:
-    """Report an error body read in full that names no response, so it proves a refusal."""
+async def _read_create_error_body(response: httpx.Response) -> tuple[str, bool]:
+    """Read a non-2xx create body.
+
+    Returns the response ID a complete body names, which means OpenAI created it, or "", and
+    whether the body was read in full within the error limit.
+    """
     try:
         data = await read_bounded_body(response, MAX_ERROR_BODY_BYTES)
     except (BodyTooLargeError, ProviderTransportError):
-        return False
+        return "", False
     try:
         document = json.loads(data)
     except (ValueError, UnicodeDecodeError):
-        return True
+        return "", True
     response_id = document.get("id") if isinstance(document, dict) else None
-    return not isinstance(response_id, str) or not is_safe_response_id(response_id)
+    if not isinstance(response_id, str) or not is_safe_response_id(response_id):
+        return "", True
+    return response_id, True
 
 
 async def _create_status_attempt(
@@ -901,8 +912,8 @@ async def _create_status_attempt(
             receipt,
         )
     if not is_definite_refusal:
-        # A 5xx other than 503, a 3xx, an unlisted 4xx, or a refusal with an incomplete or
-        # response-naming body can follow a stored response.
+        # A 5xx other than 503, a 3xx, an unlisted 4xx, or a refusal with an incomplete body can
+        # follow a stored response.
         return _resend_or_select_uncertain(sends, failure, receipt)
     # The refusal proves this send created nothing.
     await heartbeat.record_can_resend(sends.prior_send_upper_bound)

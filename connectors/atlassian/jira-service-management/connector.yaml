@@ -40,7 +40,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete Jira Service Management or Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createTicket or addComment selects uncertain."
+        description: "Maximum complete Jira Service Management or Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, except that updateTicket returns Retry, and an oversized response to an accepted createTicket or addComment selects uncertain."
         required: false
         default: 4194304
   auth:
@@ -312,7 +312,7 @@ spec:
         - {id: updated, goName: Updated, description: "The request holds the requested labels and priority, written now or by an earlier attempt."}
         - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

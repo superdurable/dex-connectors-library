@@ -471,6 +471,11 @@ function classifyWrite(operation: string, subject: string, exchange: JiraExchang
 /** Explains why a repeated attempt does not transition again. */
 const unprovenEarlierTransitionMessage = 'an earlier attempt may have transitioned the issue and its status does not prove the destination, so the transition is not sent again; set destinationStatusName so a retried Step recognizes it';
 
+/** Ignore `priorSendUpperBound`: a cap-1 fence writes no send count, so `sendAllowed` proves no earlier send. */
+function hasPossibleEarlierTransition(decision: Decision): boolean {
+  return decision.kind !== 'sendAllowed' || !!decision.marker?.providerId;
+}
+
 /** One attempt's fence and whether an earlier attempt may have transitioned the issue. */
 class TransitionAttempt {
   constructor(private readonly fence: Fence, readonly hasPossibleEarlierTransition: boolean) {}
@@ -517,7 +522,7 @@ export class TransitionIssueOperation implements Mutation<TransitionIssueInput, 
     const fence = newFence(call, TransitionIssueDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000);
     const decision = fence.decide();
     if (decision.kind === 'failClosed') return newMutationRetry(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira dispatch checkpoint is unreadable, so nothing was sent in this attempt'));
-    const attempt = new TransitionAttempt(fence, needsReadBack(decision));
+    const attempt = new TransitionAttempt(fence, hasPossibleEarlierTransition(decision));
     let session: JiraSession;
     try { session = await this.client.startSession(call, 'transitionIssue'); }
     catch (error) {

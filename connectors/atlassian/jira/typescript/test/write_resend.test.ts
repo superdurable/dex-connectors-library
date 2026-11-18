@@ -285,6 +285,34 @@ describe('Jira transition behind the single-dispatch fence', () => {
     expect(posts(requests, '/transitions')).toBe(2);
   });
 
+  it('sends on the third attempt after two rate limits', async () => {
+    const statuses = [429, 429, 204];
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgressIssue } : { status: statuses.shift()!, body: '' });
+    const context = new AttemptContext();
+    for (const attempt of [1, 2]) {
+      context.attempt = attempt;
+      expect(branchOf(await runTransition(client, context))).toBe('retry');
+    }
+    context.attempt = 3;
+    expect(branchOf(await runTransition(client, context))).toBe('transitioned');
+    expect(posts(requests, '/transitions')).toBe(3);
+  });
+
+  it('sends on the third attempt after two pre-send Retries', async () => {
+    let isReady = false;
+    const resolve = async () => { if (!isReady) throw new Error('credential broker unavailable'); return credentials; };
+    const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgressIssue } : { status: 204, body: '' }, { resolve, resolveWithRefresh: resolve });
+    const context = new AttemptContext();
+    for (const attempt of [1, 2]) {
+      context.attempt = attempt;
+      expect(branchOf(await runTransition(client, context))).toBe('retry');
+    }
+    isReady = true;
+    context.attempt = 3;
+    expect(branchOf(await runTransition(client, context))).toBe('transitioned');
+    expect(posts(requests, '/transitions')).toBe(1);
+  });
+
   it('is transitioned when the write deadline cuts a 2xx body', async () => {
     const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgressIssue } : { status: 200, body: stalledBody });
     expect(branchOf(await runTransition(client, new ShortWindowContext()))).toBe('transitioned');

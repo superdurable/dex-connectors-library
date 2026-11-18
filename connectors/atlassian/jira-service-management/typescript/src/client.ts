@@ -158,11 +158,12 @@ export class JiraServiceManagementClient {
     return this.classification('uncertain', operation, 'AVAILABILITY', `Jira Service Management ${subject} outcome is unknown after HTTP ${response.status}`, receipt);
   }
 
-  /** Classify an edit the next attempt rereads before repeating: only a definite refusal is terminal. */
+  /** Classify an edit, or the read before it, that the next attempt repeats: only a readable definite refusal is terminal. */
   repeatableWrite(call: Call, operation: string, subject: string, result: JiraResult, objectID = ''): Classification {
     const classification = this.read(call, operation, subject, result, objectID);
     const status = result.response?.status ?? 0;
-    if (classification.kind === 'invalidResponse' || (classification.kind === 'rejected' && !definiteWriteRefusalStatuses.has(status))) {
+    const isRefusal = classification.kind === 'rejected' || classification.kind === 'notFound';
+    if (classification.kind === 'invalidResponse' || (classification.kind === 'rejected' && !definiteWriteRefusalStatuses.has(status)) || (isRefusal && !isCompleteResponse(result))) {
       return this.classification('retry', operation, 'AVAILABILITY', `Jira Service Management ${subject} outcome is unknown after HTTP ${status}; the next attempt rereads the request first`, classification.receipt, result.response ? this.retryAfter(result.response) : 0);
     }
     return classification;

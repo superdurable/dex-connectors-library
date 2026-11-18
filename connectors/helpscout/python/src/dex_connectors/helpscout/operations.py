@@ -161,8 +161,8 @@ def _is_unknown_write_outcome(exchange: Exchange) -> bool:
     """Report an answer to a sent write that neither confirms nor definitely refuses it."""
     if exchange.error:
         return exchange.error in ("tooLarge", "malformed")
-    if exchange.is_error_body_incomplete:
-        # A refusal whose body was not read in full may hide an applied write.
+    if exchange.is_error_body_incomplete or _is_credential_echoing_body(exchange):
+        # A refusal whose body was not read in full, or that echoes the token, may hide an applied write.
         return True
     status = exchange.status
     # _mutation_exchange already retries 408, 429, and 5xx.
@@ -184,8 +184,16 @@ def _is_unknown_pre_write_read(exchange: Exchange) -> bool:
     status = exchange.status
     if 200 <= status < 300 or status == 301 or status in (408, 429) or status >= 500:
         return False
-    is_credential_echo = bool(exchange.token) and exchange.token.encode() in exchange.body
-    return status not in DEFINITE_REFUSAL_STATUSES or exchange.is_error_body_incomplete or is_credential_echo
+    return (
+        status not in DEFINITE_REFUSAL_STATUSES
+        or exchange.is_error_body_incomplete
+        or _is_credential_echoing_body(exchange)
+    )
+
+
+def _is_credential_echoing_body(exchange: Exchange) -> bool:
+    """Report a response body that contains the access token."""
+    return bool(exchange.token) and exchange.token.encode() in exchange.body
 
 
 def _credential_query(operation: str, error: str, value: Any) -> QueryAttempt[Any]:
@@ -959,6 +967,20 @@ class ReplyToConversationOperation:
                     failure,
                     message=failure.message
                     + "; the error body could not be read in full, so the thread may exist",
+                ),
+                0,
+                receipt,
+            )
+        if exchange.status in DEFINITE_REFUSAL_STATUSES and _is_credential_echoing_body(exchange):
+            # A refusal body that echoes the access token is untrustworthy, so the thread may exist.
+            return self._resend_or_uncertain(
+                call,
+                output,
+                can_resend,
+                replace(
+                    failure,
+                    message=failure.message
+                    + "; the error body echoed the access token, so the thread may exist",
                 ),
                 0,
                 receipt,

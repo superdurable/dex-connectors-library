@@ -149,7 +149,7 @@ export const UpdateTicketBranchUpdated = UpdateTicketBranch.Updated;
 export const UpdateTicketBranchNotFound = UpdateTicketBranch.NotFound;
 /** Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission. */
 export const UpdateTicketBranchProviderRejected = UpdateTicketBranch.ProviderRejected;
-/** Jira returned an invalid or oversized issue. */
+/** Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry. */
 export const UpdateTicketBranchInvalidResponse = UpdateTicketBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateTicketBranchDefect = UpdateTicketBranch.Defect;
@@ -160,7 +160,7 @@ export const UpdateTicketDefinition: MutationDefinition = {
     { id: "updated", description: "The request holds the requested labels and priority, written now or by an earlier attempt." },
     { id: "notFound", description: "The issue does not exist or the connection cannot browse it.", optional: true },
     { id: "providerRejected", description: "Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission.", optional: true },
-    { id: "invalidResponse", description: "Jira returned an invalid or oversized issue.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

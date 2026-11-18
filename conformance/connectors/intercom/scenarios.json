@@ -2032,22 +2032,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "conversation": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": "",
-            "isOpen": false,
-            "source": {
-              "author": {}
-            },
-            "state": "",
-            "updatedAt": "0001-01-01T00:00:00Z"
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2057,7 +2045,7 @@
         "conversationId": "2002",
         "state": "closed"
       },
-      "name": "updateConversationState-invalidResponse",
+      "name": "updateConversationState-invalidReadRetries",
       "operation": "updateConversationState"
     },
     {

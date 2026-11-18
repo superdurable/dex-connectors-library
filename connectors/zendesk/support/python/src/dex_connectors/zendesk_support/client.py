@@ -76,6 +76,8 @@ class Exchange:
     """A non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal."""
     has_ticket_identity: bool = False
     """A non-2xx body carries a ticket ID, which contradicts a refusal."""
+    has_credential_echo: bool = False
+    """A non-2xx body contains the API token, so it cannot prove a refusal."""
 
 
 def failure(kind: FailureKind, operation: str, message: str) -> Failure:
@@ -495,6 +497,8 @@ class Client:
         summary = _describe_error(body, credentials.api_token.reveal())
         suffix = f" [{summary}]" if summary else ""
         has_ticket_identity = _has_ticket_identity(body)
+        api_token = credentials.api_token.reveal().encode()
+        has_credential_echo = bool(api_token) and api_token in body
         retry_after = parse_retry_after(response.headers.get("Retry-After", ""), self.now())
         if status == 429:
             return Exchange(
@@ -529,6 +533,7 @@ class Client:
                 headers=response.headers,
                 has_oversized_body=has_oversized_body,
                 has_ticket_identity=has_ticket_identity,
+                has_credential_echo=has_credential_echo,
             )
         if 300 <= status < 400:
             return Exchange(
@@ -561,6 +566,7 @@ class Client:
             headers=response.headers,
             has_oversized_body=has_oversized_body,
             has_ticket_identity=has_ticket_identity,
+            has_credential_echo=has_credential_echo,
         )
 
     def receipt(self, call: Call, exchange: Exchange, ticket_id: int = 0) -> Receipt:
