@@ -16,6 +16,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go"
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go/internal/fakeexcel"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestAppendTableRowsAfterAnAmbiguousResponseFindsItsRowsInsteadOfResending(t *testing.T) {
@@ -277,6 +278,73 @@ func TestAppendTableRowsSelectsUncertainForATerminalCredentialFailureAfterAPossi
 	result, err = sdkgo.RunMutation(afterPossibleSend, client.AppendTableRows(), excelConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, excel.AppendTableRowsBranchUncertain, result.Branch)
+}
+
+func TestAppendTableRowsClassifiesEveryCredentialFailure(t *testing.T) {
+	cases := []struct {
+		name       string
+		err        error
+		isTerminal bool
+	}{
+		{name: "sdk reauthorization", err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), isTerminal: true},
+		{name: "project reauthorization", err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		{name: "object not found", err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		{name: "connection not selected", err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		{name: "broker unavailable", err: projectconfig.ErrCredentialBrokerUnavailable},
+		{name: "rejected credential not refreshed", err: projectconfig.ErrRejectedCredentialNotRefreshed},
+		{name: "static connection not configured", err: errors.New("connection is not configured")},
+		{name: "deadline", err: context.DeadlineExceeded},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := newRecordingServer(t, func(http.ResponseWriter, recordedRequest) { t.Fatal("no request is expected") })
+			client, err := excel.New(excel.Config{}, failingCredentialProvider{err: testCase.err}, excel.WithLocalProviderURL(server.URL))
+			require.NoError(t, err)
+			input := appendDecisionsInput(decisionRow("REQ-19", "approved", 190))
+			for _, attempt := range []int32{1, 2} {
+				dexContext := newDexContext("credential-class")
+				dexContext.attempt = attempt
+				result, err := sdkgo.RunMutation(dexContext, client.AppendTableRows(), excelConnection, input)
+				if !testCase.isTerminal {
+					requireRetry(t, err, sdkgo.FailureAuthentication)
+					continue
+				}
+				require.NoError(t, err)
+				if attempt == 1 {
+					require.Equal(t, excel.AppendTableRowsBranchDefect, result.Branch)
+				} else {
+					require.Equal(t, excel.AppendTableRowsBranchUncertain, result.Branch)
+				}
+			}
+			require.Empty(t, server.recorded())
+		})
+	}
+}
+
+func TestAppendTableRowsTreatsAnEmptyOrOversizedRefusalBodyAsUnknown(t *testing.T) {
+	for name, body := range map[string]string{"empty": "", "oversized": `{"error":{"code":"accessDenied","message":"` + strings.Repeat("x", 5<<20) + `"}}`} {
+		t.Run(name, func(t *testing.T) {
+			server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+				switch {
+				case request.method == http.MethodPost:
+					response.WriteHeader(http.StatusForbidden)
+					_, _ = response.Write([]byte(body))
+				case strings.HasSuffix(request.path, "/columns"):
+					writeJSON(t, response, http.StatusOK, `{"value":[{"id":"1","index":0,"name":"RequestId"}]}`)
+				default:
+					writeJSON(t, response, http.StatusOK, `{"rowCount":1,"columnCount":1,"values":[[""]]}`)
+				}
+			})
+			client := newExcelClient(t, server.URL)
+			input := appendDecisionsInput(map[string]excel.CellValue{"RequestId": excel.TextCellValue("REQ-20")})
+			ctx := newDexContext("refusal-" + name)
+			_, err := sdkgo.RunMutation(ctx, client.AppendTableRows(), excelConnection, input)
+			requireRetry(t, err, sdkgo.FailureAuthorization)
+			requireMarkerState(t, ctx.recordedHeartbeat, "claimed")
+			require.Len(t, server.recorded(), 3, "two reads and one append")
+		})
+	}
 }
 
 func requireMarkerState(t *testing.T, heartbeat json.RawMessage, state string) {

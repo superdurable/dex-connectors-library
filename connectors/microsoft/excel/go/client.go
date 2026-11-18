@@ -40,6 +40,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -278,17 +279,24 @@ func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (Cr
 	return credential, nil
 }
 
-// resolveWriteCredential is resolveCredential for a write, which retries a credential outage that
-// needs no reauthorization. isRetryable reports such an outage.
+// resolveWriteCredential is resolveCredential for a write, which retries every credential failure
+// isTerminalCredentialError does not name. isRetryable reports such a failure.
 func (client *Client) resolveWriteCredential(call sdkgo.Call, operationID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil && !sdkgo.IsReauthorizationRequired(err) {
+	if err != nil && !isTerminalCredentialError(err) {
 		return Credentials{}, excelFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are temporarily unavailable"), true
 	}
 	if err != nil || validateResolvedCredentials(credential) != nil {
 		return Credentials{}, excelFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable"), false
 	}
 	return credential, nil, false
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // sendRead performs one idempotent Graph read and classifies every non-2xx or unreadable response.

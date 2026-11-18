@@ -36,6 +36,10 @@ if TYPE_CHECKING:
         UpdateValuesOperation,
     )
 
+class InvalidCredentialMaterialError(ValueError):
+    """Resolved credential material fails the local checks a Graph request needs."""
+
+
 _GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 _GUID = re.compile(r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$")
 _PATH_SAFE = "-._~$&+=:@"
@@ -167,7 +171,7 @@ class Client:
             or credential.access_token is None
             or not is_header_safe_credential(credential.access_token.reveal())
         ):
-            raise ValueError("connection credentials are unavailable")
+            raise InvalidCredentialMaterialError("connection credentials are unavailable")
         return credential
 
     async def request(

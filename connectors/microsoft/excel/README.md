@@ -177,8 +177,8 @@ Step after Worker loss or before an async result is committed.
 `updateValues` writes absolute values and declares `repeatOnUnknown: safe`, so
 a repeated dispatch writes the same content again and the range ends the same.
 Only 400, 401, 403, 404, 411, 413, 414, 415, and 422 select a rejection branch;
-every other status, every transport failure, and a credential outage that
-needs no reauthorization retry. A dispatch that answers late can
+every other status, every transport failure, and every credential failure
+that is not terminal, as `appendTableRows` below defines it, retry. A dispatch that answers late can
 still land after a later Step's write, so write one range from one Step per
 Flow, or read it back first, as the example does.
 
@@ -203,12 +203,17 @@ first append is still queued. So the operation:
 - selects `appended` for any 2xx status, even when the response body then
   fails to arrive, so an accepted append is never resent;
 - retries 429 and 503 after recording that Excel appended nothing;
-- retries a credential outage that needs no reauthorization, before any
-  request; a connection that must be reauthorized selects `defect` on a first
-  send and `uncertain` after an earlier unconfirmed send;
+- retries every credential failure before any request, including a broker
+  outage and an unconfigured static connection, except a terminal one:
+  reauthorization required, a missing or unselected connection, a broker
+  refusal, or credential material that fails local checks. A terminal one
+  selects `defect` on a first send and `uncertain` after an earlier
+  unconfirmed send;
 - selects `notFound` or `providerRejected` only for a first send refused with
-  400, 401, 403, 404, 411, 413, 414, 415, or 422, and `uncertain` when such a
-  refusal follows an earlier unconfirmed send.
+  400, 401, 403, 404, 411, 413, 414, 415, or 422 and a non-empty body that
+  fits the response limit, and `uncertain` when such a refusal follows an
+  earlier unconfirmed send. A refusal whose body is empty or oversized is
+  unknown.
 
 Microsoft's guide says to repeat an append that answered 504. The connector
 reads the key column first, so a 504 whose append landed converges to

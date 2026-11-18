@@ -24,6 +24,11 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import parse_retry_after
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
@@ -43,6 +48,7 @@ from .client import (
     Client,
     GraphResponse,
     GraphTransportError,
+    InvalidCredentialMaterialError,
     compact_json,
     path_escape,
     range_url,
@@ -99,11 +105,25 @@ def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
 
 def _write_credential_failure(operation: str, error: Exception) -> tuple[Failure, bool]:
     """Describe a write's credential failure and report whether it can clear without reauthorization."""
-    if isinstance(error, (ReauthorizationRequiredError, ValueError)):
+    if _is_terminal_credential_error(error):
         message, is_retryable = "connection credentials are unavailable", False
     else:
         message, is_retryable = "connection credentials are temporarily unavailable", True
     return _failure(operation, FailureKind.AUTHENTICATION, message), is_retryable
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+            InvalidCredentialMaterialError,
+        ),
+    )
 
 
 def _receipt(client: Client, call: Call, response: GraphResponse | None = None) -> Receipt:
@@ -763,8 +783,11 @@ class UpdateValuesOperation:
 
 
 def _is_definite_append_refusal(response: GraphResponse) -> bool:
-    """Report a refusal status whose body carries no appended table row."""
-    if response.status not in _DEFINITE_REFUSAL_STATUSES:
+    """Report a refusal status whose body carries no appended table row.
+
+    An empty body, including an oversized one the client drops, proves nothing.
+    """
+    if response.status not in _DEFINITE_REFUSAL_STATUSES or not response.body:
         return False
     try:
         document: Any = json.loads(response.body)

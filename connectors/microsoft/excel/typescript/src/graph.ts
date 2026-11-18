@@ -3,8 +3,15 @@
 
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { OAuthAuthMethodID } from './models.js';
+
+/** Report a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 
 /** Injectable HTTP sender used by local replay tests. */
 export type ExcelTransport = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -87,14 +94,15 @@ export class GraphClient {
   }
 
   /**
-   * Resolve current credentials outside the Flow state. Throws ReauthorizationRequiredError when the
-   * connection must be reauthorized, and a TypeError for an outage that a later attempt may clear.
+   * Resolve current credentials outside the Flow state. Throws ReauthorizationRequiredError for a
+   * terminal credential failure or invalid material, and a TypeError for every other failure, which
+   * a later attempt may clear.
    */
   async credentials(call: Call): Promise<Credentials> {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); }
     catch (error) {
-      if (error instanceof ReauthorizationRequiredError) throw new ReauthorizationRequiredError();
+      if (isTerminalCredentialError(error)) throw new ReauthorizationRequiredError();
       throw new TypeError('connection credentials are temporarily unavailable');
     }
     if (credentials.authMethodId !== OAuthAuthMethodID || !isHeaderSafeCredential(credentials.accessToken.reveal())) throw new ReauthorizationRequiredError();
