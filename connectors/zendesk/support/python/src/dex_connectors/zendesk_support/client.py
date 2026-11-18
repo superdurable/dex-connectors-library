@@ -399,10 +399,13 @@ class Client:
         payload: dict[str, Any] | None = None,
         idempotency_key: str = "",
         fenced: bool = False,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
         """Send and classify one Zendesk request without choosing its branch.
 
-        A fenced write reports a provably unsent request as ``notSent``.
+        A fenced write reports a provably unsent request as ``notSent``. on_response_status
+        receives the HTTP status when the headers arrive, before the body is read, so a caller
+        whose write window ends during the body still knows whether Zendesk accepted the write.
         """
         basic = base64.b64encode(
             f"{credentials.email}/token:{credentials.api_token.reveal()}".encode()
@@ -444,6 +447,8 @@ class Client:
                 "retry",
                 failure(FailureKind.TRANSPORT, operation, "Zendesk request failed before a response arrived"),
             )
+        if on_response_status is not None:
+            on_response_status(response.status_code)
         has_oversized_body = False
         try:
             body = await read_bounded_body(response, self.max_response_bytes)

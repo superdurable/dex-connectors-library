@@ -21,19 +21,16 @@ type ticketWritePermit struct {
 	isAtSendCap bool
 	// hasAcceptedWrite means an earlier attempt saved the ticket ID after Zendesk accepted its PUT.
 	hasAcceptedWrite bool
-	// canResendUnknownOutcome means this attempt's send leaves room under the cap for one more.
-	canResendUnknownOutcome bool
 }
 
-func newTicketWritePermit(call sdkgo.Call, fence *singledispatch.Fence, decision singledispatch.Decision) ticketWritePermit {
+func newTicketWritePermit(fence *singledispatch.Fence, decision singledispatch.Decision) ticketWritePermit {
 	hasAcceptedWrite := decision.Marker.ProviderID != ""
 	return ticketWritePermit{
 		fence: fence,
 		// SendAllowed after a canResend marker can still carry earlier possible sends.
-		isFirstSend:             decision.Kind == singledispatch.SendAllowed && decision.MaximumPriorSends == 0 && !hasAcceptedWrite,
-		isAtSendCap:             decision.Kind == singledispatch.ReadBackRequired,
-		hasAcceptedWrite:        hasAcceptedWrite,
-		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
+		isFirstSend:      decision.Kind == singledispatch.SendAllowed && decision.MaximumPriorSends == 0 && !hasAcceptedWrite,
+		isAtSendCap:      decision.Kind == singledispatch.ReadBackRequired,
+		hasAcceptedWrite: hasAcceptedWrite,
 	}
 }
 
@@ -126,7 +123,7 @@ func (permit ticketWritePermit) writeAttempt(result zendeskExchange, receipt sdk
 	}
 	// A 3xx, 408, 409, 410, other 5xx, unlisted status, lost answer, oversized error body, or error body
 	// carrying a ticket may follow an applied write.
-	return permit.resendOrSelectUncertain(value, result.failure, result.retryAfter, receipt)
+	return retryUnknownWriteOutcome(result.failure, result.retryAfter)
 }
 
 // rejectWrite selects a refusal branch only when no earlier send of this call may have applied.
@@ -140,13 +137,11 @@ func (permit ticketWritePermit) rejectWrite(result zendeskExchange, receipt sdkg
 	return updateTicketBranchForExchange(result, receipt, value)
 }
 
-// resendOrSelectUncertain retries an unknown write outcome while the send cap allows another send.
-func (permit ticketWritePermit) resendOrSelectUncertain(value UpdateTicketOutput, failure sdkgo.Failure, retryAfter time.Duration, receipt sdkgo.Receipt) sdkgo.MutationAttempt[UpdateTicketOutput] {
-	if permit.canResendUnknownOutcome {
-		// The claim stays the last marker, so the next attempt reads back before it resends.
-		return sdkgo.NewMutationRetry[UpdateTicketOutput](failure, retryAfter)
-	}
-	return sdkgo.NewMutationUncertain(value, failure, receipt)
+// retryUnknownWriteOutcome retries an unknown write outcome, also after the last allowed send. The claim
+// stays the last marker, so the next attempt reads the audit back; it resends only below the cap and
+// selects uncertain at the cap.
+func retryUnknownWriteOutcome(failure sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[UpdateTicketOutput] {
+	return sdkgo.NewMutationRetry[UpdateTicketOutput](failure, retryAfter)
 }
 
 // isDefiniteRefusal reports a refusal status whose readable body carries no ticket, which proves Zendesk applied nothing.

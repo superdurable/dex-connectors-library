@@ -85,8 +85,8 @@ func (UpdateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ UpdateTicketI
 // Invoke fences the write and, on every attempt, reads the ticket and looks for an audit carrying
 // this call's key when a comment or expectedUpdatedAt makes a repeat observable. It writes only
 // fields that differ, as a Zendesk safe update against the updated_at it read. An unknown write
-// outcome, including a 409, returns Retry while the send cap allows another send, so the next
-// attempt reads back before it resends; at the cap an unconfirmed write selects uncertain. A 2xx
+// outcome, including a 409, returns Retry, also on the last allowed send, so the next attempt reads
+// back first: below the cap it resends an unconfirmed write, and at the cap it selects uncertain. A 2xx
 // is accepted and never resent: an unusable 2xx saves the ticket ID and reads the change back, and
 // every later attempt only reads back, selecting updated when it confirms the change and uncertain
 // when it cannot.
@@ -107,7 +107,7 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 		return sdkgo.NewMutationRetry[UpdateTicketOutput](zendeskFailure(sdkgo.FailureAvailability, updateTicketOperation,
 			"the single-dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
 	}
-	permit := newTicketWritePermit(call, fence, decision)
+	permit := newTicketWritePermit(fence, decision)
 	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, updateTicketOperation)
 	if failure != nil {
 		return permit.credentialFailureAttempt(*failure, isTerminal)
