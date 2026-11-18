@@ -31,14 +31,12 @@ from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
-    MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
     ProviderTransportError,
     is_header_safe_credential,
     new_provider_http_client,
     parse_retry_after,
     read_bounded_body,
-    read_error_tokens,
     send_traced,
     validate_base_url,
 )
@@ -136,14 +134,9 @@ class Client:
         """Send one request, or return the defect message when it cannot be built."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (
-            ReauthorizationRequiredError,
-            ObjectNotFoundError,
-            ConnectionNotSelectedError,
-            CredentialBrokerRejectedError,
-        ):
-            return "connection credentials are unavailable"
-        except Exception:
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return "connection credentials are unavailable"
             return _CREDENTIALS_TEMPORARILY_UNAVAILABLE
         try:
             key = credentials.api_key.reveal()
@@ -231,21 +224,14 @@ class SendEmailOperation:
                 return MutationAttempt.retry(
                     _failure(operation, kind, _retry_message(status)), _retry_after_seconds(response)
                 )
-            if status == 409:
-                try:
-                    conflict = await read_bounded_body(response, MAX_ERROR_BODY_BYTES)
-                except (BodyTooLargeError, ProviderTransportError):
-                    conflict = b""
-                if read_error_tokens(conflict, ("/name",)) == ("invalid_idempotent_request",):
-                    return _mutation_branch(
-                        operation,
-                        PROVIDER_REJECTED,
-                        empty,
-                        FailureKind.PROVIDER_REJECTION,
-                        "idempotency key was used for a different request",
-                    )
+            if status not in (200, 201, 202) and status not in _DEFINITE_REFUSAL_STATUSES:
+                # The Idempotency-Key makes a resend replay the first send, so an unknown answer retries.
                 return MutationAttempt.retry(
-                    _failure(operation, FailureKind.AVAILABILITY, "provider is processing the same request")
+                    _failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        f"provider answered HTTP {status}, so the outcome is unknown",
+                    )
                 )
             if status not in (200, 201, 202):
                 return _mutation_branch(
@@ -261,18 +247,12 @@ class SendEmailOperation:
                     return MutationAttempt.retry(
                         _failure(operation, content, "provider response was interrupted")
                     )
-                return _mutation_branch(
-                    operation, INVALID_RESPONSE, empty, content, _invalid_message(content)
-                )
+                return MutationAttempt.retry(_failure(operation, content, _invalid_message(content)))
             try:
                 sent = SentEmail(_required_string(_decode_object(content), "id"))
             except (ValueError, TypeError, UnicodeDecodeError):
-                return _mutation_branch(
-                    operation,
-                    INVALID_RESPONSE,
-                    empty,
-                    FailureKind.PROTOCOL,
-                    _invalid_message(FailureKind.PROTOCOL),
+                return MutationAttempt.retry(
+                    _failure(operation, FailureKind.PROTOCOL, _invalid_message(FailureKind.PROTOCOL))
                 )
             return MutationAttempt.branch_result(SENT, sent, Receipt())
         finally:
@@ -371,6 +351,25 @@ def _invalid_message(kind: FailureKind) -> str:
     if kind == FailureKind.RESPONSE_TOO_LARGE:
         return "provider response exceeded the configured limit"
     return "provider response is incomplete or malformed"
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure no later attempt clears; every other resolve error is transient."""
+    # Imported here because the generated connection module imports this client.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:

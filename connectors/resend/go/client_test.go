@@ -68,6 +68,36 @@ func TestSendEmailHTTPAndFailure(t *testing.T) {
 	require.NotNil(t, rejected.Failure)
 }
 
+func TestSendEmailRetriesUnknownAnswers(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		status     int
+		body       string
+		isRejected bool
+	}{
+		"invalid idempotent request": {status: http.StatusConflict, body: `{"name":"invalid_idempotent_request"}`},
+		"unlisted":                   {status: http.StatusTooEarly, body: `{}`},
+		"redirect":                   {status: http.StatusFound},
+		"missing id":                 {status: http.StatusOK, body: `{}`},
+		"definite 422":               {status: http.StatusUnprocessableEntity, body: `{"name":"validation_error"}`, isRejected: true},
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+			writer.WriteHeader(testCase.status)
+			_, _ = io.WriteString(writer, testCase.body)
+		}))
+		client, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIKey: sdkgo.NewSecretString("test-secret-token")}})
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(providerTestContext{}, client.SendEmail(), testConnection, SendEmailInput{From: "Acme <hello@example.test>", To: []string{"reader@example.test"}, Subject: "Welcome", HTML: "<p>Hello</p>"})
+		server.Close()
+		if testCase.isRejected {
+			require.NoError(t, err, name)
+			require.Equal(t, SendEmailBranchProviderRejected, result.Branch, name)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, name)
+	}
+}
+
 func TestGetEmailHTTPAndFailure(t *testing.T) {
 	reject := false
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {

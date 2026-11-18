@@ -1,11 +1,11 @@
 # Resend connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/resend/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/resend/go@v0.2.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/resend`.
 
 This Dex connector calls the public Resend JSON API. Its
-manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.2.1`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.26.0` or newer. The runnable
 [`welcome-email` example](go/examples/welcome-email/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
@@ -27,7 +27,7 @@ unverified.
 | `sendEmail` | mutation | SentEmail |
 | `getEmail` | query | Email |
 
-`sendEmail` sends the stable Dex call idempotency key in `Idempotency-Key`. Resend documents 24-hour key retention; the connector's default one-hour retry budget stays within that window. Keep any per-Step retry override shorter than 24 hours. A 409 `concurrent_idempotent_requests` retries with the same key, while `invalid_idempotent_request` selects `providerRejected`.
+`sendEmail` sends the stable Dex call idempotency key in `Idempotency-Key`. Resend documents 24-hour key retention; the connector's default one-hour retry budget stays within that window. Keep any per-Step retry override shorter than 24 hours. The manifest therefore declares `sendEmail` `repeatOnUnknown: safe`. Every 409 retries with the same key, including `invalid_idempotent_request`, because the conflict cannot prove that no email was sent; only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 selects `providerRejected`, and any other status or a malformed or oversized answer retries.
 
 ## Authorization
 
@@ -46,9 +46,10 @@ defaults; override the base URL only for a compatible gateway or test server.
 | --- | --- |
 | Successful documented response | operation's happy branch |
 | Known missing resource on a detail operation | `notFound` |
-| Other definite 4xx rejection | `providerRejected` |
-| Malformed or oversized successful JSON | `invalidResponse` |
-| Invalid local input or credentials, or a connection that needs reauthorization, is missing or no longer selected, or that the credential broker refused | `defect` |
+| Other definite 4xx rejection; for `sendEmail` only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 | `providerRejected` |
+| Malformed or oversized successful JSON from `getEmail` | `invalidResponse` |
+| Any other `sendEmail` status, including every 409, or a malformed or oversized `sendEmail` answer | Retry with the same Idempotency-Key |
+| Invalid local input or credentials, malformed stored credential material, or a connection that needs reauthorization, is missing or no longer selected, or that the credential broker refused | `defect` |
 | HTTP 408, 429, 5xx, transport interruption, or any other credential lookup failure, such as an unavailable broker or a connection that is not configured yet | Retry until the default budget ends, then Flow failure |
 
 Every non-happy branch is optional. The example wires only the happy branch;

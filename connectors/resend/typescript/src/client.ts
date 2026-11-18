@@ -5,7 +5,7 @@ import { BodyTooLargeError, isHeaderSafeCredential, sendProviderRequest, validat
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { GetEmailOperation, SendEmailOperation } from './operations.js';
 
 const publicEndpoint = 'https://api.resend.com';
@@ -94,5 +94,5 @@ export class ResendClient {
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
     || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
-    || error instanceof z.ZodError;
+    || error instanceof z.ZodError || isCredentialMaterialError(error);
 }

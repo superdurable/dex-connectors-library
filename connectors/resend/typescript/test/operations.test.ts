@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ResendClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const call = { id: 'test-call', idempotencyKey: 'test-call', context: {} } as Call;
 const emailInput = { from: 'Acme <hello@example.test>', to: ['reader@example.test'], subject: 'Welcome', html: '<p>Hello</p>' };
@@ -50,6 +51,7 @@ describe('Resend request boundaries', () => {
       [new Error('connection is not configured'), 'retry'], [new CredentialBrokerUnavailableError(), 'retry'], [new RangeError('unlisted'), 'retry'],
       [new ReauthorizationRequiredError(), 'branch'], [new ObjectNotFoundError(), 'branch'], [new ConnectionNotSelectedError(), 'branch'],
       [new CredentialBrokerRejectedError(), 'branch'], [new TypeError('fetch failed'), 'retry'],
+      [new CredentialMaterialError('credential api_key is required'), 'branch'], [new TypeError('project credential decoding failed'), 'branch'],
     ] as const) {
       const client = new ResendClient({ baseUrl: 'http://127.0.0.1' }, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('unexpected request'); } });
       const sent = await client.sendEmail().invoke(call, emailInput);
@@ -57,6 +59,17 @@ describe('Resend request boundaries', () => {
       if (sent.kind === 'branch') expect(sent.branch).toBe('defect');
       expect((await client.getEmail().invoke(call, { id: 'mail' })).kind, error.name).toBe(kind);
     }
+  });
+
+  it.each([
+    [409, '{"name":"invalid_idempotent_request"}', 'retry'],
+    [425, '{}', 'retry'],
+    [200, '{}', 'retry'],
+    [422, '{"name":"validation_error"}', 'providerRejected'],
+  ])('classifies sendEmail HTTP %i as %s', async (status, body, expected) => {
+    const client = clientWith(async () => ({ status, headers: {}, body: Buffer.from(body) }));
+    const result = await client.sendEmail().invoke(call, emailInput);
+    expect(result.kind === 'branch' ? result.branch : result.kind).toBe(expected);
   });
 
   it('retries a refused connection with the same call ID', async () => {
