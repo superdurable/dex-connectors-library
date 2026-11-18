@@ -102,6 +102,7 @@ type providerResponse struct {
 	failure    *sdkgo.Failure
 	retry      bool
 	retryAfter time.Duration
+	status     int
 }
 
 func (client *Client) send(call sdkgo.Call, operationID, method, path string, query url.Values, body []byte, hasNotFound bool, successStatus int) providerResponse {
@@ -157,7 +158,7 @@ func (client *Client) send(call sdkgo.Call, operationID, method, path string, qu
 		} else if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnprocessableEntity {
 			kind = sdkgo.FailureValidation
 		}
-		return providerResponse{branch: "providerRejected", failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
+		return providerResponse{branch: "providerRejected", status: response.StatusCode, failure: failure(operationID, kind, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))}
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
@@ -278,11 +279,15 @@ func (operation UpsertRowsOperation) Invoke(call sdkgo.Call, input UpsertRowsInp
 	if response.retry {
 		return sdkgo.NewMutationRetry[UpsertRowsOutput](*response.failure, response.retryAfter)
 	}
+	// A repeated upsert merges the same rows by their conflict key, so an unknown outcome retries.
+	if response.branch == UpsertRowsBranchInvalidResponse || (response.branch == UpsertRowsBranchProviderRejected && !isDefiniteRefusalStatus(response.status)) {
+		return sdkgo.NewMutationRetry[UpsertRowsOutput](*response.failure, 0)
+	}
 	if response.failure != nil {
 		return sdkgo.NewMutationBranch(response.branch, UpsertRowsOutput{}, response.failure, sdkgo.Receipt{})
 	}
 	if !hasResponseShape(response.body, "array") {
-		return sdkgo.NewMutationBranch(UpsertRowsBranchInvalidResponse, UpsertRowsOutput{}, failure("upsertRows", sdkgo.FailureProtocol, "provider returned an incomplete response"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[UpsertRowsOutput](*failure("upsertRows", sdkgo.FailureProtocol, "provider returned an incomplete response"), 0)
 	}
 	output := UpsertRowsOutput{Data: json.RawMessage(response.body)}
 	return sdkgo.NewMutationBranch(UpsertRowsBranchUpserted, output, nil, sdkgo.Receipt{})
@@ -293,6 +298,16 @@ func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
 		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
 		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+// isDefiniteRefusalStatus reports a status that proves Supabase refused the write; any other status is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func encodeUpsertRowsInput(input UpsertRowsInput) (string, url.Values, []byte, error) {

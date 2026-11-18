@@ -1,6 +1,6 @@
 # Supabase connector for TypeScript
 
-Install `@superdurable/connector-supabase@0.1.0`. This package provides the
+Install `@superdurable/connector-supabase@0.1.1`. This package provides the
 `selectRows` Query and `upsertRows` Mutation for Dex TypeScript applications.
 It exports generated models, operation definitions, named connection helpers,
 Step factories, and manifest mocks.

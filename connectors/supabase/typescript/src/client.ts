@@ -4,7 +4,7 @@
 import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, ReauthorizationRequiredError, zeroReceipt, type Call, type CredentialProvider, type Failure, type MutationAttempt, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, Credentials, SelectRowsOutput, UpsertRowsOutput } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type SelectRowsOutput, type UpsertRowsOutput } from './generated/models.js';
 import { SelectRowsOperation, UpsertRowsOperation } from './operations.js';
 
 const emptyOutput = { data: null };
@@ -80,7 +80,7 @@ export class SupabaseClient {
 
 /** Report a credential failure that no later attempt resolves without a person. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
     error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
@@ -88,6 +88,9 @@ function classifyStatus(operation: string, status: number, retryHeader: string |
   if (status === 429 || status === 408 || status >= 500) return { failure: failure(operation, status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', 'provider is temporarily unavailable'), retryAfterMs: parseRetryAfter(Array.isArray(retryHeader) ? retryHeader[0] ?? '' : retryHeader ?? '') };
   if (status === (operation === 'selectRows' ? 200 : 201) || (operation === 'upsertRows' && status === 200)) return undefined;
   const kind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 400 || status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION';
+  // A repeated upsert merges the same rows by their conflict key, so an unknown outcome retries.
+  if (operation === 'upsertRows' && ![400, 401, 403, 404, 411, 413, 414, 415, 422].includes(status))
+    return { failure: failure(operation, kind, `provider rejected the request with HTTP ${status}`) };
   return { branch: 'providerRejected', failure: failure(operation, kind, `provider rejected the request with HTTP ${status}`) };
 }
 
@@ -101,6 +104,7 @@ export function queryExchange(exchange: Exchange): QueryAttempt<SelectRowsOutput
 /** Convert one classified exchange to the mutation attempt. */
 export function mutationExchange(exchange: Exchange): MutationAttempt<UpsertRowsOutput> {
   if ('body' in exchange) return newMutationBranch('upserted', { data: parseProviderJSON(exchange.body) }, zeroReceipt());
+  if (exchange.branch === 'invalidResponse') return newMutationRetry(exchange.failure);
   return exchange.branch ? newMutationBranch(exchange.branch, emptyOutput, zeroReceipt(), exchange.failure) : newMutationRetry(exchange.failure, exchange.retryAfterMs);
 }
 

@@ -4,7 +4,7 @@
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from datetime import timedelta as timedelta
 from typing import Any, TypeVar
@@ -109,6 +109,7 @@ class _Outcome:
     failure: Failure
     is_retry: bool = False
     retry_after_seconds: float = 0
+    status: int = 0
 
     def as_query(self, empty: Output) -> QueryAttempt[Output]:
         if self.is_retry:
@@ -212,9 +213,10 @@ class Client:
                 return _outcome("", operation, kind, "provider is temporarily unavailable", True, retry_after)
             if status not in success_statuses:
                 kind = _STATUS_KINDS.get(status, FailureKind.PROVIDER_REJECTION)
-                return _outcome(
+                rejected = _outcome(
                     PROVIDER_REJECTED, operation, kind, f"provider rejected the request with HTTP {status}"
                 )
+                return replace(rejected, status=status)
             try:
                 response_body = await read_bounded_body(response, self.max_response_bytes)
             except BodyTooLargeError:
@@ -296,10 +298,18 @@ class UpsertRowsOperation:
             call, operation, "POST", "/" + input.table, {"on_conflict": input.on_conflict}, body, (201, 200)
         )
         if isinstance(response, _Outcome):
+            # A repeated upsert merges the same rows by their conflict key, so an unknown outcome retries.
+            if response.branch == INVALID_RESPONSE or (
+                response.branch == PROVIDER_REJECTED
+                and response.status not in (400, 401, 403, 404, 411, 413, 414, 415, 422)
+            ):
+                return MutationAttempt.retry(response.failure)
             return response.as_mutation(UpsertRowsOutput())
         if not isinstance(response, list):
-            return _mutation_failed(
-                INVALID_RESPONSE, FailureKind.PROTOCOL, "provider returned an incomplete response"
+            return MutationAttempt.retry(
+                Failure(
+                    FailureKind.PROTOCOL, CONNECTOR_ID, operation, "provider returned an incomplete response"
+                )
             )
         return MutationAttempt.branch_result(UPSERTED, UpsertRowsOutput(response), Receipt())
 
@@ -372,7 +382,10 @@ def _is_column_list(value: object) -> bool:
 
 def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
-    return isinstance(
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

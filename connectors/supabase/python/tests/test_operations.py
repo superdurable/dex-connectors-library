@@ -40,8 +40,21 @@ from dex_connectors.supabase import (
     SelectRowsInput,
     UpsertRowsInput,
 )
+from dex_connectors.supabase._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("supabase", "supabase")
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError that the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Supabase credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
 KEY = "supabase-test-key"
 ROWS = [{"id": 1, "name": "Meridian"}]
 UPSERT = UpsertRowsInput("members", "id", ({"name": "Meridian", "id": 1, "tags": {"z": 1, "a": 2}},))
@@ -183,6 +196,22 @@ async def test_select_rows_branches(response: httpx.Response, branch: str, kind:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(405),
+        httpx.Response(409),
+        httpx.Response(201, json={"wrong": True}),
+        httpx.Response(201, content=b"["),
+        httpx.Response(201, content=b"x" * 400),
+    ],
+)
+async def test_upsert_retries_unknown_outcomes(response: httpx.Response) -> None:
+    with pytest.raises(RetryError):
+        await run_mutation(make_client(response).upsert_rows(), upsert_call(), UPSERT)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     ("status", "kind"),
     [(408, FailureKind.AVAILABILITY), (429, FailureKind.RATE_LIMIT), (503, FailureKind.AVAILABILITY)],
 )
@@ -215,6 +244,8 @@ async def test_transport_failure_retries() -> None:
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("Supabase credential api_key is required"), True),
+        (_sdk_wrapped_material_error(), True),
         (CredentialBrokerUnavailableError(), False),
         (ValueError("connection is not configured"), False),
         (RuntimeError("unlisted"), False),
