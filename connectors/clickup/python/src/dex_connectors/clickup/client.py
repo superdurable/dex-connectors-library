@@ -149,16 +149,28 @@ class Client:
     async def resolve_credentials(
         self, call: Call, operation: str
     ) -> tuple[Credentials | None, Failure | None]:
-        """Return current personal token or a terminal authentication failure."""
+        """Return the current personal token or a failure.
+
+        A terminal failure has kind AUTHENTICATION; a transient one, such as a store or credential
+        broker read, has kind AVAILABILITY.
+        """
         try:
             credentials = await self.credentials.resolve(call)
             token = credentials.api_token.reveal()
             if not is_header_safe_credential(token) or not token.startswith("pk_") or len(token) <= 3:
                 raise ValueError("invalid personal token")
             return credentials, None
-        except (AttributeError, TypeError, ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except (AttributeError, TypeError, ValueError, LookupError, ReauthorizationRequiredError):
             return None, failure(
-                operation, FailureKind.AUTHENTICATION, "ClickUp connection credentials are unavailable"
+                operation,
+                FailureKind.AUTHENTICATION,
+                "ClickUp connection credentials are missing or need reauthorization",
+            )
+        except OSError:
+            return None, failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                "ClickUp connection credentials could not be read, so nothing was sent",
             )
 
     async def exchange(
@@ -169,8 +181,12 @@ class Client:
         path: str,
         query: Mapping[str, str | list[str]] | None = None,
         payload: Any = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one request and classify HTTP and transport failures."""
+        """Send one request and classify HTTP and transport failures.
+
+        ``observed_statuses`` receives the HTTP status once headers arrive, before the body is read.
+        """
         try:
             query_pairs = [
                 (key, item)
@@ -210,6 +226,8 @@ class Client:
                 FailureKind.TRANSPORT,
                 "ClickUp request failed before a response arrived",
             )
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         # Go classifies a large 429/5xx by status, rather than size.
         if 200 <= response.status_code < 300:
             try:

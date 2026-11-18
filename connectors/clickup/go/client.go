@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
@@ -324,11 +325,15 @@ func (client *Client) taskEventWebhookEndpoint(
 	return endpoint, nil
 }
 
-// resolveCredentials returns a header-safe personal API token, or a safe defect Failure.
+// resolveCredentials returns a header-safe personal API token, or a safe Failure. A terminal failure
+// has kind FailureAuthentication; a transient one, such as a store or broker read, has FailureAvailability.
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && isTerminalCredentialError(err) {
+		return Credentials{}, clickupFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are missing or need reauthorization")
+	}
 	if err != nil {
-		return Credentials{}, clickupFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+		return Credentials{}, clickupFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials could not be read, so nothing was sent")
 	}
 	if err := validateResolvedCredentials(credentials); err != nil {
 		return Credentials{}, clickupFailurePointer(sdkgo.FailureAuthentication, operation, err.Error())
@@ -511,6 +516,13 @@ func teamNotAuthorizedCodes() map[string]bool {
 func isConnectionNeverEstablished(err error) bool {
 	var operationError *net.OpError
 	return errors.As(err, &operationError) && operationError.Op == "dial"
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as store reads, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func validateResolvedCredentials(credentials Credentials) error {

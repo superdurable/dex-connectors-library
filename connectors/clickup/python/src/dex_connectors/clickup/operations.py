@@ -42,6 +42,7 @@ from .client import (
     flexible_id,
     flexible_integer,
     numeric_id,
+    outcome,
     path_escape,
     task_id,
     unix_milliseconds,
@@ -166,10 +167,14 @@ def _mutation_defect(operation: str, output: T, message: str) -> MutationAttempt
 
 
 def _query_credentials_failure(output: T, cause: Failure) -> QueryAttempt[T]:
+    if cause.kind != FailureKind.AUTHENTICATION:
+        return QueryAttempt.retry(cause)
     return QueryAttempt.branch_result("defect", output, Receipt(), cause)
 
 
 def _mutation_credentials_failure(output: T, cause: Failure) -> MutationAttempt[T]:
+    if cause.kind != FailureKind.AUTHENTICATION:
+        return MutationAttempt.retry(cause)
     return MutationAttempt.branch_result("defect", output, Receipt(), cause)
 
 
@@ -730,9 +735,25 @@ class _FencedWrite:
         )
 
     async def credential_failure(self, output: Any, cause: Failure) -> MutationAttempt[Any]:
-        """Map a credential failure before the send."""
-        if self.has_possible_earlier_send:
-            # ClickUp credential failures cannot be told apart as transient, so nothing is recorded.
+        """Map a credential failure before this attempt's send.
+
+        After a possible earlier send it never records notSent: a transient failure retries and a
+        terminal one selects uncertain. Before any send, a transient failure records notSent and
+        retries, and a terminal one selects defect.
+        """
+        is_terminal = cause.kind == FailureKind.AUTHENTICATION
+        if self.needs_read_back:
+            if is_terminal:
+                return MutationAttempt.uncertain(
+                    output,
+                    failure(
+                        self.operation,
+                        cause.kind,
+                        "an earlier attempt of this Step may have sent the write and the connection "
+                        f"credentials cannot read it back: {cause.message}",
+                    ),
+                    Receipt(),
+                )
             return MutationAttempt.retry(
                 failure(
                     self.operation,
@@ -751,14 +772,21 @@ class _FencedWrite:
                     "ClickUp setup failed and the not-sent checkpoint could not be recorded",
                 )
             )
+        if not is_terminal:
+            return MutationAttempt.retry(cause)
         return MutationAttempt.branch_result("defect", output, Receipt(), cause)
 
     async def dispatch(
-        self, send: Callable[[], Awaitable[Exchange]], output: Any
+        self, send: Callable[[list[int]], Awaitable[Exchange]], output: Any
     ) -> Exchange | MutationAttempt[Any]:
-        """Send once behind the fence, or return the attempt that forbids sending."""
+        """Send once behind the fence, or return the attempt that forbids sending.
+
+        ``send`` appends the HTTP status to its list once headers arrive, so a 2xx whose body the
+        write window cuts stays accepted and is never resent.
+        """
+        observed_statuses: list[int] = []
         try:
-            return await self.fence.dispatch(lambda _deadline: send())
+            return await self.fence.dispatch(lambda _deadline: send(observed_statuses))
         except (CheckpointError, InsufficientAttemptTimeError):
             return MutationAttempt.retry(
                 failure(
@@ -774,6 +802,15 @@ class _FencedWrite:
                 failure(self.operation, FailureKind.LOCAL_DEFECT, "ClickUp dispatch was not allowed"),
             )
         except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # The status keeps it accepted_unreadable, which selects uncertain without a resend.
+                return outcome(
+                    "unconfirmed",
+                    self.operation,
+                    FailureKind.TRANSPORT,
+                    "ClickUp accepted the write, but the write window ended before its body was read",
+                    status=observed_statuses[-1],
+                )
             return Exchange(
                 "unconfirmed",
                 failure(
@@ -1020,8 +1057,13 @@ class CreateTaskOperation:
                 return reconciled
         payload = _create_task_payload(input)
         sent = await write.dispatch(
-            lambda: self.client.exchange(
-                "createTask", credentials, "POST", f"/list/{input.list_id}/task", payload=payload
+            lambda observed_statuses: self.client.exchange(
+                "createTask",
+                credentials,
+                "POST",
+                f"/list/{input.list_id}/task",
+                payload=payload,
+                observed_statuses=observed_statuses,
             ),
             output,
         )
@@ -1176,12 +1218,13 @@ class AddCommentOperation:
             if reconciled is not None:
                 return reconciled
         sent = await write.dispatch(
-            lambda: self.client.exchange(
+            lambda observed_statuses: self.client.exchange(
                 "addComment",
                 credentials,
                 "POST",
                 _task_path(input.task_id) + "/comment",
                 payload={"comment_text": input.text, "notify_all": input.is_creator_notified},
+                observed_statuses=observed_statuses,
             ),
             output,
         )

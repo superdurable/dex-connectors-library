@@ -2,17 +2,24 @@
 # SPDX-License-Identifier: MIT
 """Read-back and bounded resend of ClickUp creates and comments whose outcome is unknown."""
 
+import asyncio
 import json
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.singledispatch import Marker, State
 
 from dex_connectors.clickup.client import Client, Config, Credentials
-from dex_connectors.clickup.models import AddCommentInput, CreateTaskInput
+from dex_connectors.clickup.models import AddCommentInput, CreateTaskInput, UpdateTaskInput
 
 CONNECTION = sdk.ConnectionRef("clickup", "clickup-test")
 CALL_ID = sdk.CallID("bef06aa7-8066-5d69-a408-c3d4547c0405")
@@ -330,13 +337,143 @@ async def test_accepted_write_without_an_identity_is_uncertain_and_never_resent(
     assert methods(requests) == ["POST"]
 
 
+class FailingCredentialProvider:
+    """Raise one credential resolution error for every call."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, _call: sdk.Call) -> Credentials:
+        """Raise the configured error."""
+        raise self.error
+
+
+async def run_with_credential_error(
+    operation: str, error: Exception, context: AttemptContext, requests: list[httpx.Request]
+) -> sdk.MutationResult[object] | str:
+    """Run one attempt whose credential resolution raises `error`."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return json_response(200, task_body(TASK_ID))
+
+    client = Client(
+        Config(),
+        FailingCredentialProvider(error),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+        api_base_url="http://127.0.0.1:12345/api/v2",
+    )
+    call = sdk.Call(CALL_ID, CONNECTION, sdk.OperationRef("clickup", operation), context=context, max_sends=3)
+    try:
+        if operation == "createTask":
+            return await sdk.run_mutation(client.create_task(), call, CreateTaskInput(LIST_ID, TASK_NAME))
+        if operation == "updateTask":
+            update = UpdateTaskInput(TASK_ID, name="Renamed")
+            return await sdk.run_mutation(client.update_task(), call, update)
+        return await sdk.run_mutation(client.add_comment(), call, AddCommentInput(TASK_ID, "Escalated."))
+    except sdk.RetryError:
+        return "retry"
+
+
 @pytest.mark.asyncio
-async def test_credential_failure_after_a_possible_send_retries_without_not_sent() -> None:
+@pytest.mark.parametrize("operation", ["createTask", "addComment"])
+async def test_transient_credential_failure_after_a_possible_send_retries_without_not_sent(
+    operation: str,
+) -> None:
+    marker = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
+    context, requests = AttemptContext(2, marker), []
+    result = await run_with_credential_error(operation, CredentialBrokerUnavailableError(), context, requests)
+    assert result == "retry"
+    assert marker_of(context).state == State.CLAIMED
+    assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["createTask", "addComment"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        sdk.ReauthorizationRequiredError("reauthorize"),
+        ConnectionNotSelectedError(),
+        CredentialBrokerRejectedError(),
+        ObjectNotFoundError("absent"),
+    ],
+    ids=["reauthorization", "not selected", "broker rejected", "object not found"],
+)
+async def test_terminal_credential_failure_after_a_possible_send_is_uncertain(
+    operation: str, error: Exception
+) -> None:
+    marker = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
+    context, requests = AttemptContext(2, marker), []
+    result = await run_with_credential_error(operation, error, context, requests)
+    assert branch_of(result) == "uncertain"
+    assert marker_of(context).state == State.CLAIMED
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_missing_connection_after_a_possible_send_is_uncertain() -> None:
     marker = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
     context, requests = AttemptContext(2, marker), []
     result = await run(
         "createTask", lambda _: pytest.fail("request sent"), context, requests, has_credentials=False
     )
-    assert result == "retry"
+    assert branch_of(result) == "uncertain"
     assert marker_of(context).state == State.CLAIMED
     assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_transient_credential_failure_before_any_send_records_not_sent_and_retries() -> None:
+    context, requests = AttemptContext(), []
+    result = await run_with_credential_error(
+        "createTask", CredentialBrokerUnavailableError(), context, requests
+    )
+    assert result == "retry"
+    assert marker_of(context).state == State.NOT_SENT
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_terminal_credential_failure_before_any_send_selects_defect() -> None:
+    context, requests = AttemptContext(), []
+    result = await run_with_credential_error(
+        "addComment", sdk.ReauthorizationRequiredError("reauthorize"), context, requests
+    )
+    assert branch_of(result) == "defect"
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_transient_credential_failure_retries_a_safe_update() -> None:
+    requests: list[httpx.Request] = []
+    result = await run_with_credential_error(
+        "updateTask", CredentialBrokerUnavailableError(), AttemptContext(), requests
+    )
+    assert result == "retry"
+    assert requests == []
+
+
+class _StallingStream(httpx.AsyncByteStream):
+    """Yield nothing until cancelled, so the write window cuts the 2xx body."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(3600)
+        yield b""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["createTask", "addComment"])
+async def test_write_deadline_after_2xx_headers_is_uncertain_and_never_resent(operation: str) -> None:
+    context, requests = AttemptContext(), []
+    # The Fence write window is 7/12 of the remaining attempt time.
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await run(
+        operation,
+        lambda _: httpx.Response(200, headers={"Content-Type": "application/json"}, stream=_StallingStream()),
+        context,
+        requests,
+    )
+    assert branch_of(result) == "uncertain"
+    assert methods(requests) == ["POST"]
+    assert marker_of(context).state != State.CAN_RESEND

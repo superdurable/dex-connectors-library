@@ -167,6 +167,7 @@ never returned.
 | other `401`, `403`, `400`, other `4xx`, `3xx` | `providerRejected` | `providerRejected` for a first send with a definite status |
 | unusable, unreadable, or oversized `2xx` | Reads: `invalidResponse`; updates: Retry | Retry to read back by a returned ID, otherwise `uncertain`; never sent again |
 | invalid input or token | `defect`, no request | `defect`, no request |
+| credential store or broker temporarily unreadable | Retry, no request | Retry, no request |
 
 ClickUp's rate limit is per token and per minute (100 requests on Free,
 Unlimited, and Business plans; 1,000 on Business Plus; 10,000 on Enterprise), so
@@ -231,9 +232,11 @@ parent reports `created` with `WasAlreadyApplied`; several select `uncertain`;
 none sends the create again while possible sends stay below the cap, and
 selects `uncertain` at the cap. A refusal or local defect after a possible
 earlier send also selects `uncertain`, as does a read-back that finds the List
-missing (`404`, or `401` with a Workspace-not-authorized `ECODE`). A credential
-failure after a possible earlier send retries without recording that nothing was
-sent. Put the application's own request key in
+missing (`404`, or `401` with a Workspace-not-authorized `ECODE`). After a
+possible earlier send, the attempt never records that nothing was sent: a
+temporarily unreadable credential retries, and a missing, invalid, or
+deauthorized one selects `uncertain`. A `2xx` whose body the write window cuts
+off is accepted and selects `uncertain` without a resend. Put the application's own request key in
 the name, as the example puts the blocked task's ID in brackets, so the
 read-back is unambiguous.
 
