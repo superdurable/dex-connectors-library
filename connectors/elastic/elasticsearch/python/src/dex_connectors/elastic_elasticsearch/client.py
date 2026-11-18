@@ -22,8 +22,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -116,12 +119,18 @@ class Client:
         """Close the provider HTTP client after Worker shutdown."""
         await self.http_client.aclose()
 
-    async def authorization(self, call: Call) -> str:
-        """Build Basic authorization without returning credentials in failures."""
+    async def authorization(self, call: Call) -> str | None:
+        """Build Basic authorization without returning credentials in failures.
+
+        Returns None for a transient credential failure and "" for a terminal or invalid credential.
+        """
         try:
             credentials = await self.credentials.resolve(call)
+        except Exception as error:
+            return "" if _is_terminal_credential_error(error) else None
+        try:
             username, password = credentials.username, credentials.password.reveal()
-        except (ValueError, LookupError, OSError, AttributeError):
+        except AttributeError:
             return ""
         if not username or any(character in username for character in ":\r\n\x00"):
             return ""
@@ -177,6 +186,8 @@ class IndexDocumentOperation:
         if len(source) > self.client.max_document_bytes:
             return _index_failure(DEFECT, FailureKind.VALIDATION)
         authorization = await self.client.authorization(call)
+        if authorization is None:
+            return MutationAttempt.retry(_failure("indexDocument", FailureKind.AVAILABILITY))
         if not authorization:
             return _index_failure(DEFECT, FailureKind.AUTHENTICATION)
         request = self.client.http_client.build_request(
@@ -220,6 +231,8 @@ class DeleteDocumentOperation:
         if not _valid_index(input.index) or not _valid_document_id(input.document_id):
             return _delete_failure(DEFECT, FailureKind.VALIDATION)
         authorization = await self.client.authorization(call)
+        if authorization is None:
+            return MutationAttempt.retry(_failure("deleteDocument", FailureKind.AVAILABILITY))
         if not authorization:
             return _delete_failure(DEFECT, FailureKind.AUTHENTICATION)
         request = self.client.http_client.build_request(
@@ -271,6 +284,8 @@ class SearchDocumentsOperation:
                 size < 1 or size > 100 or input.from_ < 0 or input.from_ + size > 10000:
             return _search_failure(DEFECT, FailureKind.VALIDATION)
         authorization = await self.client.authorization(call)
+        if authorization is None:
+            return _search_retry(FailureKind.AVAILABILITY)
         if not authorization:
             return _search_failure(DEFECT, FailureKind.AUTHENTICATION)
         query = urlencode({"q": input.query, "size": size, "from": input.from_,
@@ -360,6 +375,19 @@ def _document_retry(exchange: Exchange, operation: str) -> MutationAttempt[Any] 
     if exchange.error:
         return MutationAttempt.retry(_failure(operation, FailureKind.TRANSPORT))
     return None
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _failure(operation: str, kind: FailureKind) -> Failure:

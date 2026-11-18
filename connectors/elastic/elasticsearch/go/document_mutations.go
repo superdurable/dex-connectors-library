@@ -161,6 +161,9 @@ type documentExchange struct {
 
 func exchangeDocument(client *Client, call sdkgo.Call, method, index, documentID string, source []byte) documentExchange {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return documentExchange{shouldRetry: true, retryKind: sdkgo.FailureAvailability, retryMessage: "Elasticsearch credentials are temporarily unavailable"}
+	}
 	if err != nil || credentials.Validate() != nil || !validUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(credentials.Password.Reveal()) {
 		return documentExchange{requestFailure: &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Provider: "elasticsearch", Message: "Elasticsearch credentials are unavailable or invalid"}}
 	}
