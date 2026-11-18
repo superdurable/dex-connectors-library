@@ -62,7 +62,10 @@ func (operation UpdateEventOperation) Invoke(call sdkgo.Call, input UpdateEventI
 	if err := validateUpdateEventInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, operationID)
+	credentials, failure, isCredentialFailureRetryable := operation.client.resolveCredentials(call, operationID)
+	if failure != nil && isCredentialFailureRetryable {
+		return sdkgo.NewMutationRetry[UpdateEventOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, failure, sdkgo.Receipt{})
 	}

@@ -91,7 +91,10 @@ func (operation QueryFreeBusyOperation) Invoke(call sdkgo.Call, input QueryFreeB
 	if err := validateQueryFreeBusyInput(input); err != nil {
 		return sdkgo.NewQueryBranch(QueryFreeBusyBranchDefect, QueryFreeBusyOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, operationID)
+	credentials, failure, isCredentialFailureRetryable := operation.client.resolveCredentials(call, operationID)
+	if failure != nil && isCredentialFailureRetryable {
+		return sdkgo.NewQueryRetry[QueryFreeBusyOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(QueryFreeBusyBranchDefect, QueryFreeBusyOutput{}, failure, sdkgo.Receipt{})
 	}

@@ -78,7 +78,8 @@ export class ListEventsOperation implements Query<ListEventsInput, ListEventsOut
     const pageSize = input.pageSize || 50;
     try { requireCalendarID(input.calendarId); validateWindow(input.timeMin, input.timeMax); if (input.timeZone) validateTimeZone(input.timeZone, 'timeZone'); if (pageSize < 1 || pageSize > 250 || !Number.isInteger(pageSize)) throw new Error('pageSize must be between 1 and 250, or zero for the default'); }
     catch (error) { return newQueryBranch('defect', zeroList, zeroReceipt(), failure(operation, 'VALIDATION', message(error))); }
-    const token = await this.client.resolveAccessToken(call);
+    const { token, isTransient } = await this.client.resolveAccessTokenResult(call);
+    if (isTransient) return newQueryRetry(failure(operation, 'AUTHENTICATION', 'connection credentials are temporarily unavailable'));
     if (!token) return newQueryBranch('defect', zeroList, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
     const query: Record<string, string> = { singleEvents: 'true', orderBy: 'startTime', showDeleted: 'false', timeMin: input.timeMin, timeMax: input.timeMax, maxResults: String(pageSize) };
     if (input.query) query.q = input.query;
@@ -112,7 +113,8 @@ export class GetEventOperation implements Query<GetEventInput, Event> {
     const operation = 'getEvent';
     try { requireCalendarID(input.calendarId); requireEventID(input.eventId); if (input.timeZone) validateTimeZone(input.timeZone, 'timeZone'); }
     catch (error) { return newQueryBranch('defect', zeroEvent, zeroReceipt(), failure(operation, 'VALIDATION', message(error))); }
-    const token = await this.client.resolveAccessToken(call);
+    const { token, isTransient } = await this.client.resolveAccessTokenResult(call);
+    if (isTransient) return newQueryRetry(failure(operation, 'AUTHENTICATION', 'connection credentials are temporarily unavailable'));
     if (!token) return newQueryBranch('defect', zeroEvent, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
     const read = await readEvent(this.client, call, token, operation, input.calendarId, input.eventId, input.timeZone);
     if (read.kind === 'retry') return newQueryRetry(read.failure!, read.delay);
@@ -134,7 +136,8 @@ export class CreateEventOperation implements Mutation<CreateEventInput, CreateEv
     const operation = 'createEvent', eventId = call.idempotencyKey || this.idempotencyKey(call.id, input);
     try { requireCalendarID(input.calendarId); if (eventId.length < 5 || eventId.length > 1024 || !/^[a-v0-9]+$/.test(eventId)) throw new Error('eventId must be 5 to 1024 lowercase base32hex characters (a-v and 0-9)'); if (!input.summary?.trim()) throw new Error('summary is required'); validateEventTimes(input.start, input.end); validateAttendees(input.attendees ?? []); requireSendUpdates(input.sendUpdates); }
     catch (error) { return newMutationBranch('defect', zeroCreate, zeroReceipt(), failure(operation, 'VALIDATION', message(error))); }
-    const token = await this.client.resolveAccessToken(call);
+    const { token, isTransient } = await this.client.resolveAccessTokenResult(call);
+    if (isTransient) return newMutationRetry(failure(operation, 'AUTHENTICATION', 'connection credentials are temporarily unavailable'));
     if (!token) return newMutationBranch('defect', zeroCreate, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
     const existing = await readEvent(this.client, call, token, operation, input.calendarId, eventId);
     if (existing.kind !== 'missing') return this.existing(call, existing, eventId);
@@ -176,7 +179,8 @@ export class UpdateEventOperation implements Mutation<UpdateEventInput, UpdateEv
     const operation = 'updateEvent';
     try { requireCalendarID(input.calendarId); requireEventID(input.eventId); if (input.summary === undefined && input.description === undefined && input.start == null && input.end == null && input.attendees == null) throw new Error('set at least one of summary, description, start and end, or attendees'); if (input.summary !== undefined && !input.summary.trim()) throw new Error('summary cannot be blank'); if (!!input.start !== !!input.end) throw new Error('set start and end together so the event keeps one unambiguous time range'); if (input.start && input.end) validateEventTimes(input.start, input.end); if (input.attendees) validateAttendees(input.attendees); requireSendUpdates(input.sendUpdates); }
     catch (error) { return newMutationBranch('defect', zeroUpdate, zeroReceipt(), failure(operation, 'VALIDATION', message(error))); }
-    const token = await this.client.resolveAccessToken(call);
+    const { token, isTransient } = await this.client.resolveAccessTokenResult(call);
+    if (isTransient) return newMutationRetry(failure(operation, 'AUTHENTICATION', 'connection credentials are temporarily unavailable'));
     if (!token) return newMutationBranch('defect', zeroUpdate, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
     const current = await readEvent(this.client, call, token, operation, input.calendarId, input.eventId);
     if (current.kind === 'retry') return newMutationRetry(current.failure!, current.delay);
@@ -220,7 +224,8 @@ export class QueryFreeBusyOperation implements Query<QueryFreeBusyInput, QueryFr
     const operation = 'queryFreeBusy';
     try { if (!input.calendarIds || input.calendarIds.length < 1 || input.calendarIds.length > 50) throw new Error('calendarIds must list 1 to 50 calendars'); const seen = new Set<string>(); for (const id of input.calendarIds) { requireCalendarID(id); if (seen.has(id)) throw new Error(`calendar ID ${JSON.stringify(id)} is duplicated`); seen.add(id); } validateWindow(input.timeMin, input.timeMax); if (input.timeZone) validateTimeZone(input.timeZone, 'timeZone'); }
     catch (error) { return newQueryBranch('defect', zeroBusy, zeroReceipt(), failure(operation, 'VALIDATION', message(error))); }
-    const token = await this.client.resolveAccessToken(call);
+    const { token, isTransient } = await this.client.resolveAccessTokenResult(call);
+    if (isTransient) return newQueryRetry(failure(operation, 'AUTHENTICATION', 'connection credentials are temporarily unavailable'));
     if (!token) return newQueryBranch('defect', zeroBusy, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
     const payload = { timeMin: input.timeMin, timeMax: input.timeMax, items: input.calendarIds!.map(id => ({ id })), ...(input.timeZone ? { timeZone: input.timeZone } : {}) };
     let response: CalendarResponse;

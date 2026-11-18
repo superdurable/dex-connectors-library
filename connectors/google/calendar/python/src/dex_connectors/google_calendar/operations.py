@@ -398,6 +398,8 @@ class ListEventsOperation:
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return QueryAttempt.branch_result("defect", empty, Receipt(), credentials)
         query = {
@@ -488,6 +490,8 @@ class GetEventOperation:
                 "defect", Event(), Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return QueryAttempt.branch_result("defect", Event(), Receipt(), credentials)
         return await _read_event(
@@ -616,6 +620,8 @@ class CreateEventOperation:
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return MutationAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return MutationAttempt.branch_result("defect", empty, Receipt(), credentials)
         read = await _read_event(self.client, call, credentials, operation, input.calendar_id, event_id)
@@ -787,6 +793,8 @@ class UpdateEventOperation:
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return MutationAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return MutationAttempt.branch_result("defect", empty, Receipt(), credentials)
         read = await _read_event(self.client, call, credentials, operation, input.calendar_id, input.event_id)
@@ -916,6 +924,8 @@ class QueryFreeBusyOperation:
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
         credentials = await self.client.resolve(call, operation)
+        if isinstance(credentials, Failure) and credentials.kind == FailureKind.AVAILABILITY:
+            return QueryAttempt.retry(credentials)
         if isinstance(credentials, Failure):
             return QueryAttempt.branch_result("defect", empty, Receipt(), credentials)
         payload = {
