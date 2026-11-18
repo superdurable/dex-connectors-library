@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import { StripeClient, type StripeRequestSender } from '../src/client.js';
 import { CheckoutSessionSchema, PaymentIntentSchema, RefundSchema, type CreateACHCheckoutSessionInput, type CreateRefundInput, type Credentials } from '../src/models.js';
 import { noProgress } from './call.js';
@@ -126,13 +127,25 @@ describe('hosted Checkout mutations', () => {
       expect(requests.map(request => request.headers?.['Idempotency-Key'])).toEqual([callId, callId]);
     });
 
-    it(`${operationId} retries unavailable credentials after the first attempt`, async () => {
+    it(`${operationId} selects uncertain for unavailable credentials after the first attempt`, async () => {
       const noKey = client([], [], { authMethodId: 'api-key-only', secretKey: new SecretString('') });
       const laterCall: Call = { ...call(operationId, true), context: { flowId: 'test-flow', attempt: 2 } as Call['context'] };
       const attempt = method === 'card'
         ? await noKey.createCardCheckoutSession().invoke(laterCall, checkoutInput)
         : await noKey.createACHCheckoutSession().invoke(laterCall, checkoutInput);
-      expect(attempt).toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION' } });
+      expect(attempt).toMatchObject({ kind: 'uncertain', failure: { kind: 'AUTHENTICATION' } });
+    });
+
+    it(`${operationId} retries an unavailable credential broker on every attempt`, async () => {
+      const broker = new StripeClient({ endpoint: 'http://localhost:12121/v1' }, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } },
+        { send: async () => { throw new Error('provider must not be called'); } });
+      for (const attemptNumber of [1, 2]) {
+        const writeCall: Call = { ...call(operationId, true), context: { flowId: 'test-flow', attempt: attemptNumber } as Call['context'] };
+        const attempt = method === 'card'
+          ? await broker.createCardCheckoutSession().invoke(writeCall, checkoutInput)
+          : await broker.createACHCheckoutSession().invoke(writeCall, checkoutInput);
+        expect(attempt, `attempt ${attemptNumber}`).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+      }
     });
   }
 });
@@ -209,7 +222,12 @@ describe('refund mutation', () => {
     const noKey = client([], [], { authMethodId: 'api-key-only', secretKey: new SecretString('') });
     expect(await invoke(noKey)).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
     const laterCall: Call = { ...call('createRefund', true), context: { flowId: 'test-flow', attempt: 2 } as Call['context'] };
-    expect(await noKey.createRefund().invoke(laterCall, refundInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION' } });
+    expect(await noKey.createRefund().invoke(laterCall, refundInput)).toMatchObject({ kind: 'uncertain', failure: { kind: 'AUTHENTICATION' } });
+    const broker = new StripeClient({ endpoint: 'http://localhost:12121/v1' }, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } },
+      { send: async () => { throw new Error('provider must not be called'); } });
+    for (const refundCall of [call('createRefund', true), laterCall]) {
+      expect(await broker.createRefund().invoke(refundCall, refundInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    }
   });
   it('retries safe keyed failures and read-back availability', async () => {
     expect(await invoke(client([response(429, {}, { 'retry-after': '3' })]))).toMatchObject({ kind: 'retry', failure: { kind: 'RATE_LIMIT' }, retryAfterMs: 3000 });

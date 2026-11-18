@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/stripe/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -254,7 +255,7 @@ func TestStripeKeyedWritesRetryUnknownStatusesAndRejectDefiniteOnes(t *testing.T
 	}
 }
 
-func TestStripeKeyedWritesRetryUnavailableCredentialsAfterFirstAttempt(t *testing.T) {
+func TestStripeKeyedWritesSelectUncertainForTerminalCredentialsAfterFirstAttempt(t *testing.T) {
 	for _, write := range stripeWriteCases() {
 		t.Run(write.name, func(t *testing.T) {
 			client, err := stripe.New(stripe.Config{Endpoint: "http://127.0.0.1:1"}, sdkgo.StaticCredentialProvider[stripe.Credentials]{})
@@ -264,8 +265,32 @@ func TestStripeKeyedWritesRetryUnavailableCredentialsAfterFirstAttempt(t *testin
 			require.Equal(t, sdkgo.BranchID("defect"), outcome.branch)
 			ctx := newStripeDexContext("credentials")
 			ctx.attempt = 2
-			_, err = write.invoke(client, ctx)
-			requireStripeRetry(t, err, sdkgo.FailureAuthentication)
+			outcome, err = write.invoke(client, ctx)
+			require.NoError(t, err)
+			require.Equal(t, sdkgo.BranchID("uncertain"), outcome.branch, "an earlier attempt may have created the object")
+			require.Equal(t, sdkgo.FailureAuthentication, outcome.failure.Kind)
+		})
+	}
+}
+
+// unavailableBrokerCredentials fails every resolve the way a temporarily unreachable credential broker does.
+type unavailableBrokerCredentials struct{}
+
+func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (stripe.Credentials, error) {
+	return stripe.Credentials{}, fmt.Errorf("%w: HTTP 503", projectconfig.ErrCredentialBrokerUnavailable)
+}
+
+func TestStripeKeyedWritesRetryAnUnavailableCredentialBrokerOnEveryAttempt(t *testing.T) {
+	for _, write := range stripeWriteCases() {
+		t.Run(write.name, func(t *testing.T) {
+			client, err := stripe.New(stripe.Config{Endpoint: "http://127.0.0.1:1"}, unavailableBrokerCredentials{})
+			require.NoError(t, err)
+			for _, attempt := range []int32{1, 2} {
+				ctx := newStripeDexContext("broker")
+				ctx.attempt = attempt
+				_, err = write.invoke(client, ctx)
+				requireStripeRetry(t, err, sdkgo.FailureAvailability)
+			}
 		})
 	}
 }
