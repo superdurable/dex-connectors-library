@@ -3,7 +3,7 @@
 
 import { definitionMaxSends, SecretString, ReauthorizationRequiredError, resolveCredential, newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, type Call, type CallID, type CredentialProvider, type CredentialRefreshDriver, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { ListSocialProfilesDefinition, ListScheduledPostsDefinition, SchedulePostDefinition } from './generated/definitions.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -27,7 +27,7 @@ export interface HootsuiteExchange {
   /** Provider HTTP status, or zero before response headers. */ status: number;
   /** Bounded response body retained only in process memory. */ body: Uint8Array;
   /** Provider Retry-After delay in milliseconds. */ retryAfterMs: number;
-  /** Safe local error class. */ error?: 'credential' | 'refresh' | 'request' | 'tooLarge';
+  /** Safe local error class; read means the body failed after its status arrived. */ error?: 'credential' | 'refresh' | 'request' | 'read' | 'tooLarge';
   /** Whether request bytes may have reached Hootsuite. */ requestSent: boolean;
 }
 
@@ -94,6 +94,11 @@ export class HootsuiteClient {
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined) return {
         ...failedExchange('tooLarge'), status: error.status, requestSent: true,
+        retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after'), this.now()),
+      };
+      // Headers arrived before the body failed, so the status still decides whether Hootsuite scheduled the message.
+      if ((error instanceof ProviderTransportError && !error.isProvablyNotSent || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 100) return {
+        ...failedExchange('read'), status: error.status, requestSent: true,
         retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after'), this.now()),
       };
       if (error instanceof ProviderTransportError) return { ...failedExchange('request'), requestSent: !error.isProvablyNotSent };
@@ -190,8 +195,11 @@ export class SchedulePostOperation implements Mutation<SchedulePostInput, Schedu
     const token = await this.client.resolveToken(call);
     if (typeof token !== 'string') {
       if (token.error === 'credential') return localScheduleFailure(fence, hasPossibleEarlierSend, failure(operation, 'AUTHENTICATION', 'connection credentials require reauthorization'));
-      try { await fence.recordNotSent(); }
-      catch { /* Without notSent the next attempt counts this attempt as a possible send. */ }
+      // notSent would hide an earlier possible send, so it is recorded only before any send.
+      if (!hasPossibleEarlierSend) {
+        try { await fence.recordNotSent(); }
+        catch { /* Without notSent the next attempt counts this attempt as a possible send. */ }
+      }
       return newMutationRetry(failure(operation, 'TRANSPORT', 'connection refresh failed'));
     }
     const body = Buffer.from(JSON.stringify({ text: input.text, socialProfileIds: [input.socialProfileId], scheduledSendTime: input.scheduledSendTime }));
@@ -215,19 +223,23 @@ export class SchedulePostOperation implements Mutation<SchedulePostInput, Schedu
       const kind = exchange.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY';
       return newMutationRetry(failure(operation, kind, 'Hootsuite did not schedule the message'), exchange.retryAfterMs);
     }
-    const isDefiniteRefusal = definiteRefusalStatuses.has(exchange.status);
-    if (!isDefiniteRefusal && (exchange.status < 200 || exchange.status >= 300)) return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'AVAILABILITY', `Hootsuite schedule outcome is unknown after HTTP ${exchange.status}`), exchange.retryAfterMs);
-    if (exchange.error) return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'TRANSPORT', 'Hootsuite schedule response could not be read'));
-    const document = parseJSON(exchange.body);
+    const isSuccessStatus = exchange.status >= 200 && exchange.status < 300;
+    const isBodyReadable = !exchange.error;
+    const document = isBodyReadable ? parseJSON(exchange.body) : undefined;
     const data = isObject(document) ? document.data : undefined;
     // A message ID in the body means Hootsuite scheduled the message.
     const first = Array.isArray(data) && isObject(data[0]) ? data[0] : undefined;
     const messageID = first && typeof first.id === 'string' ? first.id : '';
-    if (isDefiniteRefusal) {
-      if (messageID) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite returned a contradictory schedule response'));
-      return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, failure(operation, rejectionKind(exchange.status), `Hootsuite rejected HTTP ${exchange.status}`));
+    // Hootsuite accepted the request, so a resend could duplicate the message.
+    if (isSuccessStatus && !isBodyReadable) return newMutationUncertain(empty, failure(operation, 'TRANSPORT', 'Hootsuite accepted the request, but its response could not be read'));
+    if (isSuccessStatus && !messageID) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite accepted the request, but its response is malformed'));
+    if (!isSuccessStatus && messageID) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite returned a contradictory schedule response'));
+    if (!isSuccessStatus) {
+      // An unreadable or oversized error body cannot prove a refusal.
+      if (isBodyReadable && definiteRefusalStatuses.has(exchange.status)) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, failure(operation, rejectionKind(exchange.status), `Hootsuite rejected HTTP ${exchange.status}`));
+      return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'AVAILABILITY', `Hootsuite schedule outcome is unknown after HTTP ${exchange.status}`), exchange.retryAfterMs);
     }
-    if (!first || !messageID || !Array.isArray(data)) return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'PROTOCOL', 'Hootsuite schedule response is malformed'));
+    if (!first || !Array.isArray(data)) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite accepted the request, but its response is malformed'));
     try { await fence.recordProviderId(messageID); }
     catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
     // Hootsuite reported a message ID, so an unexpected response is never resent.
@@ -260,10 +272,9 @@ async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPo
   return newMutationBranch('providerRejected', emptyReceipt(), {}, rejection);
 }
 
-/** Select defect only when no earlier send may have scheduled the message. */
+/** Select defect only when no earlier send may have scheduled the message; this terminal failure is uncertain afterwards. */
 async function localScheduleFailure(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean, localFailure: Failure): Promise<MutationAttempt<ScheduledPostReceipt>> {
-  // notSent would hide the earlier possible send, so nothing is recorded.
-  if (hasPossibleEarlierSend) return newMutationRetry({ ...localFailure, message: `${localFailure.message}; no message was scheduled in this attempt` });
+  if (hasPossibleEarlierSend) return newMutationUncertain(emptyReceipt(), { ...localFailure, message: `${localFailure.message}; an earlier attempt may have scheduled the message` });
   try { await fence.recordNotSent(); }
   catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
   return newMutationBranch('defect', emptyReceipt(), {}, localFailure);
@@ -278,7 +289,7 @@ function queryBranch<Output>(operation: string, branch: string, kind: Failure['k
 function queryRetry<Output>(operation: string, kind: Failure['kind'], message: string, delay = 0): QueryAttempt<Output> { return newQueryRetry(failure(operation, kind, message), delay); }
 function queryFailure<Output>(operation: string, exchange: HootsuiteExchange, empty: Output): QueryAttempt<Output> | undefined {
   if (exchange.error === 'credential') return queryBranch(operation, 'defect', 'AUTHENTICATION', 'connection credentials are unavailable or invalid', empty);
-  if (exchange.error === 'request' || exchange.error === 'refresh') return queryRetry(operation, 'TRANSPORT', 'Hootsuite request failed');
+  if (exchange.error === 'request' || exchange.error === 'refresh' || exchange.error === 'read') return queryRetry(operation, 'TRANSPORT', 'Hootsuite request failed');
   if (exchange.status === 429) return queryRetry(operation, 'RATE_LIMIT', 'Hootsuite rate limited the request', exchange.retryAfterMs);
   if (exchange.status === 408 || exchange.status >= 500) return queryRetry(operation, 'AVAILABILITY', 'Hootsuite is temporarily unavailable', exchange.retryAfterMs);
   if (exchange.status !== 200) return queryBranch(operation, 'providerRejected', 'PROVIDER_REJECTION', `Hootsuite rejected HTTP ${exchange.status}`, empty);

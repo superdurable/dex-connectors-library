@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -105,17 +106,65 @@ func TestSchedulePostResendsUnknownOutcomeBelowCap(t *testing.T) {
 	}
 }
 
-func TestSchedulePostResendsMalformedSuccessBelowCap(t *testing.T) {
-	server, requests := newScriptedServer(t, []int{http.StatusOK, http.StatusOK}, []string{`not JSON`, scheduledBody})
+func TestSchedulePostNeverResendsAnAcceptedUnreadableResponse(t *testing.T) {
+	for _, body := range []string{`not JSON`, `{"data":[]}`, `{"data":[{"id":"4138476039","text":"` + strings.Repeat("x", 200) + `"}]}`} {
+		t.Run(body, func(t *testing.T) {
+			server, requests := newScriptedServer(t, []int{http.StatusOK}, []string{body})
+			credentials := Credentials{OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"), AccessToken: sdkgo.NewSecretString(testAccessToken), RefreshToken: sdkgo.NewSecretString("refresh-token")}
+			client, err := New(Config{BaseURL: server.URL, MaxResponseBytes: 128}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials})
+			require.NoError(t, err)
+			uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("malformed-flow", "schedule-post-step"), client.SchedulePost(), testConnection, exampleSchedule)
+			require.NoError(t, err, "Hootsuite accepted the request, so a resend could duplicate the message")
+			require.Equal(t, SchedulePostBranchUncertain, uncertain.Branch)
+			require.Equal(t, 1, *requests)
+		})
+	}
+}
+
+func TestSchedulePostAcceptedBodyBreaksAfterHeadersSelectsUncertain(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Length", "100")
+		w.WriteHeader(http.StatusOK)
+		_, err := fmt.Fprint(w, `{"data":`)
+		require.NoError(t, err)
+		w.(http.Flusher).Flush()
+		connection, _, err := w.(http.Hijacker).Hijack()
+		require.NoError(t, err)
+		require.NoError(t, connection.Close())
+	}))
+	defer server.Close()
 	client := newTestClient(t, server.URL)
-	ctx := singledispatchtest.NewContext("malformed-flow", "schedule-post-step")
+	uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("body-breaks-flow", "schedule-post-step"), client.SchedulePost(), testConnection, exampleSchedule)
+	require.NoError(t, err)
+	require.Equal(t, SchedulePostBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, requests)
+}
+
+func TestSchedulePostRefreshFailureAfterPossibleSendKeepsTheClaim(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusInternalServerError}, []string{`{}`})
+	client := newTestClient(t, server.URL)
+	ctx := singledispatchtest.NewContext("refresh-after-send-flow", "schedule-post-step")
 	_, err := sdkgo.RunMutation(ctx, client.SchedulePost(), testConnection, exampleSchedule)
 	require.Error(t, err)
 	ctx.AdvanceAttempt()
-	created, err := sdkgo.RunMutation(ctx, client.SchedulePost(), testConnection, exampleSchedule)
+	unavailable, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{})
 	require.NoError(t, err)
-	require.Equal(t, SchedulePostBranchScheduled, created.Branch)
-	require.Equal(t, 2, *requests)
+	_, err = sdkgo.RunMutation(ctx, unavailable.SchedulePost(), testConnection, exampleSchedule)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, singledispatch.StateClaimed, lastMarker(t, ctx).State, "notSent would hide the earlier possible send")
+	require.Equal(t, 1, *requests)
+}
+
+func TestSchedulePostUnlistedErrorWithAMessageIDIsNeverResent(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusConflict}, []string{scheduledBody})
+	client := newTestClient(t, server.URL)
+	uncertain, err := sdkgo.RunMutation(singledispatchtest.NewContext("conflict-id-flow", "schedule-post-step"), client.SchedulePost(), testConnection, exampleSchedule)
+	require.NoError(t, err)
+	require.Equal(t, SchedulePostBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, *requests)
 }
 
 func TestSchedulePostSelectsUncertainAtCap(t *testing.T) {
@@ -201,7 +250,7 @@ func TestSchedulePostFailClosedReturnsRetry(t *testing.T) {
 	require.Equal(t, SchedulePostBranchScheduled, created.Branch)
 }
 
-func TestSchedulePostInvalidCredentialAfterPossibleSendRetries(t *testing.T) {
+func TestSchedulePostInvalidCredentialAfterPossibleSendSelectsUncertain(t *testing.T) {
 	server, requests := newScriptedServer(t, []int{http.StatusInternalServerError}, []string{`{}`})
 	client := newTestClient(t, server.URL)
 	ctx := singledispatchtest.NewContext("credential-flow", "schedule-post-step")
@@ -211,8 +260,9 @@ func TestSchedulePostInvalidCredentialAfterPossibleSendRetries(t *testing.T) {
 	invalid := Credentials{OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"), AccessToken: sdkgo.NewSecretString("bad\ntoken"), RefreshToken: sdkgo.NewSecretString("refresh-token")}
 	invalidClient, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: invalid})
 	require.NoError(t, err)
-	_, err = sdkgo.RunMutation(ctx, invalidClient.SchedulePost(), testConnection, exampleSchedule)
-	require.Error(t, err)
+	uncertain, err := sdkgo.RunMutation(ctx, invalidClient.SchedulePost(), testConnection, exampleSchedule)
+	require.NoError(t, err)
+	require.Equal(t, SchedulePostBranchUncertain, uncertain.Branch)
 	require.Equal(t, 1, *requests)
 	defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("first-credential-flow", "schedule-post-step"), invalidClient.SchedulePost(), testConnection, exampleSchedule)
 	require.NoError(t, err)

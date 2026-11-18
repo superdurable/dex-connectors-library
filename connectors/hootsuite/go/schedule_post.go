@@ -92,26 +92,28 @@ func (operation SchedulePostOperation) Invoke(call sdkgo.Call, input SchedulePos
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := sdkgo.ResolveCredential(call.Context, operation.client.credentials, call, operation.client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
-		return localScheduleFailure(fence, hasPossibleEarlierSend, sdkgo.FailureAuthentication, "connection credentials require reauthorization")
+		return localScheduleFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials require reauthorization")
 	}
 	if err != nil {
-		// A notSent checkpoint keeps this pre-send retry out of the send count when no send preceded it.
-		_ = fence.RecordNotSent()
+		if !hasPossibleEarlierSend {
+			// A notSent checkpoint keeps this pre-send retry out of the send count when no send preceded it.
+			_ = fence.RecordNotSent()
+		}
 		return scheduleRetry(sdkgo.FailureTransport, "connection refresh failed", 0)
 	}
 	if credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()) {
-		return localScheduleFailure(fence, hasPossibleEarlierSend, sdkgo.FailureAuthentication, "connection credentials are invalid")
+		return localScheduleFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials are invalid")
 	}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, operation.client.baseURL+"/v1/messages", bytes.NewReader(payload))
 	if err != nil {
-		return localScheduleFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "schedule request could not be built")
+		return localScheduleFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "schedule request could not be built")
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json;charset=utf-8")
 	request.Header.Set("Authorization", "Bearer "+credentials.AccessToken.Reveal())
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
-		return localScheduleFailure(fence, hasPossibleEarlierSend, sdkgo.FailureLocalDefect, "schedule request is invalid")
+		return localScheduleFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "schedule request is invalid")
 	}
 	observation := &dispatchObservation{}
 	var response *http.Response
@@ -145,15 +147,9 @@ func (operation SchedulePostOperation) Invoke(call sdkgo.Call, input SchedulePos
 		}
 		return scheduleRetry(failureKind, "Hootsuite did not schedule the message", retryAfter)
 	}
-	isDefiniteRefusalStatus := isDefiniteRefusalStatus(response.StatusCode)
 	isSuccessStatus := response.StatusCode >= 200 && response.StatusCode < 300
-	if !isDefiniteRefusalStatus && !isSuccessStatus {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "Hootsuite schedule outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
-	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if err != nil {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "Hootsuite schedule response could not be read", 0)
-	}
+	body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	isBodyReadable := readErr == nil
 	var wire struct {
 		Data []struct {
 			ID            string `json:"id"`
@@ -163,17 +159,24 @@ func (operation SchedulePostOperation) Invoke(call sdkgo.Call, input SchedulePos
 			} `json:"socialProfile"`
 		} `json:"data"`
 	}
-	isWireDecoded := json.Unmarshal(body, &wire) == nil
 	// A message ID in the body means Hootsuite scheduled the message.
-	isAccepted := isWireDecoded && len(wire.Data) > 0 && wire.Data[0].ID != ""
-	if isDefiniteRefusalStatus {
-		if isAccepted {
-			return scheduleUncertain(sdkgo.FailureProtocol, "Hootsuite returned a contradictory schedule response")
-		}
-		return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionFailureKind(response.StatusCode), "Hootsuite rejected HTTP "+strconv.Itoa(response.StatusCode))
+	isAccepted := isBodyReadable && json.Unmarshal(body, &wire) == nil && len(wire.Data) > 0 && wire.Data[0].ID != ""
+	if isSuccessStatus && !isBodyReadable {
+		// Hootsuite accepted the request, so a resend could duplicate the message.
+		return scheduleUncertain(sdkgo.FailureTransport, "Hootsuite accepted the request, but its response could not be read")
 	}
-	if !isAccepted {
-		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureProtocol, "Hootsuite schedule response is malformed", 0)
+	if isSuccessStatus && !isAccepted {
+		return scheduleUncertain(sdkgo.FailureProtocol, "Hootsuite accepted the request, but its response is malformed")
+	}
+	if !isSuccessStatus && isAccepted {
+		return scheduleUncertain(sdkgo.FailureProtocol, "Hootsuite returned a contradictory schedule response")
+	}
+	if !isSuccessStatus {
+		// An unreadable or oversized error body cannot prove a refusal.
+		if isBodyReadable && isDefiniteRefusalStatus(response.StatusCode) {
+			return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionFailureKind(response.StatusCode), "Hootsuite rejected HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "Hootsuite schedule outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
 	}
 	// A lost provider-ID checkpoint leaves the claim, which still counts this send.
 	_ = fence.RecordProviderID(wire.Data[0].ID)
@@ -228,7 +231,11 @@ func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend
 }
 
 // localScheduleFailure selects defect only when no earlier send may have scheduled the message.
-func localScheduleFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ScheduledPostReceipt] {
+// After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+func localScheduleFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ScheduledPostReceipt] {
+	if hasPossibleEarlierSend && isTerminal {
+		return scheduleUncertain(kind, message+"; an earlier attempt may have scheduled the message")
+	}
 	if hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		return scheduleRetry(kind, message+"; no message was scheduled in this attempt", 0)

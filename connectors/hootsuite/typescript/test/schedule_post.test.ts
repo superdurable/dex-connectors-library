@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { HootsuiteClient } from '../src/client.js';
 import { SchedulePostDefinition } from '../src/generated/definitions.js';
 import type { ScheduledPostReceipt } from '../src/generated/models.js';
@@ -29,7 +29,7 @@ class AttemptContext {
   async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
 }
 
-interface HootsuiteAnswer { status: number; body: string }
+interface HootsuiteAnswer { status: number; body: string; bodyError?: 'transport' | 'stalled' | 'tooLarge' }
 
 const scheduled: HootsuiteAnswer = { status: 200, body: '{"data":[{"id":"4138476039","state":"SCHEDULED","socialProfile":{"id":"115185509"}}]}' };
 const serverFailure: HootsuiteAnswer = { status: 500, body: '{"errors":[{"message":"internal error"}]}' };
@@ -43,7 +43,10 @@ function newClient(answers: HootsuiteAnswer[], accessToken = 'test-hootsuite-tok
   const client = new HootsuiteClient({ baseUrl: 'http://127.0.0.1:12345' } as never, credentials, {
     send: async (request: ProviderRequest) => {
       requests.push(request);
-      const { status, body } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      const { status, body, bodyError } = answers[Math.min(requests.length - 1, answers.length - 1)]!;
+      if (bodyError === 'transport') throw new ProviderTransportError(false, status, {});
+      if (bodyError === 'stalled') throw new ProviderStalledError(status, {});
+      if (bodyError === 'tooLarge') throw new BodyTooLargeError(status, {});
       return { status, headers: {}, body: Buffer.from(body) };
     },
   });
@@ -91,12 +94,45 @@ describe('Hootsuite bounded resend of unconfirmed scheduled messages', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('resends a malformed success response below the send cap', async () => {
-    const { client } = newClient([{ status: 200, body: 'not JSON' }, scheduled]);
+  it.each([
+    { status: 200, body: 'not JSON' },
+    { status: 200, body: '{"data":[]}' },
+    { status: 200, body: '', bodyError: 'transport' },
+    { status: 200, body: '', bodyError: 'stalled' },
+    { status: 200, body: '', bodyError: 'tooLarge' },
+  ] as HootsuiteAnswer[])('never resends an accepted request whose response is unreadable: %j', async answer => {
+    const { client, requests } = newClient([answer, scheduled]);
+    expect(await schedule(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('never resends an unlisted error response that reports a message ID', async () => {
+    const { client, requests } = newClient([{ status: 409, body: scheduled.body }]);
+    expect(await schedule(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('treats an unreadable refusal body as an unknown outcome', async () => {
+    const { client, requests } = newClient([{ status: 400, body: '', bodyError: 'transport' }, scheduled]);
+    const context = new AttemptContext();
+    expect(await schedule(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+    context.attempt = 2;
+    expect(await schedule(client, context)).toMatchObject({ branch: 'scheduled' });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('keeps the claim when a credential refresh fails after a possible send', async () => {
+    const { client, requests } = newClient([serverFailure]);
     const context = new AttemptContext();
     expect(await schedule(client, context)).toBeInstanceOf(RetryError);
     context.attempt = 2;
-    expect(await schedule(client, context)).toMatchObject({ branch: 'scheduled' });
+    const unavailable = new HootsuiteClient({ baseUrl: 'http://127.0.0.1:12345' } as never, new StaticCredentialProvider([]), {
+      send: async (request: ProviderRequest) => { requests.push(request); return { status: 500, headers: {}, body: Buffer.from('{}') }; },
+    });
+    expect(await schedule(unavailable, context)).toBeInstanceOf(RetryError);
+    expect(JSON.stringify(context.marker)).toContain('claimed');
+    expect(requests).toHaveLength(1);
   });
 
   it.each([400, 401, 403, 404, 413, 422])('never resends a definite HTTP %i refusal', async status => {
@@ -139,13 +175,13 @@ describe('Hootsuite bounded resend of unconfirmed scheduled messages', () => {
     expect(requests).toHaveLength(0);
   });
 
-  it('retries a credential failure after a possible send and selects defect before any send', async () => {
+  it('selects uncertain for an invalid credential after a possible send and defect before any send', async () => {
     const { client, requests } = newClient([serverFailure]);
     const context = new AttemptContext();
     expect(await schedule(client, context)).toBeInstanceOf(RetryError);
     context.attempt = 2;
     const { client: invalidClient } = newClient([serverFailure], 'bad\ntoken');
-    expect(await schedule(invalidClient, context)).toBeInstanceOf(RetryError);
+    expect(await schedule(invalidClient, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
     expect(await schedule(invalidClient, new AttemptContext())).toMatchObject({ branch: 'defect' });
   });
