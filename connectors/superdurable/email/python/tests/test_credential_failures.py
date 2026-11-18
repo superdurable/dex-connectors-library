@@ -25,6 +25,10 @@ from dex_connectors.superdurable_email import (
     SendMessageInput,
     SetFlagsInput,
 )
+from dex_connectors.superdurable_email._generated.connection import (
+    CredentialMaterialError,
+    _ProjectCredentialSource,
+)
 from dex_connectors.superdurable_email._generated.definitions import REPLY_TO_MESSAGE_DEFINITION
 from dex_connectors.superdurable_email.client import Client
 from dex_connectors.superdurable_email.operations import _SubmissionMarker
@@ -74,6 +78,7 @@ class FailingCredentials:
         (ObjectNotFoundError(), "branch"),
         (ConnectionNotSelectedError(), "branch"),
         (CredentialBrokerRejectedError(), "branch"),
+        (CredentialMaterialError("Email credential password is required"), "branch"),
     ],
 )
 async def test_send_classifies_credential_resolve_failures(error: Exception, kind: str) -> None:
@@ -83,6 +88,19 @@ async def test_send_classifies_credential_resolve_failures(error: Exception, kin
     assert attempt.kind == kind
     if kind == "branch":
         assert attempt.branch == "defect"
+
+
+@pytest.mark.asyncio
+async def test_send_selects_defect_for_malformed_material_from_the_project_source() -> None:
+    """The generated project source rejects malformed material, which no retry repairs."""
+
+    class MalformedProject:
+        async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+            return {"username": "agent@example.com", "password": 7}
+
+    source = _ProjectCredentialSource(MalformedProject(), object())  # type: ignore[arg-type]
+    attempt = await client_with(source).send_message().invoke(make_call(Context()), SEND_INPUT)
+    assert attempt.kind == "branch" and attempt.branch == "defect"
 
 
 def client_with(provider: object) -> Client:
