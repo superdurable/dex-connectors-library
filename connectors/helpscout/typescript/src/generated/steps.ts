@@ -81,7 +81,7 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Help Scout conclusively rejected the thread with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as invalid text or an unknown customer; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, or an unlisted status; Help Scout accepted the thread with a 2xx but no valid thread ID; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent. */
+  /** The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a refusal whose error body could not be read in full; Help Scout accepted the thread with a 2xx but no valid thread ID; an error answer named a thread whose ID could not be saved; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

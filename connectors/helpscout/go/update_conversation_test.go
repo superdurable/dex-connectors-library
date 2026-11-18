@@ -197,6 +197,15 @@ func TestUpdateConversationMapsFailuresAndRetriesALostWrite(t *testing.T) {
 		requireRetry(t, err, sdkgo.FailureAvailability) // A 412 or 423 is not a listed refusal, so the absolute write repeats.
 	}
 
+	for _, isOversized := range []bool{true, false} {
+		incomplete := newFakeHelpScout(t, map[string]http.HandlerFunc{
+			"GET /v2/conversations/501":   stored.read,
+			"PATCH /v2/conversations/501": incompleteErrorBody(http.StatusUnprocessableEntity, isOversized),
+		})
+		_, err = updateConversation(t, newFakeBackedClient(t, incomplete), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+		requireRetry(t, err, sdkgo.FailureAvailability) // A refusal whose body was not read in full is unknown, so the write repeats.
+	}
+
 	var reads atomic.Int32
 	invalidReadBack := newFakeHelpScout(t, map[string]http.HandlerFunc{
 		"GET /v2/conversations/501": func(response http.ResponseWriter, request *http.Request) {

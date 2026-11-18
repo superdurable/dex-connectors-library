@@ -161,6 +161,9 @@ def _is_unknown_write_outcome(exchange: Exchange) -> bool:
     """Report an answer to a sent write that neither confirms nor definitely refuses it."""
     if exchange.error:
         return exchange.error in ("tooLarge", "malformed")
+    if exchange.is_error_body_incomplete:
+        # A refusal whose body was not read in full may hide an applied write.
+        return True
     status = exchange.status
     # _mutation_exchange already retries 408, 429, and 5xx.
     return (
@@ -861,13 +864,14 @@ class ReplyToConversationOperation:
                     0,
                     self.client.receipt(call, output.conversation_id),
                 )
-            # The write window cut off the body after the status arrived, so the status decides.
+            # The write window cut off the body after the status arrived: a 2xx was accepted.
             is_accepted = 200 <= response_head.status < 300
             exchange = Exchange(
                 response_head.status,
                 response_head.headers,
                 error="bodyRead" if is_accepted else "",
                 token=token,
+                is_error_body_incomplete=not is_accepted,
             )
         if exchange.error == "notBuilt":
             built = _failure(
@@ -918,6 +922,26 @@ class ReplyToConversationOperation:
             return MutationAttempt.branch_result("replied", output, self.client.receipt(call, thread_id))
         retry, failure, delay, request_id = self.client.classify_failure("replyToConversation", exchange)
         receipt = self.client.receipt(call, output.conversation_id, request_id)
+        raw_named_id = exchange.headers.get("Resource-Id", "").strip()
+        named_thread_id = int(raw_named_id) if _is_ascii_decimal(raw_named_id) else 0
+        if named_thread_id > 0:
+            return await self._confirm_contradictory_thread_id(
+                output, fence, named_thread_id, failure, receipt
+            )
+        if exchange.is_error_body_incomplete and exchange.status in DEFINITE_REFUSAL_STATUSES:
+            # A refusal whose body was not read in full may hide an applied write.
+            return self._resend_or_uncertain(
+                call,
+                output,
+                can_resend,
+                replace(
+                    failure,
+                    message=failure.message
+                    + "; the error body could not be read in full, so the thread may exist",
+                ),
+                0,
+                receipt,
+            )
         if exchange.status in (429, 503):
             try:
                 await fence.record_can_resend()
@@ -939,6 +963,25 @@ class ReplyToConversationOperation:
             delay,
             receipt,
         )
+
+    async def _confirm_contradictory_thread_id(
+        self,
+        output: ConversationReply,
+        fence: Fence,
+        thread_id: int,
+        problem: Failure,
+        receipt: Receipt,
+    ) -> MutationAttempt[ConversationReply]:
+        """Save the thread ID a non-2xx names, so later attempts read it back, never resend."""
+        problem = replace(
+            problem,
+            message=problem.message + f"; the answer names thread {thread_id}, so the thread may exist",
+        )
+        try:
+            await fence.record_provider_id(str(thread_id))
+        except (CheckpointError, DispatchNotAllowedError):
+            return MutationAttempt.uncertain(output, problem, receipt)
+        return MutationAttempt.retry(problem)
 
     def _lost_answer(self) -> Failure:
         return _failure(

@@ -120,6 +120,8 @@ type helpScoutResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+	// isErrorBodyIncomplete marks a non-2xx body that exceeded MaxErrorBodyBytes or could not be read in full.
+	isErrorBodyIncomplete bool
 }
 
 // helpScoutOutcome classifies a non-2xx answer: a Retry, or a conclusive failure the caller maps to a branch.
@@ -274,7 +276,9 @@ func (client *Client) sendOnce(
 	response := helpScoutResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header.Clone()}
 	if httpResponse.StatusCode < 200 || httpResponse.StatusCode >= 300 {
 		// Only error tokens are read, so a truncated or unreadable error body keeps its status.
-		response.body, _ = io.ReadAll(io.LimitReader(httpResponse.Body, providerhttp.MaxErrorBodyBytes))
+		body, readErr := io.ReadAll(io.LimitReader(httpResponse.Body, providerhttp.MaxErrorBodyBytes+1))
+		response.isErrorBodyIncomplete = readErr != nil || len(body) > providerhttp.MaxErrorBodyBytes
+		response.body = body[:min(len(body), providerhttp.MaxErrorBodyBytes)]
 		return response, nil
 	}
 	response.body, err = providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)

@@ -3475,6 +3475,92 @@
       ],
       "name": "reply-refusal-after-unknown-uncertain",
       "operation": "replyToConversation"
+    },
+    {
+      "attempts": 2,
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Resource-Id": "570"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/notes",
+          "requestBody": {
+            "text": "Internal note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 422
+        },
+        {
+          "body": "{\"_embedded\": {\"threads\": [{\"id\": 570, \"type\": \"note\", \"createdAt\": \"2026-09-30T09:00:00Z\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501/threads",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "conversationId": 501,
+          "isInternalNote": true,
+          "threadId": 570
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "isInternalNote": true,
+        "text": "Internal note"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "VALIDATION",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+            "providerId": "570",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "reply-refusal-names-thread-read-back",
+      "operation": "replyToConversation"
     }
   ],
   "schemaVersion": 1

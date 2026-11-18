@@ -9,10 +9,11 @@ from datetime import UTC, datetime, timedelta
 
 import dex_connectors.sdk as sdk
 import httpx
+import pytest
 from dex_connectors.sdk.singledispatch import Marker, State
 
 from dex_connectors.helpscout import Client, Config, Credentials
-from dex_connectors.helpscout.models import ReplyToConversationInput
+from dex_connectors.helpscout.models import ReplyToConversationInput, UpdateConversationInput
 
 CONNECTION = sdk.ConnectionRef("helpscout", "helpscout-test")
 CALL_ID = sdk.CallID("3f9f4c0b-1d7f-5034-a855-40824c3de676")
@@ -179,6 +180,88 @@ async def test_refusal_after_a_rate_limited_resend_is_uncertain() -> None:
     result = await run(lambda _: error_response(next(statuses)), context, requests)
     assert branch_of(result) == "uncertain"
     assert posts(requests) == 3
+
+
+def incomplete_refusal(status: int, kind: str) -> httpx.Response:
+    """Answer a definite refusal status whose error body is oversized, breaks, or hangs."""
+    if kind == "oversized":
+        return httpx.Response(status, content=json.dumps({"message": "a" * (70 << 10)}).encode())
+    return httpx.Response(status, stream=BrokenBody() if kind == "broken" else HangingBody())
+
+
+async def test_refusal_with_an_incomplete_error_body_is_an_unknown_outcome() -> None:
+    cases = ((422, "oversized", 30.0), (400, "broken", 30.0), (404, "hanging", 0.6))
+    for status, kind, deadline_seconds in cases:
+        requests: list[httpx.Request] = []
+        context = AttemptContext(deadline_seconds=deadline_seconds)
+        refusal = incomplete_refusal(status, kind)
+        result = await run(lambda _, answer=refusal: answer, context, requests)
+        assert result == "retry", (status, kind)
+        assert context.marker is not None and context.marker.state == State.CLAIMED
+        context.advance()
+        result = await run(lambda _: httpx.Response(201, headers={"Resource-Id": "569"}), context, requests)
+        assert branch_of(result) == "replied"
+        assert posts(requests) == 2
+
+
+async def test_update_refusal_with_an_incomplete_error_body_retries() -> None:
+    conversation_body = {
+        "id": 501,
+        "number": 12,
+        "threads": 1,
+        "type": "email",
+        "status": "active",
+        "state": "published",
+        "subject": "Billing question",
+        "mailboxId": 123,
+        "primaryCustomer": {"id": 238604, "type": "customer", "email": "jane@acme.example.com"},
+        "tags": [],
+        "createdAt": "2026-09-29T22:46:22Z",
+    }
+    for kind in ("oversized", "broken"):
+
+        def respond(request: httpx.Request, refusal_kind: str = kind) -> httpx.Response:
+            if request.method == "GET":
+                return httpx.Response(200, json=conversation_body)
+            return incomplete_refusal(422, refusal_kind)
+
+        source = sdk.StaticCredentialProvider(
+            {
+                CONNECTION: Credentials(
+                    "app-id",
+                    sdk.SecretString("app-secret"),
+                    sdk.SecretString("inert-access-token"),
+                    sdk.SecretString("webhook-secret"),
+                )
+            }
+        )
+        client = Client(Config(), source, httpx.AsyncClient(transport=httpx.MockTransport(respond)))
+        call = sdk.Call(
+            CALL_ID, CONNECTION, sdk.OperationRef("helpscout", "updateConversation"), context=AttemptContext()
+        )
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.update_conversation(), call, UpdateConversationInput(501, status="closed")
+            )
+
+
+async def test_refusal_that_names_a_thread_is_read_back_and_never_resent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(422, headers={"Resource-Id": "570"}, content=b'{"message":"error"}')
+        page = {"_embedded": {"threads": [{"id": 570, "type": "note", "createdAt": "2026-09-30T09:00:00Z"}]}}
+        return httpx.Response(200, json=page)
+
+    assert await run(respond, context, requests) == "retry"
+    context.advance()
+    result = await run(respond, context, requests)
+    assert not isinstance(result, str)
+    assert result.branch == "replied"
+    assert result.value.thread_id == 570  # type: ignore[attr-defined]
+    assert posts(requests) == 1
 
 
 async def test_locked_conversation_status_is_an_unknown_outcome() -> None:
