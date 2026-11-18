@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError, ExchangePendingError } from '@superdurable/connectors-sdk/projectconfig';
 import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { OAuth2HTTPClient } from '../src/client.js';
 import { PostNonIdempotentDefinition } from '../src/generated/definitions.js';
@@ -120,6 +121,51 @@ describe('postNonIdempotent single dispatch', () => {
     expect(attempt.kind).toBe('uncertain');
     expect(context.marker).toBe(seeded);
     expect(requests).toHaveLength(0);
+  });
+
+  it('selects uncertain without sending while the checkpoint counts an earlier possible POST', async () => {
+    const requests: ProviderRequest[] = [];
+    const context = new AttemptContext();
+    context.marker = { callId, attempt: 2, state: 'canResend', sendCount: 1 };
+    context.attempt = 3;
+    expect((await post(context, respond(201), requests)).kind, 'the send cap of one is used').toBe('uncertain');
+    expect(requests).toHaveLength(0);
+  });
+
+  it('returns Retry for an unavailable credential broker and records notSent', async () => {
+    const context = new AttemptContext();
+    const client = new OAuth2HTTPClient(config, { resolve: async () => { throw new CredentialBrokerUnavailableError(); }, resolveWithRefresh: async () => { throw new CredentialBrokerUnavailableError(); } },
+      { send: async () => { throw new Error('sent'); } });
+    const call = { id: callId, idempotencyKey: callId, connection, context } as unknown as Call;
+    expect((await client.postNonIdempotent().invoke(call, { path: '/orders' })).kind).toBe('retry');
+    expect(markerState(context)).toBe('notSent');
+  });
+
+  it('selects uncertain for a terminal credential failure of a later sendRequest write', async () => {
+    const client = new OAuth2HTTPClient(config, { resolve: async () => { throw new Error('connection is not configured'); }, resolveWithRefresh: async () => { throw new Error('connection is not configured'); } },
+      { send: async () => { throw new Error('sent'); } });
+    for (const [method, attempt, branch] of [['POST', 1, 'defect'], ['POST', 2, 'uncertain'], ['DELETE', 2, 'uncertain'], ['GET', 2, 'defect']] as const) {
+      const context = new AttemptContext();
+      context.attempt = attempt;
+      const call = { id: callId, idempotencyKey: callId, connection, context } as unknown as Call;
+      const result = await client.sendRequest().invoke(call, { method, path: '/orders' });
+      expect(result.kind === 'retry' ? 'retry' : result.kind === 'uncertain' ? 'uncertain' : result.branch, `${method} attempt ${attempt}`).toBe(branch);
+    }
+    const broker = new OAuth2HTTPClient(config, { resolve: async () => { throw new ExchangePendingError(); }, resolveWithRefresh: async () => { throw new ExchangePendingError(); } });
+    const pending = { id: callId, idempotencyKey: callId, connection, context: new AttemptContext() } as unknown as Call;
+    expect((await broker.sendRequest().invoke(pending, { method: 'POST', path: '/orders' })).kind).toBe('retry');
+  });
+
+  it('selects uncertain for a definite refusal of a later sendRequest write', async () => {
+    const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, credentials]]), { send: respond(422) });
+    for (const [method, attempt, branch] of [['POST', 1, 'rejected'], ['POST', 2, 'uncertain'], ['PUT', 3, 'uncertain'], ['GET', 2, 'rejected']] as const) {
+      const context = new AttemptContext();
+      context.attempt = attempt;
+      const call = { id: callId, idempotencyKey: callId, connection, context } as unknown as Call;
+      const result = await client.sendRequest().invoke(call, { method, path: '/orders' });
+      expect(result.kind === 'retry' ? 'retry' : result.kind === 'uncertain' ? 'uncertain' : result.branch, `${method} attempt ${attempt}`).toBe(branch);
+      if (result.kind !== 'retry') expect(result.value.statusCode).toBe(422);
+    }
   });
 
   it('selects uncertain without sending when a later attempt finds no checkpoint', async () => {

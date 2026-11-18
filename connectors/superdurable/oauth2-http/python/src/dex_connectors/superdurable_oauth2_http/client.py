@@ -26,6 +26,7 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig.storage import ObjectConflictError
 from dex_connectors.sdk.providerhttp import (
     AddressRefusal,
     RequestTrace,
@@ -72,6 +73,8 @@ _SEND_REQUEST = "sendRequest"
 _POST_NON_IDEMPOTENT = "postNonIdempotent"
 # The POST gets most of the Execute budget, because no read-back follows it.
 _POST_WRITE_WINDOW = 5 / 6
+# A credential broker, store, refresh, or exchange that is unavailable now may answer on a later attempt.
+_TRANSIENT_CREDENTIAL_ERRORS = (OSError, ObjectConflictError)
 _OPERATION_SECONDS = 25
 
 
@@ -415,7 +418,8 @@ class Client:
                 FailureKind.AUTHENTICATION,
                 "the OAuth authorization must be renewed in Dex Web Connections",
             )
-        except TimeoutError:
+        except _TRANSIENT_CREDENTIAL_ERRORS:
+            # Includes TimeoutError, an unavailable broker or store, and a failed or pending refresh.
             return None, MutationAttempt.retry(
                 _failure(
                     operation, FailureKind.AVAILABILITY, "the OAuth access token could not be refreshed now"
@@ -450,7 +454,8 @@ class SendRequestOperation:
 
         A 2xx selects completed; a redirect of a GET, HEAD, or OPTIONS request or a definite
         refusal selects rejected. Every other outcome, including a redirect of a POST, PUT, PATCH,
-        or DELETE, returns Retry; the declared uncertain branch is never selected.
+        or DELETE, returns Retry. On a later attempt of a write method, a definite refusal or a
+        terminal credential or address failure selects uncertain instead of rejected or defect.
         """
         try:
             request = _plan_request(
@@ -462,6 +467,13 @@ class SendRequestOperation:
         credentials, failed = await self._client._resolve_credentials(call, deadline, _SEND_REQUEST)
         if credentials is None:
             assert failed is not None
+            if failed.kind != "retry" and _has_possible_earlier_write(call, request):
+                return self._uncertain_without_sending(
+                    call,
+                    FailureKind.AUTHENTICATION,
+                    "an earlier attempt may have sent the request, "
+                    "and the connection's credentials cannot send it now",
+                )
             return failed
         answer = await self._client._exchange(call, request, credentials.access_token.reveal(), deadline)
         used_tokens = [credentials.access_token.reveal()]
@@ -480,9 +492,26 @@ class SendRequestOperation:
                 pass
         return self._attempt_for(call, request, answer, used_tokens)
 
+    def _uncertain_without_sending(
+        self, call: Call, kind: FailureKind, message: str
+    ) -> MutationAttempt[SendRequestOutput]:
+        """Select uncertain for a later write attempt that a terminal local failure stops."""
+        return MutationAttempt.uncertain(
+            SendRequestOutput(),
+            _failure(_SEND_REQUEST, kind, message),
+            self._client._receipt(call, _Exchange()),
+        )
+
     def _attempt_for(
         self, call: Call, request: _RequestPlan, answer: _Exchange, used_tokens: list[str]
     ) -> MutationAttempt[SendRequestOutput]:
+        if answer.refusal is not None and _has_possible_earlier_write(call, request):
+            return self._uncertain_without_sending(
+                call,
+                FailureKind.VALIDATION,
+                "an earlier attempt may have sent the request, and the connection's apiBaseUrl resolves "
+                "to an address the connector will not connect to: " + answer.refusal.reason,
+            )
         if answer.refusal is not None:
             return _branch(
                 _SEND_REQUEST,
@@ -523,6 +552,18 @@ class SendRequestOperation:
                     "which does not prove the request was refused",
                 ),
                 self._client._retry_after(answer),
+            )
+        if status in _DEFINITE_REFUSALS and _has_possible_earlier_write(call, request):
+            # The refusal may answer the repeat of a write that an earlier attempt already applied.
+            return MutationAttempt.uncertain(
+                output,
+                _failure(
+                    _SEND_REQUEST,
+                    _rejection_kind(status),
+                    f"the API answered HTTP {status} to a repeated {request.method}, "
+                    "which an earlier attempt may have applied",
+                ),
+                receipt,
             )
         if 300 <= status < 400 or status in _DEFINITE_REFUSALS:
             # The connector never follows a redirect, so a redirect is reported like a refusal.
@@ -621,7 +662,9 @@ class PostNonIdempotentOperation:
                     "the single-dispatch checkpoint could not be read; nothing was sent in this attempt",
                 )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+        # A canResend or notSent marker may still count an earlier possible POST; the cap forbids another one.
+        is_cap_used = decision.prior_send_upper_bound >= call.max_sends
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED or is_cap_used:
             return MutationAttempt.uncertain(
                 SendRequestOutput(),
                 _failure(
@@ -718,6 +761,11 @@ class PostNonIdempotentOperation:
                 )
             )
         return await outcome.attempt_for(answer, token, deadline)
+
+
+def _has_possible_earlier_write(call: Call, request: _RequestPlan) -> bool:
+    """Report a write method on a later attempt, which may follow a processed write."""
+    return request.method not in _READ_METHODS and call.context is not None and call.context.attempt > 1
 
 
 def _loop_deadline(write_deadline: datetime, operation_deadline: float) -> float:
