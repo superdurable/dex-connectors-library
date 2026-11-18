@@ -53,15 +53,34 @@ export interface Credentials {
   signingSecret: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["signing_secret"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["signing_secret"] != null && !(typeof fields["signing_secret"] === 'string')) throw new TypeError("credential signing_secret has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["signing_secret"] != null && !(typeof fields["signing_secret"] === 'string')) throw new CredentialMaterialError("credential signing_secret has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["signing_secret"]) throw new TypeError("credential signing_secret is required");
+  if (!fields["signing_secret"]) throw new CredentialMaterialError("credential signing_secret is required");
   credentials.signingSecret = new SecretString((fields["signing_secret"] ?? '') as string);
   return credentials;
 }

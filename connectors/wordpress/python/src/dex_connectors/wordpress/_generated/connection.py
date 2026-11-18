@@ -79,6 +79,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.wordpress.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored WordPress credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.wordpress.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.wordpress.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -88,19 +103,19 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("WordPress stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("WordPress stored credential does not match the connector credential fields")
         if set(material) - set(('username', 'application_password')):
-            raise ValueError("WordPress stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("WordPress stored credential does not match the connector credential fields")
         username = material.get("username")
         if username is not None and not (isinstance(username, str)):
-            raise ValueError("WordPress credential username has an invalid type")
+            raise CredentialMaterialError("WordPress credential username has an invalid type")
         application_password = material.get("application_password")
         if application_password is not None and not (isinstance(application_password, str)):
-            raise ValueError("WordPress credential application_password has an invalid type")
+            raise CredentialMaterialError("WordPress credential application_password has an invalid type")
         if not username:
-            raise ValueError("WordPress credential username is required")
+            raise CredentialMaterialError("WordPress credential username is required")
         if not application_password:
-            raise ValueError("WordPress credential application_password is required")
+            raise CredentialMaterialError("WordPress credential application_password is required")
         return Credentials(username, SecretString(application_password))
 
 

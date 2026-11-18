@@ -79,6 +79,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.elastic_elasticsearch.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Elasticsearch credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.elastic_elasticsearch.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.elastic_elasticsearch.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -88,19 +103,19 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Elasticsearch stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Elasticsearch stored credential does not match the connector credential fields")
         if set(material) - set(('username', 'password')):
-            raise ValueError("Elasticsearch stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Elasticsearch stored credential does not match the connector credential fields")
         username = material.get("username")
         if username is not None and not (isinstance(username, str)):
-            raise ValueError("Elasticsearch credential username has an invalid type")
+            raise CredentialMaterialError("Elasticsearch credential username has an invalid type")
         password = material.get("password")
         if password is not None and not (isinstance(password, str)):
-            raise ValueError("Elasticsearch credential password has an invalid type")
+            raise CredentialMaterialError("Elasticsearch credential password has an invalid type")
         if not username:
-            raise ValueError("Elasticsearch credential username is required")
+            raise CredentialMaterialError("Elasticsearch credential username is required")
         if not password:
-            raise ValueError("Elasticsearch credential password is required")
+            raise CredentialMaterialError("Elasticsearch credential password is required")
         return Credentials(username, SecretString(password))
 
 

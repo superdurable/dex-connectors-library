@@ -1035,6 +1035,23 @@ def render_connection():
     ]
     credential_fields = auth_fields()
     if credential_fields:
+        lines += [
+            "",
+            "class CredentialMaterialError(ValueError):",
+            f"    {quoted('Stored ' + connection_label + ' credential material fails the connector credential checks, so no retry can succeed.')}",
+            "",
+            f"setattr(CredentialMaterialError, '__module__', 'dex_connectors.{package_name}.connection')",
+            "",
+            "",
+            "def is_credential_material_error(error: BaseException) -> bool:",
+            "    \"\"\"Report malformed stored credential material, also behind the SDK provider's decoding ValueError.\"\"\"",
+            "    return isinstance(error, CredentialMaterialError) or (",
+            "        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)",
+            "    )",
+            "",
+            f"setattr(is_credential_material_error, '__module__', 'dex_connectors.{package_name}.connection')",
+            "",
+        ]
         decoder_start = len(lines)
         lines += [
             "",
@@ -1160,6 +1177,9 @@ def render_connection():
                 else:
                     values.append(f"{{key: item or '' for key, item in ({name} or {{}}).items()}}")
             lines += ["        return Credentials(" + ", ".join(values) + ")", ""]
+        lines[decoder_body_start:] = [
+            line.replace("raise ValueError(", "raise CredentialMaterialError(") for line in lines[decoder_body_start:]
+        ]
         if has_refresh:
             decoder = lines[decoder_body_start:]
             decoder = [line.removeprefix("    ") for line in decoder]

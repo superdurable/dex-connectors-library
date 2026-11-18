@@ -114,63 +114,78 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.linear.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Linear credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.linear.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.linear.connection')
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Linear stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Linear stored credential does not match the connector credential fields")
     if set(material) - set(('api_key', 'webhook_signing_secret', 'oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'auth_method')):
-        raise ValueError("Linear stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Linear stored credential does not match the connector credential fields")
     is_shared = shared
     api_key = material.get("api_key")
     if api_key is not None and not (isinstance(api_key, str)):
-        raise ValueError("Linear credential api_key has an invalid type")
+        raise CredentialMaterialError("Linear credential api_key has an invalid type")
     webhook_signing_secret = material.get("webhook_signing_secret")
     if webhook_signing_secret is not None and not (isinstance(webhook_signing_secret, str)):
-        raise ValueError("Linear credential webhook_signing_secret has an invalid type")
+        raise CredentialMaterialError("Linear credential webhook_signing_secret has an invalid type")
     oauth_client_id = material.get("oauth_client_id")
     if oauth_client_id is not None and not (isinstance(oauth_client_id, str)):
-        raise ValueError("Linear credential oauth_client_id has an invalid type")
+        raise CredentialMaterialError("Linear credential oauth_client_id has an invalid type")
     oauth_client_secret = material.get("oauth_client_secret")
     if oauth_client_secret is not None and not (isinstance(oauth_client_secret, str)):
-        raise ValueError("Linear credential oauth_client_secret has an invalid type")
+        raise CredentialMaterialError("Linear credential oauth_client_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Linear credential access_token has an invalid type")
+        raise CredentialMaterialError("Linear credential access_token has an invalid type")
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
-        raise ValueError("Linear credential refresh_token has an invalid type")
+        raise CredentialMaterialError("Linear credential refresh_token has an invalid type")
     selected_method = material.get('auth_method')
     if selected_method is None:
         selected_method = ''
     if not isinstance(selected_method, str):
-        raise ValueError("Linear credential auth_method is invalid")
+        raise CredentialMaterialError("Linear credential auth_method is invalid")
     method = selected_method or "personal-api-key"
     values: dict[str, Any] = {'auth_method_id': method}
     if method == "personal-api-key":
         if not api_key:
-            raise ValueError("Linear credential api_key is required")
+            raise CredentialMaterialError("Linear credential api_key is required")
         if api_key:
             values["api_key"] = SecretString(api_key)
         values["webhook_signing_secret"] = SecretString(webhook_signing_secret or '')
     elif method == "linear-oauth":
         if not oauth_client_id:
-            raise ValueError("Linear credential oauth_client_id is required")
+            raise CredentialMaterialError("Linear credential oauth_client_id is required")
         if oauth_client_id:
             values["oauth_client_id"] = oauth_client_id
         if not oauth_client_secret and not is_shared:
-            raise ValueError("Linear credential oauth_client_secret is required")
+            raise CredentialMaterialError("Linear credential oauth_client_secret is required")
         if oauth_client_secret:
             values["oauth_client_secret"] = SecretString(oauth_client_secret)
         if not access_token:
-            raise ValueError("Linear credential access_token is required")
+            raise CredentialMaterialError("Linear credential access_token is required")
         if access_token:
             values["access_token"] = SecretString(access_token)
         if not refresh_token and not is_shared:
-            raise ValueError("Linear credential refresh_token is required")
+            raise CredentialMaterialError("Linear credential refresh_token is required")
         if refresh_token:
             values["refresh_token"] = SecretString(refresh_token)
         values["webhook_signing_secret"] = SecretString(webhook_signing_secret or '')
     else:
-        raise ValueError("Linear credential auth_method is invalid")
+        raise CredentialMaterialError("Linear credential auth_method is invalid")
     return Credentials(**values)
 
 

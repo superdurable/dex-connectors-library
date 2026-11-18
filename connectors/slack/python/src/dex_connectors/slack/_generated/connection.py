@@ -122,36 +122,51 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.slack.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Slack credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.slack.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.slack.connection')
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Slack stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Slack stored credential does not match the connector credential fields")
     if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'bot_token', 'bot_refresh_token', 'user_token', 'user_refresh_token', 'app_token')):
-        raise ValueError("Slack stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Slack stored credential does not match the connector credential fields")
     oauth_client_id = material.get("oauth_client_id")
     if oauth_client_id is not None and not (isinstance(oauth_client_id, str)):
-        raise ValueError("Slack credential oauth_client_id has an invalid type")
+        raise CredentialMaterialError("Slack credential oauth_client_id has an invalid type")
     oauth_client_secret = material.get("oauth_client_secret")
     if oauth_client_secret is not None and not (isinstance(oauth_client_secret, str)):
-        raise ValueError("Slack credential oauth_client_secret has an invalid type")
+        raise CredentialMaterialError("Slack credential oauth_client_secret has an invalid type")
     bot_token = material.get("bot_token")
     if bot_token is not None and not (isinstance(bot_token, str)):
-        raise ValueError("Slack credential bot_token has an invalid type")
+        raise CredentialMaterialError("Slack credential bot_token has an invalid type")
     bot_refresh_token = material.get("bot_refresh_token")
     if bot_refresh_token is not None and not (isinstance(bot_refresh_token, str)):
-        raise ValueError("Slack credential bot_refresh_token has an invalid type")
+        raise CredentialMaterialError("Slack credential bot_refresh_token has an invalid type")
     user_token = material.get("user_token")
     if user_token is not None and not (isinstance(user_token, str)):
-        raise ValueError("Slack credential user_token has an invalid type")
+        raise CredentialMaterialError("Slack credential user_token has an invalid type")
     user_refresh_token = material.get("user_refresh_token")
     if user_refresh_token is not None and not (isinstance(user_refresh_token, str)):
-        raise ValueError("Slack credential user_refresh_token has an invalid type")
+        raise CredentialMaterialError("Slack credential user_refresh_token has an invalid type")
     app_token = material.get("app_token")
     if app_token is not None and not (isinstance(app_token, str)):
-        raise ValueError("Slack credential app_token has an invalid type")
+        raise CredentialMaterialError("Slack credential app_token has an invalid type")
     if not bot_token:
-        raise ValueError("Slack credential bot_token is required")
+        raise CredentialMaterialError("Slack credential bot_token is required")
     if not user_token:
-        raise ValueError("Slack credential user_token is required")
+        raise CredentialMaterialError("Slack credential user_token is required")
     return Credentials((oauth_client_id or ''), SecretString(oauth_client_secret or ''), SecretString(bot_token), SecretString(bot_refresh_token or ''), SecretString(user_token), SecretString(user_refresh_token or ''), SecretString(app_token or ''))
 
 

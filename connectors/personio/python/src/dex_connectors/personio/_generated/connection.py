@@ -66,27 +66,42 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.personio.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Personio credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.personio.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.personio.connection')
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Personio stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Personio stored credential does not match the connector credential fields")
     if set(material) - set(('client_id', 'client_secret', 'access_token')):
-        raise ValueError("Personio stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Personio stored credential does not match the connector credential fields")
     is_shared = shared
     client_id = material.get("client_id")
     if client_id is not None and not (isinstance(client_id, str)):
-        raise ValueError("Personio credential client_id has an invalid type")
+        raise CredentialMaterialError("Personio credential client_id has an invalid type")
     client_secret = material.get("client_secret")
     if client_secret is not None and not (isinstance(client_secret, str)):
-        raise ValueError("Personio credential client_secret has an invalid type")
+        raise CredentialMaterialError("Personio credential client_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Personio credential access_token has an invalid type")
+        raise CredentialMaterialError("Personio credential access_token has an invalid type")
     if not client_id:
-        raise ValueError("Personio credential client_id is required")
+        raise CredentialMaterialError("Personio credential client_id is required")
     if not client_secret and not is_shared:
-        raise ValueError("Personio credential client_secret is required")
+        raise CredentialMaterialError("Personio credential client_secret is required")
     if not access_token and is_shared:
-        raise ValueError("Personio credential access_token is required")
+        raise CredentialMaterialError("Personio credential access_token is required")
     return Credentials(client_id, SecretString(client_secret or ''), SecretString(access_token or ''))
 
 

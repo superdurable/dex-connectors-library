@@ -63,6 +63,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.plaid.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Plaid credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.plaid.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.plaid.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,24 +87,24 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Plaid stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Plaid stored credential does not match the connector credential fields")
         if set(material) - set(('client_id', 'secret', 'access_token')):
-            raise ValueError("Plaid stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Plaid stored credential does not match the connector credential fields")
         client_id = material.get("client_id")
         if client_id is not None and not (isinstance(client_id, str)):
-            raise ValueError("Plaid credential client_id has an invalid type")
+            raise CredentialMaterialError("Plaid credential client_id has an invalid type")
         secret = material.get("secret")
         if secret is not None and not (isinstance(secret, str)):
-            raise ValueError("Plaid credential secret has an invalid type")
+            raise CredentialMaterialError("Plaid credential secret has an invalid type")
         access_token = material.get("access_token")
         if access_token is not None and not (isinstance(access_token, str)):
-            raise ValueError("Plaid credential access_token has an invalid type")
+            raise CredentialMaterialError("Plaid credential access_token has an invalid type")
         if not client_id:
-            raise ValueError("Plaid credential client_id is required")
+            raise CredentialMaterialError("Plaid credential client_id is required")
         if not secret:
-            raise ValueError("Plaid credential secret is required")
+            raise CredentialMaterialError("Plaid credential secret is required")
         if not access_token:
-            raise ValueError("Plaid credential access_token is required")
+            raise CredentialMaterialError("Plaid credential access_token is required")
         return Credentials(SecretString(client_id), SecretString(secret), SecretString(access_token))
 
 

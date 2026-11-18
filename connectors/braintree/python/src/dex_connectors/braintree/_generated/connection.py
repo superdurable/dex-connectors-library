@@ -63,6 +63,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.braintree.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Braintree credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.braintree.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.braintree.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,19 +87,19 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Braintree stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Braintree stored credential does not match the connector credential fields")
         if set(material) - set(('publicKey', 'privateKey')):
-            raise ValueError("Braintree stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Braintree stored credential does not match the connector credential fields")
         public_key = material.get("publicKey")
         if public_key is not None and not (isinstance(public_key, str)):
-            raise ValueError("Braintree credential publicKey has an invalid type")
+            raise CredentialMaterialError("Braintree credential publicKey has an invalid type")
         private_key = material.get("privateKey")
         if private_key is not None and not (isinstance(private_key, str)):
-            raise ValueError("Braintree credential privateKey has an invalid type")
+            raise CredentialMaterialError("Braintree credential privateKey has an invalid type")
         if not public_key:
-            raise ValueError("Braintree credential publicKey is required")
+            raise CredentialMaterialError("Braintree credential publicKey is required")
         if not private_key:
-            raise ValueError("Braintree credential privateKey is required")
+            raise CredentialMaterialError("Braintree credential privateKey is required")
         return Credentials(public_key, SecretString(private_key))
 
 

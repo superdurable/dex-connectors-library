@@ -63,6 +63,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.mongodb.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored MongoDB credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.mongodb.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.mongodb.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,14 +87,14 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("MongoDB stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("MongoDB stored credential does not match the connector credential fields")
         if set(material) - set(('connection_uri',)):
-            raise ValueError("MongoDB stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("MongoDB stored credential does not match the connector credential fields")
         connection_uri = material.get("connection_uri")
         if connection_uri is not None and not (isinstance(connection_uri, str)):
-            raise ValueError("MongoDB credential connection_uri has an invalid type")
+            raise CredentialMaterialError("MongoDB credential connection_uri has an invalid type")
         if not connection_uri:
-            raise ValueError("MongoDB credential connection_uri is required")
+            raise CredentialMaterialError("MongoDB credential connection_uri is required")
         return Credentials(SecretString(connection_uri))
 
 

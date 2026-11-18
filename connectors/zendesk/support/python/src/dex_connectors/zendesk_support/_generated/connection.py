@@ -87,6 +87,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.zendesk_support.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Zendesk Support credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.zendesk_support.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.zendesk_support.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -96,19 +111,19 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Zendesk Support stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Zendesk Support stored credential does not match the connector credential fields")
         if set(material) - set(('email', 'api_token')):
-            raise ValueError("Zendesk Support stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Zendesk Support stored credential does not match the connector credential fields")
         email = material.get("email")
         if email is not None and not (isinstance(email, str)):
-            raise ValueError("Zendesk Support credential email has an invalid type")
+            raise CredentialMaterialError("Zendesk Support credential email has an invalid type")
         api_token = material.get("api_token")
         if api_token is not None and not (isinstance(api_token, str)):
-            raise ValueError("Zendesk Support credential api_token has an invalid type")
+            raise CredentialMaterialError("Zendesk Support credential api_token has an invalid type")
         if not email:
-            raise ValueError("Zendesk Support credential email is required")
+            raise CredentialMaterialError("Zendesk Support credential email is required")
         if not api_token:
-            raise ValueError("Zendesk Support credential api_token is required")
+            raise CredentialMaterialError("Zendesk Support credential api_token is required")
         return Credentials(email, SecretString(api_token))
 
 

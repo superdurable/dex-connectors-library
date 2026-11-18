@@ -308,6 +308,7 @@ timestampValidatorWritten:
 			break
 		}
 	}
+	output.WriteString(typeScriptCredentialMaterialError)
 	writeTypeScriptCredentialDecoder(&output, manifest, allCredentialFields, fieldNames, false)
 	if HasHostKeptCredentials(manifest) {
 		writeTypeScriptCredentialDecoder(&output, manifest, allCredentialFields, fieldNames, true)
@@ -497,7 +498,35 @@ func typeScriptCredentialValue(field schema.Field, isSingleMethod bool) string {
 	return value
 }
 
+// typeScriptCredentialMaterialError matches the released SDK providers' decoding messages, because they replace the decoder error.
+const typeScriptCredentialMaterialError = `/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
+`
+
 func writeTypeScriptCredentialDecoder(output *bytes.Buffer, manifest schema.Manifest, allFields map[string]schema.Field, fieldNames []string, isShared bool) {
+	var decoder bytes.Buffer
+	doWriteTypeScriptCredentialDecoder(&decoder, manifest, allFields, fieldNames, isShared)
+	output.WriteString(strings.ReplaceAll(decoder.String(), "throw new TypeError(", "throw new CredentialMaterialError("))
+}
+
+func doWriteTypeScriptCredentialDecoder(output *bytes.Buffer, manifest schema.Manifest, allFields map[string]schema.Field, fieldNames []string, isShared bool) {
 	name := "decodeCredentials"
 	if isShared {
 		name = "decodeSharedCredentials"

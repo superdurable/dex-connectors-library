@@ -87,6 +87,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.typeform.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Typeform credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.typeform.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.typeform.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -96,30 +111,30 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Typeform stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Typeform stored credential does not match the connector credential fields")
         if set(material) - set(('access_token', 'webhook_secret', 'auth_method')):
-            raise ValueError("Typeform stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Typeform stored credential does not match the connector credential fields")
         access_token = material.get("access_token")
         if access_token is not None and not (isinstance(access_token, str)):
-            raise ValueError("Typeform credential access_token has an invalid type")
+            raise CredentialMaterialError("Typeform credential access_token has an invalid type")
         webhook_secret = material.get("webhook_secret")
         if webhook_secret is not None and not (isinstance(webhook_secret, str)):
-            raise ValueError("Typeform credential webhook_secret has an invalid type")
+            raise CredentialMaterialError("Typeform credential webhook_secret has an invalid type")
         selected_method = material.get('auth_method')
         if selected_method is None:
             selected_method = ''
         if not isinstance(selected_method, str):
-            raise ValueError("Typeform credential auth_method is invalid")
+            raise CredentialMaterialError("Typeform credential auth_method is invalid")
         method = selected_method or "personal-access-token"
         values: dict[str, Any] = {'auth_method_id': method}
         if method == "personal-access-token":
             if not access_token:
-                raise ValueError("Typeform credential access_token is required")
+                raise CredentialMaterialError("Typeform credential access_token is required")
             if access_token:
                 values["access_token"] = SecretString(access_token)
             values["webhook_secret"] = SecretString(webhook_secret or '')
         else:
-            raise ValueError("Typeform credential auth_method is invalid")
+            raise CredentialMaterialError("Typeform credential auth_method is invalid")
         return Credentials(**values)
 
 

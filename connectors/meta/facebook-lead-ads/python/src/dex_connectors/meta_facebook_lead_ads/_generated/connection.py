@@ -71,6 +71,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.meta_facebook_lead_ads.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Facebook Lead Ads credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.meta_facebook_lead_ads.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.meta_facebook_lead_ads.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -80,14 +95,14 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Facebook Lead Ads stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Facebook Lead Ads stored credential does not match the connector credential fields")
         if set(material) - set(('page_access_token',)):
-            raise ValueError("Facebook Lead Ads stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Facebook Lead Ads stored credential does not match the connector credential fields")
         page_access_token = material.get("page_access_token")
         if page_access_token is not None and not (isinstance(page_access_token, str)):
-            raise ValueError("Facebook Lead Ads credential page_access_token has an invalid type")
+            raise CredentialMaterialError("Facebook Lead Ads credential page_access_token has an invalid type")
         if not page_access_token:
-            raise ValueError("Facebook Lead Ads credential page_access_token is required")
+            raise CredentialMaterialError("Facebook Lead Ads credential page_access_token is required")
         return Credentials(SecretString(page_access_token))
 
 

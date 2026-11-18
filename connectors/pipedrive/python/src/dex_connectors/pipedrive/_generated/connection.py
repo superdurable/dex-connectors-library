@@ -106,62 +106,77 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.pipedrive.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Pipedrive credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.pipedrive.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.pipedrive.connection')
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Pipedrive stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Pipedrive stored credential does not match the connector credential fields")
     if set(material) - set(('api_token', 'oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'api_domain', 'auth_method')):
-        raise ValueError("Pipedrive stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Pipedrive stored credential does not match the connector credential fields")
     is_shared = shared
     api_token = material.get("api_token")
     if api_token is not None and not (isinstance(api_token, str)):
-        raise ValueError("Pipedrive credential api_token has an invalid type")
+        raise CredentialMaterialError("Pipedrive credential api_token has an invalid type")
     oauth_client_id = material.get("oauth_client_id")
     if oauth_client_id is not None and not (isinstance(oauth_client_id, str)):
-        raise ValueError("Pipedrive credential oauth_client_id has an invalid type")
+        raise CredentialMaterialError("Pipedrive credential oauth_client_id has an invalid type")
     oauth_client_secret = material.get("oauth_client_secret")
     if oauth_client_secret is not None and not (isinstance(oauth_client_secret, str)):
-        raise ValueError("Pipedrive credential oauth_client_secret has an invalid type")
+        raise CredentialMaterialError("Pipedrive credential oauth_client_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Pipedrive credential access_token has an invalid type")
+        raise CredentialMaterialError("Pipedrive credential access_token has an invalid type")
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
-        raise ValueError("Pipedrive credential refresh_token has an invalid type")
+        raise CredentialMaterialError("Pipedrive credential refresh_token has an invalid type")
     api_domain = material.get("api_domain")
     if api_domain is not None and not (isinstance(api_domain, str)):
-        raise ValueError("Pipedrive credential api_domain has an invalid type")
+        raise CredentialMaterialError("Pipedrive credential api_domain has an invalid type")
     selected_method = material.get('auth_method')
     if selected_method is None:
         selected_method = ''
     if not isinstance(selected_method, str):
-        raise ValueError("Pipedrive credential auth_method is invalid")
+        raise CredentialMaterialError("Pipedrive credential auth_method is invalid")
     method = selected_method or "api-token"
     values: dict[str, Any] = {'auth_method_id': method}
     if method == "api-token":
         if not api_token:
-            raise ValueError("Pipedrive credential api_token is required")
+            raise CredentialMaterialError("Pipedrive credential api_token is required")
         if api_token:
             values["api_token"] = SecretString(api_token)
     elif method == "pipedrive-oauth":
         if not oauth_client_id:
-            raise ValueError("Pipedrive credential oauth_client_id is required")
+            raise CredentialMaterialError("Pipedrive credential oauth_client_id is required")
         if oauth_client_id:
             values["oauth_client_id"] = oauth_client_id
         if not oauth_client_secret and not is_shared:
-            raise ValueError("Pipedrive credential oauth_client_secret is required")
+            raise CredentialMaterialError("Pipedrive credential oauth_client_secret is required")
         if oauth_client_secret:
             values["oauth_client_secret"] = SecretString(oauth_client_secret)
         if not access_token:
-            raise ValueError("Pipedrive credential access_token is required")
+            raise CredentialMaterialError("Pipedrive credential access_token is required")
         if access_token:
             values["access_token"] = SecretString(access_token)
         if not refresh_token and not is_shared:
-            raise ValueError("Pipedrive credential refresh_token is required")
+            raise CredentialMaterialError("Pipedrive credential refresh_token is required")
         if refresh_token:
             values["refresh_token"] = SecretString(refresh_token)
         values["api_domain"] = api_domain or ''
     else:
-        raise ValueError("Pipedrive credential auth_method is invalid")
+        raise CredentialMaterialError("Pipedrive credential auth_method is invalid")
     return Credentials(**values)
 
 

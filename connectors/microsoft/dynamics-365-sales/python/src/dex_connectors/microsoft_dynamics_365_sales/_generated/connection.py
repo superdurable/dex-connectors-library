@@ -63,6 +63,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.microsoft_dynamics_365_sales.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Microsoft Dynamics 365 Sales credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.microsoft_dynamics_365_sales.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.microsoft_dynamics_365_sales.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,14 +87,14 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Microsoft Dynamics 365 Sales stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Microsoft Dynamics 365 Sales stored credential does not match the connector credential fields")
         if set(material) - set(('client_secret',)):
-            raise ValueError("Microsoft Dynamics 365 Sales stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Microsoft Dynamics 365 Sales stored credential does not match the connector credential fields")
         client_secret = material.get("client_secret")
         if client_secret is not None and not (isinstance(client_secret, str)):
-            raise ValueError("Microsoft Dynamics 365 Sales credential client_secret has an invalid type")
+            raise CredentialMaterialError("Microsoft Dynamics 365 Sales credential client_secret has an invalid type")
         if not client_secret:
-            raise ValueError("Microsoft Dynamics 365 Sales credential client_secret is required")
+            raise CredentialMaterialError("Microsoft Dynamics 365 Sales credential client_secret is required")
         return Credentials(SecretString(client_secret))
 
 

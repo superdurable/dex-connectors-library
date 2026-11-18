@@ -95,6 +95,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.freshworks_freshdesk.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Freshdesk credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.freshworks_freshdesk.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.freshworks_freshdesk.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -104,14 +119,14 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Freshdesk stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Freshdesk stored credential does not match the connector credential fields")
         if set(material) - set(('api_key',)):
-            raise ValueError("Freshdesk stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Freshdesk stored credential does not match the connector credential fields")
         api_key = material.get("api_key")
         if api_key is not None and not (isinstance(api_key, str)):
-            raise ValueError("Freshdesk credential api_key has an invalid type")
+            raise CredentialMaterialError("Freshdesk credential api_key has an invalid type")
         if not api_key:
-            raise ValueError("Freshdesk credential api_key is required")
+            raise CredentialMaterialError("Freshdesk credential api_key is required")
         return Credentials(SecretString(api_key))
 
 

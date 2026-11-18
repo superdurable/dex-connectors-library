@@ -79,6 +79,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.snowflake.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Snowflake credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.snowflake.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.snowflake.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -88,41 +103,41 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Snowflake stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Snowflake stored credential does not match the connector credential fields")
         if set(material) - set(('user', 'private_key', 'programmatic_access_token', 'auth_method')):
-            raise ValueError("Snowflake stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Snowflake stored credential does not match the connector credential fields")
         user = material.get("user")
         if user is not None and not (isinstance(user, str)):
-            raise ValueError("Snowflake credential user has an invalid type")
+            raise CredentialMaterialError("Snowflake credential user has an invalid type")
         private_key = material.get("private_key")
         if private_key is not None and not (isinstance(private_key, str)):
-            raise ValueError("Snowflake credential private_key has an invalid type")
+            raise CredentialMaterialError("Snowflake credential private_key has an invalid type")
         programmatic_access_token = material.get("programmatic_access_token")
         if programmatic_access_token is not None and not (isinstance(programmatic_access_token, str)):
-            raise ValueError("Snowflake credential programmatic_access_token has an invalid type")
+            raise CredentialMaterialError("Snowflake credential programmatic_access_token has an invalid type")
         selected_method = material.get('auth_method')
         if selected_method is None:
             selected_method = ''
         if not isinstance(selected_method, str):
-            raise ValueError("Snowflake credential auth_method is invalid")
+            raise CredentialMaterialError("Snowflake credential auth_method is invalid")
         method = selected_method or "key-pair"
         values: dict[str, Any] = {'auth_method_id': method}
         if method == "key-pair":
             if not user:
-                raise ValueError("Snowflake credential user is required")
+                raise CredentialMaterialError("Snowflake credential user is required")
             if user:
                 values["user"] = user
             if not private_key:
-                raise ValueError("Snowflake credential private_key is required")
+                raise CredentialMaterialError("Snowflake credential private_key is required")
             if private_key:
                 values["private_key"] = SecretString(private_key)
         elif method == "programmatic-access-token":
             if not programmatic_access_token:
-                raise ValueError("Snowflake credential programmatic_access_token is required")
+                raise CredentialMaterialError("Snowflake credential programmatic_access_token is required")
             if programmatic_access_token:
                 values["programmatic_access_token"] = SecretString(programmatic_access_token)
         else:
-            raise ValueError("Snowflake credential auth_method is invalid")
+            raise CredentialMaterialError("Snowflake credential auth_method is invalid")
         return Credentials(**values)
 
 

@@ -71,6 +71,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.posthog.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored PostHog credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.posthog.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.posthog.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -80,17 +95,17 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("PostHog stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("PostHog stored credential does not match the connector credential fields")
         if set(material) - set(('project_token', 'personal_api_key')):
-            raise ValueError("PostHog stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("PostHog stored credential does not match the connector credential fields")
         project_token = material.get("project_token")
         if project_token is not None and not (isinstance(project_token, str)):
-            raise ValueError("PostHog credential project_token has an invalid type")
+            raise CredentialMaterialError("PostHog credential project_token has an invalid type")
         personal_api_key = material.get("personal_api_key")
         if personal_api_key is not None and not (isinstance(personal_api_key, str)):
-            raise ValueError("PostHog credential personal_api_key has an invalid type")
+            raise CredentialMaterialError("PostHog credential personal_api_key has an invalid type")
         if not project_token:
-            raise ValueError("PostHog credential project_token is required")
+            raise CredentialMaterialError("PostHog credential project_token is required")
         return Credentials(SecretString(project_token), SecretString(personal_api_key or ''))
 
 

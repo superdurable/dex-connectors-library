@@ -87,6 +87,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.discord.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Discord credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.discord.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.discord.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -96,14 +111,14 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Discord stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Discord stored credential does not match the connector credential fields")
         if set(material) - set(('bot_token',)):
-            raise ValueError("Discord stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Discord stored credential does not match the connector credential fields")
         bot_token = material.get("bot_token")
         if bot_token is not None and not (isinstance(bot_token, str)):
-            raise ValueError("Discord credential bot_token has an invalid type")
+            raise CredentialMaterialError("Discord credential bot_token has an invalid type")
         if not bot_token:
-            raise ValueError("Discord credential bot_token is required")
+            raise CredentialMaterialError("Discord credential bot_token is required")
         return Credentials(SecretString(bot_token))
 
 

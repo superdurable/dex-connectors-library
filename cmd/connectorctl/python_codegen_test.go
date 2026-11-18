@@ -509,6 +509,8 @@ shared_decoder = next(node for node in tree.body if isinstance(node, ast.Functio
 credential_encoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'encode_credentials')
 url_validator = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_is_absolute_credential_url')
 config_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_decode_config')
+material_error = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'CredentialMaterialError')
+material_predicate = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'is_credential_material_error')
 class SecretString:
     def __init__(self, value): self.value = value
     def reveal(self): return self.value
@@ -518,7 +520,16 @@ class Config:
     def __init__(self, **values): self.__dict__.update(values)
 from re import search
 namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString, 'urlsplit': urlsplit, 'search': search}
-exec(compile(ast.Module(body=[url_validator, credential_decoder, shared_decoder, credential_encoder, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
+exec(compile(ast.Module(body=[material_error, material_predicate, url_validator, credential_decoder, shared_decoder, credential_encoder, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
+try: namespace['decode_credentials']({'unknown': 'value'})
+except ValueError as error: assert namespace['is_credential_material_error'](error), repr(error)
+else: raise AssertionError('unknown credential key accepted')
+def wrap_like_sdk(values):
+    try: namespace['decode_credentials'](values)
+    except ValueError: raise ValueError('project credential decoding failed') from None
+try: wrap_like_sdk({'unknown': 'value'})
+except ValueError as error: assert namespace['is_credential_material_error'](error), 'SDK decoding wrapper hides the material error'
+assert not namespace['is_credential_material_error'](ValueError('project credential decoding failed'))
 assert namespace['_decode_config']({'accountId':'account'}).workspace_id == ''
 assert namespace['_decode_config']({'accountId':'account', 'workspaceId':'workspace'}).workspace_id == 'workspace'
 def resolve(values, shared=False):
@@ -671,7 +682,8 @@ credential_decoder = next(node for node in tree.body if isinstance(node, ast.Fun
 shared_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'decode_shared_credentials')
 credential_encoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'encode_credentials')
 credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
-exec(compile(ast.Module(body=[credential_decoder, shared_decoder, credential_encoder], type_ignores=[]), '<generated-connection>', 'exec'), namespace)
+material_error = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'CredentialMaterialError')
+exec(compile(ast.Module(body=[material_error, credential_decoder, shared_decoder, credential_encoder], type_ignores=[]), '<generated-connection>', 'exec'), namespace)
 def resolve(values, shared=False):
     return namespace['decode_shared_credentials'](values) if shared else namespace['decode_credentials'](values)
 complete = resolve({'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'})
@@ -1097,7 +1109,7 @@ func TestPythonCodegenAcceptsAbsentAndBlankOptionalCredentials(t *testing.T) {
 	const script = `import ast, asyncio, dataclasses, json, sys, types, typing
 sources = json.load(sys.stdin)
 config_nodes = [node for node in ast.parse(sources["config"]).body if isinstance(node, ast.ClassDef) and node.name in ("Config", "Credentials")]
-connection_nodes = [node for node in ast.parse(sources["connection"]).body if isinstance(node, ast.ClassDef) and node.name == "_ProjectCredentialSource" or isinstance(node, ast.FunctionDef) and node.name == "_decode_config"]
+connection_nodes = [node for node in ast.parse(sources["connection"]).body if isinstance(node, ast.ClassDef) and node.name in ("CredentialMaterialError", "_ProjectCredentialSource") or isinstance(node, ast.FunctionDef) and node.name == "_decode_config"]
 class SecretString:
     def __init__(self, value): self.value = value
 namespace = {"dataclass": dataclasses.dataclass, "Any": typing.Any, "SecretString": SecretString}

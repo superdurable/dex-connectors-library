@@ -66,30 +66,45 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.linkedin_ads.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored LinkedIn Ads credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.linkedin_ads.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.linkedin_ads.connection')
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("LinkedIn Ads stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("LinkedIn Ads stored credential does not match the connector credential fields")
     if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token')):
-        raise ValueError("LinkedIn Ads stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("LinkedIn Ads stored credential does not match the connector credential fields")
     is_shared = shared
     oauth_client_id = material.get("oauth_client_id")
     if oauth_client_id is not None and not (isinstance(oauth_client_id, str)):
-        raise ValueError("LinkedIn Ads credential oauth_client_id has an invalid type")
+        raise CredentialMaterialError("LinkedIn Ads credential oauth_client_id has an invalid type")
     oauth_client_secret = material.get("oauth_client_secret")
     if oauth_client_secret is not None and not (isinstance(oauth_client_secret, str)):
-        raise ValueError("LinkedIn Ads credential oauth_client_secret has an invalid type")
+        raise CredentialMaterialError("LinkedIn Ads credential oauth_client_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("LinkedIn Ads credential access_token has an invalid type")
+        raise CredentialMaterialError("LinkedIn Ads credential access_token has an invalid type")
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
-        raise ValueError("LinkedIn Ads credential refresh_token has an invalid type")
+        raise CredentialMaterialError("LinkedIn Ads credential refresh_token has an invalid type")
     if not oauth_client_id:
-        raise ValueError("LinkedIn Ads credential oauth_client_id is required")
+        raise CredentialMaterialError("LinkedIn Ads credential oauth_client_id is required")
     if not oauth_client_secret and not is_shared:
-        raise ValueError("LinkedIn Ads credential oauth_client_secret is required")
+        raise CredentialMaterialError("LinkedIn Ads credential oauth_client_secret is required")
     if not access_token:
-        raise ValueError("LinkedIn Ads credential access_token is required")
+        raise CredentialMaterialError("LinkedIn Ads credential access_token is required")
     return Credentials(oauth_client_id, SecretString(oauth_client_secret or ''), SecretString(access_token), SecretString(refresh_token or ''))
 
 

@@ -63,6 +63,21 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.amazon_sns.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Amazon SNS credential material fails the connector credential checks, so no retry can succeed."
+
+setattr(CredentialMaterialError, '__module__', 'dex_connectors.amazon_sns.connection')
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    return isinstance(error, CredentialMaterialError) or (
+        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+setattr(is_credential_material_error, '__module__', 'dex_connectors.amazon_sns.connection')
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,22 +87,22 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Amazon SNS stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Amazon SNS stored credential does not match the connector credential fields")
         if set(material) - set(('access_key_id', 'secret_access_key', 'session_token')):
-            raise ValueError("Amazon SNS stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Amazon SNS stored credential does not match the connector credential fields")
         access_key_id = material.get("access_key_id")
         if access_key_id is not None and not (isinstance(access_key_id, str)):
-            raise ValueError("Amazon SNS credential access_key_id has an invalid type")
+            raise CredentialMaterialError("Amazon SNS credential access_key_id has an invalid type")
         secret_access_key = material.get("secret_access_key")
         if secret_access_key is not None and not (isinstance(secret_access_key, str)):
-            raise ValueError("Amazon SNS credential secret_access_key has an invalid type")
+            raise CredentialMaterialError("Amazon SNS credential secret_access_key has an invalid type")
         session_token = material.get("session_token")
         if session_token is not None and not (isinstance(session_token, str)):
-            raise ValueError("Amazon SNS credential session_token has an invalid type")
+            raise CredentialMaterialError("Amazon SNS credential session_token has an invalid type")
         if not access_key_id:
-            raise ValueError("Amazon SNS credential access_key_id is required")
+            raise CredentialMaterialError("Amazon SNS credential access_key_id is required")
         if not secret_access_key:
-            raise ValueError("Amazon SNS credential secret_access_key is required")
+            raise CredentialMaterialError("Amazon SNS credential secret_access_key is required")
         return Credentials(SecretString(access_key_id), SecretString(secret_access_key), SecretString(session_token or ''))
 
 

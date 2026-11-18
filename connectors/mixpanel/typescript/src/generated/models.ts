@@ -37,18 +37,37 @@ export interface Credentials {
   serviceAccountUsername: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["service_account_secret", "service_account_username"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["service_account_secret"] != null && !(typeof fields["service_account_secret"] === 'string')) throw new TypeError("credential service_account_secret has an invalid type");
-  if (fields["service_account_username"] != null && !(typeof fields["service_account_username"] === 'string')) throw new TypeError("credential service_account_username has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["service_account_secret"] != null && !(typeof fields["service_account_secret"] === 'string')) throw new CredentialMaterialError("credential service_account_secret has an invalid type");
+  if (fields["service_account_username"] != null && !(typeof fields["service_account_username"] === 'string')) throw new CredentialMaterialError("credential service_account_username has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["service_account_username"]) throw new TypeError("credential service_account_username is required");
+  if (!fields["service_account_username"]) throw new CredentialMaterialError("credential service_account_username is required");
   credentials.serviceAccountUsername = new SecretString((fields["service_account_username"] ?? '') as string);
-  if (!fields["service_account_secret"]) throw new TypeError("credential service_account_secret is required");
+  if (!fields["service_account_secret"]) throw new CredentialMaterialError("credential service_account_secret is required");
   credentials.serviceAccountSecret = new SecretString((fields["service_account_secret"] ?? '') as string);
   return credentials;
 }
