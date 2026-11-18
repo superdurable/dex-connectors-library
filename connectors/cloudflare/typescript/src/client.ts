@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type FailureKind } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type FailureKind } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { ListZonesOperation, PurgeCacheByURLsOperation } from './operations.js';
 
@@ -60,8 +61,13 @@ export class CloudflareClient {
   /** Send one provider request and classify status and transport failures. */
   async exchange(call: Call, operation: string, method: string, path: string, body?: Uint8Array, hasNotFound = false): Promise<CloudflareExchange> {
     let token: string;
+    let resolved: Credentials;
+    try { resolved = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) {
+      if (!isTerminalCredentialError(error)) return outcome('retry', operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable; nothing was sent');
+      return outcome('defect', operation, 'AUTHENTICATION', 'connection credentials are unavailable');
+    }
     try {
-      const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
       if (!(resolved.apiToken instanceof SecretString)) return outcome('defect', operation, 'AUTHENTICATION', 'connection credentials are invalid');
       token = resolved.apiToken.reveal();
       if (!token || !isHeaderSafeCredential(token)) return outcome('defect', operation, 'AUTHENTICATION', 'connection credentials are invalid');
@@ -110,6 +116,12 @@ export class CloudflareClient {
     }
     return undefined;
   }
+}
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
 function outcome(disposition: Exclude<CloudflareExchange, { response: ProviderResponse }>['disposition'], operation: string, kind: FailureKind, message: string, retryAfterMs = 0): CloudflareExchange {

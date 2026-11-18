@@ -33,9 +33,9 @@ Create a custom scoped token at [My Profile > API Tokens](https://dash.cloudflar
 | HTTP 200 with `success: false` | `providerRejected` |
 | HTTP 404 for a named resource | `notFound` when declared, otherwise `providerRejected` |
 | Other conclusive 4xx or redirects | `providerRejected` |
-| HTTP 408, 409, 429, 5xx, or transport failure | Retry under the default one-hour policy |
+| HTTP 408, 409, 429, 5xx, transport failure, or a transient credential failure such as an unavailable credential broker | Retry under the default one-hour policy |
 | Malformed or oversized response | `invalidResponse` |
-| Invalid local input or credentials | `defect` before sending |
+| Invalid local input or credentials, a required reauthorization, a missing or unselected connection, or a credential broker refusal | `defect` before sending |
 
 HTTP redirects are not followed. Provider error bodies are never copied into failures. Unwired optional branches fail the Flow.
 
