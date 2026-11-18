@@ -254,18 +254,23 @@ class _FencedWrite:
         return MutationAttempt.branch_result(branch, self._requested, receipt, exchange.failure)
 
     async def unusable_accepted(self, entity_id: str, receipt: Receipt, reason: str) -> MutationAttempt[Any]:
-        """Read back an accepted 2xx that failed validation and otherwise treat it as unknown."""
-        unknown = _failure(
+        """Read back an accepted 2xx that failed validation; QuickBooks accepted it, so it is never resent.
+
+        Below the send cap a transient read-back failure retries the read-back alone; every other
+        case selects uncertain.
+        """
+        accepted = _failure(
             self._operation,
             FailureKind.PROTOCOL,
             "QuickBooks accepted the write but returned an unusable answer: " + reason,
         )
         if not entity_id:
-            return self._resend_or_select_uncertain(unknown, 0, receipt)
+            return MutationAttempt.uncertain(self._requested, accepted, receipt)
         try:
             await self._fence.record_provider_id(entity_id)
         except Exception:
-            pass  # The read-back below still runs; a later attempt without the ID counts this send.
+            # Without the recorded ID a retry could resend the accepted write.
+            return MutationAttempt.uncertain(self._requested, accepted, receipt)
         result = await self._client.exchange(
             self._call, self._operation, "GET", f"/{self._entity_path}/{entity_id}"
         )
@@ -275,7 +280,11 @@ class _FencedWrite:
                 return MutationAttempt.branch_result(
                     self._happy, output, dataclasses.replace(receipt, provider_object_id=entity_id)
                 )
-        return self._resend_or_select_uncertain(unknown, 0, receipt)
+        elif result.outcome in ("retry", "interrupted") and self._can_resend_unknown_outcome:
+            # The next attempt finds the recorded ID and only reads back.
+            assert result.failure is not None
+            return MutationAttempt.retry(result.failure, result.retry_after)
+        return MutationAttempt.uncertain(self._requested, accepted, receipt)
 
     async def read_back_only(self, entity_id: str) -> MutationAttempt[Any]:
         """Confirm an accepted earlier write by ID; it never sends."""

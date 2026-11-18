@@ -91,6 +91,23 @@ describe('QuickBooks bounded resend of writes', () => {
     expect(script.requests.map(request => request.method)).toEqual(['POST', 'GET', 'GET']);
   });
 
+  it('never resends an accepted write without an ID below the send cap', async () => {
+    const script = new Script([{ status: 200, body: { Customer: {} } }]);
+    expect(await create(script, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(script.requests.map(request => request.method)).toEqual(['POST']);
+  });
+
+  it('never resends an accepted write whose 2xx body breaks below the send cap', async () => {
+    const requests: ProviderRequest[] = [];
+    const broken = { send: async (request: ProviderRequest): Promise<ProviderResponse> => {
+      requests.push(request);
+      request.onResponseChunk?.(Buffer.from('{'), 200, {});
+      throw new Error('body interrupted');
+    } } as unknown as Script;
+    expect(await create(broken, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests.map(request => request.method)).toEqual(['POST']);
+  });
+
   it('selects a definite refusal of a first write after recording canResend', async () => {
     const context = new AttemptContext();
     expect(await create(new Script([{ status: 400, body: nameConflict }]), context)).toMatchObject({ branch: 'nameConflict' });
