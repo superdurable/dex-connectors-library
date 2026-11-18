@@ -3,9 +3,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { HelpScoutClient } from '../src/client.js';
-import { ReplyToConversationDefinition } from '../src/generated/definitions.js';
+import { ReplyToConversationDefinition, UpdateConversationDefinition } from '../src/generated/definitions.js';
 import type { Credentials, CredentialSource as HelpScoutCredentialSource, ReplyToConversationInput } from '../src/generated/models.js';
 
 const callId = '3f9f4c0b-1d7f-5034-a855-40824c3de676';
@@ -132,4 +132,52 @@ describe('Help Scout fenced reply decisions', () => {
     expect(context.markerState()).toBe('claimed');
     expect(posts(requests)).toBe(1);
   });
+
+  it.each(incompleteRefusals)('treats a refusal whose %s as an unknown outcome', async (_name, refusal) => {
+    let postCount = 0;
+    const { client, requests } = newClient(async request => ++postCount === 1 ? refusal(request) : { status: 201, headers: { 'resource-id': '569' }, body: new Uint8Array() });
+    const context = new AttemptContext();
+    expect(await run(client, context)).toBe('retry');
+    expect(context.markerState()).toBe('claimed');
+    context.advance();
+    expect(await run(client, context)).toMatchObject({ branch: 'replied', value: { threadId: 569 } });
+    expect(posts(requests)).toBe(2);
+  });
+
+  it('reads back a refusal that names a thread and never resends it', async () => {
+    const page = { _embedded: { threads: [{ id: 570, type: 'note', createdAt: '2026-09-30T09:00:00Z' }] } };
+    const { client, requests } = newClient(async request => request.method === 'POST'
+      ? { status: 422, headers: { 'resource-id': '570' }, body: Buffer.from('{"message":"error"}') }
+      : { status: 200, headers: {}, body: Buffer.from(JSON.stringify(page)) });
+    const context = new AttemptContext();
+    expect(await run(client, context)).toBe('retry');
+    context.advance();
+    expect(await run(client, context)).toMatchObject({ branch: 'replied', value: { threadId: 570 } });
+    expect(posts(requests)).toBe(1);
+  });
+
+  it.each(incompleteRefusals)('retries an update whose refusal %s', async (_name, refusal) => {
+    const { client } = newClient(async request => request.method === 'GET'
+      ? { status: 200, headers: {}, body: Buffer.from(JSON.stringify(conversation)) }
+      : refusal(request));
+    const call = { id: callId, connection: { provider: 'helpscout', name: 'helpscout-test' }, operation: UpdateConversationDefinition.operation, context: new AttemptContext() } as unknown as Call;
+    await expect(runMutation(client.updateConversation(), call, { conversationId: 501, status: 'closed' })).rejects.toBeInstanceOf(RetryError);
+  });
 });
+
+/** A 422 whose error body streams past MaxErrorBodyBytes, as the provider HTTP sender reports chunks. */
+async function oversizedRefusal(request: ProviderRequest): Promise<ProviderResponse> {
+  const chunk = Buffer.alloc(16 << 10, 'a');
+  const chunks: Uint8Array[] = [];
+  for (let index = 0; index < 8; index++) {
+    if (request.onResponseChunk?.(chunk, 422, {}) === false) break;
+    chunks.push(chunk);
+  }
+  return { status: 422, headers: {}, body: Buffer.concat(chunks) };
+}
+
+const incompleteRefusals = [
+  ['body streams past the error limit', oversizedRefusal],
+  ['body exceeds the response limit', async () => { throw new BodyTooLargeError(422, {}); }],
+  ['body breaks after the headers', async () => { throw new ProviderTransportError(false, 400, {}); }],
+] as const;

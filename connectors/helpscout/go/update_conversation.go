@@ -120,6 +120,10 @@ func isUnknownWriteOutcome(response helpScoutResponse, err error) bool {
 		return errors.Is(err, errHelpScoutResponseTooLarge) || errors.Is(err, errHelpScoutResponseMalformed)
 	}
 	status := response.statusCode
+	if response.isErrorBodyIncomplete {
+		// A refusal whose body was not read in full may hide an applied write.
+		return true
+	}
 	// classifyIdempotentMutationExchange already retries 408, 429, and 5xx.
 	return (status < 200 || status >= 300) && status != http.StatusTooManyRequests &&
 		status != http.StatusRequestTimeout && status < 500 && !isDefiniteRefusalStatus(status)

@@ -288,7 +288,15 @@ func (client *Client) classifyReplyExchange(
 	}
 	outcome := client.classifyFailure(operationID, response, credentials)
 	receipt := client.receipt(call, output.ConversationID, outcome.logRef)
+	if threadID := parseResourceID(response.header.Get(resourceIDHeader)); threadID != 0 {
+		return client.confirmContradictoryThreadID(call, output, permit, threadID, outcome.failure, receipt)
+	}
 	switch status := response.statusCode; {
+	case response.isErrorBodyIncomplete && (status == http.StatusNotFound || isDefiniteRefusalStatus(status)):
+		// A refusal whose body was not read in full may hide an applied write.
+		failure := outcome.failure
+		failure.Message += "; the error body could not be read in full, so the thread may exist"
+		return client.resendOrSelectUncertain(call, output, permit, failure, 0, receipt)
 	case status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable:
 		_ = permit.fence.RecordCanResend() // A lost checkpoint leaves the claim, so the next attempt counts this send.
 		return sdkgo.NewMutationRetry[ConversationReply](outcome.failure, outcome.retryAfter)
@@ -302,6 +310,16 @@ func (client *Client) classifyReplyExchange(
 		failure.Message += "; the thread may exist"
 		return client.resendOrSelectUncertain(call, output, permit, failure, outcome.retryAfter, receipt)
 	}
+}
+
+// confirmContradictoryThreadID saves the thread ID a non-2xx names, so later attempts read it back, never resend.
+func (client *Client) confirmContradictoryThreadID(call sdkgo.Call, output ConversationReply, permit replySendPermit,
+	threadID int64, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[ConversationReply] {
+	failure.Message += fmt.Sprintf("; the answer names thread %d, so the thread may exist", threadID)
+	if err := permit.fence.RecordProviderID(strconv.FormatInt(threadID, 10)); err != nil {
+		return sdkgo.NewMutationUncertain(output, failure, receipt)
+	}
+	return sdkgo.NewMutationRetry[ConversationReply](failure, 0)
 }
 
 // isDefiniteRefusalStatus reports a status that proves Help Scout created nothing. Every other

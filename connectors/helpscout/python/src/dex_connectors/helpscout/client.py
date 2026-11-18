@@ -64,6 +64,8 @@ class Exchange:
     body: bytes = b""
     error: str = ""
     token: str = ""
+    # is_error_body_incomplete marks a non-2xx body that was oversized or could not be read in full.
+    is_error_body_incomplete: bool = False
 
 
 @dataclass(slots=True)
@@ -222,17 +224,24 @@ class Client:
             limit = (
                 self.config.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
             )
+            is_error_body_incomplete = False
             try:
                 contents = await read_bounded_body(response, limit)
             except BodyTooLargeError:
                 if 200 <= response.status_code < 300:
                     return Exchange(response.status_code, response.headers, error="tooLarge", token=token)
-                contents = b""
+                contents, is_error_body_incomplete = b"", True
             except ProviderTransportError:
                 if 200 <= response.status_code < 300:
                     return Exchange(response.status_code, response.headers, error="bodyRead", token=token)
-                contents = b""
-            exchange = Exchange(response.status_code, response.headers, contents, token=token)
+                contents, is_error_body_incomplete = b"", True
+            exchange = Exchange(
+                response.status_code,
+                response.headers,
+                contents,
+                token=token,
+                is_error_body_incomplete=is_error_body_incomplete,
+            )
             if 200 <= response.status_code < 300 and token.encode() in contents:
                 return Exchange(response.status_code, response.headers, error="malformed", token=token)
             if (

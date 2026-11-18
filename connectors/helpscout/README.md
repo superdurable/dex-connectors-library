@@ -180,7 +180,14 @@ operation uses the Connector SDK's single-dispatch fence with sync durability:
   selects `providerRejected`. A `412` or `423` for a locked conversation is
   an unknown outcome like any other unlisted status.
   Each records `canResend` first, and nothing was added. After a possible
-  earlier send, any of these refusals selects `uncertain` instead;
+  earlier send, any of these refusals selects `uncertain` instead. A refusal
+  whose error body is larger than 64 KiB or breaks while it is read, including
+  one the write window cuts off, is an unknown outcome and resends within the
+  send cap;
+- a non-2xx that carries a valid `Resource-Id` names a thread that may exist:
+  the connector saves that ID and returns Retry, so the next attempt reads
+  the thread back and never resends; when the ID cannot be saved it selects
+  `uncertain`;
 - an earlier send is possible whenever the decision is not a plain first
   send: a read-back decision, a saved thread ID, or any earlier claim, even
   one a later `429` marked `canResend`. Then a credential, local, or
@@ -221,6 +228,8 @@ again or finds them applied and reports `wasAlreadyApplied`. The real-Dex test
 lets Dex dispatch the Step again while a status write answers after nine
 seconds, and the conversation ends with the status and one copy of the tag. A
 tag that someone else changes between the read and the `PUT` is overwritten.
+A write refusal whose error body is larger than 64 KiB or breaks while it is
+read is an unknown outcome, so the attempt returns Retry and repeats the write.
 
 ### findCustomerByEmail
 

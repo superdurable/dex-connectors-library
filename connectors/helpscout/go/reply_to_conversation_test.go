@@ -735,6 +735,77 @@ func TestReplyFencePrimaryCustomerReadRetryAfterAPossibleSendRecordsNothing(t *t
 	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 1)
 }
 
+// incompleteErrorBody answers status with an error body that is oversized or breaks after the headers.
+func incompleteErrorBody(status int, isOversized bool) http.HandlerFunc {
+	return func(response http.ResponseWriter, _ *http.Request) {
+		if isOversized {
+			writeJSON(response, status, `{"message":"`+strings.Repeat("a", 70<<10)+`"}`)
+			return
+		}
+		response.Header().Set("Content-Length", "5000")
+		response.WriteHeader(status)
+		_, _ = response.Write([]byte(`{"message":`)) // The broken body is the behavior under test.
+		response.(http.Flusher).Flush()
+		panic(http.ErrAbortHandler)
+	}
+}
+
+func TestReplyFenceRefusalWithAnIncompleteErrorBodyIsAnUnknownOutcome(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		status      int
+		isOversized bool
+	}{
+		{name: "oversized 422", status: http.StatusUnprocessableEntity, isOversized: true},
+		{name: "broken 400", status: http.StatusBadRequest},
+		{name: "oversized 404", status: http.StatusNotFound, isOversized: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var posts atomic.Int32
+			refusal := incompleteErrorBody(test.status, test.isOversized)
+			fake := newFakeHelpScout(t, map[string]http.HandlerFunc{"POST /v2/conversations/501/notes": func(response http.ResponseWriter, request *http.Request) {
+				if posts.Add(1) == 1 {
+					refusal(response, request)
+					return
+				}
+				createdThread("569")(response, request)
+			}})
+			client := newFakeBackedClient(t, fake)
+			step := singledispatchtest.NewContext("helpscout-test-flow", "incomplete-refusal")
+			input := helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Note", IsInternalNote: true}
+			_, err := replyToConversation(t, client, step, input)
+			require.Error(t, err, "the refusal may hide a created thread, so it is resent below the cap")
+			step.AdvanceAttempt()
+			result, err := replyToConversation(t, client, step, input)
+			require.NoError(t, err)
+			require.Equal(t, helpscout.ReplyToConversationBranchReplied, result.Branch)
+			require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/notes"), 2)
+		})
+	}
+}
+
+func TestReplyFenceRefusalThatNamesAThreadIsReadBackAndNeverResent(t *testing.T) {
+	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"POST /v2/conversations/501/notes": func(response http.ResponseWriter, _ *http.Request) {
+			response.Header().Set("Resource-Id", "570")
+			writeJSON(response, http.StatusUnprocessableEntity, helpScoutErrorBody("Invalid", nil))
+		},
+		"GET /v2/conversations/501/threads": respondJSON(http.StatusOK,
+			threadPageJSON([]string{threadJSON(570, "note", "Note", "2026-09-30T12:00:00Z")}, false)),
+	})
+	client := newFakeBackedClient(t, fake)
+	step := singledispatchtest.NewContext("helpscout-test-flow", "refusal-names-thread")
+	input := helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Note", IsInternalNote: true}
+	_, err := replyToConversation(t, client, step, input)
+	requireRetry(t, err, sdkgo.FailureValidation)
+	step.AdvanceAttempt()
+	result, err := replyToConversation(t, client, step, input)
+	require.NoError(t, err)
+	require.Equal(t, helpscout.ReplyToConversationBranchReplied, result.Branch)
+	require.EqualValues(t, 570, result.Value.ThreadID)
+	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/notes"), 1, "a named thread is never resent")
+}
+
 func lastReplyMarker(t *testing.T, step *singledispatchtest.Context) singledispatch.Marker {
 	t.Helper()
 	frames := step.Heartbeats()
