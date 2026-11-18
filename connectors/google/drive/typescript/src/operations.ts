@@ -199,7 +199,12 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadFile
     // A 2xx status that arrived before the body failed proves Drive accepted the upload.
     const arrivedStatus = sendError instanceof ProviderTransportError || sendError instanceof ProviderStalledError || sendError instanceof BodyTooLargeError ? sendError.status ?? 0 : 0;
     if (arrivedStatus >= 200 && arrivedStatus < 300) return this.reconcileAccepted(call, fence, credentials, key, requestID, '');
-    if (response?.status === 429 || response?.status === 503) return this.retryAfterRejection(fence, statusFailureKind(response.status, []), 'provider returned a retryable upload status', this.client.retryDelay(response.headers));
+    // 429 and 503 prove nothing was uploaded, even when their body then broke.
+    const retryableStatus = response?.status ?? arrivedStatus;
+    if (retryableStatus === 429 || retryableStatus === 503) {
+      const headers = response?.headers ?? (sendError instanceof ProviderTransportError || sendError instanceof ProviderStalledError || sendError instanceof BodyTooLargeError ? sendError.headers ?? {} : {});
+      return this.retryAfterRejection(fence, statusFailureKind(retryableStatus, []), 'provider returned a retryable upload status', this.client.retryDelay(headers));
+    }
     if (sendError || !response) return this.reconcile(call, fence, credentials, key, requestID, canResendUnknownOutcome);
     const reasons = readErrorTokens(response.body, ['/error/errors/0/reason', '/error/status']);
     const hasAcceptedFile = hasFileID(response.body);

@@ -97,16 +97,18 @@ export class DriveClient {
     for (let attempt = 0; attempt < 2; attempt++) {
       const token = active.accessToken?.reveal() ?? '';
       if (!isHeaderSafeCredential(token)) throw new CredentialError();
+      // An upload refusal whose body broke or overflowed might hide a file ID, so its error reaches the caller.
+      const isUpload = method === 'POST';
       const request: ProviderRequest = {
         url: target, method, headers: { Authorization: `Bearer ${token}`, ...(contentType ? { 'Content-Type': contentType } : {}) },
-        maxResponseBytes: limit, maxErrorResponseBytes: Math.max(limit, MaxErrorBodyBytes), ignoreErrorBodyReadFailure: true,
+        maxResponseBytes: limit, maxErrorResponseBytes: Math.max(limit, MaxErrorBodyBytes), ignoreErrorBodyReadFailure: !isUpload,
         addressPolicy: 'unrestricted', timeoutMs: 25_000,
         ...(body ? { body } : {}), ...(signal ? { signal } : {}),
       };
       let response: ProviderResponse;
       try { response = await this.#transport(request); }
       catch (error) {
-        if (error instanceof BodyTooLargeError && error.status && (error.status < 200 || error.status >= 300))
+        if (!isUpload && error instanceof BodyTooLargeError && error.status && (error.status < 200 || error.status >= 300))
           response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
         else throw error;
       }

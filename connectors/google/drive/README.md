@@ -190,7 +190,9 @@ completes without resending and checkpoints its ID. A transient read-back
 failure retries the Step; a read-back that cannot confirm an unknown outcome
 retries so the next attempt reads back and resends, and selects `uncertain`
 only at the send cap. A 400, 401, 403, 404, 411, 413, 414, 415, or 422 refusal
-selects `providerRejected` on a first send and is never resent; after an earlier
+whose body was read in full selects `providerRejected` on a first send and is
+never resent; a refusal body that breaks or exceeds the limit is an unknown
+outcome, because it might hide a file ID. After an earlier
 unconfirmed upload it selects `uncertain`. A credential outage that needs no
 reauthorization retries before any request; a connection that must be
 reauthorized selects `defect` on a first send and `uncertain` after an earlier

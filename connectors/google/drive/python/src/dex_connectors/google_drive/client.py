@@ -59,6 +59,8 @@ class Exchange:
     body: bytes = b""
     error: str = ""
     is_body_too_large: bool = False
+    # A non-2xx body over the error limit could hide a created file ID.
+    is_error_body_too_large: bool = False
     was_sent: bool = False
 
     @property
@@ -189,8 +191,13 @@ class Client:
         content_type: str = "",
         limit: int | None = None,
         retry_unauthorized: bool = True,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send a Drive request, refreshing once after a rejected bearer token."""
+        """Send a Drive request, refreshing once after a rejected bearer token.
+
+        `observed_statuses` receives each response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Drive answered.
+        """
         response_limit = self.max_response_bytes if limit is None else limit
         assert credentials.access_token is not None
         for attempt in range(2):
@@ -208,6 +215,9 @@ class Client:
             except (httpx.HTTPError, OSError):
                 return Exchange(error="afterSend")
             is_success = 200 <= response.status_code < 300
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
+            is_error_body_too_large = False
             try:
                 content = await read_bounded_body(response, max(response_limit, MAX_ERROR_BODY_BYTES))
             except BodyTooLargeError:
@@ -215,12 +225,18 @@ class Client:
                     return Exchange(
                         response.status_code, response.headers, is_body_too_large=True, was_sent=True
                     )
-                content = b""
+                content, is_error_body_too_large = b"", True
             except (ProviderTransportError, httpx.HTTPError, OSError):
                 return Exchange(response.status_code, response.headers, error="bodyRead", was_sent=True)
             if is_success and len(content) > response_limit:
                 return Exchange(response.status_code, response.headers, is_body_too_large=True, was_sent=True)
-            exchange = Exchange(response.status_code, response.headers, content, was_sent=True)
+            exchange = Exchange(
+                response.status_code,
+                response.headers,
+                content,
+                is_error_body_too_large=is_error_body_too_large,
+                was_sent=True,
+            )
             if response.status_code != 401 or attempt != 0 or not retry_unauthorized:
                 return exchange
             refresh = getattr(self._credentials, "resolve_after_rejection", None)

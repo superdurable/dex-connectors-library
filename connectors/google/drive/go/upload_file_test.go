@@ -48,6 +48,8 @@ const (
 	uploadCreatesThenReadBack503
 	uploadFailsWith500
 	uploadCreatesThenRefusesWithFileID
+	uploadRejectsWithInterruptedBody
+	uploadCreatesThenRefusesWithMistypedFile
 )
 
 // multipartUpload is one decoded Drive multipart upload.
@@ -166,6 +168,12 @@ func (provider *uploadDrive) serveHTTP(response http.ResponseWriter, request *ht
 		case uploadRejectsMissingParent:
 			provider.writeJSONLocked(response, http.StatusNotFound, map[string]any{"error": map[string]any{"errors": []any{map[string]any{"reason": "notFound", "message": "File not found: SENTINEL"}}}})
 			return
+		case uploadRejectsWithInterruptedBody:
+			response.Header().Set("Content-Length", "1000")
+			response.WriteHeader(http.StatusBadRequest)
+			_, err := response.Write([]byte(`{"error":`))
+			require.NoError(provider.t, err)
+			return
 		}
 		file := map[string]any{
 			"id": fmt.Sprintf("created-%d", len(provider.files)+1), "name": upload.metadata["name"], "mimeType": upload.metadata["mimeType"],
@@ -196,6 +204,8 @@ func (provider *uploadDrive) serveHTTP(response http.ResponseWriter, request *ht
 			require.NoError(provider.t, err)
 		case uploadCreatesThenRefusesWithFileID:
 			provider.writeJSONLocked(response, http.StatusUnprocessableEntity, file)
+		case uploadCreatesThenRefusesWithMistypedFile:
+			provider.writeJSONLocked(response, http.StatusUnprocessableEntity, map[string]any{"id": file["id"], "name": 5})
 		case uploadCreatesThenAnswersOversized:
 			provider.writeJSONLocked(response, http.StatusOK, map[string]any{"id": file["id"], "padding": strings.Repeat("x", 1024)})
 		case uploadCreatesThenInterruptsSuccess:
@@ -714,6 +724,33 @@ func TestUploadFileRefusalCarryingAFileIDIsReadBackAndNeverResent(t *testing.T) 
 	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
 	require.Equal(t, "created-1", result.Value.File.ID)
 	require.Equal(t, 1, provider.uploadCount())
+}
+
+func TestUploadFileRefusalWithAFileIDAndMistypedFieldsIsReadBackAndNeverResent(t *testing.T) {
+	provider := newUploadDrive(t, uploadCreatesThenRefusesWithMistypedFile)
+	client := newDriveClient(t, provider.fake.URL)
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("drive-flow", "refusal-with-mistyped-file"), client.UploadFile(), driveConnection, drive.UploadFileInput{
+		Name: "report.txt", MimeType: "text/plain", TextContent: "report",
+	})
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
+	require.Equal(t, "created-1", result.Value.File.ID)
+	require.Equal(t, 1, provider.uploadCount())
+}
+
+func TestUploadFileRefusalWhoseBodyBreaksIsAnUnknownOutcome(t *testing.T) {
+	provider := newUploadDrive(t, uploadRejectsWithInterruptedBody)
+	client := newDriveClient(t, provider.fake.URL)
+	ctx := singledispatchtest.NewContext("drive-flow", "refusal-body-breaks")
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+	_, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
+	require.Equal(t, 2, provider.uploadCount())
 }
 
 // failingUploadCredentialProvider returns one credential error for every call.
