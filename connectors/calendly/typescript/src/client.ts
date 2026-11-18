@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
@@ -94,6 +94,11 @@ export class CalendlyClient {
           if (error.status !== undefined && (error.status < 200 || error.status >= 300)) return { kind: 'response', response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() } };
           return { kind: 'tooLarge' };
         }
+        const status = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+        const headers = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.headers : undefined;
+        // As in Go, an error body that breaks keeps its status, and a broken 2xx stays accepted.
+        if (status !== undefined && status > 0 && (status < 200 || status >= 300)) return { kind: 'response', response: { status, headers: headers ?? {}, body: new Uint8Array() } };
+        if (status !== undefined && status >= 200 && status < 300) return { kind: 'transport', response: { status, headers: headers ?? {}, body: new Uint8Array() } };
         return { kind: error instanceof ProviderTransportError && error.isProvablyNotSent ? 'notSent' : 'transport' };
       }
       if (response.status !== 401 || attempt > 0 || !allowRefresh || credentials.authMethodId === 'personal-access-token' || !('resolveAfterRejection' in this.credentials)) return { kind: 'response', response };
