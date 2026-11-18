@@ -4,7 +4,7 @@
 import { ReauthorizationRequiredError, SecretString, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { ListPhoneNumbersDefinition, SendTemplateMessageDefinition, SendTextMessageDefinition } from './generated/definitions.js';
 import { isCredentialMaterialError, type BusinessPhoneNumber, type Config, type Credentials, type ListPhoneNumbersInput, type PhoneNumbersPage, type SendTemplateMessageInput, type SendTextMessageInput, type SentMessage } from './generated/models.js';
 
@@ -133,7 +133,8 @@ export class WhatsAppBusinessClient {
     let isBodyReadable = true;
     try { response = await fence.dispatch(signal => this.sendRequest({ ...request, signal })); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure(operation, 'TRANSPORT', 'Meta dispatch was not started'));
+      // The Fence raises these before sending, including its AggregateError for a short window and a failed notSent.
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(failure(operation, 'TRANSPORT', 'Meta dispatch was not started'));
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) {
         try { await fence.recordCanResend(); }
         catch { /* A lost canResend checkpoint leaves the claim, which the next attempt counts. */ }
@@ -320,3 +321,5 @@ function readSentMessageID(body: Uint8Array): { messageId: string; isComplete: b
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function parseJSON(body: Uint8Array): unknown { try { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; } }
 function headerValue(value: string | string[] | undefined): string { return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean { return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError); }

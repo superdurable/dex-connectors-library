@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { DispatchNotAllowedError, Fence, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
@@ -94,6 +95,18 @@ describe('WhatsApp bounded resend of unconfirmed messages', () => {
     context.attempt++;
     expect(await send(client, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(3);
+  });
+
+  it.each([
+    ['DispatchNotAllowedError', () => new DispatchNotAllowedError()],
+    ['the Fence AggregateError', () => new AggregateError([new InsufficientTimeError(), new Error('notSent write failed')])],
+  ])('returns Retry when the Fence refuses with %s before sending', async (_name, refusal) => {
+    const { client, requests } = newClient([sent]);
+    const dispatch = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(refusal());
+    // A cap of 1 makes an unknown outcome select uncertain, so Retry proves nothing was counted as sent.
+    try { expect(await send(client, new AttemptContext(), 1)).toBeInstanceOf(RetryError); }
+    finally { dispatch.mockRestore(); }
+    expect(requests).toHaveLength(0);
   });
 
   it('never resends when a Step sets the send cap to 1', async () => {
