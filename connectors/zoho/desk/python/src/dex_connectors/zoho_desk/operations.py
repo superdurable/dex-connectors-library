@@ -773,6 +773,7 @@ async def _write_attempt_for_exchange(
     result: Exchange,
     receipt: Receipt,
     empty: Any,
+    read_back: _ReadBack,
     not_found: str = "",
 ) -> MutationAttempt[Any] | None:
     """Map a sent write.
@@ -786,6 +787,27 @@ async def _write_attempt_for_exchange(
     if 200 <= result.status < 300:
         # A 2xx accepted the write; with no readable ID it is never resent.
         return MutationAttempt.uncertain(empty, problem, receipt)
+    if result.outcome == "not_found" or (
+        result.outcome == "rejected" and result.status in _DEFINITE_REFUSAL_STATUSES
+    ):
+        if result.accepted_provider_id:
+            # The created object's id shows the write may have been applied: read it back, never resend.
+            return await read_back(
+                result.accepted_provider_id, await _record_accepted_write(permit, result.accepted_provider_id)
+            )
+        if result.is_error_body_unreadable:
+            return _resend_or_uncertain(
+                permit,
+                failure(
+                    problem.operation,
+                    FailureKind.TRANSPORT,
+                    f"Zoho Desk answered HTTP {result.status}, but its oversized or untrusted body "
+                    "may hide an accepted write",
+                ),
+                result.retry_after_seconds,
+                receipt,
+                empty,
+            )
     if result.outcome in ("rate_limited", "not_sent") or (
         result.outcome == "unavailable" and result.status == 503
     ):
@@ -898,7 +920,7 @@ async def _accepted_write_attempt(
     empty: Any,
     read_back: _ReadBack,
 ) -> MutationAttempt[Any]:
-    """Handle a 2xx body that failed to decode; the write was accepted and is never resent.
+    """Handle an accepted 2xx body that failed to decode; the write is never resent.
 
     With a provider ID it is read back in this attempt; without one it is uncertain.
     """
@@ -1078,7 +1100,7 @@ class CreateTicketOperation:
             return refused
         receipt = self.client.receipt(call, result)
         routed = await _write_attempt_for_exchange(
-            permit, self.client, call, credentials, result, receipt, empty
+            permit, self.client, call, credentials, result, receipt, empty, read_back
         )
         if routed:
             return routed
@@ -1135,7 +1157,12 @@ class UpdateTicketOperation:
             )
         credentials, base, route = await self.client.resolve(call, "updateTicket")
         if route:
-            return _session_mutation(route, "updateTicket", empty)
+            attempt = _session_mutation(route, "updateTicket", empty)
+            if attempt.kind != "retry" and call.context is not None and call.context.attempt > 1:
+                # A refusal branch would hide an earlier attempt's possible PATCH; repeating it is harmless.
+                assert attempt.failure is not None
+                return MutationAttempt.retry(attempt.failure)
+            return attempt
         assert credentials is not None and base is not None
         path = _path(input.ticket_id)
         result = await self.client.exchange(call, "updateTicket", credentials, base, "GET", path)
@@ -1173,8 +1200,11 @@ class UpdateTicketOperation:
             call, "updateTicket", credentials, base, "PATCH", path, payload=change
         )
         receipt = self.client.receipt(call, result, input.ticket_id)
-        if result.outcome == "invalid" or (
-            result.outcome == "rejected" and result.status not in _DEFINITE_REFUSAL_STATUSES
+        if (
+            result.outcome == "invalid"
+            or result.is_error_body_unreadable
+            or bool(result.accepted_provider_id)
+            or (result.outcome == "rejected" and result.status not in _DEFINITE_REFUSAL_STATUSES)
         ):
             # The PATCH sets final values, so an unknown outcome repeats it.
             return MutationAttempt.retry(_required_failure(result), result.retry_after_seconds)
@@ -1267,7 +1297,7 @@ class AddCommentOperation:
             return refused
         receipt = self.client.receipt(call, result)
         routed = await _write_attempt_for_exchange(
-            permit, self.client, call, credentials, result, receipt, empty, d.NOT_FOUND
+            permit, self.client, call, credentials, result, receipt, empty, read_back, d.NOT_FOUND
         )
         if routed:
             return routed

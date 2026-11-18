@@ -90,7 +90,7 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 		return *dispatchAttempt
 	}
 	receipt := operation.client.receipt(call, result.response, "")
-	if attempt, isTerminal := deskWriteAttemptForExchange[AddCommentOutput](permit, call, operation.client, session, result, receipt, branches); isTerminal {
+	if attempt, isTerminal := deskWriteAttemptForExchange[AddCommentOutput](permit, call, operation.client, session, result, receipt, branches, readBack); isTerminal {
 		return attempt
 	}
 	comment, err := decodeCommentBody(result.response.body)

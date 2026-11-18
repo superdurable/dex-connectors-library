@@ -148,6 +148,39 @@ func TestAddCommentReadsBackAnAcceptedCommentByID(t *testing.T) {
 	require.Equal(t, http.MethodGet, provider.request(2).method)
 }
 
+// TestAddCommentReadsBackARefusalThatCarriesACommentID covers a refusal status whose body holds a
+// created comment id: it is read back by that id and never resent.
+func TestAddCommentReadsBackARefusalThatCarriesACommentID(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusBadRequest, `{"id":"4000000529001","errorCode":"INVALID_DATA"}`)
+			return
+		}
+		writeValue(t, response, http.StatusOK, commentJSON("4000000529001", false, "Triaged."))
+	})
+	ctx := newDeskDexContext("comment-refused-with-id")
+	result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).AddComment(), deskConnection,
+		desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."})
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, "4000000529001", recordedMarker(t, ctx).ProviderID)
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(1).method)
+}
+
+// TestAddCommentTreatsARefusalThatReflectsTheTokenAsUnknown covers an untrusted refusal body.
+func TestAddCommentTreatsARefusalThatReflectsTheTokenAsUnknown(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusNotFound, `{"errorCode":"URL_NOT_FOUND","message":"`+testAccessToken+`"}`)
+	})
+	ctx := newDeskDexContext("comment-refused-untrusted")
+	_, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).AddComment(), deskConnection,
+		desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."})
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Equal(t, singledispatch.StateClaimed, recordedMarker(t, ctx).State, "the claim counts this send")
+	require.NotContains(t, err.Error(), testAccessToken)
+}
+
 // TestAddCommentReadsBackASavedIDAtTheSendCap covers finding 39 for comments.
 func TestAddCommentReadsBackASavedIDAtTheSendCap(t *testing.T) {
 	input := desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."}

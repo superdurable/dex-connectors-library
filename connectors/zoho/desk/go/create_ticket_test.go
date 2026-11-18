@@ -162,6 +162,62 @@ func TestCreateTicketNeverResendsADefiniteRefusal(t *testing.T) {
 	}
 }
 
+// TestCreateTicketReadsBackARefusalThatCarriesATicketID covers a refusal status whose body holds a
+// created ticket id: it is read back by that id and never resent.
+func TestCreateTicketReadsBackARefusalThatCarriesATicketID(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusUnprocessableEntity, `{"id":"1892000000099004","errorCode":"INVALID_DATA"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, ticketBodyJSON("1892000000099004", "Open", "Open"))
+	})
+	ctx := newDeskDexContext("create-refused-with-id")
+	result, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchCreated, result.Branch)
+	require.Equal(t, "1892000000099004", recordedMarker(t, ctx).ProviderID)
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, "/api/v1/tickets/1892000000099004", provider.request(1).path)
+}
+
+// TestCreateTicketTreatsAnOversizedRefusalAsUnknown covers a refusal status whose body exceeds the
+// error body limit: it resends below the send cap and selects uncertain at the cap.
+func TestCreateTicketTreatsAnOversizedRefusalAsUnknown(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		response.WriteHeader(http.StatusBadRequest)
+		// The client stops reading at its error body limit, so a broken pipe here is expected.
+		_, _ = io.WriteString(response, `{"errorCode":"INVALID_DATA","message":"`+strings.Repeat("x", 128<<10)+`"}`)
+	})
+	client := newDeskClient(t, provider.URL)
+	ctx := newDeskDexContext("create-refused-oversized")
+	for sendCount := 1; sendCount < 3; sendCount++ {
+		_, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+		requireRetry(t, err, sdkgo.FailureTransport)
+		ctx = ctx.nextAttempt()
+	}
+	result, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchUncertain, result.Branch)
+	require.Equal(t, 3, provider.requestCount())
+}
+
+// TestCreateTicketTreatsARateLimitWithABrokenBodyAsUnprocessed covers a 429 whose body breaks: it
+// records canResend and retries, because the status proves nothing was created.
+func TestCreateTicketTreatsARateLimitWithABrokenBodyAsUnprocessed(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		response.Header().Set("Content-Length", "100")
+		response.WriteHeader(http.StatusTooManyRequests)
+		_, err := io.WriteString(response, `{"errorCode":`)
+		require.NoError(t, err)
+		dropConnection(t, response)
+	})
+	ctx := newDeskDexContext("create-rate-limited-broken")
+	_, err := sdkgo.RunMutation(ctx, newDeskClient(t, provider.URL).CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	require.Equal(t, singledispatch.StateCanResend, recordedMarker(t, ctx).State)
+}
+
 func TestCreateTicketRefusalAfterAnEarlierPossibleSendIsUncertain(t *testing.T) {
 	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 		if index == 0 {
