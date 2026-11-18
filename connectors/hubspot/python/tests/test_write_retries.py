@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 
 import dex_connectors.hubspot as hubspot
 
@@ -59,6 +60,63 @@ async def test_lasting_documented_conflict_selects_conflict_for_both_writes() ->
             hubspot.UpdateObjectInput("contacts", "501", {"email": "taken@example.com"}),
         )
     assert update.branch == "conflict"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [b'{"results":', b"x" * 5000])
+async def test_writes_retry_a_malformed_or_oversized_answer(body: bytes) -> None:
+    """The write may have applied, and repeating it is safe."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = hubspot.Client(
+            hubspot.Config(endpoint="http://127.0.0.1:42701", max_response_bytes=1024),
+            sdk.StaticCredentialProvider(
+                {CONNECTION: hubspot.Credentials(access_token=sdk.SecretString("pat-na1-test-token"))}
+            ),
+            transport,
+            lambda: datetime(2026, 10, 30, tzinfo=UTC),
+        )
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.update_object(),
+                call("updateObject"),
+                hubspot.UpdateObjectInput("deals", "9001", {"dealstage": "qualifiedtobuy"}),
+            )
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.upsert_object(),
+                call("upsertObject"),
+                hubspot.UpsertObjectInput("contacts", "email", "ada@example.com"),
+            )
+
+
+@pytest.mark.asyncio
+async def test_write_retries_temporarily_unavailable_credentials() -> None:
+    """An earlier attempt may have applied the write, so a broker outage must not select defect."""
+
+    class BrokerOutage:
+        async def resolve(self, call: sdk.Call) -> hubspot.Credentials:
+            raise CredentialBrokerUnavailableError("credential broker is unavailable")
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = hubspot.Client(
+            hubspot.Config(endpoint="http://127.0.0.1:42701"),
+            BrokerOutage(),
+            transport,
+            lambda: datetime(2026, 10, 30, tzinfo=UTC),
+        )
+        with pytest.raises(sdk.RetryError):
+            await sdk.run_mutation(
+                client.update_object(),
+                call("updateObject"),
+                hubspot.UpdateObjectInput("deals", "9001", {"dealstage": "qualifiedtobuy"}),
+            )
 
 
 @pytest.mark.asyncio

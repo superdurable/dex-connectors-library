@@ -411,6 +411,10 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response),
 			failure: newFailure(operationID, sdkgo.FailureRateLimit, "Notion rate limited the "+subject+" before writing it")}
+	case response.isBodyTooLarge || response.hasBodyReadFailed:
+		// An unreadable refusal cannot prove the write was refused.
+		return writeClassification{outcome: writeUncertain, retryAfter: client.retryAfter(response),
+			failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Notion %s outcome is unknown after an unreadable HTTP %d", subject, response.statusCode))}
 	case response.statusCode == http.StatusConflict || response.statusCode == statusServiceOverload:
 		// The owner rules treat 409 and every 5xx without a saved ID as an unknown outcome.
 		return writeClassification{outcome: writeUncertain, retryAfter: client.retryAfter(response),
@@ -441,11 +445,15 @@ func (client *Client) classifyRepeatableWrite(operationID string, subject string
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
 		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureTransport, "Notion "+subject+" response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeInvalid, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Notion applied the "+subject+" but its response exceeds the configured size limit")}
+		// Repeating the absolute write is safe, so an unusable accepted response retries.
+		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Notion applied the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeInvalid, failure: newFailure(operationID, sdkgo.FailureProtocol, "Notion "+subject+" response contains credential material")}
+		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureProtocol, "Notion "+subject+" response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
+	case response.isBodyTooLarge || response.hasBodyReadFailed:
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response),
+			failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Notion %s outcome is unknown after an unreadable HTTP %d", subject, response.statusCode))}
 	case isBlockedRateLimit(response):
 		return writeClassification{outcome: writeRejected, failure: blockedFailure(operationID, subject)}
 	case response.statusCode == http.StatusTooManyRequests || response.statusCode == statusServiceOverload:

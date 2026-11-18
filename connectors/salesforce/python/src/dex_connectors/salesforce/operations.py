@@ -612,15 +612,13 @@ class UpdateRecordOperation:
         assert response is not None
         receipt = self.client.receipt(call, input.record_id, response.api_usage)
         if response.status == 300:
-            return MutationAttempt.branch_result(
-                "providerRejected",
-                empty,
-                receipt,
+            # A 300 is defined only for external ID paths, so it is unknown here; repeating is safe.
+            return MutationAttempt.retry(
                 failure(
                     "updateRecord",
                     FailureKind.PROTOCOL,
                     "Salesforce returned multiple choices for a record ID",
-                ),
+                )
             )
         return MutationAttempt.branch_result("updated", UpdateRecordOutput(input.record_id), receipt)
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { CreatePageOperation, GetPageOperation, QueryDatabaseOperation, SearchOperation, UpdatePagePropertiesOperation } from './operations.js';
@@ -120,8 +120,16 @@ export class NotionClient {
     let response: ProviderResponse;
     try { response = await this.send(request); }
     catch (error) {
+      const status = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
       if (error instanceof BodyTooLargeError && error.status !== undefined) {
         response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array(this.maxResponseBytes + 1) };
+        // An unreadable refusal cannot prove the write was refused.
+        if (mode !== 'read' && (error.status < 200 || error.status >= 300) && error.status !== 429) {
+          return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'retry', failure: failure(operation, 'TRANSPORT', `Notion ${subject} outcome is unknown after an unreadable HTTP ${error.status}`), receipt: this.receipt(call, response, providerObjectId) };
+        }
+      } else if (mode === 'unkeyedWrite' && status !== undefined && status >= 200 && status < 300) {
+        // Notion accepted this write before its body broke, so it is never resent.
+        return { disposition: 'acceptedUnreadable', failure: failure(operation, 'TRANSPORT', `Notion accepted the ${subject} but its response was interrupted`), receipt: emptyReceipt };
       } else {
         const isProvablyNotSent = error instanceof ProviderTransportError && error.isProvablyNotSent;
         const disposition = mode === 'unkeyedWrite' && !isProvablyNotSent ? 'uncertain' : 'retry';
@@ -159,8 +167,10 @@ export class NotionClient {
     // Any other write status leaves the write unknown: a repeatable write retries and a create may resend.
     if (isWrite && (status < 200 || status >= 300)) return { disposition: mode === 'unkeyedWrite' ? 'uncertain' : 'retry', failure: failure(operation, 'AVAILABILITY', `Notion ${subject} outcome is unknown after HTTP ${status}`), retryAfterMs, receipt };
     if (status < 200 || status >= 300) return { disposition: 'invalidResponse', failure: failure(operation, status >= 500 ? 'AVAILABILITY' : 'PROTOCOL', `Notion returned HTTP ${status}`), receipt };
-    if (response.body.length > this.maxResponseBytes) return { disposition: mode === 'unkeyedWrite' ? 'acceptedUnreadable' : 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', 'Notion response exceeds the configured limit'), receipt };
-    if (Buffer.from(response.body).includes(Buffer.from(token))) return { disposition: mode === 'unkeyedWrite' ? 'acceptedUnreadable' : 'invalidResponse', failure: failure(operation, 'PROTOCOL', 'Notion response contains credential material'), receipt };
+    // An unusable accepted write is never resent, and an absolute write simply repeats.
+    const unusableAccepted = mode === 'unkeyedWrite' ? 'acceptedUnreadable' : mode === 'repeatableWrite' ? 'retry' : 'invalidResponse';
+    if (response.body.length > this.maxResponseBytes) return { disposition: unusableAccepted, failure: failure(operation, 'RESPONSE_TOO_LARGE', 'Notion response exceeds the configured limit'), receipt };
+    if (Buffer.from(response.body).includes(Buffer.from(token))) return { disposition: unusableAccepted, failure: failure(operation, 'PROTOCOL', 'Notion response contains credential material'), receipt };
     return { response, receipt };
   }
 }

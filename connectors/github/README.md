@@ -246,6 +246,13 @@ and `maxSends: 3`:
   read-back that GitHub refuses, such as for a repository the connection can no
   longer read, selects `uncertain`.
 - A `2xx` with an unusable body is read back and never sent again.
+- After an earlier possible send, an attempt reads back first even when a
+  later `429` or `503` recorded `canResend`, because the first send may still
+  have created the issue.
+- A transient credential failure returns Retry without sending; a revoked,
+  missing, or unselected connection selects `defect` before any send and
+  `uncertain` after an earlier possible send. `createIssueComment` does the
+  same.
 
 Set `CreateIssueStepConfig.MaxSends` to change one Step's cap; `1` never sends
 again after a possible send. An unwired `uncertain` branch fails the Flow and
@@ -308,7 +315,9 @@ selects `notFound`, and `400`, `422`, and the other definite refusals select
 `providerRejected`; `410` for a deleted issue and any other status that does
 not prove a refusal retry the Step. A `2xx` whose issue is not the requested number in
 the requested state, such as a transferred issue whose redirect was read
-instead of updated, selects `invalidResponse`.
+instead of updated, an oversized answer, and a transient credential failure
+also retry the Step, because sending the same state again is safe; the
+declared `invalidResponse` branch is no longer selected.
 
 `replaceIssueLabels` calls GitHub's [Set labels for an issue
 API](https://docs.github.com/en/rest/issues/labels#set-labels-for-an-issue)
@@ -321,7 +330,7 @@ issue's web `URL`, derived from the configured base URL for GitHub.com or a
 GitHub Enterprise Server `/api/v3` URL and empty for any other base URL. Every
 other branch echoes only `Number`. Replacing the full set is safe to repeat, so
 the operation declares `repeatOnUnknown: safe` and classifies answers like
-`setIssueState`; a `2xx` without a label list selects `invalidResponse`.
+`setIssueState`; a `2xx` without a label list retries the Step.
 
 `createIssueComment` calls GitHub's [Create an issue comment
 API](https://docs.github.com/en/rest/issues/comments#create-an-issue-comment)

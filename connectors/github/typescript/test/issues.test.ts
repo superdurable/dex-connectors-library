@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { BodyTooLargeError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { GitHubClient, PublicAuthMethodID, RepositoryAuthMethodID } from '../src/client.js';
 import { CreateIssueCommentDefinition, CreateIssueDefinition, ReplaceIssueLabelsDefinition, SetIssueStateDefinition } from '../src/generated/definitions.js';
 import { issueCallMarker } from '../src/issues.js';
@@ -81,6 +82,40 @@ it('reads back before sending again below the cap', async () => {
   expect((await github.createIssue().invoke(call(), input)).kind).toBe('retry');
   expect(requests).toEqual(['POST /repos/octocat/hello-world/issues', 'GET /user', 'GET /repos/octocat/hello-world/issues',
     'GET /user', 'GET /repos/octocat/hello-world/issues', 'POST /repos/octocat/hello-world/issues']);
+});
+
+it('reads back after a 429 that followed an unknown send', async () => {
+  const requests: string[] = [];
+  const context = new FenceContext();
+  const github = client([502, 429], requests);
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  const call = () => ({ id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context }) as unknown as Call;
+  for (let attempt = 1; attempt <= 2; attempt++, context.attempt++) expect((await github.createIssue().invoke(call(), input)).kind).toBe('retry');
+  expect(context.marker).toMatchObject({ state: 'canResend' });
+  requests.length = 0;
+  await github.createIssue().invoke(call(), input);
+  expect(requests.slice(0, 3)).toEqual(['GET /user', 'GET /repos/octocat/hello-world/issues', 'POST /repos/octocat/hello-world/issues']);
+});
+
+it('retries a transient credential failure after a possible send and selects uncertain for a revoked one', async () => {
+  const requests: string[] = [];
+  const context = new FenceContext();
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  const call = () => ({ id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context }) as unknown as Call;
+  expect((await client([502], requests).createIssue().invoke(call(), input)).kind).toBe('retry');
+  context.attempt++;
+  const failing = (error: Error) => new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } }, { send: async () => { throw new Error('no request may be sent'); } });
+  expect((await failing(new CredentialBrokerUnavailableError()).createIssue().invoke(call(), input)).kind).toBe('retry');
+  expect((await failing(new ReauthorizationRequiredError()).createIssue().invoke(call(), input)).kind).toBe('uncertain');
+});
+
+it('retries a repeat-safe write whose answer is oversized or unusable', async () => {
+  const input = { owner: 'octocat', repository: 'hello-world', issueNumber: 7, state: 'closed' };
+  for (const send of [async () => { throw new BodyTooLargeError(200, {}); }, async () => ({ status: 200, headers: {}, body: new TextEncoder().encode('{"number":8}') })]) {
+    const github = new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, new StaticCredentialProvider([[connection, { authMethodId: RepositoryAuthMethodID, accessToken: new SecretString('token'), oauthClientId: 'id', oauthClientSecret: new SecretString('secret') }]]), { send });
+    expect((await github.setIssueState().invoke(stateCall(), input)).kind).toBe('retry');
+    expect((await github.replaceIssueLabels().invoke(stateCall(), { owner: 'octocat', repository: 'hello-world', issueNumber: 7, labels: ['bug'] })).kind).toBe('retry');
+  }
 });
 
 function stateClient(statuses: number[], sent: string[], authMethodId = RepositoryAuthMethodID): GitHubClient {

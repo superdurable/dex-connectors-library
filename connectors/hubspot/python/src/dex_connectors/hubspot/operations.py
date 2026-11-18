@@ -324,7 +324,8 @@ def _mutation_outcome(
         and result.status not in _DEFINITE_REFUSAL_STATUSES
         and (result.failure is None or result.failure.kind != FailureKind.QUOTA_EXHAUSTED)
     )
-    if result.disposition == "retry" or is_unknown_status:
+    # An oversized or unusable answer may follow an applied write, and repeating it is safe.
+    if result.disposition in ("retry", "invalidResponse") or is_unknown_status:
         assert result.failure is not None
         return MutationAttempt.retry(result.failure, result.retry_after)
     return MutationAttempt.branch_result(
@@ -506,12 +507,8 @@ class UpsertObjectOperation:
                             self.client.receipt(call, result, value.id),
                         )
                 except (ValueError, TypeError, OverflowError) as error:
-                    return MutationAttempt.branch_result(
-                        "invalidResponse",
-                        empty,
-                        self.client.receipt(call, result),
-                        failure("upsertObject", FailureKind.PROTOCOL, str(error)),
-                    )
+                    # The upsert may have applied; repeating it converges on the same record.
+                    return MutationAttempt.retry(failure("upsertObject", FailureKind.PROTOCOL, str(error)))
             if result.disposition == "conflict" and dispatch == 0:
                 continue
             return _mutation_outcome(
@@ -567,11 +564,9 @@ class UpdateObjectOperation:
             if value.id != input.object_id:
                 raise ValueError("record ID mismatch")
         except (ValueError, TypeError, OverflowError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                self.client.receipt(call, result, input.object_id),
-                failure("updateObject", FailureKind.PROTOCOL, "HubSpot returned an invalid record"),
+            # The update may have applied; setting the same values again is safe.
+            return MutationAttempt.retry(
+                failure("updateObject", FailureKind.PROTOCOL, "HubSpot returned an invalid record")
             )
         return MutationAttempt.branch_result(
             "updated", value, self.client.receipt(call, result, input.object_id)

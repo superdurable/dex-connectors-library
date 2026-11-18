@@ -6768,22 +6768,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "page": {
-            "archived": false,
-            "id": "",
-            "inTrash": false,
-            "parent": {
-              "type": ""
-            },
-            "properties": {},
-            "title": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6801,7 +6789,7 @@
           }
         }
       },
-      "name": "updatePageProperties-invalid-response",
+      "name": "updatePageProperties-unusable-page-retry",
       "operation": "updatePageProperties"
     },
     {

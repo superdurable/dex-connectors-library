@@ -4,6 +4,7 @@
 package hubspot_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,6 +16,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/hubspot/go"
 	"github.com/superdurable/dex-connectors-library/connectors/hubspot/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -325,6 +327,26 @@ func TestWritesRetryABare409WithoutADocumentedConflictCategory(t *testing.T) {
 	require.ErrorAs(t, err, &retry, "a bare 409 does not prove a refusal, and the update is repeat-safe")
 }
 
+type brokerOutageCredentials struct{}
+
+func (brokerOutageCredentials) Resolve(sdkgo.Call) (hubspot.Credentials, error) {
+	return hubspot.Credentials{}, projectconfig.ErrCredentialBrokerUnavailable
+}
+
+func (source brokerOutageCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[hubspot.Credentials]) (hubspot.Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestUpdateObjectRetriesATransientCredentialFailure(t *testing.T) {
+	client, err := hubspot.New(hubspot.Config{Endpoint: "http://127.0.0.1:1"}, brokerOutageCredentials{})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newStepDexContext("update-broker-outage"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
+		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501", Properties: map[string]string{"email": "ada@example.com"},
+	})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an earlier attempt may have applied the write, so defect would be wrong")
+}
+
 func TestUpsertObjectClassifiesBatchErrorsAndMalformedResults(t *testing.T) {
 	for _, test := range []struct {
 		name       string
@@ -336,14 +358,11 @@ func TestUpsertObjectClassifiesBatchErrorsAndMalformedResults(t *testing.T) {
 		{name: "multi-status validation error", status: http.StatusMultiStatus,
 			body:       `{"status":"COMPLETE","results":[],"numErrors":1,"errors":[{"status":"error","category":"VALIDATION_ERROR","message":"` + providerMessageSentinel + `"}]}`,
 			wantBranch: hubspot.UpsertObjectBranchProviderRejected, wantKind: sdkgo.FailureValidation},
-		{name: "no record", status: http.StatusOK, body: `{"status":"COMPLETE","results":[]}`,
-			wantBranch: hubspot.UpsertObjectBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
-		{name: "two records", status: http.StatusOK, body: `{"results":[{"id":"1"},{"id":"2"}]}`,
-			wantBranch: hubspot.UpsertObjectBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
-		{name: "record without ID", status: http.StatusOK, body: `{"results":[{"id":"x"}]}`,
-			wantBranch: hubspot.UpsertObjectBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
-		{name: "malformed JSON", status: http.StatusOK, body: `{"results":`,
-			wantBranch: hubspot.UpsertObjectBranchInvalidResponse, wantKind: sdkgo.FailureProtocol},
+		// An unusable accepted answer retries the repeat-safe upsert; an empty wantBranch means Retry.
+		{name: "no record", status: http.StatusOK, body: `{"status":"COMPLETE","results":[]}`, wantKind: sdkgo.FailureProtocol},
+		{name: "two records", status: http.StatusOK, body: `{"results":[{"id":"1"},{"id":"2"}]}`, wantKind: sdkgo.FailureProtocol},
+		{name: "record without ID", status: http.StatusOK, body: `{"results":[{"id":"x"}]}`, wantKind: sdkgo.FailureProtocol},
+		{name: "malformed JSON", status: http.StatusOK, body: `{"results":`, wantKind: sdkgo.FailureProtocol},
 		{name: "unknown ID property", status: http.StatusBadRequest, body: `{"category":"VALIDATION_ERROR"}`,
 			wantBranch: hubspot.UpsertObjectBranchProviderRejected, wantKind: sdkgo.FailureValidation},
 	} {
@@ -356,6 +375,13 @@ func TestUpsertObjectClassifiesBatchErrorsAndMalformedResults(t *testing.T) {
 				ObjectType: hubspot.ObjectTypeCompanies, IDProperty: "erp_company_id", IDValue: "ERP-1",
 				Properties: map[string]string{"name": "Acme"},
 			})
+			if test.wantBranch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, test.wantKind, retry.Failure.Kind)
+				require.Len(t, provider.recordedRequests(), 1)
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, test.wantBranch, result.Branch)
 			require.Equal(t, test.wantKind, result.Failure.Kind)

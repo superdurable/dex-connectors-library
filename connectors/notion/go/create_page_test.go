@@ -592,6 +592,47 @@ func TestCreatePageReadsBackAnAcceptedPageWithAnUnusableBody(t *testing.T) {
 	require.Equal(t, http.MethodGet, provider.request(1).method)
 }
 
+func TestCreatePageSelectsUncertainWhenAnUnsavedAcceptedPageCannotBeReadBack(t *testing.T) {
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page-unsaved-id")
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			ctx.SetWriteError(errors.New("heartbeat unavailable"))
+			writeJSON(t, response, http.StatusOK, `{"object":"page","id":"`+testPageID+`","properties":"bad"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusServiceUnavailable, notionError(503, "service_unavailable"))
+	})
+	result, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err, "a later attempt without the saved page ID could post again")
+	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreatePageSelectsUncertainWhenTerminalCredentialsBlockReadBack(t *testing.T) {
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))
+	})
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page-revoked")
+	_, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	ctx.AdvanceAttempt()
+	revoked, err := notion.New(notion.Config{Endpoint: provider.URL}, notionCredentialError{sdkgo.ErrReauthorizationRequired})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(ctx, revoked.CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	require.Equal(t, notion.CreatePageBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestCreatePageTreatsAnOversizedRefusalAsAnUnknownOutcome(t *testing.T) {
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusBadRequest, `{"object":"error","status":400,"code":"validation_error","message":"`+strings.Repeat("x", 70000)+`"}`)
+	})
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("notion-flow", "create-page-oversized-refusal"), newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Equal(t, 1, provider.requestCount())
+}
+
 func TestCreatePageDoesNotResendAnOversizedAcceptedPage(t *testing.T) {
 	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))

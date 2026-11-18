@@ -146,7 +146,7 @@ export interface UpdatePagePropertiesStepConfig<StepInput, OperationInput = Upda
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Notion applied the update but returned an invalid or oversized page. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

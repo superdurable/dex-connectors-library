@@ -4783,18 +4783,25 @@
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
         "requestCount": 3,
-        "retry": true,
-        "retryAfterMs": 2000,
-        "uncertain": false
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
       },
       "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
       "input": {
@@ -4931,6 +4938,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "providerId": "101",
           "sendCount": 1,
           "state": "claimed"
         },
@@ -5053,18 +5061,25 @@
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
         "requestCount": 3,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
       "input": {
@@ -5201,6 +5216,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "providerId": "101",
           "sendCount": 1,
           "state": "claimed"
         },
@@ -5321,18 +5337,25 @@
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "TRANSPORT",
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
         "requestCount": 2,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
       "input": {
@@ -5467,6 +5490,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "providerId": "101",
           "sendCount": 1,
           "state": "claimed"
         },

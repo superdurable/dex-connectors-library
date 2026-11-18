@@ -78,7 +78,7 @@ export interface UpsertObjectStepConfig<StepInput, OperationInput = UpsertObject
   conflict?: StepTarget<MutationResult<OperationOutput>>;
   /** HubSpot conclusively rejected the upsert, such as an invalid property value, a property that is not unique, a missing scope, a rejected token, or an exhausted daily limit. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** HubSpot applied or rejected the upsert but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -114,7 +114,7 @@ export interface UpdateObjectStepConfig<StepInput, OperationInput = UpdateObject
   conflict?: StepTarget<MutationResult<OperationOutput>>;
   /** HubSpot conclusively rejected the update, such as an invalid property value, a missing scope, a rejected token, or an exhausted daily limit. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** HubSpot applied or rejected the update but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because setting the same values again is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

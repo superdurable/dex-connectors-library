@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { NotionClient } from '../src/client.js';
 import { CreatePageDefinition } from '../src/generated/definitions.js';
 import type { CreatePageOutput } from '../src/generated/models.js';
@@ -89,6 +89,39 @@ describe('Notion createPage bounded resend', () => {
     context.marker = { callId, attempt: 1, state: 'claimed', providerId: pageId, sendCount: 1 };
     expect(await createPage(client, context)).toMatchObject({ branch: 'created', value: { pageId } });
     expect(requests.map(request => request.method)).toEqual(['GET']);
+  });
+
+  it('never resends a 2xx whose body breaks after the headers', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = new NotionClient({}, { resolve: async () => ({ apiToken: new SecretString('ntn_test_token_value') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 200, {}); },
+    });
+    expect(await createPage(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('selects uncertain when an accepted page ID was not saved and its read-back fails', async () => {
+    const requests: ProviderRequest[] = [];
+    const context = new AttemptContext();
+    const client = new NotionClient({}, { resolve: async () => ({ apiToken: new SecretString('ntn_test_token_value') }) }, {
+      send: async (request: ProviderRequest) => {
+        requests.push(request);
+        if (request.method === 'GET') return { status: 503, headers: {}, body: Buffer.from('{}') };
+        context.recordHeartbeat = async () => { throw new Error('heartbeat unavailable'); };
+        return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ object: 'page', id: pageId, properties: 'bad' })) };
+      },
+    });
+    expect(await createPage(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+  });
+
+  it('treats an oversized refusal as an unknown outcome', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = new NotionClient({}, { resolve: async () => ({ apiToken: new SecretString('ntn_test_token_value') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new BodyTooLargeError(400, {}); },
+    });
+    expect(await createPage(client, new AttemptContext())).toBeInstanceOf(RetryError);
+    expect(requests).toHaveLength(1);
   });
 
   it('returns Retry without sending for an untrusted checkpoint', async () => {

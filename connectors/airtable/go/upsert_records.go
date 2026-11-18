@@ -125,7 +125,8 @@ func (operation UpsertRecordsOperation) Invoke(call sdkgo.Call, input UpsertReco
 	receipt := operation.client.receipt(call, objectID)
 	upserted, err := decodeUpsertedRecords(response.body, len(input.Records))
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpsertRecordsBranchInvalidResponse, UpsertedRecords{}, providerFailurePointer("upsertRecords", sdkgo.FailureProtocol, err.Error()), receipt)
+		// The upsert may have applied; repeating it converges on the same records.
+		return sdkgo.NewMutationRetry[UpsertedRecords](providerFailure("upsertRecords", sdkgo.FailureProtocol, err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(UpsertRecordsBranchUpserted, upserted, nil, receipt)
 }

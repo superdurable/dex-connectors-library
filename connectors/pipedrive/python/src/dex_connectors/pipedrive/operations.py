@@ -594,7 +594,7 @@ class CreateObjectOperation:
         credentials, issue = await self.client.resolve(call, operation)
         if issue:
             # A pre-send Retry after an earlier possible send records nothing, so the next attempt counts it.
-            if decision.kind == DecisionKind.SEND_ALLOWED:
+            if not has_possible_earlier_send:
                 try:
                     await fence.record_not_sent()
                 except Exception:
@@ -866,7 +866,8 @@ class UpsertObjectOperation:
         can_create = decision.kind != DecisionKind.READ_BACK_REQUIRED
         credentials, issue = await self.client.resolve(call, operation)
         if issue:
-            if decision.kind == DecisionKind.SEND_ALLOWED:
+            # notSent would hide an earlier possible send, so it is recorded only before the first one.
+            if not earlier_create:
                 try:
                     await fence.record_not_sent()
                 except Exception:
@@ -903,7 +904,7 @@ class UpsertObjectOperation:
                     receipt,
                     cast(Failure, result.failure).kind,
                 )
-            if decision.kind == DecisionKind.SEND_ALLOWED and result.outcome in (
+            if not earlier_create and result.outcome in (
                 "notSent", "rateLimited", "unavailable"
             ):
                 try:
@@ -1018,9 +1019,8 @@ class UpsertObjectOperation:
         receipt: Receipt,
         fence: Fence,
     ) -> MutationAttempt[UpsertedObject]:
+        # Without a saved record ID, a Retry could let a later attempt search, miss, and create again.
         matches, has_more, result = await self._find_matches(call, input, credentials, identity_field)
-        if result.outcome in ("notSent", "rateLimited", "unavailable"):
-            return MutationAttempt.retry(cast(Failure, result.failure), result.retry_after)
         if result.outcome != "succeeded" or len(matches) != 1 or has_more:
             return _uncertain(
                 "upsertObject",
@@ -1028,10 +1028,15 @@ class UpsertObjectOperation:
                 receipt,
                 FailureKind.PROTOCOL,
             )
+        try:
+            await fence.record_provider_id(matches[0])
+            is_provider_id_saved = True
+        except Exception:
+            is_provider_id_saved = False
         read = await self._read_or_update(call, input, credentials, matches[0], None, True, fence)
-        if read.kind == "retry":
+        if read.kind == "retry" and is_provider_id_saved:
             return read
-        if read.branch != definitions.UPSERTED or read.value is None:
+        if read.kind == "retry" or read.branch != definitions.UPSERTED or read.value is None:
             return _uncertain(
                 "upsertObject",
                 read.failure.message if read.failure else "read-back failed",
@@ -1039,10 +1044,6 @@ class UpsertObjectOperation:
                 read.failure.kind if read.failure else FailureKind.PROTOCOL,
             )
         record = read.value.object
-        try:
-            await fence.record_provider_id(record.id)
-        except Exception:
-            pass  # The confirmed read-back still identifies the created record.
         return MutationAttempt.branch_result(
             definitions.UPSERTED,
             UpsertedObject(record, created=True),

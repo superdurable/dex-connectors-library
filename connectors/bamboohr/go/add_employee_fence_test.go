@@ -226,6 +226,68 @@ func TestAddEmployeeFenceTreatsUnusableAcceptedBodyAsAccepted(t *testing.T) {
 	}
 }
 
+func TestAddEmployeeFenceReadsTheLocationOfAnInterruptedAcceptedPost(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		response.Header().Set("Location", "https://acme.bamboohr.com/api/v1/employees/142")
+		response.Header().Set("Content-Length", "100")
+		writeJSON(t, response, http.StatusCreated, `{`)
+	})
+	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-interrupted-location")
+	result, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.NoError(t, err)
+	require.Equal(t, bamboohr.AddEmployeeBranchCreated, result.Branch)
+	require.Equal(t, "142", result.Value.EmployeeID)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestAddEmployeeFenceCountsASendBeforeA429(t *testing.T) {
+	statuses := []int{http.StatusInternalServerError, http.StatusTooManyRequests, http.StatusBadRequest}
+	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		writeBambooHRError(t, response, statuses[index], ``)
+	})
+	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-429-after-unknown")
+	client := newBambooHRClient(t, provider.URL)
+	var retry *sdkgo.RetryError
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+		require.ErrorAs(t, err, &retry)
+		ctx.AdvanceAttempt()
+	}
+	result, err := sdkgo.RunMutation(ctx, client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.NoError(t, err)
+	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch, "the first send may have added the employee")
+	require.Equal(t, 3, provider.requestCount())
+}
+
+func TestAddEmployeeFenceTreatsAnOversizedRefusalAsUnknown(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeBambooHRError(t, response, http.StatusBadRequest, `{"error":{"code":"invalidField","detail":"an oversized refusal"}}`)
+	})
+	client, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain, MaxResponseBytes: 30},
+		testCredentialProvider(), bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(singledispatchtest.NewContext("bamboohr-flow", "add-oversized-refusal"), client.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unreadable refusal is resent below the send cap")
+}
+
+func TestAddEmployeeFenceSelectsUncertainWhenTerminalCredentialsBlockReadBack(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":"140"}`)
+	})
+	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-readback-terminal")
+	_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.NoError(t, err)
+	ctx.AdvanceAttempt()
+	revoked, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain},
+		addEmployeeCredentialErrorProvider{sdkgo.ErrReauthorizationRequired}, bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(ctx, revoked.AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.NoError(t, err)
+	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
 func TestAddEmployeeFenceCutsOffSlowWriteInsideAttempt(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(_ http.ResponseWriter, request *http.Request, _ int) {
 		<-request.Context().Done()

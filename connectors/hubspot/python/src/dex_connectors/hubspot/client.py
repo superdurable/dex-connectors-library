@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt, TriggerLogger
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -185,6 +186,16 @@ class Client:
                     operation,
                     FailureKind.AVAILABILITY,
                     "HubSpot OAuth token refresh is temporarily unavailable",
+                ),
+            )
+        except (CredentialBrokerUnavailableError, TimeoutError):
+            # A write may have applied in an earlier attempt, so a passing outage must not select defect.
+            return Exchange(
+                disposition="retry",
+                failure=failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "HubSpot connection credentials are temporarily unavailable",
                 ),
             )
         except Exception:

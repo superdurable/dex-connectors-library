@@ -103,7 +103,8 @@ func (operation UpsertObjectOperation) Invoke(call sdkgo.Call, input UpsertObjec
 	canCreate := decision.Kind != singledispatch.ReadBackRequired
 	session, cancel, failure := operation.client.startSession(call, operationID)
 	if failure != nil {
-		if decision.Kind == singledispatch.SendAllowed {
+		// notSent would hide an earlier possible send, so it is recorded only before the first one.
+		if !isEarlierCreatePossible {
 			if err := fence.RecordNotSent(); err != nil {
 				return singleDispatchRetry[UpsertedObject](operationID)
 			}
@@ -141,7 +142,7 @@ func (operation UpsertObjectOperation) Invoke(call sdkgo.Call, input UpsertObjec
 	case result.outcome != exchangeSucceeded && isEarlierCreatePossible && !isRetryableExchange(result.outcome):
 		return unconfirmedCreateAttempt(result.failure, receipt)
 	case result.outcome != exchangeSucceeded:
-		if decision.Kind == singledispatch.SendAllowed && isRetryableExchange(result.outcome) {
+		if !isEarlierCreatePossible && isRetryableExchange(result.outcome) {
 			if err := fence.RecordNotSent(); err != nil {
 				return singleDispatchRetry[UpsertedObject](operationID)
 			}
@@ -286,24 +287,24 @@ func (operation UpsertObjectOperation) createRecord(
 	return sdkgo.NewMutationBranch(UpsertObjectBranchUpserted, UpsertedObject{Object: object, Created: true}, nil, receipt)
 }
 
+// readBackAcceptedCreate confirms a create Pipedrive accepted without a usable answer. It never
+// returns a Retry that a later attempt could turn into another POST: without a saved record ID,
+// a transient read-back failure selects uncertain.
 func (operation UpsertObjectOperation) readBackAcceptedCreate(session *operationSession, input UpsertObjectInput, field SearchField, receipt sdkgo.Receipt, fence *singledispatch.Fence) sdkgo.MutationAttempt[UpsertedObject] {
 	matchingIDs, hasMoreMatches, search := operation.findIdentityMatches(session, input, field)
-	if isRetryableExchange(search.outcome) {
-		return sdkgo.NewMutationRetry[UpsertedObject](search.failure, search.retryAfter)
-	}
 	if search.outcome != exchangeSucceeded || len(matchingIDs) != 1 || hasMoreMatches {
 		return unconfirmedCreateAttempt(providerFailure(session.operation, sdkgo.FailureProtocol, "Pipedrive accepted the create but identity read-back could not confirm one record"), receipt)
 	}
+	// A saved record ID makes a later attempt read the record instead of searching and resending.
+	isProviderIDSaved := fence.RecordProviderID(matchingIDs[0]) == nil
 	object, read := operation.client.readRecord(session, input.ObjectType, matchingIDs[0])
-	if isRetryableExchange(read.outcome) {
+	if isRetryableExchange(read.outcome) && isProviderIDSaved {
 		return sdkgo.NewMutationRetry[UpsertedObject](read.failure, read.retryAfter)
 	}
 	if read.outcome != exchangeSucceeded {
 		return unconfirmedCreateAttempt(read.failure, receipt)
 	}
 	receipt.ProviderObjectID = object.ID
-	// The accepted result remains known if its extra read-back checkpoint is lost.
-	_ = fence.RecordProviderID(object.ID)
 	return sdkgo.NewMutationBranch(UpsertObjectBranchUpserted, UpsertedObject{Object: object, Created: true}, nil, receipt)
 }
 

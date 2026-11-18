@@ -246,6 +246,9 @@ func (client *Client) exchangeWithContext(ctx context.Context, credentials Crede
 		return bambooHRExchange{outcome: exchangeInvalid, response: response, failure: bambooHRFailure(sdkgo.FailureResponseTooLarge, operation, "BambooHR response exceeds the configured maxResponseBytes limit")}
 	case readErr != nil && !errors.Is(readErr, providerhttp.ErrBodyTooLarge), closeErr != nil:
 		return bambooHRExchange{outcome: exchangeUnavailable, response: response, failure: bambooHRFailure(sdkgo.FailureTransport, operation, "BambooHR response could not be read")}
+	case readErr != nil && request.method != http.MethodGet && httpResponse.StatusCode != http.StatusTooManyRequests && httpResponse.StatusCode != http.StatusServiceUnavailable:
+		// An oversized write refusal proves nothing about the write; 429 and 503 still prove no processing.
+		return bambooHRExchange{outcome: exchangeUnavailable, response: response, failure: bambooHRFailure(sdkgo.FailureResponseTooLarge, operation, fmt.Sprintf("BambooHR write response exceeds the configured maxResponseBytes limit (HTTP %d)", httpResponse.StatusCode))}
 	}
 	response.body = body
 	if isSuccess {

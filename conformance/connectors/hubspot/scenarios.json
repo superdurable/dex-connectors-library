@@ -1092,18 +1092,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "created": false,
-          "object": {
-            "archived": false,
-            "id": "",
-            "objectType": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1117,7 +1109,7 @@
           "firstname": "Ada"
         }
       },
-      "name": "upsertObject-invalid-response",
+      "name": "upsertObject-unusable-answer-retry",
       "operation": "upsertObject"
     },
     {
@@ -1462,15 +1454,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "archived": false,
-          "id": "",
-          "objectType": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1482,7 +1469,7 @@
           "firstname": "Ada"
         }
       },
-      "name": "updateObject-invalid-response",
+      "name": "updateObject-unusable-answer-retry",
       "operation": "updateObject"
     },
     {

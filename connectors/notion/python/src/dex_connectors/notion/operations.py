@@ -536,7 +536,11 @@ class UpdatePagePropertiesOperation:
                 Receipt(),
                 failure("updatePageProperties", FailureKind.VALIDATION, str(error)),
             )
-        token, credential_failure, _ = await self.client.resolve_credentials(call, "updatePageProperties")
+        token, credential_failure, transient = await self.client.resolve_credentials(
+            call, "updatePageProperties"
+        )
+        if (credential_failure is not None or token is None) and transient:
+            return MutationAttempt.retry(cast(Failure, credential_failure))
         if credential_failure is not None or token is None:
             return MutationAttempt.branch_result("defect", empty, Receipt(), credential_failure)
         response = await self.client.request(
@@ -559,15 +563,13 @@ class UpdatePagePropertiesOperation:
             if page.id != page_id:
                 raise ValueError
         except ValueError:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                receipt,
+            # Repeating the absolute update is safe, so an unusable accepted response retries.
+            return MutationAttempt.retry(
                 failure(
                     "updatePageProperties",
                     FailureKind.PROTOCOL,
                     "Notion applied the update but returned an unusable page",
-                ),
+                )
             )
         return MutationAttempt.branch_result("updated", UpdatePagePropertiesOutput(page), receipt)
 
@@ -628,7 +630,18 @@ class CreatePageOperation:
             and marker.provider_id
         ):
             # Notion returned this page ID for an accepted earlier send, so it is read back, never resent.
-            token, credential_failure, _ = await self.client.resolve_credentials(call, "createPage")
+            token, credential_failure, transient = await self.client.resolve_credentials(call, "createPage")
+            if (credential_failure is not None or token is None) and not transient:
+                return MutationAttempt.uncertain(
+                    replace(empty, page_id=marker.provider_id),
+                    failure(
+                        "createPage",
+                        FailureKind.AUTHENTICATION,
+                        "Notion accepted the page, and the connection credentials are unavailable to "
+                        "read it back; reconnect the connection",
+                    ),
+                    Receipt(provider_object_id=marker.provider_id),
+                )
             if credential_failure is not None or token is None:
                 return MutationAttempt.retry(cast(Failure, credential_failure))
             return await self._confirm_page(call, token, empty, marker.provider_id, Receipt())
@@ -723,6 +736,14 @@ class CreatePageOperation:
                 failure("createPage", FailureKind.PROTOCOL, "Notion dispatch could not be classified"),
                 Receipt(),
             )
+        except TimeoutError:
+            # The Fence write window ended after the POST may have left.
+            return _resend_or_select_uncertain_page(
+                can_resend_unknown_outcome,
+                output,
+                failure("createPage", FailureKind.TRANSPORT, "Notion page creation outcome is unknown"),
+                Receipt(),
+            )
         receipt = self.client.receipt(call, response)
         classified = classify_write("createPage", response, False)
         if classified.outcome == "retry":
@@ -735,8 +756,10 @@ class CreatePageOperation:
                 )
             return MutationAttempt.retry(cast(Failure, classified.failure), classified.retry_after)
         if classified.outcome == "committed":
-            await self._record_provider_id(fence, classified.committed_id)
-            return await self._confirm_page(call, token, output, classified.committed_id, receipt, True)
+            is_provider_id_saved = await self._record_provider_id(fence, classified.committed_id)
+            return await self._confirm_page(
+                call, token, output, classified.committed_id, receipt, True, is_provider_id_saved
+            )
         if classified.outcome == "accepted":
             try:
                 page = decode_page(_json(response.body))
@@ -749,8 +772,10 @@ class CreatePageOperation:
                 except ValueError:
                     page_id = ""
                 if page_id:
-                    await self._record_provider_id(fence, page_id)
-                    return await self._confirm_page(call, token, output, page_id, receipt)
+                    is_provider_id_saved = await self._record_provider_id(fence, page_id)
+                    return await self._confirm_page(
+                        call, token, output, page_id, receipt, is_provider_id_saved=is_provider_id_saved
+                    )
                 return MutationAttempt.uncertain(
                     output,
                     failure(
@@ -793,12 +818,13 @@ class CreatePageOperation:
         branch = "notFound" if classified.outcome == "notFound" else "providerRejected"
         return MutationAttempt.branch_result(branch, output, receipt, problem)
 
-    async def _record_provider_id(self, fence: Fence, identifier: str) -> None:
+    async def _record_provider_id(self, fence: Fence, identifier: str) -> bool:
         try:
             await fence.record_provider_id(identifier)
-        except (CheckpointError, DispatchNotAllowedError):
+        except Exception:
             # The accepted ID is already in the current response; loss only limits later read-back.
-            pass
+            return False
+        return True
 
     async def _confirm_page(
         self,
@@ -808,12 +834,14 @@ class CreatePageOperation:
         page_id: str,
         receipt: Receipt,
         confirmed_after_timeout: bool = False,
+        is_provider_id_saved: bool = True,
     ) -> MutationAttempt[CreatePageOutput]:
         output = replace(output, page_id=page_id, confirmed_after_timeout=confirmed_after_timeout)
         receipt = replace(receipt, provider_object_id=page_id)
         response = await self.client.request(token, "GET", "/pages/" + escaped_path(page_id))
         classified = classify_read("createPage", response)
-        if classified.outcome == "retry":
+        # Without a saved page ID a later attempt could resend, so a failed read-back never retries.
+        if classified.outcome == "retry" and is_provider_id_saved:
             return MutationAttempt.retry(cast(Failure, classified.failure), classified.retry_after)
         if classified.outcome != "success":
             return MutationAttempt.uncertain(

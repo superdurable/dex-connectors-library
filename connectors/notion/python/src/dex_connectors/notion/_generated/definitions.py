@@ -110,7 +110,7 @@ UPDATE_PAGE_PROPERTIES_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Notion applied the property values and returned the page.", False),
         BranchDefinition(NOT_FOUND, "The page does not exist or is not shared with the connection; nothing was changed.", True),
         BranchDefinition(PROVIDER_REJECTED, "Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability.", True),
-        BranchDefinition(INVALID_RESPONSE, "Notion applied the update but returned an invalid or oversized page.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

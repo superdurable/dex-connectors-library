@@ -91,7 +91,7 @@ func TestUpdateRecordRetriesRowLocksAndOutages(t *testing.T) {
 }
 
 func TestUpdateRecordRetriesAStatusThatDoesNotProveARefusal(t *testing.T) {
-	for _, status := range []int{http.StatusConflict, http.StatusPreconditionFailed, http.StatusFound, http.StatusTeapot} {
+	for _, status := range []int{http.StatusConflict, http.StatusPreconditionFailed, http.StatusFound, http.StatusTeapot, http.StatusMultipleChoices} {
 		t.Run(http.StatusText(status), func(t *testing.T) {
 			fake := newFakeSalesforce(t, func(response http.ResponseWriter, _ *http.Request, _ []byte) {
 				writeJSON(t, response, status, `[{"message":"`+providerMessageSentinel+`","errorCode":"UNKNOWN"}]`)

@@ -109,7 +109,9 @@ it('records the selected provider object on terminal read and write receipts', a
     const lookup = await client.queryDatabase().invoke(call('queryDatabase'), { databaseId });
     const update = await client.updatePageProperties().invoke(call('updatePageProperties'), { pageId, properties: { Name: { type: 'title', text: 'Ada' } } });
     const create = await client.createPage().invoke(call('createPage'), { databaseId, properties: { Name: { type: 'title', text: 'Ada' } } });
-    for (const [attempt, expectedId] of [[get, pageId], [query, dataSourceId], [lookup, databaseId], [update, pageId], [create, databaseId]] as const) {
+    // An unusable 2xx update retries, because repeating the absolute write is safe.
+    if (status === 200) expect(update.kind).toBe('retry');
+    for (const [attempt, expectedId] of [[get, pageId], [query, dataSourceId], [lookup, databaseId], ...(status === 200 ? [] : [[update, pageId]] as const), [create, databaseId]] as const) {
       expect(attempt.kind).toBe('branch');
       if (attempt.kind === 'branch') expect(attempt.receipt.providerObjectId).toBe(expectedId);
     }

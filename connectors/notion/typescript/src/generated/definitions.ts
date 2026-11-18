@@ -161,7 +161,7 @@ export const UpdatePagePropertiesBranchUpdated = UpdatePagePropertiesBranch.Upda
 export const UpdatePagePropertiesBranchNotFound = UpdatePagePropertiesBranch.NotFound;
 /** Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability. */
 export const UpdatePagePropertiesBranchProviderRejected = UpdatePagePropertiesBranch.ProviderRejected;
-/** Notion applied the update but returned an invalid or oversized page. */
+/** Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe. */
 export const UpdatePagePropertiesBranchInvalidResponse = UpdatePagePropertiesBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdatePagePropertiesBranchDefect = UpdatePagePropertiesBranch.Defect;
@@ -172,7 +172,7 @@ export const UpdatePagePropertiesDefinition: MutationDefinition = {
     { id: "updated", description: "Notion applied the property values and returned the page." },
     { id: "notFound", description: "The page does not exist or is not shared with the connection; nothing was changed.", optional: true },
     { id: "providerRejected", description: "Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability.", optional: true },
-    { id: "invalidResponse", description: "Notion applied the update but returned an invalid or oversized page.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 90000, executeDurability: "async" },

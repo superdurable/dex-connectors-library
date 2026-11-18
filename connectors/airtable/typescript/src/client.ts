@@ -3,6 +3,7 @@
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { GetRecordOperation, ListRecordsOperation, UpdateRecordsOperation, UpsertRecordsOperation } from './operations.js';
 
@@ -114,6 +115,8 @@ export class AirtableClient {
       if (!isHeaderSafeCredential(token)) throw new TypeError('invalid Airtable token');
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: this.failure('rejected', operation, 'AUTHENTICATION', 'the Airtable connection must be authorized again') };
+      // A write may have applied in an earlier attempt, so a passing outage must not select defect.
+      if (error instanceof CredentialBrokerUnavailableError || error instanceof DOMException && error.name === 'AbortError') return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'Airtable connection credentials are temporarily unavailable') };
       return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Airtable connection credentials are unavailable') };
     }
     let encoded: Uint8Array | undefined;

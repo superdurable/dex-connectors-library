@@ -71,7 +71,7 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 	session, cancel, failure := operation.client.startSession(call, operationID)
 	if failure != nil {
 		// A pre-send Retry after an earlier possible send records nothing, so the next attempt still counts it.
-		if decision.Kind == singledispatch.SendAllowed {
+		if !hasPossibleEarlierSend {
 			if err := fence.RecordNotSent(); err != nil {
 				return singleDispatchRetry[CRMObject](operationID)
 			}

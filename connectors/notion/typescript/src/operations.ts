@@ -198,8 +198,9 @@ export class CreatePageOperation implements Mutation<CreatePageInput, CreatePage
         return newMutationRetry(result.failure, result.retryAfterMs);
       }
       if (result.disposition === 'committed' && result.providerId) {
-        try { await fence.recordProviderId(result.providerId); } catch { /* Read-back remains safe with the accepted ID. */ }
-        return this.confirmPage(call, result.providerId, result.receipt, true, resolved);
+        // A lost accepted-ID checkpoint cannot authorize another write, so its read-back never retries.
+        const isProviderIdSaved = await fence.recordProviderId(result.providerId).then(() => true, () => false);
+        return this.confirmPage(call, result.providerId, result.receipt, true, resolved, isProviderIdSaved);
       }
       if (result.disposition === 'notFound' || result.disposition === 'providerRejected') {
         if (hasPossibleEarlierSend) return newMutationUncertain(output, result.failure, result.receipt);
@@ -215,7 +216,7 @@ export class CreatePageOperation implements Mutation<CreatePageInput, CreatePage
     let page: Page;
     try { page = decodePage(objectJSON(result.response.body)); }
     catch {
-      try { const body = objectJSON(result.response.body); if (body.object === 'page' && typeof body.id === 'string') { const pageId = parseID(body.id); try { await fence.recordProviderId(pageId); } catch { /* Accepted ID still permits read-back. */ } return this.confirmPage(call, pageId, result.receipt, false, resolved); } }
+      try { const body = objectJSON(result.response.body); if (body.object === 'page' && typeof body.id === 'string') { const pageId = parseID(body.id); const isProviderIdSaved = await fence.recordProviderId(pageId).then(() => true, () => false); return this.confirmPage(call, pageId, result.receipt, false, resolved, isProviderIdSaved); } }
       catch { /* No accepted ID can be confirmed. */ }
       return newMutationUncertain(output, failure('createPage', 'PROTOCOL', 'Notion accepted the page but returned an unusable response'), result.receipt);
     }
@@ -223,10 +224,11 @@ export class CreatePageOperation implements Mutation<CreatePageInput, CreatePage
     return mutationBranch('createPage', 'created', { dataSourceId: resolved, pageId: page.id, page }, undefined, { ...result.receipt, providerObjectId: page.id });
   }
 
-  private async confirmPage(call: Call, pageId: string, receipt: ReceiptDraft, confirmedAfterTimeout: boolean, dataSourceId = ''): Promise<MutationAttempt<CreatePageOutput>> {
+  /** Read an accepted page back; without a saved page ID a later attempt could resend, so it never retries. */
+  private async confirmPage(call: Call, pageId: string, receipt: ReceiptDraft, confirmedAfterTimeout: boolean, dataSourceId = '', isProviderIdSaved = true): Promise<MutationAttempt<CreatePageOutput>> {
     const output: CreatePageOutput = { ...(dataSourceId ? { dataSourceId } : {}), pageId, ...(confirmedAfterTimeout ? { confirmedAfterTimeout: true } : {}) };
     const result = await this.client.exchange(call, 'createPage', 'page creation', 'GET', `/pages/${pathEscape(pageId)}`);
-    if (!('response' in result)) return result.disposition === 'retry' ? newMutationRetry(result.failure, result.retryAfterMs) : newMutationUncertain(output, failure('createPage', 'PROTOCOL', 'accepted page could not be confirmed'), { ...receipt, providerObjectId: pageId });
+    if (!('response' in result)) return result.disposition === 'retry' && isProviderIdSaved ? newMutationRetry(result.failure, result.retryAfterMs) : newMutationUncertain(output, failure('createPage', 'PROTOCOL', 'accepted page could not be confirmed'), { ...receipt, providerObjectId: pageId });
     try {
       const page = decodePage(objectJSON(result.response.body));
       if (page.id !== pageId) throw new Error('page ID mismatch');
@@ -251,7 +253,10 @@ export class UpdatePagePropertiesOperation implements Mutation<UpdatePagePropert
       const page = decodePage(objectJSON(result.response.body));
       if (page.id !== pageId) throw new Error('page ID mismatch');
       return mutationBranch('updatePageProperties', 'updated', { page }, undefined, result.receipt);
-    } catch { return mutationBranch('updatePageProperties', 'invalidResponse', emptyUpdate, failure('updatePageProperties', 'PROTOCOL', 'Notion returned an unusable page after update'), result.receipt); }
+    } catch {
+      // Repeating the absolute update is safe, so an unusable accepted response retries.
+      return newMutationRetry(failure('updatePageProperties', 'PROTOCOL', 'Notion applied the page update but returned an unusable page'));
+    }
   }
 }
 

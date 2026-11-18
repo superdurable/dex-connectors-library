@@ -79,7 +79,7 @@ export interface UpsertRecordsStepConfig<StepInput, OperationInput = UpsertRecor
   upserted: StepTarget<MutationResult<OperationOutput>>;
   /** Airtable conclusively rejected the upsert, such as several existing records matching one merge key, an invalid cell value, a computed merge field, a missing scope, or a rejected token. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Airtable applied or rejected the upsert but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -112,7 +112,7 @@ export interface UpdateRecordsStepConfig<StepInput, OperationInput = UpdateRecor
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Airtable applied or rejected the update but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because repeating absolute values is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

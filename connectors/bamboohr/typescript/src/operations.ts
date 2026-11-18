@@ -159,16 +159,22 @@ export class UpdateEmployeeOperation implements Mutation<UpdateEmployeeInput, Up
     try { requireEmployeeId(input.employeeId); validateWrittenFields(input.fields, 1, new Set([...historyFields, ...ignoredFields])); }
     catch { return defectMutation('updateEmployee', zeroUpdate); }
     const credential = await this.client.resolveKey(call);
+    if (credential.kind === 'transient') return newMutationRetry(failure('updateEmployee', 'AVAILABILITY', 'connection credentials could not be read; nothing was sent'));
     if (credential.kind !== 'resolved') return defectMutation('updateEmployee', zeroUpdate, 'AUTHENTICATION');
     const key = credential.key;
     const fieldNames = Object.keys(input.fields!).sort();
     const receipt = this.client.receipt(call, input.employeeId);
-    const read = async (value: UpdateEmployeeOutput): Promise<EmployeeRecord | MutationAttempt<UpdateEmployeeOutput>> => {
+    const read = async (value: UpdateEmployeeOutput, isAfterWrite = false): Promise<EmployeeRecord | MutationAttempt<UpdateEmployeeOutput>> => {
       const result = await this.client.exchange(call, 'updateEmployee', key, 'GET', `/employees/${input.employeeId}`, new URLSearchParams({ fields: fieldNames.join(',') }));
+      // After an accepted write, every failed read-back retries, because repeating the absolute write is safe.
+      if (isAfterWrite && result.kind !== 'success') return newMutationRetry(result.failure, result.retryAfterMs);
       const terminal = exchangeMutation(this.client, call, result, value, input.employeeId, true);
       if (terminal) return terminal;
       try { return decodeEmployeeRecord(parseBody(result), input.employeeId, fieldNames); }
-      catch { return newMutationBranch('invalidResponse', value, receipt, failure('updateEmployee', 'PROTOCOL', 'BambooHR returned an invalid employee')); }
+      catch {
+        const invalidEmployee = failure('updateEmployee', 'PROTOCOL', 'BambooHR returned an invalid employee');
+        return isAfterWrite ? newMutationRetry(invalidEmployee) : newMutationBranch('invalidResponse', value, receipt, invalidEmployee);
+      }
     };
     const current = await read(zeroUpdate);
     if (!('employeeId' in current)) return current;
@@ -182,7 +188,7 @@ export class UpdateEmployeeOperation implements Mutation<UpdateEmployeeInput, Up
     if (writeTerminal) return writeTerminal;
     const writtenFields = Object.keys(changed).sort();
     const output: UpdateEmployeeOutput = { employee: zeroRecord, writtenFields };
-    const stored = await read(output);
+    const stored = await read(output, true);
     if (!('employeeId' in stored)) return stored;
     const unmatchedFields = fieldNames.filter(field => stored.fields?.[field] !== input.fields![field]);
     return newMutationBranch('updated', { employee: stored, writtenFields, ...(unmatchedFields.length ? { unmatchedFields } : {}) }, receipt);
@@ -210,6 +216,7 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
       const employeeId = savedEmployeeId;
       if (!employeeId || !employeeIdPattern.test(employeeId)) return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'earlier attempts may have added the employee up to the send cap; no employee ID is available for read-back'), receipt);
       const credential = await this.client.resolveKey(call);
+      if (credential.kind === 'terminal') return newMutationUncertain(zeroAdd, failure('addEmployee', 'AUTHENTICATION', 'the employee may have been added, and the connection credentials are unavailable to read it back; reconnect the connection'), this.client.receipt(call, employeeId));
       if (credential.kind !== 'resolved') return newMutationRetry(failure('addEmployee', 'AUTHENTICATION', 'connection credentials are unavailable'));
       const key = credential.key;
       const result = await this.client.exchange(call, 'addEmployee', key, 'GET', `/employees/${employeeId}`);
@@ -244,11 +251,13 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'dispatch checkpoint or attempt time is unavailable; nothing was sent'));
       return resendOrSelectAddEmployeeUncertain(canResendUnknownOutcome, receipt, failure('addEmployee', 'TRANSPORT', 'the dispatch outcome is unavailable'));
     }
-    if (result.kind === 'success') {
+    // A 2xx whose body broke or was oversized is still accepted and is never resent.
+    if (result.kind === 'success' || result.acceptedResponse) {
+      const acceptedResponse = result.kind === 'success' ? result.response : result.acceptedResponse!;
       let employeeId = '';
       try { employeeId = decodeEmployeeId(asObject(parseBody(result)).id); }
       catch {
-        const location = result.response.headers.location;
+        const location = acceptedResponse.headers.location;
         const match = typeof location === 'string' ? /(?:\/employees\/|[?&]id=)([1-9][0-9]{0,18})(?:[/?&#]|$)/.exec(location) : null;
         employeeId = match?.[1] ?? '';
       }

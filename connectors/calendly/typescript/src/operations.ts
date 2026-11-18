@@ -425,6 +425,8 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
       catch { return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'Calendly could not be reached and the retry checkpoint failed')); }
       return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'Calendly could not be reached before a connection was obtained'));
     }
+    // A 2xx whose body broke accepted the link, so a resend would create another.
+    if (exchange.kind === 'transport' && exchange.response) return newMutationUncertain(output, failure('createSchedulingLink', 'TRANSPORT', 'Calendly accepted a scheduling link but its answer cannot be read'), this.client.receipt(call));
     if (exchange.kind === 'transport') return resendOrSelectUncertain(failure('createSchedulingLink', 'TRANSPORT', "Calendly's scheduling link answer was lost after the request may have been sent"));
     // The client reports tooLarge only for a 2xx, which accepted the link.
     if (exchange.kind === 'tooLarge') return newMutationUncertain(output, failure('createSchedulingLink', 'RESPONSE_TOO_LARGE', "Calendly's scheduling link response exceeds maxResponseBytes"), this.client.receipt(call));

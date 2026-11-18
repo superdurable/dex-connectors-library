@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { CalendlyClient } from '../src/client.js';
 import { CreateSchedulingLinkDefinition } from '../src/generated/definitions.js';
 import type { Credentials, SchedulingLink } from '../src/generated/models.js';
@@ -81,6 +81,24 @@ describe('Calendly createSchedulingLink bounded resend', () => {
     context.attempt = 2;
     expect(await createLink(client, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(2);
+  });
+
+  it('never resends a 2xx whose body breaks after the headers', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = new CalendlyClient({}, new StaticCredentialProvider([[connection, credentials]]), {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 201, {}); },
+    });
+    expect(await createLink(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('keeps the status of a refusal whose body breaks, as Go does', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = new CalendlyClient({}, new StaticCredentialProvider([[connection, credentials]]), {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 400, {}); },
+    });
+    expect(await createLink(client, new AttemptContext())).toMatchObject({ branch: 'providerRejected' });
+    expect(requests).toHaveLength(1);
   });
 
   it('selects created from a saved booking URL without another POST', async () => {

@@ -10,7 +10,16 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -154,21 +163,44 @@ class Client:
         self, call: Call, operation: str
     ) -> tuple[Credentials | None, Failure | None]:
         """Resolve and validate the current API key without retaining it in state."""
+        credentials, failure, _ = await self.resolve_credentials_with_terminality(call, operation)
+        return credentials, failure
+
+    async def resolve_credentials_with_terminality(
+        self, call: Call, operation: str
+    ) -> tuple[Credentials | None, Failure | None, bool]:
+        """Resolve the API key and report whether a failure needs reconnection rather than a retry.
+
+        The flag is True for a revoked, missing, unselected, broker-refused, or malformed
+        credential, and False for a transient read failure or a resolved key.
+        """
+        failure = bamboohr_failure(
+            operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+        )
         try:
             credentials = await self._credentials.resolve(call)
-            key = credentials.api_key.reveal()
-            if (
-                not key
-                or not key.isascii()
-                or any(ord(character) < 33 or ord(character) > 126 for character in key)
-                or ":" in key
-            ):
-                raise ValueError("invalid BambooHR credential")
-            return credentials, None
-        except Exception:
-            return None, bamboohr_failure(
-                operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+        except Exception as error:
+            is_terminal = isinstance(
+                error,
+                ReauthorizationRequiredError
+                | ObjectNotFoundError
+                | ConnectionNotSelectedError
+                | CredentialBrokerRejectedError,
             )
+            return None, failure, is_terminal
+        try:
+            key = credentials.api_key.reveal()
+            is_usable = (
+                bool(key)
+                and key.isascii()
+                and all(33 <= ord(character) <= 126 for character in key)
+                and ":" not in key
+            )
+        except Exception:
+            is_usable = False
+        if not is_usable:
+            return None, failure, True
+        return credentials, None, False
 
     async def exchange(
         self,
@@ -209,6 +241,19 @@ class Client:
                             "BambooHR response exceeds the configured maxResponseBytes limit",
                         ),
                     )
+                if method != "GET" and response.status_code not in (429, 503):
+                    # An oversized write refusal proves nothing about the write.
+                    return Exchange(
+                        "unavailable",
+                        response.status_code,
+                        response.headers,
+                        failure=bamboohr_failure(
+                            operation,
+                            FailureKind.RESPONSE_TOO_LARGE,
+                            "BambooHR write response exceeds the configured maxResponseBytes limit "
+                            f"(HTTP {response.status_code})",
+                        ),
+                    )
                 body = b""
             if 200 <= response.status_code < 300:
                 if key.encode() in body:
@@ -225,6 +270,18 @@ class Client:
                 return Exchange("succeeded", response.status_code, response.headers, body)
             return self._classify_status(operation, response.status_code, response.headers, body, key)
         except ProviderTransportError as error:
+            if error.status_code is not None:
+                # Keep the status, so a 2xx whose body broke counts as accepted and is never resent.
+                return Exchange(
+                    "unavailable",
+                    error.status_code,
+                    error.headers if error.headers is not None else httpx.Headers(),
+                    failure=bamboohr_failure(
+                        operation,
+                        FailureKind.TRANSPORT,
+                        f"BambooHR response could not be read (HTTP {error.status_code})",
+                    ),
+                )
             outcome = "not_sent" if error.provably_not_sent else "unavailable"
             message = (
                 "BambooHR could not be reached; no request was sent"

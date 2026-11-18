@@ -32,7 +32,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete Airtable API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of records carries very long text or many attachments. Oversized responses select invalidResponse.
+        description: Maximum complete Airtable API response in bytes; leave blank to keep the safety limit, or enter a larger positive integer only when one page of records carries very long text or many attachments. Oversized read responses select invalidResponse; an oversized write response retries the repeat-safe write.
         required: false
         default: 4194304
       - name: pollInterval
@@ -205,7 +205,7 @@ spec:
       branches:
         - {id: upserted, goName: Upserted, description: Airtable created each record without a match and updated each record that matched.}
         - {id: providerRejected, goName: ProviderRejected, description: "Airtable conclusively rejected the upsert, such as several existing records matching one merge key, an invalid cell value, a computed merge field, a missing scope, or a rejected token.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Airtable applied or rejected the upsert but returned an invalid or oversized response., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -240,7 +240,7 @@ spec:
         - {id: updated, goName: Updated, description: Airtable updated every record and returned it.}
         - {id: notFound, goName: NotFound, description: A record ID does not exist in the table., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Airtable applied or rejected the update but returned an invalid or oversized response., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because repeating absolute values is safe.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

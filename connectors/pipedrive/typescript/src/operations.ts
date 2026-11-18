@@ -126,7 +126,7 @@ export class CreateObjectOperation implements Mutation<CreateObjectInput, CRMObj
     const started = await this.client.startSession(call, 'createObject');
     if (started.kind !== 'resolved') {
       // A pre-send Retry after an earlier possible send records nothing, so the next attempt counts it.
-      if (decision.kind === 'sendAllowed') { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'createObject'); } }
+      if (!hasPossibleEarlierSend) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'createObject'); } }
       if (hasPossibleEarlierSend && started.kind !== 'retry') return newMutationUncertain(zeroObject, started.failure, this.client.receipt(call));
       return sessionMutation(started, 'providerRejected', zeroObject);
     }
@@ -183,7 +183,8 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
     const canCreate = decision.kind !== 'readBackRequired';
     const started = await this.client.startSession(call, 'upsertObject');
     if (started.kind !== 'resolved') {
-      if (decision.kind === 'sendAllowed') { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
+      // notSent would hide an earlier possible send, so it is recorded only before the first one.
+      if (!earlierCreate) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
       if (!earlierCreate) return sessionMutation(started, 'providerRejected', zeroUpsert);
       return started.kind === 'retry' ? newMutationRetry(started.failure) : uncertainUpsert(this.client, call, started.failure, decision.marker?.providerId);
     }
@@ -200,7 +201,7 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
     const matches = await this.findMatches(call, session, input, identityField);
     if (matches.result.kind !== 'success') {
       if (earlierCreate && !isRetryable(matches.result)) return uncertainUpsert(this.client, call, matches.result.failure!, '', matches.result);
-      if (decision.kind === 'sendAllowed' && isRetryable(matches.result)) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
+      if (!earlierCreate && isRetryable(matches.result)) { try { await fence.recordNotSent(); } catch { return fenceRetry(this.client, 'upsertObject'); } }
       return failedMutation(this.client, call, matches.result, zeroUpsert, true) ?? newMutationRetry(matches.result.failure!);
     }
     if (matches.ids.length > 1 || matches.hasMore) return newMutationBranch('multipleMatches', { ...zeroUpsert, matchingIds: matches.ids }, this.client.receipt(call, matches.result.response), this.client.failure('upsertObject', 'CONFLICT', `${Math.max(matches.ids.length, 2)} or more Pipedrive ${input.objectType} carry the identity value, so nothing was written`));
@@ -259,17 +260,18 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
     catch { return earlierCreate ? uncertainUpsert(this.client, call, this.client.failure('upsertObject', 'PROTOCOL', 'Pipedrive returned an invalid record'), objectId, result) : invalidMutation(this.client, call, 'upsertObject', zeroUpsert, result, objectId); }
   }
 
+  /** Confirm an accepted create; without a saved record ID a Retry could resend, so it selects uncertain. */
   private async readBackAcceptedCreate(call: Call, session: PipedriveSession, input: UpsertObjectInput, identityField: string, fence: ReturnType<typeof newFence>, prior: PipedriveExchange): Promise<MutationAttempt<UpsertedObject>> {
     const matches = await this.findMatches(call, session, input, identityField);
-    if (isRetryable(matches.result)) return newMutationRetry(matches.result.failure!, matches.result.retryAfterMs);
     if (matches.result.kind !== 'success' || matches.ids.length !== 1 || matches.hasMore) return uncertainUpsert(this.client, call, this.client.failure('upsertObject', 'PROTOCOL', 'Pipedrive accepted the create but identity read-back could not confirm one record'), '', prior);
     const id = matches.ids[0]!;
+    // A saved record ID makes a later attempt read the record instead of searching and resending.
+    const isProviderIdSaved = await fence.recordProviderId(id).then(() => true, () => false);
     const read = await this.client.exchange(call, 'upsertObject', session, 'GET', `/api/v2/${input.objectType}/${id}`);
-    if (isRetryable(read)) return newMutationRetry(read.failure!, read.retryAfterMs);
+    if (isRetryable(read) && isProviderIdSaved) return newMutationRetry(read.failure!, read.retryAfterMs);
     if (read.kind !== 'success') return uncertainUpsert(this.client, call, read.failure!, '', prior);
     try {
       const object = decodeMatchingRecord(input.objectType, id, read);
-      try { await fence.recordProviderId(id); } catch { /* Accepted result remains known without the extra identity checkpoint. */ }
       return newMutationBranch('upserted', { object, created: true }, this.client.receipt(call, prior.response, id));
     } catch { return uncertainUpsert(this.client, call, this.client.failure('upsertObject', 'PROTOCOL', 'Pipedrive returned an invalid record'), '', prior); }
   }

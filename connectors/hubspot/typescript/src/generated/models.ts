@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** HubSpot API base URL; leave blank for HubSpot's public API host, which serves every data center. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server. */
   endpoint?: string;
-  /** Maximum complete HubSpot API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
+  /** Maximum complete HubSpot API response in bytes; enter a positive integer only to change the safety limit. Oversized read responses select invalidResponse; an oversized write response retries the repeat-safe write. */
   maxResponseBytes?: number;
   /** Delay between crmObjectChanged Trigger polls of HubSpot CRM search, as a Go duration of at least 5s such as 15s or 2m; leave it blank for the default interval. Shorter intervals deliver changes sooner and use more of the account's search limit of five requests per second and its daily API limit. Runtime value in milliseconds. */
   pollIntervalMs?: number;

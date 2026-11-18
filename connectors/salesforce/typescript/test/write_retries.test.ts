@@ -25,3 +25,15 @@ it.each([409, 412, 302, 418])('retries a write answered with HTTP %i, which does
   const upsert = await client.upsertRecordByExternalId().invoke(call, { sObjectType: 'Contact', externalIdField: 'ERP_ID__c', externalIdValue: 'ERP-88213', fields: { LastName: 'Rao' } });
   expect(upsert.kind).toBe('retry');
 });
+
+it('retries an updateRecord answered with HTTP 300, which is defined only for external ID paths', async () => {
+  const credentials = {
+    authMethodId: 'salesforce-oauth', oauthClientId: 'inert-client-id',
+    accessToken: new SecretString('salesforce-token-SENTINEL'), instanceUrl: 'http://127.0.0.1:12345',
+  };
+  const client = new SalesforceClient({}, new StaticCredentialProvider([[connection, credentials]]), {
+    send: async () => ({ status: 300, headers: {}, body: Buffer.from('["/services/data/v62.0/sobjects/Opportunity/006RM000001AbcdYAC"]') }),
+  });
+  const update = await client.updateRecord().invoke(call, { sObjectType: 'Opportunity', recordId: '006RM000001AbcdYAC', fields: { StageName: 'Closed Won' } });
+  expect(update.kind).toBe('retry');
+});

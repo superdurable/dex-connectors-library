@@ -601,7 +601,7 @@ var UpdatePagePropertiesDefinition = sdkgo.MutationDefinition{
 		{ID: UpdatePagePropertiesBranchUpdated, Description: "Notion applied the property values and returned the page."},
 		{ID: UpdatePagePropertiesBranchNotFound, Description: "The page does not exist or is not shared with the connection; nothing was changed.", Optional: true},
 		{ID: UpdatePagePropertiesBranchProviderRejected, Description: "Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability.", Optional: true},
-		{ID: UpdatePagePropertiesBranchInvalidResponse, Description: "Notion applied the update but returned an invalid or oversized page.", Optional: true},
+		{ID: UpdatePagePropertiesBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe.", Optional: true},
 		{ID: UpdatePagePropertiesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

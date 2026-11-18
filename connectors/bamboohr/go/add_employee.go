@@ -118,7 +118,7 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 	isUnusableCredentials := credentialErr == nil && validateResolvedCredentials(credentials) != nil
 	if (credentialErr != nil || isUnusableCredentials) && hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
-		if isTerminalAddEmployeeCredentialError(credentialErr) || isUnusableCredentials {
+		if isTerminalCredentialError(credentialErr) || isUnusableCredentials {
 			return addEmployeeUncertain(receipt, sdkgo.FailureAuthentication, "an earlier attempt may have added the employee, and the connection credentials are unavailable to resend it; reconnect the connection")
 		}
 		return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "connection credentials could not be read; nothing was sent in this attempt"), 0)
@@ -128,7 +128,7 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 			return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "credentials and not-sent checkpoint are unavailable"), 0)
 		}
 		failure := bambooHRFailure(sdkgo.FailureAuthentication, addEmployeeOperation, "connection credentials are unavailable")
-		if isTerminalAddEmployeeCredentialError(credentialErr) || isUnusableCredentials {
+		if isTerminalCredentialError(credentialErr) || isUnusableCredentials {
 			return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, &failure, receipt)
 		}
 		return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAvailability, addEmployeeOperation, "connection credentials could not be read"), 0)
@@ -196,9 +196,12 @@ func (operation AddEmployeeOperation) readBackAddedEmployee(call sdkgo.Call, emp
 		return addEmployeeUncertain(operation.client.receipt(call, ""), sdkgo.FailureProtocol, "the saved employee ID is invalid; no read-back was attempted")
 	}
 	receipt := operation.client.receipt(call, employeeID)
-	credentials, failure := operation.client.resolveCredentials(call, addEmployeeOperation)
-	if failure != nil {
-		return sdkgo.NewMutationRetry[AddEmployeeOutput](*failure, 0)
+	credentials, credentialErr := operation.client.credentials.Resolve(call)
+	if isTerminalCredentialError(credentialErr) || credentialErr == nil && validateResolvedCredentials(credentials) != nil {
+		return addEmployeeUncertain(receipt, sdkgo.FailureAuthentication, "the employee may have been added, and the connection credentials are unavailable to read it back; reconnect the connection")
+	}
+	if credentialErr != nil {
+		return sdkgo.NewMutationRetry[AddEmployeeOutput](bambooHRFailure(sdkgo.FailureAuthentication, addEmployeeOperation, "connection credentials are unavailable"), 0)
 	}
 	result := operation.client.exchange(call, credentials, addEmployeeOperation, bambooHRRequest{
 		method: http.MethodGet, path: "/employees/" + employeeID,
@@ -222,7 +225,7 @@ func addEmployeeUncertain(receipt sdkgo.Receipt, kind sdkgo.FailureKind, message
 	return sdkgo.NewMutationUncertain(AddEmployeeOutput{}, bambooHRFailure(kind, addEmployeeOperation, message), receipt)
 }
 
-func isTerminalAddEmployeeCredentialError(err error) bool {
+func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
 		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }

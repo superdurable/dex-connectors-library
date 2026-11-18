@@ -397,6 +397,46 @@ func TestUpsertObjectMayCreateAfterAnEarlierPatchRetry(t *testing.T) {
 	require.Equal(t, 1, posts)
 }
 
+func TestUpsertObjectNeverResendsAnAcceptedCreateWhoseReadBackRetries(t *testing.T) {
+	searches, reads := 0, 0
+	provider := newRecordingPipedrive(t, func(response http.ResponseWriter, request recordedRequest) {
+		switch request.path {
+		case "/api/v2/persons/search":
+			searches++
+			if searches == 1 {
+				writeJSON(t, response, http.StatusOK, `{"success":true,"data":{"items":[]},"additional_data":{"next_cursor":null}}`)
+				return
+			}
+			writeJSON(t, response, http.StatusOK, `{"success":true,"data":{"items":[{"item":{"id":901,"type":"person","name":"Jane","emails":["jane@acme.example.com"]}}]},"additional_data":{"next_cursor":null}}`)
+		case "/api/v2/persons":
+			writeJSON(t, response, http.StatusOK, `{"success":true,"data":{"id":"unusable"}}`)
+		case "/api/v2/persons/901":
+			reads++
+			if reads == 1 {
+				writeError(t, response, http.StatusServiceUnavailable)
+				return
+			}
+			writeRecord(t, response, `{"id":901,"name":"Jane Smith","emails":[{"value":"jane@acme.example.com","primary":true}]}`)
+		}
+	})
+	ctx := singledispatchtest.NewContext("deal-intake", "accepted-read-retry")
+	client := newAPITokenClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(ctx, client.UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the record ID is saved, so the next attempt reads it")
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
+	require.NoError(t, err)
+	require.Equal(t, "901", result.Value.Object.ID)
+	var posts int
+	for _, request := range provider.recordedRequests() {
+		if request.method == http.MethodPost {
+			posts++
+		}
+	}
+	require.Equal(t, 1, posts)
+}
+
 func TestUpsertObjectReadsBackAnAcceptedCreateWithAnUnusableBody(t *testing.T) {
 	for _, readBack := range []string{"found", "missing", "transient"} {
 		t.Run(readBack, func(t *testing.T) {
@@ -422,17 +462,12 @@ func TestUpsertObjectReadsBackAnAcceptedCreateWithAnUnusableBody(t *testing.T) {
 			})
 			ctx := singledispatchtest.NewContext("deal-intake", "accepted-unusable-"+readBack)
 			result, err := sdkgo.RunMutation(ctx, newAPITokenClient(t, provider.URL).UpsertObject(), pipedriveConnection, personUpsert("jane@acme.example.com"))
-			if readBack == "transient" {
-				var retry *sdkgo.RetryError
-				require.ErrorAs(t, err, &retry)
+			require.NoError(t, err, "a Retry here would let a later attempt search, miss, and create again")
+			if readBack == "found" {
+				require.Equal(t, pipedrive.UpsertObjectBranchUpserted, result.Branch)
+				require.Equal(t, "901", result.Value.Object.ID)
 			} else {
-				require.NoError(t, err)
-				if readBack == "found" {
-					require.Equal(t, pipedrive.UpsertObjectBranchUpserted, result.Branch)
-					require.Equal(t, "901", result.Value.Object.ID)
-				} else {
-					require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
-				}
+				require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
 			}
 			var posts int
 			for _, request := range provider.recordedRequests() {

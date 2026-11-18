@@ -326,13 +326,23 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[CreatedIssue](providerFailure(createIssueOperationID, sdkgo.FailureAvailability, "GitHub dispatch checkpoint could not be read; nothing was sent"), 0)
 	}
-	credential, failure := operation.client.resolveCredential(call, createIssueOperationID)
+	credential, failure, isTerminalCredential := operation.client.resolveCredentialWithTerminality(call, createIssueOperationID)
 	if failure == nil && credential.AuthMethodID != RepositoryAuthMethodID {
 		scopeFailure := providerFailure(createIssueOperationID, sdkgo.FailureAuthorization, "createIssue requires a connection authorized with the github-oauth-repository method")
-		failure = &scopeFailure
+		failure, isTerminalCredential = &scopeFailure, true
+	}
+	hasPossibleEarlierSend := decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0
+	if failure != nil && !isTerminalCredential {
+		// A transient failure sent nothing; notSent would hide an earlier possible send.
+		if !hasPossibleEarlierSend {
+			if err := fence.RecordNotSent(); err != nil {
+				return sdkgo.NewMutationRetry[CreatedIssue](providerFailure(createIssueOperationID, sdkgo.FailureAvailability, "GitHub credentials and the not-sent checkpoint are unavailable"), 0)
+			}
+		}
+		return sdkgo.NewMutationRetry[CreatedIssue](*failure, 0)
 	}
 	if failure != nil {
-		if decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0 {
+		if hasPossibleEarlierSend {
 			// An earlier attempt may have created the issue, and this connection cannot read it back.
 			return sdkgo.NewMutationUncertain(writer.requested, *failure, sdkgo.Receipt{})
 		}
@@ -345,7 +355,8 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 		return sdkgo.NewMutationBranch(branch, writer.requested, failure, sdkgo.Receipt{})
 	}
 	writer.credential = credential
-	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
+	// After a 429 or 503 recorded canResend, SendAllowed still carries the earlier possible send.
+	if hasPossibleEarlierSend {
 		providerID := ""
 		if decision.Marker.CallID == call.ID {
 			providerID = decision.Marker.ProviderID

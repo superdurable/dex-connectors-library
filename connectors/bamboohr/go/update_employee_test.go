@@ -96,6 +96,45 @@ func TestUpdateEmployeeRetriesEveryUnconfirmedWriteBecauseItSetsAbsoluteValues(t
 	}
 }
 
+func TestUpdateEmployeeNeverSelectsAFailureBranchAfterAnAcceptedWrite(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		readBack func(http.ResponseWriter)
+	}{
+		{name: "mismatched read-back", readBack: func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"id":"999"}`) }},
+		{name: "not found read-back", readBack: func(response http.ResponseWriter) { writeBambooHRError(t, response, http.StatusNotFound, ``) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+				switch index {
+				case 0:
+					writeJSON(t, response, http.StatusOK, `{"id":"123","customITProvisioning":""}`)
+				case 1:
+					response.WriteHeader(http.StatusOK)
+				default:
+					test.readBack(response)
+				}
+			})
+			_, err := sdkgo.RunMutation(newBambooHRDexContext("update-"+test.name), newBambooHRClient(t, provider.URL).UpdateEmployee(), bambooHRConnection,
+				bamboohr.UpdateEmployeeInput{EmployeeID: "123", Fields: map[string]string{"customITProvisioning": "Requested"}})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "repeating the absolute write is safe")
+			require.Equal(t, 3, provider.requestCount())
+		})
+	}
+}
+
+func TestUpdateEmployeeRetriesATransientCredentialFailure(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain}, failingCredentialProvider{}, bamboohr.WithAPIBaseURL(provider.URL+"/api/v1"))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newBambooHRDexContext("update-credentials"), client.UpdateEmployee(), bambooHRConnection,
+		bamboohr.UpdateEmployeeInput{EmployeeID: "123", Fields: map[string]string{"customITProvisioning": "Requested"}})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+}
+
 func TestUpdateEmployeeMapsRejectionsWithoutMessageText(t *testing.T) {
 	for _, test := range []struct {
 		name   string
