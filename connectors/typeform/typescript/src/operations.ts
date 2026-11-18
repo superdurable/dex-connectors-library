@@ -90,10 +90,10 @@ export class UpsertWebhookOperation implements Mutation<UpsertWebhookInput, Webh
     const secret = resolved.credentials.webhookSecret;
     if (!(secret instanceof Object) || typeof secret.reveal !== 'function' || !secret.reveal()) return newMutationBranch('defect', emptyWebhook, {}, this.client.failure(operation, 'VALIDATION', 'set webhook_secret on the Typeform connection before registering a webhook, so deliveries can be verified'));
     const body = { url: input.url, enabled: !input.disabled, secret: secret.reveal(), event_types: { form_response: true } };
-    const result = await this.client.exchange(call, operation, resolved.credentials, 'PUT', `/forms/${input.formId}/webhooks/${goPathEscape(input.tag)}`, body);
+    const result = await this.client.exchange(call, operation, resolved.credentials, 'PUT', `/forms/${input.formId}/webhooks/${goPathEscape(input.tag)}`, body, true);
     if ('outcome' in result) return this.client.mutationOutcome(call, result.outcome, emptyWebhook, input.formId);
     try { const webhook = decodeWebhook(result.response.body); if (webhook.formId !== input.formId || webhook.tag !== input.tag || webhook.isEnabled === !!input.disabled) throw new TypeError('webhook mismatch'); return newMutationBranch('upserted', webhook, this.client.receipt(call, webhook.id)); }
-    catch { return this.client.mutationOutcome(call, this.client.malformed(operation), emptyWebhook, input.formId); }
+    catch { return this.client.mutationOutcome(call, this.client.unsettledWrite(operation), emptyWebhook, input.formId); }
   }
 }
 function validation<Output>(client: TypeformClient, operation: string, empty: Output, message: string): QueryAttempt<Output> { return newQueryBranch('defect', empty, {}, client.failure(operation, 'VALIDATION', message)); }

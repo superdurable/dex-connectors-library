@@ -81,7 +81,7 @@ UPSERT_WEBHOOK_DEFINITION = MutationDefinition(
         BranchDefinition(UPSERTED, "Typeform stored the webhook for this form and tag with the requested URL and enabled state.", False),
         BranchDefinition(NOT_FOUND, "The form does not exist or the token's account does not own it.", True),
         BranchDefinition(PROVIDER_REJECTED, "Typeform conclusively rejected the webhook, such as a URL that is not HTTPS, a plan without webhooks, or a token without the webhooks:write scope.", True),
-        BranchDefinition(INVALID_RESPONSE, "Typeform answered 2xx with a malformed or oversized body, so it may have stored the webhook without this Result describing it.", True),
+        BranchDefinition(INVALID_RESPONSE, "Retained for compatibility and no longer selected: a malformed or oversized 2xx body now retries the idempotent PUT.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration such as a blank webhook_secret, or connector definition is invalid.", True),
     ),
     StepDefaults(
