@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class _DispatchResponseObservation:
-    """The last HTTP status whose headers arrived during one Fence dispatch."""
+    """The HTTP status of the latest request of one Fence dispatch, or None before its headers."""
 
     status_code: int | None = None
 
@@ -24,3 +24,10 @@ def _record_dispatch_response_status(status_code: int) -> None:
     observation = _current_dispatch_observation.get()
     if observation is not None:
         observation.status_code = status_code
+
+
+def _clear_dispatch_response_status() -> None:
+    """Forget an earlier request's status as a new request starts; a no-op outside a dispatch."""
+    observation = _current_dispatch_observation.get()
+    if observation is not None:
+        observation.status_code = None

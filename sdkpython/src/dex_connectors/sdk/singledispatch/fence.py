@@ -46,8 +46,9 @@ class WriteWindowTimeoutError(TimeoutError):
 
     A subclass of `TimeoutError`, so existing handlers still catch it. The
     request may have reached the provider. `observed_status` is the HTTP
-    status of the last provider response whose headers arrived during the
-    dispatch, or None when none arrived. Requests sent through
+    status of the request that was cut off, or None when its headers had not
+    arrived; each new request clears the status of an earlier one, such as a
+    pre-write read in the same dispatch. Requests sent through
     `providerhttp.send_traced` or a client from
     `providerhttp.new_provider_http_client` record it; other HTTP clients
     leave it None. A 2xx status means the provider accepted the request even

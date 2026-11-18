@@ -555,11 +555,14 @@ heartbeats.
 
 A send still running at the write deadline is cancelled and raises
 `singledispatch.WriteWindowTimeoutError`, a `TimeoutError` subclass whose
-`observed_status` is the HTTP status of the last provider response whose
-headers arrived during that dispatch, or None. So a 2xx whose body stalled
-past the window is not mistaken for a request that never arrived. Requests
-through `providerhttp.send_traced` or a `new_provider_http_client` client
-record the status without connector changes; other HTTP clients leave it None.
+`observed_status` is the HTTP status of the request that was cut off, or None
+when its headers had not arrived. So a 2xx whose body stalled past the window
+is not mistaken for a request that never arrived. Each new request of the
+dispatch clears the status, so an earlier request, such as a pre-write read,
+never lends its status to a later request that stalled before its headers.
+Requests through `providerhttp.send_traced` or a `new_provider_http_client`
+client record the status without connector changes; other HTTP clients leave
+it None.
 
 From `0.13.0`, one Step may make several fenced writes, such as an agent tool
 that sends a Gmail message and then posts a Slack thread reply, also from
@@ -687,7 +690,7 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
-- `0.13.0` (breaking): One Step may make several fenced writes. Every Fence heartbeat holds one marker per Call ID of the Step attempt, merged across Fences, including concurrent tasks, and `decide_dispatch` takes the whole previous heartbeat and reads only its own Call ID's entry. A heartbeat it cannot read, including a single marker from an earlier release, counts as no marker instead of failing closed; a later attempt then assumes each earlier attempt sent once. The heartbeat format is internal and may change; hosts must not parse it. Releases before `0.13.0` fail closed on the new format. `derive_step_call_id` and `derive_call_id(..., occurrence=n)` give the n-th call of one operation in a Step attempt its own Call ID; the first call's ID is unchanged. A Mutation call refused as concurrent keeps its occurrence. A send cut off at the Fence write deadline raises `WriteWindowTimeoutError`, a `TimeoutError` subclass carrying the last observed HTTP status of the dispatch.
+- `0.13.0` (breaking): One Step may make several fenced writes. Every Fence heartbeat holds one marker per Call ID of the Step attempt, merged across Fences, including concurrent tasks, and `decide_dispatch` takes the whole previous heartbeat and reads only its own Call ID's entry. A heartbeat it cannot read, including a single marker from an earlier release, counts as no marker instead of failing closed; a later attempt then assumes each earlier attempt sent once. The heartbeat format is internal and may change; hosts must not parse it. Releases before `0.13.0` fail closed on the new format. `derive_step_call_id` and `derive_call_id(..., occurrence=n)` give the n-th call of one operation in a Step attempt its own Call ID; the first call's ID is unchanged. A Mutation call refused as concurrent keeps its occurrence. A send cut off at the Fence write deadline raises `WriteWindowTimeoutError`, a `TimeoutError` subclass carrying the HTTP status of the request that was cut off.
 - `0.12.0`: Add the durable poll Trigger kit `pollingtrigger` (binding and feed pollers, `PollRunner`, keyed snapshots, `new_binding_trigger_source`, `new_trigger_credential_call`) and `projectconfig.PollCursorStore` with `LoadedProject.poll_cursor_store` and `poll_feed_cursor_store`, byte-compatible with the Go kit. Local poll cursor objects may be 8 MiB. This addition is not breaking.
 - `0.11.0`: Add Trigger support: Trigger identities and runners, `deliver_trigger` with capped retries, Dex Flow and RPC Trigger targets, durable project Trigger inboxes byte-compatible with Go and TypeScript (file-backed for Dex Web projects), relay signatures and `LoadedProject.verify_relayed_request` and `register_relayed_trigger`, and `webhooktrigger.WebhookEndpoint` as an ASGI application with lifespan-run Trigger runners. Local Trigger inbox objects may be 8 MiB. This addition is not breaking.
 - `0.10.0`: The single-dispatch fence supports bounded resend on unknown outcomes. `Fence` and `decide_dispatch` accept `max_sends` (default 1, unchanged decisions and marker bytes); with a cap of 2 or more, markers carry an optional `sendCount` and decisions can return `DecisionKind.READ_BACK_THEN_RESEND_ALLOWED`. `RepeatOnUnknown`, `MutationDefinition.repeat_on_unknown` and `max_sends`, `Call.max_sends`, and `MutationStepConfig.max_sends_override` expose the send cap to Steps. Workers on `0.9.0` ignore `sendCount` and keep their conservative decisions. This addition is not breaking.

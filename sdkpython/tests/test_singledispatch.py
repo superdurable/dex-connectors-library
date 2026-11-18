@@ -1008,6 +1008,51 @@ async def test_write_window_timeout_without_headers_has_no_status() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("is_send_traced", "is_provider_client"), [(True, False), (True, True), (False, True)]
+)
+async def test_write_window_timeout_ignores_the_status_of_an_earlier_request(
+    is_send_traced: bool, is_provider_client: bool
+) -> None:
+    """A first request answers 200, a second stalls before headers: the cut-off request has no status."""
+    request_count = 0
+
+    async def answer_then_stall(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        if request_count == 1:
+            return httpx.Response(200, json={"id": "existing"})
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+    transport = httpx.MockTransport(answer_then_stall)
+    client = (
+        new_provider_http_client(transport=transport) if is_provider_client
+        else httpx.AsyncClient(transport=transport)
+    )
+    async with client:
+        fence = _fence(FakeContext(), timedelta(milliseconds=600))
+        assert (await fence.decide()).kind == DecisionKind.SEND_ALLOWED
+
+        async def send_once(path: str) -> bytes:
+            request = client.build_request("POST", f"https://provider.test/{path}")
+            if is_send_traced:
+                response, _ = await send_traced(client, request)
+            else:
+                response = await client.send(request, stream=True)
+            return await read_bounded_body(response, 1024)
+
+        async def send(deadline: datetime) -> bytes:
+            await send_once("lookup")
+            return await send_once("items")
+
+        with pytest.raises(WriteWindowTimeoutError) as caught:
+            await fence.dispatch(send)
+    assert request_count == 2
+    assert caught.value.observed_status is None
+
+
+@pytest.mark.asyncio
 async def test_send_timeout_before_the_write_deadline_is_not_rewrapped() -> None:
     """A TimeoutError the send raises itself keeps its own type, and status outside a Fence is ignored."""
     fence = _fence(FakeContext(), timedelta(seconds=10))
