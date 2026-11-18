@@ -28,11 +28,13 @@ from dex_connectors.sdk.singledispatch import Marker, State
 from mysql.connector.constants import FieldType
 from mysql.connector.errors import DatabaseError
 
+import dex_connectors.mysql.connection as mysql_connection
 from dex_connectors.mysql import Client, Config, Credentials, ExecuteStatementInput, QueryRowsInput
 from dex_connectors.mysql._generated.definitions import (
     EXECUTE_DEFINITION,
     EXECUTE_NON_IDEMPOTENT_DEFINITION,
 )
+from dex_connectors.mysql.client import _CredentialMaterialError
 
 
 class _Credentials:
@@ -479,7 +481,21 @@ _CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
     (RejectedCredentialNotRefreshedError(), False),
     (TimeoutError(), False),
     (RuntimeError("unlisted"), False),
+    (_CredentialMaterialError("MySQL credential password is required"), True),
 ]
+
+
+@pytest.mark.asyncio
+async def test_project_credential_source_rejects_malformed_material_as_terminal() -> None:
+    """The project source raises the terminal material error for malformed stored material."""
+
+    class MalformedProject:
+        async def resolve_credential(self, key: object, call_id: str) -> dict[str, object]:
+            return {"password": 7}
+
+    source = mysql_connection._ProjectCredentialSource(MalformedProject(), object())  # type: ignore[arg-type]
+    with pytest.raises(_CredentialMaterialError):
+        await source.resolve(_call("execute"))
 
 
 @pytest.mark.asyncio
