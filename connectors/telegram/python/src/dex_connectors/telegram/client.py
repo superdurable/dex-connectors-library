@@ -21,8 +21,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -58,6 +61,13 @@ _CHAT_USERNAME = re.compile(r"^@[A-Za-z0-9_]{5,32}$")
 _CHAT_TYPES = frozenset({"private", "group", "supergroup", "channel"})
 # Only these statuses prove Telegram refused a send; other 4xx statuses leave the outcome unknown.
 _DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+# Only reconnecting the connection fixes these credential failures; any other one is transient.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 
 
 class Config(_GeneratedConfig):
@@ -118,23 +128,32 @@ class Client:
         return (await self.resolve_bot_token_or_reason(call))[0]
 
     async def resolve_bot_token_or_reason(self, call: Call) -> tuple[str, bool]:
-        """Return the token, or empty and whether the stored token is invalid rather than unavailable."""
+        """Return the token, or empty and whether the failure is terminal rather than transient.
+
+        The flag is True for a revoked, missing, unselected, broker-refused, or malformed
+        credential, and False for a transient read failure such as an unavailable broker.
+        """
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, AttributeError):
-            return "", False
+        except Exception as error:
+            return "", isinstance(error, _TERMINAL_CREDENTIAL_ERRORS)
         try:
             token = credentials.bot_token.reveal()
         except (ValueError, AttributeError):
             return "", True
         return (token, False) if _BOT_TOKEN.fullmatch(token) else ("", True)
 
-    async def request(self, request: httpx.Request) -> Exchange:
-        """Send one request and classify read interruption separately from no send."""
+    async def request(self, request: httpx.Request, observed_statuses: list[int] | None = None) -> Exchange:
+        """Send one request and classify read interruption separately from no send.
+
+        ``observed_statuses`` receives the status once headers arrive, before the body is read.
+        """
         try:
             response, _ = await send_traced(self.http_client, request)
         except ProviderTransportError as error:
             return Exchange(error="request", request_sent=not error.provably_not_sent)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         try:
             retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
             try:
@@ -215,14 +234,14 @@ class SendMessageOperation:
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         # An earlier send may have created the message, so a refusal of a resend proves nothing.
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
-        token, is_invalid = await self.client.resolve_bot_token_or_reason(call)
+        token, is_terminal = await self.client.resolve_bot_token_or_reason(call)
         if not token:
             return await _local_send_failure(
                 fence,
                 has_possible_earlier_send,
-                is_invalid,
-                FailureKind.AUTHENTICATION,
-                "bot token is invalid" if is_invalid else "bot token is unavailable",
+                is_terminal,
+                FailureKind.AUTHENTICATION if is_terminal else FailureKind.AVAILABILITY,
+                "bot token is unavailable or invalid" if is_terminal else "bot token could not be read",
             )
         try:
             request = self.client.http_client.build_request(
@@ -240,13 +259,24 @@ class SendMessageOperation:
                 "Telegram send request could not be built",
             )
 
+        observed_statuses: list[int] = []
+
         async def send(_deadline: datetime) -> Exchange:
-            return await self.client.request(request)
+            return await self.client.request(request, observed_statuses)
 
         try:
             exchange = await fence.dispatch(send)
         except (CheckpointError, InsufficientAttemptTimeError):
             return _send_retry(FailureKind.TRANSPORT, "Telegram dispatch was not started")
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # The write window cut the body after a 2xx, so Telegram created the message.
+                return _send_uncertain(
+                    FailureKind.TRANSPORT, "Telegram accepted the message, but its response could not be read"
+                )
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "Telegram message outcome is unknown"
+            )
         except Exception:
             return _resend_or_select_uncertain(
                 can_resend_unknown_outcome, FailureKind.TRANSPORT, "Telegram message outcome is unknown"
@@ -508,15 +538,21 @@ async def _reject_or_select_uncertain(
 async def _local_send_failure(
     fence: Fence, has_possible_earlier_send: bool, is_terminal: bool, kind: FailureKind, message: str
 ) -> MutationAttempt[SentMessage]:
-    """Select defect only when no earlier send may have created the message.
+    """Return Retry for a transient failure, and select defect or uncertain for a terminal one.
 
-    After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+    A transient failure records notSent only when no earlier send may have created the message.
+    A terminal failure selects defect before any possible send and uncertain after one.
     """
-    if has_possible_earlier_send and is_terminal:
-        return _send_uncertain(kind, message + "; an earlier attempt may have sent the message")
-    if has_possible_earlier_send:
-        # notSent would hide the earlier possible send, so nothing is recorded.
+    if not is_terminal:
+        if not has_possible_earlier_send:
+            try:
+                await fence.record_not_sent()
+            except Exception:
+                pass  # Without notSent the next attempt counts this attempt as a possible send.
+        # After a possible send, notSent would hide that send, so nothing is recorded.
         return _send_retry(kind, message + "; no message was sent in this attempt")
+    if has_possible_earlier_send:
+        return _send_uncertain(kind, message + "; an earlier attempt may have sent the message")
     try:
         await fence.record_not_sent()
     except Exception:

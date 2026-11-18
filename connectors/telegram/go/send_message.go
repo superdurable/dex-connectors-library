@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -81,7 +82,10 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil {
-		return localSendFailure(fence, hasPossibleEarlierSend, false, sdkgo.FailureAuthentication, "bot token is unavailable")
+		if isTerminalCredentialError(err) {
+			return localSendFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "bot token is unavailable")
+		}
+		return localSendFailure(fence, hasPossibleEarlierSend, false, sdkgo.FailureAvailability, "bot token could not be read")
 	}
 	if credentials.Validate() != nil || !botTokenPattern.MatchString(credentials.BotToken.Reveal()) {
 		return localSendFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "bot token is invalid")
@@ -100,11 +104,18 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	}
 	observation := &dispatchObservation{}
 	var response *http.Response
+	var body []byte
+	var readErr error
 	err = fence.Dispatch(func(requestContext context.Context) error {
 		request = request.WithContext(httptrace.WithClientTrace(requestContext, observation.clientTrace()))
 		var sendErr error
 		response, sendErr = operation.client.httpClient.Do(request)
-		return sendErr
+		if sendErr != nil {
+			return sendErr
+		}
+		// Dispatch cancels requestContext on return, so the body is read here; its status classifies a read failure.
+		body, readErr = providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		return nil
 	})
 	if err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
@@ -127,10 +138,9 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
 		}
-		return retrySend(kind, "Telegram did not process the send", retryAfterFromResponse(response, operation.client.maxResponseBytes))
+		return retrySend(kind, "Telegram did not process the send", retryAfterFromHeaderOrBody(response.Header.Get("Retry-After"), body, readErr))
 	}
 	isSuccessStatus := response.StatusCode >= 200 && response.StatusCode < 300
-	body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	isBodyReadable := readErr == nil
 	var envelope struct {
 		OK     bool            `json:"ok"`
@@ -212,19 +222,30 @@ func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend
 	return failedSend(SendMessageBranchProviderRejected, kind, message)
 }
 
-// localSendFailure selects defect only when no earlier send may have created the message. After
-// a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+// localSendFailure returns Retry for a transient failure, recording notSent only when no earlier
+// send may have created the message. A terminal failure selects defect before any possible send
+// and uncertain after one.
 func localSendFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {
-	if hasPossibleEarlierSend && isTerminal {
-		return uncertainSend(kind, message+"; an earlier attempt may have sent the message")
+	if !isTerminal {
+		if !hasPossibleEarlierSend {
+			// Without notSent the next attempt counts this attempt as a possible send, which only lowers the cap.
+			_ = fence.RecordNotSent()
+		}
+		// After a possible send, notSent would hide that send, so nothing is recorded.
+		return retrySend(kind, message+"; no message was sent in this attempt", 0)
 	}
 	if hasPossibleEarlierSend {
-		// notSent would hide the earlier possible send, so nothing is recorded.
-		return retrySend(kind, message+"; no message was sent in this attempt", 0)
+		return uncertainSend(kind, message+"; an earlier attempt may have sent the message")
 	}
 	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
 	_ = fence.RecordNotSent()
 	return failedSend(SendMessageBranchDefect, kind, message)
+}
+
+// isTerminalCredentialError reports a credential failure that only reconnecting the connection can fix.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func failedSend(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {

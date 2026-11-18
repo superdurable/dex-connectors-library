@@ -184,7 +184,15 @@ func retryAfterFromResponse(response *http.Response, maxResponseBytes int64) tim
 		return delay
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
-	if err != nil {
+	return retryAfterFromHeaderOrBody("", body, err)
+}
+
+// retryAfterFromHeaderOrBody is retryAfterFromResponse for a body that was already read.
+func retryAfterFromHeaderOrBody(retryAfterHeader string, body []byte, readErr error) time.Duration {
+	if delay := providerhttp.ParseRetryAfter(retryAfterHeader, time.Now()); delay > 0 {
+		return delay
+	}
+	if readErr != nil {
 		return 0
 	}
 	var envelope struct {

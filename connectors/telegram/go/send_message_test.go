@@ -11,9 +11,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
@@ -251,8 +253,79 @@ func TestSendMessageCredentialFailureAfterPossibleSendRetries(t *testing.T) {
 	require.NoError(t, err)
 	_, err = sdkgo.RunMutation(ctx, noCredentials.SendMessage(), testConnection, testSendInput)
 	require.Error(t, err)
+	require.Equal(t, singledispatch.StateClaimed, lastMarker(t, ctx).State)
 	require.Equal(t, 1, *requests)
-	defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("first-credential-flow", "send-step"), noCredentials.SendMessage(), testConnection, testSendInput)
+}
+
+// failingCredentialProvider returns one fixed error for every credential read.
+type failingCredentialProvider struct{ err error }
+
+func (provider failingCredentialProvider) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, provider.err
+}
+
+func TestSendMessageTransientCredentialFailureBeforeSendRetries(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusOK}, []string{sentMessageBody})
+	for _, credentialErr := range []error{errors.New("connection is not configured"), projectconfig.ErrCredentialBrokerUnavailable} {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			unavailable, err := New(Config{BaseURL: server.URL}, failingCredentialProvider{credentialErr})
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("transient-credential-flow", "send-step")
+			_, err = sdkgo.RunMutation(ctx, unavailable.SendMessage(), testConnection, testSendInput)
+			require.Error(t, err, "a transient credential failure returns Retry, not defect")
+			require.Equal(t, singledispatch.StateNotSent, lastMarker(t, ctx).State)
+			require.Equal(t, 0, *requests)
+		})
+	}
+	ctx := singledispatchtest.NewContext("transient-credential-then-sent-flow", "send-step")
+	unavailable, err := New(Config{BaseURL: server.URL}, failingCredentialProvider{projectconfig.ErrCredentialBrokerUnavailable})
 	require.NoError(t, err)
-	require.Equal(t, SendMessageBranchDefect, defect.Branch)
+	_, err = sdkgo.RunMutation(ctx, unavailable.SendMessage(), testConnection, testSendInput)
+	require.Error(t, err)
+	ctx.AdvanceAttempt()
+	sent, err := sdkgo.RunMutation(ctx, newTestClient(t, server.URL).SendMessage(), testConnection, testSendInput)
+	require.NoError(t, err)
+	require.Equal(t, SendMessageBranchSent, sent.Branch)
+	require.EqualValues(t, 1, lastMarker(t, ctx).SendCount)
+	require.Equal(t, 1, *requests)
+}
+
+func TestSendMessageTerminalCredentialFailure(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusInternalServerError}, []string{`{"ok":false}`})
+	terminalErrors := []error{sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), projectconfig.ErrObjectNotFound,
+		projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected}
+	for _, credentialErr := range terminalErrors {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			terminal, err := New(Config{BaseURL: server.URL}, failingCredentialProvider{credentialErr})
+			require.NoError(t, err)
+			defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("terminal-credential-flow", "send-step"), terminal.SendMessage(), testConnection, testSendInput)
+			require.NoError(t, err)
+			require.Equal(t, SendMessageBranchDefect, defect.Branch)
+			ctx := singledispatchtest.NewContext("terminal-after-send-flow", "send-step")
+			_, err = sdkgo.RunMutation(ctx, newTestClient(t, server.URL).SendMessage(), testConnection, testSendInput)
+			require.Error(t, err)
+			ctx.AdvanceAttempt()
+			uncertain, err := sdkgo.RunMutation(ctx, terminal.SendMessage(), testConnection, testSendInput)
+			require.NoError(t, err)
+			require.Equal(t, SendMessageBranchUncertain, uncertain.Branch, "an earlier attempt may have sent the message")
+		})
+	}
+	require.Equal(t, len(terminalErrors), *requests)
+}
+
+func TestSendMessageReadsALateBodyInsideTheWriteWindow(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		time.Sleep(50 * time.Millisecond)
+		_, err := fmt.Fprint(w, sentMessageBody)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	sent, err := sdkgo.RunMutation(singledispatchtest.NewContext("late-body-flow", "send-step"), newTestClient(t, server.URL).SendMessage(), testConnection, testSendInput)
+	require.NoError(t, err)
+	require.Equal(t, SendMessageBranchSent, sent.Branch)
+	require.Equal(t, 1, requests)
 }
