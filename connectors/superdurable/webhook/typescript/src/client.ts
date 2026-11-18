@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { createHmac } from 'node:crypto';
-import { SecretString, newMutationBranch, newMutationRetry, type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { ConflictError, CredentialBrokerUnavailableError, ExchangePendingError, OutcomeUnknownError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
+import { z } from 'zod';
+import { ReauthorizationRequiredError, SecretString, newMutationBranch, newMutationRetry, type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, parseRetryAfter, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectorID, SendEventDefinition } from './generated/definitions.js';
 import type { Config, Credentials, SendEventInput, SendEventOutput } from './generated/models.js';
@@ -59,15 +60,15 @@ export class SendEventOperation implements Mutation<SendEventInput, SendEventOut
       payload = Buffer.from(JSON.stringify(input.payload));
     } catch { return this.defect(call, emptyOutput, 'VALIDATION', 'sendEvent payload must be one valid JSON value'); }
     if (payload.length > this.client.maxBodyBytes) return this.defect(call, emptyOutput, 'VALIDATION', 'sendEvent payload exceeds the connection\'s maxBodyBytes');
-    let signingSecret: string;
+    let credentials: Credentials;
     try {
-      const credentials = await this.client.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.signingSecret instanceof SecretString) || !credentials.signingSecret.reveal()) throw new TypeError('missing signing secret');
-      signingSecret = credentials.signingSecret.reveal();
+      credentials = await this.client.credentials.resolve(call, call.context.cancellationSignal);
     } catch (error) {
-      if (isTransientCredentialError(error)) return newMutationRetry(failure('AVAILABILITY', 'the credential broker or store is temporarily unavailable, so nothing was sent'));
+      if (!isTerminalCredentialError(error)) return newMutationRetry(failure('AVAILABILITY', 'the credential broker or store is temporarily unavailable, so nothing was sent'));
       return this.defect(call, emptyOutput, 'AUTHENTICATION', 'the webhook signing secret is unavailable');
     }
+    if (!(credentials.signingSecret instanceof SecretString) || !credentials.signingSecret.reveal()) return this.defect(call, emptyOutput, 'AUTHENTICATION', 'the webhook signing secret is unavailable');
+    const signingSecret = credentials.signingSecret.reveal();
     let key: Uint8Array;
     if (signingSecret.startsWith('whsec_')) {
       const encoded = signingSecret.slice(6);
@@ -119,10 +120,11 @@ const DEFINITE_REFUSAL_STATUSES = new Set([400, 401, 403, 404, 411, 413, 414, 41
 
 function hasPossibleEarlierSend(call: Call): boolean { return call.context.attempt > 1; }
 
-/** A credential broker, store, refresh, or exchange that is unavailable now may answer on a later attempt. */
-function isTransientCredentialError(error: unknown): boolean {
-  return error instanceof CredentialBrokerUnavailableError || error instanceof RefreshFailedError || error instanceof ExchangePendingError
-    || error instanceof OutcomeUnknownError || error instanceof ConflictError;
+/** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError
+    || error instanceof z.ZodError;
 }
 
 function failure(kind: Failure['kind'], message: string): Failure { return { kind, provider: ConnectorID, operation: 'sendEvent', message }; }

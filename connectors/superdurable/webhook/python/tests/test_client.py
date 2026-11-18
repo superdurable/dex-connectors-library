@@ -16,8 +16,14 @@ from dex_connectors.sdk import (
     SecretString,
     StaticCredentialProvider,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
 from dex_connectors.sdk.projectconfig.provider import ExchangePendingError, RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.superdurable_webhook import Client, Config, Credentials, SendEventInput
 
@@ -73,11 +79,20 @@ def _call() -> Call:
 
 
 @pytest.mark.asyncio
-async def test_unexpected_credential_error_is_authentication_defect() -> None:
-    """Map a credential provider failure to the same definite defect as Go."""
+@pytest.mark.parametrize(
+    "terminal",
+    [
+        ReauthorizationRequiredError(),
+        ObjectNotFoundError(),
+        ConnectionNotSelectedError(),
+        CredentialBrokerRejectedError(),
+    ],
+)
+async def test_terminal_credential_error_is_authentication_defect(terminal: Exception) -> None:
+    """Map a terminal credential provider failure to the same definite defect as Go."""
     class FailingCredentials:
         async def resolve(self, call: Call) -> None:
-            raise RuntimeError("credential source failed")
+            raise terminal
 
     client = Client(_config("https://receiver.example.test/hook"), FailingCredentials())  # type: ignore[arg-type]
     attempt = await client.send_event().invoke(_call(), SendEventInput(b"null"))
@@ -88,7 +103,14 @@ async def test_unexpected_credential_error_is_authentication_defect() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "transient", [CredentialBrokerUnavailableError(), ExchangePendingError(), RefreshFailedError()]
+    "transient",
+    [
+        CredentialBrokerUnavailableError(),
+        ExchangePendingError(),
+        RefreshFailedError(),
+        ValueError("connection is not configured"),
+        RuntimeError("unlisted credential source failure"),
+    ],
 )
 async def test_transient_credential_error_retries_without_sending(transient: Exception) -> None:
     """A credential source that is unavailable now returns Retry and never selects defect."""
