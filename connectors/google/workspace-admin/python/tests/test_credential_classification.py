@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Credential resolve failures follow one terminal or transient classification."""
 
+from types import SimpleNamespace
 from typing import Any, cast
 from uuid import uuid4
 
@@ -14,14 +15,20 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig import ConnectionKey, CredentialMaterial, Scope
 from dex_connectors.sdk.projectconfig.broker import (
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
     CredentialBrokerUnavailableError,
 )
+from dex_connectors.sdk.projectconfig.provider import CredentialProvider
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
-from dex_connectors.google_workspace_admin import Client, Config, Credentials, GetUserInput
+from dex_connectors.google_workspace_admin import Client, Config, CreateUserInput, Credentials, GetUserInput
+from dex_connectors.google_workspace_admin._generated.connection import (
+    CredentialMaterialError,
+    decode_credentials,
+)
 
 CALL = Call(
     CallID(str(uuid4())),
@@ -50,6 +57,7 @@ class FailingCredentials:
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("stored credential is malformed"), True),
         (CredentialBrokerUnavailableError(), False),
         (ValueError("connection is not configured"), False),
         (RuntimeError("unlisted"), False),
@@ -65,6 +73,38 @@ async def test_get_user_credential_failures_retry_unless_terminal(
         assert result.kind == "branch" and result.branch == "defect"
     else:
         assert result.kind == "retry"
+
+
+class MalformedMaterialStore:
+    """Serve stored material whose fields the connector does not declare."""
+
+    scope = Scope("project-1", "live")
+
+    def _shared_connection(self, key: ConnectionKey) -> None:
+        return None
+
+    async def read_credential_material(self, key: ConnectionKey) -> tuple[CredentialMaterial, Any]:
+        """Return malformed material through the SDK's trusted read."""
+        material = CredentialMaterial({"unexpected": "value"}, None, "google-oauth")
+        return material, SimpleNamespace(expires_at=None)
+
+
+def malformed_project_credentials() -> CredentialProvider[Credentials]:
+    """Build the released SDK provider, which wraps the generated decoder's error."""
+    key = ConnectionKey("google-workspace-admin", "workspace")
+    return CredentialProvider(cast(Any, MalformedMaterialStore()), key, decode_credentials)
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_are_terminal_behind_the_sdk_wrapper() -> None:
+    """Malformed material selects defect instead of retrying forever."""
+    client = Client(Config(), malformed_project_credentials())
+    read = await client.get_user().invoke(CALL, INPUT)
+    assert read.kind == "branch" and read.branch == "defect"
+    create_call = Call(CALL.id, CALL.connection, OperationRef("google-workspace-admin", "createUser"))
+    create_input = CreateUserInput(primary_email="ada@example.com", given_name="Ada", family_name="Lovelace")
+    created = await client.create_user().invoke(create_call, create_input)
+    assert created.kind == "branch" and created.branch == "defect"
 
 
 @pytest.mark.asyncio

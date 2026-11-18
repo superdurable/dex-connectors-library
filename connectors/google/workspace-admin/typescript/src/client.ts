@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { AddUserToGroupOperation, CreateUserOperation, GetUserOperation, ListUsersOperation, RemoveUserFromGroupOperation, SuspendUserOperation, UnsuspendUserOperation } from './operations.js';
 
 const defaultEndpoint = 'https://admin.googleapis.com';
@@ -116,6 +116,8 @@ export class WorkspaceAdminClient {
         if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined) {
           response = { status: error.status, headers: error.headers, body: new Uint8Array() };
           if (response.status >= 200 && response.status < 300) return { outcome: this.outcome('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds the configured limit', this.receipt(call, response)) };
+          // An oversized error body may hide acceptance or a retryable reason.
+          return { outcome: this.outcome('retry', operation, 'TRANSPORT', 'provider error response exceeds the configured limit', this.receipt(call, response)) };
         } else {
           return { outcome: this.outcome('retry', operation, 'TRANSPORT', 'provider is unavailable') };
         }
@@ -139,7 +141,8 @@ export class WorkspaceAdminClient {
       if (response.status === 408 || response.status >= 500) return { outcome: this.outcome('retry', operation, 'AVAILABILITY', 'provider is temporarily unavailable' + suffix, receipt, retryDelay(response, this.now())) };
       if (response.status === 404) return { outcome: this.outcome('notFound', operation, 'NOT_FOUND', 'resource was not found', receipt) };
       if (response.status === 409) return { outcome: this.outcome('conflict', operation, 'CONFLICT', 'provider reported a conflicting resource' + suffix, receipt) };
-      const kind: Failure['kind'] = response.status === 400 ? 'VALIDATION' : response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : response.status === 412 ? 'CONFLICT' : 'PROVIDER_REJECTION';
+      if (!definiteRefusalStatuses.has(response.status)) return { outcome: this.outcome('retry', operation, 'AVAILABILITY', `provider answered HTTP ${response.status}, which leaves the outcome unknown${suffix}`, receipt, retryDelay(response, this.now())) };
+      const kind: Failure['kind'] = response.status === 400 ? 'VALIDATION' : response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
       return { outcome: this.outcome('rejected', operation, kind, `provider rejected the request with HTTP ${response.status}${suffix}`, receipt) };
     }
     return { outcome: this.outcome('defect', operation, 'LOCAL_DEFECT', 'authenticated request retry was exhausted') };
@@ -153,10 +156,13 @@ export class WorkspaceAdminClient {
 const retryableForbiddenReasons = new Set(['userRateLimitExceeded', 'rateLimitExceeded', 'quotaExceeded']);
 const reportableReasons = new Set(['badRequest', 'invalid', 'required', 'notFound', 'duplicate', 'conflict', 'conditionNotMet', 'failedPrecondition', 'forbidden', 'insufficientPermissions', 'authError', 'limitExceeded', 'backendError', 'userRateLimitExceeded', 'rateLimitExceeded', 'quotaExceeded']);
 
+/** Only these statuses prove Google refused the request; any other one is unknown. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 411, 413, 414, 415, 422]);
+
 /** Report a resolve failure that only reconnection repairs; any other one is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 function isHeaderSafeToken(token: string): boolean { return token !== '' && ![...token].some(character => character.charCodeAt(0) < 33 || character.charCodeAt(0) > 126); }
 function responseHeader(response: ProviderResponse, name: string): string { const value = Object.entries(response.headers).find(([key]) => key.toLowerCase() === name)?.[1]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }

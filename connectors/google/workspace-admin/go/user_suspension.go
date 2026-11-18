@@ -74,7 +74,7 @@ func (operation UnsuspendUserOperation) Invoke(call sdkgo.Call, input UnsuspendU
 	return setUserSuspension(operation.client, call, input.UserKey, false, unsuspendUserBranches)
 }
 
-// setUserSuspension writes an absolute flag; an account Google returns in the other state selects providerRejected.
+// setUserSuspension writes an absolute flag; an account Google returns in the other state retries.
 func setUserSuspension(client *Client, call sdkgo.Call, rawUserKey string, isSuspended bool, branches suspensionBranches) sdkgo.MutationAttempt[User] {
 	userKey, err := validateUserKey(rawUserKey)
 	if err != nil {
@@ -93,8 +93,8 @@ func setUserSuspension(client *Client, call sdkgo.Call, rawUserKey string, isSus
 	}
 	receipt := client.receipt(call, written.exchange.response, written.user.ID)
 	if written.user.IsSuspended != isSuspended {
-		return sdkgo.NewMutationBranch(branches.failure.rejected, written.user,
-			failurePointer(sdkgo.FailureProviderRejection, branches.operationID, "Google returned the account without the requested suspension state"), receipt)
+		// A 2xx that contradicts the absolute write is unknown, and the write is safe to repeat.
+		return sdkgo.NewMutationRetry[User](directoryFailure(sdkgo.FailureProtocol, branches.operationID, "Google returned the account without the requested suspension state"), 0)
 	}
 	return sdkgo.NewMutationBranch(branches.applied, written.user, nil, receipt)
 }

@@ -155,7 +155,7 @@ func (operation AddUserToGroupOperation) convergeOnExistingMembership(call sdkgo
 		receipt := operation.client.receipt(call, exchange.response, "")
 		membership, err := decodeGroupMembership(exchange.response.body, groupKey)
 		if err != nil {
-			return sdkgo.NewMutationBranch(AddUserToGroupBranchInvalidResponse, AddUserToGroupOutput{}, failurePointer(sdkgo.FailureProtocol, operationID, "provider returned an invalid membership: "+err.Error()), receipt)
+			return sdkgo.NewMutationRetry[AddUserToGroupOutput](directoryFailure(sdkgo.FailureProtocol, operationID, "provider returned an invalid membership: "+err.Error()), 0)
 		}
 		receipt.ProviderObjectID = membership.MemberID
 		return sdkgo.NewMutationBranch(AddUserToGroupBranchAdded, AddUserToGroupOutput{Membership: membership, WasAlreadyMember: true}, nil, receipt)
