@@ -60,6 +60,8 @@ class Exchange:
     status: int = 0
     body: bytes = b""
     request_id: str = ""
+    # A non-2xx answer whose body exceeded max_response_bytes and was not read.
+    has_oversized_body: bool = False
 
     @property
     def is_retryable_read(self) -> bool:
@@ -210,6 +212,7 @@ class Client:
         if not _REQUEST_ID.fullmatch(request_id):
             request_id = ""
         retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
+        has_oversized_body = False
         try:
             body = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:
@@ -225,6 +228,7 @@ class Client:
                     request_id=request_id,
                 )
             body = b""
+            has_oversized_body = True
         except ProviderTransportError:
             return Exchange(
                 "unavailable",
@@ -277,6 +281,7 @@ class Client:
                 ),
                 status=status,
                 request_id=request_id,
+                has_oversized_body=has_oversized_body,
             )
         if 300 <= status < 400:
             return Exchange(
@@ -304,6 +309,7 @@ class Client:
             reamaze_failure(kind, operation, f"Re:amaze rejected the request (HTTP {status})"),
             status=status,
             request_id=request_id,
+            has_oversized_body=has_oversized_body,
         )
 
     def receipt(self, call: Call, exchange: Exchange, object_id: str = "") -> Receipt:

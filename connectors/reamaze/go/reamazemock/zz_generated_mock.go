@@ -275,7 +275,7 @@ func UpdateConversationProviderRejected(value reamaze.UpdateConversationOutput, 
 	return connectormock.Branch(reamaze.UpdateConversationBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationInvalidResponse selects the invalidResponse branch: Re:amaze returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.
+// UpdateConversationInvalidResponse selects the invalidResponse branch: Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe.
 func UpdateConversationInvalidResponse(value reamaze.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[reamaze.UpdateConversationOutput] {
 	return connectormock.Branch(reamaze.UpdateConversationBranchInvalidResponse, value, failure)
 }

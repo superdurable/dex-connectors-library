@@ -5,6 +5,7 @@ package reamaze_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -91,6 +92,31 @@ func TestUpdateConversationOutcomes(t *testing.T) {
 	require.Equal(t, reamaze.UpdateConversationBranchProviderRejected, result.Branch)
 	require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "SENTINEL")
+}
+
+func TestUpdateConversationRetriesAnUnusableReadBeforeTheChange(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		body string
+	}{
+		{name: "malformed conversation", body: `{"slug":"double-charge"}`},
+		{name: "oversized conversation", body: `{"slug":"` + strings.Repeat("x", 4096) + `"}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, http.StatusOK, test.body)
+			})
+			client, err := reamaze.New(reamaze.Config{Brand: testBrand, MaxResponseBytes: 1024}, testCredentialProvider(),
+				reamaze.WithAPIBaseURL(provider.URL+"/api/v1"))
+			require.NoError(t, err)
+			status := reamaze.ConversationStatus(2)
+			_, err = sdkgo.RunMutation(newReamazeDexContext("update-unusable-read"), client.UpdateConversation(), reamazeConnection,
+				reamaze.UpdateConversationInput{ConversationID: "double-charge", Status: &status})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an earlier attempt's PUT may have applied, so the safe write repeats")
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
 }
 
 func TestUpdateConversationRejectsInvalidChangesWithoutARequest(t *testing.T) {

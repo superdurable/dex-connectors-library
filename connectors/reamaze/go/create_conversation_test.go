@@ -290,13 +290,10 @@ func TestCreateConversationTerminalOutcomes(t *testing.T) {
 	require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "SENTINEL")
 
-	_, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed"), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "an unconfirmed accepted write with no key match resends below the cap")
-
-	result, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed-at-cap"), client.CreateConversation(), reamazeConnection, validCreateConversationInput(), sendCapOfOne)
+	result, err = sdkgo.RunMutation(newReamazeDexContext("create-malformed"), client.CreateConversation(), reamazeConnection, validCreateConversationInput())
 	require.NoError(t, err)
-	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch, "at the cap, an unconfirmed accepted write resolves in this attempt")
+	require.Equal(t, reamaze.CreateConversationBranchUncertain, result.Branch, "an accepted create is never resent, even below the cap")
+	require.Equal(t, 3, provider.requestCount(), "the accepted create is read back once")
 }
 
 func TestCreateConversationReadsBackThenResendsBelowTheCapAndSelectsUncertainAtTheCap(t *testing.T) {
