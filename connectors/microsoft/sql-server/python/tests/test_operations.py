@@ -30,6 +30,7 @@ from dex_connectors.sdk import (
     RepeatOnUnknown,
     SecretString,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.singledispatch import Marker, State
 from OpenSSL import SSL, crypto
 from pytds import tds_base  # type: ignore[import-untyped]
@@ -997,8 +998,53 @@ def test_non_idempotent_never_records_not_sent_after_a_possible_earlier_commit()
     context.heartbeat_value = seeded
     context.attempt = 3
     outcome = run_write(lost, _BALANCE_INPUT, "executeNonIdempotent", context)
-    assert outcome.kind == "uncertain" and not lost.committed
+    # A transient failure returns Retry; the attempt after it still treats the earlier send as possible.
+    assert outcome.kind == "retry" and not lost.committed
     assert context.heartbeat_value is seeded, "notSent would hide the earlier possible COMMIT"
+    opened: list[object] = []
+    later_client = Client(
+        Config("localhost", "master", "sa", encrypt="disable"),
+        CredentialsSource(),
+        connection_factory=lambda **settings: opened.append(settings),
+    )
+    context.attempt = 4
+    later = asyncio.run(later_client.execute_non_idempotent().invoke(fenced_call(context), _BALANCE_INPUT))
+    assert later.kind == "uncertain" and opened == []
+
+    violation = tds_base.DatabaseError("secret value")
+    violation.number = 547
+    violation.state = 0
+    violation.severity = 16
+    refused = FakeConnection(FakeCursor(failure=violation, fail_on="UPDATE"))
+    refused_context = AttemptContext()
+    refused_seed = Marker(CallID(refused_context.call_id), 2, State.CAN_RESEND, send_count=1)
+    refused_context.heartbeat_value = refused_seed
+    refused_context.attempt = 3
+    terminal = run_write(refused, _BALANCE_INPUT, "executeNonIdempotent", refused_context)
+    assert terminal.kind == "uncertain" and not refused.committed
+    assert refused_context.heartbeat_value is refused_seed
+
+
+def test_an_unavailable_credential_broker_returns_retry() -> None:
+    class UnavailableBroker:
+        async def resolve(self, _call: Call) -> Credentials:
+            raise CredentialBrokerUnavailableError()
+
+    opened: list[object] = []
+    native_client = Client(
+        Config("localhost", "master", "sa", encrypt="disable"),
+        UnavailableBroker(),
+        connection_factory=lambda **settings: opened.append(settings),
+    )
+    query = asyncio.run(native_client.query().invoke(call("query"), QueryRowsInput("SELECT 1 AS one")))
+    execute = asyncio.run(native_client.execute().invoke(call("execute"), _BALANCE_INPUT))
+    context = AttemptContext()
+    fenced = asyncio.run(native_client.execute_non_idempotent().invoke(fenced_call(context), _BALANCE_INPUT))
+    for attempt in (query, execute, fenced):
+        assert attempt.kind == "retry" and attempt.failure is not None
+        assert attempt.failure.kind == FailureKind.AVAILABILITY
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+    assert opened == []
 
 
 def test_non_idempotent_lost_worker_and_unreadable_checkpoint() -> None:

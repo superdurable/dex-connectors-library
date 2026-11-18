@@ -20,6 +20,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go/internal/testcertificates"
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -64,6 +65,37 @@ func startScriptedDatabase(t *testing.T, database *scriptedDatabase, options scr
 		mutate(&config)
 	}
 	return server, newScriptedClient(t, config)
+}
+
+// unavailableBrokerCredentials fails every Resolve as a temporarily unavailable credential broker.
+type unavailableBrokerCredentials struct{}
+
+func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (sqlserver.Credentials, error) {
+	return sqlserver.Credentials{}, fmt.Errorf("read password: %w", projectconfig.ErrCredentialBrokerUnavailable)
+}
+
+func newClientWithCredentials(t *testing.T, server *scriptedtds.Server, credentials sdkgo.CredentialProvider[sqlserver.Credentials]) *sqlserver.Client {
+	t.Helper()
+	config := sqlserver.Config{
+		Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", Encrypt: sqlserver.EncryptDisable,
+	}
+	client, err := sqlserver.New(config, credentials)
+	require.NoError(t, err)
+	return client
+}
+
+func TestQueryAndExecuteRetryAnUnavailableCredentialBroker(t *testing.T) {
+	database := &scriptedDatabase{execution: scriptedtds.Execution{RowsAffected: 1}}
+	server, _ := startScriptedDatabase(t, database, scriptedtds.Options{}, nil)
+	client := newClientWithCredentials(t, server, unavailableBrokerCredentials{})
+	var retry *sdkgo.RetryError
+	_, err := query(t, client, sqlserver.QueryRowsInput{Statement: "SELECT 1 AS one"})
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	_, err = execute(t, client, newStep(), addToBalanceInput)
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Empty(t, server.EventsOfKind(scriptedtds.EventLogin))
 }
 
 func newScriptedClient(t *testing.T, config sqlserver.Config) *sqlserver.Client {

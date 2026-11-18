@@ -303,8 +303,8 @@ Every operation returns Retry, which Dex retries with the Step's one-hour defaul
 deadlocks (1205), lock timeouts (1222), snapshot update conflicts (3960, 3961), resource and
 availability errors (701, 1101, 1105, 6005, 8628, 8645, 8651, 9002, 10922), the Azure SQL transient
 errors Microsoft lists (615, 926, 4221, 10928, 10929, 10936, 40197, 40501, 40613, 49918, 49919,
-49920), a login during script upgrade mode (18401), and any other error of severity 20 or higher,
-which ends the connection.
+49920), a login during script upgrade mode (18401), any other error of severity 20 or higher,
+which ends the connection, and a temporarily unavailable credential broker, before connecting.
 
 The server rolls back an open transaction when its connection ends, so a write that fails before
 `COMMIT` left nothing behind and is safe to retry. The connector counts the bytes it writes below
@@ -319,7 +319,9 @@ heartbeat. After an unknown outcome it selects `uncertain`, and a later attempt 
 claim, or no checkpoint after a lost Worker, selects `uncertain` without connecting. Only a proven
 rollback, such as a `COMMIT` that sent no bytes or a deadlock victim, records that nothing was
 committed and returns Retry. A failure before `COMMIT` on an attempt whose checkpoint still counts a
-possible earlier `COMMIT` selects `uncertain` and records nothing. An unreadable checkpoint returns
+possible earlier `COMMIT` records nothing: a transient one returns Retry, after which the next
+attempt selects `uncertain` without connecting, and any other one selects `uncertain`. A failure to
+close the connection after `COMMIT` never changes the result. An unreadable checkpoint returns
 Retry without connecting. The server
 has no generic read-back for an arbitrary statement, so the application reconciles `uncertain`
 itself; the Result's `Receipt.IdempotencyKey` identifies the Step execution.

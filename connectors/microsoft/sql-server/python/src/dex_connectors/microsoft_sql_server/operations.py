@@ -33,6 +33,7 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
@@ -752,23 +753,12 @@ class QueryRowsOperation:
                 Receipt(),
                 Failure(FailureKind.VALIDATION, CONNECTOR_ID, QUERY_OPERATION_ID, str(error)),
             )
-        try:
-            credentials = await self.client.credentials.resolve(call)
-            password = credentials.password.reveal()
-            if not password:
-                raise ValueError("password is unavailable")
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
-            return QueryAttempt.branch_result(
-                DEFECT,
-                RowSet(),
-                Receipt(),
-                Failure(
-                    FailureKind.AUTHENTICATION,
-                    CONNECTOR_ID,
-                    QUERY_OPERATION_ID,
-                    "SQL Server connection credentials are unavailable",
-                ),
-            )
+        password = await _resolve_password(self.client, call)
+        if isinstance(password, _WriteOutcome):
+            credential_failure = Failure(password.kind, CONNECTOR_ID, QUERY_OPERATION_ID, password.message)
+            if password.disposition == "retry":
+                return QueryAttempt.retry(credential_failure)
+            return QueryAttempt.branch_result(DEFECT, RowSet(), Receipt(), credential_failure)
         return await asyncio.to_thread(self._invoke_sync, call, statement, parameters, password)
 
     def _invoke_sync(
@@ -859,12 +849,8 @@ class ExecuteStatementOperation:
         except ValueError as error:
             return _write_defect(EXECUTE_OPERATION_ID, FailureKind.VALIDATION, str(error))
         password = await _resolve_password(self.client, call)
-        if password is None:
-            return _write_defect(
-                EXECUTE_OPERATION_ID,
-                FailureKind.AUTHENTICATION,
-                "SQL Server connection credentials are unavailable",
-            )
+        if isinstance(password, _WriteOutcome):
+            return _write_attempt(EXECUTE_OPERATION_ID, password)
         outcome = await asyncio.to_thread(
             _StatementWriter(self.client).run, call, input, statement, parameters, password, _commit_directly
         )
@@ -937,10 +923,8 @@ class ExecuteStatementNonIdempotentOperation:
         # Overcounts when an earlier attempt proved its COMMIT unsent, which only costs a rejection branch.
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
         password = await _resolve_password(self.client, call)
-        if password is None:
-            outcome = _WriteOutcome(
-                "defect", FailureKind.AUTHENTICATION, "SQL Server connection credentials are unavailable"
-            )
+        if isinstance(password, _WriteOutcome):
+            outcome = password
         else:
             loop = asyncio.get_running_loop()
 
@@ -959,10 +943,10 @@ class ExecuteStatementNonIdempotentOperation:
         if outcome.disposition is None:
             return _write_attempt(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, outcome)
         if not outcome.is_commit_phase and has_possible_earlier_send:
-            # notSent would hide the earlier possible COMMIT, and the cap forbids another one.
-            return _write_attempt(
-                EXECUTE_NON_IDEMPOTENT_OPERATION_ID, replace(outcome, disposition="uncertain")
-            )
+            # notSent would hide the earlier possible COMMIT; without it the next attempt selects uncertain.
+            if outcome.disposition != "retry":
+                outcome = replace(outcome, disposition="uncertain")
+            return _write_attempt(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, outcome)
         try:
             if not outcome.is_commit_phase:
                 await fence.record_not_sent()
@@ -1001,13 +985,27 @@ def _bind_execute(call: Call, input: ExecuteStatementInput) -> tuple[str, dict[s
     return _bind_statement(input.statement, input.parameters, True, key)
 
 
-async def _resolve_password(client: Any, call: Call) -> str | None:
+async def _resolve_password(client: Any, call: Call) -> str | _WriteOutcome:
+    """Return the password, or the failure to report before connecting.
+
+    A temporarily unavailable credential broker returns Retry; any other failure selects defect.
+    """
     try:
         credentials = await client.credentials.resolve(call)
         password = credentials.password.reveal()
+    except CredentialBrokerUnavailableError:
+        return _WriteOutcome(
+            "retry",
+            FailureKind.AVAILABILITY,
+            "the credential broker is temporarily unavailable, so nothing was sent",
+        )
     except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
-        return None
-    return str(password) if password else None
+        password = ""
+    if not password:
+        return _WriteOutcome(
+            "defect", FailureKind.AUTHENTICATION, "SQL Server connection credentials are unavailable"
+        )
+    return str(password)
 
 
 def _write_attempt(operation: str, outcome: _WriteOutcome) -> MutationAttempt[StatementExecution]:
