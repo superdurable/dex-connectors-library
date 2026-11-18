@@ -7,6 +7,13 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
+from dex_connectors.sdk import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.atlassian_jira_service_management import Client, Config
 from dex_connectors.atlassian_jira_service_management.client import (
@@ -105,5 +112,41 @@ async def test_operation_deadline_retries_before_provider_access() -> None:
         response = await client.exchange(call, None, "POST", "service", "/request", payload={})
         assert response.too_little_time
         assert client.classify_write("createTicket", "customer request", response).outcome == "retry"
+    finally:
+        await client.aclose()
+
+
+class _FailingCredentials:
+    """Fail every resolution with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: object) -> object:
+        """Raise the configured error."""
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (ReauthorizationRequiredError(), "defect"),
+        (ObjectNotFoundError("absent"), "defect"),
+        (ConnectionNotSelectedError(), "defect"),
+        (CredentialBrokerRejectedError(), "defect"),
+        (CredentialBrokerUnavailableError(), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+        (LookupError("unlisted"), "retry"),
+    ],
+)
+async def test_credential_resolve_errors_use_the_shared_terminal_set(error: Exception, expected: str) -> None:
+    """Only the listed credential failures are terminal; every other one retries."""
+    client = Client(Config(cloud_id=""), _FailingCredentials(error))  # type: ignore[arg-type]
+    call = SimpleNamespace(context=SimpleNamespace(deadline=datetime.now(UTC) + timedelta(seconds=30)))
+    try:
+        credentials, outcome = await client.resolve(call, "getTicket")  # type: ignore[arg-type]
+        assert credentials is None
+        assert outcome is not None and outcome.outcome == expected
     finally:
         await client.aclose()

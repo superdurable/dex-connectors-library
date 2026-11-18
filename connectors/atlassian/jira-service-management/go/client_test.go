@@ -4,6 +4,8 @@
 package jiraservicemanagement_test
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	jiraservicemanagement "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -165,4 +168,44 @@ func TestUnavailableCredentialsSelectDefectWithoutAProviderRequest(t *testing.T)
 	require.NoError(t, err)
 	_, err = sdkgo.RunMutation(newTestDexContext("credential-lookup-failure"), unconfigured.CreateTicket(), jsmConnection, validCreateTicketInput())
 	requireRetry(t, err, sdkgo.FailureAvailability)
+}
+
+// failingResolveCredentials fails every resolution with one error.
+type failingResolveCredentials struct{ err error }
+
+func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (jiraservicemanagement.Credentials, error) {
+	return jiraservicemanagement.Credentials{}, credentials.err
+}
+
+func (credentials failingResolveCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[jiraservicemanagement.Credentials]) (jiraservicemanagement.Credentials, error) {
+	return credentials.Resolve(call)
+}
+
+func TestCredentialResolveErrorsUseTheSharedTerminalSet(t *testing.T) {
+	provider := newRecordingProvider(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	for name, test := range map[string]struct {
+		err        error
+		isTerminal bool
+	}{
+		"reauthorization":         {sdkgo.ErrReauthorizationRequired, true},
+		"project reauthorization": {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":        {projectconfig.ErrObjectNotFound, true},
+		"connection not selected": {projectconfig.ErrConnectionNotSelected, true},
+		"broker rejected":         {projectconfig.ErrCredentialBrokerRejected, true},
+		"broker unavailable":      {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"not refreshed":           {projectconfig.ErrRejectedCredentialNotRefreshed, false},
+		"unlisted":                {errors.New("unlisted credential store error"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := jiraservicemanagement.New(jiraservicemanagement.Config{CloudID: testCloudID, Endpoint: provider.URL}, failingResolveCredentials{test.err})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newTestDexContext("credential-class-"+name), client.CreateTicket(), jsmConnection, validCreateTicketInput())
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, jiraservicemanagement.CreateTicketBranchDefect, result.Branch)
+				return
+			}
+			requireRetry(t, err, sdkgo.FailureAvailability)
+		})
+	}
 }

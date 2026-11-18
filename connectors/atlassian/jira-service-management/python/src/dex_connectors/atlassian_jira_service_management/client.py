@@ -21,6 +21,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -91,6 +93,19 @@ class Classification:
 
 DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 """Statuses proving the provider refused a write; any other status leaves its outcome unknown."""
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -232,22 +247,19 @@ class Client:
                     "the Step attempt has too little time left to start a provider request",
                 ),
             )
+        unusable = Classification(
+            "defect",
+            failure(
+                operation,
+                FailureKind.AUTHENTICATION,
+                "Jira Service Management connection credentials are unavailable; reconnect the connection",
+            ),
+        )
         try:
             credentials = await self.credentials.resolve(call)
-            token = credentials.access_token.reveal()
-            if not token or any(character in token for character in "\r\n\x00"):
-                raise ValueError("invalid access token")
-        except (ValueError, LookupError, ReauthorizationRequiredError):
-            return None, Classification(
-                "defect",
-                failure(
-                    operation,
-                    FailureKind.AUTHENTICATION,
-                    "Jira Service Management connection credentials are unavailable; "
-                    "reconnect the connection",
-                ),
-            )
-        except Exception:
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return None, unusable
             # A credential store or broker outage is transient; a later attempt resolves again.
             return None, Classification(
                 "retry",
@@ -257,6 +269,12 @@ class Client:
                     "Jira Service Management credential lookup is temporarily unavailable",
                 ),
             )
+        try:
+            token = credentials.access_token.reveal()
+        except AttributeError:
+            token = ""
+        if not isinstance(token, str) or not token or any(character in token for character in "\r\n\x00"):
+            return None, unusable
         if not self.cloud_id and not self._resolved_cloud_id:
             response = await self._exchange(
                 call, credentials, "GET", "gateway", "/oauth/token/accessible-resources"
