@@ -16,6 +16,7 @@ from dex_connectors.sdk.projectconfig import (
 )
 
 import dex_connectors.salesforce as salesforce
+from dex_connectors.salesforce._generated.connection import CredentialMaterialError
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
@@ -59,6 +60,17 @@ async def test_writes_retry_a_status_that_does_not_prove_a_refusal(status: int) 
         assert upsert.kind == "retry"
 
 
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Salesforce credential access_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
 class _FailingCredentials:
     def __init__(self, error: Exception) -> None:
         self.error = error
@@ -78,6 +90,8 @@ class _FailingCredentials:
         (ObjectNotFoundError(), "branch", "defect"),
         (ConnectionNotSelectedError(), "branch", "defect"),
         (CredentialBrokerRejectedError(), "branch", "defect"),
+        (CredentialMaterialError("Salesforce credential access_token is required"), "branch", "defect"),
+        (_sdk_wrapped_material_error(), "branch", "defect"),
     ],
 )
 async def test_update_classifies_credential_failures(

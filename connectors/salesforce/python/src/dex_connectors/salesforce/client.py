@@ -235,7 +235,18 @@ class Client:
                     "Salesforce connection credentials are missing or invalid",
                 ),
             )
-        except Exception:
+        except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return None, Outcome(
+                    "defect",
+                    failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "Salesforce connection credentials are missing or invalid",
+                    ),
+                )
             return None, Outcome(
                 "retry",
                 failure(
