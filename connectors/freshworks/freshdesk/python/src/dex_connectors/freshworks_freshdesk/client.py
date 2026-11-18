@@ -6,6 +6,7 @@ import asyncio
 import base64
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -199,10 +200,13 @@ class Client:
         payload: dict[str, Any] | None = None,
         write_budget: float | None = None,
         deadline: datetime | None = None,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
         """Send one request and classify its observed provider result.
 
         `deadline` replaces the Step deadline, such as a fence's write deadline.
+        `on_response_status` receives the HTTP status as soon as the headers arrive, so a
+        caller whose Fence cancels the body read still knows it.
         """
         try:
             url = self._endpoint + path
@@ -251,6 +255,8 @@ class Client:
             async with asyncio.timeout(remaining - 1 if remaining is not None else None):
                 response, trace = await send_traced(self._client, request)
                 observed_status, observed_headers = response.status_code, response.headers
+                if on_response_status is not None:
+                    on_response_status(observed_status)
                 try:
                     contents = await read_bounded_body(response, self.config.max_response_bytes)
                     exchange = Exchange(

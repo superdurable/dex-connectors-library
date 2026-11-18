@@ -75,7 +75,8 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	}
 	credentials, failure, isTransient := operation.client.resolveCredentials(call, updateTicketOperation)
 	if failure != nil {
-		if isTransient {
+		if isTransient || call.Context.Attempt() > 1 {
+			// defect would hide a change an earlier attempt may have sent; repeating it is safe.
 			return sdkgo.NewMutationRetry[UpdateTicketOutput](*failure, 0)
 		}
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, failure, sdkgo.Receipt{})
