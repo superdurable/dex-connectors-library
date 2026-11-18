@@ -6,6 +6,7 @@ package posthog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -130,4 +132,39 @@ func TestListInsightsBearerPaginationAndRateLimit(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	require.NotContains(t, err.Error(), "phx_test-key")
+}
+
+type failingCredentials struct{ resolveErr error }
+
+func (credentials failingCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, credentials.resolveErr
+}
+
+func TestCaptureEventClassifiesCredentialFailures(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		resolveErr error
+		isTerminal bool
+	}{
+		"broker unavailable":            {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"static not configured":         {errors.New("connection is not configured"), false},
+		"unlisted error":                {errors.New("credential store hiccup"), false},
+		"sdk reauthorization":           {sdkgo.NewReauthorizationRequiredError(nil), true},
+		"projectconfig reauthorization": {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":              {projectconfig.ErrObjectNotFound, true},
+		"connection not selected":       {projectconfig.ErrConnectionNotSelected, true},
+		"broker rejected":               {projectconfig.ErrCredentialBrokerRejected, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := New(Config{CaptureURL: "http://127.0.0.1:1", AppURL: "http://127.0.0.1:1"}, failingCredentials{resolveErr: testCase.resolveErr})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(providerContext{}, client.CaptureEvent(), testConnection, CaptureEventInput{Event: "Signed Up", DistinctID: "member-1", Timestamp: "2026-10-29T00:00:00Z"})
+			if testCase.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, CaptureEventBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
 }
