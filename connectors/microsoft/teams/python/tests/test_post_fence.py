@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend and read-back of Microsoft Teams posts whose outcome is unknown."""
 
+import asyncio
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
@@ -127,6 +128,27 @@ async def test_accepted_post_without_message_id_is_uncertain_and_never_resent() 
         result = await post(lambda _r, _i: httpx.Response(201, json={"id": 42}), AttemptContext(), requests,
                             operation=operation)
         assert uncertain(result)
+        assert methods(requests) == ["POST"]
+
+
+class StalledStream(httpx.AsyncByteStream):
+    """A response body that stalls after the 2xx headers arrived."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(5)
+        yield b"{}"
+
+
+async def test_write_deadline_that_cuts_an_accepted_body_is_never_resent() -> None:
+    """2xx headers arrived, so the Fence write-window timeout proves the post, not an unknown outcome."""
+    for operation in ("channel", "chat"):
+        context = AttemptContext()
+        context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+        requests: list[httpx.Request] = []
+        result = await post(
+            lambda _r, _i: httpx.Response(201, stream=StalledStream()), context, requests, operation=operation
+        )
+        assert uncertain(result), operation
         assert methods(requests) == ["POST"]
 
 
