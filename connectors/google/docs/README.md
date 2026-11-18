@@ -171,17 +171,24 @@ nothing was created, so the next attempt searches again and resends. After a
 429 or 503, the connector also searches once for the tagged file in the same
 attempt.
 
-An unknown outcome, such as a timeout, a lost connection, a 5xx, a 409, or an
-unreadable 2xx body, is searched by app property. A found file completes
-`created`. Otherwise the attempt retries while the cap allows another send,
-and the next attempt searches again before resending. A saved document ID is
-always read back instead of resent. A definite refusal (400, 401, 403, 404,
-411, 413, 414, 415, or 422) selects `providerRejected` on the first send and
-is never resent; after an earlier unconfirmed send it selects `uncertain`.
-`uncertain` is otherwise selected only when the cap is reached and the search
-still cannot confirm the create, and the example leaves that branch unwired
-for manual reconciliation. HTTP writes use a bounded fraction of the Step
-deadline and disable Go's transparent request replay.
+An unknown outcome, such as a timeout, a lost connection, a 5xx, or a 409, is
+searched by app property. A found file completes `created`. Otherwise the
+attempt retries while the cap allows another send, and the next attempt
+searches again before resending, also after a resend that Google rate
+limited. A 2xx whose body is unusable, oversized, or breaks while read means
+Drive created the document, so it is never resent: the attempt searches once,
+then saves the file ID the body carries and reads it back on the next attempt,
+or selects `uncertain` when the body has no ID. A saved document ID is always
+read back instead of resent. A definite refusal (400, 401, 403, 404, 411, 413,
+414, 415, or 422) selects `providerRejected` on the first send and is never
+resent; after an earlier unconfirmed send it selects `uncertain`. Below the
+cap, a rejected or invalid search after an earlier possible send, and an empty
+search after a saved document ID, retry the search without sending; an
+incomplete search retries even at the cap. Unavailable credentials and a
+transient refresh failure after a 401 also retry. `uncertain` is otherwise selected only when the cap is reached and the
+search still cannot confirm the create, and the example leaves that branch
+unwired for manual reconciliation. HTTP writes use a bounded fraction of the
+Step deadline and disable Go's transparent request replay.
 
 When upgrading from v0.22.1, an in-flight `createDocument` Step can carry a
 legacy `googleDocsDispatchedCallId` heartbeat, and any unreadable checkpoint
@@ -263,7 +270,9 @@ next guarded write without another read.
 ## Branches
 
 Every operation uses `defect` for invalid local input, connection
-configuration, or connector contract violations, before any request.
+configuration, or connector contract violations, before any request. A guarded
+write whose credentials are unavailable selects `defect` only on its first
+attempt; a later attempt may follow a write that applied, so it returns Retry.
 `providerRejected` is a conclusive Google refusal, such as a revoked grant,
 missing permission, or a connection without edit access. `notFound` is a
 document the connection cannot see. `invalidResponse` is a malformed or

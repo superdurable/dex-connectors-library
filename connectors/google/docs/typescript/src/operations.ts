@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type FailureKind, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type FailureKind, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { randomBytes } from 'node:crypto';
 import type { ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
@@ -118,7 +118,12 @@ async function runGuardedWrite<Output>(client: DocsClient, call: Call, documentI
   output: (revisionId: string, replies: Record<string, unknown>[], alreadyApplied: boolean) => Output): Promise<MutationAttempt<Output>> {
   let credentials: Credentials;
   try { credentials = await client.resolveCredentials(call); }
-  catch { return newMutationBranch('defect', zero, {}, docsFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
+  catch {
+    const failure = docsFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable');
+    // An earlier attempt may have written, so defect could hide an applied change.
+    if (call.context.attempt > 1) return newMutationRetry(failure);
+    return newMutationBranch('defect', zero, {}, failure);
+  }
   const read = async (): Promise<{ document: DocumentResource; bodyText: string; receipt: ReceiptDraft } | { attempt: MutationAttempt<Output> }> => {
     const result = await sendRead(client, call, credentials, operation, documentURL(client, documentId, 'SUGGESTIONS_INLINE', writeFields), 'invalidResponse', 'notFound', zero);
     if ('attempt' in result) return { attempt: result.attempt as MutationAttempt<Output> };
@@ -275,7 +280,7 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
   let credentials: Credentials;
   try { credentials = await client.resolveCredentials(call); }
   catch {
-    if (decision.kind === 'sendAllowed') {
+    if (decision.kind === 'sendAllowed' && !hasPossibleEarlierSend) {
       try { await fence.recordNotSent(); }
       catch { return newMutationRetry(docsFailure('createDocument', 'AVAILABILITY', 'Dex could not record a pre-send retry')); }
       return newMutationRetry(docsFailure('createDocument', 'AUTHENTICATION', 'connection credentials are unavailable'));
@@ -297,8 +302,14 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
     return newMutationRetry(docsFailure('createDocument', 'AVAILABILITY', 'dispatch checkpoint is unreadable; no document was created in this attempt'));
   }
   // Drive returns a file ID only for a document it created, so a saved one is never resent.
-  const hasSavedDocumentId = decision.kind !== 'sendAllowed' && !!decision.marker?.providerId;
+  const hasSavedDocumentId = !!decision.marker?.providerId;
   const isAtSendCap = decision.kind === 'readBackRequired';
+  // Only a first send with no saved ID may record notSent before a lookup Retry.
+  const isFirstSend = decision.kind === 'sendAllowed' && !hasPossibleEarlierSend && !hasSavedDocumentId;
+  const hasPossibleCreate = hasPossibleEarlierSend || hasSavedDocumentId;
+  /** Repeat an inconclusive lookup below the send cap and select uncertain at the cap; it never sends. */
+  const retryLookupOrSelectUncertain = (kind: FailureKind, message: string, receiptDraft: ReceiptDraft): MutationAttempt<CreateDocumentOutput> =>
+    isAtSendCap ? newMutationUncertain(zeroCreate, docsFailure('createDocument', kind, message), receiptDraft) : newMutationRetry(docsFailure('createDocument', kind, `${message}; the next attempt looks it up again`));
   if (hasSavedDocumentId && decision.marker?.providerId && isDriveID(decision.marker.providerId)) {
     const url = `${client.driveBaseURL}/files/${goPathEscape(decision.marker.providerId)}?${goQuery({ fields: fileFields, supportsAllDrives: 'true' })}`;
     const found = await sendRead(client, call, credentials, 'createDocument', url, 'invalidResponse', 'providerRejected', zeroCreate, createLookupSignal(call));
@@ -313,20 +324,20 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
   if ('attempt' in firstLookup) {
     const attempt = firstLookup.attempt;
     if (firstLookup.isInvalidLookup) {
-      const failure = docsFailure('createDocument', 'PROTOCOL', 'a prior create cannot be confirmed because duplicate lookup was invalid');
-      if (isAtSendCap || hasSavedDocumentId) return newMutationUncertain(zeroCreate, failure, attempt.kind === 'branch' ? attempt.receipt : {});
       // A later attempt repeats the read; each attempt counts toward the send cap.
-      if (hasPossibleEarlierSend) return newMutationRetry(docsFailure('createDocument', 'PROTOCOL', 'provider returned an invalid duplicate-lookup response'));
+      if (hasPossibleCreate) return retryLookupOrSelectUncertain('PROTOCOL', 'a prior create cannot be confirmed because duplicate lookup was invalid', attempt.kind === 'branch' ? attempt.receipt : {});
       return attempt as MutationAttempt<CreateDocumentOutput>;
     }
-    if (decision.kind === 'sendAllowed' && attempt.kind === 'retry') return retryBeforeSend(fence, 'AVAILABILITY', 'duplicate lookup is unavailable');
-    if (hasPossibleEarlierSend && attempt.kind === 'branch') return newMutationUncertain(zeroCreate, docsFailure('createDocument', attempt.failure?.kind ?? 'PROTOCOL', 'a prior create cannot be confirmed because duplicate lookup was rejected'), attempt.receipt);
+    if (isFirstSend && attempt.kind === 'retry') return retryBeforeSend(fence, 'AVAILABILITY', 'duplicate lookup is unavailable');
+    if (hasPossibleCreate && attempt.kind === 'branch') return retryLookupOrSelectUncertain(attempt.failure?.kind ?? 'PROTOCOL', 'a prior create cannot be confirmed because duplicate lookup was rejected', attempt.receipt);
     return attempt as MutationAttempt<CreateDocumentOutput>;
   }
   const lookupReceipt = client.receipt(call, firstLookup.response);
   if (firstLookup.document) return newMutationBranch('created', { document: firstLookup.document, isFromEarlierAttempt: true }, client.receipt(call, firstLookup.response, firstLookup.document.documentId));
-  if (isAtSendCap || hasSavedDocumentId) return newMutationUncertain(zeroCreate, docsFailure('createDocument', 'TRANSPORT', 'an earlier attempt of this Step may have created the document, the duplicate lookup does not show it, and no further send is allowed'), lookupReceipt);
-  if (firstLookup.incomplete) return decision.kind === 'sendAllowed' ? retryBeforeSend(fence, 'AVAILABILITY', 'provider did not complete the duplicate lookup') : newMutationRetry(docsFailure('createDocument', 'AVAILABILITY', 'provider did not complete the duplicate lookup'));
+  // An incomplete search proves nothing, so it is repeated before any cap decision.
+  if (firstLookup.incomplete) return isFirstSend ? retryBeforeSend(fence, 'AVAILABILITY', 'provider did not complete the duplicate lookup') : newMutationRetry(docsFailure('createDocument', 'AVAILABILITY', 'provider did not complete the duplicate lookup'));
+  // A saved ID proves Drive created the document, so it is looked up again and never resent.
+  if (isAtSendCap || hasSavedDocumentId) return retryLookupOrSelectUncertain('TRANSPORT', 'an earlier attempt of this Step may have created the document, the duplicate lookup does not show it, and no further send is allowed', lookupReceipt);
   /** Select defect or providerRejected only when no earlier send may have created the document. */
   const rejectOrSelectUncertain = async (branch: 'defect' | 'providerRejected', kind: FailureKind, message: string, receiptDraft: ReceiptDraft): Promise<MutationAttempt<CreateDocumentOutput>> => {
     if (hasPossibleEarlierSend) return newMutationUncertain(zeroCreate, docsFailure('createDocument', kind, `${message} after an earlier unconfirmed send`), receiptDraft);
@@ -357,14 +368,35 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
     if (canResendUnknownOutcome) return newMutationRetry(docsFailure('createDocument', kind, message));
     return newMutationUncertain(zeroCreate, docsFailure('createDocument', kind, `${message}; the send cap is reached`), receipt);
   };
+  /** Drive created the document, so an unusable 2xx is looked up, or read back by a saved ID, and never resent. */
+  const reconcileAccepted = async (kind: FailureKind, body: Uint8Array | undefined): Promise<MutationAttempt<CreateDocumentOutput>> => {
+    const found = await lookup();
+    if ('response' in found && !found.incomplete && found.document) {
+      try { await fence.recordProviderId(found.document.documentId); }
+      catch { /* Confirmation is conclusive even when an extra checkpoint fails. */ }
+      return newMutationBranch('created', { document: found.document }, { ...receipt, providerObjectId: found.document.documentId });
+    }
+    let documentId = '';
+    try { const id = body ? parseObject(body).id : undefined; if (typeof id === 'string' && isDriveID(id)) documentId = id; }
+    catch { /* A body without a usable ID cannot be read back by ID. */ }
+    if (documentId) {
+      try {
+        await fence.recordProviderId(documentId);
+        return newMutationRetry(docsFailure('createDocument', kind, 'provider accepted the create with an unusable response; the next attempt reads the document back'));
+      } catch { /* Without the saved ID a later attempt could resend, so select uncertain. */ }
+    }
+    return newMutationUncertain(zeroCreate, docsFailure('createDocument', kind, 'provider accepted the create with an unusable response, and the duplicate lookup does not show it, so it is not sent again'), receipt);
+  };
   if (response && response.status >= 200 && response.status < 300) {
     try {
       const document = convertCreatedDocument(parseObject(response.body));
       try { await fence.recordProviderId(document.documentId); }
       catch { /* An accepted provider result is conclusive without this extra checkpoint. */ }
       return newMutationBranch('created', { document }, { ...receipt, providerObjectId: document.documentId });
-    } catch { return confirmAfterSend('PROTOCOL', 'provider returned an unusable accepted create response'); }
+    } catch { return reconcileAccepted('PROTOCOL', response.body); }
   }
+  if (sendError instanceof DocsRequestError && sendError.status >= 200 && sendError.status < 300)
+    return reconcileAccepted(sendError.tooLarge ? 'RESPONSE_TOO_LARGE' : 'TRANSPORT', undefined);
   if (response && (isRateLimit(response.status, tokens) || response.status === 503)) {
     const found = await lookup();
     if ('response' in found && !found.incomplete && found.document) {
@@ -378,15 +410,18 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
   }
   if (response?.status === 401) {
     try { await client.refreshCredentialsAfterRejection(call); }
-    catch { return rejectOrSelectUncertain('providerRejected', 'AUTHENTICATION', 'provider rejected the create credential', receipt); }
+    catch (error) {
+      if (error instanceof ReauthorizationRequiredError || error instanceof TypeError) return rejectOrSelectUncertain('providerRejected', 'AUTHENTICATION', 'provider rejected the create credential', receipt);
+      // Google refuses an unauthenticated create before processing it, so a transient refresh failure retries.
+      try { await fence.recordCanResend(); }
+      catch { /* A lost canResend marker makes the next attempt count this send. */ }
+      return newMutationRetry(docsFailure('createDocument', 'AUTHENTICATION', 'provider rejected the create credential, and its refresh is temporarily unavailable'));
+    }
     try { await fence.recordCanResend(); }
     catch { return newMutationRetry(docsFailure('createDocument', 'AUTHENTICATION', 'Dex could not record safe resend after credential refresh')); }
     return newMutationRetry(docsFailure('createDocument', 'AUTHENTICATION', 'provider rejected the create credential; refreshed for the next attempt'));
   }
   if (sendError) {
-    if (sendError instanceof DocsRequestError && sendError.tooLarge && sendError.status >= 200 && sendError.status < 300) {
-      return confirmAfterSend('PROTOCOL', 'provider returned an unusable accepted create response');
-    }
     if (sendError instanceof DocsRequestError && sendError.beforeSend) {
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(docsFailure('createDocument', 'TRANSPORT', 'Dex could not record a proven no-send')); }
