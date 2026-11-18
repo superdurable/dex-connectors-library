@@ -153,9 +153,25 @@ func TestSingleDispatchOutcomes(t *testing.T) {
 			reply:   func(t *testing.T, response http.ResponseWriter) { cutOffBody(t, response, http.StatusTooManyRequests) },
 			isRetry: true,
 		},
-		"unknown conversation with a cut-off body is still not found": {
-			reply:      func(t *testing.T, response http.ResponseWriter) { cutOffBody(t, response, http.StatusNotFound) },
-			wantBranch: hiver.AddNoteBranchNotFound,
+		"not found with a cut-off body is resent below the cap": {
+			reply:           func(t *testing.T, response http.ResponseWriter) { cutOffBody(t, response, http.StatusNotFound) },
+			isUnknownResend: true,
+		},
+		"refusal with a cut-off body is resent below the cap": {
+			reply:           func(t *testing.T, response http.ResponseWriter) { cutOffBody(t, response, http.StatusBadRequest) },
+			isUnknownResend: true,
+		},
+		"refusal with an oversized body is resent below the cap": {
+			reply: func(_ *testing.T, response http.ResponseWriter) {
+				writeOversizedBody(response, http.StatusUnprocessableEntity)
+			},
+			isUnknownResend: true,
+		},
+		"refusal whose body carries the created note ID is uncertain": {
+			reply: func(t *testing.T, response http.ResponseWriter) {
+				writeJSON(t, response, http.StatusBadRequest, `{"data":{"id":"35042650","content":"SENTINEL"}}`)
+			},
+			wantBranch: hiver.AddNoteBranchUncertain,
 		},
 	} {
 		provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(t, response) })
@@ -308,6 +324,42 @@ func TestAcceptedDraftWithIDAndInvalidFieldIsNeverResent(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestRefusedDraftWhoseBodyCarriesTheDraftIDIsNeverResent(t *testing.T) {
+	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusUnprocessableEntity, `{"data":{"id":573741352,"shared_draft_id":901}}`)
+	})
+	client := newHiverClient(t, provider.URL)
+	input := hiver.CreateSharedDraftInput{InboxID: "105902", HiverMessageID: "834466048", Body: "Thanks."}
+	first := newHiverDexContext("draft")
+	result, err := sdkgo.RunMutation(first, client.CreateSharedDraft(), hiverConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch, "the draft ID shows Hiver may have created it")
+	require.Equal(t, "901", result.Receipt.ProviderObjectID)
+	require.Contains(t, string(first.recordedHeartbeat), `"providerId":"901"`)
+	result, err = sdkgo.RunMutation(first.nextAttempt(), client.CreateSharedDraft(), hiverConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+}
+
+func TestRefusalWithAnUnreadableBodyAtTheCapIsUncertain(t *testing.T) {
+	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		cutOffBody(t, response, http.StatusBadRequest)
+	})
+	client := newHiverClient(t, provider.URL)
+	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
+	attempt := newHiverDexContext("note")
+	for sendCount := 1; sendCount < 3; sendCount++ {
+		_, err := sdkgo.RunMutation(attempt, client.AddNote(), hiverConnection, input)
+		require.Error(t, err, "send %d leaves room under the cap of 3", sendCount)
+		attempt = attempt.nextAttempt()
+	}
+	result, err := sdkgo.RunMutation(attempt, client.AddNote(), hiverConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
+	require.Equal(t, 3, provider.requestCount())
 }
 
 func TestAcceptedNoteBodyCutAtAttemptDeadlineIsUncertain(t *testing.T) {

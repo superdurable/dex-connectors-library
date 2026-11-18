@@ -106,7 +106,7 @@ ADD_NOTE_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Hiver added the note and returned it.", False),
         BranchDefinition(NOT_FOUND, "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Hiver conclusively rejected the note; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note, or a refusal status whose body carries a note ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -124,7 +124,7 @@ CREATE_SHARED_DRAFT_DEFINITION = MutationDefinition(
         BranchDefinition(CREATED, "Hiver created the shared draft and returned its ID.", False),
         BranchDefinition(NOT_FOUND, "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", True),
         BranchDefinition(PROVIDER_REJECTED, "Hiver conclusively rejected the draft; no draft was created.", True),
-        BranchDefinition(UNCERTAIN, "The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft, or a refusal status whose body carries a draft ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

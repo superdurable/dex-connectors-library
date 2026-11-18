@@ -94,7 +94,7 @@ func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sd
 	result, attempt := sendOnce[AddNoteOutput](call, operation.client, credentials, addNoteOperation, hiverRequest{
 		method: http.MethodPost, path: conversationPath(input.InboxID, input.ConversationID) + "/notes",
 		formFields: []hiverFormField{{name: "content", value: input.Content}},
-	}, singleDispatchBranches{notFound: AddNoteBranchNotFound, providerRejected: AddNoteBranchProviderRejected, defect: AddNoteBranchDefect}, permit)
+	}, singleDispatchBranches{notFound: AddNoteBranchNotFound, providerRejected: AddNoteBranchProviderRejected, defect: AddNoteBranchDefect, providerIDField: "id"}, permit)
 	if attempt != nil {
 		return *attempt
 	}

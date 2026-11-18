@@ -1508,6 +1508,147 @@
     },
     {
       "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"35042650\",\"conversation_id\":\"573741352\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+          "providerId": "35042650",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "note": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-refusal-with-note-id-uncertain",
+      "operation": "addNote"
+    },
+    {
+      "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":573741352,\"shared_draft_id\":901}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/shared-drafts",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "V2UgYXJlIGludmVzdGlnYXRpbmcu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"body\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ODM0NDY2MDQ4",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"hiver_message_id\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+          "providerId": "901",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "input": {
+        "body": "We are investigating.",
+        "hiverMessageId": "834466048",
+        "inboxId": "105902"
+      },
+      "name": "createSharedDraft-refusal-with-draft-id-uncertain",
+      "operation": "createSharedDraft"
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
       "exchanges": [],
       "expected": {
         "branch": "defect",

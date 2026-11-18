@@ -39,6 +39,7 @@ from ._generated.definitions import (
     UPDATE_CONVERSATION_DEFINITION,
 )
 from .client import (
+    DEFINITE_REFUSAL_STATUSES,
     Client,
     Exchange,
     ResponseObservation,
@@ -525,8 +526,10 @@ class UpdateConversationOperation:
         exchange = await self.client.exchange(
             call, token, "updateConversation", "PATCH", path, payload=change
         )
-        if exchange.outcome == "invalid" or (
-            exchange.outcome == "rejected" and exchange.status not in _DEFINITE_REFUSAL_STATUSES
+        if (
+            exchange.outcome == "invalid"
+            or exchange.is_error_body_unreadable
+            or (exchange.outcome == "rejected" and exchange.status not in DEFINITE_REFUSAL_STATUSES)
         ):
             # The change is absolute, so an unknown outcome repeats it.
             assert exchange.failure is not None
@@ -717,6 +720,7 @@ async def _fenced_attempt(
             client.receipt(call),
         )
     receipt = client.receipt(call, exchange)
+    provider_id_field = "id" if operation == "addNote" else "shared_draft_id"
     if exchange.outcome != "success" and _is_success_status(exchange.status):
         # Hiver accepted the write, but its answer is oversized, unreadable, or untrusted.
         assert exchange.failure is not None
@@ -732,9 +736,7 @@ async def _fenced_attempt(
                 operation,
                 f"Hiver accepted the {noun} but returned an invalid {description}: {error}",
             )
-            provider_id = _accepted_provider_id(
-                exchange.body, "id" if operation == "addNote" else "shared_draft_id"
-            )
+            provider_id = _accepted_provider_id(exchange.body, provider_id_field)
             # The 2xx proves acceptance, so this write is never resent.
             if provider_id:
                 await _record_provider_id(fence, provider_id)
@@ -755,8 +757,35 @@ async def _fenced_attempt(
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
     # A request that could not be built would fail the same way if resent.
     if exchange.outcome in ("notFound", "defect") or (
-        exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES
+        exchange.outcome == "rejected" and exchange.status in DEFINITE_REFUSAL_STATUSES
     ):
+        if exchange.is_error_body_unreadable:
+            return _resend_or_uncertain(
+                can_resend_unknown_outcome,
+                empty,
+                hiver_failure(
+                    FailureKind.TRANSPORT,
+                    operation,
+                    f"Hiver answered HTTP {exchange.status}, but its oversized or unreadable body "
+                    "may hide an accepted write",
+                ),
+                0,
+                receipt,
+            )
+        provider_id = _accepted_provider_id(exchange.body, provider_id_field)
+        if provider_id:
+            # The created object's ID shows the write may have been applied, so it is never resent.
+            await _record_provider_id(fence, provider_id)
+            return MutationAttempt.uncertain(
+                empty,
+                hiver_failure(
+                    FailureKind.PROTOCOL,
+                    operation,
+                    f"Hiver answered HTTP {exchange.status} with the ID of a created object, "
+                    "so the write may have been applied",
+                ),
+                client.receipt(call, exchange, provider_id),
+            )
         if not is_first_send:
             return MutationAttempt.uncertain(empty, exchange.failure, receipt)
         try:
@@ -772,10 +801,6 @@ async def _fenced_attempt(
     return _resend_or_uncertain(
         can_resend_unknown_outcome, empty, exchange.failure, exchange.retry_after, receipt
     )
-
-
-# Only these statuses prove Hiver applied nothing; any other non-2xx answer may have been applied.
-_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 async def _retry_before_dispatch(fence: Fence, is_first_send: bool, problem: Failure) -> MutationAttempt[Any]:
@@ -846,7 +871,7 @@ def _resend_or_uncertain(
 
 
 def _accepted_provider_id(body: bytes, field: str) -> str:
-    """Return the valid ID field of a 2xx single-data body, or an empty string."""
+    """Return the valid ID field of a single-data body, or an empty string."""
     try:
         provider_id = wire_id(single_data(body).get(field))
         validate_id(field, provider_id)

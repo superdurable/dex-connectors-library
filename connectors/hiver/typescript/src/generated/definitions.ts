@@ -152,7 +152,7 @@ export const AddNoteBranchAdded = AddNoteBranch.Added;
 export const AddNoteBranchNotFound = AddNoteBranch.NotFound;
 /** Hiver conclusively rejected the note; nothing was added. */
 export const AddNoteBranchProviderRejected = AddNoteBranch.ProviderRejected;
-/** The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
+/** The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note, or a refusal status whose body carries a note ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
 export const AddNoteBranchUncertain = AddNoteBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddNoteBranchDefect = AddNoteBranch.Defect;
@@ -163,7 +163,7 @@ export const AddNoteDefinition: MutationDefinition = {
     { id: "added", description: "Hiver added the note and returned it." },
     { id: "notFound", description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", optional: true },
     { id: "providerRejected", description: "Hiver conclusively rejected the note; nothing was added.", optional: true },
-    { id: "uncertain", description: "The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", optional: true },
+    { id: "uncertain", description: "The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note, or a refusal status whose body carries a note ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
@@ -187,7 +187,7 @@ export const CreateSharedDraftBranchCreated = CreateSharedDraftBranch.Created;
 export const CreateSharedDraftBranchNotFound = CreateSharedDraftBranch.NotFound;
 /** Hiver conclusively rejected the draft; no draft was created. */
 export const CreateSharedDraftBranchProviderRejected = CreateSharedDraftBranch.ProviderRejected;
-/** The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
+/** The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft, or a refusal status whose body carries a draft ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
 export const CreateSharedDraftBranchUncertain = CreateSharedDraftBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateSharedDraftBranchDefect = CreateSharedDraftBranch.Defect;
@@ -198,7 +198,7 @@ export const CreateSharedDraftDefinition: MutationDefinition = {
     { id: "created", description: "Hiver created the shared draft and returned its ID." },
     { id: "notFound", description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", optional: true },
     { id: "providerRejected", description: "Hiver conclusively rejected the draft; no draft was created.", optional: true },
-    { id: "uncertain", description: "The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", optional: true },
+    { id: "uncertain", description: "The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft, or a refusal status whose body carries a draft ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

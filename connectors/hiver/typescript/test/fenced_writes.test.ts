@@ -69,6 +69,77 @@ describe('accepted writes are never resent', () => {
   });
 });
 
+/** Reads this call's saved provider ID from a flat marker or a per-call checkpoint map. */
+function markerProviderId(context: HeartbeatContext): string {
+  const value = context.marker as Record<string, unknown>;
+  const markers = value.singleDispatchMarkers as Record<string, Record<string, unknown>> | undefined;
+  return String((markers?.[callId] ?? value).providerId ?? '');
+}
+
+describe('a refusal status is definite only with a readable body and no created ID', () => {
+  it.each([
+    ['refusal headers, then the body breaks', () => { throw new ProviderTransportError(false, 400, {}); }],
+    ['not found headers, then the body stalls', () => { throw new ProviderStalledError(404, {}); }],
+    ['oversized refusal body', () => { throw new BodyTooLargeError(422, {}); }],
+  ])('%s resends below the cap and is uncertain at the cap', async (_name, reply) => {
+    const provider = new Provider([reply]);
+    const context = new HeartbeatContext(undefined, undefined, '', callId);
+    for (let sendCount = 1; sendCount < 3; sendCount++) {
+      expect((await newClient(provider).addNote().invoke(call(context, 'addNote'), noteInput)).kind).toBe('retry');
+      expect(markerState(context)).toBe('claimed');
+      nextAttempt(context);
+    }
+    expect((await newClient(provider).addNote().invoke(call(context, 'addNote'), noteInput)).kind).toBe('uncertain');
+    expect(provider.requestCount).toBe(3);
+  });
+
+  it('keeps a rate limit whose body breaks a Retry that records canResend', async () => {
+    const provider = new Provider([() => { throw new ProviderTransportError(false, 429, {}); }]);
+    const context = new HeartbeatContext(undefined, undefined, '', callId);
+    expect((await newClient(provider).addNote().invoke(call(context, 'addNote'), noteInput)).kind).toBe('retry');
+    expect(markerState(context)).toBe('canResend');
+  });
+
+  it('reads the whole error body of a write but not of a read', async () => {
+    const requests: Array<Record<string, unknown>> = [];
+    const client = new HiverClient({ requestIntervalMilliseconds: 1 }, staticCredentials(), { apiBaseURL: 'http://127.0.0.1:12345/v1',
+      send: async request => { requests.push(request as unknown as Record<string, unknown>); return json(400); } });
+    const context = new HeartbeatContext(undefined, undefined, '', callId);
+    await client.addNote().invoke(call(context, 'addNote'), noteInput);
+    await client.getConversation().invoke(call(new HeartbeatContext(undefined, undefined, '', callId), 'getConversation'), { inboxId: '105902', conversationId: '573741352' });
+    expect(requests[0]).not.toHaveProperty('ignoreErrorBodyReadFailure');
+    expect(requests[0]).not.toHaveProperty('maxErrorResponseBytes');
+    expect(requests[1]).toMatchObject({ ignoreErrorBodyReadFailure: true, maxErrorResponseBytes: 0 });
+  });
+
+  it.each([
+    ['addNote', '{"data":{"id":"35042650"}}', '35042650'],
+    ['createSharedDraft', '{"data":{"id":573741352,"shared_draft_id":901}}', '901'],
+  ] as const)('never resends %s when the refusal body carries the created ID', async (operationId, body, providerId) => {
+    const provider = new Provider([() => json(400, body)]);
+    const context = new HeartbeatContext(undefined, undefined, '', callId);
+    const invoke = () => operationId === 'addNote'
+      ? newClient(provider).addNote().invoke(call(context, operationId), noteInput)
+      : newClient(provider).createSharedDraft().invoke(call(context, operationId), draftInput);
+    const attempt = await invoke();
+    expect(attempt.kind).toBe('uncertain');
+    expect(attempt.kind === 'uncertain' && attempt.receipt.providerObjectId).toBe(providerId);
+    expect(markerProviderId(context)).toBe(providerId);
+    nextAttempt(context);
+    expect((await invoke()).kind).toBe('uncertain');
+    expect(provider.requestCount).toBe(1);
+  });
+
+  it('repeats the updateConversation change when a refusal body cannot be read', async () => {
+    const update = { inboxId: '105902', conversationId: '573741352', status: 'open' as const };
+    const provider = new Provider([() => { throw new ProviderTransportError(false, 404, {}); }]);
+    const context = new HeartbeatContext(undefined, undefined, '', callId);
+    const attempt = await newClient(provider).updateConversation().invoke(call(context, 'updateConversation'), update);
+    expect(attempt.kind).toBe('retry');
+    expect(provider.requestCount).toBe(1);
+  });
+});
+
 describe('a canResend marker after a possible send', () => {
   it('selects uncertain for a refusal on attempt 3', async () => {
     const provider = new Provider([() => json(502), () => json(429), () => json(400)]);
