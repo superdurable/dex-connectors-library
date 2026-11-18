@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, Credentials } from './generated/models.js';
 import { ListTasksOperation, GetTaskOperation, CreateTaskOperation, UpdateTaskOperation, AddCommentOperation } from './operations.js';
@@ -64,12 +65,26 @@ export class Client {
 
   /** Resolve the current personal token for exactly one operation attempt. */
   async token(call: Call): Promise<string | undefined> {
-    try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.accessToken instanceof SecretString)) return undefined;
-      const token = credentials.accessToken.reveal();
-      return isHeaderSafeCredential(token) ? token : undefined;
-    } catch { return undefined; }
+    const resolved = await this.tokenOrFailure(call, '');
+    return 'token' in resolved ? resolved.token : undefined;
+  }
+
+  /**
+   * Resolve the current personal token, or say why it is unavailable. A terminal failure, such as a
+   * connection that needs reauthorization, has kind AUTHENTICATION; a transient one, such as a store or
+   * credential broker read, has kind AVAILABILITY.
+   */
+  async tokenOrFailure(call: Call, operation: string): Promise<{ token: string } | { failure: Failure }> {
+    const terminal = { failure: failure(operation, 'AUTHENTICATION', 'Asana connection credentials are unavailable') };
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) {
+      if (isTerminalCredentialError(error)) return terminal;
+      return { failure: failure(operation, 'AVAILABILITY', 'Asana connection credentials could not be read, so nothing was sent') };
+    }
+    if (!(credentials.accessToken instanceof SecretString)) return terminal;
+    const token = credentials.accessToken.reveal();
+    return isHeaderSafeCredential(token) ? { token } : terminal;
   }
 
   /** Send one Asana JSON request while bounding response bytes and elapsed time. */
@@ -119,6 +134,11 @@ export class Client {
 }
 
 /** Secret-free Asana failure for one manifest operation. */
+/** Report a credential resolution failure that no retry fixes; others, such as store reads, may pass. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+}
+
 export function failure(operation: string, kind: Failure['kind'], message: string): Failure {
   return { kind, provider: 'asana', operation, message };
 }

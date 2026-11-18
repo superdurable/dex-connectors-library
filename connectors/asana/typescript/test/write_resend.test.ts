@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { Client } from '../src/client.js';
 import { AddCommentDefinition, CreateTaskDefinition } from '../src/generated/definitions.js';
@@ -16,7 +17,7 @@ class AttemptContext {
   readonly runId = 'run';
   readonly flowId = 'asana-resend-flow';
   readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
-  readonly deadline = new Date(Date.now() + 30_000);
+  deadline = new Date(Date.now() + 30_000);
   readonly cancellationSignal = new AbortController().signal;
   constructor(public attempt = 1, marker?: unknown) { this.marker = marker; }
   hasLastHeartbeatValue(): boolean { return this.marker !== undefined; }
@@ -131,4 +132,70 @@ describe('Asana bounded resend of unconfirmed writes', () => {
     expect(context.marker).toMatchObject({ state: 'claimed', attempt: 1 });
     expect(requests).toEqual([]);
   });
+
+  it.each([
+    ['reauthorization', () => new ReauthorizationRequiredError()],
+    ['not selected', () => new ConnectionNotSelectedError()],
+    ['broker rejected', () => new CredentialBrokerRejectedError()],
+    ['object not found', () => new ObjectNotFoundError()],
+  ])('selects uncertain for a terminal credential failure (%s) after a possible or accepted send', async (_name, newError) => {
+    for (const operation of ['createTask', 'addComment'] as const) {
+      for (const marker of [{ callId, attempt: 1, state: 'claimed', sendCount: 1 }, { callId, attempt: 1, state: 'claimed', sendCount: 1, providerId: taskId }]) {
+        const { client, requests } = newClientWithCredentialError(newError());
+        const context = new AttemptContext(2, marker);
+        expect(await run(client, operation, context)).toBe('uncertain');
+        expect(context.marker).toEqual(marker);
+        expect(requests).toEqual([]);
+      }
+    }
+  });
+
+  it('retries a transient credential failure before any send and selects defect for a terminal one', async () => {
+    const transient = newClientWithCredentialError(new CredentialBrokerUnavailableError());
+    const context = new AttemptContext();
+    expect(await run(transient.client, 'createTask', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'notSent' });
+    const terminal = newClientWithCredentialError(new ReauthorizationRequiredError());
+    expect(await run(terminal.client, 'addComment', new AttemptContext())).toBe('defect');
+    expect([...transient.requests, ...terminal.requests]).toEqual([]);
+  });
+
+  it.each([
+    ['createTask', `{"data":{"gid":"${taskId}","permalink_url":7}}`],
+    ['createTask', `{"data":{"gid":"${taskId}","created_at":7}}`],
+    ['addComment', `{"data":{"gid":"${taskId}","created_by":"someone"}}`],
+    ['addComment', `{"data":{"gid":"${taskId}","created_by":{"gid":7}}}`],
+  ] as const)('%s retries a valid gid with mistyped fields and reads it back by ID: %s', async (operation, body) => {
+    const context = new AttemptContext();
+    expect(await run(newClient(201, body).client, operation, context)).toBe('retry');
+    expect(context.marker).toMatchObject({ providerId: taskId });
+    context.attempt = 2;
+    const readBack = newClient(200, created);
+    expect(await run(readBack.client, operation, context)).toBe(operation === 'createTask' ? 'created' : 'added');
+    expect(readBack.requests.map(request => request.method)).toEqual(['GET']);
+  });
+
+  it.each(['createTask', 'addComment'] as const)('%s selects uncertain when the write window aborts a 2xx body', async operation => {
+    const requests: ProviderRequest[] = [];
+    const client = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => ({ accessToken: new SecretString('token') }) }, {
+      send: async (request: ProviderRequest) => {
+        requests.push(request);
+        // The SDK keeps the status of a body that an abort cuts after the headers arrived.
+        await new Promise<void>(resolve => { request.signal?.addEventListener('abort', () => resolve(), { once: true }); });
+        throw new ProviderTransportError(false, 201, {});
+      },
+    });
+    const context = new AttemptContext();
+    context.deadline = new Date(Date.now() + 6_000);
+    expect(await run(client, operation, context)).toBe('uncertain');
+    expect(requests).toHaveLength(1);
+  });
 });
+
+function newClientWithCredentialError(error: Error) {
+  const requests: ProviderRequest[] = [];
+  const client = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => { throw error; } }, {
+    send: async (request: ProviderRequest) => { requests.push(request); return { status: 201, headers: {}, body: Buffer.from(created) }; },
+  });
+  return { client, requests };
+}

@@ -53,15 +53,26 @@ func startFencedWrite[OUT any](client *Client, call sdkgo.Call, definition sdkgo
 	return write, "", sdkgo.MutationAttempt[OUT]{}, false
 }
 
-// sessionFailureAttempt maps a credential failure before the send.
+// sessionFailureAttempt maps a credential failure before this attempt's send. After a possible earlier
+// send, including one Asana accepted, it never records notSent: a transient failure retries and a
+// terminal one selects uncertain. Before any send, a transient failure records notSent and retries,
+// and a terminal one selects defect.
 func sessionFailureAttempt[OUT any](write *fencedWrite, operationID string, failure *sdkgo.Failure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
-	if write.hasPossibleEarlierSend {
-		// notSent would hide the earlier send, and Asana credential failures cannot be told apart as transient.
+	isTerminal := failure.Kind == sdkgo.FailureAuthentication
+	hasPossibleEarlierSend := write.hasPossibleEarlierSend || write.decision.Kind != singledispatch.SendAllowed || write.decision.Marker.ProviderID != ""
+	if hasPossibleEarlierSend {
+		if isTerminal {
+			return sdkgo.NewMutationUncertain(echo, newFailure(operationID, failure.Kind,
+				"an earlier attempt of this Step may have sent the request and the connection credentials cannot read it back: "+failure.Message), sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, failure.Kind,
 			"an earlier attempt of this Step may have sent the request and the connection credentials are unavailable: "+failure.Message), 0)
 	}
 	if err := write.fence.RecordNotSent(); err != nil {
 		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Asana setup failed and the not-sent checkpoint could not be recorded"), 0)
+	}
+	if !isTerminal {
+		return sdkgo.NewMutationRetry[OUT](*failure, 0)
 	}
 	return sdkgo.NewMutationBranch(defect, echo, failure, sdkgo.Receipt{})
 }

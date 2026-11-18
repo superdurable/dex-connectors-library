@@ -171,11 +171,15 @@ within the cap:
 | 429 or 503 | Retry, after `Retry-After` when supplied |
 | DNS, connect, or TLS failure before any connection opened | Retry |
 | Timeout, dropped connection, 3xx, 402, 408, 409, another 4xx, another 5xx, or an error status whose body is unreadable or oversized, after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
-| 2xx whose body still names a valid gid but is otherwise unusable (Go) | Checkpoint the gid and retry; the next attempt reads it back and never resends |
-| 2xx whose body is oversized, unreadable, has no valid gid, or reflects the token | `uncertain`; Asana accepted the POST, so it is never sent again |
+| 2xx whose body still names a valid gid but is otherwise unusable, such as a mistyped field | Checkpoint the gid and retry; the next attempt reads it back and never resends |
+| 2xx whose body is oversized, unreadable, cut off by the write window, has no valid gid, or reflects the token | `uncertain`; Asana accepted the POST, so it is never sent again |
 
-Unavailable credentials after an earlier possible POST retry without recording
-that nothing was sent, so the next attempt still counts the earlier POST.
+Credentials that cannot be read for a moment, such as during a store or broker
+outage, retry. Missing, invalid, or deauthorized credentials select `defect`
+before any POST. After an earlier possible or accepted POST, the attempt never
+records that nothing was sent: a temporary failure retries, so the next attempt
+still counts the earlier POST, and a missing, invalid, or deauthorized
+credential selects `uncertain`.
 
 On `providerRejected` and `uncertain`, the Value echoes the requested name,
 project, section, and workspace without a task gid. Asana's `external.gid`
