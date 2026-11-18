@@ -5,7 +5,6 @@ package front_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -120,9 +119,7 @@ func TestReplyToConversationRecordsCanResendBeforeADefiniteRefusal(t *testing.T)
 	require.NoError(t, err)
 	require.Equal(t, front.ReplyToConversationBranchProviderRejected, result.Branch)
 	frames := dexContext.Heartbeats()
-	var marker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &marker))
-	require.Equal(t, singledispatch.StateCanResend, marker.State)
+	require.Equal(t, singledispatch.StateCanResend, decodeRecordedMarker(t, frames[len(frames)-1]).State)
 	require.Equal(t, 1, provider.requestCount())
 }
 
@@ -211,7 +208,7 @@ func TestReplyToConversationFenceRetriesOnlyTheNextAttemptAfter503(t *testing.T)
 	require.Equal(t, provider.request(0).body, provider.request(1).body)
 }
 
-func TestReplyToConversationFenceCountsAMissingMarkerAndRetriesAForeignOne(t *testing.T) {
+func TestReplyToConversationFenceCountsAMissingMarkerAndRetriesAnUnreadableOne(t *testing.T) {
 	provider := newRecordingFront(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusAccepted, `{"status":"accepted","message_uid":"1eab543f84a0785f7b6b8967cck18f4d"}`)
 	})
@@ -223,15 +220,13 @@ func TestReplyToConversationFenceCountsAMissingMarkerAndRetriesAForeignOne(t *te
 	require.Equal(t, front.ReplyToConversationBranchReplied, result.Branch, "a missing marker counts one earlier send, so one resend remains")
 	require.Equal(t, 1, provider.requestCount())
 
-	foreign := singledispatchtest.NewContext("front-flow", "foreign-marker")
-	foreign.AdvanceAttempt()
-	require.NoError(t, foreign.SetPersistedCheckpoint(singledispatch.Marker{
-		CallID: "another-call", Attempt: 1, State: singledispatch.StateCanResend,
-	}))
-	_, err = sdkgo.RunMutation(foreign, newFrontClient(t, provider.URL).ReplyToConversation(), frontConnection,
+	unreadable := singledispatchtest.NewContext("front-flow", "unreadable-marker")
+	unreadable.AdvanceAttempt()
+	unreadable.SetReadError(errors.New("heartbeat unavailable"))
+	_, err = sdkgo.RunMutation(unreadable, newFrontClient(t, provider.URL).ReplyToConversation(), frontConnection,
 		front.ReplyToConversationInput{ConversationID: testConversationID, Text: "Hello"})
 	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "a foreign checkpoint fails closed, which returns Retry")
+	require.ErrorAs(t, err, &retry, "an unreadable checkpoint fails closed, which returns Retry")
 	require.Equal(t, 1, provider.requestCount())
 }
 
@@ -342,11 +337,10 @@ func TestReplyToConversationFenceRejectsInvalidStoredProviderIDBeforeReadBack(t 
 		_, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
 		require.NoError(t, err)
 		heartbeats := dexContext.Heartbeats()
-		var marker singledispatch.Marker
-		require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &marker))
+		marker := decodeRecordedMarker(t, heartbeats[len(heartbeats)-1])
 		marker.ProviderID = "../unexpected"
 		dexContext.AdvanceAttempt()
-		require.NoError(t, dexContext.SetPersistedCheckpoint(marker))
+		seedPersistedMarker(t, dexContext, marker)
 		result, err := sdkgo.RunMutation(dexContext, client.ReplyToConversation(), frontConnection, input)
 		require.NoError(t, err)
 		require.Equal(t, front.ReplyToConversationBranchUncertain, result.Branch)
@@ -469,9 +463,7 @@ func TestReplyToConversationFenceRejectsStaticCredentialWithoutResending(t *test
 	require.Contains(t, result.Failure.Message, "reconnect")
 	require.Equal(t, 1, provider.requestCount(), "a definite refusal is never resent")
 	frames := dexContext.Heartbeats()
-	var marker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &marker))
-	require.Equal(t, singledispatch.StateCanResend, marker.State, "the refusal records canResend before its branch")
+	require.Equal(t, singledispatch.StateCanResend, decodeRecordedMarker(t, frames[len(frames)-1]).State, "the refusal records canResend before its branch")
 }
 
 func TestReplyToConversationRefreshDeadlineHasMargin(t *testing.T) {
@@ -823,9 +815,7 @@ func TestReplyToConversationCountsASendWhenTheTransportHidesTheDispatch(t *testi
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry, "Front received the POST, so its loss counts toward the cap")
 	frames := dexContext.Heartbeats()
-	var marker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &marker))
-	require.Equal(t, singledispatch.StateClaimed, marker.State, "an unproven failure keeps the claim")
+	require.Equal(t, singledispatch.StateClaimed, decodeRecordedMarker(t, frames[len(frames)-1]).State, "an unproven failure keeps the claim")
 	require.Equal(t, 1, provider.requestCount())
 }
 
