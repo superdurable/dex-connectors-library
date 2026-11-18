@@ -102,11 +102,19 @@ export class HelpScoutClient {
     return this.exchangeWithToken(call, credential.token, method, path, query, payload, allowRefresh);
   }
 
+  /** Read before a write, reading a refusal body in full as a write does, because the answer decides the write. */
+  async exchangePreWriteLookup(call: Call, path: string): Promise<HelpScoutExchange | CredentialResolution> {
+    const credential = await this.resolveCredentials(call);
+    if (credential.kind !== 'resolved') return credential;
+    return this.exchangeWithToken(call, credential.token, 'GET', path, undefined, undefined, true, undefined, undefined, true);
+  }
+
   /**
    * Send with a token already resolved for a multi-request operation. `signal`, when given, replaces the
    * Step cancellation signal, such as a Fence write-window signal that also follows Step cancellation.
+   * `isPreWriteLookup` reads a GET's error body in full, as a write does, so truncation and read failures stay visible.
    */
-  async exchangeWithToken(call: Call, accessToken: string, method: string, path: string, query?: Readonly<Record<string, string>>, payload?: unknown, allowRefresh = true, requestTimeoutMs = 25_000, signal?: AbortSignal): Promise<HelpScoutExchange> {
+  async exchangeWithToken(call: Call, accessToken: string, method: string, path: string, query?: Readonly<Record<string, string>>, payload?: unknown, allowRefresh = true, requestTimeoutMs = 25_000, signal?: AbortSignal, isPreWriteLookup = false): Promise<HelpScoutExchange> {
     const encodedQuery = query ? Object.entries(query).sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(([name, value]) => `${goQueryEscape(name)}=${goQueryEscape(value)}`).join('&') : '';
     const url = `${apiBaseURL}${path}${encodedQuery ? `?${encodedQuery}` : ''}`;
     let body: Uint8Array | undefined;
@@ -114,7 +122,7 @@ export class HelpScoutClient {
     catch { return { error: new TypeError('Help Scout request could not be built'), isNotBuilt: true }; }
     let token = accessToken;
     // A write's error body must be read in full, so its truncation and read failures stay visible.
-    const isWrite = method !== 'GET';
+    const isWrite = method !== 'GET' || isPreWriteLookup;
     for (let attempt = 0; attempt < 2; attempt++) {
       const request: ProviderRequest = {
         url, method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json; charset=UTF-8' } : {}) },

@@ -114,7 +114,7 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
     catch (error) { return mutationFailure('updateConversation', 'defect', 'VALIDATION', zeroUpdate, {}, error); }
     // After a write, the final values are safe to repeat, so a refused or unusable read-back retries.
     const read = async (value: UpdateConversationOutput, isAfterWrite: boolean): Promise<Conversation | MutationAttempt<UpdateConversationOutput>> => {
-      const exchange = await this.client.exchange(call, 'GET', conversationPath(input.conversationId));
+      const exchange = isAfterWrite ? await this.client.exchange(call, 'GET', conversationPath(input.conversationId)) : await this.client.exchangePreWriteLookup(call, conversationPath(input.conversationId));
       if (isAfterWrite) {
         const terminal = classifyMutation(this.client, call, 'updateConversation', exchange, value, input.conversationId, 'providerRejected');
         if (terminal) return terminal.kind === 'retry' ? terminal : newMutationRetry(failure('updateConversation', 'AVAILABILITY', 'Help Scout accepted the change but its read-back failed'));
@@ -273,6 +273,9 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
     // A refusal whose body was not read in full may hide an applied write.
     if ('response' in exchange && exchange.isErrorBodyIncomplete && definiteRefusalStatuses.has(status))
       return resendOrUncertain({ ...outcome.failure, message: `${outcome.failure.message}; the error body could not be read in full, so the thread may exist` });
+    // A refusal body that echoes the access token is untrustworthy, so the thread may exist.
+    if (definiteRefusalStatuses.has(status) && isCredentialEchoingBody(response.body, credentials.token))
+      return resendOrUncertain({ ...outcome.failure, message: `${outcome.failure.message}; the error body echoed the access token, so the thread may exist` });
     if ([429, 503].includes(status)) {
       try { await fence.recordCanResend(); } catch { /* A lost checkpoint leaves the claim, so the next attempt counts this send. */ }
       return newMutationRetry(outcome.failure, outcome.retryAfterMs);
@@ -378,7 +381,7 @@ const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415,
 /** Report an answer to a sent write that neither confirms nor definitely refuses it; classifyMutation retries 408, 429, and 5xx. */
 function isUnknownWriteOutcome(exchange: HelpScoutExchange | CredentialResolution): boolean {
   if ('kind' in exchange || 'error' in exchange) return false;
-  if (exchange.isTooLarge || exchange.isMalformed || exchange.isErrorBodyIncomplete) return true;
+  if (exchange.isTooLarge || exchange.isMalformed || exchange.isErrorBodyIncomplete || isCredentialEchoingBody(exchange.response.body, exchange.accessToken)) return true;
   const status = exchange.response.status;
   return (status < 200 || status >= 300) && status !== 408 && status !== 429 && status < 500 && !definiteRefusalStatuses.has(status);
 }
@@ -392,8 +395,12 @@ function isUnknownPreWriteRead(exchange: HelpScoutExchange | CredentialResolutio
   if (exchange.isTooLarge || exchange.isMalformed) return true;
   const { status, body } = exchange.response;
   if ((status >= 200 && status < 300) || status === 301 || status === 408 || status === 429 || status >= 500) return false;
-  const isCredentialEcho = exchange.accessToken !== '' && Buffer.from(body).includes(Buffer.from(exchange.accessToken));
-  return !definiteRefusalStatuses.has(status) || exchange.isErrorBodyIncomplete === true || body.length > MaxErrorBodyBytes || isCredentialEcho;
+  return !definiteRefusalStatuses.has(status) || exchange.isErrorBodyIncomplete === true || body.length > MaxErrorBodyBytes || isCredentialEchoingBody(body, exchange.accessToken);
+}
+
+/** Report a response body that contains the access token. */
+function isCredentialEchoingBody(body: Uint8Array, accessToken: string): boolean {
+  return accessToken !== '' && Buffer.from(body).includes(Buffer.from(accessToken));
 }
 
 /** The positive thread ID in a Resource-Id header, or zero when Help Scout omits or garbles it. */

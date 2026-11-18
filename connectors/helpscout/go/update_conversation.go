@@ -98,7 +98,7 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	currentOutput := UpdateConversationOutput{Conversation: current}
 	for _, write := range writes {
 		response, err := client.send(call.Context, call, &credentials, write)
-		if isUnknownWriteOutcome(response, err) {
+		if isUnknownWriteOutcome(response, err, credentials.AccessToken.Reveal()) {
 			// Every write sets a final value, so an unknown outcome repeats it.
 			return sdkgo.NewMutationRetry[UpdateConversationOutput](helpScoutFailure(operationID, sdkgo.FailureAvailability,
 				fmt.Sprintf("the Help Scout write outcome is unknown (HTTP %d)", response.statusCode)), 0)
@@ -116,13 +116,13 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 }
 
 // isUnknownWriteOutcome reports an answer to a sent write that neither confirms nor definitely refuses it.
-func isUnknownWriteOutcome(response helpScoutResponse, err error) bool {
+func isUnknownWriteOutcome(response helpScoutResponse, err error, accessToken string) bool {
 	if err != nil {
 		return errors.Is(err, errHelpScoutResponseTooLarge) || errors.Is(err, errHelpScoutResponseMalformed)
 	}
 	status := response.statusCode
-	if response.isErrorBodyIncomplete {
-		// A refusal whose body was not read in full may hide an applied write.
+	if response.isErrorBodyIncomplete || isCredentialEchoingBody(response.body, accessToken) {
+		// A refusal whose body was not read in full, or that echoes the token, may hide an applied write.
 		return true
 	}
 	// classifyIdempotentMutationExchange already retries 408, 429, and 5xx.
@@ -193,8 +193,12 @@ func isUnknownPreWriteRead(response helpScoutResponse, err error, accessToken st
 	case status == http.StatusTooManyRequests, status == http.StatusRequestTimeout, status >= 500:
 		return false
 	}
-	return !isDefiniteRefusalStatus(status) || response.isErrorBodyIncomplete ||
-		(accessToken != "" && bytes.Contains(response.body, []byte(accessToken)))
+	return !isDefiniteRefusalStatus(status) || response.isErrorBodyIncomplete || isCredentialEchoingBody(response.body, accessToken)
+}
+
+// isCredentialEchoingBody reports a response body that contains the access token.
+func isCredentialEchoingBody(body []byte, accessToken string) bool {
+	return accessToken != "" && bytes.Contains(body, []byte(accessToken))
 }
 
 func validateUpdateConversationInput(input UpdateConversationInput) error {
