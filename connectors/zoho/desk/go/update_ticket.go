@@ -78,7 +78,8 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	}
 	current, _, err := decodeTicketBody(readResult.response.body, input.TicketID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, UpdateTicketOutput{}, deskFailurePointer(sdkgo.FailureProtocol, updateTicketOperation, "Zoho Desk returned an invalid ticket: "+err.Error()), receipt)
+		// An earlier attempt may have sent the change, so an unusable read retries.
+		return sdkgo.NewMutationRetry[UpdateTicketOutput](deskFailure(sdkgo.FailureProtocol, updateTicketOperation, "Zoho Desk returned an invalid ticket: "+err.Error()), 0)
 	}
 	currentOutput := UpdateTicketOutput{Ticket: current}
 	change, hasEffect := planTicketChange(input, current)
@@ -89,7 +90,7 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 		method: http.MethodPatch, path: ticketPath(input.TicketID), payload: change,
 	})
 	receipt = operation.client.receipt(call, writeResult.response, input.TicketID)
-	if writeResult.outcome == exchangeInvalid || (writeResult.outcome == exchangeRejected && !isDefiniteRefusalStatus(writeResult.response.statusCode)) {
+	if writeResult.outcome == exchangeRejected && !isDefiniteRefusalStatus(writeResult.response.statusCode) {
 		// The PATCH sets final values, so an unknown outcome repeats it.
 		return sdkgo.NewMutationRetry[UpdateTicketOutput](writeResult.failure, writeResult.retryAfter)
 	}
@@ -115,18 +116,17 @@ func updateTicketAttemptForSession(failure *sessionFailure) sdkgo.MutationAttemp
 	}
 }
 
-// updateTicketAttemptForExchange returns the terminal attempt for every outcome except success.
-// Invalid maps to invalidResponse only for the read; the caller retries an invalid PATCH answer.
+// updateTicketAttemptForExchange returns the attempt for every outcome except success. The write is
+// absolute, so an oversized or unreadable answer to the read or the PATCH retries; invalidResponse
+// stays declared but is not selected.
 func updateTicketAttemptForExchange(result deskExchange, receipt sdkgo.Receipt, value UpdateTicketOutput) (sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[UpdateTicketOutput]{}, false
-	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable, exchangeInvalid:
 		return sdkgo.NewMutationRetry[UpdateTicketOutput](result.failure, result.retryAfter), true
 	case exchangeNotFound:
 		return sdkgo.NewMutationBranch(UpdateTicketBranchNotFound, value, &result.failure, receipt), true
-	case exchangeInvalid:
-		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, value, &result.failure, receipt), true
 	case exchangeDefect:
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, value, &result.failure, receipt), true
 	default:

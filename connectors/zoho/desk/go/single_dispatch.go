@@ -13,14 +13,21 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
-// deskWritePermit is a fence that allows this attempt to send, with its send-cap facts.
+// deskWritePermit is a fence that allows this attempt to send, or to read back an accepted write,
+// with its send-cap facts.
 type deskWritePermit struct {
 	fence *singledispatch.Fence
 	// isFirstSend means no earlier attempt of this call may have sent.
 	isFirstSend bool
 	// canResendUnknownOutcome means this attempt's send leaves room under the cap for one more.
 	canResendUnknownOutcome bool
+	// savedProviderID is the accepted write an earlier attempt checkpointed; it is read back, never resent.
+	savedProviderID string
 }
+
+// deskWriteReadBack reads an accepted write back by its provider ID. isProviderIDSaved reports
+// that the ID is checkpointed, so a transient read failure may retry without risking a resend.
+type deskWriteReadBack[OUT any] func(providerID string, isProviderIDSaved bool) sdkgo.MutationAttempt[OUT]
 
 // singleDispatchBranches names an operation's branches for the shared single-dispatch outcome mapping.
 type singleDispatchBranches struct {
@@ -38,8 +45,9 @@ type deskWriteAttempt struct {
 	result    deskExchange
 }
 
-// beginDeskWrite decides whether this attempt may send. Zoho Desk has no ticket or comment
-// read-back by Call ID, so an earlier possible send is resent while the send cap allows it.
+// beginDeskWrite decides whether this attempt may send. A saved provider ID is read back by ID and
+// never resent. Otherwise Zoho Desk has no ticket or comment read-back by Call ID, so an earlier
+// possible send is resent while the send cap allows it.
 func beginDeskWrite[OUT any](call sdkgo.Call, client *Client, operation string, executeTimeout time.Duration, defect sdkgo.BranchID) (deskWritePermit, *sdkgo.MutationAttempt[OUT]) {
 	var zero OUT
 	fence, err := singledispatch.NewFence(call, executeTimeout, singledispatch.WithMaxSends(call.MaxSends()))
@@ -49,22 +57,19 @@ func beginDeskWrite[OUT any](call sdkgo.Call, client *Client, operation string, 
 	}
 	decision := fence.Decide()
 	switch decision.Kind {
-	case singledispatch.SendAllowed:
-	case singledispatch.ReadBackThenResendAllowed:
-		// A saved provider ID proves Zoho Desk accepted the write, so it is never resent.
-		if decision.Marker.ProviderID != "" {
-			attempt := sdkgo.NewMutationUncertain(zero, deskFailure(sdkgo.FailureTransport, operation,
-				"Zoho Desk accepted an earlier attempt's write, and its answer was lost"), client.receipt(call, deskResponse{}, decision.Marker.ProviderID))
-			return deskWritePermit{}, &attempt
-		}
-	case singledispatch.ReadBackRequired:
-		attempt := sdkgo.NewMutationUncertain(zero, deskFailure(sdkgo.FailureTransport, operation,
-			"earlier attempts may have sent the request and the send cap is reached, so it is not sent again"), client.receipt(call, deskResponse{}, decision.Marker.ProviderID))
-		return deskWritePermit{}, &attempt
+	case singledispatch.SendAllowed, singledispatch.ReadBackThenResendAllowed, singledispatch.ReadBackRequired:
 	default:
 		// FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
 		attempt := sdkgo.NewMutationRetry[OUT](deskFailure(sdkgo.FailureAvailability, operation,
 			"the dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
+		return deskWritePermit{}, &attempt
+	}
+	if decision.Marker.ProviderID != "" {
+		return deskWritePermit{fence: fence, savedProviderID: decision.Marker.ProviderID}, nil
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		attempt := sdkgo.NewMutationUncertain(zero, deskFailure(sdkgo.FailureTransport, operation,
+			"earlier attempts may have sent the request and the send cap is reached, so it is not sent again"), client.receipt(call, deskResponse{}, ""))
 		return deskWritePermit{}, &attempt
 	}
 	return deskWritePermit{
@@ -72,6 +77,30 @@ func beginDeskWrite[OUT any](call sdkgo.Call, client *Client, operation string, 
 		isFirstSend:             decision.MaximumPriorSends == 0,
 		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
 	}, nil
+}
+
+// readBackAcceptedDeskWrite reads an accepted write back by its provider ID and never sends it.
+// A confirmed write selects success. A transient read failure retries only when the ID is
+// checkpointed, because without it the next attempt could resend; anything else is uncertain.
+func readBackAcceptedDeskWrite[OUT any](call sdkgo.Call, client *Client, session *operationSession, operation string, providerID string,
+	isProviderIDSaved bool, request deskRequest, success sdkgo.BranchID, decode func([]byte) (OUT, error)) sdkgo.MutationAttempt[OUT] {
+	var zero OUT
+	result := client.exchange(session, operation, request)
+	receipt := client.receipt(call, result.response, providerID)
+	switch result.outcome {
+	case exchangeSucceeded:
+		value, err := decode(result.response.body)
+		if err != nil {
+			return sdkgo.NewMutationUncertain(zero, deskFailure(sdkgo.FailureProtocol, operation,
+				"Zoho Desk accepted the write, but its read-back was invalid: "+err.Error()), receipt)
+		}
+		return sdkgo.NewMutationBranch(success, value, nil, receipt)
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
+		if isProviderIDSaved {
+			return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter)
+		}
+	}
+	return sdkgo.NewMutationUncertain(zero, result.failure, receipt)
 }
 
 // sessionAttemptForWrite maps a session that could not start; nothing was sent in this attempt.
@@ -117,6 +146,11 @@ func (attempt *deskWriteAttempt) send(requestContext context.Context) error {
 // deskWriteAttemptForExchange maps a sent write. Only a definite refusal selects a refusal
 // branch; any other outcome may have been applied, so it resends while the send cap allows.
 func deskWriteAttemptForExchange[OUT any](permit deskWritePermit, call sdkgo.Call, client *Client, session *operationSession, result deskExchange, receipt sdkgo.Receipt, branches singleDispatchBranches) (sdkgo.MutationAttempt[OUT], bool) {
+	if result.outcome != exchangeSucceeded && isSuccessStatus(result.response.statusCode) {
+		// A 2xx accepted the write; with no readable ID it is never resent.
+		var zero OUT
+		return sdkgo.NewMutationUncertain(zero, result.failure, receipt), true
+	}
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
@@ -133,9 +167,8 @@ func deskWriteAttemptForExchange[OUT any](permit deskWritePermit, call sdkgo.Cal
 		}
 		return rejectDeskWrite[OUT](permit, result.failure, receipt, branch), true
 	case exchangeDefect:
-		if permit.isFirstSend {
-			return rejectDeskWrite[OUT](permit, result.failure, sdkgo.Receipt{}, branches.defect), true
-		}
+		// rejectDeskWrite selects uncertain after an earlier possible send.
+		return rejectDeskWrite[OUT](permit, result.failure, sdkgo.Receipt{}, branches.defect), true
 	case exchangeRejected:
 		if result.response.statusCode == http.StatusUnauthorized {
 			return rejectedCredentialAttemptForWrite[OUT](permit, call, client, session, result, receipt, branches.providerRejected), true
@@ -154,8 +187,9 @@ func retryUnprocessedDeskWrite[OUT any](permit deskWritePermit, result deskExcha
 	return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter)
 }
 
-// rejectedCredentialAttemptForWrite refreshes after a 401 outside the fence. A changed token retries,
-// because the 401 proves this send applied nothing; otherwise the refusal gate decides.
+// rejectedCredentialAttemptForWrite refreshes after a 401 outside the fence. A changed token or a
+// transient refresh failure retries, because the 401 proves this send applied nothing; a terminal
+// refresh failure goes through the refusal gate.
 func rejectedCredentialAttemptForWrite[OUT any](permit deskWritePermit, call sdkgo.Call, client *Client, session *operationSession, result deskExchange, receipt sdkgo.Receipt, providerRejected sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
 	operation := result.failure.Operation
 	if _, supportsRejection := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRejection {
@@ -164,18 +198,28 @@ func rejectedCredentialAttemptForWrite[OUT any](permit deskWritePermit, call sdk
 	replacement, err := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, call, client.refreshDriver)
 	if err == nil && validateResolvedCredentials(replacement) == nil && replacement.AuthMethodID == session.credentials.AuthMethodID &&
 		replacement.AccessToken.Reveal() != session.credentials.AccessToken.Reveal() {
-		if err := permit.fence.RecordCanResend(); err != nil {
-			return sdkgo.NewMutationRetry[OUT](deskFailure(sdkgo.FailureAvailability, operation, "Dex did not record the credential resend checkpoint"), 0)
-		}
-		return sdkgo.NewMutationRetry[OUT](deskFailure(sdkgo.FailureAuthentication, operation,
-			"Zoho Desk rejected the prior access token (HTTP 401); retry with its replacement"), 0)
+		return retryRejectedCredentialWrite[OUT](permit, deskFailure(sdkgo.FailureAuthentication, operation,
+			"Zoho Desk rejected the prior access token (HTTP 401); retry with its replacement"), true)
 	}
-	failure := result.failure
 	if err != nil && !sdkgo.IsReauthorizationRequired(err) {
-		failure.Message = "Zoho Desk rejected the access token (HTTP 401); credential refresh is temporarily unavailable"
+		return retryRejectedCredentialWrite[OUT](permit, deskFailure(sdkgo.FailureAuthentication, operation,
+			"Zoho Desk rejected the access token (HTTP 401); credential refresh is temporarily unavailable"), permit.isFirstSend)
 	}
-	return rejectDeskWrite[OUT](permit, failure, receipt, providerRejected)
+	return rejectDeskWrite[OUT](permit, result.failure, receipt, providerRejected)
 }
+
+// retryRejectedCredentialWrite retries a 401. A transient refresh failure after an earlier possible
+// send records nothing, so the next attempt still counts this send.
+func retryRejectedCredentialWrite[OUT any](permit deskWritePermit, failure sdkgo.Failure, shouldRecordCanResend bool) sdkgo.MutationAttempt[OUT] {
+	if shouldRecordCanResend {
+		if err := permit.fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[OUT](deskFailure(sdkgo.FailureAvailability, failure.Operation, "Dex did not record the credential resend checkpoint"), 0)
+		}
+	}
+	return sdkgo.NewMutationRetry[OUT](failure, 0)
+}
+
+func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
 // isDefiniteRefusalStatus reports a status that proves Zoho Desk applied nothing.
 func isDefiniteRefusalStatus(statusCode int) bool {
@@ -211,16 +255,14 @@ func resendOrSelectUncertain[OUT any](permit deskWritePermit, failure sdkgo.Fail
 	return sdkgo.NewMutationUncertain(zero, failure, receipt)
 }
 
-// acceptedWriteAttempt handles a 2xx body that failed to decode.
-// A decoded provider ID proves acceptance, so only an ID-less answer is resent.
-func acceptedWriteAttempt[OUT any](permit deskWritePermit, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
-	if providerID != "" {
-		recordAcceptedWrite(permit, providerID)
-		receipt.ProviderObjectID = providerID
+// acceptedWriteAttempt handles a 2xx body that failed to decode; the write was accepted and is
+// never resent. With a provider ID it is read back in this attempt; without one it is uncertain.
+func acceptedWriteAttempt[OUT any](permit deskWritePermit, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt, readBack deskWriteReadBack[OUT]) sdkgo.MutationAttempt[OUT] {
+	if providerID == "" {
 		var zero OUT
 		return sdkgo.NewMutationUncertain(zero, failure, receipt)
 	}
-	return resendOrSelectUncertain[OUT](permit, failure, 0, receipt)
+	return readBack(providerID, permit.fence.RecordProviderID(providerID) == nil)
 }
 
 // recordAcceptedWrite checkpoints the accepted provider ID; acceptance is already known if it fails.

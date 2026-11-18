@@ -173,7 +173,7 @@
       "kind": "mutation",
       "operationId": "createTicket",
       "inputType": "CreateTicketInput",
-      "description": "Create one ticket in a department for a contact. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Zoho Desk has no idempotency key or ticket lookup by Call ID, so an unknown outcome resends the ticket while the send cap allows and selects uncertain at the cap.",
+      "description": "Create one ticket in a department for a contact. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Zoho Desk has no idempotency key or ticket lookup by Call ID, so an unknown outcome resends the ticket while the send cap allows and selects uncertain at the cap. A 2xx is never resent; a returned or checkpointed ticket ID is read back with GET /api/v1/tickets/{id} and selects created.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -365,7 +365,7 @@
       "kind": "mutation",
       "operationId": "addComment",
       "inputType": "AddCommentInput",
-      "description": "Add one public or private plain-text comment to a ticket. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Zoho Desk has no idempotency key or comment lookup by Call ID, so an unknown outcome resends the comment while the send cap allows and selects uncertain at the cap.",
+      "description": "Add one public or private plain-text comment to a ticket. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Zoho Desk has no idempotency key or comment lookup by Call ID, so an unknown outcome resends the comment while the send cap allows and selects uncertain at the cap. A 2xx is never resent; a returned or checkpointed comment ID is read back with GET /api/v1/tickets/{ticketId}/comments/{commentId} and selects added.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

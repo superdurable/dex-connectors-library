@@ -262,7 +262,7 @@ func UpdateTicketProviderRejected(value desk.UpdateTicketOutput, failure *sdkgo.
 	return connectormock.Branch(desk.UpdateTicketBranchProviderRejected, value, failure)
 }
 
-// UpdateTicketInvalidResponse selects the invalidResponse branch: The ticket read before the change was invalid or oversized, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead.
+// UpdateTicketInvalidResponse selects the invalidResponse branch: Not selected by this release: an invalid or oversized answer to the ticket read or to the change retries, because the change is absolute and an earlier attempt may have sent it.
 func UpdateTicketInvalidResponse(value desk.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[desk.UpdateTicketOutput] {
 	return connectormock.Branch(desk.UpdateTicketBranchInvalidResponse, value, failure)
 }

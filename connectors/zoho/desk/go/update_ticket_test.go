@@ -89,7 +89,7 @@ func TestUpdateTicketRetriesEveryUnconfirmedWriteBecauseItIsSafeToRepeat(t *test
 	requireRetry(t, err, sdkgo.FailureTransport)
 }
 
-func TestUpdateTicketSelectsNotFoundRejectedAndInvalidResponse(t *testing.T) {
+func TestUpdateTicketSelectsNotFoundAndRejectedAndRetriesAnInvalidRead(t *testing.T) {
 	missing := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusNotFound, `{"errorCode":"URL_NOT_FOUND"}`)
 	})
@@ -118,15 +118,27 @@ func TestUpdateTicketSelectsNotFoundRejectedAndInvalidResponse(t *testing.T) {
 	})
 	result, err = sdkgo.RunMutation(newDeskDexContext("update-malformed-read"), newDeskClient(t, malformedRead.URL).UpdateTicket(), deskConnection,
 		desk.UpdateTicketInput{TicketID: testTicketID, Status: desk.TicketStatusClosed})
-	require.NoError(t, err)
-	require.Equal(t, desk.UpdateTicketBranchInvalidResponse, result.Branch, "the read before the change was invalid")
+	// An earlier attempt may have sent the absolute change, so an unusable read retries.
+	requireRetry(t, err, sdkgo.FailureProtocol)
 	require.Equal(t, 1, malformedRead.requestCount(), "no change was sent")
+
+	oversizedRead := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, ticketBodyJSON(testTicketID, "Open", "Open"))
+	})
+	client, err := desk.New(desk.Config{OrgID: testOrganizationID, MaxResponseBytes: 64}, testCredentialProvider(),
+		desk.WithAPIBaseURL(oversizedRead.URL+"/api/v1"))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newDeskDexContext("update-oversized-read"), client.UpdateTicket(), deskConnection,
+		desk.UpdateTicketInput{TicketID: testTicketID, Status: desk.TicketStatusClosed})
+	requireRetry(t, err, sdkgo.FailureResponseTooLarge)
 }
 
 func TestUpdateTicketRetriesAnUnknownAnswerToTheChange(t *testing.T) {
 	for name, reply := range map[string]func(http.ResponseWriter){
 		"malformed ticket": func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"id":"`+testTicketID+`"}`) },
-		"conflict":         func(response http.ResponseWriter) { writeJSON(t, response, http.StatusConflict, `{"errorCode":"CONFLICT"}`) },
+		"conflict": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusConflict, `{"errorCode":"CONFLICT"}`)
+		},
 		"reflected token": func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, `{"id":"`+testTicketID+`","subject":"`+testAccessToken+`"}`)
 		},

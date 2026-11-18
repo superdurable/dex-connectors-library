@@ -1689,7 +1689,7 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -1697,10 +1697,18 @@
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "ticket": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "modifiedAt": "0001-01-01T00:00:00Z",
+            "status": ""
+          }
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "58035c52-0eb5-5354-8e8d-05755f8e1c31",
       "input": {
@@ -2524,18 +2532,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "ticket": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": "",
-            "modifiedAt": "0001-01-01T00:00:00Z",
-            "status": ""
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3212,7 +3212,7 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -3220,10 +3220,18 @@
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "comment": {
+            "commentedAt": "0001-01-01T00:00:00Z",
+            "content": "",
+            "id": "",
+            "isPublic": false
+          }
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "a52365f7-f552-5543-a6f6-ff3534932645",
       "input": {
@@ -4536,6 +4544,367 @@
       },
       "name": "getTicket-newest-instant-622",
       "operation": "getTicket"
+    },
+    {
+      "callId": "406e74f2-23b3-5c92-978d-73ea0ca3ac89",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"1892000000099004\", \"ticketNumber\": \"104\", \"subject\": \"Billing question\", \"description\": \"\u003cdiv\u003eInvoice\u003c/div\u003e\", \"status\": \"Open\", \"statusType\": \"OPEN\", \"priority\": \"High\", \"channel\": \"Web\", \"departmentId\": \"1892000000006907\", \"contactId\": \"1892000000042032\", \"assigneeId\": \"1892000000056007\", \"email\": \"jane@example.test\", \"threadCount\": \"0\", \"commentCount\": \"0\", \"createdTime\": \"2026-01-28T09:00:00.000Z\", \"modifiedTime\": \"2026-01-28T09:03:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1892000000099004",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoDeskTestAccessToken0123456789"
+            ],
+            "orgId": [
+              "2389290"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "ticket": {
+            "assigneeId": "1892000000056007",
+            "channel": "Web",
+            "contactId": "1892000000042032",
+            "createdAt": "2026-01-28T09:00:00Z",
+            "departmentId": "1892000000006907",
+            "descriptionHtml": "\u003cdiv\u003eInvoice\u003c/div\u003e",
+            "email": "jane@example.test",
+            "id": "1892000000099004",
+            "modifiedAt": "2026-01-28T09:03:00Z",
+            "priority": "High",
+            "status": "Open",
+            "statusType": "Open",
+            "subject": "Billing question",
+            "ticketNumber": "104"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "406e74f2-23b3-5c92-978d-73ea0ca3ac89",
+      "input": {
+        "assigneeId": "1892000000056007",
+        "contactId": "1892000000042032",
+        "departmentId": "1892000000006907",
+        "description": "Invoice",
+        "priority": "High",
+        "status": "Open",
+        "subject": "Billing question"
+      },
+      "name": "createTicket-saved-ticket-id-read-back",
+      "operation": "createTicket",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "406e74f2-23b3-5c92-978d-73ea0ca3ac89",
+        "providerId": "1892000000099004",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "51952c8b-946c-5871-93a9-fcf54ee9b4db",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\": \"INTERNAL_SERVER_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1892000000099004",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoDeskTestAccessToken0123456789"
+            ],
+            "orgId": [
+              "2389290"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51952c8b-946c-5871-93a9-fcf54ee9b4db",
+      "input": {
+        "assigneeId": "1892000000056007",
+        "contactId": "1892000000042032",
+        "departmentId": "1892000000006907",
+        "description": "Invoice",
+        "priority": "High",
+        "status": "Open",
+        "subject": "Billing question"
+      },
+      "name": "createTicket-saved-ticket-id-read-back-unavailable",
+      "operation": "createTicket",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "51952c8b-946c-5871-93a9-fcf54ee9b4db",
+        "providerId": "1892000000099004",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "ea7dff13-591a-5b6e-a826-f2d520ead05d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"1892000000099004\", \"subject\": \"Billing question\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets",
+          "requestBody": {
+            "assigneeId": "1892000000056007",
+            "contactId": "1892000000042032",
+            "departmentId": "1892000000006907",
+            "description": "Invoice",
+            "priority": "High",
+            "status": "Open",
+            "subject": "Billing question"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoDeskTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "orgId": [
+              "2389290"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"1892000000099004\", \"ticketNumber\": \"104\", \"subject\": \"Billing question\", \"description\": \"\u003cdiv\u003eInvoice\u003c/div\u003e\", \"status\": \"Open\", \"statusType\": \"OPEN\", \"priority\": \"High\", \"channel\": \"Web\", \"departmentId\": \"1892000000006907\", \"contactId\": \"1892000000042032\", \"assigneeId\": \"1892000000056007\", \"email\": \"jane@example.test\", \"threadCount\": \"0\", \"commentCount\": \"0\", \"createdTime\": \"2026-01-28T09:00:00.000Z\", \"modifiedTime\": \"2026-01-28T09:03:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1892000000099004",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoDeskTestAccessToken0123456789"
+            ],
+            "orgId": [
+              "2389290"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea7dff13-591a-5b6e-a826-f2d520ead05d",
+          "providerId": "1892000000099004",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "ticket": {
+            "assigneeId": "1892000000056007",
+            "channel": "Web",
+            "contactId": "1892000000042032",
+            "createdAt": "2026-01-28T09:00:00Z",
+            "departmentId": "1892000000006907",
+            "descriptionHtml": "\u003cdiv\u003eInvoice\u003c/div\u003e",
+            "email": "jane@example.test",
+            "id": "1892000000099004",
+            "modifiedAt": "2026-01-28T09:03:00Z",
+            "priority": "High",
+            "status": "Open",
+            "statusType": "Open",
+            "subject": "Billing question",
+            "ticketNumber": "104"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea7dff13-591a-5b6e-a826-f2d520ead05d",
+      "input": {
+        "assigneeId": "1892000000056007",
+        "contactId": "1892000000042032",
+        "departmentId": "1892000000006907",
+        "description": "Invoice",
+        "priority": "High",
+        "status": "Open",
+        "subject": "Billing question"
+      },
+      "name": "createTicket-accepted-ticket-id-read-back",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "3550cabe-6019-51de-8171-15eaac34d7af",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"1892000000099002\", \"isPublic\": true, \"content\": \"Please check.\", \"contentType\": \"plainText\", \"commenterId\": \"1892000000056007\", \"commentedTime\": \"2026-01-28T09:04:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1892000000042034/comments/1892000000099002",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoDeskTestAccessToken0123456789"
+            ],
+            "orgId": [
+              "2389290"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "comment": {
+            "commentedAt": "2026-01-28T09:04:00Z",
+            "commenterId": "1892000000056007",
+            "content": "Please check.",
+            "contentType": "plainText",
+            "id": "1892000000099002",
+            "isPublic": true
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3550cabe-6019-51de-8171-15eaac34d7af",
+      "input": {
+        "content": "Please check.",
+        "isPublic": true,
+        "ticketId": "1892000000042034"
+      },
+      "name": "addComment-saved-comment-id-read-back",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "3550cabe-6019-51de-8171-15eaac34d7af",
+        "providerId": "1892000000099002",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "53ae93dc-a4cd-57d9-b9e3-35701bf91584",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"1892000000099002\", \"isPublic\": \"maybe\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets/1892000000042034/comments",
+          "requestBody": {
+            "content": "Please check.",
+            "contentType": "plainText",
+            "isPublic": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoDeskTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "orgId": [
+              "2389290"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"id\": \"1892000000099002\", \"isPublic\": true, \"content\": \"Please check.\", \"contentType\": \"plainText\", \"commenterId\": \"1892000000056007\", \"commentedTime\": \"2026-01-28T09:04:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/1892000000042034/comments/1892000000099002",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoDeskTestAccessToken0123456789"
+            ],
+            "orgId": [
+              "2389290"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "53ae93dc-a4cd-57d9-b9e3-35701bf91584",
+          "providerId": "1892000000099002",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "comment": {
+            "commentedAt": "2026-01-28T09:04:00Z",
+            "commenterId": "1892000000056007",
+            "content": "Please check.",
+            "contentType": "plainText",
+            "id": "1892000000099002",
+            "isPublic": true
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53ae93dc-a4cd-57d9-b9e3-35701bf91584",
+      "input": {
+        "content": "Please check.",
+        "isPublic": true,
+        "ticketId": "1892000000042034"
+      },
+      "name": "addComment-accepted-comment-id-read-back",
+      "operation": "addComment"
     }
   ],
   "schemaVersion": 1

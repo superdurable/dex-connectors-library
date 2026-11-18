@@ -149,6 +149,8 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
       operation, definition: CreateTicketDefinition, zero: zeroCreated, path: '/tickets', body, notFound: 'providerRejected', successBranch: 'created',
       invalidMessage: 'Zoho Desk accepted the ticket but returned an invalid ticket',
       decode: answer => { const ticket = decodeTicket(decodeObject(answer)).ticket; return { output: { ticket }, providerId: ticket.id }; },
+      readBackPath: ticketId => ticketPath(ticketId),
+      decodeReadBack: (answer, ticketId) => ({ ticket: decodeTicket(decodeObject(answer), ticketId).ticket }),
     });
   }
 }
@@ -167,10 +169,12 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     if ('disposition' in session) return sessionFailure(session, zeroUpdated, true) as MutationAttempt<UpdateTicketOutput>;
     const read = await this.client.exchange(call, operation, session, 'GET', ticketPath(input.ticketId));
     let receipt = exchangeReceipt(this.client, call, read, input.ticketId);
+    // The write is absolute and an earlier attempt may have sent it, so an unusable read retries.
+    if ('outcome' in read && read.outcome.disposition === 'invalid') return newMutationRetry(read.outcome.failure, read.outcome.retryAfterMs);
     if ('outcome' in read) return mutationOutcome(read.outcome, zeroUpdated, receipt, 'providerRejected', 'notFound');
     let current: Ticket;
     try { current = decodeTicket(decodeObject(read.response.body), input.ticketId).ticket; }
-    catch (error) { return newMutationBranch('invalidResponse', zeroUpdated, receipt, failure(operation, 'PROTOCOL', `Zoho Desk returned an invalid ticket: ${errorMessage(error)}`)); }
+    catch (error) { return newMutationRetry(failure(operation, 'PROTOCOL', `Zoho Desk returned an invalid ticket: ${errorMessage(error)}`)); }
     const change: Record<string, string> = {};
     if (input.status && input.status.toLowerCase() !== current.status.toLowerCase()) change.status = input.status;
     if (input.priority && input.priority.toLowerCase() !== (current.priority ?? '').toLowerCase()) change.priority = input.priority;
@@ -206,10 +210,15 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
       operation, definition: AddCommentDefinition, zero: zeroAdded, path: ticketPath(input.ticketId) + '/comments',
       body: { content: input.content, isPublic, contentType: 'plainText' }, notFound: 'notFound', successBranch: 'added',
       invalidMessage: 'Zoho Desk accepted the comment but returned an invalid comment',
-      decode: answer => {
+      decode: answer => { const comment = decodeComment(decodeObject(answer)); return { output: { comment }, providerId: comment.id }; },
+      // A read-back would return the same stored visibility.
+      rejectAccepted: output => output.comment.isPublic !== isPublic ? commentVisibilityError : '',
+      readBackPath: commentId => `${ticketPath(input.ticketId)}/comments/${goPathEscape(commentId)}`,
+      decodeReadBack: (answer, commentId) => {
         const comment = decodeComment(decodeObject(answer));
-        if (comment.isPublic !== isPublic) throw new Error('comment response has another visibility than requested');
-        return { output: { comment }, providerId: comment.id };
+        if (comment.id !== commentId) throw new Error('comment response is for another comment');
+        if (comment.isPublic !== isPublic) throw new Error(commentVisibilityError);
+        return { comment };
       },
     });
   }
@@ -264,6 +273,7 @@ function buildCreateBody(input: CreateTicketInput): Record<string, unknown> {
 /** Only these statuses prove Zoho Desk applied nothing; any other non-2xx answer may have been applied. */
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 const writeExecuteTimeoutMs = 30_000;
+const commentVisibilityError = 'comment response has another visibility than requested';
 
 /** A fence that allows this attempt to send, with its send-cap facts. */
 interface WritePermit {
@@ -271,6 +281,9 @@ interface WritePermit {
   /** No earlier attempt of this call may have sent. */ isFirstSend: boolean;
   /** This attempt's send leaves room under the cap for one more. */ canResendUnknownOutcome: boolean;
 }
+
+/** Reads an accepted write back by provider ID; the flag reports that the ID is checkpointed. */
+type ReadBack<T> = (providerId: string, isProviderIdSaved: boolean) => Promise<MutationAttempt<T>>;
 
 /** One fenced POST of createTicket or addComment and how its answer decodes. */
 interface FencedWrite<T> {
@@ -284,11 +297,18 @@ interface FencedWrite<T> {
   invalidMessage: string;
   /** Decode the 2xx body and return the output and its provider ID. */
   decode: (body: Uint8Array) => { output: T; providerId: string };
+  /** Explain why a decoded, accepted output is not the requested write, or return an empty string. */
+  rejectAccepted?: (output: T) => string;
+  /** The GET path that reads the accepted write back by its provider ID. */
+  readBackPath: (providerId: string) => string;
+  /** Decode the read-back body of the write with this provider ID. */
+  decodeReadBack: (body: Uint8Array, providerId: string) => T;
 }
 
 /**
  * Send one write under the SDK single-dispatch fence and the manifest send cap. Zoho Desk has no ticket or comment
- * read-back by Call ID, so an unknown outcome resends while the cap allows and selects uncertain at the cap.
+ * read-back by Call ID, so an unknown outcome resends while the cap allows and selects uncertain at the cap. A 2xx is
+ * never resent: a returned or checkpointed provider ID is read back by ID, and a 2xx without one is uncertain.
  */
 async function invokeFencedWrite<T>(client: ZohoDeskClient, call: Call, write: FencedWrite<T>): Promise<MutationAttempt<T>> {
   const { operation, zero } = write;
@@ -300,13 +320,14 @@ async function invokeFencedWrite<T>(client: ZohoDeskClient, call: Call, write: F
   const savedProviderId = decision.marker?.providerId ?? '';
   // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
   if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'the dispatch checkpoint could not be read; nothing was sent in this attempt'));
-  if (decision.kind === 'readBackRequired') return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'earlier attempts may have sent the request and the send cap is reached, so it is not sent again'), client.receipt(call, undefined, savedProviderId));
-  // A saved provider ID proves Zoho Desk accepted the write, so it is never resent.
-  if (decision.kind === 'readBackThenResendAllowed' && savedProviderId) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', "Zoho Desk accepted an earlier attempt's write, and its answer was lost"), client.receipt(call, undefined, savedProviderId));
+  if (decision.kind === 'readBackRequired' && !savedProviderId) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'earlier attempts may have sent the request and the send cap is reached, so it is not sent again'), client.receipt(call));
   const priorSends = decision.priorSendUpperBound ?? 0;
-  const permit: WritePermit = { fence, isFirstSend: priorSends === 0, canResendUnknownOutcome: priorSends + 1 < effectiveMaxSends(call, operationMaxSends) };
+  const permit: WritePermit = { fence, isFirstSend: priorSends === 0 && !savedProviderId, canResendUnknownOutcome: priorSends + 1 < effectiveMaxSends(call, operationMaxSends) };
   const session = await client.startSession(call, operation);
   if ('disposition' in session) return sessionWriteAttempt(permit, session, zero);
+  const readBack: ReadBack<T> = (providerId, isProviderIdSaved) => readBackAcceptedWrite(client, call, session, write, providerId, isProviderIdSaved);
+  // A saved provider ID proves Zoho Desk accepted the write, so it is read back and never resent.
+  if (savedProviderId) return readBack(savedProviderId, true);
   let result: ExchangeResult;
   // Dispatch refused before sending, so nothing reached Zoho Desk in this attempt.
   try { result = await fence.dispatch(signal => client.exchange(call, operation, session, 'POST', write.path, undefined, write.body, signal)); }
@@ -318,12 +339,32 @@ async function invokeFencedWrite<T>(client: ZohoDeskClient, call: Call, write: F
   catch (error) {
     const invalid = failure(operation, 'PROTOCOL', `${write.invalidMessage}: ${errorMessage(error)}`);
     const providerId = acceptedProviderId(result.response.body);
-    if (!providerId) return resendOrUncertain(permit, invalid, 0, receipt, zero);
-    await recordAcceptedWrite(permit, providerId);
-    return newMutationUncertain(zero, invalid, client.receipt(call, result.response, providerId));
+    // A 2xx accepted the write; with no readable ID it is never resent.
+    if (!providerId) return newMutationUncertain(zero, invalid, receipt);
+    return readBack(providerId, await recordAcceptedWrite(permit, providerId));
   }
   await recordAcceptedWrite(permit, decoded.providerId);
-  return newMutationBranch(write.successBranch, decoded.output, client.receipt(call, result.response, decoded.providerId));
+  const acceptedReceipt = client.receipt(call, result.response, decoded.providerId);
+  const mismatch = write.rejectAccepted?.(decoded.output) ?? '';
+  if (mismatch) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', `${write.invalidMessage}: ${mismatch}`), acceptedReceipt);
+  return newMutationBranch(write.successBranch, decoded.output, acceptedReceipt);
+}
+
+/**
+ * Read an accepted write back by provider ID and never send it. A confirmed write selects success. A transient read
+ * failure retries only when the ID is checkpointed, because without it the next attempt could resend; anything else is
+ * uncertain.
+ */
+async function readBackAcceptedWrite<T>(client: ZohoDeskClient, call: Call, session: { credentials: Credentials; baseURL: string }, write: FencedWrite<T>, providerId: string, isProviderIdSaved: boolean): Promise<MutationAttempt<T>> {
+  const result = await client.exchange(call, write.operation, session, 'GET', write.readBackPath(providerId));
+  const receipt = exchangeReceipt(client, call, result, providerId);
+  if ('outcome' in result) {
+    const { disposition } = result.outcome;
+    if (isProviderIdSaved && (disposition === 'rateLimited' || disposition === 'notSent' || disposition === 'unavailable')) return newMutationRetry(result.outcome.failure, result.outcome.retryAfterMs);
+    return newMutationUncertain(write.zero, result.outcome.failure, receipt);
+  }
+  try { return newMutationBranch(write.successBranch, write.decodeReadBack(result.response.body, providerId), receipt); }
+  catch (error) { return newMutationUncertain(write.zero, failure(write.operation, 'PROTOCOL', `Zoho Desk accepted the write, but its read-back was invalid: ${errorMessage(error)}`), receipt); }
 }
 
 /** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
@@ -347,26 +388,34 @@ async function sessionWriteAttempt<T>(permit: WritePermit, session: ExchangeFail
 /** Map a sent write. Only a definite refusal selects a refusal branch; any other outcome may have been applied. */
 async function writeAttemptForExchange<T>(permit: WritePermit, client: ZohoDeskClient, call: Call, credentials: Credentials, outcome: ExchangeFailure, receipt: ReceiptDraft, zero: T, notFound: string): Promise<MutationAttempt<T>> {
   const status = outcome.response?.status ?? 0;
+  // A 2xx accepted the write; with no readable ID it is never resent. The client reports 'invalid' only for a 2xx.
+  if (outcome.disposition === 'invalid' || (status >= 200 && status < 300)) return newMutationUncertain(zero, outcome.failure, receipt);
   if (outcome.disposition === 'rateLimited' || outcome.disposition === 'notSent' || (outcome.disposition === 'unavailable' && status === 503)) {
     // A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
     try { await permit.fence.recordCanResend(); } catch { /* counted as a possible send */ }
     return newMutationRetry(outcome.failure, outcome.retryAfterMs);
   }
   if (outcome.disposition === 'notFound') return rejectWrite(permit, outcome.failure, receipt, zero, notFound);
-  if (outcome.disposition === 'defect' && permit.isFirstSend) return rejectWrite(permit, outcome.failure, {}, zero, 'defect');
+  // rejectWrite selects uncertain after an earlier possible send.
+  if (outcome.disposition === 'defect') return rejectWrite(permit, outcome.failure, {}, zero, 'defect');
   if (outcome.disposition === 'rejected' && status === 401) {
-    // A changed token retries, because the 401 proves this send applied nothing.
+    // A changed token or a transient refresh failure retries, because the 401 proves this send applied nothing.
     const replacement = await client.replaceRejectedCredentials(call, credentials);
-    if (replacement === 'replacement') {
-      try { await permit.fence.recordCanResend(); }
-      catch { return newMutationRetry(failure(outcome.failure.operation, 'AVAILABILITY', 'Dex did not record the credential resend checkpoint')); }
-      return newMutationRetry(failure(outcome.failure.operation, 'AUTHENTICATION', 'Zoho Desk rejected the prior access token (HTTP 401); retry with its replacement'));
-    }
-    const cause = replacement === 'unavailable' ? failure(outcome.failure.operation, outcome.failure.kind, 'Zoho Desk rejected the access token (HTTP 401); credential refresh is temporarily unavailable') : outcome.failure;
-    return rejectWrite(permit, cause, receipt, zero, 'providerRejected');
+    if (replacement === 'replacement') return retryRejectedCredentialWrite(permit, failure(outcome.failure.operation, 'AUTHENTICATION', 'Zoho Desk rejected the prior access token (HTTP 401); retry with its replacement'), true);
+    if (replacement === 'unavailable') return retryRejectedCredentialWrite(permit, failure(outcome.failure.operation, outcome.failure.kind, 'Zoho Desk rejected the access token (HTTP 401); credential refresh is temporarily unavailable'), permit.isFirstSend);
+    return rejectWrite(permit, outcome.failure, receipt, zero, 'providerRejected');
   }
   if (outcome.disposition === 'rejected' && definiteRefusalStatuses.has(status)) return rejectWrite(permit, outcome.failure, receipt, zero, 'providerRejected');
   return resendOrUncertain(permit, outcome.failure, outcome.retryAfterMs, receipt, zero);
+}
+
+/** Retry a 401; after an earlier possible send a refresh outage records nothing, so the claim keeps counting. */
+async function retryRejectedCredentialWrite<T>(permit: WritePermit, cause: Failure, shouldRecordCanResend: boolean): Promise<MutationAttempt<T>> {
+  if (shouldRecordCanResend) {
+    try { await permit.fence.recordCanResend(); }
+    catch { return newMutationRetry(failure(cause.operation, 'AVAILABILITY', 'Dex did not record the credential resend checkpoint')); }
+  }
+  return newMutationRetry(cause);
 }
 
 /** Select a refusal branch only when no earlier send of this call may have applied. */
@@ -383,8 +432,9 @@ function resendOrUncertain<T>(permit: WritePermit, cause: Failure, retryAfterMs:
   return permit.canResendUnknownOutcome ? newMutationRetry(cause, retryAfterMs) : newMutationUncertain(zero, cause, receipt);
 }
 
-async function recordAcceptedWrite(permit: WritePermit, providerId: string): Promise<void> {
-  try { await permit.fence.recordProviderId(providerId); } catch { /* Acceptance is already known if this extra checkpoint fails. */ }
+/** Checkpoint the accepted provider ID and report whether it was saved. */
+async function recordAcceptedWrite(permit: WritePermit, providerId: string): Promise<boolean> {
+  try { await permit.fence.recordProviderId(providerId); return true; } catch { /* Acceptance is already known if this extra checkpoint fails. */ return false; }
 }
 
 /** Return the valid id of a 2xx object body, or an empty string. */
