@@ -116,6 +116,8 @@ describe('Help Scout fenced reply decisions', () => {
     ['missing connection object', new ObjectNotFoundError(), 'uncertain'],
     ['unselected connection', new ConnectionNotSelectedError(), 'uncertain'],
     ['broker refusal', new CredentialBrokerRejectedError(), 'uncertain'],
+    // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+    ['malformed stored material', new TypeError('project credential decoding failed'), 'uncertain'],
   ])('records nothing for a %s credential failure after a possible send', async (_name, error, expected) => {
     const first = newClient(async () => errorResponse(502));
     const context = new AttemptContext();
@@ -168,6 +170,25 @@ describe('Help Scout fenced reply decisions', () => {
       : refusal(request));
     const call = { id: callId, connection: { provider: 'helpscout', name: 'helpscout-test' }, operation: UpdateConversationDefinition.operation, context: new AttemptContext() } as unknown as Call;
     await expect(runMutation(client.updateConversation(), call, { conversationId: 501, status: 'closed' })).rejects.toBeInstanceOf(RetryError);
+  });
+
+  it.each([
+    ['an unlisted 409', (): ProviderResponse => errorResponse(409)],
+    ['an unlisted 410', (): ProviderResponse => errorResponse(410)],
+    ['an oversized 404 body', (): ProviderResponse => ({ status: 404, headers: {}, body: Buffer.alloc(70 << 10, 'a') })],
+    ['an unparseable 200 body', (): ProviderResponse => ({ status: 200, headers: {}, body: Buffer.from('{"id":"broken"') })],
+    ['a credential-echoing 404', (): ProviderResponse => ({ status: 404, headers: {}, body: Buffer.from('{"message":"inert-access-token"}') })],
+  ])('retries %s on the read before the update, without writing', async (_name, read) => {
+    const { client, requests } = newClient(async request => request.method === 'GET' ? read() : { status: 204, headers: {}, body: new Uint8Array() });
+    const call = { id: callId, connection: { provider: 'helpscout', name: 'helpscout-test' }, operation: UpdateConversationDefinition.operation, context: new AttemptContext() } as unknown as Call;
+    await expect(runMutation(client.updateConversation(), call, { conversationId: 501, status: 'closed' })).rejects.toBeInstanceOf(RetryError);
+    expect(requests.filter(request => request.method !== 'GET')).toHaveLength(0);
+  });
+
+  it('keeps a readable listed refusal on the read before the update definite', async () => {
+    const { client } = newClient(async () => errorResponse(403));
+    const call = { id: callId, connection: { provider: 'helpscout', name: 'helpscout-test' }, operation: UpdateConversationDefinition.operation, context: new AttemptContext() } as unknown as Call;
+    await expect(runMutation(client.updateConversation(), call, { conversationId: 501, status: 'closed' })).resolves.toMatchObject({ branch: 'providerRejected' });
   });
 });
 

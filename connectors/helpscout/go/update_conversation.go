@@ -4,6 +4,7 @@
 package helpscout
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -154,6 +155,10 @@ func (client *Client) readConversationForUpdate(
 		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationBranchNotFound, value,
 			helpScoutFailurePointer(operationID, sdkgo.FailureNotFound, message), client.receipt(call, conversationID, "")), true
 	}
+	if isUnknownPreWriteRead(response, err, credentials.AccessToken.Reveal()) {
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](helpScoutFailure(operationID, sdkgo.FailureAvailability,
+			fmt.Sprintf("Help Scout's conversation read before the update was inconclusive (HTTP %d)", response.statusCode)), 0), true
+	}
 	branches := failureBranches{
 		notFound: UpdateConversationBranchNotFound, providerRejected: UpdateConversationBranchProviderRejected,
 		invalidResponse: UpdateConversationBranchInvalidResponse,
@@ -167,11 +172,29 @@ func (client *Client) readConversationForUpdate(
 			"Help Scout accepted the change but returned an invalid conversation: "+err.Error()), 0), true
 	}
 	if err != nil {
-		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, value,
-			helpScoutFailurePointer(operationID, sdkgo.FailureProtocol, "Help Scout returned an invalid conversation: "+err.Error()),
-			client.receipt(call, conversationID, "")), true
+		// An unusable 2xx read before the update proves nothing, so the attempt repeats.
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](helpScoutFailure(operationID, sdkgo.FailureProtocol,
+			"Help Scout returned an invalid conversation: "+err.Error()), 0), true
 	}
 	return conversation, sdkgo.MutationAttempt[UpdateConversationOutput]{}, false
+}
+
+// isUnknownPreWriteRead reports a read answer that is neither a conversation nor a definite refusal, such as an
+// unlisted status or an oversized, unparseable, incomplete, or credential-echoing body. 408, 429, and 5xx retry
+// through classifyFailure, which keeps Retry-After.
+func isUnknownPreWriteRead(response helpScoutResponse, err error, accessToken string) bool {
+	if err != nil {
+		return errors.Is(err, errHelpScoutResponseTooLarge) || errors.Is(err, errHelpScoutResponseMalformed)
+	}
+	status := response.statusCode
+	switch {
+	case status >= 200 && status < 300, status == http.StatusMovedPermanently:
+		return false
+	case status == http.StatusTooManyRequests, status == http.StatusRequestTimeout, status >= 500:
+		return false
+	}
+	return !isDefiniteRefusalStatus(status) || response.isErrorBodyIncomplete ||
+		(accessToken != "" && bytes.Contains(response.body, []byte(accessToken)))
 }
 
 func validateUpdateConversationInput(input UpdateConversationInput) error {

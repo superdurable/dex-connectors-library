@@ -1231,21 +1231,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "conversation": {
-            "id": 0,
-            "mailboxId": 0,
-            "number": 0,
-            "status": "",
-            "subject": "",
-            "tags": [],
-            "threadCount": 0
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1261,7 +1250,7 @@
         ],
         "status": "pending"
       },
-      "name": "update-invalid",
+      "name": "update-invalid-read-retries",
       "operation": "updateConversation"
     },
     {

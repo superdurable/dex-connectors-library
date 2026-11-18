@@ -555,7 +555,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationBranchUpdated, Description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."},
 		{ID: UpdateConversationBranchNotFound, Description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user.", Optional: true},
 		{ID: UpdateConversationBranchProviderRejected, Description: "Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account.", Optional: true},
-		{ID: UpdateConversationBranchInvalidResponse, Description: "Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", Optional: true},
+		{ID: UpdateConversationBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: a malformed or oversized conversation read before or after the change returns Retry, because the change is safe to repeat.", Optional: true},
 		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

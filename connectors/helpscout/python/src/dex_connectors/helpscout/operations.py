@@ -174,6 +174,20 @@ def _is_unknown_write_outcome(exchange: Exchange) -> bool:
     )
 
 
+def _is_unknown_pre_write_read(exchange: Exchange) -> bool:
+    """Report a read that is neither a conversation nor a definite refusal.
+
+    408, 429, and 5xx retry through _mutation_exchange, which keeps Retry-After.
+    """
+    if exchange.error:
+        return exchange.error in ("tooLarge", "malformed")
+    status = exchange.status
+    if 200 <= status < 300 or status == 301 or status in (408, 429) or status >= 500:
+        return False
+    is_credential_echo = bool(exchange.token) and exchange.token.encode() in exchange.body
+    return status not in DEFINITE_REFUSAL_STATUSES or exchange.is_error_body_incomplete or is_credential_echo
+
+
 def _credential_query(operation: str, error: str, value: Any) -> QueryAttempt[Any]:
     if error == "retry":
         return QueryAttempt.retry(
@@ -677,6 +691,15 @@ class UpdateConversationOperation:
                     "the conversation was merged into another; update that conversation",
                 ),
             )
+        if _is_unknown_pre_write_read(exchange):
+            return None, MutationAttempt.retry(
+                _failure(
+                    "updateConversation",
+                    FailureKind.AVAILABILITY,
+                    "Help Scout's conversation read before the update was inconclusive "
+                    f"(HTTP {exchange.status})",
+                )
+            )
         terminal = _mutation_exchange(
             self.client,
             call,
@@ -700,15 +723,13 @@ class UpdateConversationOperation:
                         "Help Scout accepted the change but returned an invalid conversation: " + str(error),
                     )
                 )
-            return None, MutationAttempt.branch_result(
-                "invalidResponse",
-                value,
-                self.client.receipt(call, conversation_id),
+            # An unusable 2xx read before the update proves nothing, so the attempt repeats.
+            return None, MutationAttempt.retry(
                 _failure(
                     "updateConversation",
                     FailureKind.PROTOCOL,
                     "Help Scout returned an invalid conversation: " + str(error),
-                ),
+                )
             )
 
 

@@ -157,6 +157,34 @@ func TestUpdateConversationUnassignsAndClearsEveryTag(t *testing.T) {
 	require.JSONEq(t, `{"tags":[]}`, fake.requestsTo(http.MethodPut, "/v2/conversations/501/tags")[0].body)
 }
 
+func TestUpdateConversationRetriesAnInconclusiveReadBeforeTheUpdate(t *testing.T) {
+	cases := map[string]http.HandlerFunc{
+		"unlisted 409":           respondJSON(http.StatusConflict, helpScoutErrorBody("Conflict", nil)),
+		"unlisted 410":           respondJSON(http.StatusGone, helpScoutErrorBody("Gone", nil)),
+		"oversized 404 body":     incompleteErrorBody(http.StatusNotFound, true),
+		"unreadable 403 body":    incompleteErrorBody(http.StatusForbidden, false),
+		"unparseable 200 body":   func(response http.ResponseWriter, _ *http.Request) { writeJSON(response, http.StatusOK, `{"id":"broken"`) },
+		"credential-echoing 404": respondJSON(http.StatusNotFound, `{"message":"`+sentinelToken+`"}`),
+	}
+	for name, read := range cases {
+		t.Run(name, func(t *testing.T) {
+			fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+				"GET /v2/conversations/501":   read,
+				"PATCH /v2/conversations/501": func(http.ResponseWriter, *http.Request) { t.Fatal("no write follows an inconclusive read") },
+			})
+			_, err := updateConversation(t, newFakeBackedClient(t, fake), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an inconclusive read before the update retries instead of selecting a branch")
+		})
+	}
+	readableRefusal := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501": respondJSON(http.StatusForbidden, helpScoutErrorBody("Forbidden", nil)),
+	})
+	result, err := updateConversation(t, newFakeBackedClient(t, readableRefusal), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+	require.NoError(t, err)
+	require.Equal(t, helpscout.UpdateConversationBranchProviderRejected, result.Branch, "a readable listed refusal stays definite")
+}
+
 func TestUpdateConversationMapsFailuresAndRetriesALostWrite(t *testing.T) {
 	stored := &storedConversation{id: 501, status: "active", assigneeID: 99}
 	routes := stored.routes()

@@ -170,6 +170,9 @@ class Client:
 
     async def resolve_token(self, call: Call) -> tuple[str, str]:
         """Return token and error class: terminal, retry, or empty on success."""
+        # The generated connection module imports this module, so import it lazily.
+        from ._generated.connection import is_credential_material_error
+
         try:
             credentials = await self.credentials.resolve(call)
         except (
@@ -179,8 +182,8 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             return "", "terminal"
-        except Exception:
-            return "", "retry"
+        except Exception as error:
+            return "", "terminal" if is_credential_material_error(error) else "retry"
         if not isinstance(credentials, Credentials) or not is_header_safe_credential(
             credentials.access_token.reveal()
         ):

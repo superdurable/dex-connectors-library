@@ -124,7 +124,7 @@ export const UpdateConversationBranchUpdated = UpdateConversationBranch.Updated;
 export const UpdateConversationBranchNotFound = UpdateConversationBranch.NotFound;
 /** Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account. */
 export const UpdateConversationBranchProviderRejected = UpdateConversationBranch.ProviderRejected;
-/** Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing. */
+/** Kept for compatibility and no longer selected: a malformed or oversized conversation read before or after the change returns Retry, because the change is safe to repeat. */
 export const UpdateConversationBranchInvalidResponse = UpdateConversationBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateConversationBranchDefect = UpdateConversationBranch.Defect;
@@ -135,7 +135,7 @@ export const UpdateConversationDefinition: MutationDefinition = {
     { id: "updated", description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt." },
     { id: "notFound", description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user.", optional: true },
     { id: "providerRejected", description: "Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account.", optional: true },
-    { id: "invalidResponse", description: "Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: a malformed or oversized conversation read before or after the change returns Retry, because the change is safe to repeat.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

@@ -286,7 +286,7 @@ func UpdateConversationProviderRejected(value helpscout.UpdateConversationOutput
 	return connectormock.Branch(helpscout.UpdateConversationBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationInvalidResponse selects the invalidResponse branch: Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing.
+// UpdateConversationInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: a malformed or oversized conversation read before or after the change returns Retry, because the change is safe to repeat.
 func UpdateConversationInvalidResponse(value helpscout.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[helpscout.UpdateConversationOutput] {
 	return connectormock.Branch(helpscout.UpdateConversationBranchInvalidResponse, value, failure)
 }

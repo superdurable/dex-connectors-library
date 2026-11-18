@@ -4,7 +4,7 @@
 import { isIP } from 'node:net';
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence, CheckpointError, DispatchNotAllowedError, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
-import type { ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { MaxErrorBodyBytes, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { HelpScoutClient, HelpScoutExchange, CredentialResolution } from './client.js';
 import { isProvablyUnsent } from './client.js';
 import { asObject, decodeConversation, decodeCustomer, decodeThread, parseObject, parseTimestamp, wireArray, wireInteger } from './decode.js';
@@ -120,12 +120,17 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
         if (terminal) return terminal.kind === 'retry' ? terminal : newMutationRetry(failure('updateConversation', 'AVAILABILITY', 'Help Scout accepted the change but its read-back failed'));
       }
       if ('response' in exchange && exchange.response.status === 301) return mutationFailure('updateConversation', 'notFound', 'NOT_FOUND', value, this.client.receipt(call, input.conversationId));
+      if (isUnknownPreWriteRead(exchange)) {
+        const status = 'response' in exchange ? exchange.response.status : 0;
+        return newMutationRetry(failure('updateConversation', 'AVAILABILITY', `Help Scout's conversation read before the update was inconclusive (HTTP ${status})`));
+      }
       const terminal = classifyMutation(this.client, call, 'updateConversation', exchange, value, input.conversationId, 'providerRejected', 'notFound');
       if (terminal) return terminal;
       try { return decodeConversation(parseObject(responseOf(exchange).body), input.conversationId); }
       catch (error) {
         if (isAfterWrite) return newMutationRetry(failure('updateConversation', 'PROTOCOL', `Help Scout accepted the change but returned an invalid conversation: ${error instanceof Error ? error.message : 'malformed response'}`));
-        return mutationFailure('updateConversation', 'invalidResponse', 'PROTOCOL', value, this.client.receipt(call, input.conversationId), error);
+        // An unusable 2xx read before the update proves nothing, so the attempt repeats.
+        return newMutationRetry(failure('updateConversation', 'PROTOCOL', `Help Scout returned an invalid conversation: ${error instanceof Error ? error.message : 'malformed response'}`));
       }
     };
     const current = await read(zeroUpdate, false);
@@ -376,6 +381,19 @@ function isUnknownWriteOutcome(exchange: HelpScoutExchange | CredentialResolutio
   if (exchange.isTooLarge || exchange.isMalformed || exchange.isErrorBodyIncomplete) return true;
   const status = exchange.response.status;
   return (status < 200 || status >= 300) && status !== 408 && status !== 429 && status < 500 && !definiteRefusalStatuses.has(status);
+}
+
+/**
+ * Report a read before the update that is neither a conversation nor a definite refusal, such as an unlisted status
+ * or an oversized, unparseable, incomplete, or credential-echoing body; classifyMutation retries 408, 429, and 5xx.
+ */
+function isUnknownPreWriteRead(exchange: HelpScoutExchange | CredentialResolution): boolean {
+  if ('kind' in exchange || 'error' in exchange) return false;
+  if (exchange.isTooLarge || exchange.isMalformed) return true;
+  const { status, body } = exchange.response;
+  if ((status >= 200 && status < 300) || status === 301 || status === 408 || status === 429 || status >= 500) return false;
+  const isCredentialEcho = exchange.accessToken !== '' && Buffer.from(body).includes(Buffer.from(exchange.accessToken));
+  return !definiteRefusalStatuses.has(status) || exchange.isErrorBodyIncomplete === true || body.length > MaxErrorBodyBytes || isCredentialEcho;
 }
 
 /** The positive thread ID in a Resource-Id header, or zero when Help Scout omits or garbles it. */

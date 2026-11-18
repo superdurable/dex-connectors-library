@@ -182,6 +182,58 @@ async def test_refusal_after_a_rate_limited_resend_is_uncertain() -> None:
     assert posts(requests) == 3
 
 
+@pytest.mark.parametrize(
+    "read",
+    [
+        lambda: httpx.Response(409, json={"message": "Conflict"}),
+        lambda: httpx.Response(410, json={"message": "Gone"}),
+        lambda: incomplete_refusal(404, "oversized"),
+        lambda: incomplete_refusal(403, "broken"),
+        lambda: httpx.Response(200, content=b'{"id":"broken"'),
+        lambda: httpx.Response(404, json={"message": "inert-access-token"}),
+    ],
+    ids=[
+        "unlisted 409",
+        "unlisted 410",
+        "oversized 404",
+        "unreadable 403",
+        "unparseable 200",
+        "credential echo",
+    ],
+)
+async def test_update_retries_an_inconclusive_read_before_the_update(
+    read: Callable[[], httpx.Response],
+) -> None:
+    """Only a readable listed refusal or the merged 301 selects a branch on the read before the update."""
+    writes: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return read()
+        writes.append(request)
+        return httpx.Response(204)
+
+    source = sdk.StaticCredentialProvider(
+        {
+            CONNECTION: Credentials(
+                "app-id",
+                sdk.SecretString("app-secret"),
+                sdk.SecretString("inert-access-token"),
+                sdk.SecretString("webhook-secret"),
+            )
+        }
+    )
+    client = Client(Config(), source, httpx.AsyncClient(transport=httpx.MockTransport(respond)))
+    call = sdk.Call(
+        CALL_ID, CONNECTION, sdk.OperationRef("helpscout", "updateConversation"), context=AttemptContext()
+    )
+    with pytest.raises(sdk.RetryError):
+        await sdk.run_mutation(
+            client.update_conversation(), call, UpdateConversationInput(501, status="closed")
+        )
+    assert writes == []
+
+
 def incomplete_refusal(status: int, kind: str) -> httpx.Response:
     """Answer a definite refusal status whose error body is oversized, breaks, or hangs."""
     if kind == "oversized":

@@ -230,6 +230,11 @@ seconds, and the conversation ends with the status and one copy of the tag. A
 tag that someone else changes between the read and the `PUT` is overwritten.
 A write refusal whose error body is larger than 64 KiB or breaks while it is
 read is an unknown outcome, so the attempt returns Retry and repeats the write.
+The read before the writes follows one rule on every attempt: a 301 for a
+merged conversation, or a readable 400, 401, 403, 404, 411, 413, 414, 415, or
+422 that does not echo the token, selects its branch; any other answer, such as
+409, 410, another unlisted status, or an oversized, incomplete, unparseable, or
+credential-reflecting body, returns Retry without writing.
 
 ### findCustomerByEmail
 
@@ -351,13 +356,13 @@ and the Receipt carries Help Scout's `logRef` for support.
 | 401, after one token refresh on reads or repeatable writes | `providerRejected`, `AUTHENTICATION`; the fenced reply does not resend in the attempt |
 | 403 | `providerRejected`, `AUTHORIZATION`, such as an account without API access or payment |
 | 404 | `notFound` where declared, otherwise `providerRejected` |
-| 410 | `notFound` for reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap |
-| 409, other unlisted 4xx | `providerRejected`, `CONFLICT` for reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap, then selects `uncertain` |
-| 412, 423 | `providerRejected`, a locked conversation or customer, for reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap, then selects `uncertain` |
+| 410 | `notFound` for reads; Retry for the `updateConversation` read and write; the fenced reply resends within the send cap |
+| 409, other unlisted 4xx | `providerRejected`, `CONFLICT` for reads; Retry for the `updateConversation` read and write; the fenced reply resends within the send cap, then selects `uncertain` |
+| 412, 423 | `providerRejected`, a locked conversation or customer, for reads; Retry for the `updateConversation` read and write; the fenced reply resends within the send cap, then selects `uncertain` |
 | 301 | `merged` for `getConversation`; the fenced reply resends within the send cap if its POST receives one |
-| other 3xx | `providerRejected`, `PROTOCOL` on reads; Retry for an `updateConversation` write; the fenced reply resends within the send cap |
+| other 3xx | `providerRejected`, `PROTOCOL` on reads; Retry for the `updateConversation` read and write; the fenced reply resends within the send cap |
 | 408, 429, 5xx, transport failure | Retry, after `X-RateLimit-Retry-After` or `Retry-After`; see the reply's exceptions above |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads and the `updateConversation` read before any write; Retry after a write; a reply uses `Resource-Id` to confirm acceptance, or selects `uncertain` without it |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for reads; Retry for the `updateConversation` read before any write and after a write; a reply uses `Resource-Id` to confirm acceptance, or selects `uncertain` without it |
 | unreadable or foreign fence checkpoint | Retry without sending for the fenced reply |
 | invalid input, or credentials that need reauthorization, belong to a missing or unselected connection, are refused by the credential broker, or carry an unusable token | `defect`, with no request; `uncertain` after a possible reply send |
 | any other credential failure, such as a token endpoint or broker outage or a connection the static provider does not configure | Retry, with no request |

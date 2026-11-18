@@ -112,7 +112,7 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Help Scout returned a malformed or oversized conversation on the read before any change, so this attempt changed nothing. */
+  /** Kept for compatibility and no longer selected: a malformed or oversized conversation read before or after the change returns Retry, because the change is safe to repeat. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
