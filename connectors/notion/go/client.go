@@ -263,7 +263,7 @@ func (client *Client) startSessionWithCredentialStatus(call sdkgo.Call, operatio
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication,
-			"Notion connection credentials are unavailable; save the connection's API token again"), isTransientCredentialFailure(err)
+			"Notion connection credentials are unavailable; save the connection's API token again"), !isTerminalCredentialError(err)
 	}
 	if !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication,
@@ -282,9 +282,11 @@ func (client *Client) startSessionWithCredentialStatus(call sdkgo.Call, operatio
 	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil, false
 }
 
-func isTransientCredentialFailure(err error) bool {
-	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) ||
-		errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) exchange(session *operationSession, request notionRequest) exchangeResult {

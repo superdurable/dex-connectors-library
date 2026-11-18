@@ -399,10 +399,20 @@ func TestCreatePageFenceCountsALostClaimAsAPossibleSend(t *testing.T) {
 }
 
 func TestCreatePageFenceCredentialFailureRecordsNotSent(t *testing.T) {
+	for name, resolveErr := range map[string]error{
+		"broker unavailable":    projectconfig.ErrCredentialBrokerUnavailable,
+		"static not configured": errors.New("connection is not configured"),
+		"unlisted error":        errors.New("credential unavailable"),
+	} {
+		t.Run(name, func(t *testing.T) { testCreatePageTransientCredentialFailureRecordsNotSent(t, resolveErr) })
+	}
+}
+
+func testCreatePageTransientCredentialFailureRecordsNotSent(t *testing.T, resolveErr error) {
 	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))
 	})
-	failedClient, err := notion.New(notion.Config{Endpoint: provider.URL}, notionCredentialError{err: projectconfig.ErrCredentialBrokerUnavailable})
+	failedClient, err := notion.New(notion.Config{Endpoint: provider.URL}, notionCredentialError{err: resolveErr})
 	require.NoError(t, err)
 	ctx := singledispatchtest.NewContext("notion-flow", "create-page")
 	_, err = sdkgo.RunMutation(ctx, failedClient.CreatePage(), notionConnection, validCreatePageInput())
@@ -424,7 +434,8 @@ func TestCreatePageTerminalCredentialFailuresSelectDefectAfterNotSent(t *testing
 		{name: "reauthorization required", credentials: notionCredentialError{err: sdkgo.ErrReauthorizationRequired}},
 		{name: "connection not selected", credentials: notionCredentialError{err: projectconfig.ErrConnectionNotSelected}},
 		{name: "broker rejected credentials", credentials: notionCredentialError{err: projectconfig.ErrCredentialBrokerRejected}},
-		{name: "unclassified credential failure", credentials: notionCredentialError{err: errors.New("credential unavailable")}},
+		{name: "project reauthorization", credentials: notionCredentialError{err: projectconfig.ErrReauthorizationRequired}},
+		{name: "connection absent", credentials: notionCredentialError{err: projectconfig.ErrObjectNotFound}},
 		{name: "invalid API token", credentials: sdkgo.StaticCredentialProvider[notion.Credentials]{
 			notionConnection: {APIToken: sdkgo.NewSecretString("invalid\nheader")},
 		}},
@@ -707,7 +718,7 @@ func TestCreatePageFenceNeverUsesAStaleResendMarker(t *testing.T) {
 		CallID: result.Receipt.CallID, Attempt: 1, State: singledispatch.StateCanResend,
 	})
 	ctx.AdvanceAttempt()
-	failedClient, err := notion.New(notion.Config{Endpoint: provider.URL}, failingCredentials{})
+	failedClient, err := notion.New(notion.Config{Endpoint: provider.URL}, notionCredentialError{err: projectconfig.ErrCredentialBrokerRejected})
 	require.NoError(t, err)
 	result, err = sdkgo.RunMutation(ctx, failedClient.CreatePage(), notionConnection, validCreatePageInput())
 	require.NoError(t, err)

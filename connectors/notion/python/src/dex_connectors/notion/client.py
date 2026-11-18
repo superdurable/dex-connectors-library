@@ -9,8 +9,19 @@ from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import quote
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -138,21 +149,20 @@ class Client:
         """Classify unavailable broker credentials separately from invalid tokens."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (CredentialBrokerUnavailableError, TimeoutError):
-            return (
-                None,
-                failure(
-                    operation, FailureKind.AUTHENTICATION, "Notion connection credentials are unavailable"
-                ),
-                True,
+        except Exception as error:
+            is_terminal = isinstance(
+                error,
+                ReauthorizationRequiredError
+                | ObjectNotFoundError
+                | ConnectionNotSelectedError
+                | CredentialBrokerRejectedError,
             )
-        except Exception:
             return (
                 None,
                 failure(
                     operation, FailureKind.AUTHENTICATION, "Notion connection credentials are unavailable"
                 ),
-                False,
+                not is_terminal,
             )
         if not isinstance(credentials, Credentials) or not is_header_safe_credential(
             credentials.api_token.reveal()

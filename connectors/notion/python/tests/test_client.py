@@ -5,8 +5,20 @@
 import socket
 
 import pytest
-from dex_connectors.sdk import Call, CallID, ConnectionRef, FailureKind, OperationRef
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk import (
+    Call,
+    CallID,
+    ConnectionRef,
+    FailureKind,
+    OperationRef,
+    ReauthorizationRequiredError,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 
 from dex_connectors.notion import Client, Config, Credentials
 from dex_connectors.notion.client import classify_read, classify_write
@@ -32,26 +44,29 @@ def _call() -> Call:
 
 
 @pytest.mark.asyncio
-async def test_credential_failures_distinguish_broker_outage_from_terminal_rejection() -> None:
-    """Only a known transient broker outage authorizes a retry."""
-    transient = Client(Config(), FailingCredentials(CredentialBrokerUnavailableError("broker down")))
-    terminal = Client(Config(), FailingCredentials(ValueError("invalid token")))
-    unrelated_network_error = Client(Config(), FailingCredentials(ConnectionError("unknown source")))
+@pytest.mark.parametrize(
+    ("error", "expected_transient"),
+    [
+        (CredentialBrokerUnavailableError("broker down"), True),
+        (ValueError("connection is not configured"), True),
+        (ConnectionError("unknown source"), True),
+        (ReauthorizationRequiredError(), False),
+        (ObjectNotFoundError(), False),
+        (ConnectionNotSelectedError(), False),
+        (CredentialBrokerRejectedError(), False),
+    ],
+)
+async def test_credential_failures_are_terminal_only_for_the_reconnect_set(
+    error: Exception, expected_transient: bool
+) -> None:
+    """Only reauthorization, an absent or unselected connection, and a broker refusal are terminal."""
+    client = Client(Config(), FailingCredentials(error))
     try:
-        _, transient_failure, is_transient = await transient.resolve_credentials(_call(), "search")
-        assert is_transient and transient_failure is not None
-        assert transient_failure.kind == FailureKind.AUTHENTICATION
-        _, terminal_failure, is_transient = await terminal.resolve_credentials(_call(), "search")
-        assert not is_transient and terminal_failure is not None
-        assert terminal_failure.kind == FailureKind.AUTHENTICATION
-        _, network_failure, is_transient = await unrelated_network_error.resolve_credentials(
-            _call(), "search"
-        )
-        assert not is_transient and network_failure is not None
+        _, credential_failure, is_transient = await client.resolve_credentials(_call(), "search")
+        assert is_transient == expected_transient and credential_failure is not None
+        assert credential_failure.kind == FailureKind.AUTHENTICATION
     finally:
-        await transient.aclose()
-        await terminal.aclose()
-        await unrelated_network_error.aclose()
+        await client.aclose()
 
 
 @pytest.mark.asyncio
