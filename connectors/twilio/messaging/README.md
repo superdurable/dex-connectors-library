@@ -127,7 +127,7 @@ provider lookups; an unreadable or foreign checkpoint retries without sending.
 | 429 or 503 | Retry, after `Retry-After` when Twilio sends it |
 | DNS, connect, or TLS failure before any connection opened | Retry |
 | Timeout, dropped connection, 408, 409, 3xx, another 4xx, 5xx other than 503, or an error status whose body is oversized or unreadable, after dispatch | Retry and resend below the send cap, `uncertain` at the cap |
-| Error status whose body names a created message SID | Checkpoint the SID and read the message back, never resent |
+| Error status whose body names a created message SID | Checkpoint the SID and read the message back, never resent; when the SID checkpoint fails, a read-back that cannot finish selects `uncertain` instead of Retry |
 | 2xx whose body is oversized, unreadable, or has no usable message | `uncertain`, never resent, because Twilio created the message |
 | 2xx with a message SID that is for another account or reflects the credential | `uncertain`, never resent |
 

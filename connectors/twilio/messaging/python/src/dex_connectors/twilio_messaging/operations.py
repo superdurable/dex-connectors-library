@@ -308,11 +308,13 @@ class SendMessageOperation:
         if not is_body_unreadable and _MESSAGE.fullmatch(_message_sid(exchange.body)):
             # An error status naming a created message is contradictory, so its SID is read back.
             created_sid = _message_sid(exchange.body)
+            is_provider_id_saved = True
             try:
                 await fence.record_provider_id(created_sid)
             except Exception:
-                pass  # Read-back still runs; a lost checkpoint leaves the claim, which counts this send.
-            return await self._read_back(call, requested, created_sid)
+                # Read-back still runs, but a transient failure cannot retry without the saved SID.
+                is_provider_id_saved = False
+            return await self._read_back(call, requested, created_sid, is_provider_id_saved)
         if status in (429, 503):
             try:
                 await fence.record_can_resend()
@@ -393,7 +395,10 @@ class SendMessageOperation:
         receipt = self.client.receipt(call, exchange) if exchange else self.client.receipt(call)
         return MutationAttempt.uncertain(requested, unknown, receipt)
 
-    async def _read_back(self, call: Call, requested: Message, provider_id: str) -> MutationAttempt[Message]:
+    async def _read_back(
+        self, call: Call, requested: Message, provider_id: str, is_provider_id_saved: bool = True
+    ) -> MutationAttempt[Message]:
+        """Confirm a created message by SID; a transient failure retries only with the SID saved."""
         if not _MESSAGE.fullmatch(provider_id):
             return MutationAttempt.uncertain(
                 requested,
@@ -402,8 +407,19 @@ class SendMessageOperation:
             )
         authorization, credential_failure, is_transient = await self.client.authorization(call, "sendMessage")
         if credential_failure is not None:
-            if is_transient:
+            if is_transient and is_provider_id_saved:
                 return MutationAttempt.retry(credential_failure)
+            if is_transient:
+                return MutationAttempt.uncertain(
+                    requested,
+                    failure(
+                        "sendMessage",
+                        credential_failure.kind,
+                        credential_failure.message
+                        + "; Twilio created the message, but its SID could not be saved for read-back",
+                    ),
+                    self.client.receipt(call, message_sid=provider_id),
+                )
             return MutationAttempt.uncertain(
                 requested,
                 failure(
@@ -423,6 +439,17 @@ class SendMessageOperation:
             or exchange.status in (408, 429)
             or exchange.status >= 500
         ):
+            if not is_provider_id_saved:
+                return MutationAttempt.uncertain(
+                    requested,
+                    failure(
+                        "sendMessage",
+                        FailureKind.AVAILABILITY,
+                        "Twilio created the message, but its read-back is unavailable "
+                        "and its SID could not be saved",
+                    ),
+                    self.client.receipt(call, exchange, provider_id),
+                )
             return MutationAttempt.retry(
                 failure(
                     "sendMessage",

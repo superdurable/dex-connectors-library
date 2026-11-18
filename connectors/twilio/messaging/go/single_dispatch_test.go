@@ -185,6 +185,54 @@ func TestSendMessageFenceReadsBackAClientErrorThatNamesACreatedMessage(t *testin
 	require.Equal(t, http.MethodGet, requests[1].method)
 }
 
+func TestSendMessageFenceSelectsUncertainWhenANamedSIDIsUnsavedAndItsReadBackFails(t *testing.T) {
+	ctx := singledispatchtest.NewContext("twilio-fence-error-with-unsaved-sid", "send-message")
+	provider := newTwilioFake(t, func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			response.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		// The claim is already saved; the provider ID checkpoint that follows fails.
+		ctx.SetWriteError(errors.New("heartbeat unavailable"))
+		response.WriteHeader(http.StatusConflict)
+		writeBody(response, messageJSON(testMessageSID, "queued", "null"))
+	})
+	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
+	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	require.NoError(t, err, "a Retry without the saved SID could resend below the cap")
+	require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+	require.Len(t, provider.recordedRequests(), 2)
+}
+
+func TestSendMessageFenceRetriesTheReadBackOfASavedNamedSIDWithoutResending(t *testing.T) {
+	reads := 0
+	provider := newTwilioFake(t, func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			reads++
+			if reads == 1 {
+				response.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			writeBody(response, messageJSON(testMessageSID, "queued", "null"))
+			return
+		}
+		response.WriteHeader(http.StatusConflict)
+		writeBody(response, messageJSON(testMessageSID, "queued", "null"))
+	})
+	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
+	ctx := singledispatchtest.NewContext("twilio-fence-error-with-saved-sid", "send-message")
+	_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	require.NoError(t, err)
+	require.Equal(t, messaging.SendMessageBranchAccepted, result.Branch)
+	requests := provider.recordedRequests()
+	require.Len(t, requests, 3)
+	require.Equal(t, http.MethodGet, requests[2].method, "the saved SID is read back, never resent")
+}
+
 func TestSendMessageFenceRecordsCredentialFailureBeforeRetry(t *testing.T) {
 	provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
 		response.WriteHeader(http.StatusCreated)

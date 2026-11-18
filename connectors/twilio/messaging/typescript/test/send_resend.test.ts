@@ -146,6 +146,27 @@ describe('Twilio bounded resend of unconfirmed messages', () => {
     expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
   });
 
+  it('selects uncertain when the named SID cannot be saved and its read-back is unavailable', async () => {
+    const { client, requests } = newClient(request => request.method === 'POST' ? { status: 409, body: created.body } : { status: 503, body: '{}' });
+    const context = new AttemptContext();
+    const recordHeartbeat = context.recordHeartbeat.bind(context);
+    context.recordHeartbeat = async (value: unknown) => {
+      if (JSON.stringify(value).includes(messageSid)) throw new Error('heartbeat refused');
+      await recordHeartbeat(value);
+    };
+    expect(await send(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+  });
+
+  it('retries a read-back of the saved named SID without resending', async () => {
+    const { client, requests } = newClient(request => request.method === 'POST' ? { status: 409, body: created.body } : requests.length < 3 ? { status: 503, body: '{}' } : { status: 200, body: created.body });
+    const context = new AttemptContext();
+    expect(await send(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    expect(await send(client, context)).toMatchObject({ branch: 'accepted' });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET', 'GET']);
+  });
+
   it.each([
     { status: 400, body: '', bodyError: 'transport' },
     { status: 400, body: '', bodyError: 'tooLarge' },

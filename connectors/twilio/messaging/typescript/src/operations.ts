@@ -96,8 +96,10 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
     const createdSid = isBodyUnreadable ? '' : messageSid(response.body);
     if (messagePattern.test(createdSid)) {
       // An error status naming a created message is contradictory, so its SID is read back, never resent.
-      try { await fence.recordProviderId(createdSid); } catch { /* Read-back still runs; a lost checkpoint leaves the claim, which counts this send. */ }
-      return this.readBack(call, requested, { callId: call.id, attempt: call.context.attempt, state: 'claimed', providerId: createdSid } as Marker);
+      // Read-back still runs, but a transient failure cannot retry without the saved SID.
+      let isProviderIdSaved = true;
+      try { await fence.recordProviderId(createdSid); } catch { isProviderIdSaved = false; }
+      return this.readBack(call, requested, { callId: call.id, attempt: call.context.attempt, state: 'claimed', providerId: createdSid } as Marker, isProviderIdSaved);
     }
     if (response.status === 429 || response.status === 503) {
       let checkpointFailed = false; try { await fence.recordCanResend(); } catch { checkpointFailed = true; }
@@ -131,17 +133,21 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
     return newMutationBranch('providerRejected', requested, receipt, refusal);
   }
 
-  /** Confirm a saved message SID without resending; an unidentifiable earlier send stays uncertain. */
-  private async readBack(call: Call, requested: Message, marker: Marker | undefined): Promise<MutationAttempt<Message>> {
+  /** Confirm a saved message SID without resending; a transient failure retries only when the SID is saved. */
+  private async readBack(call: Call, requested: Message, marker: Marker | undefined, isProviderIdSaved = true): Promise<MutationAttempt<Message>> {
     const providerId = marker?.providerId ?? '';
     if (marker?.callId !== call.id || !messagePattern.test(providerId)) return newMutationUncertain(requested, twilioFailure('sendMessage', 'TRANSPORT', 'Twilio send outcome cannot be confirmed'), this.client.receipt(call));
     const auth = await this.client.authorization(call, 'sendMessage');
     if ('failure' in auth) {
-      if (auth.isTransient) return newMutationRetry(auth.failure);
+      if (auth.isTransient && isProviderIdSaved) return newMutationRetry(auth.failure);
+      if (auth.isTransient) return newMutationUncertain(requested, twilioFailure('sendMessage', auth.failure.kind, `${auth.failure.message}; Twilio created the message, but its SID could not be saved for a later read-back`), this.client.receipt(call, undefined, providerId));
       return newMutationUncertain(requested, twilioFailure('sendMessage', 'AUTHENTICATION', 'Twilio accepted message cannot be read; reconnect the connection'), this.client.receipt(call, undefined, providerId));
     }
     const exchange = await this.client.exchange(call, auth.authorization, 'GET', `${this.client.messagesURL}/${providerId}.json`);
-    if ('error' in exchange || exchange.isBodyReadFailed || exchange.response.status === 408 || exchange.response.status === 429 || exchange.response.status >= 500) return newMutationRetry(twilioFailure('sendMessage', 'AVAILABILITY', 'Twilio accepted message read-back is temporarily unavailable'));
+    if ('error' in exchange || exchange.isBodyReadFailed || exchange.response.status === 408 || exchange.response.status === 429 || exchange.response.status >= 500) {
+      if (!isProviderIdSaved) return newMutationUncertain(requested, twilioFailure('sendMessage', 'AVAILABILITY', 'Twilio created the message, but its read-back is unavailable and its SID could not be saved'), this.client.receipt(call, 'error' in exchange ? undefined : exchange.response, providerId));
+      return newMutationRetry(twilioFailure('sendMessage', 'AVAILABILITY', 'Twilio accepted message read-back is temporarily unavailable'));
+    }
     if (exchange.response.status !== 200 || exchange.isTooLarge) return newMutationUncertain(requested, twilioFailure('sendMessage', 'PROTOCOL', 'Twilio accepted message could not be confirmed'), this.client.receipt(call, exchange.response, providerId));
     try {
       const message = this.client.decodeMessage(exchange.response.body, auth.authorization);

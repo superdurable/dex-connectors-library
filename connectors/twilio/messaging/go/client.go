@@ -350,11 +350,11 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio send checkpoint is unreadable; no message was sent in this attempt"), 0)
 	case singledispatch.ReadBackRequired:
-		return client.readBackSentMessage(call, decision.Marker, requested)
+		return client.readBackSentMessage(call, decision.Marker, requested, true)
 	case singledispatch.ReadBackThenResendAllowed:
 		// A saved SID proves Twilio created the message, so it is read back and never resent.
 		if decision.Marker.ProviderID != "" {
-			return client.readBackSentMessage(call, decision.Marker, requested)
+			return client.readBackSentMessage(call, decision.Marker, requested, true)
 		}
 	}
 	// This attempt's send would be the last one the cap allows when no further send remains.
@@ -426,8 +426,8 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	case !isBodyUnreadable && messageSIDPattern.MatchString(readMessageSID(response.body)):
 		// An error status naming a created message is contradictory, so the SID is read back, never resent.
 		messageSID := readMessageSID(response.body)
-		_ = fence.RecordProviderID(messageSID)
-		return client.readBackSentMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: messageSID}, requested)
+		isProviderIDSaved := fence.RecordProviderID(messageSID) == nil
+		return client.readBackSentMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: messageSID}, requested, isProviderIDSaved)
 	case response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable:
 		checkpointErr := fence.RecordCanResend()
 		if response.statusCode == http.StatusTooManyRequests {
@@ -515,19 +515,27 @@ func (client *Client) uncertainSend(call sdkgo.Call, requested Message, response
 	return sdkgo.NewMutationUncertain(requested, newFailure("sendMessage", kind, message), client.receipt(call, response, "", 0))
 }
 
-func (client *Client) readBackSentMessage(call sdkgo.Call, marker singledispatch.Marker, requested Message) sdkgo.MutationAttempt[Message] {
+// readBackSentMessage confirms a created message by SID. A transient failure retries only when the SID
+// is saved, because without it the next attempt could resend instead of reading back.
+func (client *Client) readBackSentMessage(call sdkgo.Call, marker singledispatch.Marker, requested Message, isProviderIDSaved bool) sdkgo.MutationAttempt[Message] {
 	if marker.CallID != call.ID || !messageSIDPattern.MatchString(marker.ProviderID) {
 		return client.uncertainSend(call, requested, providerResponse{}, sdkgo.FailureTransport, "Twilio send outcome cannot be confirmed")
 	}
 	authorization, failure, isTransient := client.resolveAuthorization(call, "sendMessage")
 	if failure != nil {
-		if isTransient {
+		if isTransient && isProviderIDSaved {
 			return sdkgo.NewMutationRetry[Message](*failure, 0)
+		}
+		if isTransient {
+			return client.uncertainReadBack(call, marker.ProviderID, requested, providerResponse{}, failure.Kind, failure.Message+"; Twilio created the message, but its SID could not be saved for a later read-back")
 		}
 		return client.uncertainReadBack(call, marker.ProviderID, requested, providerResponse{}, sdkgo.FailureAuthentication, "Twilio accepted message cannot be read; reconnect the connection")
 	}
 	response, _, err := client.exchange(call, authorization, http.MethodGet, client.messagesURL+"/"+marker.ProviderID+".json", nil)
 	if err != nil || response.hasBodyReadFailed || response.statusCode == http.StatusRequestTimeout || response.statusCode == http.StatusTooManyRequests || response.statusCode >= 500 {
+		if !isProviderIDSaved {
+			return client.uncertainReadBack(call, marker.ProviderID, requested, response, sdkgo.FailureAvailability, "Twilio created the message, but its read-back is unavailable and its SID could not be saved")
+		}
 		return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio accepted message read-back is temporarily unavailable"), 0)
 	}
 	if response.statusCode != http.StatusOK || response.isBodyTooLarge {

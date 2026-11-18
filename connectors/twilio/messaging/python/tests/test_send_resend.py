@@ -242,6 +242,43 @@ async def test_error_status_naming_a_created_message_is_read_back_not_resent() -
     assert [request.method for request in requests] == ["POST", "GET"]
 
 
+class ProviderIDRefusingContext(AttemptContext):
+    """Refuse the heartbeat that saves the message SID."""
+
+    async def heartbeat(self, value: object = None) -> None:
+        """Fail the provider ID checkpoint and keep every other heartbeat."""
+        if MESSAGE_SID in json.dumps(value, default=str):
+            raise RuntimeError("heartbeat refused")
+        await super().heartbeat(value)
+
+
+async def test_unsaved_named_sid_with_unavailable_read_back_selects_uncertain() -> None:
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> tuple[int, object]:
+        return (409, CREATED[1]) if request.method == "POST" else (503, {})
+
+    result = await send(answer, ProviderIDRefusingContext(), requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert [request.method for request in requests] == ["POST", "GET"]
+
+
+async def test_saved_named_sid_read_back_retries_without_resending() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def answer(request: httpx.Request) -> tuple[int, object]:
+        if request.method == "POST":
+            return (409, CREATED[1])
+        return (503, {}) if len(requests) < 3 else (200, CREATED[1])
+
+    assert isinstance(await send(answer, context, requests), RetryError)
+    context.attempt = 2
+    result = await send(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "accepted"
+    assert [request.method for request in requests] == ["POST", "GET", "GET"]
+
+
 async def test_oversized_refusal_body_is_an_unknown_outcome() -> None:
     requests: list[httpx.Request] = []
     context = AttemptContext()
