@@ -180,6 +180,23 @@ func retryBeforeSubmitting(call sdkgo.Call, decision submissionDecision, failure
 	return sdkgo.NewMutationRetry[SentMessage](failure, 0)
 }
 
+// retryWithoutSubmitting returns Retry for a temporary failure before submitting. An accepted submission
+// keeps its marker as the last checkpoint, so no later attempt resubmits it; at the send cap it selects
+// uncertain, because Retry cannot help.
+func retryWithoutSubmitting(
+	call sdkgo.Call, decision submissionDecision, operation string, message SentMessage, failure sdkgo.Failure,
+) sdkgo.MutationAttempt[SentMessage] {
+	switch decision.kind {
+	case submissionAllowed:
+		return retryBeforeSubmitting(call, decision, failure)
+	case submissionCapReached:
+		attempt, _ := submissionAttemptBeforeSend(decision, operation, message)
+		return attempt
+	default:
+		return sdkgo.NewMutationRetry[SentMessage](failure, 0)
+	}
+}
+
 // refuseBeforeSubmitting selects branch for a definite failure before submitting, or uncertain after an
 // earlier possible submission, whose outcome the failure cannot settle.
 func refuseBeforeSubmitting(

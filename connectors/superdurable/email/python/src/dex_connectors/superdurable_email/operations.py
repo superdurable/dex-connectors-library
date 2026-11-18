@@ -117,6 +117,8 @@ def _receipt(object_id: str = "") -> Receipt:
 def _query_failure(error: MailFailure, missing_branch: bool = False) -> QueryAttempt[Any]:
     if error.outcome == "retry":
         return QueryAttempt.retry(error.failure)
+    if error.outcome == "defect":
+        return QueryAttempt.branch_result("defect", None, _receipt(), error.failure)
     branch = (
         ("notFound" if missing_branch else "providerRejected")
         if error.outcome == "not_found"
@@ -125,9 +127,13 @@ def _query_failure(error: MailFailure, missing_branch: bool = False) -> QueryAtt
     return QueryAttempt.branch_result(branch, None, _receipt(), error.failure)
 
 
-def _mutation_failure(error: MailFailure, missing_branch: bool = False) -> MutationAttempt[Any]:
-    if error.outcome in ("retry", "invalid"):
+def _mutation_failure(call: Call, error: MailFailure, missing_branch: bool = False) -> MutationAttempt[Any]:
+    """Map a setFlags or moveMessage failure; a later attempt may follow an applied change, so no defect."""
+    is_later_attempt = call.context is not None and call.context.attempt > 1
+    if error.outcome in ("retry", "invalid") or (error.outcome == "defect" and is_later_attempt):
         return MutationAttempt.retry(error.failure)
+    if error.outcome == "defect":
+        return MutationAttempt.branch_result("defect", None, _receipt(), error.failure)
     branch = "notFound" if missing_branch and error.outcome == "not_found" else "providerRejected"
     return MutationAttempt.branch_result(branch, None, _receipt(), error.failure)
 
@@ -914,6 +920,22 @@ async def _retry_before_submitting(
     return MutationAttempt.retry(failure)
 
 
+async def _retry_without_submitting(
+    call: Call, decision: _SubmissionDecision, operation: str, sent: SentMessage, failure: Failure
+) -> MutationAttempt[SentMessage]:
+    """Return Retry for a temporary failure before submitting, like Go's retryWithoutSubmitting.
+
+    An accepted submission keeps its marker as the last checkpoint, so no later attempt resubmits it.
+    """
+    if decision.kind == _SUBMISSION_ALLOWED:
+        return await _retry_before_submitting(call, decision, failure)
+    if decision.kind == _SUBMISSION_CAP_REACHED:
+        blocked = _attempt_before_submitting(decision, operation, sent)
+        assert blocked is not None
+        return blocked
+    return MutationAttempt.retry(failure)
+
+
 async def _submit_attempt(
     client: Client,
     call: Call,
@@ -1009,6 +1031,8 @@ class SendMessageOperation:
             )
             sent = SentMessage(identifier, sender, recipients, input.subject, sent_at=now)
         except MailFailure as error:
+            if error.outcome == "retry":
+                return await _retry_without_submitting(call, decision, operation, sent, error.failure)
             return _refuse_before_submitting(decision, "defect", error.failure, operation, sent)
         except ValueError as error:
             return _refuse_before_submitting(
@@ -1061,6 +1085,8 @@ class ReplyToMessageOperation:
             identifier = _message_identifier(call.idempotency_key, sender)
             identity = SentMessage(identifier, sender)
         except MailFailure as error:
+            if error.outcome == "retry":
+                return await _retry_without_submitting(call, decision, operation, identity, error.failure)
             return _refuse_before_submitting(decision, "defect", error.failure, operation, identity)
         except ValueError as error:
             failure = _failure(FailureKind.VALIDATION, operation, str(error))
@@ -1139,11 +1165,12 @@ class ReplyToMessageOperation:
             recipients = _unique_recipients(to, cc)
             sent = SentMessage(identifier, sender, recipients, subject, source.message_id, references, now)
         except MailFailure as error:
+            if error.outcome == "retry":
+                # An accepted reply keeps its marker; a later attempt rebuilds the output, never resubmitting.
+                return await _retry_without_submitting(call, decision, operation, identity, error.failure)
             if blocked is not None:
                 # The reply was accepted earlier, and its source can no longer be read.
                 return blocked
-            if error.outcome == "retry":
-                return await _retry_before_submitting(call, decision, error.failure)
             branches = {"not_found": "notFound", "invalid": "invalidResponse", "rejected": "providerRejected"}
             branch = branches.get(error.outcome, "defect")
             return _refuse_before_submitting(decision, branch, error.failure, operation, identity)
@@ -1216,7 +1243,7 @@ class SetFlagsOperation:
             credentials = await self.client.resolve_credentials(call, operation)
             return await asyncio.to_thread(self._update, credentials, input)
         except MailFailure as error:
-            return _mutation_failure(error, True)
+            return _mutation_failure(call, error, True)
 
     def _update(self, credentials: Any, input: SetFlagsInput) -> MutationAttempt[MessageFlags]:
         operation = "setFlags"
@@ -1324,7 +1351,7 @@ class MoveMessageOperation:
             credentials = await self.client.resolve_credentials(call, operation)
             return await asyncio.to_thread(self._move, credentials, input)
         except MailFailure as error:
-            return _mutation_failure(error, True)
+            return _mutation_failure(call, error, True)
 
     def _move(self, credentials: Any, input: MoveMessageInput) -> MutationAttempt[MovedMessage]:
         operation = "moveMessage"

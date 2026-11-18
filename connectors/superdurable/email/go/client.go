@@ -32,6 +32,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -150,13 +151,41 @@ func (client *Client) MoveMessage() MoveMessageOperation { return MoveMessageOpe
 // SetFlags returns the setFlags Mutation bound to this client.
 func (client *Client) SetFlags() SetFlagsOperation { return SetFlagsOperation{client: client} }
 
-// resolveCredentials returns credentials that are safe to send in IMAP and SMTP commands, or a defect Failure.
+// resolveCredentials returns credentials that are safe to send in IMAP and SMTP commands, or a Failure. A
+// transient failure has kind FailureAvailability (see isTransientCredentialFailure); any other is a defect.
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
+	switch {
+	case isTransientCredentialError(err):
+		return Credentials{}, emailFailurePointer(sdkgo.FailureAvailability, operation,
+			"connection credentials could not be read now; nothing was sent")
+	case err != nil || validateResolvedCredentials(credentials) != nil:
 		return Credentials{}, emailFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
 	}
 	return credentials, nil
+}
+
+// isTransientCredentialError reports a credential resolution failure that a later attempt may not repeat,
+// such as an unavailable credential broker; any other failure is terminal.
+func isTransientCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, projectconfig.ErrExchangePending) ||
+		errors.Is(err, projectconfig.ErrRefreshFailed) || errors.Is(err, projectconfig.ErrOutcomeUnknown) ||
+		errors.Is(err, projectconfig.ErrConflict) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+}
+
+// isTransientCredentialFailure reports a resolveCredentials failure that returns Retry instead of selecting defect.
+func isTransientCredentialFailure(failure sdkgo.Failure) bool {
+	return failure.Kind == sdkgo.FailureAvailability
+}
+
+// repeatSafeWriteCredentialAttempt maps a credential failure of setFlags or moveMessage. Only a terminal
+// failure on the first attempt selects defect: a later attempt may follow an applied change.
+func repeatSafeWriteCredentialAttempt[T any](call sdkgo.Call, defect sdkgo.BranchID, failure sdkgo.Failure) sdkgo.MutationAttempt[T] {
+	if isTransientCredentialFailure(failure) || (call.Context != nil && call.Context.Attempt() > 1) {
+		return sdkgo.NewMutationRetry[T](failure, 0)
+	}
+	var zero T
+	return sdkgo.NewMutationBranch(defect, zero, &failure, sdkgo.Receipt{})
 }
 
 // messageSender is fromAddress, or the IMAP user name when it is a complete address, with fromName.

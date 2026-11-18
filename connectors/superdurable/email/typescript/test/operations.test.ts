@@ -3,6 +3,7 @@
 
 import { describe, expect, test, vi } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ImapFlow } from 'imapflow';
 import { EmailClient, MailFailure } from '../src/index.js';
 import { classifyMailError, hasControls, isBareAddress } from '../src/client.js';
@@ -144,7 +145,8 @@ describe('email operation decisions', () => {
     const accepted = { emailSubmittedCallId: 'email-test-call', emailAttempt: 1, emailSubmissionCount: 1, emailAccepted: true };
     const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
     vi.spyOn(email, 'openIMAP').mockResolvedValueOnce(fakeIMAP())
-      .mockRejectedValueOnce(Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }));
+      .mockRejectedValueOnce(Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }))
+      .mockRejectedValueOnce(new MailFailure('notFound', 'NOT_FOUND', 'the mailbox does not exist'));
     const { call: replayCall, heartbeats } = fakeCall('replyToMessage', accepted);
     const reply = await email.replyToMessage().invoke(replayCall, { message: reference, text: 'Thanks' });
     expect(reply.kind).toBe('branch');
@@ -154,9 +156,44 @@ describe('email operation decisions', () => {
       expect(reply.value.inReplyTo).toBe('message-100@example.com');
       expect(reply.value.sentAt).toBeUndefined();
     }
+    const temporary = fakeCall('replyToMessage', accepted);
+    const unreachable = await email.replyToMessage().invoke(temporary.call, { message: reference, text: 'Thanks' });
+    expect(unreachable.kind, 'a later attempt rebuilds the output from the kept accepted marker').toBe('retry');
+    expect(temporary.heartbeats, 'the accepted marker stays the last checkpoint').toEqual([]);
     const unreadable = await email.replyToMessage().invoke(fakeCall('replyToMessage', accepted).call, { message: reference, text: 'Thanks' });
-    expect(unreadable.kind).toBe('uncertain');
+    expect(unreadable.kind, 'a source that is gone cannot rebuild the output').toBe('uncertain');
     expect(heartbeats, 'an accepted reply never records another claim').toEqual([]);
+  });
+
+  test('an unavailable credential broker returns Retry and never clears an accepted marker', async () => {
+    const broker = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost', fromAddress: 'support@example.com' }, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } });
+    const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
+    expect((await broker.searchMessages().invoke(fakeCall('searchMessages').call, {})).kind).toBe('retry');
+    expect((await broker.setFlags().invoke(fakeCall('setFlags').call, { message: reference, isSeen: true })).kind).toBe('retry');
+    expect((await broker.moveMessage().invoke(fakeCall('moveMessage').call, { message: reference, destinationMailbox: 'Archive' })).kind).toBe('retry');
+    const first = fakeCall('sendMessage');
+    expect((await broker.sendMessage().invoke(first.call, { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' })).kind).toBe('retry');
+    expect(first.heartbeats, 'recorded as no submission').toEqual([{ emailSubmittedCallId: 'email-test-call', emailAttempt: 1 }]);
+    const accepted = { emailSubmittedCallId: 'email-test-call', emailAttempt: 1, emailSubmissionCount: 1, emailAccepted: true };
+    for (const operation of ['sendMessage', 'replyToMessage'] as const) {
+      const later = fakeCall(operation, accepted);
+      const attempt = operation === 'sendMessage'
+        ? await broker.sendMessage().invoke(later.call, { to: ['jane@example.com'], subject: 'Hello', text: 'Hello' })
+        : await broker.replyToMessage().invoke(later.call, { message: reference, text: 'Thanks' });
+      expect(attempt.kind).toBe('retry');
+      expect(later.heartbeats).toEqual([]);
+    }
+  });
+
+  test('a terminal credential failure selects defect only on the first attempt of a repeat-safe write', async () => {
+    const missing = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => { throw new Error('connection is not configured'); } });
+    const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
+    const first = await missing.setFlags().invoke(fakeCall('setFlags').call, { message: reference, isSeen: true });
+    expect(first.kind === 'branch' && first.branch).toBe('defect');
+    const later = await missing.setFlags().invoke(fakeCall('setFlags', {}).call, { message: reference, isSeen: true });
+    expect(later.kind, 'an earlier attempt may have applied the flags').toBe('retry');
+    const moved = await missing.moveMessage().invoke(fakeCall('moveMessage', {}).call, { message: reference, destinationMailbox: 'Archive' });
+    expect(moved.kind).toBe('retry');
   });
 
   test('reply validation and an unreadable checkpoint preserve defect and Retry', async () => {

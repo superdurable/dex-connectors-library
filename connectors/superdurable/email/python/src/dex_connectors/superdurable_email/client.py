@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind
+from dex_connectors.sdk.projectconfig.storage import ObjectConflictError
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
@@ -27,6 +28,8 @@ if TYPE_CHECKING:
         SetFlagsOperation,
     )
 
+# A credential broker, store, refresh, or exchange that is unavailable now may answer on a later attempt.
+_TRANSIENT_CREDENTIAL_ERRORS = (OSError, ObjectConflictError)
 _HOST_LABEL = re.compile(r"[A-Za-z0-9_](?:[A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?\Z")
 
 
@@ -126,9 +129,27 @@ class Client:
         """No pooled transport survives an operation."""
 
     async def resolve_credentials(self, call: Call, operation: str) -> Credentials:
-        """Get current credentials and reject unusable material before connecting."""
+        """Get current credentials and reject unusable material before connecting.
+
+        A transient resolution failure raises a ``retry`` MailFailure; any other raises ``defect``.
+        """
         try:
             credentials = await self.credentials.resolve(call)
+        except _TRANSIENT_CREDENTIAL_ERRORS as error:
+            raise MailFailure(
+                "retry",
+                _failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "connection credentials could not be read now; nothing was sent",
+                ),
+            ) from error
+        except Exception as error:
+            raise MailFailure(
+                "defect",
+                _failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"),
+            ) from error
+        try:
             values = (
                 credentials.username,
                 credentials.password.reveal(),
