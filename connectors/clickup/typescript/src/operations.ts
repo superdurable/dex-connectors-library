@@ -331,11 +331,10 @@ class FencedWrite {
       return newMutationRetry(exchange.failure, exchange.retryAfterMs);
     }
     if (outcome === 'defect') {
-      // Credentials were unavailable or the request was never built, so nothing was sent.
+      // Terminal credentials or an unbuildable request mean nothing was sent; transient credentials are notSent.
       try { await this.fence.recordCanResend(); } catch { /* A lost checkpoint only keeps the claim. */ }
       if (!this.hasPossibleEarlierSend) return newMutationBranch('defect', output, responseReceipt, exchange.failure);
-      // ClickUp credential failures cannot be told apart as transient, so they retry; a build failure is terminal.
-      if (exchange.failure.kind === 'AUTHENTICATION') return this.credentialRetry(exchange.failure);
+      if (exchange.failure.kind === 'AUTHENTICATION') return this.terminalCredentialFailure(output, exchange.failure);
       return newMutationUncertain(output, exchange.failure, responseReceipt);
     }
     if (outcome === 'notFound' || outcome === 'rejected') {
@@ -367,9 +366,12 @@ class FencedWrite {
     return newMutationUncertain(output, failure('PROTOCOL', this.operation, `${message}, so it is not sent again`), responseReceipt);
   }
 
-  /** Retry a credential failure after a possible earlier send without recording notSent. */
-  credentialRetry<Output>(cause: Failure): MutationAttempt<Output> {
-    return newMutationRetry(failure(cause.kind, this.operation, `an earlier attempt of this Step may have sent the write and the connection credentials are unavailable to read it back: ${cause.message}`));
+  /**
+   * Select uncertain for a terminal credential failure after a possible earlier send, without recording notSent.
+   * A transient credential failure arrives as `notSent` and retries instead.
+   */
+  terminalCredentialFailure<Output>(output: Output, cause: Failure): MutationAttempt<Output> {
+    return newMutationUncertain(output, failure(cause.kind, this.operation, `an earlier attempt of this Step may have sent the write and the connection credentials cannot read it back: ${cause.message}`), {});
   }
 
   /** Permit one send when the fence allows it after a read-back that confirmed nothing, and otherwise select uncertain. */
@@ -433,7 +435,7 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
       const result = await this.client.exchange(call, 'createTask', 'GET', path(write.providerId));
       if (result.kind !== 'succeeded') {
         if (isRetryable(result)) return newMutationRetry(result.failure, result.retryAfterMs);
-        if (result.kind === 'defect') return write.credentialRetry(result.failure);
+        if (result.kind === 'defect') return write.terminalCredentialFailure(output, result.failure);
         return write.missingReadBack(output, responseReceipt, 'create', result.failure);
       }
       let task: Task;
@@ -447,7 +449,7 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
     const result = await this.client.exchange(call, 'createTask', 'GET', `/list/${input.listId}/task`, query);
     if (result.kind !== 'succeeded') {
       if (isRetryable(result)) return newMutationRetry(result.failure, result.retryAfterMs);
-      if (result.kind === 'defect') return write.credentialRetry(result.failure);
+      if (result.kind === 'defect') return write.terminalCredentialFailure(output, result.failure);
       // An earlier send may have created the task before the List became unreadable.
       if (result.kind === 'notFound') return unreadableParentAfterPossibleSend('createTask', 'created the task', 'List', output, responseReceipt, result.failure);
       return write.missingReadBack(output, responseReceipt, 'create', result.failure);
@@ -507,7 +509,7 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     const responseReceipt = receipt(this.client, call, input.taskId);
     if (result.kind !== 'succeeded') {
       if (isRetryable(result)) return newMutationRetry(result.failure, result.retryAfterMs);
-      if (result.kind === 'defect') return write.credentialRetry(result.failure);
+      if (result.kind === 'defect') return write.terminalCredentialFailure(output, result.failure);
       // An earlier send may have added the comment before the task became unreadable.
       if (result.kind === 'notFound') return unreadableParentAfterPossibleSend('addComment', 'added the comment', 'task', output, responseReceipt, result.failure);
       return write.missingReadBack(output, responseReceipt, 'comment', result.failure);

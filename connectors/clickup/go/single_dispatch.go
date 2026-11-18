@@ -77,15 +77,24 @@ func (write *fencedWrite) canResendAfterMissingReadBack() bool {
 	return isSendDecision && write.decision.Marker.ProviderID == ""
 }
 
-// credentialFailureAttempt maps a credential failure before the send.
+// credentialFailureAttempt maps a credential failure before this attempt's send. After a possible
+// earlier send it never records notSent: a transient failure retries and a terminal one selects uncertain.
+// Before any send, a transient failure records notSent and retries, and a terminal one selects defect.
 func credentialFailureAttempt[OUT any](write *fencedWrite, operationID string, failure sdkgo.Failure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
-	if write.hasPossibleEarlierSend {
-		// ClickUp credential failures cannot be told apart as transient, so nothing is recorded and the attempt retries.
+	isTerminal := failure.Kind == sdkgo.FailureAuthentication
+	if write.needsReadBack() {
+		if isTerminal {
+			return sdkgo.NewMutationUncertain(echo, clickupFailure(failure.Kind, operationID,
+				"an earlier attempt of this Step may have sent the write and the connection credentials cannot read it back: "+failure.Message), sdkgo.Receipt{})
+		}
 		return sdkgo.NewMutationRetry[OUT](clickupFailure(failure.Kind, operationID,
 			"an earlier attempt of this Step may have sent the write and the connection credentials are unavailable to read it back: "+failure.Message), 0)
 	}
 	if err := write.fence.RecordNotSent(); err != nil {
 		return sdkgo.NewMutationRetry[OUT](clickupFailure(sdkgo.FailureAvailability, operationID, "ClickUp setup failed and the not-sent checkpoint could not be recorded"), 0)
+	}
+	if !isTerminal {
+		return sdkgo.NewMutationRetry[OUT](failure, 0)
 	}
 	return sdkgo.NewMutationBranch(defect, echo, &failure, sdkgo.Receipt{})
 }
