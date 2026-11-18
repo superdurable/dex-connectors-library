@@ -431,8 +431,8 @@ func (client *Client) sendAndConfirm(
 	if err != nil {
 		return client.confirmAcceptedMessage(call, budget, credentials, operation, message, receipt, fence)
 	}
-	var sent sendResponse
-	if err := json.Unmarshal(content, &sent); err != nil || sent.ID == "" {
+	sent, isIdentified := acceptedMessageIdentity(content)
+	if !isIdentified {
 		return client.confirmAcceptedMessage(call, budget, credentials, operation, message, receipt, fence)
 	}
 	return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
@@ -471,9 +471,7 @@ func (client *Client) reconcileEarlierSends(
 	canResendAfterInconclusiveSearch := mayDispatch && decision.Kind == singledispatch.ReadBackThenResendAllowed
 	switch {
 	case searchErr != nil && !canResendAfterInconclusiveSearch:
-		if decision.Kind == singledispatch.SendAllowed {
-			_ = fence.RecordNotSent() // A failed checkpoint cannot permit a later send.
-		}
+		recordNotSentBeforeAnySend(fence, decision)
 		return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure(operation.operationID, sdkgo.FailureAvailability,
 			"Gmail sent-mail search did not answer before the "+operation.requestName), 0), true
 	case !mayDispatch:
@@ -528,8 +526,34 @@ func isRefusedBeforeProcessing(statusCode int) bool {
 
 // hasAcceptedMessageID reports a refusal body that still names a Gmail message, which contradicts the status.
 func hasAcceptedMessageID(content []byte) bool {
-	var sent sendResponse
-	return json.Unmarshal(content, &sent) == nil && sent.ID != ""
+	_, isIdentified := acceptedMessageIdentity(content)
+	return isIdentified
+}
+
+// acceptedMessageIdentity returns the message a JSON object names when its exact "id" key is a
+// non-empty string, whatever its other fields are; a non-string "threadId" is dropped.
+func acceptedMessageIdentity(content []byte) (sendResponse, bool) {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(content, &fields) != nil {
+		return sendResponse{}, false
+	}
+	var identity sendResponse
+	if json.Unmarshal(fields["id"], &identity.ID) != nil || identity.ID == "" {
+		return sendResponse{}, false
+	}
+	var threadID string
+	if json.Unmarshal(fields["threadId"], &threadID) == nil {
+		identity.ThreadID = threadID
+	}
+	return identity, true
+}
+
+// recordNotSentBeforeAnySend records notSent only when no earlier attempt may have sent, because
+// notSent would otherwise hide that send from later attempts.
+func recordNotSentBeforeAnySend(fence *singledispatch.Fence, decision singledispatch.Decision) {
+	if decision.Kind == singledispatch.SendAllowed && decision.MaximumPriorSends == 0 {
+		_ = fence.RecordNotSent() // A failed checkpoint cannot permit a later send.
+	}
 }
 
 // defectBeforeAnySend selects defect only when no earlier attempt may have sent; otherwise that send

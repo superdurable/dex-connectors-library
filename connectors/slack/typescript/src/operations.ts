@@ -328,8 +328,8 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
   try { fence = newFence(call, 30_000, { maxSends: operationMaxSends }); }
   catch { return newMutationBranch('defect', emptyPost, {}, failure(operation, 'LOCAL_DEFECT', 'Slack dispatch fence could not be constructed')); }
   const decision = fence.decide();
-  // An unreadable checkpoint is an unknown outcome; attempts past the send cap stop repeating.
-  if (decision.kind === 'failClosed') return resendOrSelectUncertain(call.context.attempt < effectiveMaxSends(call, operationMaxSends), failure(operation, 'TRANSPORT', 'an earlier attempt may have posted the Slack message'), undefined, client.receipt(call));
+  // An unreadable checkpoint is an unknown outcome; the retry budget bounds these attempts.
+  if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'TRANSPORT', 'an earlier attempt may have posted the Slack message, and its dispatch checkpoint is unreadable'));
   if (decision.kind === 'readBackRequired') return readBack(client, call, operation, channelId, threadTimestamp, decision.marker);
   // Slack returns a timestamp only for a message it created, so a saved one is read back
   // and never resent; a lost timestamp cannot be read back, so this attempt resends.
@@ -337,9 +337,9 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
   // This attempt's send would be the last one the cap allows when no further send remains.
   const canResendUnknownOutcome = (decision.priorSendUpperBound ?? 0) + 1 < effectiveMaxSends(call, operationMaxSends);
   // An earlier send may have posted, so a refusal of this resend cannot prove nothing changed.
-  const hasPossibleEarlierSend = (decision.priorSendUpperBound ?? 0) > 0;
+  const hasPossibleEarlierSend = (decision.priorSendUpperBound ?? 0) > 0 || decision.kind === 'readBackThenResendAllowed';
   const credential = await client.resolveToken(call, 'bot');
-  if (!credential.token && decision.kind === 'readBackThenResendAllowed') {
+  if (!credential.token && hasPossibleEarlierSend) {
     // notSent would hide the earlier possible send, so nothing is recorded.
     return credential.terminal ? newMutationUncertain(emptyPost, failure(operation, 'AUTHENTICATION', 'an earlier attempt may have posted the Slack message, and the connection credentials are unavailable to resend it; reconnect the connection'), client.receipt(call))
       : newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack credentials are temporarily unavailable; no message was sent in this attempt'));
@@ -347,8 +347,6 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
   if (!credential.token) {
     try { await fence.recordNotSent(); }
     catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack credentials and no-send checkpoint are unavailable')); }
-    // An earlier send may have posted, so terminal credentials cannot select defect.
-    if (credential.terminal && hasPossibleEarlierSend) return newMutationUncertain(emptyPost, failure(operation, 'AUTHENTICATION', 'an earlier attempt may have posted the Slack message, and the connection credentials are unavailable to resend it; reconnect the connection'), client.receipt(call));
     return credential.terminal ? newMutationBranch('defect', emptyPost, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable; reconnect the connection'))
       : newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack credentials are temporarily unavailable; no message was sent'));
   }
@@ -367,18 +365,19 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
     return response.status === 429 ? newMutationRetry(failure(operation, 'RATE_LIMIT', 'Slack rate limited the message'), retryAfter(response)) : newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack message service is temporarily unavailable'), retryAfter(response));
   }
   const body = response.body as SlackBody | undefined;
-  if (!response.error && response.status >= 400 && response.status < 500 && response.status !== 409 && isAcceptedBody(response)) {
-    // A 4xx whose body reports a post may have created it, so the claim stays and nothing is resent.
+  if (response.error === 'transport' && response.status >= 200 && response.status < 300) {
+    // Slack answered 2xx before the body broke, so the post may exist and is never resent.
+    return newMutationUncertain(emptyPost, failure(operation, 'TRANSPORT', 'Slack answered the post, but its response body is unreadable'), client.receipt(call, response));
+  }
+  if (!response.error && response.status >= 200 && response.status < 500 && response.status !== 409 && !isPostSuccess(response) && isAcceptedBody(response)) {
+    // A non-success response whose body reports a post is unknown, so a named timestamp is read back.
     const timestamp = acceptedTimestamp(response);
-    if (timestamp) {
-      try { await fence.recordProviderId(timestamp); } catch { /* Read-back can still prove this attempt's result. */ }
-      return readBack(client, call, operation, channelId, threadTimestamp, { callId: call.id, attempt: call.context.attempt, state: 'claimed', providerId: timestamp });
-    }
+    if (timestamp) return readBackAfterRecordingTimestamp(client, call, fence, operation, channelId, threadTimestamp, timestamp);
     return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'PROTOCOL', 'Slack returned a client error with an accepted message response'), retryAfter(response), client.receipt(call, response));
   }
-  if (response.status === 401 || (!response.error && response.status >= 200 && response.status < 300 && !body?.ok && isCredentialRejected(response))) {
+  if (response.status === 401 || (!response.error && response.status >= 200 && response.status < 300 && body?.ok === false && isCredentialRejected(response))) {
     const replacement = await client.refreshRejectedToken(call, 'bot', credential.token);
-    if (!replacement.token) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, response, client.receipt(call, response), failure(operation, 'AUTHENTICATION', replacement.terminal ? 'Slack rejected the connection credential; reconnect the connection' : 'Slack credential refresh is temporarily unavailable'));
+    if (!replacement.token) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, canResendUnknownOutcome, response, client.receipt(call, response), failure(operation, 'AUTHENTICATION', replacement.terminal ? 'Slack rejected the connection credential; reconnect the connection' : 'Slack credential refresh is temporarily unavailable'));
     if (!await canResend(fence)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack retry checkpoint could not be recorded'));
     return newMutationRetry(failure(operation, 'AUTHENTICATION', 'Slack connection credential was refreshed after rejection'));
   }
@@ -390,17 +389,14 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
     return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'TRANSPORT', 'Slack message outcome is unknown'), undefined, client.receipt(call, response));
   }
   if (response.status === 409) return newMutationUncertain(emptyPost, failure(operation, 'PROTOCOL', 'Slack returned a conflict without a confirmable message identity'), client.receipt(call, response));
-  if (!body?.ok) {
-    if (response.status >= 200 && response.status < 300 && ['service_unavailable', 'ratelimited'].includes(body?.error ?? '')) {
+  if (body?.ok === false) {
+    if (response.status >= 200 && response.status < 300 && ['service_unavailable', 'ratelimited'].includes(body.error ?? '')) {
       if (!await canResend(fence)) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack retry checkpoint could not be recorded'));
-      return newMutationRetry(failure(operation, body?.error === 'ratelimited' ? 'RATE_LIMIT' : 'AVAILABILITY', 'Slack did not process the message'), retryAfter(response));
+      return newMutationRetry(failure(operation, body.error === 'ratelimited' ? 'RATE_LIMIT' : 'AVAILABILITY', 'Slack did not process the message'), retryAfter(response));
     }
-    if (['internal_error', 'fatal_error'].includes(body?.error ?? '')) {
-      const timestamp = body?.message?.ts || body?.ts || '';
-      if (timestamp) {
-        try { await fence.recordProviderId(timestamp); } catch { /* Read-back can still prove this attempt's result. */ }
-        return readBack(client, call, operation, channelId, threadTimestamp, { callId: call.id, attempt: call.context.attempt, state: 'claimed', providerId: timestamp });
-      }
+    if (['internal_error', 'fatal_error'].includes(body.error ?? '')) {
+      const timestamp = body.message?.ts || body.ts || '';
+      if (timestamp) return readBackAfterRecordingTimestamp(client, call, fence, operation, channelId, threadTimestamp, timestamp);
       return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'AVAILABILITY', 'Slack message outcome is unknown'), retryAfter(response), client.receipt(call, response));
     }
   }
@@ -408,16 +404,16 @@ async function postMessage(client: SlackClient, call: Call, definition: Mutation
   const rejected = classifyResponse(operation, response);
   // Only an allowlisted refusal proves nothing was posted; any other outcome is unknown.
   if (rejected && !isDefiniteRefusal(response)) return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'PROTOCOL', 'Slack message outcome is unknown'), retryAfter(response), client.receipt(call, response));
-  if (rejected) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, response, client.receipt(call, response), rejected);
+  if (rejected) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, canResendUnknownOutcome, response, client.receipt(call, response), rejected);
   const message: SlackMessage = { ...body?.message };
   if (!message.ts && body?.ts) message.ts = body.ts;
   if (!message.channel && body?.channel) message.channel = body.channel;
-  if (message.ts) { try { await fence.recordProviderId(message.ts); } catch { /* The accepted result remains authoritative. */ } }
   // Slack accepted this post, so a resend would duplicate it; an incomplete response stays unresent.
   if (!message.ts || !message.channel) {
-    if (message.ts) return readBack(client, call, operation, channelId, threadTimestamp, { callId: call.id, attempt: call.context.attempt, state: 'claimed', providerId: message.ts });
+    if (message.ts) return readBackAfterRecordingTimestamp(client, call, fence, operation, channelId, threadTimestamp, message.ts);
     return newMutationUncertain(emptyPost, failure(operation, 'PROTOCOL', 'Slack returned an invalid message response'), client.receipt(call, response));
   }
+  try { await fence.recordProviderId(message.ts); } catch { /* The accepted result remains authoritative. */ }
   return newMutationBranch('sent', { message: convertMessage(message.channel, message) }, client.receipt(call, response, message.ts));
 }
 
@@ -433,23 +429,33 @@ function resendOrSelectUncertain(canResendUnknownOutcome: boolean, unknownFailur
 }
 
 /**
- * Select providerRejected only when no earlier send of this call may have posted.
- * A definite refusal of the first send records canResend, so agent hosts report a failure.
+ * Select providerRejected only for a definite refusal when no earlier send of this call may have posted;
+ * any other refusal is an unknown outcome that resends below the cap. A definite refusal of the first
+ * send records canResend, so agent hosts report a failure.
  */
-async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean, response: SlackExchange, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<PostMessageOutput>> {
+async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean, canResendUnknownOutcome: boolean, response: SlackExchange, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<PostMessageOutput>> {
+  if (!isDefiniteRefusal(response)) return resendOrSelectUncertain(canResendUnknownOutcome, rejection, undefined, receipt);
   if (hasPossibleEarlierSend) return newMutationUncertain(emptyPost, rejection, receipt);
   // A lost checkpoint leaves the claim, which agent hosts conservatively report as unknown.
-  if (isDefiniteRefusal(response)) await canResend(fence);
+  await canResend(fence);
   return newMutationBranch('providerRejected', emptyPost, receipt, rejection);
 }
 
-/** Report a coded Slack ok:false response, or an allowlisted 4xx whose body reports no accepted post; either proves nothing was posted. */
+/**
+ * Report a coded explicit ok:false 2xx naming no timestamp, or an allowlisted 4xx whose readable body
+ * reports no accepted post; either proves nothing was posted.
+ */
 function isDefiniteRefusal(response: SlackExchange): boolean {
   if (response.status >= 200 && response.status < 300) {
     const body = response.body as SlackBody | undefined;
-    return body?.ok === false && !!body.error;
+    return body?.ok === false && !!body.error && acceptedTimestamp(response) === '';
   }
-  return refusalStatuses.has(response.status) && !isAcceptedBody(response);
+  return refusalStatuses.has(response.status) && !response.error && !isAcceptedBody(response);
+}
+
+/** Report a 2xx ok:true post response. */
+function isPostSuccess(response: SlackExchange): boolean {
+  return response.status >= 200 && response.status < 300 && (response.body as SlackBody | undefined)?.ok === true;
 }
 
 // Request refusals; 408, 409, 429, and unlisted 4xx keep the claim.
@@ -468,15 +474,28 @@ function acceptedTimestamp(response: SlackExchange): string {
 
 async function canResend(fence: ReturnType<typeof newFence>): Promise<boolean> { try { await fence.recordCanResend(); return true; } catch { return false; } }
 
-async function readBack(client: SlackClient, call: Call, operation: string, channelId: string, threadTimestamp: string, marker: Marker | undefined): Promise<MutationAttempt<PostMessageOutput>> {
+/** Checkpoint a timestamp Slack returned, then read that message back. */
+async function readBackAfterRecordingTimestamp(client: SlackClient, call: Call, fence: ReturnType<typeof newFence>, operation: string, channelId: string, threadTimestamp: string, timestamp: string): Promise<MutationAttempt<PostMessageOutput>> {
+  let isProviderIdCheckpointed = true;
+  try { await fence.recordProviderId(timestamp); } catch { isProviderIdCheckpointed = false; }
+  return readBack(client, call, operation, channelId, threadTimestamp, { callId: call.id, attempt: call.context.attempt, state: 'claimed', providerId: timestamp }, isProviderIdCheckpointed);
+}
+
+/** Retry a read-back only when the next attempt can find the saved timestamp. */
+function retryReadBackOrSelectUncertain(isProviderIdCheckpointed: boolean, readBackFailure: Failure, retryDelayMs: number | undefined, receipt: ReceiptDraft): MutationAttempt<PostMessageOutput> {
+  return isProviderIdCheckpointed ? newMutationRetry(readBackFailure, retryDelayMs) : newMutationUncertain(emptyPost, readBackFailure, receipt);
+}
+
+/** Confirm a post by timestamp. Without a checkpointed timestamp, a later attempt would resend, so transient failures select uncertain. */
+async function readBack(client: SlackClient, call: Call, operation: string, channelId: string, threadTimestamp: string, marker: Marker | undefined, isProviderIdCheckpointed = true): Promise<MutationAttempt<PostMessageOutput>> {
   if (!marker || marker.callId !== call.id || !marker.providerId) return newMutationUncertain(emptyPost, failure(operation, 'TRANSPORT', 'an earlier Slack message cannot be identified'), client.receipt(call));
   const credential = await client.resolveToken(call, 'user');
   if (!credential.token) return credential.terminal ? newMutationUncertain(emptyPost, failure(operation, 'AUTHENTICATION', 'Slack message read-back credentials are unavailable; reconnect the connection to confirm the post'), client.receipt(call, undefined, marker.providerId))
-    : newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack message read-back credentials are unavailable'));
+    : retryReadBackOrSelectUncertain(isProviderIdCheckpointed, failure(operation, 'AVAILABILITY', 'Slack message read-back credentials are unavailable'), undefined, client.receipt(call, undefined, marker.providerId));
   const query = replyQuery(channelId, threadTimestamp || marker.providerId, marker.providerId);
   const response = await client.get(call, credential.token, 'conversations.replies', query);
   if (response.error === 'invalid' || response.error === 'tooLarge') return newMutationUncertain(emptyPost, failure(operation, 'PROTOCOL', 'Slack message read-back returned an unusable response'), client.receipt(call, response, marker.providerId));
-  if (response.error || response.status === 429 || response.status >= 500) return newMutationRetry(failure(operation, 'AVAILABILITY', 'Slack message read-back is temporarily unavailable'), retryAfter(response));
+  if (response.error || response.status === 429 || response.status >= 500) return retryReadBackOrSelectUncertain(isProviderIdCheckpointed, failure(operation, 'AVAILABILITY', 'Slack message read-back is temporarily unavailable'), retryAfter(response), client.receipt(call, response, marker.providerId));
   const body = response.body as SlackBody;
   if (response.status < 200 || response.status >= 300 || !body.ok) return newMutationUncertain(emptyPost, failure(operation, 'PROTOCOL', 'Slack message read-back could not confirm the post'), client.receipt(call, response, marker.providerId));
   const match = (body.messages ?? []).find(message => message.ts === marker.providerId && (!threadTimestamp || message.thread_ts === threadTimestamp));

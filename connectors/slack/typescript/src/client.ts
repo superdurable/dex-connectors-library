@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { MaxSlackSocketMessageBytes, dialSlackSocket, type SlackSocketDialer } from './socket_mode.js';
@@ -150,7 +150,12 @@ export class SlackClient {
     try { received = await this.send(request); }
     catch (error) {
       if (error instanceof BodyTooLargeError) return { status: error.status ?? 0, headers: error.headers ?? {}, body: undefined, error: 'tooLarge' };
-      return { status: 0, headers: {}, body: undefined, error: error instanceof ProviderTransportError && error.isProvablyNotSent ? 'notSent' : 'transport' };
+      // Headers that arrived before the failure keep their status, so a 2xx is never resent.
+      if (error instanceof ProviderTransportError || error instanceof ProviderStalledError) {
+        const isProvablyNotSent = error instanceof ProviderTransportError && error.isProvablyNotSent;
+        return { status: error.status ?? 0, headers: error.headers ?? {}, body: undefined, error: isProvablyNotSent ? 'notSent' : 'transport' };
+      }
+      return { status: 0, headers: {}, body: undefined, error: 'transport' };
     }
     if (!received.body.length) return { status: received.status, headers: received.headers, body: undefined, error: 'invalid' };
     try {

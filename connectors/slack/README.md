@@ -433,31 +433,40 @@ never resent. A definite refusal of a first send selects `providerRejected`;
 a definite refusal of a resend selects `uncertain`, because an earlier send of
 the same call may have posted the message. From Go v1.8.1, TypeScript v0.8.1,
 and Python v0.6.1, only a definite refusal selects `providerRejected`: an HTTP
-2xx `ok:false` with an error code, or an HTTP 400, 401, 403, 404, 411, 413,
-414, 415, or 422 whose body has neither `ok:true` nor a message `ts`. On a
+2xx with an explicit `ok:false`, an error code, and no message `ts`, or an HTTP
+400, 401, 403, 404, 411, 413, 414, 415, or 422 whose readable body has neither
+`ok:true` nor a message `ts`. On a
 first send it also records the `canResend` dispatch marker; a lost marker write
 still selects `providerRejected`. Any other non-success response is an unknown
-outcome: an uncoded 2xx refusal such as `{}` or `{"ok":false}`, another 4xx
-such as 408 or 418, or a 4xx whose body has `ok:true` or a `ts`. A `ts` is read
-back; otherwise the attempt returns Retry and the next attempt resends with the
-same `client_msg_id`, and at the send cap the post selects `uncertain`. 409 and
+outcome: an uncoded 2xx refusal such as `{}` or `{"ok":false}`, a 2xx error
+code without an `ok` field, such as `{"error":"channel_not_found"}`, another
+4xx such as 408 or 418, a 4xx with an unreadable body, or a 2xx `ok:false` or
+4xx whose body has `ok:true` or a `ts`. A `ts` is read back and never resent;
+otherwise the attempt returns Retry and the next attempt resends with the
+same `client_msg_id`, and at the send cap the post selects `uncertain`. A 2xx
+error code without an `ok` field never records `canResend` or refreshes
+credentials. An HTTP 2xx whose body fails partway through, including a Step
+timeout after the headers arrive, selects `uncertain` at once and is never
+resent, because Slack may have posted the message. 409 and
 429 keep the behavior described here. The
 retry policy allows ten attempts within five minutes, enough for three sends
 and their rate-limit, credential-refresh, and read-back retries. A traced DNS,
 connect, or TLS failure before a connection exists, HTTP 429, and HTTP 503
 return Retry without counting a send.
-An HTTP 2xx carrying
+An HTTP 2xx carrying an explicit
 `ok:false` `ratelimited` or `service_unavailable` also retries after recording
 that the request was not processed. [Slack's method error descriptions](https://docs.slack.dev/reference/methods/chat.postMessage/)
 describe rate limiting with `Retry-After` and temporary service unavailability;
 their HTTP statuses and live delivery behavior remain unverified. An
 `internal_error` or `fatal_error` with a returned timestamp is read back and
-never resent. A complete HTTP 2xx `ok:false` post with
+never resent. A complete HTTP 2xx explicit `ok:false` post with
 `invalid_auth`, `token_expired`, or `token_revoked`, or any HTTP 401, forces a
 credential refresh within the Step deadline margin. If refresh supplies a
 changed valid bot token, the fence permits one retry on the next Step attempt
 with the same `client_msg_id`; a failed, invalid, or unchanged refresh selects
-`providerRejected`, or `uncertain` after an earlier possible send. The post is never sent twice in one attempt.
+`providerRejected` for a definite refusal, or `uncertain` after an earlier
+possible send; a 401 with an unreadable body is an unknown outcome instead. The
+post is never sent twice in one attempt.
 Slack's 409 behavior remains unverified.
 The shared single-dispatch fence uses synchronous Step durability to persist
 its claim and safe-retry evidence.
@@ -466,16 +475,18 @@ A known accepted message timestamp is checkpointed for read-back through
 while an inconclusive read-back remains `uncertain`. Slack returns a timestamp
 only for a message it created, so a checkpointed timestamp is never resent.
 Read-back uses the remaining Step context; a timeout retries read-back on the
-next attempt without posting.
+next attempt without posting. When the timestamp checkpoint write itself fails,
+a later attempt could not find the timestamp and would resend, so a read-back
+that would retry selects `uncertain` instead.
 Before a first post, a transient credential lookup failure records `notSent` and
 retries. Reauthorization-required or missing bot credentials record `notSent`
 and select `defect` with an authentication failure and reconnect guidance.
 Before a resend, an earlier post may have landed, so nothing is recorded: a
 transient credential failure retries, and terminal credentials select
 `uncertain` with reconnect guidance. From Go v1.8.1, TypeScript v0.8.1, and
-Python v0.6.1, terminal credentials also select `uncertain` instead of `defect`
-on any attempt where an earlier post may have landed, including a send allowed
-by a `canResend` checkpoint that still counts an earlier post.
+Python v0.6.1, this applies on any attempt where an earlier post may have
+landed, including a send allowed by a `canResend` checkpoint that still counts
+an earlier post: such an attempt never records `notSent` or selects `defect`.
 During read-back, a transient credential failure retries without another post;
 reauthorization-required or missing user credentials select `uncertain` with
 the known message timestamp in the receipt and reconnect guidance.
@@ -484,8 +495,8 @@ name the reply and `limit=1` is unverified. A parent-only result selects
 `uncertain`. A missing checkpoint counts as one possible send per attempt and
 permits a resend only below the cap. A checkpoint from another call, an
 invalid checkpoint, or an unreadable heartbeat fails closed without a post:
-from v1.8.1 it returns Retry while the attempt number is below the send cap and
-selects `uncertain` at the cap. Checkpoints written by v1.7.0 and earlier carry no send
+from v1.8.1 it always returns Retry, and the retry policy bounds those attempts;
+the post never selects a branch from an untrusted checkpoint. Checkpoints written by v1.7.0 and earlier carry no send
 count, and each is read as the most sends its attempt allows, so a post Step
 retry spanning the upgrade never exceeds three sends.
 The fence bounds each request inside the Step attempt. An application must not

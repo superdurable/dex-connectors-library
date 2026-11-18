@@ -5,7 +5,7 @@ import {
   definitionMaxSends, newMutationBranch, newMutationRetry, zeroReceipt,
   type Call, type Failure, type Mutation, type MutationAttempt, type ReceiptDraft,
 } from '@superdurable/connectors-sdk';
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ReplyToMessageBranch, ReplyToMessageDefinition, SendMessageBranch, SendMessageDefinition } from './definitions.js';
@@ -244,7 +244,10 @@ export class GmailSender {
         await recordSafeResend(fence);
         return newMutationRetry(failure(operation.operationId, 'TRANSPORT', `Gmail ${operation.requestName} request was not dispatched`));
       }
-      if (error instanceof BodyTooLargeError && error.status) return this.#classifySendStatus(call, fence, budget, credentials, operation, message, error.status, error.headers ?? {}, false, undefined);
+      // Headers that arrived before the body failed keep their status, so an accepted send is never resent.
+      if ((error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status) {
+        return this.#classifySendStatus(call, fence, budget, credentials, operation, message, error.status, error.headers ?? {}, false, undefined);
+      }
       return this.#confirmPossiblySent(call, fence, budget, credentials, operation, message, 'TRANSPORT', `Gmail ${operation.requestName} outcome is unknown`, this.#receipt(call));
     }
     const receipt = this.#receipt(call, gmailRequestID(response.response.headers));
@@ -343,8 +346,10 @@ function isReadBackDecision(fence: Fence): boolean {
   const kind = fence.decide().kind;
   return kind === 'readBackRequired' || kind === 'readBackThenResendAllowed';
 }
+/** Record notSent only before any possible send; otherwise it would hide an earlier send. */
 async function recordPreSendRetry(fence: Fence): Promise<void> {
-  if (fence.decide().kind !== 'sendAllowed') return;
+  const decision = fence.decide();
+  if (decision.kind !== 'sendAllowed' || (decision.priorSendUpperBound ?? 0) > 0) return;
   try { await fence.recordNotSent(); }
   catch { /* A missing checkpoint cannot authorize another send. */ }
 }

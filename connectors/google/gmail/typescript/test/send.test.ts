@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GmailHTTPClient } from '../src/http.js';
 import { GmailClient } from '../src/client.js';
 import { GmailProvider } from '../src/provider.js';
@@ -343,6 +343,74 @@ describe('Gmail send and reply classification', () => {
     expect(await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000)))
       .toMatchObject({ kind: 'retry', failure: { message: 'Gmail rejected the message; Gmail may still have processed the request' } });
     expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
+  });
+
+  it.each([
+    { status: 200, body: { id: 'sent-1', threadId: 7 }, expected: { kind: 'branch', branch: 'sent', value: { messageId: 'sent-1', threadId: 'thread-1' } } },
+    { status: 400, body: { id: 'sent-1', threadId: 7 }, expected: { kind: 'retry' } },
+    { status: 400, body: { id: 7 }, expected: { kind: 'branch', branch: 'providerRejected' } },
+  ])('accepts any body whose id is a non-empty string: $status $body', async ({ status, body, expected }) => {
+    let searches = 0;
+    const operation = sender(async request => {
+      if (request.method === 'POST') return response(status, body);
+      if (request.url.includes('format=minimal')) return response(200, { id: 'sent-1', threadId: 'thread-1' });
+      searches++;
+      return response(200, { messages: [] });
+    });
+    expect(await operation.sendMessage(operationCall('sendMessage'), sendInput, new Date(Date.now() + 30_000))).toMatchObject(expected);
+    if (status === 200) expect(searches).toBe(0);
+  });
+
+  it.each([
+    { name: 'transport', error: new ProviderTransportError(false, 200, {}) },
+    { name: 'stalled', error: new ProviderStalledError(200, {}) },
+  ])('accepts a 2xx send whose body fails with a $name error and never resends it', async ({ error }) => {
+    let posts = 0;
+    const operation = sender(async request => {
+      if (request.method === 'POST') { posts++; throw error; }
+      return response(200, { messages: [] });
+    });
+    expect(await operation.sendMessage(operationCall('sendMessage'), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'branch', branch: 'sent', value: { messageId: '' } });
+    expect(posts).toBe(1);
+  });
+
+  it('searches Sent Mail before resending after a 429 follows an unknown send', async () => {
+    const checkpoint: { value?: unknown } = {};
+    let posts = 0;
+    let isFirstSendVisible = false;
+    const operation = sender(async request => {
+      if (request.method === 'GET') return response(200, isFirstSendVisible ? { messages: [{ id: 'sent-1', threadId: 'thread-1' }] } : { messages: [] });
+      posts++;
+      return posts === 1 ? response(500, {}) : response(429, {});
+    });
+    expect((await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000))).kind).toBe('retry');
+    expect((await operation.sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000))).kind).toBe('retry');
+    isFirstSendVisible = true;
+    // The 429 records canResend, but the first send still counts, so attempt 3 reads back first.
+    expect(await operation.sendMessage(operationCall('sendMessage', 3, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'branch', branch: 'sent', value: { messageId: 'sent-1' } });
+    expect(posts).toBe(2);
+  });
+
+  it('records nothing when a pre-send search fails after a counted canResend', async () => {
+    const seeded = { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 2, state: 'canResend', sendCount: 1 };
+    let posts = 0;
+    const operation = sender(async request => {
+      if (request.method === 'POST') { posts++; return response(200, { id: 'sent-1', threadId: 'thread-1' }); }
+      return response(500, {});
+    });
+    for (const operationId of ['sendMessage', 'replyToMessage'] as const) {
+      const checkpoint: { value?: unknown } = { value: seeded };
+      const call = operationCall(operationId, 3, checkpoint);
+      const attempt = operationId === 'sendMessage'
+        ? await operation.sendMessage(call, sendInput, new Date(Date.now() + 30_000))
+        : await operation.replyToMessage(call, replyInput, new Date(Date.now() + 30_000));
+      expect(attempt.kind).toBe('retry');
+      // notSent would hide the counted first send from the next attempt.
+      expect(checkpoint.value).toBe(seeded);
+    }
+    expect(posts).toBe(0);
   });
 
   it('keeps a definite rejection of a first send as providerRejected and proves nothing was sent', async () => {

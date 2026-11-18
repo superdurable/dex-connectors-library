@@ -164,7 +164,8 @@ type slackMessage struct {
 }
 
 type slackResponse struct {
-	OK               bool           `json:"ok"`
+	// OK is nil when the body omits ok, which proves neither acceptance nor refusal.
+	OK               *bool          `json:"ok"`
 	Error            string         `json:"error"`
 	Channel          string         `json:"channel"`
 	Timestamp        string         `json:"ts"`
@@ -180,13 +181,15 @@ type providerResponse struct {
 	header                 http.Header
 	body                   []byte
 	decoded                slackResponse
+	isDecoded              bool
 	isProvablyUndispatched bool
 }
 
 var (
-	errSlackRequestInvalid   = errors.New("Slack request is invalid")
-	errSlackResponseInvalid  = errors.New("Slack response is invalid")
-	errSlackResponseTooLarge = errors.New("Slack response exceeds configured size limit")
+	errSlackRequestInvalid     = errors.New("Slack request is invalid")
+	errSlackResponseInvalid    = errors.New("Slack response is invalid")
+	errSlackResponseTooLarge   = errors.New("Slack response exceeds configured size limit")
+	errSlackResponseUnreadable = errors.New("Slack response body could not be read")
 )
 
 // New validates configuration and constructs an authenticated Slack client.
@@ -434,24 +437,23 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	decision := fence.Decide()
 	switch decision.Kind {
 	case singledispatch.FailClosed:
-		// An unreadable checkpoint is an unknown outcome; attempts past the send cap stop repeating.
-		return resendOrSelectUncertain(call.Context.Attempt() < call.MaxSends(), slackFailure(operationName, sdkgo.FailureTransport, "an earlier attempt may have posted the Slack message"), 0, client.receipt(call, providerResponse{}, ""))
+		// An unreadable checkpoint is an unknown outcome; the retry budget bounds these attempts.
+		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureTransport, "an earlier attempt may have posted the Slack message, and its dispatch checkpoint is unreadable"), 0)
 	case singledispatch.ReadBackRequired:
-		return client.readBackPostedMessage(call, decision.Marker, operationName, channelID, threadTimestamp, uncertain, sent)
+		return client.readBackPostedMessage(call, decision.Marker, true, operationName, channelID, threadTimestamp, uncertain, sent)
 	case singledispatch.ReadBackThenResendAllowed:
 		// Slack returns a timestamp only for a message it created, so a saved one is read back
 		// and never resent; a lost timestamp cannot be read back, so this attempt resends.
 		if decision.Marker.ProviderID != "" {
-			return client.readBackPostedMessage(call, decision.Marker, operationName, channelID, threadTimestamp, uncertain, sent)
+			return client.readBackPostedMessage(call, decision.Marker, true, operationName, channelID, threadTimestamp, uncertain, sent)
 		}
 	}
 	// This attempt's send would be the last one the cap allows when no further send remains.
 	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
-	isEarlierSendUnresolved := decision.Kind == singledispatch.ReadBackThenResendAllowed
 	// An earlier send may have posted, so a refusal of this resend cannot prove nothing changed.
-	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
+	hasPossibleEarlierSend := decision.MaximumPriorSends > 0 || decision.Kind == singledispatch.ReadBackThenResendAllowed
 	credentials, failure, isTerminalCredentialFailure := client.resolveCredentials(call, operationName, botCredentialToken)
-	if failure != nil && isEarlierSendUnresolved {
+	if failure != nil && hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		if isTerminalCredentialFailure {
 			return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureAuthentication, "an earlier attempt may have posted the Slack message, and the connection credentials are unavailable to resend it; reconnect the connection"), client.receipt(call, providerResponse{}, ""))
@@ -461,10 +463,6 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	if failure != nil {
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack credentials and no-send checkpoint are unavailable"), 0)
-		}
-		if isTerminalCredentialFailure && hasPossibleEarlierSend {
-			// An earlier send may have posted, so terminal credentials cannot select defect.
-			return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureAuthentication, "an earlier attempt may have posted the Slack message, and the connection credentials are unavailable to resend it; reconnect the connection"), client.receipt(call, providerResponse{}, ""))
 		}
 		if isTerminalCredentialFailure {
 			return sdkgo.NewMutationBranch(defect, PostMessageOutput{}, slackFailurePointer(operationName, sdkgo.FailureAuthentication, "Slack connection credentials are unavailable; reconnect the connection"), sdkgo.Receipt{})
@@ -502,17 +500,20 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 		}
 		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, failureKind, failureMessage), client.retryAfter(response.header))
 	}
-	if err == nil && response.statusCode >= 400 && response.statusCode < 500 && response.statusCode != http.StatusConflict && isAcceptedSlackBody(response) {
-		// A 4xx whose body reports a post is an unknown outcome: a named timestamp is read back.
+	if errors.Is(err, errSlackResponseUnreadable) && response.statusCode >= 200 && response.statusCode < 300 {
+		// Slack answered 2xx before the body broke, so the post may exist and is never resent.
+		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureTransport, "Slack answered the post, but its response body is unreadable"), client.receipt(call, response, ""))
+	}
+	if err == nil && response.statusCode >= 200 && response.statusCode < 500 && response.statusCode != http.StatusConflict &&
+		!isSlackPostSuccess(response) && isAcceptedSlackBody(response) {
+		// A non-success response whose body reports a post is an unknown outcome: a named timestamp is read back.
 		if providerTimestamp := acceptedSlackTimestamp(response); providerTimestamp != "" {
-			// Read-back still runs if the provider ID checkpoint is unavailable; later attempts fail closed.
-			_ = fence.RecordProviderID(providerTimestamp)
-			return client.readBackPostedMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: providerTimestamp}, operationName, channelID, threadTimestamp, uncertain, sent)
+			return client.readBackAfterRecordingTimestamp(call, fence, providerTimestamp, operationName, channelID, threadTimestamp, uncertain, sent)
 		}
 		return resendOrSelectUncertain(canResendUnknownOutcome, slackFailure(operationName, sdkgo.FailureProtocol, "Slack returned a client error with an accepted message response"), client.retryAfter(response.header), client.receipt(call, response, ""))
 	}
 	if response.statusCode == http.StatusUnauthorized ||
-		(err == nil && response.statusCode >= 200 && response.statusCode < 300 && !response.decoded.OK && slackCredentialRejected(response)) {
+		(err == nil && response.statusCode >= 200 && response.statusCode < 300 && isSlackExplicitlyNotOK(response) && slackCredentialRejected(response)) {
 		refreshBudget := methodTimeout
 		if stepDeadline, hasDeadline := call.Context.Deadline(); hasDeadline {
 			refreshBudget = min(refreshBudget, stepDeadline.Sub(attemptStartedAt))
@@ -527,7 +528,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 			if sdkgo.IsReauthorizationRequired(refreshErr) || (refreshErr == nil && (isReplacementInvalid || isReplacementUnchanged)) {
 				failureMessage = "Slack rejected the connection credential; reconnect the connection"
 			}
-			return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, providerRejected, slackFailure(operationName, sdkgo.FailureAuthentication, failureMessage), response, client.receipt(call, response, ""))
+			return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, canResendUnknownOutcome, providerRejected, slackFailure(operationName, sdkgo.FailureAuthentication, failureMessage), response, client.receipt(call, response, ""))
 		}
 		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 			return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack retry checkpoint could not be recorded"), 0)
@@ -553,7 +554,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	if response.statusCode == http.StatusConflict {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack returned a conflict without a confirmable message identity"), client.receipt(call, response, ""))
 	}
-	if !response.decoded.OK {
+	if isSlackExplicitlyNotOK(response) {
 		switch response.decoded.Error {
 		case "service_unavailable", "ratelimited":
 			if response.statusCode < 200 || response.statusCode >= 300 {
@@ -573,9 +574,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 				providerTimestamp = response.decoded.Timestamp
 			}
 			if providerTimestamp != "" {
-				// Read-back still runs if the provider ID checkpoint is unavailable; later attempts fail closed.
-				_ = fence.RecordProviderID(providerTimestamp)
-				return client.readBackPostedMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: providerTimestamp}, operationName, channelID, threadTimestamp, uncertain, sent)
+				return client.readBackAfterRecordingTimestamp(call, fence, providerTimestamp, operationName, channelID, threadTimestamp, uncertain, sent)
 			}
 			return resendOrSelectUncertain(canResendUnknownOutcome, slackFailure(operationName, sdkgo.FailureAvailability, "Slack message outcome is unknown"), client.retryAfter(response.header), client.receipt(call, response, ""))
 		}
@@ -588,7 +587,7 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 			// Only an allowlisted refusal proves nothing was posted; any other outcome is unknown.
 			return resendOrSelectUncertain(canResendUnknownOutcome, slackFailure(operationName, sdkgo.FailureProtocol, "Slack message outcome is unknown"), client.retryAfter(response.header), client.receipt(call, response, ""))
 		}
-		return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, providerRejected, *failure, response, client.receipt(call, response, ""))
+		return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, canResendUnknownOutcome, providerRejected, *failure, response, client.receipt(call, response, ""))
 	}
 	message := response.decoded.Message
 	if message.Timestamp == "" {
@@ -597,18 +596,22 @@ func (client *Client) postMessage(call sdkgo.Call, operationName string, channel
 	if message.Channel == "" {
 		message.Channel = response.decoded.Channel
 	}
-	if message.Timestamp != "" {
-		// The accepted result is known even if its read-back checkpoint is lost.
-		_ = fence.RecordProviderID(message.Timestamp)
-	}
 	// Slack accepted this post, so a resend would duplicate it; an incomplete response stays unresent.
 	if message.Timestamp == "" || message.Channel == "" {
 		if message.Timestamp != "" {
-			return client.readBackPostedMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: message.Timestamp}, operationName, channelID, threadTimestamp, uncertain, sent)
+			return client.readBackAfterRecordingTimestamp(call, fence, message.Timestamp, operationName, channelID, threadTimestamp, uncertain, sent)
 		}
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack returned an invalid message response"), client.receipt(call, response, ""))
 	}
+	// The accepted result is known even if its read-back checkpoint is lost.
+	_ = fence.RecordProviderID(message.Timestamp)
 	return sdkgo.NewMutationBranch(sent, PostMessageOutput{Message: convertMessage(message.Channel, message)}, nil, client.receipt(call, response, message.Timestamp))
+}
+
+// readBackAfterRecordingTimestamp checkpoints a timestamp Slack returned, then reads that message back.
+func (client *Client) readBackAfterRecordingTimestamp(call sdkgo.Call, fence *singledispatch.Fence, providerTimestamp string, operationName string, channelID string, threadTimestamp string, uncertain sdkgo.BranchID, sent sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {
+	isProviderIDCheckpointed := fence.RecordProviderID(providerTimestamp) == nil
+	return client.readBackPostedMessage(call, singledispatch.Marker{CallID: call.ID, ProviderID: providerTimestamp}, isProviderIDCheckpointed, operationName, channelID, threadTimestamp, uncertain, sent)
 }
 
 // resendOrSelectUncertain retries a possibly sent post while the send cap allows another send.
@@ -620,26 +623,43 @@ func resendOrSelectUncertain(canResendUnknownOutcome bool, failure sdkgo.Failure
 	return sdkgo.NewMutationUncertain(PostMessageOutput{}, failure, receipt)
 }
 
-// rejectOrSelectUncertain selects providerRejected only when no earlier send of this call may have posted.
+// rejectOrSelectUncertain selects providerRejected only for a definite refusal when no earlier send
+// of this call may have posted; any other refusal is an unknown outcome that resends below the cap.
 // A definite refusal of the first send records canResend, so agent hosts report a failure, not an unknown outcome.
-func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend bool, providerRejected sdkgo.BranchID, failure sdkgo.Failure, response providerResponse, receipt sdkgo.Receipt) sdkgo.MutationAttempt[PostMessageOutput] {
+func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend bool, canResendUnknownOutcome bool, providerRejected sdkgo.BranchID, failure sdkgo.Failure, response providerResponse, receipt sdkgo.Receipt) sdkgo.MutationAttempt[PostMessageOutput] {
+	if !isDefiniteSlackRefusal(response) {
+		return resendOrSelectUncertain(canResendUnknownOutcome, failure, 0, receipt)
+	}
 	if hasPossibleEarlierSend {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, failure, receipt)
 	}
-	if isDefiniteSlackRefusal(response) {
-		// A lost checkpoint leaves the claim, which agent hosts conservatively report as unknown.
-		_ = fence.RecordCanResend()
-	}
+	// A lost checkpoint leaves the claim, which agent hosts conservatively report as unknown.
+	_ = fence.RecordCanResend()
 	return sdkgo.NewMutationBranch(providerRejected, PostMessageOutput{}, &failure, receipt)
 }
 
-// isDefiniteSlackRefusal reports a coded Slack ok:false response, or an allowlisted 4xx
-// whose body reports no accepted post; either proves nothing was posted.
+// isDefiniteSlackRefusal reports a coded explicit ok:false 2xx naming no timestamp, or an allowlisted
+// 4xx whose readable body reports no accepted post; either proves nothing was posted.
 func isDefiniteSlackRefusal(response providerResponse) bool {
 	if response.statusCode >= 200 && response.statusCode < 300 {
-		return !response.decoded.OK && response.decoded.Error != ""
+		return isSlackExplicitlyNotOK(response) && response.decoded.Error != "" && acceptedSlackTimestamp(response) == ""
 	}
-	return isRefusalStatus(response.statusCode) && !isAcceptedSlackBody(response)
+	return isRefusalStatus(response.statusCode) && response.isDecoded && !isAcceptedSlackBody(response)
+}
+
+// isSlackOK reports an explicit ok:true.
+func isSlackOK(response providerResponse) bool {
+	return response.decoded.OK != nil && *response.decoded.OK
+}
+
+// isSlackExplicitlyNotOK reports an explicit ok:false; a missing ok is an unknown outcome.
+func isSlackExplicitlyNotOK(response providerResponse) bool {
+	return response.decoded.OK != nil && !*response.decoded.OK
+}
+
+// isSlackPostSuccess reports a 2xx ok:true post response.
+func isSlackPostSuccess(response providerResponse) bool {
+	return response.statusCode >= 200 && response.statusCode < 300 && isSlackOK(response)
 }
 
 // isRefusalStatus allowlists request refusals; 408, 409, 429, and unlisted 4xx keep the claim.
@@ -656,7 +676,7 @@ func isRefusalStatus(statusCode int) bool {
 
 // isAcceptedSlackBody reports a body with ok:true or a message timestamp, whatever its HTTP status.
 func isAcceptedSlackBody(response providerResponse) bool {
-	return response.decoded.OK || acceptedSlackTimestamp(response) != ""
+	return isSlackOK(response) || acceptedSlackTimestamp(response) != ""
 }
 
 // acceptedSlackTimestamp returns the posted message timestamp a response names, or empty.
@@ -667,7 +687,9 @@ func acceptedSlackTimestamp(response providerResponse) string {
 	return response.decoded.Timestamp
 }
 
-func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispatch.Marker, operationName string, channelID string, threadTimestamp string, uncertain sdkgo.BranchID, sent sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {
+// readBackPostedMessage confirms a post by timestamp. Without a checkpointed timestamp, a later
+// attempt would resend, so transient failures select uncertain.
+func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispatch.Marker, isProviderIDCheckpointed bool, operationName string, channelID string, threadTimestamp string, uncertain sdkgo.BranchID, sent sdkgo.BranchID) sdkgo.MutationAttempt[PostMessageOutput] {
 	if marker.CallID != call.ID || marker.ProviderID == "" {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureTransport, "an earlier Slack message cannot be identified"), client.receipt(call, providerResponse{}, ""))
 	}
@@ -676,7 +698,7 @@ func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispat
 		if isTerminalCredentialFailure {
 			return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureAuthentication, "Slack message read-back credentials are unavailable; reconnect the connection to confirm the post"), client.receipt(call, providerResponse{}, marker.ProviderID))
 		}
-		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message read-back credentials are unavailable"), 0)
+		return retryReadBackOrSelectUncertain(isProviderIDCheckpointed, slackFailure(operationName, sdkgo.FailureAvailability, "Slack message read-back credentials are unavailable"), 0, client.receipt(call, providerResponse{}, marker.ProviderID))
 	}
 	queryTimestamp := marker.ProviderID
 	if threadTimestamp != "" {
@@ -688,9 +710,9 @@ func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispat
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack message read-back returned an unusable response"), client.receipt(call, response, marker.ProviderID))
 	}
 	if err != nil || response.statusCode == http.StatusTooManyRequests || response.statusCode >= 500 {
-		return sdkgo.NewMutationRetry[PostMessageOutput](slackFailure(operationName, sdkgo.FailureAvailability, "Slack message read-back is temporarily unavailable"), client.retryAfter(response.header))
+		return retryReadBackOrSelectUncertain(isProviderIDCheckpointed, slackFailure(operationName, sdkgo.FailureAvailability, "Slack message read-back is temporarily unavailable"), client.retryAfter(response.header), client.receipt(call, response, marker.ProviderID))
 	}
-	if response.statusCode < 200 || response.statusCode >= 300 || !response.decoded.OK {
+	if response.statusCode < 200 || response.statusCode >= 300 || !isSlackOK(response) {
 		return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack message read-back could not confirm the post"), client.receipt(call, response, marker.ProviderID))
 	}
 	for _, message := range response.decoded.Messages {
@@ -699,6 +721,14 @@ func (client *Client) readBackPostedMessage(call sdkgo.Call, marker singledispat
 		}
 	}
 	return sdkgo.NewMutationUncertain(PostMessageOutput{}, slackFailure(operationName, sdkgo.FailureProtocol, "Slack message read-back did not find the post"), client.receipt(call, response, marker.ProviderID))
+}
+
+// retryReadBackOrSelectUncertain retries a read-back only when the next attempt can find the saved timestamp.
+func retryReadBackOrSelectUncertain(isProviderIDCheckpointed bool, failure sdkgo.Failure, retryDelay time.Duration, receipt sdkgo.Receipt) sdkgo.MutationAttempt[PostMessageOutput] {
+	if isProviderIDCheckpointed {
+		return sdkgo.NewMutationRetry[PostMessageOutput](failure, retryDelay)
+	}
+	return sdkgo.NewMutationUncertain(PostMessageOutput{}, failure, receipt)
 }
 
 func (client *Client) resolveCredentials(call sdkgo.Call, operationName string, tokenKind credentialToken) (Credentials, *sdkgo.Failure, bool) {
@@ -807,7 +837,7 @@ func (client *Client) do(request *http.Request, token string) (providerResponse,
 	result := providerResponse{statusCode: response.StatusCode, header: response.Header.Clone()}
 	result.body, err = io.ReadAll(io.LimitReader(response.Body, client.maxResponseBytes+1))
 	if err != nil {
-		return result, err
+		return result, fmt.Errorf("%w: %w", errSlackResponseUnreadable, err)
 	}
 	if int64(len(result.body)) > client.maxResponseBytes {
 		return result, errSlackResponseTooLarge
@@ -818,6 +848,7 @@ func (client *Client) do(request *http.Request, token string) (providerResponse,
 	if err := json.Unmarshal(result.body, &result.decoded); err != nil {
 		return result, fmt.Errorf("%w: Slack returned malformed JSON", errSlackResponseInvalid)
 	}
+	result.isDecoded = true
 	return result, nil
 }
 
@@ -848,7 +879,7 @@ func slackCredentialRejected(response providerResponse) bool {
 }
 
 func classifyResponse(operationName string, response providerResponse) *sdkgo.Failure {
-	if response.statusCode >= 200 && response.statusCode < 300 && response.decoded.OK {
+	if response.statusCode >= 200 && response.statusCode < 300 && isSlackOK(response) {
 		return nil
 	}
 	kind := sdkgo.FailureProviderRejection

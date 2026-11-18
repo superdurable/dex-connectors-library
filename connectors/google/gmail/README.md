@@ -141,11 +141,16 @@ first run ID, and the Flow start second; the safe correlation header carries
 the Call ID. Gmail documents no deduplication by `Message-ID`, so the connector
 uses that header for Sent Mail read-back:
 
-- A 2xx with a Gmail message ID is `sent`, with no search. When Gmail omits the
-  thread ID, one read of the message supplies it; if that read fails, a reply
-  reports the requested thread and a new message an empty thread ID.
+- A 2xx with a Gmail message ID is `sent`, with no search. A body names a
+  message ID when it is a JSON object whose `id` is a non-empty string, whatever
+  its other fields are, in Go, Python, and TypeScript alike. When Gmail omits
+  the thread ID or sends one that is not a string, one read of the message
+  supplies it; if that read fails, a reply reports the requested thread and a
+  new message an empty thread ID.
 - A 2xx whose body cannot be read, is oversized or invalid, or lacks an ID is
-  already accepted. The connector polls Sent Mail several times. A match
+  already accepted, including a body that breaks or stalls after the headers
+  arrived and a write deadline that ends after them. The connector polls Sent
+  Mail several times. A match
   supplies the IDs; otherwise `sent` has an empty `messageId` and the requested
   reply thread ID, or an empty thread ID for a new message. It never resends
   that accepted request.
@@ -179,7 +184,10 @@ uses that header for Sent Mail read-back:
   may still be delivered; the claim stays, so later attempts read back and the
   cap still bounds sends. After an earlier possible send, `defect` is never
   selected: a credential failure, even one that needs reconnection, and invalid
-  input also return Retry without a `notSent` checkpoint. Gmail does not deduplicate by
+  input also return Retry without a `notSent` checkpoint. The same holds for a
+  failed pre-send search or reply source read after a `canResend` checkpoint
+  that still counts an earlier send: the attempt returns Retry and records
+  nothing, so the next attempt still reads back first. Gmail does not deduplicate by
   `Message-ID`, so an unknown outcome can deliver up to three copies when Sent
   Mail indexing lags an accepted send. An application changes one Step's cap
   with the factory's `MaxSends` field, from 1 (never resend) to 10.
@@ -228,7 +236,8 @@ budget, and read-back and thread lookup end by five sixths; the remaining time
 covers the Result write. With the full 30 seconds, those boundaries are 17.5
 and 25 seconds. A reply's source read reserves at least a tenth of the budget
 for dispatch. If too little time remains, the attempt returns Retry before
-posting and attempts a `notSent` checkpoint. A dispatched request that times
+posting; a `notSent` checkpoint, when one is written, keeps the count of
+earlier possible sends. A dispatched request that times
 out searches Sent Mail; a later attempt can POST after its own search miss or
 failed search, following a `notSent` or `canResend` checkpoint, or a `claimed`
 one while below the send cap.

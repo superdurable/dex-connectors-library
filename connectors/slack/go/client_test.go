@@ -456,10 +456,11 @@ func TestPostMessageMissingCheckpointResendsBelowSendCapOnly(t *testing.T) {
 	}{
 		{name: "missing_below_cap", attempt: 2, wantsResend: true},
 		{name: "missing_at_cap", attempt: 4, wantsMessage: "cannot be identified"},
-		// A foreign checkpoint fails closed: Retry below the send cap, uncertain at it.
+		// A foreign checkpoint fails closed with Retry on every attempt; the retry budget bounds it.
 		{name: "foreign_first_attempt", attempt: 1, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
 		{name: "foreign_below_cap", attempt: 2, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
-		{name: "foreign", attempt: 3, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsMessage: "may have posted"},
+		{name: "foreign", attempt: 3, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
+		{name: "foreign_past_cap", attempt: 9, heartbeat: []byte(`{"callId":"old","attempt":1,"state":"canResend"}`), wantsRetry: true},
 		{name: "invalid_below_cap", attempt: 2, heartbeat: []byte(`{"callId":"post-checkpoint-invalid_below_cap","attempt":0,"state":"claimed"}`), wantsRetry: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
