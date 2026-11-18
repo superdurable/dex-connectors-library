@@ -78,7 +78,7 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
     const parameters = input.parameters ?? [];
     if (!QueryRowsInputSchema.safeParse(input).success || !validStatement(input.statement, readKeywords) || !validParameters(parameters) || countPlaceholders(input.statement) !== parameters.length) return queryDefect('query input or placeholder count is invalid');
     const password = await this.client.resolvePassword(call);
-    if (!password) return queryDefect('MySQL connection credentials are unavailable', 'AUTHENTICATION');
+    if (typeof password !== 'string') return password.disposition === 'retry' ? newQueryRetry(failure('query', password.kind, password.message)) : queryDefect(password.message, password.kind);
     let connection: Connection | undefined;
     let connectionId = '', serverVersion = '';
     let phase: SessionPhase = 'connect';
@@ -115,7 +115,7 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
     const parameters = bindExecuteParameters(call, input);
     if (!parameters) return writeDefect('execute', 'execute input or placeholder count is invalid');
     const password = await this.client.resolvePassword(call);
-    if (!password) return writeDefect('execute', 'MySQL connection credentials are unavailable', 'AUTHENTICATION');
+    if (typeof password !== 'string') return writeAttempt('execute', password, {});
     const outcome = await runWrite(this.client, call, input, parameters, password, (connection, deadline) => commit(connection, deadline));
     if (!outcome.failure) return newMutationBranch('completed', outcome.value, outcome.receipt);
     // The statement is repeat-safe, so an unknown COMMIT outcome runs it again.
@@ -147,7 +147,7 @@ export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteS
     // Overcounts when an earlier attempt proved its COMMIT unsent, which only costs a rejection branch.
     const hasPossibleEarlierSend = (decision.priorSendUpperBound ?? 0) > 0;
     const password = await this.client.resolvePassword(call);
-    const outcome: WriteOutcome = password
+    const outcome: WriteOutcome = typeof password === 'string'
       ? await runWrite(this.client, call, input, parameters, password, async (connection, deadline) => {
         try { await fence.dispatch(() => commit(connection, deadline)); }
         catch (error) {
@@ -155,11 +155,11 @@ export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteS
           throw error;
         }
       })
-      : { failure: { disposition: 'defect', kind: 'AUTHENTICATION', message: 'MySQL connection credentials are unavailable' }, receipt: {}, value: emptyExecution(), isCommitPhase: false };
+      : { failure: password, receipt: {}, value: emptyExecution(), isCommitPhase: false };
     if (!outcome.failure) return newMutationBranch('completed', outcome.value, outcome.receipt);
     let classified = outcome.failure;
-    // notSent would hide the earlier possible COMMIT, and the cap forbids another one.
-    if (!outcome.isCommitPhase && hasPossibleEarlierSend) return writeAttempt('executeNonIdempotent', { ...classified, disposition: 'uncertain' }, outcome.receipt);
+    // notSent would hide the earlier possible COMMIT; without it the next attempt selects uncertain.
+    if (!outcome.isCommitPhase && hasPossibleEarlierSend) return writeAttempt('executeNonIdempotent', classified.disposition === 'retry' ? classified : { ...classified, disposition: 'uncertain' }, outcome.receipt);
     if (!outcome.isCommitPhase) {
       // A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
       await fence.recordNotSent().catch(() => undefined);
@@ -216,8 +216,10 @@ async function runWrite(client: MySQLClient, call: Call, input: ExecuteStatement
     await commitTransaction(connection, deadline);
     return { receipt: client.receipt(call, connectionId, serverVersion), value: { rowsAffected: affected, lastInsertId, warningCount, columns: rows.columns, rows: rows.rows }, isCommitPhase: true };
   } catch (error) {
-    if (error instanceof DuplicateColumnsError || error instanceof TypeError) return failed({ disposition: 'defect', kind: 'VALIDATION', message: error.message }, {});
-    if (error instanceof InvalidRowsError) return failed({ disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message }, client.receipt(call, connectionId, serverVersion));
+    // After COMMIT was sent, a local error such as a driver TypeError cannot prove a rollback.
+    const isBeforeCommit = phase !== 'commit';
+    if (isBeforeCommit && (error instanceof DuplicateColumnsError || error instanceof TypeError)) return failed({ disposition: 'defect', kind: 'VALIDATION', message: error.message }, {});
+    if (isBeforeCommit && error instanceof InvalidRowsError) return failed({ disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message }, client.receipt(call, connectionId, serverVersion));
     if (error instanceof CommitNotSentError) return failed({ disposition: 'retry', kind: 'AVAILABILITY', message: 'COMMIT was not sent because the dispatch checkpoint failed or too little time remained, so the transaction rolled back' }, {});
     const classified = classifyDriverError(error instanceof MySQLSessionSetupError ? error.driverError : error, error instanceof MySQLSessionSetupError ? 'begin' : phase);
     return failed(classified, client.receipt(call, connectionId, serverVersion, classified.errorNumber, classified.sqlState));

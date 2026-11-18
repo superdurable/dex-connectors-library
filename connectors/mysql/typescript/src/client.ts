@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import mysql, { type Connection, type ConnectionOptions } from 'mysql2/promise';
 import { SecretString, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import type { ClassifiedFailure } from './failures.js';
 import type { Config, Credentials } from './generated/models.js';
 import { ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
 
@@ -68,13 +70,20 @@ export class MySQLClient {
   /** Bind the fenced transactional write operation, which never runs its statement twice. */
   executeNonIdempotent(): ExecuteStatementNonIdempotentOperation { return new ExecuteStatementNonIdempotentOperation(this); }
 
-  /** Resolve the password for one call without retaining it on the client. */
-  async resolvePassword(call: Call): Promise<string | undefined> {
+  /**
+   * Resolve the password for one call without retaining it on the client, or return the failure to report before connecting:
+   * Retry for a temporarily unavailable credential broker, defect for any other credential failure.
+   */
+  async resolvePassword(call: Call): Promise<string | ClassifiedFailure> {
+    const unavailable: ClassifiedFailure = { disposition: 'defect', kind: 'AUTHENTICATION', message: 'MySQL connection credentials are unavailable' };
     try {
       const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(resolved.password instanceof SecretString)) return undefined;
-      return resolved.password.reveal() || undefined;
-    } catch { return undefined; }
+      if (!(resolved.password instanceof SecretString)) return unavailable;
+      return resolved.password.reveal() || unavailable;
+    } catch (error) {
+      if (error instanceof CredentialBrokerUnavailableError) return { disposition: 'retry', kind: 'AVAILABILITY', message: 'the credential broker is temporarily unavailable, so nothing was sent' };
+      return unavailable;
+    }
   }
 
   /** Open and initialize one MySQL session with pinned server settings. The callback can bind a call deadline before setup queries. */
