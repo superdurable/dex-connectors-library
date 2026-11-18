@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -83,7 +84,7 @@ func (operation PublishTextPostOperation) Invoke(call sdkgo.Call, input PublishT
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil {
-		return localPublishFailure(fence, hasPossibleEarlierSend, false, sdkgo.FailureAuthentication, "connection credentials are unavailable")
+		return localPublishFailure(fence, hasPossibleEarlierSend, isTerminalCredentialError(err), sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
 	if credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.PageAccessToken.Reveal()) {
 		return localPublishFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials are invalid")
@@ -101,7 +102,7 @@ func (operation PublishTextPostOperation) Invoke(call sdkgo.Call, input PublishT
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
 		return localPublishFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "post request is invalid")
 	}
-	dispatch := &postDispatch{client: operation.client.httpClient, request: request, observation: &dispatchObservation{}}
+	dispatch := &postDispatch{client: operation.client.httpClient, request: request, maxResponseBytes: operation.client.maxResponseBytes, observation: &dispatchObservation{}}
 	if err := fence.Dispatch(dispatch.send); err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return retryPublish(sdkgo.FailureTransport, "Meta dispatch was not started", 0)
@@ -113,11 +114,9 @@ func (operation PublishTextPostOperation) Invoke(call sdkgo.Call, input PublishT
 		}
 		return resendOrSelectUncertainPublish(canResendUnknownOutcome, sdkgo.FailureTransport, "Meta publish outcome is unknown", 0)
 	}
-	response := dispatch.response
-	defer func() { _ = response.Body.Close() }()
+	response, responseBody := dispatch.response, dispatch.responseBody
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	isBodyReadable := readErr == nil
+	isBodyReadable := dispatch.bodyReadErr == nil
 	isClientError := response.StatusCode >= 400 && response.StatusCode < 500
 	// A Graph throttling code means Meta refused the post before processing it.
 	isRateLimited := response.StatusCode == http.StatusTooManyRequests || (isClientError && isBodyReadable && isGraphThrottleBody(responseBody))
@@ -163,17 +162,27 @@ func (operation PublishTextPostOperation) Invoke(call sdkgo.Call, input PublishT
 }
 
 type postDispatch struct {
-	client      *http.Client
-	request     *http.Request
-	response    *http.Response
-	observation *dispatchObservation
+	client           *http.Client
+	request          *http.Request
+	maxResponseBytes int64
+	response         *http.Response
+	responseBody     []byte
+	bodyReadErr      error
+	observation      *dispatchObservation
 }
 
+// send reads the body before Dispatch cancels its context; a body failure is never a send error.
 func (dispatch *postDispatch) send(requestContext context.Context) error {
 	request := dispatch.request.WithContext(httptrace.WithClientTrace(requestContext, dispatch.observation.clientTrace()))
 	response, err := dispatch.client.Do(request)
+	if err != nil {
+		return err
+	}
 	dispatch.response = response
-	return err
+	dispatch.responseBody, dispatch.bodyReadErr = providerhttp.ReadBoundedBody(response.Body, dispatch.maxResponseBytes)
+	// The bounded body is already read or failed, so a close error changes nothing.
+	_ = response.Body.Close()
+	return nil
 }
 
 // readPostID returns the body's post ID, or empty when the body has no valid one.
@@ -227,8 +236,8 @@ func rejectOrSelectUncertainPublish(fence *singledispatch.Fence, hasPossibleEarl
 	return publishBranch("providerRejected", kind, message)
 }
 
-// localPublishFailure selects defect only when no earlier send may have published. After a
-// possible send, a terminal failure selects uncertain and a transient one returns Retry.
+// localPublishFailure selects defect only for a terminal failure before any possible send.
+// A transient failure returns Retry; after a possible send, a terminal one selects uncertain.
 func localPublishFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[PublishedPost] {
 	if hasPossibleEarlierSend && isTerminal {
 		return uncertainPublish(kind, message+"; an earlier attempt may have published the post")
@@ -237,9 +246,19 @@ func localPublishFailure(fence *singledispatch.Fence, hasPossibleEarlierSend boo
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		return retryPublish(kind, message+"; no post was sent in this attempt", 0)
 	}
-	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+	// No claim was made, so a lost notSent checkpoint cannot count a send.
 	_ = fence.RecordNotSent()
+	if !isTerminal {
+		return retryPublish(sdkgo.FailureAvailability, message+"; no post was sent", 0)
+	}
 	return publishBranch("defect", kind, message)
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func publishFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {

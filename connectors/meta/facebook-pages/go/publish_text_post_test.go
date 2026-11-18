@@ -11,9 +11,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
@@ -225,9 +227,51 @@ func TestPublishTextPostCredentialFailureAfterPossibleSendRetries(t *testing.T) 
 	_, err = sdkgo.RunMutation(ctx, noCredentials.PublishTextPost(), testConnection, testPublishInput)
 	require.Error(t, err)
 	require.Equal(t, 1, *requests)
-	defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("facebook-pages-first-credentials", "publish-post"), noCredentials.PublishTextPost(), testConnection, testPublishInput)
-	require.NoError(t, err)
-	require.Equal(t, PublishTextPostBranchDefect, defect.Branch)
+}
+
+// failingCredentialSource fails every resolution with one credential error.
+type failingCredentialSource struct{ err error }
+
+func (source failingCredentialSource) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, source.err
+}
+
+func TestPublishTextPostTransientCredentialFailureBeforeSendRetries(t *testing.T) {
+	for _, credentialErr := range []error{projectconfig.ErrCredentialBrokerUnavailable, errors.New("project store read failed")} {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			server, requests := newScriptedPublishServer(t, []int{http.StatusOK}, []string{publishedPostBody})
+			unavailable, err := New(Config{BaseURL: server.URL}, failingCredentialSource{err: credentialErr})
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("facebook-pages-transient-credentials", "publish-post")
+			_, err = sdkgo.RunMutation(ctx, unavailable.PublishTextPost(), testConnection, testPublishInput)
+			var retryErr *sdkgo.RetryError
+			require.ErrorAs(t, err, &retryErr)
+			require.Equal(t, 0, *requests)
+			require.Equal(t, singledispatch.StateNotSent, lastPublishMarker(t, ctx).State)
+			ctx.AdvanceAttempt()
+			published, err := sdkgo.RunMutation(ctx, newTestClient(t, server.URL).PublishTextPost(), testConnection, testPublishInput)
+			require.NoError(t, err)
+			require.Equal(t, PublishTextPostBranchPublished, published.Branch)
+			require.EqualValues(t, 1, lastPublishMarker(t, ctx).SendCount)
+			require.Equal(t, 1, *requests)
+		})
+	}
+}
+
+func TestPublishTextPostTerminalCredentialFailureBeforeSendSelectsDefect(t *testing.T) {
+	terminalErrors := []error{sdkgo.ErrReauthorizationRequired, projectconfig.ErrReauthorizationRequired, projectconfig.ErrObjectNotFound,
+		projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected}
+	for _, credentialErr := range terminalErrors {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			server, requests := newScriptedPublishServer(t, []int{http.StatusOK}, []string{publishedPostBody})
+			client, err := New(Config{BaseURL: server.URL}, failingCredentialSource{err: fmt.Errorf("resolve: %w", credentialErr)})
+			require.NoError(t, err)
+			defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("facebook-pages-terminal-credentials", "publish-post"), client.PublishTextPost(), testConnection, testPublishInput)
+			require.NoError(t, err)
+			require.Equal(t, PublishTextPostBranchDefect, defect.Branch)
+			require.Equal(t, 0, *requests)
+		})
+	}
 }
 
 func TestPublishTextPostNeverResendsAcceptedUnreadableResponse(t *testing.T) {
@@ -264,6 +308,25 @@ func TestPublishTextPostAcceptedBodyBreaksAfterHeadersSelectsUncertain(t *testin
 	uncertain, err := sdkgo.RunMutation(ctx, client.PublishTextPost(), testConnection, testPublishInput)
 	require.NoError(t, err)
 	require.Equal(t, PublishTextPostBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, requests)
+}
+
+func TestPublishTextPostReadsBodyArrivingAfterHeaders(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		time.Sleep(50 * time.Millisecond)
+		_, err := fmt.Fprint(w, publishedPostBody)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := singledispatchtest.NewContext("facebook-pages-late-body", "publish-post")
+	published, err := sdkgo.RunMutation(ctx, client.PublishTextPost(), testConnection, testPublishInput)
+	require.NoError(t, err)
+	require.Equal(t, PublishTextPostBranchPublished, published.Branch)
 	require.Equal(t, 1, requests)
 }
 

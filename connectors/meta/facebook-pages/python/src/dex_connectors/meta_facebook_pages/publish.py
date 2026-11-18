@@ -18,6 +18,7 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -140,11 +141,11 @@ class PublishTextPostOperation:
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
         try:
             credential = await self.client.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, AttributeError):
+        except Exception as error:
             return await _local_failure(
                 fence,
                 has_possible_earlier_send,
-                False,
+                _is_terminal_credential_error(error),
                 FailureKind.AUTHENTICATION,
                 "connection credentials are unavailable",
             )
@@ -303,9 +304,9 @@ async def _reject_or_select_uncertain(
 async def _local_failure(
     fence: Fence, has_possible_earlier_send: bool, is_terminal: bool, kind: FailureKind, message: str
 ) -> MutationAttempt[PublishedPost]:
-    """Select defect only when no earlier send may have published.
+    """Select defect only for a terminal failure before any possible send.
 
-    After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+    A transient failure returns Retry; after a possible send, a terminal one selects uncertain.
     """
     if has_possible_earlier_send and is_terminal:
         return _uncertain(kind, message + "; an earlier attempt may have published the post")
@@ -315,5 +316,16 @@ async def _local_failure(
     try:
         await fence.record_not_sent()
     except Exception:
-        pass  # The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+        pass  # No claim was made, so a lost notSent checkpoint cannot count a send.
+    if not is_terminal:
+        return _retry(FailureKind.AVAILABILITY, message + "; no post was sent")
     return _branch("defect", kind, message)
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential resolution failure that no retry fixes.
+
+    Missing, unselected, rejected, or reauthorization-bound connections are terminal; broker
+    outages, store reads, and other errors are transient.
+    """
+    return isinstance(error, (ValueError, LookupError, AttributeError, ReauthorizationRequiredError))
