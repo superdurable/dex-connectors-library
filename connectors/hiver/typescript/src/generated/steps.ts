@@ -143,7 +143,7 @@ export interface AddNoteStepConfig<StepInput, OperationInput = AddNoteInput, Ope
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Hiver conclusively rejected the note; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
+  /** The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note, or a refusal status whose body carries a note ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -174,7 +174,7 @@ export interface CreateSharedDraftStepConfig<StepInput, OperationInput = CreateS
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Hiver conclusively rejected the draft; no draft was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
+  /** The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft, or a refusal status whose body carries a draft ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

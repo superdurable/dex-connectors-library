@@ -154,6 +154,8 @@ type hiverExchange struct {
 	response   hiverResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+	// isErrorBodyUnreadable means a non-2xx body was oversized or broke while reading.
+	isErrorBodyUnreadable bool
 }
 
 type dispatchObservation struct {
@@ -338,8 +340,14 @@ func (client *Client) sendWithContext(requestContext context.Context, credential
 	closeErr := httpResponse.Body.Close()
 	response := hiverResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header, requestID: safeRequestID(httpResponse.Header)}
 	if httpResponse.StatusCode < 200 || httpResponse.StatusCode >= 300 {
-		// The status line decides a failure; its body is never used, so a read error cannot change it.
-		return client.classifyFailureStatus(response, operation)
+		// A write refusal is definite only when its body reads in full; callers check it.
+		result := client.classifyFailureStatus(response, operation)
+		if readErr != nil || closeErr != nil {
+			result.isErrorBodyUnreadable = true
+		} else {
+			result.response.body = body
+		}
+		return result
 	}
 	switch {
 	case errors.Is(readErr, providerhttp.ErrBodyTooLarge):

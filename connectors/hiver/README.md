@@ -318,7 +318,12 @@ so the operations take these positions:
   and `uncertain` after a possible earlier send. Definite 429, 503, and traced
   pre-connection failure record `canResend` before Retry. A definite refusal
   of a first send records `canResend` and selects its branch; after a possible
-  earlier send it selects `uncertain`.
+  earlier send it selects `uncertain`. A refusal status is definite only when
+  its body reads in full: a 400, 401, 403, 404, 411, 413, 414, 415, or 422
+  whose body is oversized, breaks, or is cut off by the write window is an
+  unknown outcome, resent within the send cap. A refusal whose body carries
+  the note `id` or the draft `shared_draft_id` saves that ID and selects
+  `uncertain`, never resent.
 - The pacer wait ends by half the initial attempt budget, before the fence's
   write deadline. With no note or draft read-back, the fence gives the write
   at most five sixths of that budget and reserves at least one tenth as
@@ -353,8 +358,10 @@ checkpoint.
 ## Errors
 
 Hiver's error bodies hold only message text, as `{"errors":[{"message":...}]}`
-or `{"Message":...}`, so the connector never reads them: a Failure names only
-the HTTP status, such as `Hiver rejected the request (HTTP 400)`.
+or `{"Message":...}`, so a Failure names only the HTTP status, such as
+`Hiver rejected the request (HTTP 400)`. Writes still read a refusal body in
+full, within `maxResponseBytes`, to check that it is readable and carries no
+created ID; reads never use it.
 
 | Response | Reads and updateConversation | addNote and createSharedDraft |
 | --- | --- | --- |
@@ -371,6 +378,8 @@ the HTTP status, such as `Hiver rejected the request (HTTP 400)`.
 | 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
 | 408, other 5xx, lost response | Retry, after `Retry-After` when present | resend within the send cap, then `uncertain` |
 | oversized, malformed, cut-off, or credential-reflecting 2xx | `invalidResponse` for reads before the `PATCH`; Retry after it | `uncertain`, never resent |
+| 400, 401, 403, 404, 411, 413, 414, 415, 422 whose body is oversized or cut off | as above for reads; Retry for the `PATCH` | resend within the send cap, then `uncertain` |
+| refusal status whose body carries the note or draft ID | not applicable | save the ID and select `uncertain`, never resent |
 | unreadable or untrusted fence checkpoint | not applicable | Retry without sending |
 | invalid input | `defect`, with no request | `defect`, with no request |
 | credentials temporarily unavailable | `defect` for reads; Retry for updateConversation | `notSent` checkpoint on a first send, then Retry |

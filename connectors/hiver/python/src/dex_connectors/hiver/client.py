@@ -5,7 +5,7 @@
 import asyncio
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlencode, urlsplit
@@ -65,6 +65,9 @@ _ASSIGNEE_TYPE = re.compile(r"^[a-z_]{1,32}$")
 _GMAIL_ID = re.compile(r"^[A-Za-z0-9]{1,64}$")
 _REQUEST_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses that prove Hiver applied nothing when their body reads cleanly without a created ID."""
+
 MAXIMUM_PAGE_SIZE = 100
 """Hiver's largest list page, which every conversationReceived poll request asks for."""
 MINIMUM_POLL_PAGES_PER_POLL = 2
@@ -94,6 +97,8 @@ class Exchange:
     body: bytes = b""
     failure: Failure | None = None
     retry_after: float = 0
+    is_error_body_unreadable: bool = False
+    """A refusal-status body was oversized or broke while reading."""
 
 
 class Client:
@@ -336,8 +341,16 @@ class Client:
         else:
             self._rate_limit_penalty = 0
         if status < 200 or status >= 300:
-            await response.aclose()
-            return classify_status(operation, status, response.headers, retry_after)
+            classified = classify_status(operation, status, response.headers, retry_after)
+            if method == "GET" or status not in DEFINITE_REFUSAL_STATUSES:
+                await response.aclose()
+                return classified
+            # A refusal is definite only when its body reads in full; callers check it.
+            try:
+                error_body = await read_bounded_body(response, self.max_response_bytes)
+            except (BodyTooLargeError, ProviderTransportError):
+                return replace(classified, is_error_body_unreadable=True)
+            return replace(classified, body=error_body)
         try:
             body = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:

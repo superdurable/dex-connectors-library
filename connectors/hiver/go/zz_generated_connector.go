@@ -586,7 +586,7 @@ var AddNoteDefinition = sdkgo.MutationDefinition{
 		{ID: AddNoteBranchAdded, Description: "Hiver added the note and returned it."},
 		{ID: AddNoteBranchNotFound, Description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", Optional: true},
 		{ID: AddNoteBranchProviderRejected, Description: "Hiver conclusively rejected the note; nothing was added.", Optional: true},
-		{ID: AddNoteBranchUncertain, Description: "The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", Optional: true},
+		{ID: AddNoteBranchUncertain, Description: "The note may exist: Hiver answered 2xx with an unreadable, oversized, or invalid note, or a refusal status whose body carries a note ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", Optional: true},
 		{ID: AddNoteBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -670,7 +670,7 @@ var CreateSharedDraftDefinition = sdkgo.MutationDefinition{
 		{ID: CreateSharedDraftBranchCreated, Description: "Hiver created the shared draft and returned its ID."},
 		{ID: CreateSharedDraftBranchNotFound, Description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", Optional: true},
 		{ID: CreateSharedDraftBranchProviderRejected, Description: "Hiver conclusively rejected the draft; no draft was created.", Optional: true},
-		{ID: CreateSharedDraftBranchUncertain, Description: "The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft; the send cap is reached after answers that were lost, 408, 409, an unlisted status, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", Optional: true},
+		{ID: CreateSharedDraftBranchUncertain, Description: "The draft may exist: Hiver answered 2xx with an unreadable, oversized, or invalid draft, or a refusal status whose body carries a draft ID; the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal with an unreadable or oversized body, or another server error besides 503; or a refusal or unusable credentials follow a possible earlier send. The Step does not send it again.", Optional: true},
 		{ID: CreateSharedDraftBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
