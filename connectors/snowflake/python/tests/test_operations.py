@@ -295,6 +295,17 @@ async def test_writes_retry_unlisted_statuses(status: int) -> None:
     assert submitted.kind == "retry" and canceled.kind == "retry"
 
 
+async def test_writes_retry_a_refusal_whose_error_body_is_over_one_mebibyte() -> None:
+    from dex_connectors.snowflake import CancelStatementInput, SubmitStatementInput
+
+    client = _answering_client(422, {"code": "002003", "message": "x" * (1 << 20)})
+    submitted = await client.submit_statement().invoke(_call(1), SubmitStatementInput(statement="SELECT 1"))
+    canceled = await client.cancel_statement().invoke(
+        _call(1), CancelStatementInput(statement_handle="00000000-0000-4000-8000-000000000003")
+    )
+    assert submitted.kind == "retry" and canceled.kind == "retry"
+
+
 async def test_a_repeated_cancel_refused_for_a_known_handle_selects_canceled() -> None:
     from dex_connectors.snowflake import CancelStatementInput
 

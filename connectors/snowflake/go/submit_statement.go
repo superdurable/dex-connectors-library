@@ -106,7 +106,8 @@ func (operation SubmitStatementOperation) Invoke(call sdkgo.Call, input SubmitSt
 		submission := StatementSubmission{StatementHandle: status.StatementHandle, SubmittedAt: createdOnTime(status.CreatedOn)}
 		return sdkgo.NewMutationBranch(SubmitStatementBranchSubmitted, submission, nil, client.receipt(call, status.StatementHandle, status))
 	default:
-		failure := retryUnknownWriteRefusal(classifyUnsuccessfulResponse(response, readErrorBody(response), client.now()))
+		body, isBodyComplete := readWriteErrorBody(response)
+		failure := retryIncompleteWriteRefusal(retryUnknownWriteRefusal(classifyUnsuccessfulResponse(response, body, client.now())), isBodyComplete)
 		return submitAttemptForFailure(failure, client.receipt(call, failure.status.StatementHandle, failure.status))
 	}
 }

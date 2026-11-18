@@ -12,6 +12,7 @@ const handlePattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 const codePattern = /^[0-9]{6}$/;
 const sqlStatePattern = /^[0-9A-Z]{5}$/;
 const maxBodyBytes = 256 << 20;
+const maxWriteErrorBodyBytes = 1 << 20;
 
 /** A request sender injectable for provider replay. */
 export type SnowflakeRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -126,9 +127,14 @@ export class SnowflakeClient {
         addressPolicy: this.baseUrl.startsWith('https://') && !this.baseUrl.includes('localhost') && !this.baseUrl.includes('127.0.0.1') ? 'publicHTTPS' : 'privateNetworkHTTP',
         timeoutMs: 20000, signal: call.context.cancellationSignal });
       if (response.status === 200 || response.status === 202) return { response };
+      // The Go and Python ports bound a write's error body at 1 MiB; a longer one is not a definite refusal.
+      if (operation !== 'getStatementResult' && response.body.byteLength > maxWriteErrorBodyBytes)
+        return { outcome: this.failure('retry', operation, 'AVAILABILITY', `Snowflake returned HTTP ${response.status} with an error body over ${maxWriteErrorBodyBytes} bytes`) };
       return { outcome: this.classifyResponse(response, operation) };
     } catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.status !== 200 && error.status !== 202) {
+        // A write refusal is definite only when its whole body was read.
+        if (operation !== 'getStatementResult') return { outcome: this.failure('retry', operation, 'AVAILABILITY', `Snowflake returned HTTP ${error.status} with an error body over ${maxBodyBytes} bytes`) };
         return { outcome: this.classifyResponse({ status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, operation) };
       }
       if (error instanceof BodyTooLargeError && operation === 'getStatementResult') {
