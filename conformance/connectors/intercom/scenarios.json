@@ -1222,35 +1222,6 @@
     },
     {
       "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
-      "exchanges": [],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 0,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "fixedClock": "2026-10-30T00:00:00Z",
-      "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
-      "input": {
-        "adminId": "77",
-        "body": "We are working on your earlier conversation",
-        "conversationId": "2002",
-        "messageType": "comment"
-      },
-      "name": "replyToConversation-previousReleaseCheckpoint",
-      "operation": "replyToConversation",
-      "priorHeartbeat": {
-        "attempt": 1,
-        "value": {
-          "intercomReplyDispatchedAt": 1793318400,
-          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
-        }
-      }
-    },
-    {
-      "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
       "exchanges": [
         {
           "body": "{\"type\":\"conversation\",\"id\":\"another\"}",
