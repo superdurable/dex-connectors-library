@@ -28,6 +28,7 @@ from dex_connectors.sdk.projectconfig import (
 )
 
 from dex_connectors.google_contacts import Client, Config, Contact, CreateContactInput, Credentials
+from dex_connectors.google_contacts._generated.connection import CredentialMaterialError, decode_credentials
 from dex_connectors.google_contacts._generated.definitions import CREATE_CONTACT_DEFINITION
 
 REFERENCE = ConnectionRef("google-contacts", "google-contacts")
@@ -239,7 +240,20 @@ async def test_pre_send_retry_after_a_possible_send_keeps_the_send_count() -> No
     assert posts(requests) == 3
 
 
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
+
 CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (sdk_wrapped_material_error(), True),
     (ReauthorizationRequiredError(), True),
     (ObjectNotFoundError(), True),
     (ConnectionNotSelectedError(), True),

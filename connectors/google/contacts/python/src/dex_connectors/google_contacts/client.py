@@ -41,6 +41,14 @@ _TERMINAL_CREDENTIAL_ERRORS = (
 )
 
 
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure that only reconnection repairs, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, _TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
+
+
 @dataclass(frozen=True, slots=True)
 class Exchange:
     """One provider response or transport failure with send evidence."""
@@ -96,9 +104,9 @@ class Client:
         """Return a header-safe bearer token or a safe failure class."""
         try:
             credentials = await self.credentials.resolve(call)
-        except _TERMINAL_CREDENTIAL_ERRORS:
-            return "", "credential"
-        except Exception:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001
+            if _is_terminal_credential_error(error):
+                return "", "credential"
             # Any unlisted resolve failure, such as an unconfigured connection, is transient.
             return "", "refresh"
         token = credentials.access_token.reveal()
