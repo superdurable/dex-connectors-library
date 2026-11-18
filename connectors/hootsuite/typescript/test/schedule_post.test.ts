@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { DispatchNotAllowedError, Fence, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import {
   ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError,
@@ -110,6 +111,18 @@ describe('Hootsuite bounded resend of unconfirmed scheduled messages', () => {
     context.attempt++;
     expect(await schedule(client, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(3);
+  });
+
+  it.each([
+    ['DispatchNotAllowedError', () => new DispatchNotAllowedError()],
+    ['the Fence AggregateError', () => new AggregateError([new InsufficientTimeError(), new Error('notSent write failed')])],
+  ])('returns Retry when the Fence refuses with %s before sending', async (_name, refusal) => {
+    const { client, requests } = newClient([scheduled]);
+    const dispatch = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(refusal());
+    // A cap of 1 makes an unknown outcome select uncertain, so Retry proves nothing was counted as sent.
+    try { expect(await schedule(client, new AttemptContext(), 1)).toBeInstanceOf(RetryError); }
+    finally { dispatch.mockRestore(); }
+    expect(requests.filter(request => request.method === 'POST' && request.url.endsWith('/v1/messages'))).toHaveLength(0);
   });
 
   it('never resends when a Step sets the send cap to 1', async () => {

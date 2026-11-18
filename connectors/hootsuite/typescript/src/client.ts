@@ -4,7 +4,7 @@
 import { definitionMaxSends, SecretString, ReauthorizationRequiredError, resolveCredential, newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, type Call, type CallID, type CredentialProvider, type CredentialRefreshDriver, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ListSocialProfilesDefinition, ListScheduledPostsDefinition, SchedulePostDefinition } from './generated/definitions.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -221,7 +221,8 @@ export class SchedulePostOperation implements Mutation<SchedulePostInput, Schedu
     let exchange: HootsuiteExchange;
     try { exchange = await fence.dispatch(signal => this.client.send('POST', '/v1/messages', token, signal, body)); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure(operation, 'TRANSPORT', 'Hootsuite dispatch did not start'));
+      // The Fence raises these before sending, including its AggregateError for a short window and a failed notSent.
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(failure(operation, 'TRANSPORT', 'Hootsuite dispatch did not start'));
       return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'TRANSPORT', 'Hootsuite schedule outcome is unknown'));
     }
     if (exchange.error === 'request') {
@@ -323,3 +324,5 @@ function parseJSON(body: Uint8Array): unknown { try { return JSON.parse(Buffer.f
 function safeQueryValue(value: string): boolean { return ![...value].some(character => { const code = character.charCodeAt(0); return code < 32 || code === 127; }); }
 function utcTime(value: unknown): number | undefined { if (typeof value !== 'string' || !utcInstant.test(value)) return undefined; const parsed = Date.parse(value); return Number.isNaN(parsed) ? undefined : parsed; }
 function header(headers: ProviderResponse['headers'], name: string): string { const value = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean { return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError); }
