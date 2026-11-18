@@ -7,7 +7,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFou
 import { BodyTooLargeError, isHeaderSafeCredential, MaxErrorBodyBytes, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isRefreshRequired, ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials, File, FileSummary } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials, type File, type FileSummary } from './generated/models.js';
 import { GetFileOperation, ReadFileTextOperation, SearchFilesOperation, UploadFileOperation } from './operations.js';
 
 /** Provider transport, clock, and generated credential refresh collaborators. */
@@ -199,7 +199,7 @@ export class CredentialError extends Error { constructor() { super('connection c
 /** Report a resolve failure that only reconnection repairs; any other one is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 /** Construct a sanitized provider failure. */
 export function failure(kind: FailureKind, operation: string, message: string): Failure { return { kind, provider: 'google-drive', operation, message }; }

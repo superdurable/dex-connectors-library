@@ -20,6 +20,7 @@ from dex_connectors.sdk.projectconfig import (
 from dex_connectors.sdk.providerhttp import MAX_ERROR_BODY_BYTES
 
 import dex_connectors.google_drive as drive
+from dex_connectors.google_drive._generated.connection import CredentialMaterialError, decode_credentials
 
 CONNECTION = sdk.ConnectionRef("google", "drive-files")
 CALL_ID = sdk.CallID("6072a0ce-9ddb-5937-8998-675e48cfa409")
@@ -240,7 +241,20 @@ async def test_credential_failures_never_record_not_sent_after_a_possible_send()
     assert await _run(FakeDrive(), AttemptContext(attempt=2), revoked) == "uncertain"
 
 
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
+
 CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (sdk_wrapped_material_error(), True),
     (sdk.ReauthorizationRequiredError(), True),
     (ObjectNotFoundError(), True),
     (ConnectionNotSelectedError(), True),

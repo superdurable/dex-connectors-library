@@ -55,6 +55,16 @@ TERMINAL_CREDENTIAL_ERRORS = (
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
 )
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure that only reconnection repairs, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
+
+
 FULL_FILE_FIELDS = (
     "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,"
     "version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),"
@@ -173,11 +183,11 @@ class Client:
         """Resolve credentials and report whether a failure can clear without reauthorization."""
         try:
             credentials = await self._credentials.resolve(call)
-        except TERMINAL_CREDENTIAL_ERRORS:
-            return None, failure(
-                operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
-            ), False
-        except Exception:
+        except Exception as error:
+            if is_terminal_credential_error(error):
+                return None, failure(
+                    operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+                ), False
             return None, failure(
                 operation, FailureKind.AUTHENTICATION, "connection credentials are temporarily unavailable"
             ), True

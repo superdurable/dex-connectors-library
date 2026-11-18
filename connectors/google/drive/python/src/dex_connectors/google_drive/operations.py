@@ -38,11 +38,11 @@ from ._generated.definitions import (
 )
 from .client import (
     FULL_FILE_FIELDS,
-    TERMINAL_CREDENTIAL_ERRORS,
     Client,
     Exchange,
     error_reasons,
     failure,
+    is_terminal_credential_error,
     query_string,
     status_failure_kind,
 )
@@ -1141,16 +1141,17 @@ class UploadFileOperation:
                         "provider rejected the upload credential",
                         0,
                     )
-                except TERMINAL_CREDENTIAL_ERRORS:
-                    pass
-                except Exception:
-                    # Google refuses an unauthenticated upload unprocessed, so a transient refresh retries.
-                    return await self._retry_after_rejection(
-                        fence,
-                        FailureKind.AUTHENTICATION,
-                        "provider rejected the upload credential, and its refresh is temporarily unavailable",
-                        0,
-                    )
+                except Exception as error:
+                    if not is_terminal_credential_error(error):
+                        # Google refuses an unauthenticated upload unprocessed,
+                        # so a transient refresh retries.
+                        return await self._retry_after_rejection(
+                            fence,
+                            FailureKind.AUTHENTICATION,
+                            "provider rejected the upload credential, "
+                            "and its refresh is temporarily unavailable",
+                            0,
+                        )
             return await self._reject_or_select_uncertain(
                 call,
                 fence,
