@@ -192,7 +192,10 @@ func decodeStatementStatus(body []byte) statementStatus {
 
 // readErrorBody reads a bounded prefix of a status or error body; a truncated body simply yields no codes.
 func readErrorBody(response *http.Response) []byte {
-	body, _ := readWriteErrorBody(response)
+	body, err := io.ReadAll(io.LimitReader(response.Body, providerhttp.MaxErrorBodyBytes))
+	if err != nil {
+		return nil
+	}
 	return body
 }
 
