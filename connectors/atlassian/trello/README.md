@@ -272,13 +272,16 @@ always retry:
 | Outcome | Result |
 | --- | --- |
 | 2xx with a card ID | `created`, and the card ID is checkpointed so a replayed attempt never sends again |
-| 400, 401, 403, 404, 411, 413, 414, 415, or 422 on the first POST | Checkpoint `canResend`, then `providerRejected` |
+| 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a fully read body on the first POST | Checkpoint `canResend`, then `providerRejected` |
+| One of those refusals whose body broke or exceeds 64 KiB | Unknown: retry and resend below the send cap; `uncertain` at the cap |
 | One of those refusals after an earlier possible POST | `uncertain`, because the earlier POST may have created the card |
 | 429 or 503 | Retry, honoring `Retry-After` when present; a 429 without it waits one 10-second window |
 | DNS, connect, or TLS failure before any connection opened | Retry |
 | Timeout, dropped connection, 3xx, 408, 409, another 4xx, or another 5xx after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
-| 2xx whose body is oversized, unreadable, unusable, or reflects a credential | `uncertain` at once: Trello accepted the POST, so it is never sent again |
+| 2xx whose body is oversized, unreadable, unusable, reflects a credential, or is cut off by the write deadline | `uncertain` at once: Trello accepted the POST, so it is never sent again |
 | Earlier attempts may already have sent the cap of POSTs, or one was accepted | `uncertain`, with nothing sent |
+| Credential store or broker temporarily unavailable | Retry, with nothing sent; a first send records `notSent` |
+| Missing, invalid, or reauthorization-required credentials | `defect` on a first send; `uncertain` after an earlier possible POST |
 | Unreadable or untrusted dispatch checkpoint | Retry, with nothing sent |
 
 On `providerRejected` and `uncertain`, the Value echoes the requested name and
@@ -304,8 +307,9 @@ accepted the `PUT` retries the update instead of selecting a failure branch.
 numbers.
 
 Because a repeated `PUT` of absolute values leaves the same card, every
-ambiguous outcome, including a timeout after dispatch or a 5xx, retries instead
-of selecting `uncertain`. A retry can move the card back to
+ambiguous outcome, including a timeout after dispatch, a 5xx, a refusal whose
+body broke or exceeds 64 KiB, or a temporarily unavailable credential, retries
+instead of selecting `uncertain`. A retry can move the card back to
 the top of the list if someone reordered it in between, and an add or remove
 can overwrite a label change another member made between the read and the
 `PUT`.

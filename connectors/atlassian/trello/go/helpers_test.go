@@ -192,6 +192,13 @@ func newTrelloClient(t *testing.T, endpoint string, options ...trello.Option) *t
 	return client
 }
 
+// failingTrelloCredentials is a credential source whose every resolution fails with err.
+type failingTrelloCredentials struct{ err error }
+
+func (source failingTrelloCredentials) Resolve(sdkgo.Call) (trello.Credentials, error) {
+	return trello.Credentials{}, source.err
+}
+
 func staticTrelloCredentials() sdkgo.StaticCredentialProvider[trello.Credentials] {
 	return sdkgo.StaticCredentialProvider[trello.Credentials]{trelloConnection: {
 		APIKey: sdkgo.NewSecretString(testAPIKey), Token: sdkgo.NewSecretString(testToken),

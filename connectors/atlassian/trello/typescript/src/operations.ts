@@ -7,7 +7,7 @@ import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import type { ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { AddCommentDefinition, CreateCardDefinition, GetCardDefinition, ListCardsDefinition, UpdateCardDefinition } from './generated/definitions.js';
 import type { AddCommentInput, AddCommentOutput, Card, CreateCardInput, CreateCardOutput, GetCardInput, ListCardsInput, ListCardsOutput, UpdateCardInput, UpdateCardOutput } from './generated/models.js';
-import { TrelloClient, TrelloCredentialReflectionError, trelloFailure, trelloRateLimitMessage, trelloRetryDelay, trelloStatusKind, type TrelloExchange } from './client.js';
+import { TrelloClient, TrelloCredentialReflectionError, TrelloCredentialUnavailableError, trelloFailure, trelloRateLimitMessage, trelloRetryDelay, trelloStatusKind, type TrelloExchange } from './client.js';
 
 const idPattern = /^[0-9a-fA-F]{24}$/;
 const shortLinkPattern = /^[0-9A-Za-z]{8}$/;
@@ -21,9 +21,17 @@ type Classified = { kind: 'success' | 'acceptedUnreadable' | 'retry' | 'notFound
 function classify(exchange: TrelloExchange, operation: string, subject: string, mode: 'read' | 'unkeyed' | 'repeatable'): Classified {
   const base = { receipt: exchange.receipt, retryAfterMs: 0 };
   if ('error' in exchange) {
-    if (exchange.error instanceof TypeError && exchange.receipt.callId === undefined) return { ...base, kind: 'defect', failure: trelloFailure(operation, 'AUTHENTICATION', 'Trello connection credentials are unavailable') };
-    if (exchange.error instanceof BodyTooLargeError && exchange.status && !(exchange.status >= 200 && exchange.status < 300)) {
-      return classify({ response: { status: exchange.status, headers: exchange.headers ?? {}, body: Buffer.alloc(0) }, receipt: exchange.receipt }, operation, subject, mode);
+    if (exchange.error instanceof TrelloCredentialUnavailableError) {
+      if (!exchange.error.isTerminal) return { ...base, kind: 'retry', isProvablyNotSent: true, failure: trelloFailure(operation, 'AVAILABILITY', 'Trello connection credentials could not be read, so nothing was sent') };
+      return { ...base, kind: 'defect', failure: trelloFailure(operation, 'AUTHENTICATION', 'Trello connection credentials are unavailable') };
+    }
+    if (exchange.error instanceof TypeError && exchange.receipt.callId === undefined) return { ...base, kind: 'defect', failure: trelloFailure(operation, 'LOCAL_DEFECT', 'Trello request could not be built') };
+    const status = exchange.status;
+    if (!(exchange.error instanceof TrelloCredentialReflectionError) && status && !(status >= 200 && status < 300)) {
+      // A refusal status proves nothing without its full body, so a write's outcome is unknown.
+      const isStatusDecisive = mode === 'read' || status === 429 || (status === 503 && mode === 'unkeyed');
+      if (isStatusDecisive) return classify({ response: { status, headers: exchange.headers ?? {}, body: Buffer.alloc(0) }, receipt: exchange.receipt }, operation, subject, mode);
+      return { ...base, kind: unknownWriteKind(mode)!, failure: trelloFailure(operation, 'TRANSPORT', `Trello ${subject} outcome is unknown after HTTP ${status} with an unreadable body`) };
     }
     if (exchange.error instanceof TrelloCredentialReflectionError) {
       if (exchange.status && !(exchange.status >= 200 && exchange.status < 300)) {

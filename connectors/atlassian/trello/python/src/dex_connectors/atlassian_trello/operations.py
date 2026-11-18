@@ -40,8 +40,10 @@ from .client import (
     Client,
     ProviderResponse,
     classify_response,
+    credential_failure,
     decode_card,
     failure,
+    is_terminal_credential_error,
     parse_time,
     path,
     trello_id,
@@ -197,19 +199,11 @@ class ListCardsOperation:
             )
         try:
             credentials = await self.client.resolve_credentials(call)
-        except Exception:
+        except Exception as error:
+            if not is_terminal_credential_error(error):
+                return QueryAttempt.retry(credential_failure("listCards", error))
             return QueryAttempt.branch_result(
-                "defect",
-                empty,
-                Receipt(),
-                failure(
-                    "listCards",
-                    FailureKind.AUTHENTICATION,
-                    (
-                        "Trello connection credentials are unavailable; "
-                        "save an API key and a token for the connection"
-                    ),
-                ),
+                "defect", empty, Receipt(), credential_failure("listCards", error)
             )
         try:
             response = await self.client.request(credentials, "GET", request_path, query)
@@ -268,19 +262,11 @@ class GetCardOperation:
             )
         try:
             credentials = await self.client.resolve_credentials(call)
-        except Exception:
+        except Exception as error:
+            if not is_terminal_credential_error(error):
+                return QueryAttempt.retry(credential_failure("getCard", error))
             return QueryAttempt.branch_result(
-                "defect",
-                empty,
-                Receipt(),
-                failure(
-                    "getCard",
-                    FailureKind.AUTHENTICATION,
-                    (
-                        "Trello connection credentials are unavailable; "
-                        "save an API key and a token for the connection"
-                    ),
-                ),
+                "defect", empty, Receipt(), credential_failure("getCard", error)
             )
         card, response, route, reason, delay = await _get_card(
             self.client, call, credentials, card_id, "getCard"
@@ -360,8 +346,13 @@ class _FencedWrite:
             )
         return cls(call, operation, fence, decision)
 
-    async def credential_failure(self, output: Any, cause: Failure) -> MutationAttempt[Any]:
-        """Map a credential failure before the send."""
+    async def credential_failure(self, output: Any, error: BaseException) -> MutationAttempt[Any]:
+        """Map a credential failure before the send.
+
+        A transient failure retries; a terminal one selects defect on a first send
+        and `uncertain` after a possible earlier send.
+        """
+        cause = credential_failure(self.operation, error)
         # notSent after a possible earlier send would hide it, so only a first send records it.
         if self.is_first_send:
             try:
@@ -374,6 +365,8 @@ class _FencedWrite:
                         "Trello setup failed and the not-sent checkpoint could not be recorded",
                     )
                 )
+        if not is_terminal_credential_error(error):
+            return MutationAttempt.retry(cause)
         return self.defect_or_select_uncertain(output, Receipt(), cause)
 
     async def record_can_resend(self, delay: float, reason: Failure) -> MutationAttempt[Any]:
@@ -441,14 +434,6 @@ def _accepted_uncertain(output: Any, cause: Failure, receipt: Receipt) -> Mutati
     )
 
 
-def _credentials_unavailable(operation: str) -> Failure:
-    return failure(
-        operation,
-        FailureKind.AUTHENTICATION,
-        "Trello connection credentials are unavailable; save an API key and a token for the connection",
-    )
-
-
 def _has_dispatch_window(call: Call) -> bool:
     deadline = getattr(call.context, "deadline", None)
     return deadline is None or deadline - datetime.now(UTC) >= _MINIMUM_DISPATCH_WINDOW
@@ -486,11 +471,25 @@ async def _single_dispatch(
                 "The attempt has too little time left to send a Trello write",
             )
         )
+    observed_statuses: list[int] = []
     try:
         response = await write.fence.dispatch(
-            lambda deadline: client.request(credentials, "POST", request_path, payload=payload)
+            lambda deadline: client.request(
+                credentials, "POST", request_path, payload=payload, observed_statuses=observed_statuses
+            )
         )
     except TimeoutError:
+        if observed_statuses and 200 <= observed_statuses[-1] < 300:
+            # Trello accepted the write before the window cut its body, so it is never resent.
+            return None, _accepted_uncertain(
+                requested,
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Trello accepted the {subject} but its response was cut off by the write deadline",
+                ),
+                receipt,
+            )
         # The write window closed after dispatch, so the outcome is unknown.
         return None, write.resend_or_select_uncertain(
             requested,
@@ -590,8 +589,8 @@ class CreateCardOperation:
             return write
         try:
             credentials = await self.client.resolve_credentials(call)
-        except Exception:
-            return await write.credential_failure(requested, _credentials_unavailable("createCard"))
+        except Exception as error:
+            return await write.credential_failure(requested, error)
         response, routed = await _single_dispatch(
             write, self.client, credentials, "card", "/cards", payload, requested
         )
@@ -659,8 +658,8 @@ class AddCommentOperation:
             return write
         try:
             credentials = await self.client.resolve_credentials(call)
-        except Exception:
-            return await write.credential_failure(requested, _credentials_unavailable("addComment"))
+        except Exception as error:
+            return await write.credential_failure(requested, error)
         response, routed = await _single_dispatch(
             write,
             self.client,
@@ -761,19 +760,11 @@ class UpdateCardOperation:
             )
         try:
             credentials = await self.client.resolve_credentials(call)
-        except Exception:
+        except Exception as error:
+            if not is_terminal_credential_error(error):
+                return MutationAttempt.retry(credential_failure("updateCard", error))
             return MutationAttempt.branch_result(
-                "defect",
-                output,
-                Receipt(),
-                failure(
-                    "updateCard",
-                    FailureKind.AUTHENTICATION,
-                    (
-                        "Trello connection credentials are unavailable; "
-                        "save an API key and a token for the connection"
-                    ),
-                ),
+                "defect", output, Receipt(), credential_failure("updateCard", error)
             )
         if add_ids or remove_ids:
             current, read_response, route, reason, delay = await _get_card(

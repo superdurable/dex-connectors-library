@@ -44,6 +44,19 @@ func TestUpdateCardSendsAbsoluteValuesAndConfirmsThemOnARead(t *testing.T) {
 	require.Equal(t, http.MethodGet, provider.request(1).method)
 }
 
+func TestUpdateCardRetriesARefusalWhoseBodyIsInterrupted(t *testing.T) {
+	provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		response.Header().Set("Content-Length", "100")
+		response.WriteHeader(http.StatusBadRequest)
+		_, err := response.Write([]byte(`partial`))
+		require.NoError(t, err)
+	})
+	_, err := sdkgo.RunMutation(newTrelloDexContext("update-interrupted-refusal"), newTrelloClient(t, provider.URL).UpdateCard(),
+		trelloConnection, trello.UpdateCardInput{CardID: testCardID, IsClosed: boolPointer(true)})
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Equal(t, 1, provider.requestCount())
+}
+
 func TestUpdateCardReadsBackAfterAcceptedPutBodyIsInterrupted(t *testing.T) {
 	provider := newRecordingTrello(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPut {
