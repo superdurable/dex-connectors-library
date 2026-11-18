@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
 from dex_connectors.sdk.providerhttp import parse_retry_after
@@ -94,6 +95,15 @@ class _DispatchMarker:
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "microsoft-excel", operation, message)
+
+
+def _write_credential_failure(operation: str, error: Exception) -> tuple[Failure, bool]:
+    """Describe a write's credential failure and report whether it can clear without reauthorization."""
+    if isinstance(error, (ReauthorizationRequiredError, ValueError)):
+        message, is_retryable = "connection credentials are unavailable", False
+    else:
+        message, is_retryable = "connection credentials are temporarily unavailable", True
+    return _failure(operation, FailureKind.AUTHENTICATION, message), is_retryable
 
 
 def _receipt(client: Client, call: Call, response: GraphResponse | None = None) -> Receipt:
@@ -671,12 +681,12 @@ class UpdateValuesOperation:
             )
         try:
             credential = await self.client.resolve_credentials(call)
-        except Exception:
+        except Exception as error:
+            credential_failure, is_retryable = _write_credential_failure(operation, error)
+            if is_retryable:
+                return MutationAttempt.retry(credential_failure)
             return MutationAttempt.branch_result(
-                "defect",
-                UpdateValuesOutput(),
-                Receipt(),
-                _failure(operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"),
+                "defect", UpdateValuesOutput(), Receipt(), credential_failure
             )
         try:
             response = await self.client.request(
@@ -842,8 +852,15 @@ class _AppendAttempt:
         return self.local_failure(branch, failure, receipt)
 
     async def record_not_sent(self) -> None:
-        """Keep the send count of a first-send attempt that retries before sending."""
-        if self.fence is not None and self.decision_kind == DecisionKind.SEND_ALLOWED:
+        """Keep the send count of a first-send attempt that retries before sending.
+
+        After a possible earlier send it records nothing, so the next attempt keeps counting that send.
+        """
+        if (
+            self.fence is not None
+            and self.decision_kind == DecisionKind.SEND_ALLOWED
+            and not self.has_possible_earlier_send
+        ):
             try:
                 await self.fence.record_not_sent()
             except Exception:
@@ -919,12 +936,12 @@ class AppendTableRowsOperation:
             return attempt
         try:
             credential = await self.client.resolve_credentials(call)
-        except Exception:
-            return attempt.local_failure(
-                "defect",
-                _failure(operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"),
-                Receipt(),
-            )
+        except Exception as error:
+            credential_failure, is_retryable = _write_credential_failure(operation, error)
+            if is_retryable:
+                await attempt.record_not_sent()
+                return MutationAttempt.retry(credential_failure)
+            return attempt.local_failure("defect", credential_failure, Receipt())
         columns, outcome = await _columns(self.client, call, credential, operation, input, "invalidResponse")
         if outcome is not None:
             return await attempt.read_failure(outcome)
@@ -1030,6 +1047,13 @@ class AppendTableRowsOperation:
                 await attempt.record_can_resend()
                 return attempt.local_failure(
                     "defect", _failure(operation, FailureKind.LOCAL_DEFECT, str(error)), Receipt()
+                )
+            if 200 <= error.status < 300:
+                # A 2xx status proves the append, even when its body then breaks, so it is never resent.
+                return MutationAttempt.branch_result(
+                    "appended",
+                    AppendTableRowsOutput(tuple(missing), tuple(present)),
+                    _receipt(self.client, call),
                 )
             return MutationAttempt.retry(
                 _failure(

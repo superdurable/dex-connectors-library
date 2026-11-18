@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { OAuthAuthMethodID } from './models.js';
 
@@ -86,13 +86,19 @@ export class GraphClient {
     this.#credentials = credentials; this.#refreshDriver = refreshDriver; this.#transport = transport; this.#endpoint = endpoint; this.#now = now;
   }
 
-  /** Resolve current credentials outside the Flow state. */
+  /**
+   * Resolve current credentials outside the Flow state. Throws ReauthorizationRequiredError when the
+   * connection must be reauthorized, and a TypeError for an outage that a later attempt may clear.
+   */
   async credentials(call: Call): Promise<Credentials> {
-    try {
-      const credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal);
-      if (credentials.authMethodId !== OAuthAuthMethodID || !isHeaderSafeCredential(credentials.accessToken.reveal())) throw new TypeError();
-      return credentials;
-    } catch { throw new TypeError('connection credentials are unavailable'); }
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); }
+    catch (error) {
+      if (error instanceof ReauthorizationRequiredError) throw new ReauthorizationRequiredError();
+      throw new TypeError('connection credentials are temporarily unavailable');
+    }
+    if (credentials.authMethodId !== OAuthAuthMethodID || !isHeaderSafeCredential(credentials.accessToken.reveal())) throw new ReauthorizationRequiredError();
+    return credentials;
   }
 
   /** Send one Graph request and at most one forced refresh after a 401. */
@@ -116,7 +122,11 @@ export class GraphClient {
       } catch (error) {
         if (error instanceof BodyTooLargeError) {
           result = { status: error.status ?? status, headers: error.headers ?? headers, body: new Uint8Array(), tooLarge: (error.status ?? status) >= 200 && (error.status ?? status) < 300, transportFailure: false, credentials: current };
-        } else result = { status, headers, body: new Uint8Array(), tooLarge: false, transportFailure: true, credentials: current };
+        } else {
+          // Keep a status that arrived before the body failed: a 2xx write was accepted.
+          const arrived = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error : undefined;
+          result = { status: arrived?.status ?? status, headers: arrived?.headers ?? headers, body: new Uint8Array(), tooLarge: false, transportFailure: true, credentials: current };
+        }
       }
       if (result.status !== 401 || attempt !== 0 || !('resolveAfterRejection' in this.#credentials)) return result;
       try {
