@@ -989,6 +989,18 @@ def test_non_idempotent_resends_only_after_a_proven_rollback() -> None:
     assert second.branch == "completed" and healthy.committed
 
 
+def test_non_idempotent_never_records_not_sent_after_a_possible_earlier_commit() -> None:
+    lost = FakeConnection(FakeCursor(description=(), failure=ConnectionResetError()))
+    context = AttemptContext()
+    # A canResend marker that still counts one possibly effective send keeps a send allowed.
+    seeded = Marker(CallID(context.call_id), 2, State.CAN_RESEND, send_count=1)
+    context.heartbeat_value = seeded
+    context.attempt = 3
+    outcome = run_write(lost, _BALANCE_INPUT, "executeNonIdempotent", context)
+    assert outcome.kind == "uncertain" and not lost.committed
+    assert context.heartbeat_value is seeded, "notSent would hide the earlier possible COMMIT"
+
+
 def test_non_idempotent_lost_worker_and_unreadable_checkpoint() -> None:
     connection = FakeConnection(FakeCursor(description=()))
     after_lost_worker = AttemptContext()

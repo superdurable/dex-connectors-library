@@ -100,6 +100,18 @@ describe('SQL Server writes', () => {
     expect(counts.commits).toBe(2);
   });
 
+  it('never records notSent after a possible earlier COMMIT', async () => {
+    const lost = fakeWriteSession({ statementError: Object.assign(new Error('socket closed'), { code: 'ECONNRESET' }) });
+    const context = new AttemptContext();
+    // A canResend marker that still counts one possibly effective send keeps a send allowed.
+    const seeded = { callId, attempt: 2, state: 'canResend', sendCount: 1 };
+    context.marker = seeded;
+    context.attempt = 3;
+    expect(await lost.client.executeNonIdempotent().invoke(writeCall('executeNonIdempotent', context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(lost.counts.commits).toBe(0);
+    expect(context.marker).toBe(seeded);
+  });
+
   it('selects uncertain after a lost Worker and retries an unreadable checkpoint without connecting', async () => {
     const { client, counts } = fakeWriteSession();
     const afterLostWorker = new AttemptContext();

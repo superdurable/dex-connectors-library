@@ -109,6 +109,27 @@ func TestExecuteStatementNonIdempotentResendsAfterAWriteLostBeforeCommit(t *test
 	require.True(t, healthy.hasCommitted.Load())
 }
 
+func TestExecuteStatementNonIdempotentNeverRecordsNotSentAfterAPossibleEarlierCommit(t *testing.T) {
+	dropping := &scriptedDatabase{execution: scriptedtds.Execution{DropConnection: true}}
+	server, client := startScriptedDatabase(t, dropping, scriptedtds.Options{}, nil)
+	step := newFencedStep()
+	_, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	marker := lastMarker(t, step)
+	// A canResend marker that still counts one possibly effective send keeps SendAllowed.
+	step.AdvanceAttempt()
+	require.NoError(t, step.SetPersistedCheckpoint(singledispatch.Marker{CallID: marker.CallID, Attempt: 2, State: singledispatch.StateCanResend, SendCount: 1}))
+	step.AdvanceAttempt()
+	heartbeatCount := len(step.Heartbeats())
+
+	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, sqlserver.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the earlier attempt counts as a possible COMMIT")
+	require.Empty(t, server.EventsOfKind(scriptedtds.EventCommit))
+	require.Len(t, step.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible COMMIT")
+}
+
 func TestExecuteStatementNonIdempotentSelectsUncertainAfterALostWorker(t *testing.T) {
 	database := &scriptedDatabase{execution: scriptedtds.Execution{RowsAffected: 1}}
 	server, client := startScriptedDatabase(t, database, scriptedtds.Options{}, nil)

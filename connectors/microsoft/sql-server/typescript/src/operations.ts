@@ -419,6 +419,11 @@ export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteS
         }
       });
     } catch { outcome = { failure: credentialsUnavailable(), value: emptyExecution(), isCommitPhase: false }; }
+    if (outcome.failure && !outcome.isCommitPhase && hasPossibleEarlierSend) {
+      // notSent would hide the earlier possible COMMIT, and the cap forbids another one.
+      outcome.failure = { ...outcome.failure, disposition: 'uncertain' };
+      return writeAttempt(this.client, call, 'executeNonIdempotent', outcome);
+    }
     if (outcome.failure && !outcome.isCommitPhase) {
       // A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
       await fence.recordNotSent().catch(() => undefined);

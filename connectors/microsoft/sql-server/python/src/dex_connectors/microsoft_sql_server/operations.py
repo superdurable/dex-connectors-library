@@ -958,6 +958,11 @@ class ExecuteStatementNonIdempotentOperation:
             )
         if outcome.disposition is None:
             return _write_attempt(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, outcome)
+        if not outcome.is_commit_phase and has_possible_earlier_send:
+            # notSent would hide the earlier possible COMMIT, and the cap forbids another one.
+            return _write_attempt(
+                EXECUTE_NON_IDEMPOTENT_OPERATION_ID, replace(outcome, disposition="uncertain")
+            )
         try:
             if not outcome.is_commit_phase:
                 await fence.record_not_sent()
