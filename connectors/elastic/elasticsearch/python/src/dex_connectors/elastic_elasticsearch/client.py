@@ -119,11 +119,12 @@ class Client:
         """Close the provider HTTP client after Worker shutdown."""
         await self.http_client.aclose()
 
-    async def authorization(self, call: Call) -> str | None:
-        """Build Basic authorization without returning credentials in failures.
+    async def authorization(self, call: Call) -> str:
+        """Build Basic authorization without returning credentials in failures."""
+        return await self._resolve_authorization(call) or ""
 
-        Returns None for a transient credential failure and "" for a terminal or invalid credential.
-        """
+    async def _resolve_authorization(self, call: Call) -> str | None:
+        """Return None for a transient credential failure and "" for a terminal or invalid one."""
         try:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
@@ -185,7 +186,7 @@ class IndexDocumentOperation:
         source = json.dumps(input.source, ensure_ascii=False, separators=(",", ":")).encode()
         if len(source) > self.client.max_document_bytes:
             return _index_failure(DEFECT, FailureKind.VALIDATION)
-        authorization = await self.client.authorization(call)
+        authorization = await self.client._resolve_authorization(call)
         if authorization is None:
             return MutationAttempt.retry(_failure("indexDocument", FailureKind.AVAILABILITY))
         if not authorization:
@@ -207,6 +208,8 @@ class IndexDocumentOperation:
             return MutationAttempt.branch_result(
                 INDEXED, IndexedDocument(input.index, input.document_id), Receipt()
             )
+        if not _is_definite_refusal_status(exchange.status):
+            return _index_retry(FailureKind.AVAILABILITY)
         return _index_failure(PROVIDER_REJECTED, _rejection_kind(exchange.status))
 
 
@@ -230,7 +233,7 @@ class DeleteDocumentOperation:
         """Classify a deleted or already absent document as one successful outcome."""
         if not _valid_index(input.index) or not _valid_document_id(input.document_id):
             return _delete_failure(DEFECT, FailureKind.VALIDATION)
-        authorization = await self.client.authorization(call)
+        authorization = await self.client._resolve_authorization(call)
         if authorization is None:
             return MutationAttempt.retry(_failure("deleteDocument", FailureKind.AVAILABILITY))
         if not authorization:
@@ -262,6 +265,8 @@ class DeleteDocumentOperation:
                 DeletedDocument(input.index, input.document_id, body["result"] == "deleted"),
                 Receipt(),
             )
+        if not _is_definite_refusal_status(exchange.status):
+            return _delete_retry(FailureKind.AVAILABILITY)
         return _delete_failure(PROVIDER_REJECTED, _rejection_kind(exchange.status))
 
 
@@ -283,7 +288,7 @@ class SearchDocumentsOperation:
         if not _valid_index(input.index) or not input.query.strip() or len(input.query.encode()) > 4096 or \
                 size < 1 or size > 100 or input.from_ < 0 or input.from_ + size > 10000:
             return _search_failure(DEFECT, FailureKind.VALIDATION)
-        authorization = await self.client.authorization(call)
+        authorization = await self.client._resolve_authorization(call)
         if authorization is None:
             return _search_retry(FailureKind.AVAILABILITY)
         if not authorization:
@@ -379,7 +384,10 @@ def _document_retry(exchange: Exchange, operation: str) -> MutationAttempt[Any] 
 
 def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
-    return isinstance(
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,
@@ -388,6 +396,11 @@ def _is_terminal_credential_error(error: Exception) -> bool:
             CredentialBrokerRejectedError,
         ),
     )
+
+
+def _is_definite_refusal_status(status: int) -> bool:
+    """Report a status that proves Elasticsearch refused a write; any other status is unknown."""
+    return status in (400, 401, 403, 404, 411, 413, 414, 415, 422)
 
 
 def _failure(operation: str, kind: FailureKind) -> Failure:
