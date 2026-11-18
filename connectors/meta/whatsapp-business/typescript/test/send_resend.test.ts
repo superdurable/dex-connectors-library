@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { WhatsAppBusinessClient } from '../src/client.js';
 import { SendTextMessageDefinition } from '../src/generated/definitions.js';
@@ -33,9 +34,12 @@ interface MetaAnswer { status: number; body: string; bodyError?: 'transport' | '
 const sent: MetaAnswer = { status: 200, body: '{"messaging_product":"whatsapp","messages":[{"id":"wamid.example-text"}]}' };
 const serverFailure: MetaAnswer = { status: 500, body: '{"error":{"message":"unknown"}}' };
 
-function newClient(answers: MetaAnswer[], token = 'secret-meta-system-user-token', maxResponseBytes?: number) {
+function newClient(answers: MetaAnswer[], token = 'secret-meta-system-user-token', maxResponseBytes?: number, credentialError?: Error) {
   const requests: ProviderRequest[] = [];
-  const resolve = async () => ({ accessToken: new SecretString(token) });
+  const resolve = async () => {
+    if (credentialError) throw credentialError;
+    return { accessToken: new SecretString(token) };
+  };
   const config = { baseUrl: 'http://127.0.0.1:12345/v25.0', ...(maxResponseBytes === undefined ? {} : { maxResponseBytes }) };
   const client = new WhatsAppBusinessClient(config as never, { resolve }, {
     send: async (request: ProviderRequest) => {
@@ -197,5 +201,24 @@ describe('WhatsApp bounded resend of unconfirmed messages', () => {
     expect(await send(invalidClient, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
     expect(await send(invalidClient, new AttemptContext())).toMatchObject({ branch: 'defect' });
+  });
+
+  it.each([new CredentialBrokerUnavailableError(), new Error('project store read failed')])('retries a transient credential failure before any send without counting a send: %s', async credentialError => {
+    const { client: unavailableClient, requests } = newClient([sent], undefined, undefined, credentialError);
+    const context = new AttemptContext();
+    expect(await send(unavailableClient, context)).toBeInstanceOf(RetryError);
+    expect(requests).toHaveLength(0);
+    expect(context.marker).toMatchObject({ state: 'notSent' });
+    context.attempt = 2;
+    const { client, requests: laterRequests } = newClient([sent]);
+    expect(await send(client, context)).toMatchObject({ branch: 'sent' });
+    expect(context.marker).toMatchObject({ sendCount: 1 });
+    expect(laterRequests).toHaveLength(1);
+  });
+
+  it.each([new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()])('selects defect for a terminal credential failure before any send: %s', async credentialError => {
+    const { client, requests } = newClient([sent], undefined, undefined, credentialError);
+    expect(await send(client, new AttemptContext())).toMatchObject({ branch: 'defect' });
+    expect(requests).toHaveLength(0);
   });
 });

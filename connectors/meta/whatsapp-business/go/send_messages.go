@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -125,17 +126,27 @@ func validMessageAddress(phoneNumberID, recipient string) bool {
 }
 
 type messageDispatch struct {
-	client      *http.Client
-	request     *http.Request
-	response    *http.Response
-	observation *dispatchObservation
+	client           *http.Client
+	request          *http.Request
+	maxResponseBytes int64
+	response         *http.Response
+	responseBody     []byte
+	bodyReadErr      error
+	observation      *dispatchObservation
 }
 
+// send reads the body before Dispatch cancels its context; a body failure is never a send error.
 func (dispatch *messageDispatch) send(requestContext context.Context) error {
 	request := dispatch.request.WithContext(httptrace.WithClientTrace(requestContext, dispatch.observation.clientTrace()))
 	response, err := dispatch.client.Do(request)
+	if err != nil {
+		return err
+	}
 	dispatch.response = response
-	return err
+	dispatch.responseBody, dispatch.bodyReadErr = providerhttp.ReadBoundedBody(response.Body, dispatch.maxResponseBytes)
+	// The bounded body is already read or failed, so a close error changes nothing.
+	_ = response.Body.Close()
+	return nil
 }
 
 // messageSend holds one attempt's send-cap decisions for classifying its outcome.
@@ -181,7 +192,7 @@ func (client *Client) sendMessage(call sdkgo.Call, operationName, phoneNumberID 
 	}
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
-		return attempt.localFailure(false, sdkgo.FailureAuthentication, "connection credentials are unavailable")
+		return attempt.localFailure(isTerminalCredentialError(err), sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
 	if credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()) {
 		return attempt.localFailure(true, sdkgo.FailureAuthentication, "connection credentials are invalid")
@@ -196,7 +207,7 @@ func (client *Client) sendMessage(call sdkgo.Call, operationName, phoneNumberID 
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
 		return attempt.localFailure(true, sdkgo.FailureLocalDefect, "message request is invalid")
 	}
-	dispatch := &messageDispatch{client: client.httpClient, request: request, observation: &dispatchObservation{}}
+	dispatch := &messageDispatch{client: client.httpClient, request: request, maxResponseBytes: client.maxResponseBytes, observation: &dispatchObservation{}}
 	err = fence.Dispatch(dispatch.send)
 	if err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
@@ -209,15 +220,11 @@ func (client *Client) sendMessage(call sdkgo.Call, operationName, phoneNumberID 
 		}
 		return attempt.resendOrSelectUncertain(sdkgo.FailureTransport, "Meta message outcome is unknown", 0)
 	}
-	response := dispatch.response
-	defer func() { _ = response.Body.Close() }()
-	return attempt.classifyResponse(response, client.maxResponseBytes)
+	return attempt.classifyResponse(dispatch.response, dispatch.responseBody, dispatch.bodyReadErr == nil)
 }
 
-func (attempt messageSend) classifyResponse(response *http.Response, maxResponseBytes int64) sdkgo.MutationAttempt[SentMessage] {
+func (attempt messageSend) classifyResponse(response *http.Response, responseBody []byte, isBodyReadable bool) sdkgo.MutationAttempt[SentMessage] {
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
-	isBodyReadable := readErr == nil
 	isClientError := response.StatusCode >= 400 && response.StatusCode < 500
 	// A Graph or Cloud API throttling code means Meta refused the send before processing it.
 	isRateLimited := response.StatusCode == http.StatusTooManyRequests || (isClientError && isBodyReadable && isGraphThrottleBody(responseBody))
@@ -284,8 +291,8 @@ func (attempt messageSend) rejectOrSelectUncertain(kind sdkgo.FailureKind, messa
 	return messageBranch(attempt.operationName, "providerRejected", kind, message)
 }
 
-// localFailure selects defect only when no earlier send may have delivered. After a possible
-// send, a terminal failure selects uncertain and a transient one returns Retry.
+// localFailure selects defect only for a terminal failure before any possible send. A
+// transient failure returns Retry; after a possible send, a terminal one selects uncertain.
 func (attempt messageSend) localFailure(isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {
 	if attempt.hasPossibleEarlierSend && isTerminal {
 		return uncertainMessage(attempt.operationName, kind, message+"; an earlier attempt may have sent the WhatsApp message")
@@ -294,9 +301,19 @@ func (attempt messageSend) localFailure(isTerminal bool, kind sdkgo.FailureKind,
 		// notSent would hide the earlier possible send, so nothing is recorded.
 		return retryMessage(attempt.operationName, kind, message+"; no message was sent in this attempt", 0)
 	}
-	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+	// No claim was made, so a lost notSent checkpoint cannot count a send.
 	_ = attempt.fence.RecordNotSent()
+	if !isTerminal {
+		return retryMessage(attempt.operationName, sdkgo.FailureAvailability, message+"; no message was sent", 0)
+	}
 	return messageBranch(attempt.operationName, "defect", kind, message)
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // readSentMessageID returns the first wamid in a send response and whether the response is complete.

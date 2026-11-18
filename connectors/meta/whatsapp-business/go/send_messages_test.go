@@ -11,9 +11,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
@@ -345,7 +347,68 @@ func TestSendTextMessageCredentialFailureAfterPossibleSendRetries(t *testing.T) 
 	_, err = sdkgo.RunMutation(ctx, noCredentials.SendTextMessage(), testConnection, testTextInput)
 	require.Error(t, err)
 	require.Equal(t, 1, *requests)
-	defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("whatsapp-first-credentials", "send-text"), noCredentials.SendTextMessage(), testConnection, testTextInput)
+}
+
+// failingCredentialSource fails every resolution with one credential error.
+type failingCredentialSource struct{ err error }
+
+func (source failingCredentialSource) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, source.err
+}
+
+func TestSendTextMessageTransientCredentialFailureBeforeSendRetries(t *testing.T) {
+	for _, credentialErr := range []error{projectconfig.ErrCredentialBrokerUnavailable, errors.New("project store read failed")} {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			server, requests := newScriptedSendServer(t, []int{http.StatusOK}, []string{sentTextBody})
+			unavailable, err := New(Config{BaseURL: server.URL}, failingCredentialSource{err: credentialErr})
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("whatsapp-transient-credentials", "send-text")
+			_, err = sdkgo.RunMutation(ctx, unavailable.SendTextMessage(), testConnection, testTextInput)
+			var retryErr *sdkgo.RetryError
+			require.ErrorAs(t, err, &retryErr)
+			require.Equal(t, 0, *requests)
+			require.Equal(t, singledispatch.StateNotSent, lastSendMarker(t, ctx).State)
+			ctx.AdvanceAttempt()
+			sent, err := sdkgo.RunMutation(ctx, newTestClient(t, server.URL, 0).SendTextMessage(), testConnection, testTextInput)
+			require.NoError(t, err)
+			require.Equal(t, SendTextMessageBranchSent, sent.Branch)
+			require.EqualValues(t, 1, lastSendMarker(t, ctx).SendCount)
+			require.Equal(t, 1, *requests)
+		})
+	}
+}
+
+func TestSendTextMessageTerminalCredentialFailureBeforeSendSelectsDefect(t *testing.T) {
+	terminalErrors := []error{sdkgo.ErrReauthorizationRequired, projectconfig.ErrReauthorizationRequired, projectconfig.ErrObjectNotFound,
+		projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected}
+	for _, credentialErr := range terminalErrors {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			server, requests := newScriptedSendServer(t, []int{http.StatusOK}, []string{sentTextBody})
+			client, err := New(Config{BaseURL: server.URL}, failingCredentialSource{err: fmt.Errorf("resolve: %w", credentialErr)})
+			require.NoError(t, err)
+			defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("whatsapp-terminal-credentials", "send-text"), client.SendTextMessage(), testConnection, testTextInput)
+			require.NoError(t, err)
+			require.Equal(t, SendTextMessageBranchDefect, defect.Branch)
+			require.Equal(t, 0, *requests)
+		})
+	}
+}
+
+func TestSendTextMessageReadsBodyArrivingAfterHeaders(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		time.Sleep(50 * time.Millisecond)
+		_, err := fmt.Fprint(w, sentTextBody)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL, 0)
+	ctx := singledispatchtest.NewContext("whatsapp-late-body", "send-text")
+	sent, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, testTextInput)
 	require.NoError(t, err)
-	require.Equal(t, SendTextMessageBranchDefect, defect.Branch)
+	require.Equal(t, SendTextMessageBranchSent, sent.Branch)
+	require.Equal(t, 1, requests)
 }
