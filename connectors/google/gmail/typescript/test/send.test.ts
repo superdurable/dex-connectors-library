@@ -148,6 +148,8 @@ describe('Gmail send and reply classification', () => {
     { name: 'missing project object', error: () => new ObjectNotFoundError() },
     { name: 'unselected connection', error: () => new ConnectionNotSelectedError() },
     { name: 'broker rejection', error: () => new CredentialBrokerRejectedError() },
+    // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+    { name: 'malformed stored material', error: () => new TypeError('project credential decoding failed') },
   ])('returns an authentication defect before a send for a $name credential failure', async ({ error }) => {
     let posts = 0;
     const http = new GmailHTTPClient({ endpoint: 'http://127.0.0.1:8080' }, { resolve: async () => { throw error(); }, resolveWithRefresh: async () => { throw error(); } }, driver, async () => { posts++; return response(200, {}); });

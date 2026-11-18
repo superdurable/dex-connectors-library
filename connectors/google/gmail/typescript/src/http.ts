@@ -8,6 +8,7 @@ import {
   type AddressPolicy, type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError } from './generated/models.js';
 import type { Config, CredentialSource, Credentials } from './models.js';
 import { GoogleOAuthAuthMethodID, WorkspaceDomainDelegationAuthMethodID } from './models.js';
 import { parseMailbox } from './message.js';
@@ -51,7 +52,7 @@ export class GmailCredentialError extends Error {
 /** Report a credential failure that only reconnection repairs; any other failure is transient. */
 function isPermanentCredentialFailure(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 /** Credential-safe HTTP client shared by all three operations. */

@@ -35,7 +35,20 @@ from dex_connectors.google_gmail import (
     GetMessageInput,
     GetMessageOperation,
     GmailProvider,
+    decode_credentials,
 )
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
 
 
 class NoRefreshDriver:
@@ -275,8 +288,10 @@ class FailingCredentials:
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (sdk_wrapped_material_error(), True),
         (CredentialBrokerUnavailableError(), False),
         (ValueError("unlisted"), False),
+        (ValueError("project credential decoding failed"), False),
     ],
 )
 async def test_get_message_credential_failures_retry_unless_terminal(

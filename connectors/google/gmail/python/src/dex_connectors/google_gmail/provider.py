@@ -37,6 +37,7 @@ from dex_connectors.sdk.providerhttp import (
 )
 
 from .models import Config, Credentials, Message, ReplyToMessageInput, SendMessageInput
+from .project_credentials import StoredCredentialMaterialError
 from .refresh import CredentialRefreshDriver as GmailCredentialRefreshDriver
 
 
@@ -396,7 +397,15 @@ class GmailProvider:
 
     async def resolve_credentials(self, call: Call) -> Credentials:
         """Resolve current secret material and verify the authorized mailbox."""
-        credential = await resolve_credential(self.credentials, call, self.refresh_driver)
+        try:
+            credential = await resolve_credential(self.credentials, call, self.refresh_driver)
+        except ValueError as error:
+            # The SDK project provider replaces a decoder error but keeps it as the context.
+            if isinstance(error, StoredCredentialMaterialError) or isinstance(
+                error.__context__, StoredCredentialMaterialError
+            ):
+                raise GmailCredentialMaterialError("Gmail stored credential material is invalid") from None
+            raise
         try:
             self._validate_credentials(credential)
         except ValueError as error:

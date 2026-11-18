@@ -56,6 +56,7 @@ describe('getMessage operation', () => {
     const cases: Array<[Error, boolean]> = [
       [new ReauthorizationRequiredError(), true], [new ObjectNotFoundError(), true],
       [new ConnectionNotSelectedError(), true], [new CredentialBrokerRejectedError(), true],
+      [new TypeError('project credential decoding failed'), true],
       [new CredentialBrokerUnavailableError(), false], [new Error('connection is not configured'), false],
     ];
     for (const [error, isTerminal] of cases) {

@@ -40,7 +40,20 @@ from dex_connectors.google_gmail.definitions import (
     SEND_MESSAGE_DEFINITION,
 )
 from dex_connectors.google_gmail.operations import ReplyToMessageOperation, SendMessageOperation
+from dex_connectors.google_gmail.project_credentials import StoredCredentialMaterialError
 from dex_connectors.google_gmail.provider import GmailCredentialMaterialError
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the decoder refuses material."""
+    try:
+        try:
+            raise StoredCredentialMaterialError("Gmail credential fields are invalid")
+        except StoredCredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
 
 
 class HeartbeatContext:
@@ -708,6 +721,7 @@ async def test_transient_credential_failure_on_first_attempt_retries(
     [
         ReauthorizationRequiredError(),
         GmailCredentialMaterialError("invalid"),
+        sdk_wrapped_material_error(),
         ObjectNotFoundError(),
         ConnectionNotSelectedError(),
         CredentialBrokerRejectedError(),
