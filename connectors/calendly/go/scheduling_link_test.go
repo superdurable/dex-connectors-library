@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -404,6 +405,41 @@ func TestCreateSchedulingLinkNeverRetriesAnUnreadableAcceptedResponse(t *testing
 	require.NoError(t, err, "an accepted POST is never resent by this attempt")
 	require.Equal(t, calendly.CreateSchedulingLinkBranchUncertain, first.Branch)
 	require.Equal(t, int32(1), requests.Load())
+}
+
+// refusalWithIncompleteBody answers a definite refusal status whose error body breaks or exceeds the error limit.
+func refusalWithIncompleteBody(isOversized bool, requests *atomic.Int32) *http.Client {
+	return &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		requests.Add(1)
+		body := io.NopCloser(interruptedResponseBody{})
+		if isOversized {
+			body = io.NopCloser(strings.NewReader(strings.Repeat("x", 64<<10+1)))
+		}
+		return &http.Response{StatusCode: http.StatusBadRequest, Header: http.Header{}, Body: body}, nil
+	})}
+}
+
+func TestCreateSchedulingLinkTreatsAnIncompleteRefusalBodyAsAnUnknownOutcome(t *testing.T) {
+	for name, isOversized := range map[string]bool{"broken": false, "oversized": true} {
+		t.Run(name, func(t *testing.T) {
+			var requests atomic.Int32
+			client := newTestClient(t, refusalWithIncompleteBody(isOversized, &requests), personalAccessTokenCredentials(""), calendly.Config{})
+			ctx := singledispatchtest.NewContext("incomplete-refusal-flow", "create-link")
+			input := calendly.CreateSchedulingLinkInput{EventTypeURI: testEventTypeURI}
+			for attempt := 1; attempt < 3; attempt++ {
+				_, err := sdkgo.RunMutation(ctx, client.CreateSchedulingLink(), testConnection, input)
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "attempt %d resends below the cap", attempt)
+				heartbeats := ctx.Heartbeats()
+				require.NotContains(t, string(heartbeats[len(heartbeats)-1]), `"state":"canResend"`, "the refusal is not proven")
+				ctx.AdvanceAttempt()
+			}
+			result, err := sdkgo.RunMutation(ctx, client.CreateSchedulingLink(), testConnection, input)
+			require.NoError(t, err)
+			require.Equal(t, calendly.CreateSchedulingLinkBranchUncertain, result.Branch)
+			require.Equal(t, int32(3), requests.Load())
+		})
+	}
 }
 
 func TestCreateSchedulingLinkNeverRetriesAnOversizedAcceptedResponse(t *testing.T) {

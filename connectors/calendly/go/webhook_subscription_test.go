@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 
@@ -149,6 +150,7 @@ func TestCreateWebhookSubscriptionRetriesAPostAnswerThatDoesNotProveTheOutcome(t
 	for name, reply := range map[string]http.HandlerFunc{
 		"malformed 2xx": respondJSON(http.StatusCreated, `{"resource":`),
 		"408":           respondJSON(http.StatusRequestTimeout, providerError("Timeout", "slow")),
+		"oversized 400": respondJSON(http.StatusBadRequest, strings.Repeat("x", 64<<10+1)),
 	} {
 		t.Run(name, func(t *testing.T) {
 			fake := newFakeCalendly(t, map[string]http.HandlerFunc{

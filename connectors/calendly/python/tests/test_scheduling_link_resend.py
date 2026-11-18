@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Calendly scheduling links whose outcome is unknown."""
 
+import asyncio
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 import dex_connectors.sdk as sdk
@@ -135,6 +137,84 @@ async def test_saved_booking_url_selects_created_without_another_post() -> None:
     assert isinstance(result, sdk.MutationResult) and result.branch == "created"
     assert result.value is not None and result.value.booking_url == BOOKING_URL
     assert requests == []
+
+
+class _SlowAcceptedBody(httpx.AsyncByteStream):
+    """Send 2xx headers, then hold the body past the write window."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(30)
+        yield b"{}"
+
+
+class _BrokenBody(httpx.AsyncByteStream):
+    """Break the response body after its headers arrived."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        raise httpx.ReadError("connection closed")
+        yield b""
+
+
+async def run_link(
+    respond: Callable[[httpx.Request], httpx.Response], context: AttemptContext
+) -> sdk.MutationResult[calendly.SchedulingLink] | sdk.RetryError:
+    """Run one Execute attempt of createSchedulingLink against a custom provider answer."""
+    credentials = sdk.StaticCredentialProvider(
+        {CONNECTION: calendly.Credentials(access_token=sdk.SecretString("inert-token"))}
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = calendly.Client(calendly.Config(), credentials, transport)
+        call = sdk.Call(
+            CALL_ID,
+            CONNECTION,
+            sdk.OperationRef("calendly", "createSchedulingLink"),
+            context=context,
+            max_sends=MAX_SENDS,
+        )
+        try:
+            return await sdk.run_mutation(
+                client.create_scheduling_link(), call, calendly.CreateSchedulingLinkInput(EVENT_TYPE)
+            )
+        except sdk.RetryError as error:
+            return error
+
+
+@pytest.mark.asyncio
+async def test_write_deadline_after_accepted_headers_is_never_resent() -> None:
+    """A 5/6 write window of a 3-second budget ends while the accepted body is still arriving."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=3)
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(201, stream=_SlowAcceptedBody())
+
+    result = await run_link(respond, context)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", ["oversized", "broken"])
+async def test_refusal_with_incomplete_body_resends_until_the_send_cap(body: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if body == "oversized":
+            return httpx.Response(400, content=b"x" * (64 * 1024 + 1))
+        return httpx.Response(400, stream=_BrokenBody())
+
+    for attempt in range(1, MAX_SENDS):
+        context.attempt = attempt
+        assert isinstance(await run_link(respond, context), sdk.RetryError)
+        assert context.marker is not None and context.marker.state != "canResend"
+    context.attempt = MAX_SENDS
+    result = await run_link(respond, context)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert len(requests) == MAX_SENDS
 
 
 @pytest.mark.asyncio

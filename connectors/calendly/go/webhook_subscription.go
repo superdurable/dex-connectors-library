@@ -259,14 +259,14 @@ func (operation CreateWebhookSubscriptionOperation) attemptForExistingSubscripti
 
 // attemptForFailedExchange returns false for a 2xx; a lost answer retries, as the next list finds a create.
 // isUnknownWebhookCreateOutcome reports an oversized or malformed answer, or a 3xx or 4xx status
-// other than 429 or a definite refusal, after the subscription POST.
+// other than 429 or a definite refusal with a fully read body, after the subscription POST.
 func isUnknownWebhookCreateOutcome(response calendlyResponse, err error) bool {
 	if err != nil {
 		return errors.Is(err, errCalendlyResponseTooLarge) || errors.Is(err, errCalendlyResponseMalformed)
 	}
 	status := response.statusCode
 	// A 429 or 5xx keeps the classified Retry and its delay.
-	return (status < 200 || status >= 300) && status != http.StatusTooManyRequests && status < 500 && !isDefiniteRefusalStatus(status)
+	return (status < 200 || status >= 300) && status != http.StatusTooManyRequests && status < 500 && !isDefiniteWriteRefusal(response)
 }
 
 func (operation CreateWebhookSubscriptionOperation) attemptForFailedExchange(

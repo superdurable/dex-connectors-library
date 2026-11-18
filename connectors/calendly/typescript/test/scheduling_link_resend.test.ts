@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { CalendlyClient } from '../src/client.js';
 import { CreateSchedulingLinkDefinition } from '../src/generated/definitions.js';
 import type { Credentials, SchedulingLink } from '../src/generated/models.js';
@@ -92,13 +92,24 @@ describe('Calendly createSchedulingLink bounded resend', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('keeps the status of a refusal whose body breaks, as Go does', async () => {
+  it.each([
+    ['broken', () => { throw new ProviderTransportError(false, 400, {}); }],
+    ['too large for the response limit', () => { throw new BodyTooLargeError(400, {}); }],
+    ['beyond the error body limit', () => ({ status: 400, headers: {}, body: new Uint8Array(MaxErrorBodyBytes + 1) })],
+  ] as const)('resends a refusal whose body is %s until the send cap, as Go does', async (_, answer) => {
     const requests: ProviderRequest[] = [];
     const client = new CalendlyClient({}, new StaticCredentialProvider([[connection, credentials]]), {
-      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 400, {}); },
+      send: async (request: ProviderRequest) => { requests.push(request); return answer(); },
     });
-    expect(await createLink(client, new AttemptContext())).toMatchObject({ branch: 'providerRejected' });
-    expect(requests).toHaveLength(1);
+    const context = new AttemptContext();
+    for (let attempt = 1; attempt < maxSends; attempt++) {
+      context.attempt = attempt;
+      expect(await createLink(client, context)).toBeInstanceOf(RetryError);
+      expect(context.marker).toMatchObject({ state: 'claimed' });
+    }
+    context.attempt = maxSends;
+    expect(await createLink(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(maxSends);
   });
 
   it('selects created from a saved booking URL without another POST', async () => {

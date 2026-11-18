@@ -109,7 +109,7 @@ export interface CancelScheduledEventStepConfig<StepInput, OperationInput = Canc
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Calendly refused to cancel an active event, such as one that already started or one the token may not cancel. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403. */
+  /** No longer selected. A malformed or oversized scheduled event read back after a 403 is retried, because a repeated cancellation is harmless; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

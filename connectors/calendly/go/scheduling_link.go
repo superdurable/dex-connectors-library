@@ -45,8 +45,8 @@ func (CreateSchedulingLinkOperation) IdempotencyKey(callID sdkgo.CallID, _ Creat
 }
 
 // Invoke posts one single-use link. A usable 2xx selects created; an unusable 2xx selects uncertain.
-// A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of the first send selects
-// providerRejected; 401 is not retried after token refresh. A 429, 503, or provably unsent request
+// A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) of the first send, with an error
+// body read in full, selects providerRejected; 401 is not retried after token refresh. A 429, 503, or provably unsent request
 // retries after a safe resend checkpoint. Any other outcome, such as a lost answer, a 5xx, or a 409,
 // returns Retry while possible sends stay below the send cap and selects uncertain at the cap. A saved
 // booking URL from an accepted earlier send selects created without another POST.
@@ -54,6 +54,10 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 	operationID := CreateSchedulingLinkDefinition.Operation.OperationID
 	client := operation.client
 	output := SchedulingLink{EventTypeURI: input.EventTypeURI}
+	if _, err := parseEventTypeURI(input.EventTypeURI); err != nil {
+		return sdkgo.NewMutationBranch(CreateSchedulingLinkBranchDefect, output,
+			calendlyFailurePointer(operationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
+	}
 	// Calendly can take most of its 25-second HTTP timeout; no provider read-back exists.
 	fence, err := singledispatch.NewFence(call, CreateSchedulingLinkDefinition.StepDefaults.ExecuteMethodTimeout,
 		singledispatch.WithWriteWindow(5.0/6.0), singledispatch.WithMaxSends(call.MaxSends()))
@@ -66,7 +70,7 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 		return sdkgo.NewMutationRetry[SchedulingLink](calendlyFailure(operationID, sdkgo.FailureAvailability,
 			"the scheduling link dispatch checkpoint could not be read; nothing was sent"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed && decision.Marker.CallID == call.ID && decision.Marker.ProviderID != "" {
+	if decision.Marker.CallID == call.ID && decision.Marker.ProviderID != "" {
 		// Calendly returned this booking URL for an accepted earlier send, so it is never resent.
 		if link, err := decodeSchedulingLinkBookingURL(decision.Marker.ProviderID, input.EventTypeURI); err == nil {
 			return sdkgo.NewMutationBranch(CreateSchedulingLinkBranchCreated, link, nil, client.calendlyReceipt(link.BookingURL))
@@ -80,10 +84,6 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 	}
 	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
-	if _, err := parseEventTypeURI(input.EventTypeURI); err != nil {
-		return sdkgo.NewMutationBranch(CreateSchedulingLinkBranchDefect, output,
-			calendlyFailurePointer(operationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
-	}
 	credentials, err := client.resolveCredentials(call)
 	if err != nil && hasPossibleEarlierSend {
 		// notSent would hide the earlier possible send, so nothing is recorded.
@@ -102,6 +102,10 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 	}
 	body, err := json.Marshal(map[string]any{"max_event_count": 1, "owner": input.EventTypeURI, "owner_type": "EventType"})
 	if err != nil {
+		if hasPossibleEarlierSend {
+			return resendOrSelectUncertainSchedulingLink(client, canResendUnknownOutcome, operationID, output,
+				calendlyFailure(operationID, sdkgo.FailureLocalDefect, errCalendlyRequestInvalid.Error()), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateSchedulingLinkBranchDefect, output,
 			calendlyFailurePointer(operationID, sdkgo.FailureLocalDefect, errCalendlyRequestInvalid.Error()), sdkgo.Receipt{})
 	}
@@ -151,7 +155,7 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 				"Calendly declined the request but the retry checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationRetry[SchedulingLink](outcome.failure, outcome.retryAfter)
-	case isDefiniteRefusalStatus(response.statusCode):
+	case isDefiniteWriteRefusal(response):
 		// An earlier send may have created a link, so a refusal of this resend proves nothing.
 		if hasPossibleEarlierSend {
 			return sdkgo.NewMutationUncertain(output, outcome.failure, client.calendlyReceipt(""))
@@ -162,7 +166,7 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 		}
 		return sdkgo.NewMutationBranch(CreateSchedulingLinkBranchProviderRejected, output, &outcome.failure, client.calendlyReceipt(""))
 	default:
-		// A 5xx, 409, 408, or other status does not prove whether a link was created.
+		// A 5xx, 409, 408, other status, or refusal with an unreadable body does not prove whether a link was created.
 		return resendOrSelectUncertainSchedulingLink(client, canResendUnknownOutcome, operationID, output, outcome.failure, outcome.retryAfter)
 	}
 }

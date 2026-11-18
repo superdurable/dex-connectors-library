@@ -52,6 +52,8 @@ class Exchange:
     headers: httpx.Headers = field(default_factory=httpx.Headers)
     body: bytes = b""
     error: str = ""
+    is_error_body_incomplete: bool = False
+    """A non-2xx body that broke or exceeded the error limit, which proves no refusal."""
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -186,8 +188,12 @@ class Client:
         query: dict[str, str] | None = None,
         payload: object | None = None,
         allow_refresh: bool = True,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one call, forcing one OAuth refresh after a 401 when available."""
+        """Send one call, forcing one OAuth refresh after a 401 when available.
+
+        ``observed_statuses`` receives each status once its headers arrive, before the body is read.
+        """
         target = API_BASE + path
         if query:
             target += "?" + query_encode(query)
@@ -217,23 +223,31 @@ class Client:
                 response, _ = await send_traced(self.http_client, request)
             except ProviderTransportError as error:
                 return Exchange(error="notSent" if error.provably_not_sent else "transport")
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             try:
                 limit = (
                     self.config.max_response_bytes
                     if 200 <= response.status_code < 300
                     else MAX_ERROR_BODY_BYTES
                 )
+                is_error_body_incomplete = False
                 try:
                     contents = await read_bounded_body(response, limit)
                 except BodyTooLargeError:
                     if 200 <= response.status_code < 300:
                         return Exchange(response.status_code, response.headers, error="tooLarge")
-                    contents = b""
+                    contents, is_error_body_incomplete = b"", True
                 except ProviderTransportError:
                     if 200 <= response.status_code < 300:
                         return Exchange(response.status_code, response.headers, error="transport")
-                    contents = b""
-                exchange = Exchange(response.status_code, response.headers, contents)
+                    contents, is_error_body_incomplete = b"", True
+                exchange = Exchange(
+                    response.status_code,
+                    response.headers,
+                    contents,
+                    is_error_body_incomplete=is_error_body_incomplete,
+                )
             finally:
                 await response.aclose()
             if (
