@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateCardOperation, GetCardOperation, ListCardsOperation, UpdateCardOperation } from './operations.js';
@@ -120,8 +120,10 @@ export class TrelloClient {
       return { response, receipt };
     } catch (error) {
       const transportError = error instanceof Error ? error : new Error('Trello transport failed');
-      const status = error instanceof BodyTooLargeError ? error.status : undefined;
-      const headers = error instanceof BodyTooLargeError ? error.headers : undefined;
+      // Keep a status that arrived before the body failed, so an accepted write is never resent.
+      const hasStatus = error instanceof BodyTooLargeError || error instanceof ProviderTransportError || error instanceof ProviderStalledError;
+      const status = hasStatus ? error.status : undefined;
+      const headers = hasStatus ? error.headers : undefined;
       return {
         error: transportError, receipt: this.receipt(call, '', headers),
         ...(status !== undefined ? { status } : {}), ...(headers ? { headers } : {}),

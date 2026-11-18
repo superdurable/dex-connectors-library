@@ -59,10 +59,15 @@ func startFencedWrite[OUT any](call sdkgo.Call, definition sdkgo.MutationDefinit
 	}, sdkgo.MutationAttempt[OUT]{}, false
 }
 
+// isFirstSend is true when no earlier send of this call may have taken effect.
+func (write *fencedWrite) isFirstSend() bool {
+	return write.decision.Kind == singledispatch.SendAllowed && !write.hasPossibleEarlierSend
+}
+
 // sessionFailureAttempt maps a credential failure before the send.
 func sessionFailureAttempt[OUT any](write *fencedWrite, operationID string, failure *sdkgo.Failure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
-	// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-	if write.decision.Kind == singledispatch.SendAllowed {
+	// notSent after a possible earlier send would hide it, so only a first send records it.
+	if write.isFirstSend() {
 		if err := write.fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Trello setup failed and the not-sent checkpoint could not be recorded"), 0)
 		}
@@ -74,8 +79,8 @@ func sessionFailureAttempt[OUT any](write *fencedWrite, operationID string, fail
 func dispatchFencedWrite[OUT any](write *fencedWrite, client *Client, session *operationSession, request trelloRequest, operationID string, echo OUT, defect sdkgo.BranchID) (exchangeResult, sdkgo.MutationAttempt[OUT], bool) {
 	var result exchangeResult
 	if deadline, hasDeadline := session.context.Deadline(); hasDeadline && time.Until(deadline) < minimumSingleDispatchWindow {
-		// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-		if write.decision.Kind == singledispatch.SendAllowed {
+		// notSent after a possible earlier send would hide it, so only a first send records it.
+		if write.isFirstSend() {
 			if err := write.fence.RecordNotSent(); err != nil {
 				return result, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Trello not-sent checkpoint could not be recorded"), 0), true
 			}
@@ -121,6 +126,8 @@ func attemptForWrite[OUT any](write *fencedWrite, operationID string, classifica
 		return rejectOrSelectUncertain(write, operationID, branch, echo, classification.failure, receipt), true
 	case writeRejected:
 		return rejectOrSelectUncertain(write, operationID, branches.providerRejected, echo, classification.failure, receipt), true
+	case writeAcceptedUnreadable:
+		return selectAcceptedUncertain(echo, classification.failure, receipt), true
 	default:
 		return resendOrSelectUncertain(write, echo, classification.failure, receipt), true
 	}
@@ -138,6 +145,12 @@ func resendOrSelectUncertain[OUT any](write *fencedWrite, echo OUT, failure sdkg
 		// The claim stays the last marker, so the next attempt counts this send.
 		return sdkgo.NewMutationRetry[OUT](failure, 0)
 	}
+	return sdkgo.NewMutationUncertain(echo, failure, receipt)
+}
+
+// selectAcceptedUncertain never resends a write Trello accepted, because Trello offers no lookup by Call ID.
+func selectAcceptedUncertain[OUT any](echo OUT, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	failure.Message += "; Trello has no lookup by Call ID, so it is not sent again"
 	return sdkgo.NewMutationUncertain(echo, failure, receipt)
 }
 

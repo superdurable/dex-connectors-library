@@ -60,7 +60,8 @@ func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput
 }
 
 // Invoke sends POST /cards/{id}/actions/comments. A 429, 503, or traced undispatched failure retries.
-// An ambiguous outcome does not resend.
+// An unknown outcome resends while the send cap allows and selects uncertain at the cap; an accepted
+// comment is never resent.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	client := operation.client
 	requested := AddCommentOutput{CardID: strings.TrimSpace(input.CardID)}
@@ -95,7 +96,7 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	}
 	action, err := decodeJSONObject[commentActionResource](result.response.body)
 	if err != nil || !trelloIDPattern.MatchString(action.ID) {
-		return resendOrSelectUncertain(write, requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Trello accepted the comment but returned an unusable action reference"), receipt)
+		return selectAcceptedUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Trello accepted the comment but returned an unusable action reference"), receipt)
 	}
 	recordAcceptedWrite(write, action.ID)
 	output := requested
