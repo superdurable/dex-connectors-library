@@ -135,25 +135,25 @@ describe('single-dispatch live fence', () => {
 describe('single-dispatch bounded resend fence', () => {
   const callId = (test: ReturnType<typeof fixture>) => test.call.id;
 
-  it('omits sendCount when bounded resend is disabled', async () => {
+  it('writes the exact sendCount also when bounded resend is disabled', async () => {
     const first = fixture();
     const fence = new Fence(first.call, 10_000);
     expect(fence.decide()).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 0 });
     await fence.dispatch(() => undefined);
     await fence.recordProviderId('resource-1');
     expect(json(first.heartbeats)).toEqual(json([
-      { callId: callId(first), attempt: 1, state: 'claimed' },
-      { callId: callId(first), attempt: 1, state: 'claimed', providerId: 'resource-1' },
+      { callId: callId(first), attempt: 1, state: 'claimed', sendCount: 1 },
+      { callId: callId(first), attempt: 1, state: 'claimed', providerId: 'resource-1', sendCount: 1 },
     ]));
-    expect(JSON.stringify(first.frames.at(-1))).toBe(`{"singleDispatchMarkers":{"${callId(first)}":{"callId":"${callId(first)}","attempt":1,"state":"claimed","providerId":"resource-1"}}}`);
+    expect(JSON.stringify(first.frames.at(-1))).toBe(`{"singleDispatchMarkers":{"${callId(first)}":{"callId":"${callId(first)}","attempt":1,"state":"claimed","providerId":"resource-1","sendCount":1}}}`);
     const afterLegacyProof = fixture(3, { callId: callId(first), attempt: 2, state: 'canResend', sendCount: 1 });
     const legacyFence = new Fence(afterLegacyProof.call, 10_000);
     expect(legacyFence.decide()).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 1 });
     await legacyFence.dispatch(() => { throw new Error('provider returned 503'); }).catch(() => undefined);
     await legacyFence.recordCanResend();
     expect(json(afterLegacyProof.heartbeats)).toEqual(json([
-      { callId: callId(first), attempt: 3, state: 'claimed' },
-      { callId: callId(first), attempt: 3, state: 'canResend' },
+      { callId: callId(first), attempt: 3, state: 'claimed', sendCount: 2 },
+      { callId: callId(first), attempt: 3, state: 'canResend', sendCount: 1 },
     ]));
     const unproved = new Fence(fixture(2, first.heartbeats.at(-1)).call, 10_000);
     expect(unproved.decide().kind).toBe('readBackRequired');
@@ -163,7 +163,7 @@ describe('single-dispatch bounded resend fence', () => {
     const beforeSend = new Fence(notSent.call, 10_000);
     beforeSend.decide();
     await beforeSend.recordNotSent();
-    expect(json(notSent.heartbeats)).toEqual(json([{ callId: callId(notSent), attempt: 1, state: 'notSent' }]));
+    expect(json(notSent.heartbeats)).toEqual(json([{ callId: callId(notSent), attempt: 1, state: 'notSent', sendCount: 0 }]));
   });
 
   it('resends after an unconfirmed claim below the cap and counts every marker', async () => {
@@ -291,15 +291,21 @@ describe('single-dispatch bounded resend fence', () => {
 /** A Dex context fake that keeps the raw heartbeat frames of one Step attempt. */
 function stepContext(attempt = 1, previous?: unknown) {
   const frames: CheckpointFrame[] = [];
+  let shouldRejectHeartbeat = false;
   const context = {
     flowId: 'flow-1', stepExecutionId: 'agent:1', attempt,
     cancellationSignal: new AbortController().signal,
     hasLastHeartbeatValue: () => previous !== undefined,
     getLastHeartbeatValue: () => previous,
-    recordHeartbeat: async (frame: CheckpointFrame) => { await Promise.resolve(); frames.push(frame); },
+    recordHeartbeat: async (frame: CheckpointFrame) => {
+      await Promise.resolve();
+      if (shouldRejectHeartbeat) throw new Error('heartbeat unavailable');
+      frames.push(frame);
+    },
   } as unknown as AsyncContext;
   const callFor = (operationId: string) => createCall(context, { provider: 'fixture', name: 'default' }, { connectorId: 'fixture', operationId });
-  return { context, frames, callFor };
+  const rejectHeartbeat = (shouldReject: boolean) => { shouldRejectHeartbeat = shouldReject; };
+  return { context, frames, callFor, rejectHeartbeat };
 }
 
 interface CheckpointScenario {
@@ -346,7 +352,39 @@ describe('single-dispatch fences sharing one Step', () => {
     const slackRetry = new Fence(retry.callFor('postThreadReply'), 10_000, { maxSends: 3 });
     expect(slackRetry.decide()).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 1 });
     await slackRetry.dispatch(() => undefined);
-    expect(retry.frames.at(-1)!.singleDispatchMarkers[gmail.id]).toEqual({ callId: gmail.id, attempt: 1, state: 'claimed' });
+    expect(retry.frames.at(-1)!.singleDispatchMarkers[gmail.id]).toEqual({ callId: gmail.id, attempt: 1, state: 'claimed', sendCount: 1 });
+  });
+
+  it('keeps a provider ID whose heartbeat failed in the next Fence heartbeat', async () => {
+    const step = stepContext();
+    const accepted = new Fence(step.callFor('sendMessage'), 10_000, { maxSends: 3 });
+    accepted.decide();
+    await accepted.dispatch(() => undefined);
+    step.rejectHeartbeat(true);
+    await expect(accepted.recordProviderId('message-1')).rejects.toThrow('heartbeat unavailable');
+    step.rejectHeartbeat(false);
+    await expect(accepted.recordCanResend()).rejects.toBeInstanceOf(DispatchNotAllowedError);
+    const other = step.callFor('postThreadReply');
+    const otherFence = new Fence(other, 10_000, { maxSends: 3 });
+    otherFence.decide();
+    await otherFence.dispatch(() => undefined);
+    const entries = step.frames.at(-1)!.singleDispatchMarkers;
+    expect(Object.values(entries).find(entry => entry.providerId)).toMatchObject({ attempt: 1, state: 'claimed', providerId: 'message-1', sendCount: 1 });
+  });
+
+  it('counts sends refused with 429 as zero under a cap of 1', async () => {
+    let previous: CheckpointFrame | undefined;
+    for (const attempt of [1, 2]) {
+      const step = stepContext(attempt, previous);
+      const fence = new Fence(step.callFor('sendMessage'), 10_000);
+      expect(fence.decide()).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 0 });
+      await fence.dispatch(() => undefined);
+      await fence.recordCanResend();
+      previous = step.frames.at(-1);
+      expect(Object.values(previous!.singleDispatchMarkers)[0]).toMatchObject({ state: 'canResend', sendCount: 0 });
+    }
+    const third = new Fence(stepContext(3, previous).callFor('sendMessage'), 10_000);
+    expect(third.decide()).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 0 });
   });
 
   it('gives repeated calls of one operation distinct call IDs that are stable on retry', async () => {

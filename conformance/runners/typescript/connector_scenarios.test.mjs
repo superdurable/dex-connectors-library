@@ -7,7 +7,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
-import { HeartbeatContext, loadScenarios } from './connector_scenarios.ts';
+import { HeartbeatContext, isSameHeartbeat, loadScenarios } from './connector_scenarios.ts';
+
+test('isSameHeartbeat compares a count-free recording without the exact count', () => {
+  const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
+  const legacy = { callId, attempt: 1, state: 'canResend' };
+  const exact = { singleDispatchMarkers: { [callId]: { ...legacy, sendCount: 0 } } };
+  assert.equal(isSameHeartbeat(exact, legacy, callId), true);
+  assert.equal(isSameHeartbeat(exact, { ...legacy, state: 'notSent' }, callId), false);
+  assert.equal(isSameHeartbeat(exact, { ...legacy, sendCount: 1 }, callId), false);
+  assert.equal(isSameHeartbeat(exact, { singleDispatchMarkers: { [callId]: { ...legacy, sendCount: 0 } } }, callId), true);
+});
 
 test('HeartbeatContext records the checkpoint map heartbeat as written', async () => {
   const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';

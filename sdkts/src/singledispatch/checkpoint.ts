@@ -27,12 +27,19 @@ export function stepCheckpointFor(context: AsyncContext): StepCheckpoint {
   return checkpoint;
 }
 
-/** Queued writes commit only after the heartbeat succeeds, so the last value has every entry. */
-export async function recordStepCheckpoint(context: AsyncContext, checkpoint: StepCheckpoint, marker: Marker): Promise<void> {
+/**
+ * Queued writes commit only after the heartbeat succeeds, so the last value has every entry.
+ * `retainOnFailure` keeps a provider ID anyway; it only forces read-back.
+ */
+export async function recordStepCheckpoint(context: AsyncContext, checkpoint: StepCheckpoint, marker: Marker, retainOnFailure = false): Promise<void> {
   const write = checkpoint.tail.then(async () => {
     const markers = new Map(checkpoint.markers);
     markers.set(marker.callId, marker);
-    await context.recordHeartbeat(checkpointHeartbeat(markers));
+    try { await context.recordHeartbeat(checkpointHeartbeat(markers)); }
+    catch (error) {
+      if (retainOnFailure) checkpoint.markers = markers;
+      throw error;
+    }
     checkpoint.markers = markers;
   });
   checkpoint.tail = write.catch(() => undefined);
@@ -47,17 +54,20 @@ export function markersFromHeartbeat(heartbeat: unknown): Map<string, Marker> {
   if (!isPlainObject(entries)) return markers;
   for (const [callId, entry] of Object.entries(entries)) {
     const parsed = MarkerSchema.safeParse(entry);
-    if (parsed.success && parsed.data.callId === callId) markers.set(callId, parsed.data);
+    if (!parsed.success || parsed.data.callId !== callId) continue;
+    // A present count is exact; an absent one counts one send per attempt, excluding a notSent or canResend marker's own.
+    const marker = parsed.data;
+    markers.set(callId, { ...marker, sendCount: marker.sendCount ?? (marker.state === 'claimed' ? marker.attempt : marker.attempt - 1) });
   }
   return markers;
 }
 
-/** Encodes the checkpoint map with call IDs in sorted order and Go's marker field order. */
+/** Encodes the checkpoint map with call IDs in sorted order, Go's field order, and every entry's exact count. */
 function checkpointHeartbeat(markers: Map<string, Marker>): Record<string, Record<string, Marker>> {
   const entries: Record<string, Marker> = {};
   for (const callId of [...markers.keys()].sort()) {
     const marker = markers.get(callId)!;
-    entries[callId] = { callId: marker.callId, attempt: marker.attempt, state: marker.state, ...(marker.providerId ? { providerId: marker.providerId } : {}), ...(marker.sendCount ? { sendCount: marker.sendCount } : {}) };
+    entries[callId] = { callId: marker.callId, attempt: marker.attempt, state: marker.state, ...(marker.providerId ? { providerId: marker.providerId } : {}), sendCount: marker.sendCount ?? 0 };
   }
   return { [CheckpointMarkersField]: entries };
 }

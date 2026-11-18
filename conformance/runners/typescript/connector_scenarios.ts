@@ -154,6 +154,21 @@ function ownCheckpointEntry(value: unknown, callId: string): Record<string, unkn
   return isOwnFlatMarker(entry, callId) ? entry : undefined;
 }
 
+/**
+ * Compares heartbeats exactly, reading a one-entry checkpoint map of callId as its marker. Newer SDKs
+ * write every entry's exact sendCount; a recorded marker of callId without one, as SDKs before the
+ * checkpoint map wrote, is compared without the actual entry's count.
+ */
+export function isSameHeartbeat(actual: unknown, recorded: unknown, callId: string): boolean {
+  let actualValue = ownCheckpointEntry(actual, callId) ?? actual;
+  const recordedValue = ownCheckpointEntry(recorded, callId) ?? recorded;
+  if (isOwnFlatMarker(actualValue, callId) && isOwnFlatMarker(recordedValue, callId) && !('sendCount' in recordedValue)) {
+    const { sendCount: _ignored, ...withoutSendCount } = actualValue;
+    actualValue = withoutSendCount;
+  }
+  return isDeepStrictEqual(actualValue, recordedValue);
+}
+
 let checkpointMapProbe: Promise<boolean> | undefined;
 
 /** Asks the installed connectors SDK whether it decides from a per-call checkpoint map. */
@@ -169,7 +184,7 @@ function installedSDKUsesCheckpointMap(): Promise<boolean> {
       decideDispatch: (callId: string, attempt: number, lastHeartbeat: unknown) => { kind: string };
     };
     const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
-    const checkpoint = { [checkpointMarkersField]: { [callId]: { callId, attempt: 1, state: 'notSent' } } };
+    const checkpoint = { [checkpointMarkersField]: { [callId]: { callId, attempt: 1, state: 'notSent', sendCount: 0 } } };
     return singledispatch.decideDispatch(callId, 2, checkpoint).kind === 'sendAllowed';
   })();
   return checkpointMapProbe;
@@ -533,8 +548,7 @@ function assertHeartbeat(scenario: Scenario, context: HeartbeatContext, expected
     const encoded = outputCodec.encode(context.marker);
     if (encoded.kind !== 'json' || typeof encoded.data !== 'string') throw new Error('SDK heartbeat codec did not encode JSON');
     const heartbeat = JSON.parse(encoded.data);
-    if (!isDeepStrictEqual(ownCheckpointEntry(heartbeat, scenario.callId) ?? heartbeat,
-      ownCheckpointEntry(expected.heartbeat, scenario.callId) ?? expected.heartbeat)) {
+    if (!isSameHeartbeat(heartbeat, expected.heartbeat, scenario.callId)) {
       throw new Error(`${scenario.name}: heartbeat ${JSON.stringify(heartbeat)} differs from Go recording ${JSON.stringify(expected.heartbeat)}`);
     }
     context.marker = expected.heartbeat;

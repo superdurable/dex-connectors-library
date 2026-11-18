@@ -49,6 +49,40 @@ describe('operation execution', () => {
     expect(result).toMatchObject({ branch: 'defect', failure: { kind: 'LOCAL_DEFECT' } });
   });
 
+  it('refuses a concurrent call of the same mutation before invoking it', async () => {
+    const stepContext = { attempt: 1, flowId: 'flow-concurrent', stepExecutionId: 'step-1' } as AsyncContext;
+    const stepCall = createCall(stepContext, { provider: 'sample', name: 'default' }, call.operation);
+    let release!: () => void;
+    const released = new Promise<void>(resolve => { release = resolve; });
+    let started!: () => void;
+    const hasStarted = new Promise<void>(resolve => { started = resolve; });
+    let invocations = 0;
+    const blocking = { definition: () => mutationDefinition, idempotencyKey: () => '', invoke: async (_call: unknown, input: string) => {
+      invocations++;
+      started();
+      await released;
+      return newMutationBranch('created', input);
+    } };
+    const first = runMutation(blocking, stepCall, 'first');
+    await hasStarted;
+    let isConcurrentInvoked = false;
+    const concurrent = { definition: () => mutationDefinition, idempotencyKey: () => '', invoke: (_call: unknown, input: string) => { isConcurrentInvoked = true; return newMutationBranch('created', input); } };
+    const refused = await runMutation(concurrent, stepCall, 'second');
+    expect(refused).toMatchObject({ branch: 'defect', failure: { kind: 'LOCAL_DEFECT' } });
+    expect(refused.failure?.message).toContain('concurrent calls');
+    expect(isConcurrentInvoked).toBe(false);
+
+    const otherOperation = { connectorId: 'sample', operationId: 'deleteItem' };
+    const otherCall = createCall(stepContext, { provider: 'sample', name: 'default' }, otherOperation);
+    const other = { ...concurrent, definition: () => ({ ...mutationDefinition, operation: otherOperation }) };
+    expect((await runMutation(other, otherCall, 'other')).branch).toBe('created');
+
+    release();
+    expect((await first).branch).toBe('created');
+    expect((await runMutation(concurrent, stepCall, 'third')).branch).toBe('created');
+    expect(invocations).toBe(1);
+  });
+
   it('allows uncertainty only for a declared mutation branch', async () => {
     const mutation = { definition: () => mutationDefinition, idempotencyKey: () => '', invoke: () => newMutationUncertain('', failure) };
     expect((await runMutation(mutation, call, undefined)).branch).toBe('uncertain');

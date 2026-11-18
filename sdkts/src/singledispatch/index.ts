@@ -16,9 +16,11 @@ export type MarkerState = z.infer<typeof MarkerStateSchema>;
  * call ID's entry in the Step attempt's heartbeat.
  *
  * `sendCount` is the number of possibly effective sends this call ID made up to and including the
- * marker's attempt. Only a Fence with a send cap of at least 2 writes it, and omits it when zero.
- * A marker without it, or with zero, is read as a legacy marker. Field order matches the Go
- * encoding: `providerId`, when present, precedes `sendCount`.
+ * marker's attempt. Every Fence, whatever its cap, writes the exact count into its checkpoint entry,
+ * zero included, and decisions read a present count exactly. A checkpoint entry without it is read
+ * as `attempt` for a claim and `attempt - 1` otherwise, which can only overcount; a claim with a
+ * count of 0 fails closed. Field order matches the Go encoding: `providerId`, when present,
+ * precedes `sendCount`.
  */
 export const MarkerSchema = z.strictObject({
   callId: CallIDSchema, attempt: z.number().int().positive(), state: MarkerStateSchema,
@@ -88,16 +90,15 @@ function decideReadBack(priorSendUpperBound: number, maxSends: number): 'readBac
   return maxSends >= 2 && priorSendUpperBound < maxSends ? 'readBackThenResendAllowed' : 'readBackRequired';
 }
 
-/** Rejects a send count that one send per attempt could not produce, as Go does. */
+/** Rejects a send count that one send per attempt could not produce, as Go does; a claim counts its own send. */
 function hasPossibleSendCount(marker: Marker): boolean {
-  const sendCount = marker.sendCount ?? 0;
-  return marker.state === 'claimed' ? sendCount <= marker.attempt : sendCount <= marker.attempt - 1;
+  const sendCount = sendCountOfMarker(marker);
+  return marker.state === 'claimed' ? sendCount >= 1 && sendCount <= marker.attempt : sendCount <= marker.attempt - 1;
 }
 
-/** A legacy marker counts its own claim, or every earlier attempt for notSent and canResend. */
+/** The checkpoint decoder fills an absent count conservatively; this fallback only guards that invariant. */
 function sendCountOfMarker(marker: Marker): number {
-  if (marker.sendCount) return marker.sendCount;
-  return marker.state === 'claimed' ? marker.attempt : marker.attempt - 1;
+  return marker.sendCount ?? (marker.state === 'claimed' ? marker.attempt : marker.attempt - 1);
 }
 
 export * from './fence.js';

@@ -86,8 +86,8 @@ export class Fence {
    * Record the claim before sending once; repeat it during a long request.
    *
    * Allowed once after a `sendAllowed` or `readBackThenResendAllowed` decision. Under the latter,
-   * call it only after read-back did not confirm success. With a cap of at least 2, the claim
-   * records the decision's `priorSendUpperBound` plus one as `sendCount`. A short write window
+   * call it only after read-back did not confirm success. Whatever the cap, the claim records
+   * the decision's `priorSendUpperBound` plus one as `sendCount`. A short write window
    * records `notSent` only after `sendAllowed`.
    */
   async dispatch<Result>(send: (signal: AbortSignal) => Promise<Result> | Result): Promise<Result> {
@@ -159,12 +159,21 @@ export class Fence {
     finally { this.#hasTerminalRecordPending = false; }
   }
 
-  /** Checkpoint an accepted provider resource, with its claim's send count, for read-back after a lost response. */
+  /**
+   * Checkpoint an accepted provider resource, with its claim's send count, for read-back after a lost response.
+   *
+   * When the heartbeat fails, the error propagates, but the provider ID stays in the Step attempt's
+   * checkpoint, so a later heartbeat of any Fence in the Step carries it, and `recordCanResend` is refused.
+   */
   async recordProviderId(providerId: string): Promise<void> {
     if (!this.#hasSendFinished || this.#hasTerminalRecordPending || this.#marker?.state !== 'claimed' || !providerId) throw new DispatchNotAllowedError();
     this.#hasTerminalRecordPending = true;
-    try { await this.#record(this.#attemptMarker('claimed', this.#priorSendUpperBound() + 1, providerId)); }
-    finally { this.#hasTerminalRecordPending = false; }
+    const accepted = this.#attemptMarker('claimed', this.#priorSendUpperBound() + 1, providerId);
+    try { await recordStepCheckpoint(this.#context, this.#checkpoint, accepted, true); }
+    finally {
+      this.#marker = accepted;
+      this.#hasTerminalRecordPending = false;
+    }
   }
 
   #isSendDecision(): boolean {
@@ -173,10 +182,8 @@ export class Fence {
 
   #priorSendUpperBound(): number { return this.#decision?.priorSendUpperBound ?? 0; }
 
-  /** A cap of 1 omits `sendCount`, as Go does. */
   #attemptMarker(state: MarkerState, sendCount: number, providerId?: string): Marker {
-    const isSendCountRecorded = this.#maxSends >= 2 && sendCount > 0;
-    return { callId: this.#call.id, attempt: this.#context.attempt, state, ...(providerId ? { providerId } : {}), ...(isSendCountRecorded ? { sendCount } : {}) };
+    return { callId: this.#call.id, attempt: this.#context.attempt, state, ...(providerId ? { providerId } : {}), sendCount };
   }
 
   async #record(marker: Marker): Promise<void> {

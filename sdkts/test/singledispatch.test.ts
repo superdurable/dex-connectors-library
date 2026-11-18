@@ -103,7 +103,13 @@ describe('single-dispatch bounded resend', () => {
     expect(decide(3, { callId, attempt: 2, state: 'claimed' }, undefined, 2)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
     expect(decide(4, { callId, attempt: 2, state: 'notSent' }, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
     expect(decide(4, { callId, attempt: 2, state: 'canResend' }, undefined, 2)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
-    expect(decide(3, { callId, attempt: 2, state: 'claimed', sendCount: 0 }, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
+    expect(decide(3, { callId, attempt: 2, state: 'claimed', sendCount: 0 }, undefined, 3)).toMatchObject({ kind: 'failClosed' });
+  });
+
+  it('reads a present sendCount exactly, so refused sends under a cap of 1 count zero', () => {
+    expect(decide(3, { callId, attempt: 2, state: 'canResend', sendCount: 0 })).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 0 });
+    expect(decide(3, { callId, attempt: 2, state: 'canResend' })).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 1 });
+    expect(decide(2, { callId, attempt: 1, state: 'claimed' }).marker).toEqual({ callId, attempt: 1, state: 'claimed', sendCount: 1 });
   });
 
   it('keeps a proven not-sent or unprocessed retry send-allowed and carries its count', () => {
