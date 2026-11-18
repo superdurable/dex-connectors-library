@@ -39,6 +39,9 @@ type requestAuthorization struct {
 // resolveAuthorization resolves the connection's credentials for one call and never returns key material in errors.
 func (client *Client) resolveAuthorization(call sdkgo.Call) (requestAuthorization, error) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return requestAuthorization{}, &credentialUnavailableError{}
+	}
 	if err != nil {
 		return requestAuthorization{}, &credentialError{message: "Snowflake connection credentials are unavailable"}
 	}

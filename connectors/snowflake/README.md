@@ -178,7 +178,9 @@ the connection's warehouse, role, database, schema, and `timeout`, and `MULTI_ST
 | `defect` | Invalid input, a placeholder mismatch, or unusable credentials; no request was sent |
 
 429, 500, 502, 503, 504, a dropped connection, and a 2xx without a readable handle return Retry,
-after `Retry-After` when Snowflake sends one.
+after `Retry-After` when Snowflake sends one. A credential failure selects `defect` only for a
+required reauthorization, a missing or unselected connection, a credential broker refusal, or
+credential material that fails a local check; any other credential failure returns Retry.
 
 ### getStatementResult
 

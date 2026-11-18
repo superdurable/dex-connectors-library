@@ -19,7 +19,9 @@ from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.hashes import SHA256
-from dex_connectors.sdk import Call, CredentialProvider
+from dex_connectors.sdk import Call, CredentialProvider, ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     is_header_safe_credential,
     new_provider_http_client,
@@ -39,6 +41,23 @@ _CONTEXT_LIMIT = 255
 
 class CredentialError(Exception):
     """A safe credential failure that must select the defect branch."""
+
+
+class CredentialUnavailableError(Exception):
+    """A transient credential failure that a later attempt may resolve; nothing was sent."""
+
+
+def is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 class Client:
@@ -137,6 +156,10 @@ class Client:
         try:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
+            if not is_terminal_credential_error(error):
+                raise CredentialUnavailableError(
+                    "Snowflake connection credentials are temporarily unavailable; nothing was sent"
+                ) from error
             raise CredentialError("Snowflake connection credentials are unavailable") from error
         if credentials.auth_method_id == "programmatic-access-token":
             token = (
