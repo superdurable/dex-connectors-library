@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Confluence footer comments whose outcome is unknown."""
 
+import asyncio
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
@@ -163,12 +164,15 @@ def matching_comment(comment_id: str) -> dict[str, object]:
 
 
 async def run_with(
-    respond: Callable[[httpx.Request], httpx.Response], context: AttemptContext
+    respond: Callable[[httpx.Request], httpx.Response],
+    context: AttemptContext,
+    credentials: object | None = None,
 ) -> sdk.MutationResult[confluence.AddCommentOutput] | str:
     """Run one Execute attempt of addComment against an arbitrary provider."""
     client = confluence.Client(
         confluence.Config(cloud_id="11223344-a1b2-4b33-8c44-def123456789", endpoint="http://127.0.0.1"),
-        sdk.StaticCredentialProvider(
+        credentials
+        or sdk.StaticCredentialProvider(
             {
                 CONNECTION: confluence.Credentials(
                     "client", sdk.SecretString("secret"), sdk.SecretString("token"), sdk.SecretString("")
@@ -242,5 +246,83 @@ async def test_accepted_comment_with_a_broken_body_is_never_resent(is_visible: b
         return httpx.Response(200, json={"results": [matching_comment("700010")] if is_visible else []})
 
     result = await run_with(respond, AttemptContext())
+    assert not isinstance(result, str) and result.branch == branch
+    assert posts(requests) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 404])
+async def test_refusal_with_an_oversized_body_is_unknown(status: int) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(status, content=b"x" * (70 << 10))
+
+    context = AttemptContext()
+    assert await run_with(respond, context) == "retry:TRANSPORT"
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert posts(requests) == 1
+
+
+class _FailingCredentials:
+    """Fail every resolution with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> confluence.Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+async def test_credential_failures_retry_when_transient_and_are_uncertain_after_a_possible_send() -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500)
+
+    first = AttemptContext()
+    outage = _FailingCredentials(OSError("credential broker is unavailable"))
+    assert await run_with(respond, first, outage) == "retry:AVAILABILITY"
+    assert first.marker is not None and first.marker.state == "notSent"
+    reauthorize = _FailingCredentials(sdk.ReauthorizationRequiredError())
+    terminal = await run_with(respond, AttemptContext(), reauthorize)
+    assert not isinstance(terminal, str) and terminal.branch == "defect"
+
+    context = AttemptContext()
+    assert await run_with(respond, context) == "retry:AVAILABILITY"
+    claim = context.heartbeat_value
+    context.attempt = 2
+    assert await run_with(respond, context, outage) == "retry:AVAILABILITY"
+    assert context.heartbeat_value is claim, "notSent would hide the earlier possible send"
+    after_send = await run_with(respond, context, reauthorize)
+    assert not isinstance(after_send, str) and after_send.branch == "uncertain"
+    assert posts(requests) == 1
+
+
+class _SlowAcceptedBody(httpx.AsyncByteStream):
+    """Send 2xx headers, then hold the body past the write window."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(30)
+        yield b"{}"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("is_visible", "branch"), [(True, "added"), (False, "uncertain")])
+async def test_write_deadline_after_accepted_headers_is_never_resent(is_visible: bool, branch: str) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.method == "POST":
+            return httpx.Response(201, stream=_SlowAcceptedBody())
+        return httpx.Response(200, json={"results": [matching_comment("700010")] if is_visible else []})
+
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=4)
+    result = await run_with(respond, context)
     assert not isinstance(result, str) and result.branch == branch
     assert posts(requests) == 1

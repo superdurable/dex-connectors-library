@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const testCommentStorage = "<p>Published for the <strong>Q4</strong> review.</p>"
@@ -168,6 +170,47 @@ func TestCommentRejectionsAndRateLimits(t *testing.T) {
 	_, err := sdkgo.RunMutation(dexContext, newConfluenceClient(t, provider.URL).AddComment(), confluenceConnection, validAddCommentInput())
 	requireRetry(t, err, sdkgo.FailureRateLimit)
 	require.Contains(t, string(dexContext.heartbeat), `"state":"canResend"`, "a 429 added nothing, so the next attempt may send")
+}
+
+func TestCommentRefusalWithAnUnreadableBodyIsUnknown(t *testing.T) {
+	for name, reply := range map[string]func(http.ResponseWriter){
+		"interrupted 400": func(response http.ResponseWriter) {
+			response.Header().Set("Content-Length", "100")
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"errors"`))
+		},
+		"oversized 404": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusNotFound, `{"message":"`+strings.Repeat("x", 70<<10)+`"}`)
+		},
+	} {
+		provider := newRecordingConfluence(t, func(response http.ResponseWriter, _ *http.Request, _ int) { reply(response) })
+		dexContext := newTestDexContext("comment-unreadable-refusal")
+		_, err := sdkgo.RunMutation(dexContext, newConfluenceClient(t, provider.URL).AddComment(), confluenceConnection, validAddCommentInput())
+		requireRetry(t, err, sdkgo.FailureTransport)
+		require.Contains(t, string(dexContext.heartbeat), `"state":"claimed"`, name+": an unknown outcome keeps the claim")
+	}
+}
+
+func TestCommentCredentialFailureAfterAPossibleSend(t *testing.T) {
+	provider := newRecordingConfluence(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusBadGateway, `{"message":"SENTINEL"}`)
+	})
+	dexContext := newTestDexContext("comment-credential-after-send")
+	_, err := sdkgo.RunMutation(dexContext, newConfluenceClient(t, provider.URL).AddComment(), confluenceConnection, validAddCommentInput())
+	require.Error(t, err)
+	claim := string(dexContext.heartbeat)
+	dexContext.attempt = 2
+	brokerDown, err := confluence.New(confluence.Config{CloudID: testCloudID, Endpoint: provider.URL}, failingConfluenceCredentials{projectconfig.ErrCredentialBrokerUnavailable})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(dexContext, brokerDown.AddComment(), confluenceConnection, validAddCommentInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, claim, string(dexContext.heartbeat), "notSent would hide the earlier possible send")
+	reauthorize, err := confluence.New(confluence.Config{CloudID: testCloudID, Endpoint: provider.URL}, failingConfluenceCredentials{sdkgo.ErrReauthorizationRequired})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(dexContext, reauthorize.AddComment(), confluenceConnection, validAddCommentInput())
+	require.NoError(t, err)
+	require.Equal(t, confluence.AddCommentBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestCommentServiceUnavailableRecordsCanResend(t *testing.T) {

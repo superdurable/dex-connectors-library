@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -269,6 +270,10 @@ func (client *Client) AddComment() AddCommentOperation { return AddCommentOperat
 func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sessionFailure) {
 	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !isTerminalCredentialError(err) {
+		cancel()
+		return nil, nil, &sessionFailure{isRetryable: true, failure: newFailure(operationID, sdkgo.FailureAvailability, "Confluence connection credentials could not be read, so nothing was sent")}
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		cancel()
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Confluence connection credentials are unavailable; reconnect the connection")}
@@ -487,6 +492,10 @@ func (client *Client) classifyWrite(operationID string, subject string, result e
 		return writeClassification{outcome: writeNotApplied, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Confluence rate limited the "+subject+" before writing it")}
 	case response.statusCode == http.StatusServiceUnavailable:
 		return writeClassification{outcome: writeNotApplied, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Confluence was unavailable, so no "+subject+" was written")}
+	case response.hasBodyReadFailed || response.isBodyTooLarge:
+		// A refusal status proves nothing without its full body, so the outcome is unknown.
+		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureTransport,
+			fmt.Sprintf("Confluence %s outcome is unknown after HTTP %d with an unreadable body", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	case isDefiniteWriteRefusalStatus(response.statusCode):
@@ -539,6 +548,12 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 }
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as broker outages, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
 
 // isDefiniteWriteRefusalStatus reports a status proving Confluence refused a write; others leave it unknown.
 func isDefiniteWriteRefusalStatus(statusCode int) bool {

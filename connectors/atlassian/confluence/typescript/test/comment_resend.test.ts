@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConfluenceClient } from '../src/client.js';
 import { AddCommentDefinition } from '../src/generated/definitions.js';
 
@@ -148,5 +148,43 @@ describe('Confluence bounded resend of unconfirmed comments', () => {
     const { client, requests } = newClient(201);
     expect(await run(client, new AttemptContext(2, { callId: 'another-call', attempt: 1, state: 'claimed' }))).toBe('retry');
     expect(requests).toEqual([]);
+  });
+
+  for (const [name, respond] of [
+    ['a 400 whose body broke', () => { throw new ProviderTransportError(false, 400, {}); }],
+    ['a 404 whose body exceeds the error-body limit', () => ({ status: 404, headers: {}, body: Buffer.alloc(MaxErrorBodyBytes + 1) })],
+  ] as const) {
+    it(`treats ${name} as an unknown outcome`, async () => {
+      const { client, requests } = newCustomClient(respond);
+      const context = new AttemptContext();
+      expect(await run(client, context)).toBe('retry');
+      expect(context.marker).toMatchObject({ state: 'claimed' });
+      expect(posts(requests)).toBe(1);
+    });
+  }
+
+  it('never resends a comment accepted before the write deadline aborted its body', async () => {
+    const { client, requests } = newCustomClient(request => {
+      if (request.method === 'GET') return { status: 200, headers: {}, body: Buffer.from('{"results":[]}') };
+      // The SDK keeps the 2xx status when the fence's write-window signal aborts the body.
+      throw new ProviderTransportError(false, 201, {});
+    });
+    expect(await run(client, new AttemptContext())).toBe('uncertain');
+    expect(posts(requests)).toBe(1);
+  });
+
+  it('retries a transient credential failure and selects uncertain for a terminal one after a possible send', async () => {
+    const failing = (error: Error) => new ConfluenceClient({ endpoint: 'http://127.0.0.1:12345', cloudId: '11223344-a1b2-4b33-8c44-def123456789' },
+      { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } } as never,
+      { send: async () => { throw new Error('no request is expected'); } });
+    const first = new AttemptContext();
+    expect(await run(failing(new Error('credential store unavailable')), first)).toBe('retry');
+    expect(first.marker).toMatchObject({ state: 'notSent' });
+    expect(await run(failing(new ReauthorizationRequiredError()), new AttemptContext())).toBe('defect');
+    const earlier = { callId, attempt: 2, state: 'canResend', sendCount: 1 };
+    const later = new AttemptContext(3, earlier);
+    expect(await run(failing(new Error('credential store unavailable')), later)).toBe('retry');
+    expect(later.marker).toBe(earlier);
+    expect(await run(failing(new ReauthorizationRequiredError()), new AttemptContext(3, earlier))).toBe('uncertain');
   });
 });

@@ -188,6 +188,17 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	return confluence.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
 }
 
+// failingConfluenceCredentials is a credential source whose every resolution fails with err.
+type failingConfluenceCredentials struct{ err error }
+
+func (source failingConfluenceCredentials) Resolve(sdkgo.Call) (confluence.Credentials, error) {
+	return confluence.Credentials{}, source.err
+}
+
+func (source failingConfluenceCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[confluence.Credentials]) (confluence.Credentials, error) {
+	return confluence.Credentials{}, source.err
+}
+
 // testDexContext is a Dex Step context that keeps heartbeat details across attempts of one Step execution.
 type testDexContext struct {
 	context.Context
