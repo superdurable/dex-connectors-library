@@ -56,6 +56,8 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
         : newMutationUncertain(requested, twilioFailure('sendMessage', kind, message), this.client.receipt(call, response));
     const auth = await this.client.authorization(call, 'sendMessage');
     if ('failure' in auth) {
+      // Terminal credentials forbid the resend, so only the earlier possible send remains.
+      if (hasPossibleEarlierSend && !auth.isTransient) return newMutationUncertain(requested, twilioFailure('sendMessage', auth.failure.kind, `${auth.failure.message}; an earlier attempt may have created the message`), this.client.receipt(call));
       // notSent would hide the earlier possible send, so nothing is recorded.
       if (hasPossibleEarlierSend) return newMutationRetry(auth.failure);
       try { await fence.recordNotSent(); } catch { return newMutationRetry(auth.failure); }
@@ -76,18 +78,26 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
       return resendOrSelectUncertain('TRANSPORT', 'Twilio message outcome is unknown');
     }
     const response = exchange.response;
+    const isBodyUnreadable = exchange.isTooLarge || exchange.isBodyReadFailed;
     if (response.status >= 200 && response.status < 300) {
-      if (exchange.isTooLarge) return resendOrSelectUncertain('RESPONSE_TOO_LARGE', 'Twilio message response exceeds the configured size limit', response);
-      if (exchange.isBodyReadFailed) return resendOrSelectUncertain('TRANSPORT', 'Twilio message response was interrupted', response);
+      // Twilio created the message, so an unusable body selects uncertain and is never resent.
+      const accepted = (kind: Failure['kind'], message: string) => newMutationUncertain(requested, twilioFailure('sendMessage', kind, message), this.client.receipt(call, response));
+      if (exchange.isTooLarge) return accepted('RESPONSE_TOO_LARGE', 'Twilio accepted the message, but its response exceeds the configured size limit');
+      if (exchange.isBodyReadFailed) return accepted('TRANSPORT', 'Twilio accepted the message, but its response was interrupted');
       let message: Message;
       try { message = this.client.decodeMessage(response.body, auth.authorization); }
       catch {
-        // A returned message SID means Twilio created the message, so a resend could duplicate it.
-        if (messagePattern.test(messageSid(response.body))) return newMutationUncertain(requested, twilioFailure('sendMessage', 'PROTOCOL', 'Twilio accepted the request but returned an unusable message'), this.client.receipt(call, response));
-        return resendOrSelectUncertain('PROTOCOL', 'Twilio message response is malformed', response);
+        if (messagePattern.test(messageSid(response.body))) return accepted('PROTOCOL', 'Twilio accepted the request but returned an unusable message');
+        return accepted('PROTOCOL', 'Twilio accepted the message, but its response is malformed');
       }
       try { await fence.recordProviderId(message.sid ?? ''); } catch { /* The accepted provider response determines the branch. */ }
       return newMutationBranch('accepted', message, this.client.receipt(call, response, message.sid));
+    }
+    const createdSid = isBodyUnreadable ? '' : messageSid(response.body);
+    if (messagePattern.test(createdSid)) {
+      // An error status naming a created message is contradictory, so its SID is read back, never resent.
+      try { await fence.recordProviderId(createdSid); } catch { /* Read-back still runs; a lost checkpoint leaves the claim, which counts this send. */ }
+      return this.readBack(call, requested, { callId: call.id, attempt: call.context.attempt, state: 'claimed', providerId: createdSid } as Marker);
     }
     if (response.status === 429 || response.status === 503) {
       let checkpointFailed = false; try { await fence.recordCanResend(); } catch { checkpointFailed = true; }
@@ -104,7 +114,8 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
       const code = errorCode(response.body); requested = { ...requested, ...(code ? { errorCode: code } : {}) };
       return this.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, requested, response, code, twilioFailure('sendMessage', 'AUTHENTICATION', 'failure' in refreshed ? refreshed.failure.message : 'Twilio rejected the message credentials; update the connection'));
     }
-    if (definiteRefusalStatuses.has(response.status) && !messagePattern.test(messageSid(response.body))) {
+    // An unreadable error body cannot prove a refusal.
+    if (definiteRefusalStatuses.has(response.status) && !isBodyUnreadable) {
       const code = errorCode(response.body); requested = { ...requested, ...(code ? { errorCode: code } : {}) };
       return this.rejectOrSelectUncertain(call, fence, hasPossibleEarlierSend, requested, response, code, rejection('sendMessage', 'message', response.status, code));
     }

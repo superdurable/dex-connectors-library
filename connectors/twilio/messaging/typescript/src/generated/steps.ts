@@ -17,7 +17,7 @@ export interface SendMessageStepConfig<StepInput, OperationInput = SendMessageIn
   accepted: StepTarget<MutationResult<OperationOutput>>;
   /** Twilio conclusively rejected the message, such as an invalid To number, an unverified trial recipient, an unsubscribed recipient, or an unusable sender; nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, or Twilio returned a SID without a usable message; check Twilio before sending again. */
+  /** Twilio may have created the message, but the send cap was reached, a saved SID could not be confirmed, a resend was refused or found invalid credentials, or Twilio accepted it without a usable message; check Twilio before sending again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid before any send. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

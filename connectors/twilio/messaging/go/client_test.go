@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -226,11 +227,15 @@ func TestSendMessageResendsAnUnknownOutcomeAndSelectsUncertainAtTheSendCap(t *te
 		{"success without a usable message", func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusCreated)
 			writeBody(response, `{"sid":"not-a-sid"}`)
-		}, messaging.Config{}, sdkgo.FailureProtocol, false},
+		}, messaging.Config{}, sdkgo.FailureProtocol, true},
 		{"success with an oversized response", func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusCreated)
 			writeBody(response, messageJSON(testMessageSID, "queued", "null"))
-		}, messaging.Config{MaxResponseBytes: 64}, sdkgo.FailureResponseTooLarge, false},
+		}, messaging.Config{MaxResponseBytes: 64}, sdkgo.FailureResponseTooLarge, true},
+		{"oversized refusal body", func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(http.StatusBadRequest)
+			writeBody(response, `{"code":21211,"message":"`+strings.Repeat("x", providerhttp.MaxErrorBodyBytes)+`"}`)
+		}, messaging.Config{}, sdkgo.FailureAvailability, false},
 		{"accepted for another account", func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusCreated)
 			writeBody(response, strings.ReplaceAll(messageJSON(testMessageSID, "queued", "null"), testAccountSID, "AC"+strings.Repeat("f", 32)))
