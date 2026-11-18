@@ -302,7 +302,8 @@ async def _dispatch(
         )
     result = await session.exchange("POST", "/messages/" + path_escape(draft_id) + "/send")
     receipt = session.client.receipt(session.call, result, draft_id)
-    if result.outcome in ("succeeded", "invalid"):
+    # Any 2xx means Graph accepted the send, even when its body broke; a resend would duplicate it.
+    if 200 <= result.status_code < 300:
         return MutationAttempt.branch_result("sent", message, receipt)
     assert result.problem is not None
     if _is_unprocessed_send_answer(result):
