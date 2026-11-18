@@ -47,6 +47,7 @@ const (
 	uploadRejectsWith401
 	uploadCreatesThenReadBack503
 	uploadFailsWith500
+	uploadCreatesThenRefusesWithFileID
 )
 
 // multipartUpload is one decoded Drive multipart upload.
@@ -193,6 +194,8 @@ func (provider *uploadDrive) serveHTTP(response http.ResponseWriter, request *ht
 			response.WriteHeader(http.StatusOK)
 			_, err := response.Write([]byte(`{"id":`))
 			require.NoError(provider.t, err)
+		case uploadCreatesThenRefusesWithFileID:
+			provider.writeJSONLocked(response, http.StatusUnprocessableEntity, file)
 		case uploadCreatesThenAnswersOversized:
 			provider.writeJSONLocked(response, http.StatusOK, map[string]any{"id": file["id"], "padding": strings.Repeat("x", 1024)})
 		case uploadCreatesThenInterruptsSuccess:
@@ -357,15 +360,21 @@ func TestUploadFileAmbiguousOutcomesAreConfirmedByReadBack(t *testing.T) {
 	}
 }
 
-func TestUploadFileAcceptedWithoutIDAndRejectedReadBackResendsBelowTheCap(t *testing.T) {
+func TestUploadFileAcceptedWithoutIDAndRejectedReadBackLooksUpUntilTheCapWithoutResending(t *testing.T) {
 	provider := newUploadDrive(t, uploadCreatesThenReadBackRejects)
 	client := newDriveClient(t, provider.fake.URL)
-	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("drive-flow", "readback-rejected"), client.UploadFile(), driveConnection, drive.UploadFileInput{
-		Name: "report.txt", MimeType: "text/plain", TextContent: "report",
-	})
+	ctx := singledispatchtest.NewContext("drive-flow", "readback-rejected")
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
 	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry)
-	require.Equal(t, 1, provider.uploadCount())
+	for range 2 {
+		_, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+		require.ErrorAs(t, err, &retry)
+		ctx.AdvanceAttempt()
+	}
+	result, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.uploadCount(), "a 2xx upload is never resent")
 }
 
 func TestUploadFileResendsUnknownOutcomesUntilTheSendCap(t *testing.T) {
@@ -421,9 +430,13 @@ func TestUploadFileSelectsUncertainForARefusalAfterAnUnknownOutcome(t *testing.T
 func TestUploadFileAcceptedWithoutIDAndRejectedReadBackIsUncertainWithSendCapOne(t *testing.T) {
 	provider := newUploadDrive(t, uploadCreatesThenReadBackRejects)
 	client := newDriveClient(t, provider.fake.URL)
-	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("drive-flow", "readback-rejected-cap-one"), client.UploadFile(), driveConnection, drive.UploadFileInput{
-		Name: "report.txt", MimeType: "text/plain", TextContent: "report",
-	}, sdkgo.WithMaxSends(1))
+	ctx := singledispatchtest.NewContext("drive-flow", "readback-rejected-cap-one")
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+	_, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input, sdkgo.WithMaxSends(1))
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the saved acceptance permits one more lookup")
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, drive.UploadFileBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.uploadCount())
@@ -665,6 +678,76 @@ func TestUploadFileCredentialFailureRecordsNotSentForTheNextAttempt(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
 	require.Equal(t, 1, provider.uploadCount())
+}
+
+func TestUploadFileLooksUpBeforeResendingAfterAThrottledResend(t *testing.T) {
+	provider := newUploadDrive(t, uploadCreatesThenAnswers500, uploadRejectsWith429)
+	provider.suppressMatches = true
+	client := newDriveClient(t, provider.fake.URL)
+	ctx := singledispatchtest.NewContext("drive-flow", "throttled-resend")
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+	var retry *sdkgo.RetryError
+	for range 2 {
+		_, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+		require.ErrorAs(t, err, &retry)
+		ctx.AdvanceAttempt()
+	}
+	// The first upload becomes visible; the third attempt must find it instead of uploading again.
+	provider.mutex.Lock()
+	provider.suppressMatches = false
+	provider.mutex.Unlock()
+	result, err := sdkgo.RunMutation(ctx, client.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
+	require.True(t, result.Value.IsFromEarlierAttempt)
+	require.Equal(t, 2, provider.uploadCount())
+	require.Equal(t, 1, provider.fileCount())
+}
+
+func TestUploadFileRefusalCarryingAFileIDIsReadBackAndNeverResent(t *testing.T) {
+	provider := newUploadDrive(t, uploadCreatesThenRefusesWithFileID)
+	client := newDriveClient(t, provider.fake.URL)
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("drive-flow", "refusal-with-id"), client.UploadFile(), driveConnection, drive.UploadFileInput{
+		Name: "report.txt", MimeType: "text/plain", TextContent: "report",
+	})
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUploaded, result.Branch)
+	require.Equal(t, "created-1", result.Value.File.ID)
+	require.Equal(t, 1, provider.uploadCount())
+}
+
+// failingUploadCredentialProvider returns one credential error for every call.
+type failingUploadCredentialProvider struct{ err error }
+
+func (provider failingUploadCredentialProvider) Resolve(sdkgo.Call) (drive.Credentials, error) {
+	return drive.Credentials{}, provider.err
+}
+
+func (provider failingUploadCredentialProvider) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[drive.Credentials]) (drive.Credentials, error) {
+	return drive.Credentials{}, provider.err
+}
+
+func TestUploadFileCredentialFailureAfterAPossibleSendNeverRecordsNotSent(t *testing.T) {
+	provider := newUploadDrive(t)
+	input := drive.UploadFileInput{Name: "report.txt", MimeType: "text/plain", TextContent: "report"}
+	outage, err := drive.New(drive.Config{Endpoint: provider.fake.URL}, failingUploadCredentialProvider{err: errors.New("credential store offline")})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("drive-flow", "credential-outage-after-send")
+	ctx.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(ctx, outage.UploadFile(), driveConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Empty(t, ctx.Heartbeats(), "notSent is never recorded after a possible earlier send")
+
+	revoked, err := drive.New(drive.Config{Endpoint: provider.fake.URL}, failingUploadCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("drive-flow", "revoked"), revoked.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchDefect, result.Branch)
+	result, err = sdkgo.RunMutation(ctx, revoked.UploadFile(), driveConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, drive.UploadFileBranchUncertain, result.Branch)
+	require.Equal(t, 0, provider.uploadCount())
 }
 
 func TestUploadFileProvenUnsentTransportFailurePermitsOneLaterSend(t *testing.T) {

@@ -344,7 +344,7 @@ spec:
       inputType: UploadFileInput
       outputType: UploadFileOutput
       kind: mutation
-      description: Create one file from text or bytes in an optional parent folder. Sync durability makes the single-dispatch heartbeat fence visible to retries. Each attempt reads back an earlier upload by its app property, and an unconfirmed upload is resent until the send cap.
+      description: Create one file from text or bytes in an optional parent folder. Sync durability makes the single-dispatch heartbeat fence visible to retries. Each attempt reads back an earlier upload by its app property, and an unconfirmed upload is resent until the send cap; an upload Drive answered with a 2xx status or a file ID is only read back, never resent.
       idempotency: required
       branches:
         - {id: uploaded, goName: Uploaded, description: Google Drive created the file or returned the file an earlier attempt created.}

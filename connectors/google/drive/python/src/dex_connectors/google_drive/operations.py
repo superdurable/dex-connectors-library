@@ -61,6 +61,8 @@ from .models import (
 )
 
 _ID = re.compile(r"^[A-Za-z0-9_-]{1,256}$", re.ASCII)
+# The checkpoint provider ID of an upload Drive accepted without a usable file ID; it only permits lookups.
+_ACCEPTED_WITHOUT_FILE_ID = "dex:acceptedWithoutFileId"
 _MEDIA_TYPE = re.compile(r"^[a-z0-9!#$%&'*+.^_`|~-]+/[a-z0-9!#$%&'*+.^_`|~-]+$", re.ASCII)
 _TIMESTAMP = re.compile(
     r"^([0-9]{4}-[0-9]{2}-[0-9]{2})T([0-9]{2}:[0-9]{2}:[0-9]{2})(?:[.,]([0-9]+))?(Z|[+-][0-9]{2}:[0-9]{2})$"
@@ -249,6 +251,16 @@ def _has_file_id(exchange: Exchange) -> bool:
     except (ValueError, TypeError, OverflowError):
         return False
     return isinstance(value, dict) and isinstance(value.get("id"), str) and value["id"] != ""
+
+
+def _file_id(exchange: Exchange) -> str:
+    """Return the file ID a response body names, or an empty string."""
+    try:
+        value = strict_json_loads(exchange.body)
+    except (ValueError, TypeError, OverflowError):
+        return ""
+    file_id = value.get("id") if isinstance(value, dict) else None
+    return file_id if isinstance(file_id, str) else ""
 
 
 def _quote(value: str) -> str:
@@ -830,6 +842,93 @@ class UploadFileOperation:
             request_id,
         )
 
+    async def _read_back_saved(
+        self, call: Call, credentials: Any, file_id: str, key: str, is_from_earlier_attempt: bool
+    ) -> tuple[MutationAttempt[UploadFileOutput], bool]:
+        """Read an accepted upload by its file ID; the flag reports a transient read failure."""
+        exchange, route, problem, delay, file = await self._read_back_id(call, credentials, file_id, key)
+        if problem:
+            if route == "retry":
+                return MutationAttempt.retry(problem, delay), True
+            return self._uncertain(call, "upload ID read-back could not confirm the outcome"), False
+        if file is None:
+            return self._uncertain(call, "upload ID read-back found no matching file"), False
+        return (
+            MutationAttempt.branch_result(
+                "uploaded",
+                UploadFileOutput(file, is_from_earlier_attempt),
+                self.client.receipt(call, exchange, file.id),
+            ),
+            False,
+        )
+
+    async def _reconcile_accepted(
+        self,
+        call: Call,
+        fence: Fence,
+        credentials: Any,
+        key: str,
+        request_id: str,
+        accepted_file_id: str,
+    ) -> MutationAttempt[UploadFileOutput]:
+        """Confirm an upload Drive may have stored without ever resending it.
+
+        A saved file ID is read back on later attempts; without one, a saved acceptance
+        permits later lookups, and an upload this attempt cannot confirm otherwise is uncertain.
+        """
+        if _ID.fullmatch(accepted_file_id):
+            try:
+                await fence.record_provider_id(accepted_file_id)
+                is_file_id_saved = True
+            except Exception:
+                is_file_id_saved = False
+            reconciled, is_retry = await self._read_back_saved(
+                call, credentials, accepted_file_id, key, False
+            )
+            if is_retry and not is_file_id_saved:
+                # Without the saved ID the next attempt could resend, so the outcome stays uncertain.
+                return self._uncertain(
+                    call,
+                    "provider accepted the upload, but its file could not be read back "
+                    "and its ID checkpoint failed",
+                )
+            return reconciled
+        try:
+            await fence.record_provider_id(_ACCEPTED_WITHOUT_FILE_ID)
+            is_acceptance_saved = True
+        except Exception:
+            is_acceptance_saved = False
+        exchange, _, problem, _, file, _ = await self._lookup(call, credentials, key)
+        if problem is None and file is not None:
+            try:
+                await fence.record_provider_id(file.id)
+            except Exception:
+                pass  # A later attempt still finds the file by its app property.
+            return MutationAttempt.branch_result(
+                "uploaded", UploadFileOutput(file), self.client.receipt(call, exchange, file.id)
+            )
+        message = "provider accepted the upload without a usable file, and read-back has not found it yet"
+        if is_acceptance_saved:
+            # The saved acceptance makes later attempts look the file up without sending again.
+            return MutationAttempt.retry(failure("uploadFile", FailureKind.AVAILABILITY, message))
+        return self._uncertain(call, message + "; its acceptance checkpoint failed, so it is not sent again")
+
+    async def _reconcile_saved_acceptance(
+        self, call: Call, credentials: Any, key: str, can_look_up_again: bool
+    ) -> MutationAttempt[UploadFileOutput]:
+        """Look up an upload an earlier attempt saw accepted; never resend it."""
+        exchange, route, problem, delay, file, incomplete = await self._lookup(call, credentials, key)
+        if problem is None and file is not None:
+            return MutationAttempt.branch_result(
+                "uploaded", UploadFileOutput(file, True), self.client.receipt(call, exchange, file.id)
+            )
+        if problem is not None and route == "retry":
+            return MutationAttempt.retry(problem, delay)
+        message = "an earlier attempt's upload was accepted, and read-back has not found it yet"
+        if incomplete or can_look_up_again:
+            return MutationAttempt.retry(failure("uploadFile", FailureKind.AVAILABILITY, message))
+        return self._uncertain(call, message + "; it is not sent again")
+
     def _resend_or_select_uncertain(
         self, call: Call, can_resend_unknown_outcome: bool, message: str, request_id: str
     ) -> MutationAttempt[UploadFileOutput]:
@@ -912,32 +1011,34 @@ class UploadFileOperation:
         # This attempt's send is the last one the cap allows when no further send remains.
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
-        credentials, problem = await self.client.resolve_credentials(call, "uploadFile")
+        # notSent is recorded only for a first send, so a possible earlier send stays counted.
+        can_record_not_sent = decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send
+        credentials, problem, is_credential_failure_retryable = await self.client.resolve_write_credentials(
+            call, "uploadFile"
+        )
         if problem:
-            if decision.kind == DecisionKind.SEND_ALLOWED:
+            if is_credential_failure_retryable and can_record_not_sent:
                 return await self._retry_before_send(fence, problem, 0)
-            return MutationAttempt.retry(problem)
+            if is_credential_failure_retryable:
+                return MutationAttempt.retry(problem)
+            if has_possible_earlier_send:
+                return self._uncertain(
+                    call, "connection credentials must be reauthorized after an earlier unconfirmed upload"
+                )
+            return MutationAttempt.branch_result("defect", empty, Receipt(), problem)
         assert credentials is not None
         marker_id = decision.marker.provider_id if decision.marker else ""
+        if decision.kind != DecisionKind.SEND_ALLOWED and marker_id == _ACCEPTED_WITHOUT_FILE_ID:
+            return await self._reconcile_saved_acceptance(
+                call, credentials, key, can_resend_unknown_outcome
+            )
         # Drive returns a file ID only for an accepted upload, so a saved one is read back and never resent.
         if decision.kind != DecisionKind.SEND_ALLOWED and marker_id:
-            exchange, route, problem, delay, file = await self._read_back_id(
-                call, credentials, marker_id, key
-            )
-            if problem:
-                if route == "retry":
-                    return MutationAttempt.retry(problem, delay)
-                return self._uncertain(call, "upload ID read-back could not confirm the outcome")
-            if file is None:
-                return self._uncertain(call, "upload ID read-back found no matching file")
-            return MutationAttempt.branch_result(
-                "uploaded",
-                UploadFileOutput(file, True),
-                self.client.receipt(call, exchange, file.id),
-            )
+            reconciled, _ = await self._read_back_saved(call, credentials, marker_id, key, True)
+            return reconciled
         lookup, route, problem, delay, earlier, incomplete = await self._lookup(call, credentials, key)
         if problem:
-            if decision.kind == DecisionKind.SEND_ALLOWED and route == "retry":
+            if can_record_not_sent and route == "retry":
                 return await self._retry_before_send(fence, problem, delay)
             if route == "retry":
                 return MutationAttempt.retry(problem, delay)
@@ -958,7 +1059,7 @@ class UploadFileOperation:
             problem = failure(
                 "uploadFile", FailureKind.AVAILABILITY, "provider did not complete the duplicate lookup"
             )
-            if decision.kind == DecisionKind.SEND_ALLOWED:
+            if can_record_not_sent:
                 return await self._retry_before_send(fence, problem, 0)
             return MutationAttempt.retry(problem)
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
@@ -1006,7 +1107,10 @@ class UploadFileOperation:
                 "provider returned a retryable upload status",
                 self.client.retry_after(response),
             )
-        if response.error or (200 <= response.status < 300 and response.is_body_too_large):
+        is_accepted_status = 200 <= response.status < 300
+        if is_accepted_status and (response.error or response.is_body_too_large):
+            return await self._reconcile_accepted(call, fence, credentials, key, response.request_id, "")
+        if response.error:
             return await self._reconcile(
                 call, fence, credentials, key, response.request_id, can_resend_unknown_outcome
             )
@@ -1039,14 +1143,20 @@ class UploadFileOperation:
             return await self._retry_after_rejection(
                 fence, kind, "provider returned a retryable upload status", self.client.retry_after(response)
             )
-        if 200 <= response.status < 300:
+        accepted_file_id = _file_id(response) if has_accepted_file else ""
+        if not is_accepted_status and has_accepted_file:
+            # A file ID contradicts a refusal, so the upload may exist; it is read back and never resent.
+            return await self._reconcile_accepted(
+                call, fence, credentials, key, response.request_id, accepted_file_id
+            )
+        if is_accepted_status:
             try:
                 if not has_accepted_file:
                     raise ValueError("upload response has no file ID")
                 file = _file(_json_object(response))
             except (ValueError, TypeError, OverflowError):
-                return await self._reconcile(
-                    call, fence, credentials, key, response.request_id, can_resend_unknown_outcome
+                return await self._reconcile_accepted(
+                    call, fence, credentials, key, response.request_id, accepted_file_id
                 )
             try:
                 await fence.record_provider_id(file.id)
@@ -1057,7 +1167,7 @@ class UploadFileOperation:
                 UploadFileOutput(file),
                 self.client.receipt(call, response, file.id),
             )
-        if response.status in _DEFINITE_REFUSAL_STATUSES and not has_accepted_file:
+        if response.status in _DEFINITE_REFUSAL_STATUSES:
             return await self._reject_or_select_uncertain(
                 call, fence, has_possible_earlier_send, kind, "provider rejected the upload", receipt
             )
