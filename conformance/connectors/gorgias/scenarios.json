@@ -5453,42 +5453,6 @@
       }
     },
     {
-      "callId": "3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269",
-      "exchanges": [],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 0,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "dex-3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269",
-      "input": {
-        "assigneeTeamId": 8,
-        "assigneeUserId": 7,
-        "description": "Please help",
-        "priority": "high",
-        "requester": {
-          "email": "ada@example.com",
-          "name": "Ada"
-        },
-        "status": "open",
-        "subject": "New ticket",
-        "tags": [
-          "new"
-        ]
-      },
-      "name": "createTicket-previous-release-marker-retries",
-      "operation": "createTicket",
-      "priorHeartbeat": {
-        "attempt": 1,
-        "value": {
-          "gorgiasDispatchedCallId": "3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269"
-        }
-      }
-    },
-    {
       "attempts": 2,
       "callId": "3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269",
       "exchanges": [
