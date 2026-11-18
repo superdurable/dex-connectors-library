@@ -294,7 +294,7 @@
       "kind": "mutation",
       "operationId": "updateTicket",
       "inputType": "UpdateTicketInput",
-      "description": "Change the status, priority, assignee, group, or tags of one ticket and optionally add one public reply or internal note. Every attempt rereads the ticket and its latest audit page and finds an earlier attempt's change by its audit metadata; an unconfirmed write is resent while the send cap allows. A write Zendesk answered with 2xx is never resent: an unusable 2xx saves the ticket ID and is read back in the same attempt, and later attempts only read back. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send.",
+      "description": "Change the status, priority, assignee, group, or tags of one ticket and optionally add one public reply or internal note. Every attempt rereads the ticket and its latest audit page and finds an earlier attempt's change by its audit metadata. An unknown write outcome retries, also on the last allowed send, so the next attempt reads back first; an unconfirmed write is resent below the send cap and selects uncertain at it. A write Zendesk answered with 2xx is never resent: an unusable 2xx saves the ticket ID and is read back in the same attempt, and later attempts only read back. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

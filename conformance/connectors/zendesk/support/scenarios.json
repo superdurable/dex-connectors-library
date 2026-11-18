@@ -4362,7 +4362,7 @@
       }
     },
     {
-      "attempts": 3,
+      "attempts": 4,
       "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
       "exchanges": [
         {
@@ -4592,17 +4592,48 @@
             ]
           },
           "status": 500
+        },
+        {
+          "body": "{\"ticket\": {\"id\": 35436, \"subject\": \"Double charge\", \"description\": \"Charged twice\", \"status\": \"pending\", \"priority\": \"high\", \"type\": \"problem\", \"requester_id\": 7701, \"submitter_id\": 7701, \"assignee_id\": 235323, \"group_id\": 98738, \"organization_id\": 509974, \"brand_id\": 1234, \"tags\": [\"billing\"], \"external_id\": \"ERP-88213\", \"via\": {\"channel\": \"email\"}, \"created_at\": \"2026-01-26T14:02:00Z\", \"updated_at\": \"2026-01-28T08:45:00Z\", \"custom_status_id\": 123}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"audits\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436/audits",
+          "query": {
+            "sort_order": [
+              "desc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "AVAILABILITY",
-        "heartbeat": {
-          "attempt": 3,
-          "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
-          "sendCount": 3,
-          "state": "claimed"
-        },
+        "failureKind": "TRANSPORT",
         "output": {
           "ticket": {
             "agentUrl": "https://acme.zendesk.com/agent/tickets/35436",
@@ -4628,7 +4659,7 @@
             "updatedAt": "2026-01-28T08:45:00Z"
           }
         },
-        "requestCount": 9,
+        "requestCount": 11,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -4671,6 +4702,17 @@
             "attempt": 2,
             "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
             "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 9,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+            "sendCount": 3,
             "state": "claimed"
           },
           "retryAfterMs": 0

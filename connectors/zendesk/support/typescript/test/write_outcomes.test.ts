@@ -26,8 +26,9 @@ class AttemptContext {
   readonly runId = 'run';
   readonly flowId = 'zendesk-write-outcomes';
   readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
-  readonly deadline = new Date(Date.now() + 30_000);
+  readonly deadline: Date;
   readonly cancellationSignal = new AbortController().signal;
+  constructor(deadlineMs = 30_000) { this.deadline = new Date(Date.now() + deadlineMs); }
   hasLastHeartbeatValue(): boolean { return this.heartbeat !== undefined; }
   getLastHeartbeatValue(): unknown { return this.heartbeat; }
   async recordHeartbeat(value: unknown): Promise<void> { this.heartbeat = value; this.heartbeatCount++; }
@@ -182,6 +183,35 @@ describe('updateTicket after a possible or accepted write', () => {
     const answer = updateAnswers(() => { throw new ProviderTransportError(false); }, () => emptyAudits);
     expect(branchOf(await run('updateTicket', answer, context, []))).toBe('retry');
     expect(context.marker?.state).toBe('claimed');
+  });
+
+  it('reads back without resending when the write deadline cuts the body after 2xx headers', async () => {
+    const requests: ProviderRequest[] = [];
+    const context = new AttemptContext(1_000);
+    // Like providerhttp, an abort during the body keeps the 2xx status.
+    const cutBody = (request: ProviderRequest) => new Promise<ProviderResponse>((_resolve, reject) => {
+      request.signal?.addEventListener('abort', () => reject(new ProviderTransportError(false, 200, {})), { once: true });
+    });
+    const base = updateAnswers(() => json(500, {}), count => (count === 2 ? keyedAudits : emptyAudits));
+    const answer: Answer = (request, index) => (request.method === 'PUT' ? cutBody(request) : base(request, index));
+    const result = await run('updateTicket', answer, context, requests);
+    expect(branchOf(result)).toBe('updated');
+    expect(requests.map(request => request.method)).toEqual(['GET', 'GET', 'PUT', 'GET', 'GET']);
+    expect(context.marker?.providerId).toBe('5512');
+  });
+
+  it.each([
+    ['finds the change', true, 'updated'],
+    ['finds no change', false, 'uncertain'],
+  ])('reads back after an unknown outcome of the last allowed send and %s', async (_name, isChangeFound, branch) => {
+    const requests: ProviderRequest[] = [];
+    const context = new AttemptContext();
+    const answer = updateAnswers(count => json([502, 409, 500][count - 1]!, { error: 'x' }), count => (isChangeFound && count === 4 ? keyedAudits : emptyAudits));
+    for (const attempt of [1, 2, 3]) { context.attempt = attempt; expect(branchOf(await run('updateTicket', answer, context, requests))).toBe('retry'); }
+    expect(requests.filter(request => request.method === 'PUT')).toHaveLength(3);
+    context.attempt = 4;
+    expect(branchOf(await run('updateTicket', answer, context, requests))).toBe(branch);
+    expect(requests.map(request => request.method).slice(9)).toEqual(['GET', 'GET']);
   });
 });
 
