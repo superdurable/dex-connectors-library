@@ -18,10 +18,22 @@ from dex_connectors.sdk.projectconfig import (
 )
 from dex_connectors.sdk.singledispatch import Marker, State
 
+from dex_connectors.clickup._generated.connection import CredentialMaterialError
 from dex_connectors.clickup.client import Client, Config, Credentials
 from dex_connectors.clickup.models import AddCommentInput, CreateTaskInput, UpdateTaskInput
 
 CONNECTION = sdk.ConnectionRef("clickup", "clickup-test")
+
+
+def sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("ClickUp credential api_token is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 CALL_ID = sdk.CallID("bef06aa7-8066-5d69-a408-c3d4547c0405")
 LIST_ID = "901410000001"
 TASK_ID = "86b2x4k7q"
@@ -397,8 +409,10 @@ async def test_transient_credential_failure_after_a_possible_send_retries_withou
         ConnectionNotSelectedError(),
         CredentialBrokerRejectedError(),
         ObjectNotFoundError("absent"),
+        CredentialMaterialError("ClickUp stored credential does not match"),
+        sdk_decoding_failure(),
     ],
-    ids=["reauthorization", "not selected", "broker rejected", "object not found"],
+    ids=["reauthorization", "not selected", "broker rejected", "object not found", "malformed", "decoding"],
 )
 async def test_terminal_credential_failure_after_a_possible_send_is_uncertain(
     operation: str, error: Exception

@@ -7,6 +7,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBr
 import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ClickUpClient } from '../src/client.js';
 import { AddCommentDefinition, CreateTaskDefinition } from '../src/generated/definitions.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const callId = 'bef06aa7-8066-5d69-a408-c3d4547c0405';
 const listId = '901410000001';
@@ -199,6 +200,8 @@ describe('ClickUp read-back and bounded resend of unknown writes', () => {
     ['not selected', () => new ConnectionNotSelectedError()],
     ['broker rejected', () => new CredentialBrokerRejectedError()],
     ['object not found', () => new ObjectNotFoundError()],
+    ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields')],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed')],
   ])('selects uncertain for a terminal credential failure (%s) after a possible send', async (_name, newError) => {
     for (const operation of ['createTask', 'addComment'] as const) {
       const { client, requests } = newClientWithCredentialError(newError());
@@ -214,7 +217,9 @@ describe('ClickUp read-back and bounded resend of unknown writes', () => {
     expect(await run(transient.client, 'createTask', new AttemptContext())).toBe('retry');
     const terminal = newClientWithCredentialError(new ReauthorizationRequiredError());
     expect(branchOf(await run(terminal.client, 'addComment', new AttemptContext()))).toBe('defect');
-    expect([...transient.requests, ...terminal.requests]).toHaveLength(0);
+    const malformed = newClientWithCredentialError(new TypeError('project credential decoding failed'));
+    expect(branchOf(await run(malformed.client, 'createTask', new AttemptContext()))).toBe('defect');
+    expect([...transient.requests, ...terminal.requests, ...malformed.requests]).toHaveLength(0);
   });
 
   it.each([
