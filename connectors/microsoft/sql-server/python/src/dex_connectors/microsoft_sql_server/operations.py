@@ -33,7 +33,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
@@ -988,24 +989,38 @@ def _bind_execute(call: Call, input: ExecuteStatementInput) -> tuple[str, dict[s
 async def _resolve_password(client: Any, call: Call) -> str | _WriteOutcome:
     """Return the password, or the failure to report before connecting.
 
-    A temporarily unavailable credential broker returns Retry; any other failure selects defect.
+    A terminal credential failure or an empty password selects defect; any other failure returns Retry.
     """
     try:
         credentials = await client.credentials.resolve(call)
-        password = credentials.password.reveal()
-    except CredentialBrokerUnavailableError:
-        return _WriteOutcome(
-            "retry",
-            FailureKind.AVAILABILITY,
-            "the credential broker is temporarily unavailable, so nothing was sent",
-        )
-    except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+    except Exception as error:
+        if not _is_terminal_credential_error(error):
+            return _WriteOutcome(
+                "retry",
+                FailureKind.AVAILABILITY,
+                "SQL Server connection credentials are temporarily unavailable, so nothing was sent",
+            )
         password = ""
+    else:
+        password = credentials.password.reveal()
     if not password:
         return _WriteOutcome(
             "defect", FailureKind.AUTHENTICATION, "SQL Server connection credentials are unavailable"
         )
     return str(password)
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _write_attempt(operation: str, outcome: _WriteOutcome) -> MutationAttempt[StatementExecution]:

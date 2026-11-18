@@ -27,10 +27,17 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     OperationRef,
+    ReauthorizationRequiredError,
     RepeatOnUnknown,
     SecretString,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    RejectedCredentialNotRefreshedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker, State
 from OpenSSL import SSL, crypto
 from pytds import tds_base  # type: ignore[import-untyped]
@@ -1047,6 +1054,52 @@ def test_an_unavailable_credential_broker_returns_retry() -> None:
     assert opened == []
 
 
+_CREDENTIAL_FAILURES: list[tuple[Exception, bool]] = [
+    (ReauthorizationRequiredError(), True),
+    (ObjectNotFoundError(), True),
+    (ConnectionNotSelectedError(), True),
+    (CredentialBrokerRejectedError(), True),
+    (CredentialBrokerUnavailableError(), False),
+    (ValueError("connection is not configured"), False),
+    (RejectedCredentialNotRefreshedError(), False),
+    (TimeoutError(), False),
+    (RuntimeError("unlisted"), False),
+]
+
+
+@pytest.mark.parametrize(("error", "is_terminal"), _CREDENTIAL_FAILURES)
+def test_credential_failures_are_classified_before_and_after_a_possible_commit(
+    error: Exception, is_terminal: bool
+) -> None:
+    class FailingCredentials:
+        async def resolve(self, _call: Call) -> Credentials:
+            raise error
+
+    opened: list[object] = []
+    native_client = Client(
+        Config("localhost", "master", "sa", encrypt="disable"),
+        FailingCredentials(),
+        connection_factory=lambda **settings: opened.append(settings),
+    )
+    execute = asyncio.run(native_client.execute().invoke(call("execute"), _BALANCE_INPUT))
+    context = AttemptContext()
+    first = asyncio.run(native_client.execute_non_idempotent().invoke(fenced_call(context), _BALANCE_INPUT))
+    for attempt in (execute, first):
+        if is_terminal:
+            assert attempt.branch == "defect"
+        else:
+            assert attempt.kind == "retry"
+    assert context.marker is not None and context.marker.state == State.NOT_SENT
+
+    later_context = AttemptContext()
+    later_context.heartbeat_value = Marker(CallID(later_context.call_id), 2, State.CAN_RESEND, send_count=1)
+    later_context.attempt = 3
+    later_call = fenced_call(later_context)
+    later = asyncio.run(native_client.execute_non_idempotent().invoke(later_call, _BALANCE_INPUT))
+    assert later.kind == ("uncertain" if is_terminal else "retry")
+    assert opened == []
+
+
 def test_non_idempotent_lost_worker_and_unreadable_checkpoint() -> None:
     connection = FakeConnection(FakeCursor(description=()))
     after_lost_worker = AttemptContext()
@@ -1255,10 +1308,10 @@ def test_query_retry_and_execute_rejection_invalid_response_and_defect() -> None
     assert defect.branch == "defect"
 
 
-def test_credentials_unavailable_is_terminal() -> None:
+def test_an_empty_password_is_terminal() -> None:
     class MissingCredentials:
         async def resolve(self, _call: Call) -> Credentials:
-            raise ValueError("secret")
+            return Credentials(SecretString(""))
 
     operation = Client(Config("localhost", "master", "sa", encrypt="disable"), MissingCredentials()).query()
     outcome = asyncio.run(operation.invoke(call("query"), QueryRowsInput("SELECT 1")))
