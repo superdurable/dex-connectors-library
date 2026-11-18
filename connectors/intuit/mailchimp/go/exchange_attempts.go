@@ -46,6 +46,9 @@ func repeatableMutationAttemptForExchange[OUT any](result mailchimpExchange, rec
 
 // isOutcomeUnknownAfterDispatch reports an outcome that does not prove Mailchimp refused or skipped a write.
 func (result mailchimpExchange) isOutcomeUnknownAfterDispatch() bool {
+	if result.isErrorBodyTooLarge {
+		return true
+	}
 	switch result.outcome {
 	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable, exchangeInvalid:
 		return true

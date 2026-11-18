@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.superdurable_oauth2_http as oauth2_http
@@ -178,6 +179,126 @@ async def test_credential_failure_after_a_possible_send_never_records_not_sent()
     assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
     assert context.marker is seeded, "notSent would hide the earlier possible POST"
     assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_checkpoint_that_counts_an_earlier_send_selects_uncertain_with_usable_credentials() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.marker = Marker(CALL_ID, 2, "canResend", send_count=1)
+    context.attempt = 3
+    result = await post(lambda _: httpx.Response(201), context, requests)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain", "the send cap is used"
+    assert requests == []
+
+
+class UnavailableBroker:
+    """Fail every resolution as a temporarily unavailable credential broker does."""
+
+    async def resolve(self, call: sdk.Call) -> oauth2_http.Credentials:
+        raise CredentialBrokerUnavailableError("credential broker is unavailable")
+
+    async def resolve_with_refresh(self, call: sdk.Call, driver: object) -> oauth2_http.Credentials:
+        raise CredentialBrokerUnavailableError("credential broker is unavailable")
+
+
+class MissingConnection(UnavailableBroker):
+    """Fail every resolution with a terminal configuration error."""
+
+    async def resolve(self, call: sdk.Call) -> oauth2_http.Credentials:
+        raise ValueError("connection is not configured")
+
+    async def resolve_with_refresh(self, call: sdk.Call, driver: object) -> oauth2_http.Credentials:
+        raise ValueError("connection is not configured")
+
+
+async def invoke_with(
+    provider: object, operation: str, attempt: int, method: str = "POST"
+) -> sdk.MutationAttempt[oauth2_http.SendRequestOutput]:
+    """Invoke one operation directly with provider and a context at attempt."""
+    context = AttemptContext()
+    context.attempt = attempt
+    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: pytest.fail("sent"))) as transport:
+        client = oauth2_http.Client(
+            oauth2_http.Config(
+                authorization_endpoint="http://127.0.0.1:12345/auth",
+                token_endpoint="http://127.0.0.1:12345/token",
+                scopes=("profile",),
+                api_base_url="http://127.0.0.1:12345/v1",
+            ),
+            provider,  # type: ignore[arg-type]
+            transport,
+        )
+        call = sdk.Call(
+            CALL_ID, CONNECTION, sdk.OperationRef("oauth2-http", operation),
+            context=context,  # type: ignore[arg-type]
+            max_sends=1,
+        )
+        if operation == "postNonIdempotent":
+            return await client.post_non_idempotent().invoke(
+                call, oauth2_http.PostNonIdempotentInput(path="/orders")
+            )
+        request = oauth2_http.SendRequestInput(method=method, path="/orders")
+        return await client.send_request().invoke(call, request)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["sendRequest", "postNonIdempotent"])
+async def test_unavailable_credential_broker_returns_retry_without_sending(operation: str) -> None:
+    attempt = await invoke_with(UnavailableBroker(), operation, 1)
+    assert attempt.kind == "retry", "a transient credential failure never selects defect"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("method", "attempt_number", "branch"),
+    [("POST", 1, "defect"), ("POST", 2, "uncertain"), ("DELETE", 2, "uncertain"), ("GET", 2, "defect")],
+)
+async def test_send_request_terminal_credential_failure_of_a_later_write_is_uncertain(
+    method: str, attempt_number: int, branch: str
+) -> None:
+    attempt = await invoke_with(MissingConnection(), "sendRequest", attempt_number, method)
+    assert attempt.kind != "retry" and attempt.branch == branch
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("method", "attempt_number", "branch"),
+    [("POST", 1, "rejected"), ("POST", 2, "uncertain"), ("PUT", 3, "uncertain"), ("GET", 2, "rejected")],
+)
+async def test_send_request_definite_refusal_of_a_later_write_is_uncertain(
+    method: str, attempt_number: int, branch: str
+) -> None:
+    context = AttemptContext()
+    context.attempt = attempt_number
+    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(422))) as transport:
+        client = oauth2_http.Client(
+            oauth2_http.Config(
+                authorization_endpoint="http://127.0.0.1:12345/auth",
+                token_endpoint="http://127.0.0.1:12345/token",
+                scopes=("profile",),
+                api_base_url="http://127.0.0.1:12345/v1",
+            ),
+            sdk.StaticCredentialProvider(
+                {
+                    CONNECTION: oauth2_http.Credentials(
+                        "client",
+                        sdk.SecretString("client-secret"),
+                        sdk.SecretString("token"),
+                        sdk.SecretString(""),
+                    )
+                }
+            ),
+            transport,
+        )
+        call = sdk.Call(
+            CALL_ID, CONNECTION, sdk.OperationRef("oauth2-http", "sendRequest"),
+            context=context,  # type: ignore[arg-type]
+        )
+        request = oauth2_http.SendRequestInput(method=method, path="/orders")
+        attempt = await client.send_request().invoke(call, request)
+    assert attempt.kind != "retry" and attempt.branch == branch
+    assert attempt.value is not None and attempt.value.status_code == 422
 
 
 @pytest.mark.asyncio

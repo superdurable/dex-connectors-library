@@ -121,6 +121,9 @@ func (operation GetPaymentIntentOperation) Invoke(call sdkgo.Call, input GetPaym
 		return sdkgo.NewQueryBranch(GetPaymentIntentBranchDefect, PaymentIntent{}, stripeFailurePointer("getPaymentIntent", sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
 	credentials, failure := operation.client.resolveCredentials(call, "getPaymentIntent")
+	if failure != nil && failure.Kind == sdkgo.FailureAvailability {
+		return sdkgo.NewQueryRetry[PaymentIntent](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetPaymentIntentBranchDefect, PaymentIntent{}, failure, sdkgo.Receipt{})
 	}

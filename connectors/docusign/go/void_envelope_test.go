@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/docusign/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
 func voidEnvelope(t *testing.T, fake *fakeDocuSign, reason string) (docusign.VoidEnvelopeResult, error) {
@@ -100,6 +101,16 @@ func TestVoidEnvelopeClassifiesOtherAnswers(t *testing.T) {
 		_, err := voidEnvelope(t, fake, "Deal lost")
 		var retry *sdkgo.RetryError
 		require.ErrorAs(t, err, &retry, "a void is safe to repeat after HTTP %d", status)
+	}
+
+	for name, answer := range map[string]http.HandlerFunc{
+		"oversized refusal body": respondJSON(http.StatusBadRequest, docusignError("USER_LACKS_PERMISSIONS")+strings.Repeat(" ", providerhttp.MaxErrorBodyBytes)),
+		"refusal body cut off":   cutOffBody(http.StatusBadRequest, docusignError("USER_LACKS_PERMISSIONS")),
+	} {
+		fake := newFakeDocuSign(t, map[string]http.HandlerFunc{"PUT " + envelopePath: answer})
+		_, err := voidEnvelope(t, fake, "Deal lost")
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "an incomplete refusal body proves no refusal: %s", name)
 	}
 }
 

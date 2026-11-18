@@ -81,9 +81,9 @@ func (operation ExecuteStatementOperation) Invoke(call sdkgo.Call, input Execute
 	if err != nil {
 		return writeDefect(executeOperationID, sdkgo.FailureValidation, err.Error(), sdkgo.Receipt{})
 	}
-	password, isResolved := client.resolvePassword(call)
+	password, credentialFailure, isResolved := client.resolvePassword(call)
 	if !isResolved {
-		return writeDefect(executeOperationID, sdkgo.FailureAuthentication, "PostgreSQL connection credentials are unavailable", sdkgo.Receipt{})
+		return writeAttemptForFailure(executeOperationID, credentialFailure, sdkgo.Receipt{})
 	}
 	ctx, cancel := client.newCallContext(call)
 	defer cancel()

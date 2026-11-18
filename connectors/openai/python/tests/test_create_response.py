@@ -19,11 +19,13 @@ from dex_connectors.sdk import (
     FailureKind,
     MutationResult,
     Progress,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
 )
+from dex_connectors.sdk.projectconfig import CredentialBrokerUnavailableError
 
 import dex_connectors.openai.client as openai_client
 from dex_connectors.openai import (
@@ -455,25 +457,101 @@ async def test_accepted_create_without_a_readable_id_is_never_resent_below_the_c
     assert len(requests) == 1
 
 
+@dataclass
+class _FailingCredentialProvider:
+    """Fail every resolve with error."""
+
+    error: Exception
+
+    async def resolve(self, _call: Call) -> Credentials:
+        raise self.error
+
+
+_UNAVAILABLE = _FailingCredentialProvider(CredentialBrokerUnavailableError("broker is unavailable"))
+_REAUTHORIZATION = _FailingCredentialProvider(ReauthorizationRequiredError())
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("credentials", "expected"),
-    [({}, "retry"), ({CONNECTION: Credentials(SecretString(""))}, UNCERTAIN)],
-    ids=["unavailable", "invalid"],
+    [
+        (_UNAVAILABLE, "retry"),
+        (StaticCredentialProvider({}), "retry"),
+        (_REAUTHORIZATION, UNCERTAIN),
+        (StaticCredentialProvider({CONNECTION: Credentials(SecretString(""))}), UNCERTAIN),
+    ],
+    ids=["unavailable", "not configured", "reauthorization", "invalid"],
 )
-async def test_credential_failure_after_a_possible_create(credentials: dict[Any, Any], expected: str) -> None:
-    """Missing credentials retry; invalid ones, which no attempt fixes, select uncertain, never defect."""
+async def test_credential_failure_after_a_possible_create(credentials: Any, expected: str) -> None:
+    """Unavailable credentials retry; lasting failures select uncertain, never defect."""
     client = Client(
         Config(endpoint="http://localhost:8848/v1"),
-        StaticCredentialProvider(credentials),
+        credentials,
         httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(500))),
     )
-    call = make_call(FakeContext(attempt=2), max_sends=3)
+    context = FakeContext(attempt=2)
+    call = make_call(context, max_sends=3)
     if expected == "retry":
         with pytest.raises(RetryError):
             await create(client, call)
+        assert context.heartbeats[-1].can_resend and context.heartbeats[-1].send_count == 1
         return
     assert (await create(client, call)).branch == UNCERTAIN
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("credentials", "expected"),
+    [(_UNAVAILABLE, "retry"), (_REAUTHORIZATION, DEFECT)],
+    ids=["unavailable", "reauthorization"],
+)
+async def test_credential_failure_before_the_first_create(credentials: Any, expected: str) -> None:
+    """An unavailable broker retries and counts no send; a lasting failure before any send is a defect."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500)
+
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    client = Client(Config(endpoint="http://localhost:8848/v1"), credentials, http_client)
+    context = FakeContext()
+    call = make_call(context, max_sends=3)
+    if expected == "retry":
+        with pytest.raises(RetryError):
+            await create(client, call)
+        assert context.heartbeats[-1].can_resend and context.heartbeats[-1].send_count == 0
+    else:
+        assert (await create(client, call)).branch == DEFECT
+    assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "answer",
+    [
+        lambda: httpx.Response(400, content=b'{"error":{"code":"x"}}' + b" " * (64 << 10)),
+        lambda: httpx.Response(400, content=_broken_error_body()),
+        lambda: httpx.Response(400, json={"id": RESPONSE_ID, "error": {"code": "x"}}),
+    ],
+    ids=["oversized", "cut off", "names a response"],
+)
+async def test_refusal_that_proves_nothing_resends_below_the_cap(
+    answer: Callable[[], httpx.Response],
+) -> None:
+    """A refusal status whose body is incomplete or names a response is an unknown outcome."""
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: answer(), requests)
+    with pytest.raises(RetryError):
+        await create(client, make_call(FakeContext(), max_sends=3))
+    result = await create(client, make_call(FakeContext(attempt=3), max_sends=3))
+    assert result.branch == UNCERTAIN, "the third send reached the cap"
+    assert len(requests) == 2
+
+
+async def _broken_error_body() -> Any:
+    yield b'{"error":{"code":'
+    raise httpx.ReadError("connection lost")
 
 
 def sse(*events: dict[str, Any] | str) -> bytes:

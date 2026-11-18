@@ -124,7 +124,7 @@ func TestExecuteStatementNonIdempotentResendsOnlyAfterAProvenRollback(t *testing
 
 func TestExecuteStatementNonIdempotentNeverRecordsNotSentAfterAPossibleEarlierCommit(t *testing.T) {
 	dropping := newBalanceDatabase(scriptedmysql.Execution{DropConnection: true}, scriptedmysql.CommitAndReply)
-	_, client := startScriptedDatabase(t, dropping, scriptedmysql.Options{}, nil)
+	server, client := startScriptedDatabase(t, dropping, scriptedmysql.Options{}, nil)
 	step := newFencedStep()
 	_, err := executeNonIdempotent(t, client, step, addToBalanceInput)
 	var retry *sdkgo.RetryError
@@ -136,11 +136,56 @@ func TestExecuteStatementNonIdempotentNeverRecordsNotSentAfterAPossibleEarlierCo
 	step.AdvanceAttempt()
 	heartbeatCount := len(step.Heartbeats())
 
-	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
-	require.NoError(t, err)
-	require.Equal(t, mysql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the earlier attempt counts as a possible COMMIT")
+	_, err = executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.ErrorAs(t, err, &retry, "a transient failure before COMMIT returns Retry also after a possible earlier COMMIT")
 	require.False(t, dropping.hasCommitted.Load())
 	require.Len(t, step.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible COMMIT")
+
+	step.AdvanceAttempt()
+	handshakes := len(server.EventsOfKind(scriptedmysql.EventHandshake))
+	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, mysql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the earlier attempt still counts as a possible COMMIT")
+	require.Len(t, server.EventsOfKind(scriptedmysql.EventHandshake), handshakes, "the attempt after the Retry never connects")
+	require.False(t, dropping.hasCommitted.Load())
+}
+
+func TestExecuteStatementNonIdempotentSelectsUncertainForATerminalFailureAfterAPossibleEarlierCommit(t *testing.T) {
+	refusing := newBalanceDatabase(scriptedmysql.Execution{Error: &scriptedmysql.ServerError{Number: 3819, SQLState: "HY000", Message: "check constraint violated"}}, scriptedmysql.CommitAndReply)
+	_, client := startScriptedDatabase(t, refusing, scriptedmysql.Options{}, nil)
+	step := newFencedStep()
+	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, mysql.ExecuteStatementNonIdempotentBranchProviderRejected, result.Branch, result.Failure)
+	marker := lastMarker(t, step)
+	step.AdvanceAttempt()
+	require.NoError(t, step.SetPersistedCheckpoint(singledispatch.Marker{CallID: marker.CallID, Attempt: 2, State: singledispatch.StateCanResend, SendCount: 1}))
+	step.AdvanceAttempt()
+	heartbeatCount := len(step.Heartbeats())
+	result, err = executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, mysql.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "a refusal cannot undo an earlier possible COMMIT")
+	require.False(t, refusing.hasCommitted.Load())
+	require.Len(t, step.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible COMMIT")
+}
+
+func TestExecuteStatementNonIdempotentRetriesAnUnavailableCredentialBroker(t *testing.T) {
+	database := newBalanceDatabase(scriptedmysql.Execution{AffectedRows: 1}, scriptedmysql.CommitAndReply)
+	server, _ := startScriptedDatabase(t, database, scriptedmysql.Options{}, nil)
+	client := newClientWithCredentials(t, server, unavailableBrokerCredentials{})
+	step := newFencedStep()
+	_, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Equal(t, singledispatch.StateNotSent, lastMarker(t, step).State, "the next attempt may send")
+	require.Empty(t, server.EventsOfKind(scriptedmysql.EventHandshake))
+
+	withoutPassword := newClientWithCredentials(t, server, sdkgo.StaticCredentialProvider[mysql.Credentials]{})
+	result, err := executeNonIdempotent(t, withoutPassword, newFencedStep(), addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, mysql.ExecuteStatementNonIdempotentBranchDefect, result.Branch, "a missing password is terminal before any COMMIT")
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 }
 
 func TestExecuteStatementNonIdempotentSelectsUncertainAfterALostWorker(t *testing.T) {

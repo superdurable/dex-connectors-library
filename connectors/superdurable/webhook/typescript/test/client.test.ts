@@ -3,7 +3,7 @@
 
 import { expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConflictError, CredentialBrokerUnavailableError, ExchangePendingError, OutcomeUnknownError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { WebhookClient } from '../src/client.js';
 
@@ -21,6 +21,11 @@ it('retries broker outages and fails missing credentials', async () => {
   const retry = await unavailable.sendEvent().invoke(call, input);
   expect(retry.kind).toBe('retry');
   expect(retry.failure?.kind).toBe('AVAILABILITY');
+  for (const transient of [new ExchangePendingError(), new RefreshFailedError(), new OutcomeUnknownError(), new ConflictError()]) {
+    const client = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, { resolve: async () => { throw transient; } });
+    const attempt = await client.sendEvent().invoke(call, input);
+    expect(attempt.kind, transient.name).toBe('retry');
+  }
   const missing = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, { resolve: async () => { throw new Error('secret'); } });
   const defect = await missing.sendEvent().invoke(call, input);
   expect(defect.kind).toBe('branch');

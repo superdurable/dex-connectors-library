@@ -123,11 +123,58 @@ func TestExecuteStatementNonIdempotentNeverRecordsNotSentAfterAPossibleEarlierCo
 	step.AdvanceAttempt()
 	heartbeatCount := len(step.Heartbeats())
 
-	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
-	require.NoError(t, err)
-	require.Equal(t, sqlserver.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the earlier attempt counts as a possible COMMIT")
+	_, err = executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.ErrorAs(t, err, &retry, "a transient failure before COMMIT returns Retry also after a possible earlier COMMIT")
 	require.Empty(t, server.EventsOfKind(scriptedtds.EventCommit))
 	require.Len(t, step.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible COMMIT")
+
+	step.AdvanceAttempt()
+	logins := len(server.EventsOfKind(scriptedtds.EventLogin))
+	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, sqlserver.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "the earlier attempt still counts as a possible COMMIT")
+	require.Len(t, server.EventsOfKind(scriptedtds.EventLogin), logins, "the attempt after the Retry never connects")
+	require.Empty(t, server.EventsOfKind(scriptedtds.EventCommit))
+}
+
+func TestExecuteStatementNonIdempotentSelectsUncertainForATerminalFailureAfterAPossibleEarlierCommit(t *testing.T) {
+	violation := &scriptedDatabase{execution: scriptedtds.Execution{Error: &scriptedtds.ServerError{
+		Number: 547, State: 0, Severity: 16, Message: "The UPDATE statement conflicted with the CHECK constraint \"ck_balances_amount\".",
+	}}}
+	server, client := startScriptedDatabase(t, violation, scriptedtds.Options{}, nil)
+	step := newFencedStep()
+	result, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, sqlserver.ExecuteStatementNonIdempotentBranchProviderRejected, result.Branch, result.Failure)
+	marker := lastMarker(t, step)
+	step.AdvanceAttempt()
+	require.NoError(t, step.SetPersistedCheckpoint(singledispatch.Marker{CallID: marker.CallID, Attempt: 2, State: singledispatch.StateCanResend, SendCount: 1}))
+	step.AdvanceAttempt()
+	heartbeatCount := len(step.Heartbeats())
+	result, err = executeNonIdempotent(t, client, step, addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, sqlserver.ExecuteStatementNonIdempotentBranchUncertain, result.Branch, "a refusal cannot undo an earlier possible COMMIT")
+	require.Empty(t, server.EventsOfKind(scriptedtds.EventCommit))
+	require.Len(t, step.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible COMMIT")
+}
+
+func TestExecuteStatementNonIdempotentRetriesAnUnavailableCredentialBroker(t *testing.T) {
+	database := &scriptedDatabase{execution: scriptedtds.Execution{RowsAffected: 1}}
+	server, _ := startScriptedDatabase(t, database, scriptedtds.Options{}, nil)
+	client := newClientWithCredentials(t, server, unavailableBrokerCredentials{})
+	step := newFencedStep()
+	_, err := executeNonIdempotent(t, client, step, addToBalanceInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Equal(t, singledispatch.StateNotSent, lastMarker(t, step).State, "the next attempt may send")
+	require.Empty(t, server.EventsOfKind(scriptedtds.EventLogin))
+
+	withoutPassword := newClientWithCredentials(t, server, sdkgo.StaticCredentialProvider[sqlserver.Credentials]{})
+	result, err := executeNonIdempotent(t, withoutPassword, newFencedStep(), addToBalanceInput)
+	require.NoError(t, err)
+	require.Equal(t, sqlserver.ExecuteStatementNonIdempotentBranchDefect, result.Branch, "a missing password is terminal before any COMMIT")
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 }
 
 func TestExecuteStatementNonIdempotentSelectsUncertainAfterALostWorker(t *testing.T) {

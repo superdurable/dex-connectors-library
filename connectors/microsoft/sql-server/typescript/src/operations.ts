@@ -3,6 +3,7 @@
 
 import sql from 'mssql';
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition, QueryRowsDefinition } from './generated/definitions.js';
 import type { Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution } from './generated/models.js';
@@ -337,7 +338,7 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
     catch { return queryFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the query statement or parameters are invalid' }); }
     let password: string;
     try { password = await this.client.resolvePassword(call); }
-    catch { return queryFailure(this.client, call, { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' }); }
+    catch (error) { return queryFailure(this.client, call, credentialFailure(error)); }
     const deadline = new AttemptDeadline(this.client.config.connectTimeoutMs, this.client.config.statementTimeoutMs);
     let pool: sql.ConnectionPool;
     try { pool = await this.client.open(call, password, deadline); }
@@ -378,7 +379,7 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
     if ('disposition' in bound) return writeAttempt(this.client, call, 'execute', { failure: bound, value: emptyExecution(), isCommitPhase: false });
     let password: string;
     try { password = await this.client.resolvePassword(call); }
-    catch { return writeAttempt(this.client, call, 'execute', { failure: credentialsUnavailable(), value: emptyExecution(), isCommitPhase: false }); }
+    catch (error) { return writeAttempt(this.client, call, 'execute', { failure: credentialFailure(error), value: emptyExecution(), isCommitPhase: false }); }
     const outcome = await runWrite(this.client, call, input, bound, password, transaction => transaction.commit());
     // The statement is repeat-safe, so an unknown COMMIT outcome runs it again.
     if (outcome.failure?.disposition === 'uncertain') outcome.failure = { ...outcome.failure, disposition: 'retry' };
@@ -408,20 +409,20 @@ export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteS
     if (decision.kind !== 'sendAllowed') return newMutationUncertain(emptyExecution(), this.client.failure('executeNonIdempotent', { disposition: 'uncertain', kind: 'TRANSPORT', message: 'an earlier attempt may have committed the statement, and executeNonIdempotent never runs it again' }), this.client.receipt(call));
     // Overcounts when an earlier attempt proved its COMMIT unsent, which only costs a rejection branch.
     const hasPossibleEarlierSend = (decision.priorSendUpperBound ?? 0) > 0;
-    let outcome: WriteOutcome;
-    try {
-      const password = await this.client.resolvePassword(call);
-      outcome = await runWrite(this.client, call, input, bound, password, async transaction => {
+    // Only a credential failure is caught here; runWrite classifies every later failure itself.
+    const resolved = await this.client.resolvePassword(call).then(password => ({ password }), (error: unknown) => ({ failure: credentialFailure(error) }));
+    const outcome: WriteOutcome = 'failure' in resolved
+      ? { failure: resolved.failure, value: emptyExecution(), isCommitPhase: false }
+      : await runWrite(this.client, call, input, bound, resolved.password, async transaction => {
         try { await fence.dispatch(() => transaction.commit()); }
         catch (error) {
           if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error)) throw new CommitNotSentError();
           throw error;
         }
       });
-    } catch { outcome = { failure: credentialsUnavailable(), value: emptyExecution(), isCommitPhase: false }; }
     if (outcome.failure && !outcome.isCommitPhase && hasPossibleEarlierSend) {
-      // notSent would hide the earlier possible COMMIT, and the cap forbids another one.
-      outcome.failure = { ...outcome.failure, disposition: 'uncertain' };
+      // notSent would hide the earlier possible COMMIT; without it the next attempt selects uncertain.
+      if (outcome.failure.disposition !== 'retry') outcome.failure = { ...outcome.failure, disposition: 'uncertain' };
       return writeAttempt(this.client, call, 'executeNonIdempotent', outcome);
     }
     if (outcome.failure && !outcome.isCommitPhase) {
@@ -451,7 +452,11 @@ function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
   return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
 }
 
-function credentialsUnavailable(): ClassifiedFailure { return { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' }; }
+/** Retry a temporarily unavailable credential broker; any other credential failure selects defect. */
+function credentialFailure(error: unknown): ClassifiedFailure {
+  if (error instanceof CredentialBrokerUnavailableError) return { disposition: 'retry', kind: 'AVAILABILITY', message: 'the credential broker is temporarily unavailable, so nothing was sent' };
+  return { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' };
+}
 
 function bindExecuteValues(call: Call, input: ExecuteStatementInput): unknown[] | ClassifiedFailure {
   const values: unknown[] = [...input.parameters ?? []];
@@ -500,7 +505,8 @@ async function runWrite(client: SQLServerClient, call: Call, input: ExecuteState
   finally {
     if (transaction && !committed) { try { await transaction.rollback(); } catch { /* Closing the pool rolls back when the transaction has already ended. */ } }
     responseBudget?.close();
-    try { await pool.close(); } finally { deadline.close(); }
+    // A failed close cannot change a classified outcome, including one after COMMIT.
+    try { await pool.close(); } catch { /* The pool is discarded either way. */ } finally { deadline.close(); }
   }
 }
 

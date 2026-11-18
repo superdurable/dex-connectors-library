@@ -276,6 +276,8 @@ def _query_exchange(
 
 def _is_outcome_unknown_after_dispatch(exchange: Exchange) -> bool:
     """Report an outcome that does not prove Mailchimp refused or skipped a write."""
+    if exchange.is_error_body_too_large:
+        return True
     if exchange.outcome in ("rateLimited", "notSent", "unavailable", "invalid"):
         return True
     return exchange.outcome == "rejected" and exchange.status not in _DEFINITE_REFUSAL_STATUSES
@@ -509,7 +511,9 @@ class UpsertMemberOperation:
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, "upsertMember", str(error))
             )
-        connection = await self._client.resolve_credentials(call, "upsertMember")
+        connection, is_transient = await self._client.resolve_classified_credentials(call, "upsertMember")
+        if not isinstance(connection, tuple) and is_transient:
+            return MutationAttempt.retry(connection)
         if not isinstance(connection, tuple):
             return MutationAttempt.branch_result("defect", empty, Receipt(), connection)
         subscriber_hash = _subscriber_hash(input.email_address)
@@ -586,7 +590,11 @@ class UpdateMemberTagsOperation:
             return MutationAttempt.branch_result(
                 "defect", empty, Receipt(), failure(FailureKind.VALIDATION, "updateMemberTags", str(error))
             )
-        connection = await self._client.resolve_credentials(call, "updateMemberTags")
+        connection, is_transient = await self._client.resolve_classified_credentials(
+            call, "updateMemberTags"
+        )
+        if not isinstance(connection, tuple) and is_transient:
+            return MutationAttempt.retry(connection)
         if not isinstance(connection, tuple):
             return MutationAttempt.branch_result("defect", empty, Receipt(), connection)
         subscriber_hash = _subscriber_hash(input.email_address)
@@ -691,9 +699,9 @@ class _SendCampaignAttempt:
             self._call, "sendCampaign"
         )
         if not isinstance(connection, tuple):
-            if self._has_possible_earlier_send and is_transient:
-                # A later attempt reads the campaign before any resend; notSent would hide the earlier send.
-                return MutationAttempt.retry(connection)
+            if is_transient:
+                # The next attempt reads the campaign first; notSent is recorded only before any send.
+                return await self._retry_before_send(connection, 0)
             if self._has_possible_earlier_send:
                 return MutationAttempt.uncertain(
                     empty,
@@ -760,6 +768,7 @@ class _SendCampaignAttempt:
     async def _send(
         self, connection: tuple[str, str], output: SendCampaignOutput
     ) -> MutationAttempt[SendCampaignOutput]:
+        observed_statuses: list[int] = []
         try:
             sent = await self._fence.dispatch(
                 lambda _deadline: self._client.exchange(
@@ -768,6 +777,7 @@ class _SendCampaignAttempt:
                     connection,
                     "POST",
                     f"/campaigns/{self._input.campaign_id}/actions/send",
+                    observed_statuses=observed_statuses,
                 )
             )
         except CheckpointError:
@@ -787,6 +797,8 @@ class _SendCampaignAttempt:
                 )
             )
         except TimeoutError:
+            # 2xx headers before the write window ended accepted the send, so it is never resent.
+            accepted = next((status for status in observed_statuses if 200 <= status < 300), 0)
             sent = Exchange(
                 "unavailable",
                 failure(
@@ -794,6 +806,7 @@ class _SendCampaignAttempt:
                     "sendCampaign",
                     "Mailchimp request failed before a response arrived",
                 ),
+                status=accepted,
             )
         receipt = self._client.receipt(self._call, sent, self._input.campaign_id)
         if sent.outcome == "succeeded" or 200 <= sent.status < 300:

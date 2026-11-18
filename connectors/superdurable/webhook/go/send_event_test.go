@@ -466,6 +466,14 @@ func TestSendEventRetriesWhenTheCredentialBrokerIsUnavailable(t *testing.T) {
 	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 	require.NotContains(t, retry.Failure.Message, sentinelSecret)
 	require.Empty(t, receiver.receivedDeliveries())
+
+	for _, transient := range []error{projectconfig.ErrExchangePending, projectconfig.ErrRefreshFailed, projectconfig.ErrOutcomeUnknown} {
+		client := newSendingClientWithCredentials(t, receiver.URL, failingCredentials{err: transient}, receiver.Client())
+		_, err := sendEvent(t, client, "forward", forwardedPayload)
+		require.ErrorAs(t, err, &retry, "%v is transient and never selects defect", transient)
+		require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	}
+	require.Empty(t, receiver.receivedDeliveries())
 }
 
 func TestSendEventSelectsDefectWithoutSendingInvalidRequests(t *testing.T) {

@@ -239,6 +239,7 @@ const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415,
 /** Report an outcome after a send that does not prove QuickBooks refused the write. */
 function isWriteOutcomeUnknown(result: QuickBooksExchange): boolean {
   if (result.disposition === 'retry') return true;
+  if (result.isErrorBodyIncomplete && !(result.status >= 200 && result.status < 300)) return true;
   // A Fault at 2xx or 400 is a definite business refusal; other unlisted statuses are unknown.
   return result.disposition === 'rejected' && !definiteRefusalStatuses.has(result.status) && !(result.status >= 200 && result.status < 300);
 }

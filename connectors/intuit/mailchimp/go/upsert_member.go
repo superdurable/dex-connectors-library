@@ -99,7 +99,10 @@ func (operation UpsertMemberOperation) Invoke(call sdkgo.Call, input UpsertMembe
 	if err := validateUpsertMemberInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpsertMemberBranchDefect, UpsertMemberOutput{}, mailchimpFailurePointer(sdkgo.FailureValidation, upsertMemberOperation, err.Error()), sdkgo.Receipt{})
 	}
-	connection, failure := operation.client.resolveConnection(call, upsertMemberOperation)
+	connection, failure, isTransient := operation.client.resolveClassifiedConnection(call, upsertMemberOperation)
+	if failure != nil && isTransient {
+		return sdkgo.NewMutationRetry[UpsertMemberOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpsertMemberBranchDefect, UpsertMemberOutput{}, failure, sdkgo.Receipt{})
 	}

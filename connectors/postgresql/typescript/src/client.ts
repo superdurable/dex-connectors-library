@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import pg, { type Client as PgClient } from 'pg';
 import type { Call, CredentialProvider, ReceiptDraft } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
 import type { ClassifiedFailure } from './failures.js';
@@ -64,11 +65,17 @@ export class PostgreSQLClient {
   /** Bind the fenced transactional write operation, which never runs its statement twice. */
   executeNonIdempotent(): ExecuteStatementNonIdempotentOperation { return new ExecuteStatementNonIdempotentOperation(this); }
 
-  /** Resolve the current password outside Flow state and open one native connection, bounded by the call signal. */
+  /**
+   * Resolve the current password outside Flow state and open one native connection, bounded by the call signal.
+   * Returns null when credentials are unavailable; a temporarily unavailable credential broker rethrows its error.
+   */
   async connect(call: Call, signal?: AbortSignal): Promise<PgClient | null> {
     let password: string;
     try { password = (await this.credentials.resolve(call)).password.reveal(); }
-    catch { return null; }
+    catch (error) {
+      if (error instanceof CredentialBrokerUnavailableError) throw error;
+      return null;
+    }
     if (!password) return null;
     const settings = this.configuration;
     const rootCertificate = process.env.PGSSLROOTCERT;

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { Failure } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import pg from 'pg';
 
 export type Phase = 'connect' | 'BEGIN' | 'the statement' | 'COMMIT';
@@ -29,6 +30,7 @@ function errorFields(error: unknown): Record<string, unknown> {
 }
 
 export function classifyFailure(error: unknown, phase: Phase): ClassifiedFailure {
+  if (error instanceof CredentialBrokerUnavailableError) return { disposition: 'retry', kind: 'AVAILABILITY', message: 'the credential broker is temporarily unavailable, so nothing was sent' };
   const fields = errorFields(error);
   const code = typeof fields.code === 'string' ? fields.code : '';
   if (error instanceof pg.DatabaseError && /^[A-Z0-9]{5}$/.test(code)) {

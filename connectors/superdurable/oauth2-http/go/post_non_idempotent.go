@@ -81,6 +81,11 @@ func (operation PostNonIdempotentOperation) Invoke(call sdkgo.Call, input PostNo
 		return sdkgo.NewMutationUncertain(SendRequestOutput{}, operationFailure(operationName, sdkgo.FailureTransport,
 			"an earlier attempt may have sent the POST, so it is not sent again"), client.receipt(call, httpExchange{}))
 	}
+	if decision.MaximumPriorSends >= call.MaxSends() {
+		// A canResend or notSent marker may still count an earlier possible POST; the cap forbids another one.
+		return sdkgo.NewMutationUncertain(SendRequestOutput{}, operationFailure(operationName, sdkgo.FailureTransport,
+			"an earlier attempt may have sent the POST, so it is not sent again"), client.receipt(call, httpExchange{}))
+	}
 	outcome := postOutcome{
 		operation: operation, call: call, fence: fence,
 		// An earlier send may have been processed, so a refusal of this one cannot prove nothing changed.

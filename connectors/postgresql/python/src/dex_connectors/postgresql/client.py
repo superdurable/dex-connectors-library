@@ -27,6 +27,7 @@ from dex_connectors.sdk import (
     QueryAttempt,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
     DecisionKind,
@@ -289,13 +290,27 @@ class Client:
             for setting in settings:
                 await cursor.execute(setting)
 
-    async def _resolve_password(self, call: Call) -> str | None:
+    async def _resolve_password(self, call: Call) -> str | _ClassifiedFailure:
+        """Return the password, or the failure to report before connecting.
+
+        A temporarily unavailable credential broker returns Retry; any other failure selects defect.
+        """
         try:
             credentials = await self.credentials.resolve(call)
             password = credentials.password.reveal()
-            return password if password else None
+        except CredentialBrokerUnavailableError:
+            return _ClassifiedFailure(
+                "retry",
+                FailureKind.AVAILABILITY,
+                "the credential broker is temporarily unavailable, so nothing was sent",
+            )
         except (ValueError, LookupError, OSError):
-            return None
+            password = ""
+        if not password:
+            return _ClassifiedFailure(
+                "defect", FailureKind.AUTHENTICATION, "PostgreSQL connection credentials are unavailable"
+            )
+        return str(password)
 
 
 class QueryRowsOperation:
@@ -315,10 +330,10 @@ class QueryRowsOperation:
         except ValueError as error:
             return _query_failure(DEFECT, FailureKind.VALIDATION, str(error))
         password = await self.client._resolve_password(call)
-        if password is None:
-            return _query_failure(
-                DEFECT, FailureKind.AUTHENTICATION, "PostgreSQL connection credentials are unavailable"
-            )
+        if isinstance(password, _ClassifiedFailure):
+            if password.disposition == "retry":
+                return QueryAttempt.retry(_failure("query", password.kind, password.message))
+            return _query_failure(DEFECT, password.kind, password.message)
         connection: psycopg.AsyncConnection[Any] | None = None
         phase = "connect"
         try:
@@ -389,12 +404,8 @@ class ExecuteStatementOperation:
         except ValueError as error:
             return _write_defect(EXECUTE_OPERATION_ID, FailureKind.VALIDATION, str(error))
         password = await self.client._resolve_password(call)
-        if password is None:
-            return _write_defect(
-                EXECUTE_OPERATION_ID,
-                FailureKind.AUTHENTICATION,
-                "PostgreSQL connection credentials are unavailable",
-            )
+        if isinstance(password, _ClassifiedFailure):
+            return _write_attempt(EXECUTE_OPERATION_ID, password, Receipt())
         outcome = await self.client._run_write(call, input, parameters, password, _commit)
         if outcome.failure is None:
             return MutationAttempt.branch_result(COMPLETED, outcome.value, outcome.receipt)
@@ -466,11 +477,8 @@ class ExecuteStatementNonIdempotentOperation:
         # Overcounts when an earlier attempt proved its COMMIT unsent, which only costs a rejection branch.
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
         password = await self.client._resolve_password(call)
-        if password is None:
-            failure = _ClassifiedFailure(
-                "defect", FailureKind.AUTHENTICATION, "PostgreSQL connection credentials are unavailable"
-            )
-            return await _settle_before_commit(fence, has_possible_earlier_send, failure, Receipt())
+        if isinstance(password, _ClassifiedFailure):
+            return await _settle_before_commit(fence, has_possible_earlier_send, password, Receipt())
 
         async def commit_once(connection: psycopg.AsyncConnection[Any]) -> None:
             async def send(_write_deadline: datetime) -> None:
@@ -530,14 +538,14 @@ async def _settle_before_commit(
 ) -> MutationAttempt[StatementExecution]:
     """Report a failure before COMMIT.
 
-    Without a possible earlier send, record notSent first; after one, every failure selects
-    uncertain, since that send may have committed.
+    Without a possible earlier send, record notSent first. After one, record nothing: a transient
+    failure returns Retry, and any other failure selects uncertain, since that send may have committed.
     """
     if has_possible_earlier_send:
-        # notSent would hide the earlier possible COMMIT, and the cap forbids another one.
-        return _write_attempt(
-            EXECUTE_NON_IDEMPOTENT_OPERATION_ID, replace(failure, disposition="uncertain"), receipt
-        )
+        # notSent would hide the earlier possible COMMIT; without it the next attempt selects uncertain.
+        if failure.disposition != "retry":
+            failure = replace(failure, disposition="uncertain")
+        return _write_attempt(EXECUTE_NON_IDEMPOTENT_OPERATION_ID, failure, receipt)
     # A lost notSent checkpoint only makes the next attempt select uncertain, never send twice.
     try:
         await fence.record_not_sent()

@@ -22,6 +22,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/mysql/go/internal/testcertificates"
 	"github.com/superdurable/dex-connectors-library/connectors/mysql/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -71,6 +72,35 @@ func startScriptedDatabase(t *testing.T, database *scriptedDatabase, options scr
 	}, mysql.WithClock(func() time.Time { return time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC) }))
 	require.NoError(t, err)
 	return server, client
+}
+
+// unavailableBrokerCredentials fails every Resolve as a temporarily unavailable credential broker.
+type unavailableBrokerCredentials struct{}
+
+func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (mysql.Credentials, error) {
+	return mysql.Credentials{}, fmt.Errorf("read password: %w", projectconfig.ErrCredentialBrokerUnavailable)
+}
+
+func newClientWithCredentials(t *testing.T, server *scriptedmysql.Server, credentials sdkgo.CredentialProvider[mysql.Credentials]) *mysql.Client {
+	t.Helper()
+	config := mysql.Config{Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", SSLMode: mysql.SSLModeDisabled}
+	client, err := mysql.New(config, credentials)
+	require.NoError(t, err)
+	return client
+}
+
+func TestQueryAndExecuteRetryAnUnavailableCredentialBroker(t *testing.T) {
+	database := newBalanceDatabase(scriptedmysql.Execution{AffectedRows: 1}, scriptedmysql.CommitAndReply)
+	server, _ := startScriptedDatabase(t, database, scriptedmysql.Options{}, nil)
+	client := newClientWithCredentials(t, server, unavailableBrokerCredentials{})
+	var retry *sdkgo.RetryError
+	_, err := query(t, client, mysql.QueryRowsInput{Statement: "SELECT 1"})
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	_, err = execute(t, client, newStep(), addToBalanceInput)
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Empty(t, server.EventsOfKind(scriptedmysql.EventHandshake))
 }
 
 var stepSequence atomic.Int64

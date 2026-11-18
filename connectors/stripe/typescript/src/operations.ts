@@ -56,8 +56,8 @@ export class GetCheckoutSessionOperation implements Query<GetCheckoutSessionInpu
     if (!GetCheckoutSessionInputSchema.safeParse(input).success) return newQueryBranch('defect', zeroSession, zeroReceipt(), stripeFailure(operation, 'VALIDATION', 'Stripe Checkout Session ID is required'));
     const sessionId = input.sessionId?.trim();
     if (!sessionId?.startsWith('cs_') || /[/?#]/.test(sessionId)) return newQueryBranch('defect', zeroSession, zeroReceipt(), stripeFailure(operation, 'VALIDATION', 'Stripe Checkout Session ID is required'));
-    const secretKey = await this.client.resolveSecretKey(call);
-    if (!secretKey) return queryCredentialDefect(operation, zeroSession);
+    const { secretKey, isCredentialBrokerUnavailable } = await this.client.resolveSecretKeyResolution(call);
+    if (!secretKey) return queryCredentialDefect(operation, zeroSession, isCredentialBrokerUnavailable);
     let response: StripeResponse;
     try { response = await this.client.sendStripeRequest(call, secretKey, 'GET', `checkout/sessions/${encodeURIComponent(sessionId)}`); }
     catch { return newQueryRetry(stripeFailure(operation, 'AVAILABILITY', 'Stripe Checkout Session is temporarily unavailable')); }
@@ -88,8 +88,8 @@ export class GetPaymentIntentOperation implements Query<GetPaymentIntentInput, P
     const paymentIntentId = input.paymentIntentId?.trim();
     const inputError = validatePaymentIntentID(paymentIntentId);
     if (inputError) return newQueryBranch('defect', zeroIntent, zeroReceipt(), stripeFailure(operation, 'VALIDATION', inputError));
-    const secretKey = await this.client.resolveSecretKey(call);
-    if (!secretKey) return queryCredentialDefect(operation, zeroIntent);
+    const { secretKey, isCredentialBrokerUnavailable } = await this.client.resolveSecretKeyResolution(call);
+    if (!secretKey) return queryCredentialDefect(operation, zeroIntent, isCredentialBrokerUnavailable);
     const values = new URLSearchParams({ 'expand[]': 'latest_charge' });
     let response: StripeResponse;
     try { response = await this.client.sendStripeRequest(call, secretKey, 'GET', `payment_intents/${encodeURIComponent(paymentIntentId)}`, values); }
@@ -122,8 +122,8 @@ export class CreateRefundOperation implements Mutation<CreateRefundInput, Refund
     if (!CreateRefundInputSchema.safeParse(input).success) return newMutationBranch('defect', zeroRefund, zeroReceipt(), stripeFailure(operation, 'VALIDATION', 'Stripe refund input is invalid'));
     const inputError = validateRefundInput(input);
     if (inputError) return newMutationBranch('defect', zeroRefund, zeroReceipt(), stripeFailure(operation, 'VALIDATION', inputError));
-    const secretKey = await this.client.resolveSecretKey(call);
-    if (!secretKey) return mutationCredentialDefect(call, operation, zeroRefund);
+    const { secretKey, isCredentialBrokerUnavailable } = await this.client.resolveSecretKeyResolution(call);
+    if (!secretKey) return mutationCredentialDefect(call, operation, zeroRefund, isCredentialBrokerUnavailable);
     const values = new URLSearchParams({ payment_intent: input.paymentIntentId, amount: String(input.amount) });
     if (input.reason) values.set('reason', input.reason);
     for (const [key, value] of Object.entries(input.metadata ?? {})) values.set(`metadata[${key}]`, value);
@@ -194,8 +194,8 @@ async function invokeCheckout(client: StripeClient, call: Call, input: CreateACH
   if (!CreateCheckoutSessionInputSchema.safeParse(input).success) return newMutationBranch('defect', zeroSession, zeroReceipt(), stripeFailure(operation, 'VALIDATION', 'Stripe Checkout Session input is invalid'));
   const inputError = validateCheckoutInput(input);
   if (inputError) return newMutationBranch('defect', zeroSession, zeroReceipt(), stripeFailure(operation, 'VALIDATION', inputError));
-  const secretKey = await client.resolveSecretKey(call);
-  if (!secretKey) return mutationCredentialDefect(call, operation, zeroSession);
+  const { secretKey, isCredentialBrokerUnavailable } = await client.resolveSecretKeyResolution(call);
+  if (!secretKey) return mutationCredentialDefect(call, operation, zeroSession, isCredentialBrokerUnavailable);
   const values = new URLSearchParams({
     mode: 'payment', 'payment_method_types[0]': paymentMethod, client_reference_id: input.clientReferenceId,
     customer_email: input.customerEmail, success_url: input.successUrl, cancel_url: input.cancelUrl,
@@ -308,14 +308,18 @@ function validateMetadata(metadata: Record<string, string> | undefined): string 
 
 function stripeFailure(operation: string, kind: FailureKind, message: string): Failure { return { provider: 'stripe', operation, kind, message }; }
 
-function queryCredentialDefect<T>(operation: string, zeroValue: T): QueryAttempt<T> {
+const brokerUnavailableMessage = 'Stripe connection credentials are temporarily unavailable; nothing was sent';
+
+function queryCredentialDefect<T>(operation: string, zeroValue: T, isCredentialBrokerUnavailable: boolean): QueryAttempt<T> {
+  if (isCredentialBrokerUnavailable) return newQueryRetry(stripeFailure(operation, 'AVAILABILITY', brokerUnavailableMessage));
   return newQueryBranch('defect', zeroValue, zeroReceipt(), stripeFailure(operation, 'AUTHENTICATION', 'Stripe connection credentials are unavailable'));
 }
 
-/** Select defect only on attempt one; a later attempt may follow a send, so it retries. */
-function mutationCredentialDefect<T>(call: Call, operation: string, zeroValue: T): MutationAttempt<T> {
+/** Retry a broker outage; a terminal failure is defect on attempt one and uncertain after a possible send. */
+function mutationCredentialDefect<T>(call: Call, operation: string, zeroValue: T, isCredentialBrokerUnavailable: boolean): MutationAttempt<T> {
+  if (isCredentialBrokerUnavailable) return newMutationRetry(stripeFailure(operation, 'AVAILABILITY', brokerUnavailableMessage));
   const failure = stripeFailure(operation, 'AUTHENTICATION', 'Stripe connection credentials are unavailable');
-  if ((call.context?.attempt ?? 1) > 1) return newMutationRetry(failure);
+  if ((call.context?.attempt ?? 1) > 1) return newMutationUncertain(zeroValue, failure, zeroReceipt());
   return newMutationBranch('defect', zeroValue, zeroReceipt(), failure);
 }
 

@@ -42,6 +42,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -340,11 +341,21 @@ func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, o
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return Credentials{}, &xeroExchange{outcome: exchangeRetry,
 			failure: xeroFailure(sdkgo.FailureAvailability, operation, "Xero access token request is temporarily unavailable")}
+	case isTransientCredentialResolveError(err):
+		// Nothing reached Xero, so every attempt retries instead of selecting defect or uncertain.
+		return Credentials{}, &xeroExchange{outcome: exchangeRetry,
+			failure: xeroFailure(sdkgo.FailureAvailability, operation, "Xero connection credentials are temporarily unavailable; nothing was sent")}
 	case err != nil || validateResolvedCredentials(credentials) != nil:
 		return Credentials{}, &xeroExchange{outcome: exchangeDefect,
 			failure: xeroFailure(sdkgo.FailureAuthentication, operation, "Xero connection credentials are unavailable")}
 	}
 	return credentials, nil
+}
+
+// isTransientCredentialResolveError reports a broker outage or an expired resolve context, which another attempt may clear.
+func isTransientCredentialResolveError(err error) bool {
+	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) ||
+		errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }
 
 // resolveTenant returns the Xero-Tenant-Id an OAuth connection sends; a Custom Connection sends none.

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isIP } from 'node:net';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
@@ -13,6 +13,8 @@ const productionEndpoint = 'https://quickbooks.api.intuit.com';
 const sandboxEndpoint = 'https://sandbox-quickbooks.api.intuit.com';
 const realmPattern = /^[1-9][0-9]{0,24}$/;
 const transactionPattern = /^[A-Za-z0-9-]{1,64}$/;
+// Go's 64 KiB error token prefix.
+const maxErrorBodyBytes = 65_536;
 // Keeps an invoiceChanged poll loop well inside QuickBooks's 500 requests per minute per company.
 const minimumPollIntervalMs = 5_000;
 
@@ -48,6 +50,8 @@ export interface QuickBooksExchange {
   status: number;
   /** True when no request byte reached QuickBooks, such as a credential failure or a refused connection. */
   isProvablyUnsent?: boolean;
+  /** True when a non-2xx body failed to read or exceeded its prefix, so it proves no refusal. */
+  isErrorBodyIncomplete?: boolean;
 }
 
 /** One QuickBooks request below the connected company's API path. */
@@ -168,7 +172,8 @@ export class QuickBooksClient {
     let observedStatus = 0;
     let observedHeaders: ProviderResponse['headers'] = {};
     try {
-      response = await this.send({ url, method: request.method, headers, ...(request.body ? { body: request.body } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: 65_536, ignoreErrorBodyReadFailure: true, addressPolicy: this.endpoint.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs, signal, onResponseChunk: (_chunk, status, responseHeaders) => { observedStatus = status; observedHeaders = responseHeaders; } });
+      // One byte past the error prefix reveals truncation; a write must see a broken error body.
+      response = await this.send({ url, method: request.method, headers, ...(request.body ? { body: request.body } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: maxErrorBodyBytes + 1, ignoreErrorBodyReadFailure: !request.mutation, addressPolicy: this.endpoint.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs, signal, onResponseChunk: (_chunk, status, responseHeaders) => { observedStatus = status; observedHeaders = responseHeaders; } });
     } catch (error) {
       if (error instanceof BodyTooLargeError) {
         const transaction = error.headers?.intuit_tid;
@@ -179,6 +184,8 @@ export class QuickBooksClient {
       const transaction = observedHeaders.intuit_tid;
       const transactionID = Array.isArray(transaction) ? transaction[0] : transaction;
       if (transactionID && transactionPattern.test(transactionID)) receipt.providerRequestId = transactionID;
+      // Headers can arrive without a body chunk, so the error's own status also counts.
+      if (!observedStatus && (error instanceof ProviderTransportError || error instanceof ProviderStalledError)) observedStatus = error.status ?? 0;
       if (observedStatus >= 200 && observedStatus < 300) return { disposition: 'interrupted', status: observedStatus, failure: this.failure('TRANSPORT', operation, 'QuickBooks response was interrupted'), receipt, retryAfterMs: 0 };
       const isProvablyUnsent = observedStatus === 0 && (error instanceof AddressRefusal || (error instanceof ProviderTransportError && error.isProvablyNotSent));
       return { disposition: 'retry', status: observedStatus, failure: this.failure('TRANSPORT', operation, isProvablyUnsent ? 'QuickBooks could not be reached; no request was sent' : 'QuickBooks request failed before a response arrived'), receipt, retryAfterMs: 0, isProvablyUnsent };
@@ -192,7 +199,9 @@ export class QuickBooksClient {
       if (fault.type || fault.count) return this.classifyStatus(operation, response, receipt, fault);
       return { disposition: 'succeeded', status: response.status, body: response.body, receipt, retryAfterMs: 0 };
     }
-    return this.classifyStatus(operation, response, receipt, summarizeFault(response.body));
+    const isErrorBodyIncomplete = response.body.length > maxErrorBodyBytes;
+    const classified = this.classifyStatus(operation, response, receipt, summarizeFault(response.body.subarray(0, maxErrorBodyBytes)));
+    return isErrorBodyIncomplete ? { ...classified, isErrorBodyIncomplete } : classified;
   }
 
   private classifyStatus(operation: string, response: ProviderResponse, receipt: ReceiptDraft, fault: FaultSummary): QuickBooksExchange {

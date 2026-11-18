@@ -19,14 +19,15 @@ const zeroSent: SentMessage = { messageId: '', from: '', recipients: [], subject
 const zeroMove: MovedMessage = { destination: { mailbox: '', uidValidity: 0, uid: 0 } };
 const zeroFlags: MessageFlags = { message: { mailbox: '', uidValidity: 0, uid: 0 }, isSeen: false, isFlagged: false, isAnswered: false };
 function queryFailure<T>(operation: string, error: unknown, zero: T, supportsNotFound: boolean): QueryAttempt<T> {
-  if (error instanceof CredentialFailure) return newQueryBranch('defect', zero, {}, failure(operation, error));
+  if (error instanceof CredentialFailure) return error.isTransient ? newQueryRetry(failure(operation, error)) : newQueryBranch('defect', zero, {}, failure(operation, error));
   const classified = classifyMailError(error, 'IMAP');
   if (classified.outcome === 'retry') return newQueryRetry(failure(operation, classified));
   const branch = classified.outcome === 'notFound' && supportsNotFound ? 'notFound' : classified.outcome === 'invalidResponse' ? 'invalidResponse' : 'providerRejected';
   return newQueryBranch(branch, zero, {}, failure(operation, classified));
 }
-function mutationFailure<T>(operation: string, error: unknown, zero: T, supportsNotFound: boolean, supportsInvalidResponse = false): MutationAttempt<T> {
-  if (error instanceof CredentialFailure) return newMutationBranch('defect', zero, {}, failure(operation, error));
+function mutationFailure<T>(call: Call, operation: string, error: unknown, zero: T, supportsNotFound: boolean, supportsInvalidResponse = false): MutationAttempt<T> {
+  // A later attempt may follow an applied change, so a credential failure there returns Retry, never defect.
+  if (error instanceof CredentialFailure) return error.isTransient || call.context.attempt > 1 ? newMutationRetry(failure(operation, error)) : newMutationBranch('defect', zero, {}, failure(operation, error));
   const classified = classifyMailError(error, 'IMAP');
   if (classified.outcome === 'retry' || classified.outcome === 'invalidResponse' && (operation === 'moveMessage' || operation === 'setFlags')) return newMutationRetry(failure(operation, classified));
   return newMutationBranch(classified.outcome === 'notFound' && supportsNotFound ? 'notFound' : classified.outcome === 'invalidResponse' && supportsInvalidResponse ? 'invalidResponse' : 'providerRejected', zero, {}, failure(operation, classified));
@@ -227,6 +228,17 @@ function refuseBeforeSubmitting(decision: SubmissionDecision, branch: string, ma
   return newMutationBranch(branch, zeroSent, {}, failure(operation, mailFailure));
 }
 
+/** Return Retry for a temporary failure before submitting; an accepted submission keeps its marker as the last checkpoint. */
+async function retryWithoutSubmitting(call: Call, decision: SubmissionDecision, operation: string, value: SentMessage, attemptFailure: Failure): Promise<MutationAttempt<SentMessage>> {
+  if (decision.kind === 'allowed') {
+    // Record the earlier count, so this attempt is not counted.
+    await recordMarker(call, decision.maximumPriorSubmissions);
+    return newMutationRetry(attemptFailure);
+  }
+  if (decision.kind === 'capReached') return attemptBeforeSubmitting(decision, operation, value)!;
+  return newMutationRetry(attemptFailure);
+}
+
 /** Claim, submit, and map the outcome like Go's submitOnce. */
 async function finishSubmission(client: EmailClient, credentials: Credentials, call: Call, decision: SubmissionDecision, operation: string, message: OutgoingMail): Promise<MutationAttempt<SentMessage>> {
   const value = sentValue(message);
@@ -355,7 +367,10 @@ export class SendMessageOperation {
       const id = messageID(call, from);
       identity = { ...zeroSent, messageId: id, from };
       message = { from, fromName: this.client.config.fromName, to: input.to || [], cc: input.cc || [], bcc: input.bcc || [], replyTo: input.replyTo, subject: input.subject, text: input.text, messageId: id, date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
-    } catch (error) { return refuseBeforeSubmitting(decision, 'defect', error as MailFailure, 'sendMessage', identity); }
+    } catch (error) {
+      if (error instanceof CredentialFailure && error.isTransient) return retryWithoutSubmitting(call, decision, 'sendMessage', identity, failure('sendMessage', error));
+      return refuseBeforeSubmitting(decision, 'defect', error as MailFailure, 'sendMessage', identity);
+    }
     const blocked = acceptedAttempt(decision, sentValue(message)) ?? attemptBeforeSubmitting(decision, 'sendMessage', sentValue(message));
     if (blocked) return blocked;
     return finishSubmission(this.client, credentials, call, decision, 'sendMessage', message);
@@ -381,7 +396,10 @@ export class ReplyToMessageOperation {
       credentials = await this.client.resolveCredentials(call);
       from = sender(this.client, credentials); id = messageID(call, from);
       identity = { ...zeroSent, messageId: id, from };
-    } catch (error) { return refuseBeforeSubmitting(decision, 'defect', error as MailFailure, operation, identity); }
+    } catch (error) {
+      if (error instanceof CredentialFailure && error.isTransient) return retryWithoutSubmitting(call, decision, operation, identity, failure(operation, error));
+      return refuseBeforeSubmitting(decision, 'defect', error as MailFailure, operation, identity);
+    }
     // The source may have moved since an earlier submission, so the checkpoint decides before reading it.
     // An accepted reply reads the source only to rebuild its output, and never submits again.
     const blocked = attemptBeforeSubmitting(decision, operation, identity);
@@ -401,13 +419,11 @@ export class ReplyToMessageOperation {
       message = { from, fromName: this.client.config.fromName, to, cc, bcc: [], subject: truncateBytes(/^re:/i.test(subject) ? subject : `Re: ${subject}`.trim(), 998), text: input.text, messageId: id, inReplyTo: sourceID, references: sourceID ? [...(source.references || []), sourceID].slice(-20) : [], date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
       await close(session); session = undefined;
     } catch (error) {
+      const fresh = mutationFailure(call, operation, error, zeroSent, true, true);
+      // An accepted reply keeps its marker, so a later attempt rebuilds the output and never resubmits.
+      if (fresh.kind === 'retry') return retryWithoutSubmitting(call, decision, operation, identity, fresh.failure);
       // The reply was accepted earlier, and its source can no longer be read.
       if (blocked) return blocked;
-      const fresh = mutationFailure(operation, error, zeroSent, true, true);
-      if (fresh.kind === 'retry') {
-        await recordMarker(call, decision.maximumPriorSubmissions);
-        return fresh;
-      }
       if (fresh.kind !== 'branch') return fresh;
       return refuseBeforeSubmitting(decision, fresh.branch, error instanceof MailFailure ? error : classifyMailError(error, 'IMAP'), operation, identity);
     } finally { if (session) await close(session); }
@@ -449,7 +465,7 @@ export class MoveMessageOperation {
       const moved = await session.messageMove(String(input.message.uid), input.destinationMailbox, { uid: true });
       if (!moved) throw this.client.consumeIMAPCommandFailure(session) || (session.usable === false ? new MailFailure('retry', 'TRANSPORT', 'the IMAP connection was lost during MOVE') : new MailFailure('rejected', 'PROVIDER_REJECTION', 'the IMAP server did not move the message'));
       return newMutationBranch('moved', { destination: { mailbox: input.destinationMailbox, uidValidity: Number(moved.uidValidity || 0), uid: moved.uidMap?.get(input.message.uid) || 0 } }, { providerObjectId: input.messageId || '' });
-    } catch (error) { return mutationFailure('moveMessage', error, zeroMove, true); }
+    } catch (error) { return mutationFailure(call, 'moveMessage', error, zeroMove, true); }
     finally { if (session) await close(session); }
   }
 }
@@ -485,7 +501,7 @@ export class SetFlagsOperation {
       const updated = await read();
       if (Object.entries({ isSeen: input.isSeen, isFlagged: input.isFlagged, isAnswered: input.isAnswered }).some(([key, wanted]) => wanted !== undefined && updated[key as keyof MessageFlags] !== wanted)) return newMutationBranch('providerRejected', updated, {}, failure('setFlags', new MailFailure('rejected', 'PROVIDER_REJECTION', 'the IMAP server did not keep the requested flags')));
       return newMutationBranch('updated', updated);
-    } catch (error) { return mutationFailure('setFlags', error, zeroFlags, true); }
+    } catch (error) { return mutationFailure(call, 'setFlags', error, zeroFlags, true); }
     finally { if (session) await close(session); }
   }
 }

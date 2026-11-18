@@ -4,6 +4,8 @@
 package xero_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/xero/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -319,6 +322,39 @@ func TestCreateInvoiceSelectsUncertainForACredentialFailureOnALaterAttempt(t *te
 		xeroConnection, validCreateInvoiceInput())
 	require.NoError(t, err)
 	require.Equal(t, xero.CreateInvoiceBranchUncertain, result.Branch, "a later attempt never selects defect")
+}
+
+// unavailableBrokerCredentials fails every resolve the way a temporarily unreachable credential broker does.
+type unavailableBrokerCredentials struct{}
+
+func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (xero.Credentials, error) {
+	return xero.Credentials{}, fmt.Errorf("%w: HTTP 503", projectconfig.ErrCredentialBrokerUnavailable)
+}
+
+func (credentials unavailableBrokerCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[xero.Credentials]) (xero.Credentials, error) {
+	return credentials.Resolve(call)
+}
+
+func TestMutationsRetryAnUnavailableCredentialBrokerOnEveryAttempt(t *testing.T) {
+	provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
+		writeJSON(t, response, http.StatusInternalServerError, `{}`)
+	})
+	client, err := xero.New(xero.Config{}, unavailableBrokerCredentials{}, xero.WithLocalProviderURL(provider.URL))
+	require.NoError(t, err)
+	for name, newContext := range map[string]func(string) *xeroDexContext{
+		"first attempt": newXeroDexContext, "later attempt": newLaterAttemptXeroDexContext,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := sdkgo.RunMutation(newContext("create-broker-"+name), client.CreateInvoice(), xeroConnection, validCreateInvoiceInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "a broker outage never selects defect or uncertain")
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			_, err = sdkgo.RunMutation(newContext("payment-broker-"+name), client.RecordPayment(), xeroConnection, validRecordPaymentInput())
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+		})
+	}
+	require.Zero(t, provider.requestCount(), "nothing is sent without credentials")
 }
 
 func TestCreateInvoiceRejectsInexactOrInvalidInputBeforeAnyRequest(t *testing.T) {

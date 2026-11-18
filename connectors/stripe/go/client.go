@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )
 
@@ -305,6 +306,9 @@ func (operation GetCheckoutSessionOperation) Invoke(call sdkgo.Call, input GetCh
 		return sdkgo.NewQueryBranch(GetCheckoutSessionBranchDefect, CheckoutSession{}, stripeFailurePointer("getCheckoutSession", sdkgo.FailureValidation, "Stripe Checkout Session ID is required"), sdkgo.Receipt{})
 	}
 	credentials, failure := operation.client.resolveCredentials(call, "getCheckoutSession")
+	if failure != nil && failure.Kind == sdkgo.FailureAvailability {
+		return sdkgo.NewQueryRetry[CheckoutSession](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetCheckoutSessionBranchDefect, CheckoutSession{}, failure, sdkgo.Receipt{})
 	}
@@ -514,18 +518,27 @@ func unknownStripeWriteFailure(operation string, subject string, response provid
 	return stripeFailure(operation, sdkgo.FailureProtocol, fmt.Sprintf("Stripe returned unexpected HTTP status %d for the %s request", response.statusCode, subject))
 }
 
-// unavailableCredentialsAttempt selects defect for a local failure only on attempt one; a later attempt
-// may follow a send, so it returns Retry and resends under the same idempotency key.
+// unavailableCredentialsAttempt retries a transient credential failure on every attempt, because nothing
+// was sent. A terminal local failure selects defect on attempt one and uncertain later, when an earlier
+// attempt may have created the object.
 func unavailableCredentialsAttempt[T any](call sdkgo.Call, defect sdkgo.BranchID, failure *sdkgo.Failure) sdkgo.MutationAttempt[T] {
 	var zero T
-	if call.Context != nil && call.Context.Attempt() > 1 {
+	if failure.Kind == sdkgo.FailureAvailability {
 		return sdkgo.NewMutationRetry[T](*failure, 0)
+	}
+	if call.Context != nil && call.Context.Attempt() > 1 {
+		return sdkgo.NewMutationUncertain(zero, *failure, sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationBranch(defect, zero, failure, sdkgo.Receipt{})
 }
 
+// resolveCredentials returns a FailureAvailability failure for a credential broker outage, which another
+// attempt may clear, and a FailureAuthentication failure for every terminal credential problem.
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
+	if errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) {
+		return Credentials{}, stripeFailurePointer(operation, sdkgo.FailureAvailability, "Stripe connection credentials are temporarily unavailable; nothing was sent")
+	}
 	if err != nil || credentials.SecretKey.Reveal() == "" {
 		return Credentials{}, stripeFailurePointer(operation, sdkgo.FailureAuthentication, "Stripe connection credentials are unavailable")
 	}

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { Readable } from 'node:stream';
 import type { ConnectionOptions } from 'mysql2/promise';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import { MySQLClient } from '../src/client.js';
 import { classifyDriverError } from '../src/failures.js';
 
@@ -298,9 +299,40 @@ describe('executeNonIdempotent', () => {
     const seeded = { callId: fencedCall(context).id, attempt: 2, state: 'canResend', sendCount: 1 };
     context.marker = seeded;
     context.attempt = 3;
-    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    // A transient failure returns Retry; the attempt after it still treats the earlier send as possible.
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry' });
     expect(lost.issued).not.toContain('COMMIT');
     expect(context.marker).toBe(seeded);
+    context.attempt = 4;
+    const connectsBefore = lost.connects();
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(lost.connects()).toBe(connectsBefore);
+
+    const refused = fakeWriteConnection({ statement: serverError(3819, 'HY000') });
+    const refusedContext = new AttemptContext();
+    refusedContext.marker = seeded;
+    refusedContext.attempt = 3;
+    expect(await refused.client.executeNonIdempotent().invoke(fencedCall(refusedContext), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(refused.issued).not.toContain('COMMIT');
+    expect(refusedContext.marker).toBe(seeded);
+  });
+
+  it('selects uncertain when the driver throws a local error after COMMIT was sent', async () => {
+    const { client } = fakeWriteConnection({ commit: new TypeError('connection state is null') });
+    const context = new AttemptContext();
+    expect(await client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(context.marker?.state).toBe('claimed');
+  });
+
+  it('returns Retry and records notSent when the credential broker is temporarily unavailable', async () => {
+    let connections = 0;
+    const unavailable = new MySQLClient(config, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } }, { connect: async () => { connections++; throw new Error('must not connect'); } });
+    expect(await unavailable.query().invoke(call, { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(await unavailable.execute().invoke(call, balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    const context = new AttemptContext();
+    expect(await unavailable.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(context.marker?.state).toBe('notSent');
+    expect(connections).toBe(0);
   });
 
   it('selects uncertain after a lost Worker and retries an unreadable checkpoint without connecting', async () => {

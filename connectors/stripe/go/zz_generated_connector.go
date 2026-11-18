@@ -287,7 +287,7 @@ var CreateCardCheckoutSessionDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateCardCheckoutSessionBranchCreated, Description: "Stripe created the Checkout Session."},
 		{ID: CreateCardCheckoutSessionBranchProviderRejected, Description: "Stripe conclusively rejected the Checkout Session request.", Optional: true},
-		{ID: CreateCardCheckoutSessionBranchUncertain, Description: "Stripe replayed a cached server error for this idempotency key, or accepted the request but returned an invalid or oversized Checkout Session, so no resend can confirm the Session; every other unknown outcome is resent under the same key.", Optional: true},
+		{ID: CreateCardCheckoutSessionBranchUncertain, Description: "Stripe replayed a cached server error for this idempotency key, or accepted the request but returned an invalid or oversized Checkout Session, so no resend can confirm the Session, or, on a later attempt that may follow a created Session, the connection credentials are unusable; every other unknown outcome, including a credential broker outage, is resent under the same key.", Optional: true},
 		{ID: CreateCardCheckoutSessionBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized Checkout Session after Stripe accepted the request selects uncertain.", Optional: true},
 		{ID: CreateCardCheckoutSessionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -364,7 +364,7 @@ var CreateACHCheckoutSessionDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateACHCheckoutSessionBranchCreated, Description: "Stripe created the Checkout Session."},
 		{ID: CreateACHCheckoutSessionBranchProviderRejected, Description: "Stripe conclusively rejected the Checkout Session request.", Optional: true},
-		{ID: CreateACHCheckoutSessionBranchUncertain, Description: "Stripe replayed a cached server error for this idempotency key, or accepted the request but returned an invalid or oversized Checkout Session, so no resend can confirm the Session; every other unknown outcome is resent under the same key.", Optional: true},
+		{ID: CreateACHCheckoutSessionBranchUncertain, Description: "Stripe replayed a cached server error for this idempotency key, or accepted the request but returned an invalid or oversized Checkout Session, so no resend can confirm the Session, or, on a later attempt that may follow a created Session, the connection credentials are unusable; every other unknown outcome, including a credential broker outage, is resent under the same key.", Optional: true},
 		{ID: CreateACHCheckoutSessionBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized Checkout Session after Stripe accepted the request selects uncertain.", Optional: true},
 		{ID: CreateACHCheckoutSessionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -595,7 +595,7 @@ var CreateRefundDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateRefundBranchRefunded, Description: "Stripe accepted the refund; read its status to tell succeeded from pending."},
 		{ID: CreateRefundBranchProviderRejected, Description: "Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large.", Optional: true},
-		{ID: CreateRefundBranchUncertain, Description: "Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID, or Stripe accepted the refund but returned an invalid or oversized refund, which a resend would only replay; every other unknown outcome is resent under the same key.", Optional: true},
+		{ID: CreateRefundBranchUncertain, Description: "Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID, or Stripe accepted the refund but returned an invalid or oversized refund, which a resend would only replay, or, on a later attempt that may follow a created refund, the connection credentials are unusable; every other unknown outcome, including a credential broker outage, is resent under the same key.", Optional: true},
 		{ID: CreateRefundBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized refund after Stripe accepted the request selects uncertain.", Optional: true},
 		{ID: CreateRefundBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},

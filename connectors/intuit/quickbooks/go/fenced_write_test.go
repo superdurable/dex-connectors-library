@@ -4,13 +4,16 @@
 package quickbooks_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	quickbooks "github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
@@ -181,6 +184,68 @@ func TestUnprocessedWriteIsRetriedWithoutCountingIt(t *testing.T) {
 		require.Equal(t, quickbooks.CreateCustomerBranchCreated, result.Branch)
 		require.Equal(t, int32(1), recordedQuickBooksMarker(t, second).SendCount)
 	}
+}
+
+func TestRefusalStatusWithAnIncompleteErrorBodyIsAnUnknownOutcome(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(http.ResponseWriter)
+	}{
+		{name: "oversized 400", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusBadRequest, faultJSON("ValidationFault", "6240")+strings.Repeat(" ", 70_000))
+		}},
+		{name: "404 body broken mid-read", reply: func(response http.ResponseWriter) {
+			response.Header().Set("Content-Type", "application/json")
+			response.Header().Set("Content-Length", "4096")
+			response.WriteHeader(http.StatusNotFound)
+			_, _ = response.Write([]byte(`{"Fault":`)) // The declared length is never reached.
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingQuickBooks(t, func(response http.ResponseWriter, _ recordedRequest, index int) {
+				if index == 0 {
+					test.reply(response)
+					return
+				}
+				writeValue(t, response, http.StatusOK, cityAgencyCustomerBody())
+			})
+			first := newQuickBooksDexContext("customer-incomplete-refusal-" + test.name)
+			_, err := createCityAgency(t, first, provider)
+			requireQuickBooksRetry(t, err)
+			marker := recordedQuickBooksMarker(t, first)
+			require.Equal(t, singledispatch.StateClaimed, marker.State, "an unread refusal body proves nothing, so the send counts")
+			require.Equal(t, int32(1), marker.SendCount)
+			result, err := createCityAgency(t, first.nextAttempt(), provider)
+			require.NoError(t, err)
+			require.Equal(t, quickbooks.CreateCustomerBranchCreated, result.Branch)
+			require.Equal(t, 2, provider.requestCount())
+		})
+	}
+}
+
+func TestUnavailableCredentialBrokerRetriesWithoutCountingASend(t *testing.T) {
+	provider := newRecordingQuickBooks(t, func(http.ResponseWriter, recordedRequest, int) { t.Fatal("no request is expected") })
+	client, err := quickbooks.New(quickbooks.Config{}, unavailableBrokerCredentials{}, quickbooks.WithLocalProviderURL(provider.URL))
+	require.NoError(t, err)
+	ctx := newQuickBooksDexContext("customer-broker-unavailable")
+	_, err = sdkgo.RunMutation(ctx, client.CreateCustomer(), quickbooksConnection, cityAgencyCustomerInput)
+	retry := requireQuickBooksRetry(t, err)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind, "a transient broker failure is never a defect")
+	marker := recordedQuickBooksMarker(t, ctx)
+	require.Equal(t, singledispatch.StateCanResend, marker.State)
+	require.Zero(t, marker.SendCount)
+}
+
+// unavailableBrokerCredentials fails every Resolve as a transient credential broker outage.
+type unavailableBrokerCredentials struct{}
+
+func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (quickbooks.Credentials, error) {
+	return quickbooks.Credentials{}, projectconfig.ErrCredentialBrokerUnavailable
+}
+
+func (provider unavailableBrokerCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[quickbooks.Credentials]) (quickbooks.Credentials, error) {
+	return provider.Resolve(call)
 }
 
 func TestUnreadableWriteCheckpointIsRetriedWithoutARequest(t *testing.T) {

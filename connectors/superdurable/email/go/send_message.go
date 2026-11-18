@@ -54,6 +54,9 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	decision := decideSubmission(call)
 	credentials, failure := operation.client.resolveCredentials(call, sendMessageOperation)
 	if failure != nil {
+		if isTransientCredentialFailure(*failure) {
+			return retryWithoutSubmitting(call, decision, sendMessageOperation, SentMessage{}, *failure)
+		}
 		if attempt, isTerminal := submissionAttemptBeforeSend(decision, sendMessageOperation, SentMessage{}); isTerminal {
 			return attempt
 		}

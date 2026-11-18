@@ -88,8 +88,10 @@ func (SendRequestOperation) IdempotencyKey(callID sdkgo.CallID, _ SendRequestInp
 // renewed. A 2xx selects completed, and a redirect of a GET, HEAD, or OPTIONS request, a definite
 // refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or an authorization the server will no
 // longer renew selects rejected. Every other outcome, including a redirect of a POST, PUT, PATCH, or
-// DELETE, a lost connection, a 5xx, and any other status, returns Retry, so the request is sent again.
-// The declared uncertain branch is kept for compatibility and never selected.
+// DELETE, a lost connection, a 5xx, and any other status, returns Retry, so the request is sent again;
+// so does a temporarily unavailable credential source. On a later attempt of a POST, PUT, PATCH, or
+// DELETE, which may follow a processed write, a definite refusal or a terminal credential or address
+// failure selects uncertain instead of rejected or defect.
 func (operation SendRequestOperation) Invoke(call sdkgo.Call, input SendRequestInput) sdkgo.MutationAttempt[SendRequestOutput] {
 	client := operation.client
 	operationName := SendRequestDefinition.Operation.OperationID
@@ -101,6 +103,10 @@ func (operation SendRequestOperation) Invoke(call sdkgo.Call, input SendRequestI
 	defer cancel()
 	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	if problem := classifyCredentialResolution(ctx, err, credentials); problem.isFailed() {
+		if problem.isTerminal() && hasPossibleEarlierWrite(call, request) {
+			return operation.uncertainWithoutSending(call, sdkgo.FailureAuthentication,
+				"an earlier attempt may have sent the request, and the connection's credentials cannot send it now")
+		}
 		return problem.attempt(operationName, SendRequestBranchRejected, SendRequestBranchDefect)
 	}
 	answer := client.exchange(ctx, call, request, credentials)
@@ -144,12 +150,20 @@ func classifyCredentialResolution(ctx context.Context, err error, credentials Cr
 		return credentialProblem{kind: credentialAddressRefused, refusal: refusal}
 	case sdkgo.IsReauthorizationRequired(err):
 		return credentialProblem{kind: credentialReauthorizationRequired}
-	case errors.Is(err, errCredentialRefreshUnavailable), errors.Is(err, projectconfig.ErrRefreshFailed), ctx.Err() != nil:
+	case errors.Is(err, errCredentialRefreshUnavailable), isTransientCredentialError(err), ctx.Err() != nil:
 		return credentialProblem{kind: credentialTemporarilyUnavailable}
 	case err != nil || credentials.Validate() != nil:
 		return credentialProblem{kind: credentialUnusable}
 	}
 	return credentialProblem{kind: credentialUsable}
+}
+
+// isTransientCredentialError reports a credential resolution failure that a later attempt may not repeat,
+// such as an unavailable credential broker; any other failure is terminal.
+func isTransientCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, projectconfig.ErrExchangePending) ||
+		errors.Is(err, projectconfig.ErrRefreshFailed) || errors.Is(err, projectconfig.ErrOutcomeUnknown) ||
+		errors.Is(err, projectconfig.ErrConflict) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }
 
 func (problem credentialProblem) isFailed() bool { return problem.kind != credentialUsable }
@@ -251,6 +265,9 @@ func (operation SendRequestOperation) attemptFor(call sdkgo.Call, request planne
 	status := answer.statusCode
 	retryAfter := client.retryAfter(answer)
 	switch {
+	case answer.refusal != nil && hasPossibleEarlierWrite(call, request):
+		return operation.uncertainWithoutSending(call, sdkgo.FailureValidation,
+			"an earlier attempt may have sent the request, and "+describeRefusal("apiBaseUrl", answer.refusal))
 	case answer.refusal != nil:
 		return operationBranch(operationName, SendRequestBranchDefect, sdkgo.FailureValidation,
 			describeRefusal("apiBaseUrl", answer.refusal), SendRequestOutput{}, sdkgo.Receipt{})
@@ -266,6 +283,11 @@ func (operation SendRequestOperation) attemptFor(call sdkgo.Call, request planne
 		// A redirect, such as 303 See Other, may follow a processed write, so the write is sent again.
 		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureProtocol,
 			fmt.Sprintf("the API answered HTTP %d to a %s, which does not prove the request was refused", status, request.method)), retryAfter)
+	case isDefiniteRefusal(status) && hasPossibleEarlierWrite(call, request):
+		// The refusal may answer the repeat of a write that an earlier attempt already applied.
+		failure := operationFailure(operationName, rejectionFailureKind(status),
+			fmt.Sprintf("the API answered HTTP %d to a repeated %s, which an earlier attempt may have applied", status, request.method))
+		return sdkgo.NewMutationUncertain(output, failure, receipt)
 	case status >= 300 && status < 400, isDefiniteRefusal(status):
 		// The connector never follows a redirect, so a redirect is reported like a refusal.
 		failure := operationFailure(operationName, rejectionFailureKind(status), fmt.Sprintf("the API answered HTTP %d", status))
@@ -280,6 +302,17 @@ func (operation SendRequestOperation) attemptFor(call sdkgo.Call, request planne
 		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, rejectionFailureKind(status),
 			fmt.Sprintf("the API answered HTTP %d, which does not prove the request was refused", status)), retryAfter)
 	}
+}
+
+// hasPossibleEarlierWrite reports a write method on a later attempt, which may follow a processed write.
+func hasPossibleEarlierWrite(call sdkgo.Call, request plannedRequest) bool {
+	return isWriteMethod(request.method) && call.Context != nil && call.Context.Attempt() > 1
+}
+
+// uncertainWithoutSending selects uncertain for a later write attempt that a terminal local failure stops.
+func (operation SendRequestOperation) uncertainWithoutSending(call sdkgo.Call, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SendRequestOutput] {
+	return sdkgo.NewMutationUncertain(SendRequestOutput{},
+		operationFailure(SendRequestDefinition.Operation.OperationID, kind, message), operation.client.receipt(call, httpExchange{}))
 }
 
 // receipt records the Call identity and the API's request ID for one exchange.

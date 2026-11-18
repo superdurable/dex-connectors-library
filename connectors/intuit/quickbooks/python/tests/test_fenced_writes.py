@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of QuickBooks writes whose outcome is unknown."""
 
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.intuit_quickbooks as quickbooks
@@ -79,14 +81,35 @@ class Script:
         return self.replies[min(len(self.requests), len(self.replies)) - 1]
 
 
+class UnavailableBrokerCredentials:
+    """Fail every credential read as a transient Dex credential broker outage."""
+
+    async def resolve(self, call: sdk.Call) -> quickbooks.Credentials:
+        """Raise the broker's transient unavailability error."""
+        raise CredentialBrokerUnavailableError("credential broker is unavailable")
+
+
+class HangingBodyStream(httpx.AsyncByteStream):
+    """Send part of a 2xx body, then stall past the Fence write window."""
+
+    async def __aiter__(self):  # type: ignore[override]
+        yield b'{"Customer":{"Id":"5'
+        await asyncio.sleep(30)
+
+
 async def create(
-    answer: Answer, context: AttemptContext, *, max_sends: int = CREATE_CUSTOMER_DEFINITION.max_sends
+    answer: Answer,
+    context: AttemptContext,
+    *,
+    max_sends: int = CREATE_CUSTOMER_DEFINITION.max_sends,
+    credentials: object | None = None,
 ) -> sdk.MutationResult[quickbooks.CreateCustomerOutput] | sdk.RetryError:
     """Run one Execute attempt of createCustomer, as MutationStep passes the definition cap."""
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
         client = quickbooks.Client(
             quickbooks.Config(realm_id="9341453050298464"),
-            sdk.StaticCredentialProvider(
+            credentials  # type: ignore[arg-type]
+            or sdk.StaticCredentialProvider(
                 {
                     CONNECTION: quickbooks.Credentials(
                         "ABtestQuickBooksClientID0123456789",
@@ -228,6 +251,63 @@ async def test_unprocessed_write_is_retried_without_counting_it() -> None:
         context.attempt = 2
         assert branch(await create(script, context)) == "created"
         assert context.marker.send_count == 1
+
+
+@pytest.mark.asyncio
+async def test_write_window_cutting_a_2xx_body_selects_uncertain_without_resending() -> None:
+    """2xx headers arrived before the write deadline cut the body, so QuickBooks accepted the write."""
+    script = Script(httpx.Response(200, stream=HangingBodyStream()))
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await create(script, context)
+    assert branch(result) == "uncertain"
+    assert isinstance(result, sdk.MutationResult) and result.failure is not None
+    assert "write window ended" in result.failure.message
+    assert [request.method for request in script.requests] == ["POST"]
+
+
+class _BrokenErrorStream(httpx.AsyncByteStream):
+    async def __aiter__(self):  # type: ignore[override]
+        yield b'{"Fault":'
+        raise httpx.ReadError("error body interrupted")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "refusal",
+    [
+        lambda: httpx.Response(
+            400,
+            content=b'{"Fault":{"type":"ValidationFault","Error":[{"code":"6240"}]}}' + b" " * 70_000,
+            headers={"Content-Type": "application/json"},
+        ),
+        lambda: httpx.Response(404, stream=_BrokenErrorStream()),
+    ],
+    ids=["oversized 400", "404 body broken mid-read"],
+)
+async def test_refusal_status_with_an_incomplete_error_body_is_an_unknown_outcome(
+    refusal: Callable[[], httpx.Response],
+) -> None:
+    """An unread refusal body proves nothing, so the send counts and is resent below the cap."""
+    script = Script(refusal(), httpx.Response(200, json=CUSTOMER))
+    context = AttemptContext()
+    assert isinstance(await create(script, context), sdk.RetryError)
+    assert context.marker.state == "claimed" and context.marker.send_count == 1
+    context.attempt = 2
+    assert branch(await create(script, context)) == "created"
+    assert len(script.requests) == 2
+
+
+@pytest.mark.asyncio
+async def test_unavailable_credential_broker_retries_without_counting_a_send() -> None:
+    """A transient credential broker failure is never a defect, and nothing is sent."""
+    script = Script(httpx.Response(200, json=CUSTOMER))
+    context = AttemptContext()
+    result = await create(script, context, credentials=UnavailableBrokerCredentials())
+    assert isinstance(result, sdk.RetryError)
+    assert result.failure.kind == sdk.FailureKind.AVAILABILITY
+    assert context.marker.state == "canResend" and context.marker.send_count == 0
+    assert script.requests == []
 
 
 @pytest.mark.asyncio

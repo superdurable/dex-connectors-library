@@ -4,6 +4,7 @@
 import { BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, RetryError, SecretString, defaultTriggerLogger, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials, CredentialSource } from './generated/models.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import { ListContactsOperation, FindContactByEmailOperation, GetInvoiceOperation, ListInvoicesOperation, CreateInvoiceOperation, RecordPaymentOperation } from './operations.js';
@@ -108,7 +109,8 @@ export class XeroClient {
     try { credentials = await this.credentials.resolveWithRefresh(call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
       const rejected = error instanceof ReauthorizationRequiredError;
-      const transient = error instanceof RetryError;
+      // A broker outage sends nothing, so every attempt retries instead of selecting defect or uncertain.
+      const transient = error instanceof RetryError || error instanceof CredentialBrokerUnavailableError;
       return this.localFailure(call, operation, rejected ? 'rejected' : transient ? 'retry' : 'defect', rejected ? 'AUTHENTICATION' : transient ? 'AVAILABILITY' : 'AUTHENTICATION', rejected ? 'Xero authorization must be renewed: reconnect the app or replace the client secret' : transient ? 'Xero access token request is temporarily unavailable' : 'Xero connection credentials are unavailable');
     }
     if (!['custom-connection', 'xero-oauth'].includes(credentials.authMethodId ?? '') || !(credentials.accessToken instanceof SecretString) || !isHeaderSafeCredential(credentials.accessToken.reveal())) return this.localFailure(call, operation, 'defect', 'AUTHENTICATION', 'Xero connection credentials are unavailable');

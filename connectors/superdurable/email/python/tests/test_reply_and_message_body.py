@@ -156,10 +156,23 @@ async def test_reply_replay_after_an_accepted_reply_is_sent_without_submitting(
         raise MailFailure("retry", _failure(operations.FailureKind.AVAILABILITY, "replyToMessage", "busy"))
 
     monkeypatch.setattr(operations, "_read_message", temporarily_unreadable)
+    temporary_call = accepted_call()
+    temporary = await client.reply_to_message().invoke(
+        temporary_call, ReplyToMessageInput(MessageReference("INBOX", 42, 97), "Thanks")
+    )
+    assert temporary.kind == "retry", "a later attempt rebuilds the output from the kept accepted marker"
+    assert temporary_call.context is not None
+    assert cast(Context, temporary_call.context).heartbeats == [], "the accepted marker stays last"
+
+    def missing_source(*_: object) -> Message:
+        failure = _failure(operations.FailureKind.NOT_FOUND, "replyToMessage", "missing")
+        raise MailFailure("not_found", failure)
+
+    monkeypatch.setattr(operations, "_read_message", missing_source)
     unreadable = await client.reply_to_message().invoke(
         accepted_call(), ReplyToMessageInput(MessageReference("INBOX", 42, 97), "Thanks")
     )
-    assert unreadable.kind == "uncertain", "an unreadable source cannot rebuild the output"
+    assert unreadable.kind == "uncertain", "a source that is gone cannot rebuild the output"
 
 
 def test_html_fallback_extracts_visible_text_and_attachment_names(monkeypatch: pytest.MonkeyPatch) -> None:

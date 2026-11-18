@@ -4,6 +4,7 @@
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import { XeroClient, encodeGoQuery, escapeGoPath } from '../src/client.js';
 import type { Credentials } from '../src/generated/models.js';
 
@@ -96,4 +97,15 @@ it('selects uncertain for a credential or local failure on a later write attempt
   }
   const unconfigured = new XeroClient({}, new StaticCredentialProvider<Credentials>([]), { send: async () => { throw new Error('unexpected send'); } });
   expect((await unconfigured.recordPayment().invoke(laterCall, paymentInput)).kind).toBe('uncertain');
+});
+
+it('retries an unavailable credential broker on every write attempt', async () => {
+  const paymentInput = { invoiceId: invoiceID, accountCode: '090', date: '2026-10-01', amount: '109.89' };
+  const credentials = { resolveWithRefresh: async () => { throw new CredentialBrokerUnavailableError(); }, resolve: async () => { throw new CredentialBrokerUnavailableError(); } };
+  const client = new XeroClient({}, credentials, { send: async () => { throw new Error('provider must not be called'); } });
+  for (const attemptNumber of [1, 2]) {
+    const writeCall = { ...call, idempotencyKey: '801feb97-5ad4-5063-b93c-9a25f054e79b', context: { ...call.context, attempt: attemptNumber } } as Call;
+    const attempt = await client.recordPayment().invoke(writeCall, paymentInput);
+    expect(attempt.kind, `attempt ${attemptNumber}`).toBe('retry');
+  }
 });

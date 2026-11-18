@@ -6,10 +6,12 @@ package docusign_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -149,6 +151,16 @@ func writeJSON(response http.ResponseWriter, status int, body string) {
 	_, _ = io.WriteString(response, body) // A failed write leaves the client to classify a broken response.
 }
 
+// cutOffBody answers status with a body shorter than its Content-Length, which breaks the client's read.
+func cutOffBody(status int, body string) http.HandlerFunc {
+	return func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		response.Header().Set("Content-Length", strconv.Itoa(len(body)+100))
+		response.WriteHeader(status)
+		_, _ = io.WriteString(response, body) // The short body is the point of this answer.
+	}
+}
+
 // docusignError is an eSignature error body whose message the connector must never repeat.
 func docusignError(errorCode string) string {
 	return `{"errorCode":"` + errorCode + `","message":"` + sentinelMessage + `"}`
@@ -218,6 +230,8 @@ type testDexContext struct {
 	mu             sync.Mutex
 	heartbeatValue json.RawMessage
 	heartbeats     int
+	// failingHeartbeatNumber makes that RecordHeartbeat call, counted from 1, fail; zero fails none.
+	failingHeartbeatNumber int
 }
 
 func newTestDexContext(step string) *testDexContext {
@@ -251,6 +265,9 @@ func (ctx *testDexContext) RecordHeartbeat(value any) error {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 	ctx.heartbeats++
+	if ctx.heartbeats == ctx.failingHeartbeatNumber {
+		return errors.New("the heartbeat could not be recorded")
+	}
 	if value == nil {
 		ctx.heartbeatValue = nil
 		return nil

@@ -4,6 +4,7 @@
 package mailchimp_test
 
 import (
+	"errors"
 	"math"
 	"net/http"
 	"strings"
@@ -142,6 +143,7 @@ func TestUpsertMemberRetriesUnknownOutcomes(t *testing.T) {
 		{name: "too early", status: http.StatusTooEarly, body: `{"title":"Too Early"}`},
 		{name: "redirect", status: http.StatusTemporaryRedirect, body: `{"title":"Moved"}`},
 		{name: "invalid contact", status: http.StatusOK, body: `{"status":"subscribed"}`},
+		{name: "oversized refusal body", status: http.StatusBadRequest, body: `{"title":"Invalid Resource","padding":"` + strings.Repeat("x", 4194304) + `"}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingMailchimp(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -153,6 +155,16 @@ func TestUpsertMemberRetriesUnknownOutcomes(t *testing.T) {
 			require.Equal(t, 1, provider.requestCount())
 		})
 	}
+}
+
+func TestUpsertMemberRetriesATransientCredentialFailureWithoutARequest(t *testing.T) {
+	provider := newRecordingMailchimp(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client, err := mailchimp.New(mailchimp.Config{}, failingMailchimpCredentials{err: errors.New("credential store unavailable")},
+		mailchimp.WithAPIBaseURL(provider.URL+"/3.0"))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newMailchimpDexContext("upsert-transient-credentials"), client.UpsertMember(), mailchimpConnection, validUpsertMemberInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a transient credential failure is never a defect")
 }
 
 func TestUpsertMemberRejectsInvalidInputBeforeAnyRequest(t *testing.T) {
