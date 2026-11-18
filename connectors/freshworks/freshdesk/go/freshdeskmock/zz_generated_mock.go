@@ -269,7 +269,7 @@ func UpdateTicketInvalidResponse(value freshdesk.UpdateTicketOutput, failure *sd
 	return connectormock.Branch(freshdesk.UpdateTicketBranchInvalidResponse, value, failure)
 }
 
-// UpdateTicketDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// UpdateTicketDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.
 func UpdateTicketDefect(value freshdesk.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[freshdesk.UpdateTicketOutput] {
 	return connectormock.Branch(freshdesk.UpdateTicketBranchDefect, value, failure)
 }

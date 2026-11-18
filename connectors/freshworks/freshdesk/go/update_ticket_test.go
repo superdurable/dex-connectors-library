@@ -135,6 +135,25 @@ func TestUpdateTicketBranches(t *testing.T) {
 	}
 }
 
+// A later attempt may follow a PUT that took effect, so a terminal credential failure retries.
+func TestUpdateTicketTerminalCredentialFailureSelectsDefectOnlyOnTheFirstAttempt(t *testing.T) {
+	provider := newRecordingFreshdesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, failingFreshdeskCredentials{err: sdkgo.ErrReauthorizationRequired},
+		freshdesk.WithAPIBaseURL(provider.URL+"/api/v2"))
+	require.NoError(t, err)
+	input := freshdesk.UpdateTicketInput{TicketID: 20, Status: freshdesk.TicketStatusOpen}
+	firstAttempt := newFreshdeskDexContext("update-credential")
+	result, err := sdkgo.RunMutation(firstAttempt, client.UpdateTicket(), freshdeskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, freshdesk.UpdateTicketBranchDefect, result.Branch)
+
+	_, err = sdkgo.RunMutation(firstAttempt.nextAttempt(), client.UpdateTicket(), freshdeskConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAuthentication, retry.Failure.Kind)
+	require.Zero(t, provider.requestCount())
+}
+
 func TestUpdateTicketRejectsInvalidInputBeforeAnyRequest(t *testing.T) {
 	provider := newRecordingFreshdesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	for name, input := range map[string]freshdesk.UpdateTicketInput{
