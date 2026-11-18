@@ -3,7 +3,7 @@
 
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { AirtableClient } from '../src/client.js';
 
@@ -50,12 +50,32 @@ it.each([
   expect(upsert.kind).toBe('retry');
 });
 
-it('retries a write whose credentials are temporarily unavailable', async () => {
-  const client = new AirtableClient({}, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } }, {
+it.each([
+  ['broker unavailable', new CredentialBrokerUnavailableError()],
+  ['static not configured', new Error('connection is not configured')],
+  ['unlisted error', new RangeError('credential store hiccup')],
+])('retries a write whose credentials are temporarily unavailable: %s', async (_name, error) => {
+  const client = new AirtableClient({}, { resolve: async () => { throw error; } }, {
     send: async () => { throw new Error('unexpected request'); },
   });
   const update = await client.updateRecords().invoke(call, { ...input, records: [{ id: 'recPolicyStandard', fields: { Status: 'done' } }] });
   expect(update.kind).toBe('retry');
+});
+
+it.each([
+  ['reauthorization', new ReauthorizationRequiredError(), 'providerRejected'],
+  ['object not found', new ObjectNotFoundError(), 'defect'],
+  ['connection not selected', new ConnectionNotSelectedError(), 'defect'],
+  ['broker rejected', new CredentialBrokerRejectedError(), 'defect'],
+])('selects a terminal branch for a terminal credential failure: %s', async (_name, error, branch) => {
+  let requestCount = 0;
+  const client = new AirtableClient({}, { resolve: async () => { throw error; } }, {
+    send: async () => { requestCount++; throw new Error('unexpected request'); },
+  });
+  const update = await client.updateRecords().invoke(call, { ...input, records: [{ id: 'recPolicyStandard', fields: { Status: 'done' } }] });
+  expect(update.kind).toBe('branch');
+  if (update.kind === 'branch') expect(update.branch).toBe(branch);
+  expect(requestCount).toBe(0);
 });
 
 it('escapes text filters in the provider request without sending the token in the body', async () => {

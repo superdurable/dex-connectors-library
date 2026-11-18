@@ -280,20 +280,24 @@ func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, o
 		credentials, err = client.credentials.Resolve(call)
 	}
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "the Airtable connection must be authorized again", sdkgo.Receipt{})
-	case isTransientCredentialFailure(err):
+	case isTerminalCredentialError(err):
+		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "Airtable connection credentials are unavailable", sdkgo.Receipt{})
+	case err != nil:
 		// A write may have applied in an earlier attempt, so a passing outage must not select defect.
 		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "Airtable connection credentials are temporarily unavailable", sdkgo.Receipt{})
-	case err != nil || !providerhttp.IsHeaderSafeCredential(credentials.PersonalAccessToken.Reveal()):
+	case !providerhttp.IsHeaderSafeCredential(credentials.PersonalAccessToken.Reveal()):
 		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "Airtable connection credentials are unavailable", sdkgo.Receipt{})
 	}
 	return credentials, nil
 }
 
-// isTransientCredentialFailure reports a credential read that failed in transit or ran out of time.
-func isTransientCredentialFailure(err error) bool {
-	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) outcome(disposition outcomeDisposition, operation string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) *providerOutcome {

@@ -3,7 +3,7 @@
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { GetRecordOperation, ListRecordsOperation, UpdateRecordsOperation, UpsertRecordsOperation } from './operations.js';
 
@@ -107,18 +107,17 @@ export class AirtableClient {
       try { await waitForSlot(slot, call.context.cancellationSignal); }
       catch { return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'the Step ended while waiting for an Airtable request slot') }; }
     }
-    let token: string;
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.personalAccessToken instanceof SecretString)) throw new TypeError('invalid Airtable token');
-      token = credentials.personalAccessToken.reveal();
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid Airtable token');
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: this.failure('rejected', operation, 'AUTHENTICATION', 'the Airtable connection must be authorized again') };
+      if (isTerminalCredentialError(error)) return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Airtable connection credentials are unavailable') };
       // A write may have applied in an earlier attempt, so a passing outage must not select defect.
-      if (error instanceof CredentialBrokerUnavailableError || error instanceof DOMException && error.name === 'AbortError') return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'Airtable connection credentials are temporarily unavailable') };
-      return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Airtable connection credentials are unavailable') };
+      return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'Airtable connection credentials are temporarily unavailable') };
     }
+    const token = credentials.personalAccessToken instanceof SecretString ? credentials.personalAccessToken.reveal() : '';
+    if (!token || !isHeaderSafeCredential(token)) return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Airtable connection credentials are unavailable') };
     let encoded: Uint8Array | undefined;
     try { if (body !== undefined) encoded = Buffer.from(JSON.stringify(body), 'utf8'); }
     catch { return { outcome: this.failure('defect', operation, 'LOCAL_DEFECT', `${operation} request could not be encoded`) }; }
@@ -169,6 +168,12 @@ export class AirtableClient {
   private failure(disposition: ExchangeFailure['disposition'], operation: string, kind: Failure['kind'], message: string, receipt: ReceiptDraft = {}, retryAfterMs = 0): ExchangeFailure {
     return { disposition, failure: { kind, provider: 'airtable', operation, message }, receipt, retryAfterMs };
   }
+}
+
+/** Reports a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
 function header(response: ProviderResponse, name: string): string {
