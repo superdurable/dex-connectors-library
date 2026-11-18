@@ -29,6 +29,7 @@ from dex_connectors.sdk import (
     RetryError,
     StaticCredentialProvider,
     StepDefaults,
+    derive_call_id,
     derive_step_call_id,
     resolve_credential,
     resolve_credential_after_rejection,
@@ -269,6 +270,48 @@ async def test_concurrent_call_of_the_same_mutation_is_refused_before_sending() 
     assert (await first).branch == "success"
     assert (await run_mutation(concurrent, step_call, "third")).branch == "success"
     assert running.invocations == 1
+
+
+@pytest.mark.asyncio
+async def test_refused_concurrent_mutation_consumes_no_occurrence() -> None:
+    """As in Go, the next begun Mutation gets occurrence 2 after refused concurrent calls."""
+    context = cast(dex.AsyncContext, StepContext())
+    unbound_receipt = replace(RECEIPT, call_id=CallID(""))
+
+    def derived_call() -> Call:
+        return Call(derive_step_call_id(context, OPERATION), CONNECTION, OPERATION, context=context)
+
+    running = BlockingMutation()
+    running.attempt = MutationAttempt.branch_result("success", "ok", unbound_receipt)
+    refused_mutations = [
+        ExampleMutation(MutationAttempt.branch_result("success", "ok", unbound_receipt))
+        for _ in range(2)
+    ]
+    # gather builds every Call before any Mutation begins.
+    calls = [derived_call() for _ in range(3)]
+    first = asyncio.create_task(run_mutation(running, calls[0], "first"))
+    await running.started.wait()
+    refused = await asyncio.gather(*(
+        run_mutation(mutation, call, "concurrent")
+        for mutation, call in zip(refused_mutations, calls[1:], strict=True)
+    ))
+    assert [result.branch for result in refused] == ["defect", "defect"]
+    running.release.set()
+    assert (await first).receipt.call_id == calls[0].id
+
+    later = ExampleMutation(MutationAttempt.branch_result("success", "ok", unbound_receipt))
+    later_call = derived_call()
+    second_occurrence = derive_call_id("flow-1", "step-1", OPERATION, occurrence=2)
+    assert later_call.id != second_occurrence, "construction consumed occurrences 2 to 4"
+    result = await run_mutation(later, later_call, "later")
+    assert later.observed_call is not None and later.observed_call.id == second_occurrence
+    assert result.receipt.call_id == second_occurrence
+    assert str(later.observed_call.idempotency_key) == str(second_occurrence)
+
+    application_call = Call(CALL_ID, CONNECTION, OPERATION, context=context)
+    kept = ExampleMutation(MutationAttempt.branch_result("success", "ok", unbound_receipt))
+    await run_mutation(kept, application_call, "application")
+    assert kept.observed_call is not None and kept.observed_call.id == CALL_ID
 
 
 def test_step_attempt_state_requires_a_weakly_referenceable_context() -> None:
