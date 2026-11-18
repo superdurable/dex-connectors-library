@@ -12,12 +12,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.pinecone import (
     API_VERSION,
@@ -226,6 +233,47 @@ async def test_blank_key_is_defect_without_request() -> None:
     )
     assert result.branch == DEFECT
     assert result.failure is not None and result.failure.kind == FailureKind.AUTHENTICATION
+    assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_credential_failures_select_defect_only_when_terminal(
+    error: Exception, is_terminal: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    class FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"upsertedCount": 2})
+
+    client = Client(
+        Config("http://localhost:8848/"),
+        FailingCredentials(),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    if is_terminal:
+        result = await run_mutation(client.upsert_vectors(), upsert_call(), UPSERT)
+        assert result.branch == DEFECT
+    else:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.upsert_vectors(), upsert_call(), UPSERT)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
     assert requests == []
 
 
