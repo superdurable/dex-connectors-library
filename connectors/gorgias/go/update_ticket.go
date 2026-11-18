@@ -95,7 +95,7 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, failure, sdkgo.Receipt{})
 	}
-	current, attempt, isTerminal := operation.readTicket(call, credentials, input.TicketID, UpdateTicketOutput{})
+	current, attempt, isTerminal := operation.readTicketBeforeChange(call, credentials, input.TicketID)
 	if isTerminal {
 		return attempt
 	}
@@ -137,11 +137,32 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	return sdkgo.NewMutationBranch(UpdateTicketBranchUpdated, UpdateTicketOutput{Ticket: updated}, nil, operation.client.receipt(call, gorgiasResponse{}, updated.ID))
 }
 
+// readTicketBeforeChange reads the ticket before any write of this attempt. A 3xx is Gorgias's documented
+// answer for a merged ticket, a definite business outcome that selects providerRejected on every attempt.
+func (operation UpdateTicketOperation) readTicketBeforeChange(call sdkgo.Call, credentials Credentials, ticketID int64) (Ticket, sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
+	result := operation.client.exchange(call, credentials, updateTicketOperation, gorgiasRequest{method: http.MethodGet, path: ticketPath(ticketID)})
+	if isMergedTicketRedirect(result) {
+		receipt := operation.client.receipt(call, result.response, ticketID)
+		return Ticket{}, sdkgo.NewMutationBranch(UpdateTicketBranchProviderRejected, UpdateTicketOutput{}, &result.failure, receipt), true
+	}
+	return operation.decodeTicketRead(call, result, ticketID, UpdateTicketOutput{})
+}
+
+// isMergedTicketRedirect reports a 3xx answer, which Gorgias returns for a merged ticket.
+func isMergedTicketRedirect(result gorgiasExchange) bool {
+	return result.outcome == exchangeRejected && result.response.statusCode >= 300 && result.response.statusCode < 400
+}
+
 // readTicket reads GET /api/tickets/{id}, returning a terminal attempt for every outcome except a valid ticket.
 // An earlier attempt's write may have applied before any read, so an invalid ticket retries the absolute
 // change; invalidResponse stays declared but is not selected.
 func (operation UpdateTicketOperation) readTicket(call sdkgo.Call, credentials Credentials, ticketID int64, currentOutput UpdateTicketOutput) (Ticket, sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
 	result := operation.client.exchange(call, credentials, updateTicketOperation, gorgiasRequest{method: http.MethodGet, path: ticketPath(ticketID)})
+	return operation.decodeTicketRead(call, result, ticketID, currentOutput)
+}
+
+// decodeTicketRead maps a ticket read: only a definite refusal selects a branch, and anything else but a valid ticket retries.
+func (operation UpdateTicketOperation) decodeTicketRead(call sdkgo.Call, result gorgiasExchange, ticketID int64, currentOutput UpdateTicketOutput) (Ticket, sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
 	receipt := operation.client.receipt(call, result.response, ticketID)
 	if attempt, isTerminal := updateTicketAttemptForExchange(result, receipt, currentOutput); isTerminal {
 		return Ticket{}, attempt, true

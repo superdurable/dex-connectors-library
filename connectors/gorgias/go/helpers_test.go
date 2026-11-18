@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/gorgias/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -105,7 +106,13 @@ var credentialFailureCases = []struct {
 	isTerminal  bool
 }{
 	{name: "transient store failure", credentials: failingCredentialProvider{err: errors.New("credential store unavailable")}},
+	{name: "broker unavailable", credentials: failingCredentialProvider{err: projectconfig.ErrCredentialBrokerUnavailable}},
+	{name: "connection not configured", credentials: sdkgo.StaticCredentialProvider[gorgias.Credentials]{}},
 	{name: "reauthorization required", credentials: failingCredentialProvider{err: sdkgo.ErrReauthorizationRequired}, isTerminal: true},
+	{name: "project reauthorization required", credentials: failingCredentialProvider{err: projectconfig.ErrReauthorizationRequired}, isTerminal: true},
+	{name: "connection object not found", credentials: failingCredentialProvider{err: projectconfig.ErrObjectNotFound}, isTerminal: true},
+	{name: "connection not selected", credentials: failingCredentialProvider{err: projectconfig.ErrConnectionNotSelected}, isTerminal: true},
+	{name: "broker rejected", credentials: failingCredentialProvider{err: projectconfig.ErrCredentialBrokerRejected}, isTerminal: true},
 	{name: "unusable credentials", credentials: sdkgo.StaticCredentialProvider[gorgias.Credentials]{
 		gorgiasConnection: {Email: "not an address", APIKey: sdkgo.NewSecretString(testAPIKey)},
 	}, isTerminal: true},

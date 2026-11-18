@@ -22,6 +22,13 @@ from dex_connectors.sdk import (
     StaticCredentialProvider,
     run_mutation,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+    RelayTokenRenewalDeferredError,
+)
 from dex_connectors.sdk.singledispatch import Marker, State
 
 from dex_connectors.gorgias import Client, Config, Credentials
@@ -133,7 +140,13 @@ class FailingCredentials:
 Answer = Callable[[httpx.Request], httpx.Response]
 CREDENTIAL_FAILURES: list[tuple[str, Any, bool]] = [
     ("transient store failure", FailingCredentials(RuntimeError("credential store unavailable")), False),
+    ("broker unavailable", FailingCredentials(CredentialBrokerUnavailableError()), False),
+    ("relay token renewal deferred", FailingCredentials(RelayTokenRenewalDeferredError()), False),
+    ("connection not configured", StaticCredentialProvider({}), False),
     ("reauthorization required", FailingCredentials(ReauthorizationRequiredError()), True),
+    ("connection object not found", FailingCredentials(ObjectNotFoundError()), True),
+    ("connection not selected", FailingCredentials(ConnectionNotSelectedError()), True),
+    ("broker rejected", FailingCredentials(CredentialBrokerRejectedError()), True),
     (
         "unusable credentials",
         StaticCredentialProvider({REFERENCE: Credentials("not an address", SecretString("inert-key"))}),
@@ -327,8 +340,11 @@ async def test_update_ticket_refusal_with_an_oversized_body_retries() -> None:
         ("invalid ticket", 200, {"id": "SENTINEL"}, ""),
         ("oversized ticket", 200, {**TICKET, "id": 7001, "subject": "x" * 8192}, ""),
         ("oversized refusal", 400, {"error": {"msg": "x" * 8192}}, ""),
-        ("redirect", 301, {}, ""),
+        ("merged ticket redirect", 301, {}, "providerRejected"),
         ("conflict", 409, {}, ""),
+        ("outage", 500, {}, ""),
+        ("timeout", 408, {}, ""),
+        ("credential-reflecting refusal", 400, {"error": {"msg": "inert-key"}}, ""),
     ],
 )
 async def test_update_ticket_first_read_selects_a_branch_only_for_a_definite_refusal(

@@ -454,6 +454,9 @@ class UpdateTicketOperation:
         path = f"/tickets/{input.ticket_id}"
         read = await self.client.exchange(call, credentials, operation, "GET", path)
         receipt = self.client.receipt(call, read, input.ticket_id)
+        if _is_merged_ticket_redirect(read):
+            assert read.failure is not None
+            return MutationAttempt.branch_result(defs.PROVIDER_REJECTED, zero, receipt, read.failure)
         # An earlier attempt's write may have applied, so only a definite refusal selects a branch.
         terminal = _after_write_exchange(read, receipt, zero)
         if terminal:
@@ -551,9 +554,18 @@ def _is_conclusive_write_failure(exchange: Exchange) -> bool:
     return exchange.outcome in ("notFound", "rejected") and _is_definite_refusal(exchange)
 
 
+def _is_merged_ticket_redirect(exchange: Exchange) -> bool:
+    """Report a 3xx, Gorgias's documented answer for a merged ticket, which ends the update on any attempt."""
+    return exchange.outcome == "rejected" and 300 <= exchange.status < 400
+
+
 def _is_definite_refusal(exchange: Exchange) -> bool:
     """Report a refusal status whose body was read, which proves Gorgias applied nothing."""
-    return exchange.status in _DEFINITE_REFUSAL_STATUSES and not exchange.body_too_large
+    return (
+        exchange.status in _DEFINITE_REFUSAL_STATUSES
+        and not exchange.body_too_large
+        and not exchange.body_reflects_credential
+    )
 
 
 def _is_accepted_write(exchange: Exchange) -> bool:

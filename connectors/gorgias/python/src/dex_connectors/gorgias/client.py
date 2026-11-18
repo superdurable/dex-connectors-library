@@ -74,6 +74,8 @@ class Exchange:
     retry_after: float = 0
     body_too_large: bool = False
     """The body exceeded max_response_bytes and was not read, so it cannot prove a refusal."""
+    body_reflects_credential: bool = False
+    """The body contains the API key, so it cannot prove a refusal."""
     object_id: int = 0
     """The top-level id a readable body names; a write answer that carries one was accepted."""
     object_external_id: str = ""
@@ -307,9 +309,11 @@ class Client:
                 object_external_id=object_external_id,
                 object_ticket_id=object_ticket_id,
             )
+        api_key = credentials.api_key.reveal().encode()
         return replace(
             self._classify_failure_status(response, body, credentials, operation),
             body_too_large=body_too_large,
+            body_reflects_credential=bool(api_key) and api_key in body,
             object_id=object_id,
             object_external_id=object_external_id,
             object_ticket_id=object_ticket_id,
