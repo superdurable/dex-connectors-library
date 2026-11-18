@@ -272,7 +272,9 @@ these definite refusals of the first send records `canResend`; after an earlier
 possible send it selects `uncertain`, because the refusal cannot prove no issue
 exists. Any other status, such as `410` for a repository with issues disabled,
 `408`, `409`, or a redirect, leaves the outcome unknown and is read back and
-resent below the cap. A dispatch checkpoint that cannot be read returns Retry
+resent below the cap. So does a refusal status whose body is oversized or
+breaks mid-read, because the status alone cannot prove the refusal. A `2xx`
+whose body breaks or stalls is accepted and is read back, never resent. A dispatch checkpoint that cannot be read returns Retry
 without sending. Failures name the status, never the provider body. Both
 issue operations allow unlimited Execute attempts within 65 minutes, like the
 change queries.
@@ -366,8 +368,9 @@ retries and sends again only below the cap; at the cap the Step selects
 cap. A `403`, such as for a locked issue, selects `insufficientScope`, `404`
 selects `notFound`, and `422` and the other definite refusals select
 `providerRejected`, after recording `canResend` for a first send; after an
-earlier possible send they select `uncertain`. A `410` or any other status that
-does not prove a refusal is read back and resent below the cap.
+earlier possible send they select `uncertain`. A `410`, any other status that
+does not prove a refusal, and a refusal whose body is oversized or breaks
+mid-read are read back and resent below the cap.
 
 The [issue filing example](go/examples/issue-filing/README.md) checks up to
 three pages of open issues with the requested labels for a matching title, then

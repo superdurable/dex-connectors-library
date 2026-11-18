@@ -203,6 +203,8 @@ class IssueWriter {
     const delay = rateLimitDelayMs(response, this.client.now());
     if (delay !== undefined) return this.retryUnprocessed(fence, failure(createIssueOperationId, 'RATE_LIMIT', 'GitHub rate limit was reached'), delay);
     if (status === 503) return this.retryUnprocessed(fence, failure(createIssueOperationId, 'AVAILABILITY', 'GitHub is unavailable'), 0);
+    // An oversized or interrupted refusal body cannot prove GitHub refused the issue.
+    if (result.hasUnusableBody && status >= 400) return this.reconcileUnknownSend(failure(createIssueOperationId, 'AVAILABILITY', `GitHub issue creation outcome is unknown after an unreadable HTTP ${status} body`), isBelowSendCap, receipt);
     if (status === 401) {
       if (await this.client.hasReplacementCredential(this.call)) return this.retryUnprocessed(fence, failure(createIssueOperationId, 'AUTHENTICATION', 'GitHub access token was refreshed for retry'), 0);
       return this.refuse(fence, claimSendCount, 'authorizationRevoked', 'AUTHENTICATION', 'GitHub authorization is invalid or revoked', receipt);
@@ -554,6 +556,8 @@ class CommentWriter {
     const delay = rateLimitDelayMs(response, this.client.now());
     if (delay !== undefined) return this.retryUnprocessed(fence, failure(createIssueCommentOperationId, 'RATE_LIMIT', 'GitHub rate limit was reached'), delay);
     if (status === 503) return this.retryUnprocessed(fence, failure(createIssueCommentOperationId, 'AVAILABILITY', 'GitHub is unavailable'), 0);
+    // An oversized or interrupted refusal body cannot prove GitHub refused the comment.
+    if (result.hasUnusableBody && status >= 400) return this.reconcileUnknownSend(failure(createIssueCommentOperationId, 'AVAILABILITY', `GitHub comment creation outcome is unknown after an unreadable HTTP ${status} body`), isBelowSendCap, receipt);
     if (status === 401) {
       if (await this.client.hasReplacementCredential(this.call)) return this.retryUnprocessed(fence, failure(createIssueCommentOperationId, 'AUTHENTICATION', 'GitHub access token was refreshed for retry'), 0);
       return this.refuse(fence, claimSendCount, 'authorizationRevoked', 'AUTHENTICATION', 'GitHub authorization is invalid or revoked', receipt);

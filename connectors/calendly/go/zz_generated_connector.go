@@ -594,7 +594,7 @@ var CancelScheduledEventDefinition = sdkgo.MutationDefinition{
 		{ID: CancelScheduledEventBranchCanceled, Description: "The scheduled event is canceled, by this call or earlier; alreadyCanceled tells which."},
 		{ID: CancelScheduledEventBranchNotFound, Description: "The scheduled event does not exist or is not visible to the token.", Optional: true},
 		{ID: CancelScheduledEventBranchProviderRejected, Description: "Calendly refused to cancel an active event, such as one that already started or one the token may not cancel.", Optional: true},
-		{ID: CancelScheduledEventBranchInvalidResponse, Description: "Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403.", Optional: true},
+		{ID: CancelScheduledEventBranchInvalidResponse, Description: "No longer selected. A malformed or oversized scheduled event read back after a 403 is retried, because a repeated cancellation is harmless; the branch stays declared for compatibility.", Optional: true},
 		{ID: CancelScheduledEventBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

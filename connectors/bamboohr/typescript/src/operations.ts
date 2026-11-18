@@ -212,7 +212,7 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     if (decision.kind === 'failClosed') return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'the dispatch checkpoint could not be read; nothing was sent'));
     const savedEmployeeId = decision.marker?.callId === call.id ? decision.marker.providerId : undefined;
     // BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
-    if (decision.kind === 'readBackRequired' || (decision.kind === 'readBackThenResendAllowed' && savedEmployeeId)) {
+    if (decision.kind === 'readBackRequired' || savedEmployeeId) {
       const employeeId = savedEmployeeId;
       if (!employeeId || !employeeIdPattern.test(employeeId)) return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'earlier attempts may have added the employee up to the send cap; no employee ID is available for read-back'), receipt);
       const credential = await this.client.resolveKey(call);
@@ -267,7 +267,7 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
       catch { /* A failed identity checkpoint cannot authorize another POST. */ }
       return newMutationBranch('created', { employeeId }, this.client.receipt(call, employeeId));
     }
-    if (result.kind === 'rateLimited' || (result.kind === 'unavailable' && result.failure.kind === 'AVAILABILITY' && result.failure.message.includes('HTTP 503')) || result.kind === 'notSent') {
+    if (result.kind === 'rateLimited' || (result.kind === 'unavailable' && result.status === 503) || result.kind === 'notSent') {
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'BambooHR did not process the request, but the resend checkpoint failed'), result.retryAfterMs); }
       return newMutationRetry(result.failure, result.retryAfterMs);

@@ -281,7 +281,7 @@ spec:
         - {id: canceled, goName: Canceled, description: "The scheduled event is canceled, by this call or earlier; alreadyCanceled tells which."}
         - {id: notFound, goName: NotFound, description: "The scheduled event does not exist or is not visible to the token.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Calendly refused to cancel an active event, such as one that already started or one the token may not cancel.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "No longer selected. A malformed or oversized scheduled event read back after a 403 is retried, because a repeated cancellation is harmless; the branch stays declared for compatibility.", optional: true, retired: true, retiredReason: "A malformed or oversized read-back after the repeat-safe cancellation returns Retry instead of invalidResponse."}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

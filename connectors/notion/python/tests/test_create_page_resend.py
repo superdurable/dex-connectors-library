@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Notion page creations whose outcome is unknown."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
@@ -184,6 +185,57 @@ async def test_accepted_post_whose_body_breaks_is_never_resent() -> None:
     result = await run_create_page(respond, AttemptContext())
     assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
     assert len(requests) == 1
+
+
+class _SlowBody(httpx.AsyncByteStream):
+    """Send the status and headers, then hold the body past the write window."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(30)
+        yield b"{}"
+
+
+@pytest.mark.asyncio
+async def test_deadline_after_accepted_headers_is_never_resent() -> None:
+    """A write window that ends after Notion answered 2xx still means the page was accepted."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=3)
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, stream=_SlowBody())
+
+    result = await run_create_page(respond, context)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert posts(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_deadline_after_rate_limit_headers_records_can_resend() -> None:
+    """A 429 proves nothing was written, even when the write window cuts its body."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=3)
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(429, stream=_SlowBody())
+
+    assert isinstance(await run_create_page(respond, context), sdk.RetryError)
+    assert context.marker is not None and context.marker.state == "canResend"
+    assert posts(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_saved_page_id_is_read_back_when_the_decision_allows_a_send() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.attempt = 3
+    context.heartbeat_value = Marker(CALL_ID, 2, State.CAN_RESEND, PAGE_ID, 1)
+    result = await create_page(500, {}, context, requests)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "created"
+    assert [request.method for request in requests] == ["GET"]
 
 
 @pytest.mark.asyncio

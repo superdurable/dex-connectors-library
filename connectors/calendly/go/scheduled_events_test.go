@@ -309,6 +309,23 @@ func TestCancelScheduledEventSelectsNotFoundAndRetriesALostAnswer(t *testing.T) 
 	require.Contains(t, tooLong.Failure.Message, strconv.Itoa(10000))
 }
 
+func TestCancelScheduledEventRetriesARefusalOrReadBackItCannotReadInFull(t *testing.T) {
+	oversizedErrorBody := strings.Repeat("x", 64<<10+1)
+	fake := newFakeCalendly(t, map[string]http.HandlerFunc{
+		"POST /scheduled_events/EVENT0006/cancellation": respondJSON(http.StatusNotFound, oversizedErrorBody),
+		"POST /scheduled_events/EVENT0007/cancellation": respondJSON(http.StatusUnprocessableEntity, oversizedErrorBody),
+		"POST /scheduled_events/EVENT0008/cancellation": respondJSON(http.StatusForbidden, providerError("Permission Denied", "no")),
+		"GET /scheduled_events/EVENT0008":               respondJSON(http.StatusOK, `{"resource":{"uri":"`+strings.Repeat("y", 256)+`"}}`),
+	})
+	client := newTestClient(t, fake.redirectingClient(), personalAccessTokenCredentials(""), calendly.Config{MaxResponseBytes: 128})
+	for _, eventID := range []string{"EVENT0006", "EVENT0007", "EVENT0008"} {
+		_, err := sdkgo.RunMutation(newStepContext("cancel"), client.CancelScheduledEvent(), testConnection,
+			calendly.CancelScheduledEventInput{ScheduledEventURI: "https://api.calendly.com/scheduled_events/" + eventID})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "%s: an answer that is not read in full proves nothing, so the safe cancellation repeats", eventID)
+	}
+}
+
 func TestCancelScheduledEventRetriesAnAnswerThatDoesNotProveTheOutcome(t *testing.T) {
 	fake := newFakeCalendly(t, map[string]http.HandlerFunc{
 		"POST /scheduled_events/EVENT0004/cancellation": respondJSON(http.StatusConflict, providerError("Conflict", "busy")),

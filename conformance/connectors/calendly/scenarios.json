@@ -1415,15 +1415,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "alreadyCanceled": false,
-          "cancellation": {},
-          "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1432,7 +1427,7 @@
         "reason": "Schedule changed",
         "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
       },
-      "name": "cancelScheduledEvent-invalid-response",
+      "name": "cancelScheduledEvent-malformed-read-back-retry",
       "operation": "cancelScheduledEvent"
     },
     {

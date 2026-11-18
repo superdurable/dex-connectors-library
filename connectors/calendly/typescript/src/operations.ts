@@ -11,6 +11,10 @@ import type { ListScheduledEventsInput, ScheduledEventPage, GetScheduledEventInp
 
 /** Statuses that prove Calendly refused a write; any other failure leaves its outcome unknown. */
 const DefiniteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+/** Report a definite refusal status whose error body was read in full. */
+function isDefiniteWriteRefusal(exchange: Extract<CalendlyExchange, { kind: 'response' }>): boolean {
+  return DefiniteRefusalStatuses.has(exchange.response.status) && !exchange.isErrorBodyIncomplete;
+}
 const base = 'https://api.calendly.com';
 const resourceId = /^[A-Za-z0-9_-]{1,64}$/;
 const pageTokenPattern = /^[A-Za-z0-9_\-.~=+/]{1,512}$/;
@@ -311,9 +315,9 @@ export class ListEventInviteesOperation implements Query<ListEventInviteesInput,
   }
 }
 
-function classifyCancellationError(client: CalendlyClient, call: Call, exchange: CalendlyExchange, output: ScheduledEventCancellation): MutationAttempt<ScheduledEventCancellation> | undefined {
+function classifyCancellationError(exchange: CalendlyExchange, output: ScheduledEventCancellation): MutationAttempt<ScheduledEventCancellation> | undefined {
   if (exchange.kind === 'defect') return newMutationBranch('defect', output, {}, failure('cancelScheduledEvent', 'LOCAL_DEFECT', 'Calendly request could not be built'));
-  if (exchange.kind === 'tooLarge') return newMutationBranch('invalidResponse', output, client.receipt(call, output.scheduledEventUri), failure('cancelScheduledEvent', 'RESPONSE_TOO_LARGE', 'Calendly response exceeds the configured maxResponseBytes'));
+  if (exchange.kind === 'tooLarge') return newMutationRetry(failure('cancelScheduledEvent', 'RESPONSE_TOO_LARGE', "Calendly's scheduled event answer exceeds maxResponseBytes; the retry reads the event back"));
   if (exchange.kind !== 'response') return newMutationRetry(failure('cancelScheduledEvent', 'TRANSPORT', "Calendly's answer to the cancellation was lost; the retry reads the event back"));
   return undefined;
 }
@@ -336,34 +340,37 @@ export class CancelScheduledEventOperation implements Mutation<CancelScheduledEv
     const credentials = (resolved as { credentials: Credentials }).credentials;
     const exchange = await this.client.exchange(call, credentials, 'POST', `/scheduled_events/${id}/cancellation`, undefined, input.reason ? { reason: input.reason } : {});
     if (exchange.kind === 'tooLarge') return newMutationRetry(failure('cancelScheduledEvent', 'RESPONSE_TOO_LARGE', "Calendly's cancellation answer exceeds maxResponseBytes; the retry reads the event back"));
-    const errorAttempt = classifyCancellationError(this.client, call, exchange, output); if (errorAttempt) return errorAttempt;
-    const response = (exchange as Extract<CalendlyExchange, { kind: 'response' }>).response;
+    const errorAttempt = classifyCancellationError(exchange, output); if (errorAttempt) return errorAttempt;
+    const answered = exchange as Extract<CalendlyExchange, { kind: 'response' }>;
+    const response = answered.response;
     if (response.status === 200 || response.status === 201) {
       try { output.cancellation = decodeCancellation(responseResource(exchange)); return newMutationBranch('canceled', output, this.client.receipt(call, input.scheduledEventUri)); }
       // The cancellation may have applied; the retry's 403 reads the canceled event back.
       catch { return newMutationRetry(failure('cancelScheduledEvent', 'PROTOCOL', "Calendly's cancellation answer is malformed; the retry reads the event back")); }
     }
     if (response.status === 403) return this.readBackRefusedCancellation(call, credentials, id, output, exchange);
-    if (response.status === 404) return newMutationBranch('notFound', output, this.client.receipt(call, input.scheduledEventUri), failure('cancelScheduledEvent', 'NOT_FOUND', 'the Calendly scheduled event was not found'));
+    if (response.status === 404 && !answered.isErrorBodyIncomplete) return newMutationBranch('notFound', output, this.client.receipt(call, input.scheduledEventUri), failure('cancelScheduledEvent', 'NOT_FOUND', 'the Calendly scheduled event was not found'));
     const outcome = this.client.failure('cancelScheduledEvent', response);
-    // A status that does not prove a refusal, such as 409 or 408, leaves the cancellation unknown.
-    return outcome.isRetry || !DefiniteRefusalStatuses.has(response.status) ? newMutationRetry(outcome.failure, outcome.retryAfterMs) : newMutationBranch('providerRejected', output, this.client.receipt(call, input.scheduledEventUri), outcome.failure);
+    // A non-refusal status, such as 409 or 408, or an unreadable refusal body leaves the cancellation unknown.
+    return outcome.isRetry || !isDefiniteWriteRefusal(answered) ? newMutationRetry(outcome.failure, outcome.retryAfterMs) : newMutationBranch('providerRejected', output, this.client.receipt(call, input.scheduledEventUri), outcome.failure);
   }
 
   private async readBackRefusedCancellation(call: Call, credentials: Credentials, id: string, output: ScheduledEventCancellation, refusal: CalendlyExchange): Promise<MutationAttempt<ScheduledEventCancellation>> {
     const exchange = await this.client.exchange(call, credentials, 'GET', `/scheduled_events/${id}`);
-    const errorAttempt = classifyCancellationError(this.client, call, exchange, output); if (errorAttempt) return errorAttempt;
-    const response = (exchange as Extract<CalendlyExchange, { kind: 'response' }>).response;
-    if (response.status === 404) return newMutationBranch('notFound', output, this.client.receipt(call, output.scheduledEventUri), failure('cancelScheduledEvent', 'NOT_FOUND', 'the Calendly scheduled event was not found'));
+    const errorAttempt = classifyCancellationError(exchange, output); if (errorAttempt) return errorAttempt;
+    const answered = exchange as Extract<CalendlyExchange, { kind: 'response' }>;
+    const response = answered.response;
+    if (response.status === 404 && !answered.isErrorBodyIncomplete) return newMutationBranch('notFound', output, this.client.receipt(call, output.scheduledEventUri), failure('cancelScheduledEvent', 'NOT_FOUND', 'the Calendly scheduled event was not found'));
     if (response.status < 200 || response.status >= 300) {
       const readOutcome = this.client.failure('cancelScheduledEvent', response);
-      if (readOutcome.isRetry) return newMutationRetry(readOutcome.failure, readOutcome.retryAfterMs);
+      if (readOutcome.isRetry || !isDefiniteWriteRefusal(answered)) return newMutationRetry(readOutcome.failure, readOutcome.retryAfterMs);
       const original = this.client.failure('cancelScheduledEvent', (refusal as Extract<CalendlyExchange, { kind: 'response' }>).response);
       return newMutationBranch('providerRejected', output, this.client.receipt(call, output.scheduledEventUri), original.failure);
     }
     let event: ScheduledEvent;
     try { event = decodeEvent(responseResource(exchange)); if (event.uri !== output.scheduledEventUri) throw new TypeError('wrong event'); }
-    catch { return newMutationBranch('invalidResponse', output, this.client.receipt(call, output.scheduledEventUri), failure('cancelScheduledEvent', 'PROTOCOL', 'Calendly returned a malformed response')); }
+    // A repeated cancellation is harmless, so the retry reads the event again.
+    catch { return newMutationRetry(failure('cancelScheduledEvent', 'PROTOCOL', "Calendly's scheduled event answer is malformed; the retry reads the event back")); }
     if (event.status === 'canceled') return newMutationBranch('canceled', { ...output, alreadyCanceled: true, ...(event.cancellation ? { cancellation: event.cancellation } : {}) }, this.client.receipt(call, output.scheduledEventUri));
     const refusalResponse = (refusal as Extract<CalendlyExchange, { kind: 'response' }>).response;
     let failureKind: Parameters<typeof failure>[1] = 'AUTHORIZATION';
@@ -383,6 +390,8 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
   /** Dispatch below the send cap and classify an unconfirmable write at the cap as uncertain. */
   async invoke(call: Call, input: CreateSchedulingLinkInput): Promise<MutationAttempt<SchedulingLink>> {
     const output = zeroLink(input.eventTypeUri);
+    try { parseResourceURI(input.eventTypeUri, 'event_types', 'event type'); }
+    catch (error) { return newMutationBranch('defect', output, {}, failure('createSchedulingLink', 'VALIDATION', (error as Error).message)); }
     const operationMaxSends = definitionMaxSends(CreateSchedulingLinkDefinition);
     let fence;
     try { fence = newFence(call, CreateSchedulingLinkDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { writeWindowFraction: 5 / 6, maxSends: operationMaxSends }); }
@@ -390,7 +399,7 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
     const decision = fence.decide();
     if (decision.kind === 'failClosed') return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'the scheduling link dispatch checkpoint could not be read; nothing was sent'));
     const savedBookingUrl = decision.marker?.callId === call.id ? decision.marker.providerId : undefined;
-    if (decision.kind !== 'sendAllowed' && savedBookingUrl) {
+    if (savedBookingUrl) {
       // Calendly returned this booking URL for an accepted earlier send, so it is never resent.
       if (isUsableBookingUrl(savedBookingUrl)) return newMutationBranch('created', { bookingUrl: savedBookingUrl, eventTypeUri: input.eventTypeUri }, this.client.receipt(call, savedBookingUrl));
       return newMutationUncertain(output, failure('createSchedulingLink', 'PROTOCOL', 'the saved scheduling link checkpoint is invalid'), this.client.receipt(call));
@@ -401,8 +410,6 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
     const hasPossibleEarlierSend = priorSendUpperBound > 0;
     const resendOrSelectUncertain = (unknownFailure: Failure, retryAfterMs?: number): MutationAttempt<SchedulingLink> =>
       canResendUnknownOutcome ? newMutationRetry(unknownFailure, retryAfterMs) : newMutationUncertain(output, unknownFailure, this.client.receipt(call));
-    try { parseResourceURI(input.eventTypeUri, 'event_types', 'event type'); }
-    catch (error) { return newMutationBranch('defect', output, {}, failure('createSchedulingLink', 'VALIDATION', (error as Error).message)); }
     const resolved = await this.client.resolveCredentials(call);
     if (resolved.kind !== 'resolved' && hasPossibleEarlierSend) {
       // notSent would hide the earlier possible send, so nothing is recorded.
@@ -434,7 +441,8 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
       const defectFailure = failure('createSchedulingLink', 'LOCAL_DEFECT', 'Calendly request could not be built');
       return hasPossibleEarlierSend ? resendOrSelectUncertain(defectFailure) : newMutationBranch('defect', output, {}, defectFailure);
     }
-    const response = (exchange as Extract<CalendlyExchange, { kind: 'response' }>).response;
+    const answered = exchange as Extract<CalendlyExchange, { kind: 'response' }>;
+    const response = answered.response;
     if (response.status >= 200 && response.status < 300) {
       try {
         const resource = responseResource(exchange);
@@ -451,14 +459,14 @@ export class CreateSchedulingLinkOperation implements Mutation<CreateSchedulingL
       catch { return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'Calendly declined the request but the retry checkpoint failed')); }
       return newMutationRetry(outcome.failure, outcome.retryAfterMs);
     }
-    if (DefiniteRefusalStatuses.has(response.status)) {
+    if (isDefiniteWriteRefusal(answered)) {
       // An earlier send may have created a link, so a refusal of this resend proves nothing.
       if (hasPossibleEarlierSend) return newMutationUncertain(output, outcome.failure, this.client.receipt(call));
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure('createSchedulingLink', 'AVAILABILITY', 'Calendly refused the request but the refusal checkpoint failed')); }
       return newMutationBranch('providerRejected', output, this.client.receipt(call), outcome.failure);
     }
-    // A 5xx, 409, 408, or other status does not prove whether a link was created.
+    // A 5xx, 409, 408, other status, or refusal with an unreadable body does not prove the outcome.
     return resendOrSelectUncertain(outcome.failure, outcome.retryAfterMs);
   }
 }
@@ -502,7 +510,7 @@ function decodeSubscription(value: unknown): WebhookSubscription {
 function isUnknownWebhookCreateOutcome(exchange: CalendlyExchange): boolean {
   if (exchange.kind !== 'response') return exchange.kind === 'tooLarge' || exchange.kind === 'malformed';
   const status = exchange.response.status;
-  return (status < 200 || status >= 300) && status !== 429 && status < 500 && !DefiniteRefusalStatuses.has(status);
+  return (status < 200 || status >= 300) && status !== 429 && status < 500 && !isDefiniteWriteRefusal(exchange);
 }
 
 /** Register or reuse one Calendly webhook subscription. */

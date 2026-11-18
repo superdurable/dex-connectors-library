@@ -90,6 +90,17 @@ describe('createObject bounded resend', () => {
     expect(await run(client.createObject(), CreateObjectDefinition.operation, deal, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
     expect(sends).toBe(1);
   });
+
+  it('never resends an accepted create whose body stalled', async () => {
+    const { ProviderStalledError } = await import('@superdurable/connectors-sdk/providerhttp');
+    let sends = 0;
+    const credentials = async () => ({ authMethodId: 'api-token', apiToken: new SecretString('inert-token') });
+    const client = new PipedriveClient({ endpoint: 'http://127.0.0.1:42703' }, { resolve: credentials, resolveWithRefresh: credentials }, {
+      send: async () => { sends++; throw new ProviderStalledError(201, {}); },
+    });
+    expect(await run(client.createObject(), CreateObjectDefinition.operation, deal, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(sends).toBe(1);
+  });
 });
 
 describe('upsertObject bounded resend', () => {

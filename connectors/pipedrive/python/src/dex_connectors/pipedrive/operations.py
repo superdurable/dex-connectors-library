@@ -605,6 +605,7 @@ class CreateObjectOperation:
                 )
             return _mutation_result(issue, Receipt(), CRMObject(""))
         assert credentials is not None
+        observed_statuses: list[int] = []
 
         async def send(deadline: datetime) -> Exchange:
             return await self.client.exchange(
@@ -615,6 +616,7 @@ class CreateObjectOperation:
                 f"/api/v2/{input.object_type}",
                 body=body,
                 allow_refresh=False,
+                observed_statuses=observed_statuses,
             )
 
         try:
@@ -629,6 +631,20 @@ class CreateObjectOperation:
                         "the next attempt must reconcile the checkpoint"
                     ),
                 )
+            )
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # Pipedrive accepted this POST before the write window cut its body, so it is never resent.
+                return _uncertain(
+                    operation,
+                    "Pipedrive accepted the create, but its response body is unreadable",
+                    self.client.receipt(call, Exchange("")),
+                    FailureKind.TRANSPORT,
+                )
+            return _resend_or_select_uncertain_create(
+                can_resend_unknown_outcome,
+                failure(operation, FailureKind.TRANSPORT, "create dispatch could not be confirmed"),
+                Receipt(),
             )
         except Exception:
             return _resend_or_select_uncertain_create(
@@ -945,6 +961,8 @@ class UpsertObjectOperation:
                 receipt,
             )
 
+        observed_statuses: list[int] = []
+
         # Search can lag behind a create, so a resend after a miss may duplicate; the cap bounds that.
         async def send(deadline: datetime) -> Exchange:
             return await self.client.exchange(
@@ -955,12 +973,22 @@ class UpsertObjectOperation:
                 f"/api/v2/{input.object_type}",
                 body=create_body,
                 allow_refresh=False,
+                observed_statuses=observed_statuses,
             )
 
         try:
             created = await fence.dispatch(send)
         except (CheckpointError, InsufficientAttemptTimeError):
             return _fence_retry(operation)
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # The write window cut an accepted create's body, so it is read back, never resent.
+                return await self._read_back_created(
+                    call, input, credentials, identity_field, self.client.receipt(call, Exchange("")), fence
+                )
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.TRANSPORT, "create dispatch could not be confirmed")
+            )
         except Exception:
             # The next attempt searches the identity before it creates again.
             return MutationAttempt.retry(

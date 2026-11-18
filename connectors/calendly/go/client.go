@@ -114,6 +114,9 @@ type calendlyResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+
+	// isErrorBodyIncomplete marks a non-2xx body that broke or exceeded the error limit; it proves no refusal.
+	isErrorBodyIncomplete bool
 }
 
 // schedulingLinkDispatchObservation proves a failed connection never supplied a socket to the write.
@@ -317,7 +320,9 @@ func (client *Client) sendCalendlyRequestOnce(
 	result := calendlyResponse{statusCode: response.StatusCode, header: response.Header.Clone()}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		// Only the error title is read, so a truncated or unreadable error body keeps its status.
-		result.body, _ = io.ReadAll(io.LimitReader(response.Body, providerhttp.MaxErrorBodyBytes))
+		errorBody, readErr := io.ReadAll(io.LimitReader(response.Body, providerhttp.MaxErrorBodyBytes+1))
+		result.isErrorBodyIncomplete = readErr != nil || int64(len(errorBody)) > providerhttp.MaxErrorBodyBytes
+		result.body = errorBody[:min(int64(len(errorBody)), providerhttp.MaxErrorBodyBytes)]
 		return result, nil
 	}
 	result.body, err = providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
@@ -414,6 +419,11 @@ func isDefiniteRefusalStatus(status int) bool {
 		return true
 	}
 	return false
+}
+
+// isDefiniteWriteRefusal reports a definite refusal status whose error body was read in full.
+func isDefiniteWriteRefusal(response calendlyResponse) bool {
+	return isDefiniteRefusalStatus(response.statusCode) && !response.isErrorBodyIncomplete
 }
 
 // isCalendlyInsufficientScope matches the documented InsufficientScopeError title exactly.

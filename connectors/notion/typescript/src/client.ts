@@ -130,6 +130,9 @@ export class NotionClient {
       } else if (mode === 'unkeyedWrite' && status !== undefined && status >= 200 && status < 300) {
         // Notion accepted this write before its body broke, so it is never resent.
         return { disposition: 'acceptedUnreadable', failure: failure(operation, 'TRANSPORT', `Notion accepted the ${subject} but its response was interrupted`), receipt: emptyReceipt };
+      } else if (status === 429) {
+        // A 429 proves Notion wrote nothing, even when its body breaks, as in Go and Python.
+        return { disposition: 'retry', failure: failure(operation, 'RATE_LIMIT', `Notion ${subject} is temporarily unavailable`), receipt: emptyReceipt, isProvablyNotSent: mode === 'unkeyedWrite' };
       } else {
         const isProvablyNotSent = error instanceof ProviderTransportError && error.isProvablyNotSent;
         const disposition = mode === 'unkeyedWrite' && !isProvablyNotSent ? 'uncertain' : 'retry';

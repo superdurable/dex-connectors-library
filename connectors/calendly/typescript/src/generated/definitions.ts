@@ -118,7 +118,7 @@ export const CancelScheduledEventBranchCanceled = CancelScheduledEventBranch.Can
 export const CancelScheduledEventBranchNotFound = CancelScheduledEventBranch.NotFound;
 /** Calendly refused to cancel an active event, such as one that already started or one the token may not cancel. */
 export const CancelScheduledEventBranchProviderRejected = CancelScheduledEventBranch.ProviderRejected;
-/** Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403. */
+/** No longer selected. A malformed or oversized scheduled event read back after a 403 is retried, because a repeated cancellation is harmless; the branch stays declared for compatibility. */
 export const CancelScheduledEventBranchInvalidResponse = CancelScheduledEventBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CancelScheduledEventBranchDefect = CancelScheduledEventBranch.Defect;
@@ -129,7 +129,7 @@ export const CancelScheduledEventDefinition: MutationDefinition = {
     { id: "canceled", description: "The scheduled event is canceled, by this call or earlier; alreadyCanceled tells which." },
     { id: "notFound", description: "The scheduled event does not exist or is not visible to the token.", optional: true },
     { id: "providerRejected", description: "Calendly refused to cancel an active event, such as one that already started or one the token may not cancel.", optional: true },
-    { id: "invalidResponse", description: "Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403.", optional: true },
+    { id: "invalidResponse", description: "No longer selected. A malformed or oversized scheduled event read back after a 403 is retried, because a repeated cancellation is harmless; the branch stays declared for compatibility.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

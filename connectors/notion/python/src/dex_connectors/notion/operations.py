@@ -623,12 +623,7 @@ class CreatePageOperation:
                 )
             )
         marker = decision.marker
-        if (
-            decision.kind != DecisionKind.SEND_ALLOWED
-            and marker is not None
-            and marker.call_id == call.id
-            and marker.provider_id
-        ):
+        if marker is not None and marker.call_id == call.id and marker.provider_id:
             # Notion returned this page ID for an accepted earlier send, so it is read back, never resent.
             token, credential_failure, transient = await self.client.resolve_credentials(call, "createPage")
             if (credential_failure is not None or token is None) and not transient:
@@ -719,10 +714,13 @@ class CreatePageOperation:
         }
         if children:
             body["children"] = children
+        observed_statuses: list[int] = []
         try:
 
             async def send(_deadline: datetime) -> ProviderResponse:
-                return await self.client.request(token, "POST", "/pages", payload=body, timeout=60)
+                return await self.client.request(
+                    token, "POST", "/pages", payload=body, timeout=60, observed_statuses=observed_statuses
+                )
 
             response = await fence.dispatch(send)
         except (CheckpointError, InsufficientAttemptTimeError):
@@ -738,6 +736,28 @@ class CreatePageOperation:
             )
         except TimeoutError:
             # The Fence write window ended after the POST may have left.
+            observed_status = observed_statuses[-1] if observed_statuses else 0
+            if 200 <= observed_status < 300:
+                # Notion answered 2xx before the window cut its body, so a resend would duplicate the page.
+                return MutationAttempt.uncertain(
+                    output,
+                    failure(
+                        "createPage",
+                        FailureKind.TRANSPORT,
+                        "Notion accepted the page but its response was cut off by the write window",
+                    ),
+                    Receipt(),
+                )
+            if observed_status == 429:
+                # A 429 proves Notion did not write the page, as when its body breaks.
+                try:
+                    await fence.record_can_resend()
+                except (CheckpointError, DispatchNotAllowedError):
+                    # The claim stays counted, which can only lower later resends.
+                    pass
+                return MutationAttempt.retry(
+                    failure("createPage", FailureKind.RATE_LIMIT, "Notion rate limited the page creation")
+                )
             return _resend_or_select_uncertain_page(
                 can_resend_unknown_outcome,
                 output,

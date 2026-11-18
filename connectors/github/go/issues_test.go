@@ -553,6 +553,28 @@ func TestCreateIssueClassifiesConclusiveRejections(t *testing.T) {
 	}
 }
 
+func TestCreateIssueTreatsAnUnreadableRefusalBodyAsUnknown(t *testing.T) {
+	provider := newIssueProvider(t, answerInterrupted422)
+	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
+	ctx := singledispatchtest.NewContext("issues-flow", "unreadable-refusal")
+	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unreadable 422 body does not prove a refusal")
+	require.Equal(t, singledispatch.StateClaimed, lastMarker(t, ctx).State, "the send stays counted, with no canResend")
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	require.NoError(t, err)
+	require.Equal(t, github.CreateIssueBranchCreated, result.Branch, result.Failure)
+	require.Equal(t, 2, provider.count("POST"))
+
+	atCap := newIssueProvider(t, answerInterrupted422)
+	atCapClient := newIssueClient(t, atCap.URL, github.RepositoryAuthMethodID)
+	result, err = sdkgo.RunMutation(singledispatchtest.NewContext("issues-flow", "unreadable-refusal-cap"), atCapClient.CreateIssue(), githubConnection, bugReportInput(), sdkgo.WithMaxSends(1))
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Equal(t, 1, atCap.count("POST"))
+}
+
 func TestCreateIssueNeverResendsAnAcceptedIssueWithAnUnusableAnswer(t *testing.T) {
 	provider := newIssueProvider(t, storeThenAnswerUnusable201)
 	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
@@ -731,6 +753,7 @@ const (
 	answer404                       issueWriteBehavior = "answer 404"
 	answer410                       issueWriteBehavior = "answer 410"
 	answer422                       issueWriteBehavior = "answer 422"
+	answerInterrupted422            issueWriteBehavior = "answer 422 with an interrupted body"
 )
 
 type sentIssue struct {
@@ -848,6 +871,11 @@ func (provider *issueProvider) serveCreate(response http.ResponseWriter, request
 	case answer422:
 		response.WriteHeader(http.StatusUnprocessableEntity)
 		_, _ = io.WriteString(response, `{"message":"Validation Failed","errors":[{"value":"`+providerBodySentinel+`"}]}`)
+	case answerInterrupted422:
+		// A declared length the handler never fills makes the server cut the body.
+		response.Header().Set("Content-Length", "4096")
+		response.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = io.WriteString(response, `{"message":"Validation`)
 	}
 }
 

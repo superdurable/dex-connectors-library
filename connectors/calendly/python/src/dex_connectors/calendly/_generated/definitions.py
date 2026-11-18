@@ -90,7 +90,7 @@ CANCEL_SCHEDULED_EVENT_DEFINITION = MutationDefinition(
         BranchDefinition(CANCELED, "The scheduled event is canceled, by this call or earlier; alreadyCanceled tells which.", False),
         BranchDefinition(NOT_FOUND, "The scheduled event does not exist or is not visible to the token.", True),
         BranchDefinition(PROVIDER_REJECTED, "Calendly refused to cancel an active event, such as one that already started or one the token may not cancel.", True),
-        BranchDefinition(INVALID_RESPONSE, "Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403.", True),
+        BranchDefinition(INVALID_RESPONSE, "No longer selected. A malformed or oversized scheduled event read back after a 403 is retried, because a repeated cancellation is harmless; the branch stays declared for compatibility.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

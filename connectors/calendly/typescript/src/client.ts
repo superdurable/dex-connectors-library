@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
@@ -19,7 +19,7 @@ export interface CalendlyClientOptions {
 
 /** One response or secret-safe local failure. */
 export type CalendlyExchange =
-  | { kind: 'response'; response: ProviderResponse }
+  | { kind: 'response'; response: ProviderResponse; /** A non-2xx body broke or exceeded the limit, so it proves no refusal. */ isErrorBodyIncomplete?: true }
   | { kind: 'tooLarge' | 'malformed' | 'transport' | 'notSent' | 'defect'; response?: ProviderResponse };
 
 /** Credential resolution result. */
@@ -91,23 +91,24 @@ export class CalendlyClient {
       try { response = await this.send(request); }
       catch (error) {
         if (error instanceof BodyTooLargeError) {
-          if (error.status !== undefined && (error.status < 200 || error.status >= 300)) return { kind: 'response', response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() } };
+          if (error.status !== undefined && (error.status < 200 || error.status >= 300)) return { kind: 'response', response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isErrorBodyIncomplete: true };
           return { kind: 'tooLarge' };
         }
         const status = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
         const headers = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.headers : undefined;
         // As in Go, an error body that breaks keeps its status, and a broken 2xx stays accepted.
-        if (status !== undefined && status > 0 && (status < 200 || status >= 300)) return { kind: 'response', response: { status, headers: headers ?? {}, body: new Uint8Array() } };
+        if (status !== undefined && status > 0 && (status < 200 || status >= 300)) return { kind: 'response', response: { status, headers: headers ?? {}, body: new Uint8Array() }, isErrorBodyIncomplete: true };
         if (status !== undefined && status >= 200 && status < 300) return { kind: 'transport', response: { status, headers: headers ?? {}, body: new Uint8Array() } };
         return { kind: error instanceof ProviderTransportError && error.isProvablyNotSent ? 'notSent' : 'transport' };
       }
-      if (response.status !== 401 || attempt > 0 || !allowRefresh || credentials.authMethodId === 'personal-access-token' || !('resolveAfterRejection' in this.credentials)) return { kind: 'response', response };
+      const answered = responseExchange(response);
+      if (response.status !== 401 || attempt > 0 || !allowRefresh || credentials.authMethodId === 'personal-access-token' || !('resolveAfterRejection' in this.credentials)) return answered;
       try {
         const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-        if (!isHeaderSafeCredential(replacement.accessToken.reveal())) return { kind: 'response', response };
+        if (!isHeaderSafeCredential(replacement.accessToken.reveal())) return answered;
         credentials.accessToken = replacement.accessToken;
         if (replacement.refreshToken) credentials.refreshToken = replacement.refreshToken;
-      } catch { return { kind: 'response', response }; }
+      } catch { return answered; }
     }
     return { kind: 'defect' };
   }
@@ -132,6 +133,12 @@ export class CalendlyClient {
     if (status === 409) return { failure: failure(operation, 'CONFLICT', 'Calendly reports that the resource already exists'), retryAfterMs: 0, isRetry: false };
     return { failure: failure(operation, 'PROVIDER_REJECTION', `Calendly rejected the request with HTTP ${status}`), retryAfterMs: 0, isRetry: false };
   }
+}
+
+/** As in Go, an error body beyond MaxErrorBodyBytes is incomplete and proves no refusal. */
+function responseExchange(response: ProviderResponse): CalendlyExchange {
+  if ((response.status >= 200 && response.status < 300) || response.body.byteLength <= MaxErrorBodyBytes) return { kind: 'response', response };
+  return { kind: 'response', response: { ...response, body: response.body.subarray(0, MaxErrorBodyBytes) }, isErrorBodyIncomplete: true };
 }
 
 /** Construct a failure with the stable connector identity. */

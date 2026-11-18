@@ -412,6 +412,9 @@ func (writer *issueWriter) dispatch(fence *singledispatch.Fence, request createI
 		return writer.retryUnprocessed(fence, providerFailure(createIssueOperationID, sdkgo.FailureRateLimit, "GitHub rate limit was reached"), retryDelay(response.header, writer.client.now()))
 	case status == http.StatusServiceUnavailable:
 		return writer.retryUnprocessed(fence, providerFailure(createIssueOperationID, sdkgo.FailureAvailability, "GitHub is unavailable"), 0)
+	case attempt.hasUnusableBody && status >= 400:
+		// An oversized or interrupted refusal body cannot prove GitHub refused the issue.
+		return writer.reconcileUnknownSend(providerFailure(createIssueOperationID, sdkgo.FailureAvailability, "GitHub issue creation outcome is unknown after an unreadable HTTP "+strconv.Itoa(status)+" body"), isBelowSendCap, responseReceipt)
 	case status == http.StatusUnauthorized:
 		if writer.client.hasReplacementCredential(writer.call) {
 			return writer.retryUnprocessed(fence, providerFailure(createIssueOperationID, sdkgo.FailureAuthentication, "GitHub access token was refreshed for retry"), 0)

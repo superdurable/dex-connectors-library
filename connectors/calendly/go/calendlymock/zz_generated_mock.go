@@ -297,7 +297,7 @@ func CancelScheduledEventProviderRejected(value calendly.ScheduledEventCancellat
 	return connectormock.Branch(calendly.CancelScheduledEventBranchProviderRejected, value, failure)
 }
 
-// CancelScheduledEventInvalidResponse selects the invalidResponse branch: Calendly returned a malformed or oversized scheduled event when the connector read it back after a 403.
+// CancelScheduledEventInvalidResponse selects the invalidResponse branch: No longer selected. A malformed or oversized scheduled event read back after a 403 is retried, because a repeated cancellation is harmless; the branch stays declared for compatibility.
 func CancelScheduledEventInvalidResponse(value calendly.ScheduledEventCancellation, failure *sdkgo.Failure) connectormock.Case[calendly.ScheduledEventCancellation] {
 	return connectormock.Branch(calendly.CancelScheduledEventBranchInvalidResponse, value, failure)
 }

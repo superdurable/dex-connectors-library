@@ -212,6 +212,9 @@ func (writer *commentWriter) dispatch(fence *singledispatch.Fence, request creat
 		return writer.retryUnprocessed(fence, providerFailure(createIssueCommentOperationID, sdkgo.FailureRateLimit, "GitHub rate limit was reached"), retryDelay(response.header, writer.client.now()))
 	case status == http.StatusServiceUnavailable:
 		return writer.retryUnprocessed(fence, providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub is unavailable"), 0)
+	case attempt.hasUnusableBody && status >= 400:
+		// An oversized or interrupted refusal body cannot prove GitHub refused the comment.
+		return writer.reconcileUnknownSend(providerFailure(createIssueCommentOperationID, sdkgo.FailureAvailability, "GitHub comment creation outcome is unknown after an unreadable HTTP "+strconv.Itoa(status)+" body"), isBelowSendCap, responseReceipt)
 	case status == http.StatusUnauthorized:
 		if writer.client.hasReplacementCredential(writer.call) {
 			return writer.retryUnprocessed(fence, providerFailure(createIssueCommentOperationID, sdkgo.FailureAuthentication, "GitHub access token was refreshed for retry"), 0)
