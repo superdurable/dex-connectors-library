@@ -75,8 +75,8 @@ the environment selects `invalidResponse` and the token is never sent there;
 `createEnvelopeFromTemplate` has no `invalidResponse` branch and selects
 `providerRejected` instead. An `accountId` the user does not belong to selects
 `defect`. On a later create attempt, after an earlier one may have sent the
-request, any of these retries below the send cap and selects `uncertain` at
-it, as described below.
+request, any of these selects `uncertain`, and a transient credential or
+account failure retries, as described below.
 
 ## Operations
 
@@ -88,8 +88,12 @@ the top of the hour; `5xx` and `408` retry. Queries and `voidEnvelope` use
 async durability and unlimited attempts within 65 minutes, so a delay until the next hourly reset can fit. `createEnvelopeFromTemplate` retains six attempts within 65 minutes, room for its three sends plus rate-limit and read-back retries. `ENVELOPE_DOES_NOT_EXIST` or `404` selects `notFound`,
 authentication and permission codes select `providerRejected`, and
 `ENVELOPE_ALLOWANCE_EXCEEDED` is `QUOTA_EXHAUSTED`. Only HTTP 400, 401, 403,
-404, 411, 413, 414, 415, or 422 is a definite refusal; any other status a write
-receives, such as a `3xx` or `409`, is an unknown outcome. `voidEnvelope`
+404, 411, 413, 414, 415, or 422 is a definite refusal, and only when its error
+body was read in full; any other status a write receives, such as a `3xx` or
+`409`, and a refusal status whose body is oversized or breaks mid-read, is an
+unknown outcome. A create refusal whose body names an `envelopeId` is unknown
+too. An incomplete `401` body to a create is not followed by a token refresh
+and a second `POST`. `voidEnvelope`
 declares `repeatOnUnknown: safe` and retries every unknown outcome without a
 send cap, because voiding sets an absolute status and an already voided
 envelope selects `voided`. A malformed or oversized status read-back after a
@@ -131,11 +135,15 @@ contract. The operation therefore:
    again, even when the summary is unreadable, oversized, or cut off after the
    headers. The checkpoint records the acceptance; this and later attempts only
    list the envelope, retrying below `maxSends` attempts and selecting
-   `uncertain` at it;
+   `uncertain` at it. When Dex did not keep the acceptance checkpoint and the
+   listing misses, the attempt selects `uncertain` at once, because a later
+   attempt could not know the create was accepted;
 7. several envelopes carrying the field are duplicates already present: the
    operation selects `uncertain`, adopts none, and sends no more;
-8. a later attempt that cannot obtain credentials or resolve the account
-   retries below the cap and selects `uncertain` at it, never
+8. a later attempt whose credentials or account cannot be loaded yet retries
+   without counting a send; a terminal credential or account failure, such as a
+   connection that needs reauthorization or whose project credentials are
+   missing or not selected, selects `uncertain` (`defect` before any send), never
    `providerRejected` or `defect`; a definite refusal of a send after an
    earlier attempt may have sent, with or without its checkpoint, selects
    `uncertain`, because the earlier create may exist.

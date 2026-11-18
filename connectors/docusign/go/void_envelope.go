@@ -92,8 +92,8 @@ func (client *Client) classifyVoidRefusal(
 	switch {
 	case outcome.isRetry:
 		return sdkgo.NewMutationRetry[VoidedEnvelope](outcome.failure, outcome.retryAfter)
-	case !isDefiniteDocuSignRefusal(response.statusCode):
-		// A 3xx, 409, or other unlisted status leaves the void unknown; voiding again is safe.
+	case !isDefiniteDocuSignRefusal(response.statusCode) || response.isErrorBodyIncomplete:
+		// A 3xx, 409, other unlisted status, or an incomplete error body leaves the void unknown; voiding again is safe.
 		return sdkgo.NewMutationRetry[VoidedEnvelope](outcome.failure, outcome.retryAfter)
 	case outcome.isNotFound:
 		return sdkgo.NewMutationBranch(VoidEnvelopeBranchNotFound, VoidedEnvelope{}, &outcome.failure, receipt)

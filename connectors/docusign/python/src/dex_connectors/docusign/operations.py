@@ -498,8 +498,13 @@ class VoidEnvelopeOperation:
                 "voided", VoidedEnvelope(envelope_id=envelope_id), self.client.receipt(envelope_id)
             )
         outcome = self.client.classify(operation, response)
-        if outcome.retry or response.status not in _DEFINITE_REFUSAL_STATUSES:
-            # A 3xx, 409, or other unlisted status leaves the void unknown; voiding again is safe.
+        if (
+            outcome.retry
+            or response.status not in _DEFINITE_REFUSAL_STATUSES
+            or response.is_error_body_incomplete
+        ):
+            # A 3xx, 409, other unlisted status, or an incomplete error body leaves the void unknown;
+            # voiding again is safe.
             return MutationAttempt.retry(outcome.failure, outcome.retry_after)
         receipt = self.client.receipt(envelope_id, outcome.error_code)
         if outcome.not_found:
@@ -757,18 +762,14 @@ class CreateEnvelopeFromTemplateOperation:
             if error.category == "retry":
                 await self._record_unsent_attempt(context, checkpoint, prior, sends)
                 return MutationAttempt.retry(error.failure, error.retry_after)
-            if prior:
-                # The re-recorded checkpoint counts this attempt as a send, bounding a lasting failure.
-                await _record_checkpoint(context, checkpoint)
+            # A terminal failure after a possible send selects uncertain, never a failure branch.
             unknown = failure(
                 operation,
                 error.failure.kind,
                 "an earlier attempt may have sent the DocuSign create request and its outcome is unknown; "
                 + error.failure.message,
             )
-            if sends.is_accepted:
-                return self._read_back_later_or_uncertain(sends.can_read_back_later, unknown)
-            return self._resend_later_or_uncertain(sends.can_resend_later, unknown)
+            return MutationAttempt.uncertain(zero, unknown, self.client.receipt())
         if is_possibly_sent:
             decided = await self._find_before_resend(call, session, marker_value, checkpoint, prior, sends)
             if decided is not None:
@@ -852,12 +853,13 @@ class CreateEnvelopeFromTemplateOperation:
             # DocuSign answers a rate limit or 503 before it processes the request.
             await self._record_unsent_attempt(context, checkpoint, prior, sends)
             return MutationAttempt.retry(outcome.failure, outcome.retry_after)
-        if response.status in _DEFINITE_REFUSAL_STATUSES and is_possibly_sent:
+        is_definite_refusal = _is_definite_create_refusal(response)
+        if is_definite_refusal and is_possibly_sent:
             # This send was refused, but an earlier attempt's create may still exist.
             return MutationAttempt.uncertain(
                 zero, outcome.failure, self.client.receipt("", outcome.error_code)
             )
-        if response.status in _DEFINITE_REFUSAL_STATUSES:
+        if is_definite_refusal:
             await self._record_unsent_attempt(context, checkpoint, prior, sends)
             return MutationAttempt.branch_result(
                 "providerRejected", zero, self.client.receipt("", outcome.error_code), outcome.failure
@@ -1055,15 +1057,21 @@ class CreateEnvelopeFromTemplateOperation:
         sends: "_CreateSendBudget",
         reason: Failure,
     ) -> MutationAttempt[CreatedEnvelope]:
-        """Mark a 2xx create accepted, so no attempt sends it again, and read it back."""
+        """Mark a 2xx create accepted, so no attempt sends it again, and read it back.
+
+        When the accepted marker could not be recorded, a later attempt could resend, so a miss
+        selects uncertain.
+        """
         accepted = replace(dispatched, is_accepted=True)
-        if call.context is not None:
-            # A lost record leaves the dispatch checkpoint, which still forces a read-back.
-            await _record_checkpoint(call.context, accepted)
+        is_accepted_marker_recorded = call.context is not None and await _record_checkpoint(
+            call.context, accepted
+        )
         recovered = await self._read_back(call, session, marker_value, "after", accepted)
         if recovered is not None:
             return recovered
-        return self._read_back_later_or_uncertain(sends.can_read_back_later, reason)
+        return self._read_back_later_or_uncertain(
+            is_accepted_marker_recorded and sends.can_read_back_later, reason
+        )
 
 
 def _tagged_envelopes(body: bytes, marker_value: str) -> list[Envelope]:
@@ -1155,13 +1163,34 @@ def _has_exact_send_count(checkpoint: _CreateDispatchCheckpoint, attempt: int) -
     )
 
 
-async def _record_checkpoint(context: Any, checkpoint: _CreateDispatchCheckpoint | None) -> None:
+async def _record_checkpoint(context: Any, checkpoint: _CreateDispatchCheckpoint | None) -> bool:
+    """Record checkpoint and report whether Dex kept it."""
     try:
         if checkpoint is None:
             checkpoint = _CreateDispatchCheckpoint(True, _go_timestamp(context.first_attempt_at))
         await context.heartbeat(checkpoint)
     except Exception:
-        pass  # A failed re-record leaves the earlier checkpoint in place.
+        return False  # A failed re-record leaves the earlier checkpoint in place.
+    return True
+
+
+def _is_definite_create_refusal(response: ProviderResponse) -> bool:
+    """Report a refusal status with a complete body that names no created envelope."""
+    return (
+        response.status in _DEFINITE_REFUSAL_STATUSES
+        and not response.is_error_body_incomplete
+        and not _has_envelope_id(response.body)
+    )
+
+
+def _has_envelope_id(body: bytes) -> bool:
+    """Report a body whose envelopeId is a GUID, which means DocuSign created the envelope."""
+    try:
+        decoded = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return False
+    envelope_id = decoded.get("envelopeId") if isinstance(decoded, dict) else None
+    return isinstance(envelope_id, str) and is_guid(envelope_id)
 
 
 def _create_body(input: CreateEnvelopeFromTemplateInput, marker_value: str) -> dict[str, Any]:

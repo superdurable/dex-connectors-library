@@ -40,10 +40,9 @@ export class CreateEnvelopeFromTemplateOperation implements Mutation<CreateEnvel
       if (!(error instanceof SessionError)) throw error;
       if (error.route === 'retry') { await recordUnsent(); return newMutationRetry(error.failure, error.retryAfterMs); }
       if (!isPossiblySent) return sessionMutationFailure(error, zeroCreated, 'providerRejected', 'providerRejected');
-      // The re-recorded checkpoint counts this attempt as a send, bounding a lasting failure.
-      if (earlier) await recordCheckpoint(call, earlier);
+      // A terminal failure after a possible send selects uncertain, never a failure branch.
       const unknown = { ...error.failure, message: `an earlier attempt may have sent the DocuSign create request and its outcome is unknown; ${error.failure.message}` };
-      return sends.isAccepted ? readBackLaterOrSelectUncertain(this.client, sends.canReadBackLater, unknown) : resendLaterOrSelectUncertain(this.client, sends.canResendLater, unknown);
+      return newMutationUncertain(zeroCreated, unknown, this.client.receipt(''));
     }
     if (isPossiblySent) {
       const decided = await findBeforeResend(this.client, call, session, marker, earlier, sends, recordUnsent);
@@ -69,13 +68,28 @@ export class CreateEnvelopeFromTemplateOperation implements Mutation<CreateEnvel
     // DocuSign answers a rate limit or 503 before it processes the request.
     if (response.status === 503 || (outcome.retry && response.status < 500 && response.status !== 408)) { await recordUnsent(); return newMutationRetry(outcome.failure, outcome.retryAfterMs); }
     // This send was refused, but an earlier attempt's create may still exist.
-    if (definiteRefusalStatuses.has(response.status) && isPossiblySent) return newMutationUncertain(zeroCreated, outcome.failure, this.client.receipt('', outcome.errorCode));
-    if (definiteRefusalStatuses.has(response.status)) { await recordUnsent(); return newMutationBranch('providerRejected', zeroCreated, this.client.receipt('', outcome.errorCode), outcome.failure); }
+    const isDefiniteRefusal = isDefiniteCreateRefusal(response);
+    if (isDefiniteRefusal && isPossiblySent) return newMutationUncertain(zeroCreated, outcome.failure, this.client.receipt('', outcome.errorCode));
+    if (isDefiniteRefusal) { await recordUnsent(); return newMutationBranch('providerRejected', zeroCreated, this.client.receipt('', outcome.errorCode), outcome.failure); }
     return recoverCreated(this.client, call, session, marker, checkpoint, sends.canResendLater, outcome.failure);
   }
 }
 
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Report a refusal status with a complete body that names no created envelope. */
+function isDefiniteCreateRefusal(response: DocuSignResponse): boolean {
+  return definiteRefusalStatuses.has(response.status) && response.isErrorBodyIncomplete !== true && !hasEnvelopeId(response.body);
+}
+
+/** Report a body whose envelopeId is a GUID, which means DocuSign created the envelope. */
+function hasEnvelopeId(body: Uint8Array): boolean {
+  let decoded: unknown;
+  try { decoded = JSON.parse(Buffer.from(body).toString('utf8')); }
+  catch { return false; }
+  const envelopeId = typeof decoded === 'object' && decoded !== null ? (decoded as Record<string, unknown>).envelopeId : undefined;
+  return typeof envelopeId === 'string' && isGuid(envelopeId);
+}
 
 /** The create heartbeat; attempt 0 marks a checkpoint from an earlier release, which has no exact send count. */
 interface CreateCheckpoint { isDispatched: boolean; dispatchedAt: string; attempt: number; sendCount: number; isAccepted: boolean }
@@ -184,8 +198,8 @@ export class VoidEnvelopeOperation implements Mutation<VoidEnvelopeInput, Voided
     if (response.status === 200) return newMutationBranch('voided', { envelopeId }, this.client.receipt(envelopeId));
     const outcome = this.client.classify(operation, response);
     const receipt = this.client.receipt(envelopeId, outcome.errorCode);
-    // A 3xx, 409, or other unlisted status leaves the void unknown; voiding again is safe.
-    if (outcome.retry || !definiteRefusalStatuses.has(response.status)) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+    // A 3xx, 409, other unlisted status, or an incomplete error body leaves the void unknown; voiding again is safe.
+    if (outcome.retry || !definiteRefusalStatuses.has(response.status) || response.isErrorBodyIncomplete === true) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
     if (outcome.notFound) return newMutationBranch('notFound', zeroVoided, receipt, outcome.failure);
     if (!['ENVELOPE_CANNOT_VOID_INVALID_STATE', 'ENVELOPE_INVALID_STATUS'].includes(outcome.errorCode.toUpperCase())) return newMutationBranch('providerRejected', zeroVoided, receipt, outcome.failure);
     const read = await readEnvelope(this.client, call, session, envelopeId, operation);
@@ -417,11 +431,12 @@ async function recoverCreated(client: DocuSignClient, call: Call, session: DocuS
   // Listings can lag, so a miss is not proof; the next attempt reads back again before it sends.
   return await findTaggedEnvelope(client, call, session, marker, checkpoint.dispatchedAt) ?? resendLaterOrSelectUncertain(client, canResendLater, unknown);
 }
-/** Mark a 2xx create accepted, so no attempt sends it again, and read it back. */
+/** Mark a 2xx create accepted, so no attempt sends it again, and read it back. When the accepted marker could not be recorded, a later attempt could resend, so a miss selects uncertain. */
 async function recoverAccepted(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, checkpoint: CreateCheckpoint, sends: CreateSendBudget, unknown: Failure): Promise<MutationAttempt<CreatedEnvelope>> {
-  // A lost record leaves the dispatch checkpoint, which still forces a read-back.
-  await recordCheckpoint(call, { ...checkpoint, isAccepted: true });
-  return await findTaggedEnvelope(client, call, session, marker, checkpoint.dispatchedAt) ?? readBackLaterOrSelectUncertain(client, sends.canReadBackLater, unknown);
+  let isAcceptedMarkerRecorded = true;
+  try { await call.context.recordHeartbeat({ ...checkpoint, isAccepted: true }); }
+  catch { isAcceptedMarkerRecorded = false; }
+  return await findTaggedEnvelope(client, call, session, marker, checkpoint.dispatchedAt) ?? readBackLaterOrSelectUncertain(client, isAcceptedMarkerRecorded && sends.canReadBackLater, unknown);
 }
 /** Adopt exactly one tagged envelope or select uncertain for several; undefined is inconclusive. */
 async function findTaggedEnvelope(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, since: string): Promise<MutationAttempt<CreatedEnvelope> | undefined> {

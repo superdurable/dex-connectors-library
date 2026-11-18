@@ -90,6 +90,8 @@ class ProviderResponse:
     status: int
     headers: httpx.Headers
     body: bytes
+    # A non-2xx body that was oversized or broke mid-read proves no refusal.
+    is_error_body_incomplete: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -250,7 +252,24 @@ class Client:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
             from dex_connectors.sdk import ReauthorizationRequiredError
+            from dex_connectors.sdk.projectconfig import (
+                ConnectionNotSelectedError,
+                CredentialBrokerRejectedError,
+                ObjectNotFoundError,
+            )
 
+            if isinstance(
+                error, (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError)
+            ):
+                raise SessionFailure(
+                    "defect",
+                    failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "the DocuSign connection credentials are missing or not selected for this "
+                        "project; authorize the connection in Dex Web Connections",
+                    ),
+                ) from None
             if isinstance(error, ReauthorizationRequiredError):
                 raise SessionFailure(
                     "defect",
@@ -492,11 +511,15 @@ class Client:
                 and attempt == 0
                 and hasattr(self.credentials, "resolve_after_rejection")
             ):
+                is_incomplete = False
                 try:
                     rejected_body = await read_bounded_body(response, MAX_ERROR_BODY_BYTES)
                 except BodyTooLargeError:
-                    rejected_body = b""
-                rejected = ProviderResponse(401, response.headers, rejected_body)
+                    rejected_body, is_incomplete = b"", True
+                rejected = ProviderResponse(401, response.headers, rejected_body, is_incomplete)
+                if is_incomplete and method == "POST":
+                    # An incomplete 401 body proves no refusal, so the create is not sent again.
+                    return rejected, credentials
                 try:
                     replacement = await self.credentials.resolve_after_rejection(call)
                 except Exception:
@@ -505,19 +528,19 @@ class Client:
                     credentials = replacement
                     continue
                 return rejected, credentials
+            is_incomplete = False
             try:
                 bounded = await read_bounded_body(
                     response, maximum_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
                 )
-            except BodyTooLargeError:
+            except (BodyTooLargeError, ProviderTransportError):
                 if 200 <= response.status_code < 300:
                     raise
-                bounded = b""
-            except ProviderTransportError:
-                if 200 <= response.status_code < 300:
-                    raise
-                bounded = b""
-            return ProviderResponse(response.status_code, response.headers, bounded), credentials
+                bounded, is_incomplete = b"", True
+            return (
+                ProviderResponse(response.status_code, response.headers, bounded, is_incomplete),
+                credentials,
+            )
         raise RuntimeError("DocuSign authenticated request retry was exhausted")
 
     def classify(self, operation: str, response: ProviderResponse) -> ProviderOutcome:
