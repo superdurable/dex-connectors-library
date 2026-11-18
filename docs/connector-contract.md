@@ -282,7 +282,9 @@ bounded resend, described under
 comes from the generated definition through `Call.MaxSends`, never a copied
 number. An application changes one Step's cap with the operation-specific
 factory's `MaxSends` field, from 1 (no resend) to 10. The generated factory of a
-`safe` or `unsafe` operation has no such field. A raised cap adds its difference
+`safe` Mutation keeps the field, so a caller written while the operation was
+`limited` still compiles, and ignores its value; an `unsafe` operation's factory
+has no such field. A raised cap adds its difference
 from the manifest cap to a manifest retry policy that limits attempts, so the cap
 stays reachable; an explicit `StepOptionsOverride.ExecuteRetry` is used as given.
 The value is part of the Step configuration, so every attempt of one Step
@@ -295,7 +297,9 @@ one, and a `max_sends_override` parameter on a `limited` Mutation's Step
 factory. A TypeScript package whose runtime dependency pins
 `@superdurable/connectors-sdk` 0.11.0 or later gets `repeatOnUnknown` on each
 Mutation definition and `maxSends` on a `limited` one. Its Step factory already
-accepts the SDK's `maxSends`. See
+accepts the SDK's `maxSends`. A `safe` Mutation's Python and TypeScript factories
+keep `max_sends_override` and `maxSends` for compatibility and never pass them to
+the SDK, which rejects a send cap on a non-`limited` operation. See
 [manifest authoring](manifest-authoring.md) for the exact requirement forms.
 
 Mutation uncertainty is rare. Use `NewMutationUncertain` only when the request

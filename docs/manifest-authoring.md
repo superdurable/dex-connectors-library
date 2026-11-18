@@ -294,7 +294,9 @@ retries never become uncertainty.
 For a module whose `go/go.mod` requires `sdkgo` v0.37.0 or later, `connectorctl
 generate` writes the resolved tier and cap into each Mutation definition
 (`RepeatOnUnknown` and `MaxSends`) and adds a `MaxSends` field to the Step
-factory config of a `limited` operation. An application sets that field, from 1
+factory config of a `limited` or `safe` Mutation. On a `safe` one the field is
+accepted for compatibility and ignored, so moving an operation from `limited` to
+`safe` breaks no caller. On a `limited` one an application sets it, from 1
 (no resend) to 10, to change one Step's cap; a raised cap also widens a manifest
 retry policy that limits attempts by the difference. A `limited` operation's code
 passes `call.MaxSends()` to `singledispatch.WithMaxSends`, so the manifest stays
@@ -306,7 +308,8 @@ module's. When the `[project].dependencies` of `python/pyproject.toml` admit no
 `dex-connectors-sdk` release before 0.10.0 (one requirement without a marker
 whose `==`, `>=`, `~=`, or `>` versions set that floor), each generated Mutation
 definition gets `repeat_on_unknown`, a `limited` one also gets `max_sends`, and
-a `limited` Mutation's Step factory gets `max_sends_override`. Optional
+a `limited` or `safe` Mutation's Step factory gets `max_sends_override`, ignored
+on a `safe` one; a `safe` TypeScript factory likewise accepts and drops `maxSends`. Optional
 dependencies and dependency groups do not count. When the `dependencies` of
 `typescript/package.json` pin `@superdurable/connectors-sdk` to exactly 0.11.0
 or later, each generated Mutation definition gets `repeatOnUnknown`, and a
