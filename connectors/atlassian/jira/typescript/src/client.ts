@@ -6,7 +6,7 @@ import { ReauthorizationRequiredError, SecretString, resolveCredential, resolveC
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateIssueOperation, GetIssueOperation, SearchIssuesOperation, TransitionIssueOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.atlassian.com';
@@ -196,7 +196,8 @@ export function retryAfter(response: ProviderResponse): number { return parseRet
 export function firstHeader(headers: ProviderResponse['headers'] | undefined, name: string): string { const key = Object.keys(headers ?? {}).find(candidate => candidate.toLowerCase() === name); const value = key ? headers?.[key] : undefined; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
 /** Report a credential resolution failure that no retry fixes; every other error is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError
+    || isCredentialMaterialError(error);
 }
 
 function isObject(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
