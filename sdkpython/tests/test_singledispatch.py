@@ -514,6 +514,29 @@ async def test_fence_short_attempt_and_untrusted_checkpoint_fail_before_send() -
     assert not sent
 
 
+@pytest.mark.asyncio
+async def test_fence_short_attempt_with_failed_not_sent_checkpoint_stays_not_sent() -> None:
+    """A failed notSent heartbeat in a short window still raises the not-sent error type."""
+    context = FakeContext()
+    context.deadline = datetime.now(UTC) - timedelta(seconds=1)
+    fence = _fence(context)
+    await fence.decide()
+    context.fail_heartbeat = True
+    sent = False
+
+    async def send(deadline: datetime) -> None:
+        nonlocal sent
+        sent = True
+
+    with pytest.raises(InsufficientAttemptTimeError) as raised:
+        await fence.dispatch(send)
+    assert isinstance(raised.value.__cause__, OSError)
+    assert not sent
+    assert not context.heartbeats
+    with pytest.raises(DispatchNotAllowedError):
+        await fence.dispatch(send)
+
+
 CHECKPOINT_CODEC = dex.CodecRegistry().resolve(dict[str, Any])
 
 

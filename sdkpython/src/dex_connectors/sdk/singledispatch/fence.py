@@ -128,6 +128,8 @@ class Fence:
         when read-back did not confirm the write. The claim records one more
         send than the decision's prior send upper bound. A too-short write
         window or failed claim records `notSent` only after `SEND_ALLOWED`.
+        A too-short window raises `InsufficientAttemptTimeError`; when its
+        `notSent` heartbeat fails, the heartbeat error is its `__cause__`.
         """
         async with self._lock:
             if (
@@ -143,7 +145,13 @@ class Fence:
             ):
                 self._has_pre_send_retry = True
                 if should_record_not_sent:
-                    await self._record(self._not_sent_marker())
+                    try:
+                        await self._record(self._not_sent_marker())
+                    except Exception as error:
+                        # Nothing was sent, so callers must still see the not-sent error type.
+                        raise InsufficientAttemptTimeError(
+                            "single dispatch has insufficient time and checkpoint failed"
+                        ) from error
                 raise InsufficientAttemptTimeError("insufficient attempt time for single dispatch")
             self._has_dispatched = True
             claim = self._attempt_marker(State.CLAIMED, send_count=self._prior_send_count() + 1)
