@@ -6,16 +6,16 @@ metadata:
   description: Pinecone REST connector with two bounded operations.
   company: Pinecone
   categories: [ai, databases-storage]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: pinecone
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [upsertVectors, queryVectors]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-pinecone'
       operations: [upsertVectors, queryVectors]
       triggers: []
@@ -91,6 +91,8 @@ spec:
     execution:
       executeMethodTimeout: 30s
       durability: async
+      # A repeated upsert replaces the same vector IDs with the same values.
+      repeatOnUnknown: safe
     mocks:
     - name: defaultUpsertVectors
       branch: upserted

@@ -42,8 +42,21 @@ from dex_connectors.pinecone import (
     UpsertVectorsInput,
     Vector,
 )
+from dex_connectors.pinecone._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("pinecone", "pinecone")
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError that the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Pinecone credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
 KEY = "pinecone-test-key"
 UPSERT = UpsertVectorsInput(
     "example", (Vector("vec-meridian", (0.1, 0.2), {"genre": "docs"}), Vector("vec-2", (1.0,)))
@@ -174,17 +187,31 @@ async def test_invalid_query_is_defect_without_request(value: QueryVectorsInput)
         (httpx.Response(401), PROVIDER_REJECTED, FailureKind.AUTHENTICATION),
         (httpx.Response(403), PROVIDER_REJECTED, FailureKind.AUTHORIZATION),
         (httpx.Response(404), PROVIDER_REJECTED, FailureKind.PROVIDER_REJECTION),
-        (httpx.Response(200, json={}), INVALID_RESPONSE, FailureKind.PROTOCOL),
-        (httpx.Response(200, json={"upsertedCount": 3}), INVALID_RESPONSE, FailureKind.PROTOCOL),
-        (httpx.Response(200, json={"upsertedCount": 1.5}), INVALID_RESPONSE, FailureKind.PROTOCOL),
-        (httpx.Response(200, content=b"{"), INVALID_RESPONSE, FailureKind.PROTOCOL),
-        (httpx.Response(200, content=b"x" * 400), INVALID_RESPONSE, FailureKind.RESPONSE_TOO_LARGE),
     ],
 )
 async def test_upsert_branches(response: httpx.Response, branch: str, kind: FailureKind) -> None:
     result = await run_mutation(make_client(response).upsert_vectors(), upsert_call(), UPSERT)
     assert result.branch == branch
     assert result.failure is not None and result.failure.kind == kind
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("response", "kind"),
+    [
+        (httpx.Response(405), FailureKind.PROVIDER_REJECTION),
+        (httpx.Response(425), FailureKind.PROVIDER_REJECTION),
+        (httpx.Response(200, json={}), FailureKind.PROTOCOL),
+        (httpx.Response(200, json={"upsertedCount": 3}), FailureKind.PROTOCOL),
+        (httpx.Response(200, json={"upsertedCount": 1.5}), FailureKind.PROTOCOL),
+        (httpx.Response(200, content=b"{"), FailureKind.PROTOCOL),
+        (httpx.Response(200, content=b"x" * 400), FailureKind.RESPONSE_TOO_LARGE),
+    ],
+)
+async def test_upsert_retries_unknown_outcomes(response: httpx.Response, kind: FailureKind) -> None:
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(make_client(response).upsert_vectors(), upsert_call(), UPSERT)
+    assert raised.value.failure.kind == kind
 
 
 @pytest.mark.asyncio
@@ -244,6 +271,8 @@ async def test_blank_key_is_defect_without_request() -> None:
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),
         (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("Pinecone credential api_key is required"), True),
+        (_sdk_wrapped_material_error(), True),
         (CredentialBrokerUnavailableError(), False),
         (ValueError("connection is not configured"), False),
         (RuntimeError("unlisted"), False),
