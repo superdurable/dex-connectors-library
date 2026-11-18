@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of upsertRow appends whose outcome is unknown."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
@@ -216,6 +217,25 @@ async def test_accepted_append_is_never_resent_when_its_row_is_missing() -> None
         result = await run_attempts(sheet, attempts)
         assert result.branch == "uncertain"
         assert sheet.posts == 1
+
+
+class StalledStream(httpx.AsyncByteStream):
+    """A response body that stalls after the 2xx headers arrived."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(5)
+        yield b"{}"
+
+
+async def test_write_deadline_that_cuts_an_accepted_body_is_never_resent() -> None:
+    """2xx headers arrived, so the Fence write-window timeout proves the append, not an unknown outcome."""
+    sheet = ScriptedSheet([lambda _sheet: httpx.Response(200, stream=StalledStream())])
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await upsert(sheet, context)
+    assert isinstance(result, MutationResult), result
+    assert result.branch == "uncertain"
+    assert sheet.posts == 1
 
 
 async def test_unreadable_append_refusal_is_an_unknown_outcome() -> None:

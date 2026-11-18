@@ -179,8 +179,13 @@ class Client:
         *,
         refresh: bool = True,
         write: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> tuple[ProviderResponse, Credentials]:
-        """Send one request, with one rejection refresh only for repeatable reads."""
+        """Send one request, with one rejection refresh only for repeatable reads.
+
+        `observed_statuses` receives each response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Google answered.
+        """
         target = f"{self.endpoint}/spreadsheets/{escape_path(spreadsheet_id)}{suffix}"
         if query:
             target += "?" + encode_query(query)
@@ -204,6 +209,8 @@ class Client:
             try:
                 response, trace = await send_traced(self.http_client, request)
                 status, response_headers = response.status_code, response.headers
+                if observed_statuses is not None:
+                    observed_statuses.append(status)
                 try:
                     body = await read_bounded_body(response, self.config.max_response_bytes)
                     result = ProviderResponse(status, response_headers, body)

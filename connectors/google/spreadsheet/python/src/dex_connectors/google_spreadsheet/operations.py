@@ -456,6 +456,12 @@ class _AppendWriteAttempt:
         self.payload = payload
         self.response = ProviderResponse()
         self.request_error: RequestError | None = None
+        # Statuses whose headers arrived, kept when the write window cuts the body read.
+        self.observed_statuses: list[int] = []
+
+    def has_observed_success_status(self) -> bool:
+        """Report whether Google answered the append with 2xx headers."""
+        return any(200 <= status < 300 for status in self.observed_statuses)
 
     async def send(self, _deadline: datetime) -> None:
         try:
@@ -469,6 +475,7 @@ class _AppendWriteAttempt:
                 self.payload,
                 refresh=False,
                 write=True,
+                observed_statuses=self.observed_statuses,
             )
         except RequestError as error:
             self.request_error = error
@@ -834,6 +841,11 @@ class UpsertRowOperation:
         except DispatchNotAllowedError:
             return self._uncertain(call, "single-dispatch permission is unavailable", attempt.response)
         except TimeoutError:
+            if attempt.has_observed_success_status():
+                # The write window cut the body after 2xx headers, so the append was accepted.
+                return await self._reconcile_accepted(
+                    call, credential, input, row, fence, target_range, append_send
+                )
             return await self._reconcile(call, credential, input, row, append_send)
         response = attempt.response
         request_error = attempt.request_error
