@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/reamaze/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
@@ -144,6 +145,9 @@ func TestFencedWritesRejectUnusableCredentialsBeforeSending(t *testing.T) {
 		err  error
 	}{
 		{name: "reauthorization required", err: sdkgo.ErrReauthorizationRequired},
+		{name: "connection object missing", err: projectconfig.ErrObjectNotFound},
+		{name: "connection not selected", err: projectconfig.ErrConnectionNotSelected},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingReamaze(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -501,6 +505,7 @@ var possibleSendCases = []struct {
 }{
 	{name: "credentials resolve"},
 	{name: "credentials need reconnecting", resolveErr: sdkgo.ErrReauthorizationRequired, isTerminal: true},
+	{name: "connection no longer selected", resolveErr: projectconfig.ErrConnectionNotSelected, isTerminal: true},
 	{name: "credential store outage", resolveErr: errors.New("project object read failed"), isRetryable: true},
 }
 

@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -231,9 +232,20 @@ func (client *Client) FindContactByEmail() FindContactByEmailOperation {
 
 // resolveCredentials returns a header-safe email and token; errReamazeCredentialsUnavailable marks a read that may recover.
 func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
+	return client.doResolveCredentials(call, sdkgo.IsReauthorizationRequired)
+}
+
+// resolveWriteCredentials resolves credentials for a Mutation. A revoked or unselected connection is
+// unusable, because another attempt cannot repair it: a write selects defect before any send and
+// uncertain after one.
+func (client *Client) resolveWriteCredentials(call sdkgo.Call) (Credentials, error) {
+	return client.doResolveCredentials(call, isTerminalWriteCredentialError)
+}
+
+func (client *Client) doResolveCredentials(call sdkgo.Call, isTerminal func(error) bool) (Credentials, error) {
 	credentials, err := client.credentials.Resolve(call)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case err != nil && isTerminal(err):
 		return Credentials{}, errReamazeCredentialsUnusable
 	case err != nil:
 		return Credentials{}, errReamazeCredentialsUnavailable
@@ -241,6 +253,13 @@ func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 		return Credentials{}, errReamazeCredentialsUnusable
 	}
 	return credentials, nil
+}
+
+// isTerminalWriteCredentialError reports a credential failure that another attempt cannot repair.
+func isTerminalWriteCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.

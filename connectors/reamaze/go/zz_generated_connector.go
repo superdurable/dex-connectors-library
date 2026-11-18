@@ -498,7 +498,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationBranchNotFound, Description: "The conversation does not exist in the brand or is not visible to the connection's user.", Optional: true},
 		{ID: UpdateConversationBranchProviderRejected, Description: "Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user.", Optional: true},
 		{ID: UpdateConversationBranchInvalidResponse, Description: "Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe.", Optional: true},
-		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid; unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.utils import parseaddr
@@ -20,6 +21,11 @@ from dex_connectors.sdk import (
     FailureKind,
     ReauthorizationRequiredError,
     Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
 )
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -163,6 +169,21 @@ class Client:
             raise CredentialsUnusableError("connection credentials are unavailable")
         return credentials
 
+    async def resolve_write_credentials(self, call: Call) -> Credentials:
+        """Resolve credentials for a Mutation, treating a revoked or unselected connection as unusable.
+
+        Another attempt cannot repair those, so a write selects defect before any send and uncertain
+        after one.
+        """
+        try:
+            return await self.resolve_credentials(call)
+        except CredentialsUnavailableError as error:
+            cause = error.__cause__
+            terminal = (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError)
+            if isinstance(cause, terminal):
+                raise CredentialsUnusableError("connection credentials are unavailable") from cause
+            raise
+
     async def exchange(
         self,
         call: Call,
@@ -173,8 +194,13 @@ class Client:
         *,
         query: dict[str, str] | None = None,
         payload: object | None = None,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
-        """Send one request and classify transport, status, and body independently of an operation."""
+        """Send one request and classify transport, status, and body independently of an operation.
+
+        on_response_status receives the HTTP status as soon as the headers arrive, so a caller cancelled
+        while the body is read still knows whether Re:amaze accepted the request.
+        """
         headers = {
             "Authorization": "Basic "
             + base64.b64encode(f"{credentials.email}:{credentials.api_token.reveal()}".encode()).decode(),
@@ -208,6 +234,8 @@ class Client:
             )
             return Exchange(outcome, failure=reamaze_failure(FailureKind.TRANSPORT, operation, message))
         status = response.status_code
+        if on_response_status is not None:
+            on_response_status(status)
         request_id = response.headers.get("X-Request-Id", "")
         if not _REQUEST_ID.fullmatch(request_id):
             request_id = ""

@@ -36,8 +36,9 @@ function exchangeQuery<Output>(client: ReamazeClient, call: Call, result: Reamaz
 }
 function exchangeMutation<Output>(client: ReamazeClient, call: Call, result: ReamazeExchange, value: Output, objectId = '', hasNotFound = false): MutationAttempt<Output> | undefined {
   if (result.kind === 'success') return undefined;
-  // An oversized or credential-reflecting answer is unknown, so the safe update repeats.
-  if (['rateLimited', 'notSent', 'unavailable', 'invalid'].includes(result.kind)) return newMutationRetry(result.failure, result.retryAfterMs);
+  // An earlier attempt's PUT may have applied, so only a definite refusal selects a branch.
+  const isUnknownRefusal = (result.kind === 'rejected' || result.kind === 'notFound') && !isDefiniteRefusal(result);
+  if (['rateLimited', 'notSent', 'unavailable', 'invalid'].includes(result.kind) || isUnknownRefusal) return newMutationRetry(result.failure, result.retryAfterMs);
   const branch = result.kind === 'defect' ? 'defect' : result.kind === 'notFound' && hasNotFound ? 'notFound' : 'providerRejected';
   return newMutationBranch(branch, value, client.receipt(call, objectId, result.requestId), result.failure);
 }
@@ -152,6 +153,8 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
     const operation = 'updateConversation';
     if (!conversationIdPattern.test(input.conversationId) || !validStatus(input.status) || !validHoldUntil(input.holdUntil, input.status) || input.assigneeEmail && !isBareEmail(input.assigneeEmail) || !validTags(input.addTags) || !validTags(input.removeTags) || (input.addTags ?? []).some(tag => input.removeTags?.some(removed => removed.toLowerCase() === tag.toLowerCase())) || input.status === undefined && !input.assigneeEmail && !input.addTags?.length && !input.removeTags?.length) return newMutationBranch('defect', zeroUpdate, {}, failure(operation, 'VALIDATION', 'invalid update input'));
     const credential = await this.client.resolveCredentials(call);
+    // defect would hide a change an earlier attempt may have sent; repeating it is safe.
+    if (credential.kind === 'terminal' && call.context.attempt > 1) return newMutationRetry(failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
     if (credential.kind !== 'resolved') return credentialMutation(operation, zeroUpdate, credential);
     const first = await this.client.exchange(call, operation, credential, 'GET', path(input.conversationId));
     const firstTerminal = exchangeMutation(this.client, call, first, zeroUpdate, input.conversationId, true);
@@ -170,7 +173,6 @@ export class UpdateConversationOperation implements Mutation<UpdateConversationI
     if (!Object.keys(change).length) return newMutationBranch('updated', { conversation: current, wasAlreadyApplied: true }, this.client.receipt(call, input.conversationId, first.requestId));
     const second = await this.client.exchange(call, operation, credential, 'PUT', path(input.conversationId), undefined, { conversation: change });
     // The PUT sets final values, so an unknown outcome, including an oversized answer, repeats it.
-    if (second.kind === 'invalid' || ((second.kind === 'rejected' || second.kind === 'notFound') && !isDefiniteRefusal(second))) return newMutationRetry(second.failure, second.retryAfterMs);
     const secondTerminal = exchangeMutation(this.client, call, second, { conversation: current }, input.conversationId, true);
     if (secondTerminal) return secondTerminal;
     try { if (second.kind !== 'success') throw new Error('missing response'); return newMutationBranch('updated', { conversation: decodeConversation(parseBody(second.response.body), true, input.conversationId) }, this.client.receipt(call, input.conversationId, second.requestId)); }
@@ -246,6 +248,22 @@ function acceptedWriteAttempt<Output>(readBack: ReadBack<Output>, value: Output,
   return attempt.kind === 'retry' && !isProviderIdSaved ? newMutationUncertain(value, attempt.failure, receipt) : attempt;
 }
 
+/** Matches Go's reconciliationContext, which ends a read-back one second before the attempt deadline. */
+const readBackDeadlineMarginMs = 1_000;
+
+/** Finish an accepted write's read-back before the attempt deadline, or report it as transient. */
+async function readBackBeforeDeadline<Output>(call: Call, operation: string, readBack: Promise<ReadBack<Output>>): Promise<ReadBack<Output>> {
+  const deadline = call.context.deadline;
+  if (!deadline) return readBack;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<ReadBack<Output>>(resolve => {
+    timer = setTimeout(() => resolve(readBackOf(newMutationRetry(failure(operation, 'TRANSPORT', 'Re:amaze accepted the write, but reading it back did not finish before the attempt deadline')))),
+      Math.max(0, deadline.getTime() - readBackDeadlineMarginMs - Date.now()));
+  });
+  try { return await Promise.race([readBack, expired]); }
+  finally { clearTimeout(timer); }
+}
+
 /** Map a credential failure before dispatch; after a possible earlier send it records nothing. */
 async function fencedCredentialAttempt<Output>(client: ReamazeClient, call: Call, operation: string, decision: Decision, recordNotSent: () => Promise<void>, credential: CredentialResult, value: Output, objectId: string): Promise<MutationAttempt<Output>> {
   if (needsReadBack(decision)) return credential.kind === 'transient' ? newMutationRetry(failure(operation, 'AVAILABILITY', 'connection credentials could not be loaded to read back an earlier write')) : newMutationUncertain(value, failure(operation, 'AUTHENTICATION', 'the earlier write cannot be read back; reconnect the connection in Dex Web'), client.receipt(call, objectId));
@@ -317,10 +335,11 @@ export class CreateConversationOperation implements Mutation<CreateConversationI
 
   /** Never resend an accepted create: confirm it now, by its slug when the answer named one, or select uncertain. */
   private async reconcileAccepted(call: Call, fence: { recordProviderId(providerId: string): Promise<void> }, credential: Extract<CredentialResult, { kind: 'resolved' }>, conversationId: string): Promise<MutationAttempt<CreateConversationOutput>> {
-    if (!conversationId) return acceptedWriteAttempt(await this.reconcile(call, credential), zeroCreate, this.client.receipt(call), false);
+    const operation = 'createConversation';
+    if (!conversationId) return acceptedWriteAttempt(await readBackBeforeDeadline(call, operation, this.reconcile(call, credential)), zeroCreate, this.client.receipt(call), false);
     let isProviderIdSaved = true;
     try { await fence.recordProviderId(conversationId); } catch { isProviderIdSaved = false; }
-    return acceptedWriteAttempt(await this.reconcile(call, credential, conversationId), zeroCreate, this.client.receipt(call, conversationId), isProviderIdSaved);
+    return acceptedWriteAttempt(await readBackBeforeDeadline(call, operation, this.reconcile(call, credential, conversationId)), zeroCreate, this.client.receipt(call, conversationId), isProviderIdSaved);
   }
 
   private async reconcile(call: Call, credential: Extract<CredentialResult, { kind: 'resolved' }>, candidateId = ''): Promise<ReadBack<CreateConversationOutput>> {
@@ -378,7 +397,7 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
     try { result = await fence.dispatch(signal => this.client.exchange(call, operation, credential, 'POST', path(input.conversationId) + '/messages', undefined, payload, signal)); }
     catch (error) { return dispatchErrorAttempt(operation, error); }
     // A 2xx whose body could not be read or used still added the message, so it is never resent.
-    if (isUnusableAcceptedWrite(result)) return acceptedWriteAttempt(await this.reconcile(call, credential, input, zero), zero, this.client.receipt(call, input.conversationId), false);
+    if (isUnusableAcceptedWrite(result)) return acceptedWriteAttempt(await readBackBeforeDeadline(call, operation, this.reconcile(call, credential, input, zero)), zero, this.client.receipt(call, input.conversationId), false);
     const terminal = await fencedWrite(this.client, call, result, { conversationId: '', message: zeroMessage }, input.conversationId, true, isFirstSend, () => fence.recordCanResend());
     if (terminal) return terminal;
     try {
@@ -388,7 +407,7 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
       if (conversation?.slug && conversation.slug !== input.conversationId) throw new Error('wrong conversation');
       const message = decodeMessage(wire);
       return newMutationBranch('replied', { conversationId: input.conversationId, message }, this.client.receipt(call, input.conversationId, result.requestId));
-    } catch { return acceptedWriteAttempt(await this.reconcile(call, credential, input, zero), zero, this.client.receipt(call, input.conversationId), false); }
+    } catch { return acceptedWriteAttempt(await readBackBeforeDeadline(call, operation, this.reconcile(call, credential, input, zero)), zero, this.client.receipt(call, input.conversationId), false); }
   }
 
   private async reconcile(call: Call, credential: Extract<CredentialResult, { kind: 'resolved' }>, input: ReplyToConversationInput, zero: ConversationReply): Promise<ReadBack<ConversationReply>> {

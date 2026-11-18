@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Read-back, resend, and acceptance rules of the fenced createConversation and replyToConversation."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
@@ -10,6 +11,7 @@ from typing import Any
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk import projectconfig
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.reamaze as reamaze
@@ -71,13 +73,21 @@ class BodyBreaksAfterHeaders(httpx.AsyncByteStream):
         raise httpx.ReadError("connection reset after headers")
 
 
+class HangingBody(httpx.AsyncByteStream):
+    """A response body that never finishes, so the fence write window cuts it off."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(60)
+        yield b""
+
+
 class AttemptContext:
     """Keep the last heartbeat across Execute attempts like Dex does."""
 
-    def __init__(self) -> None:
+    def __init__(self, deadline_seconds: float = 120) -> None:
         self.attempt = 1
         self.run_id = "run"
-        self.deadline = datetime.now(UTC) + timedelta(seconds=120)
+        self.deadline = datetime.now(UTC) + timedelta(seconds=deadline_seconds)
         self.heartbeat_value: object = None
         self.heartbeat_count = 0
 
@@ -261,6 +271,106 @@ async def test_accepted_write_whose_body_breaks_after_headers_is_never_resent(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["createConversation", "replyToConversation"])
+@pytest.mark.parametrize("is_found", [True, False])
+async def test_2xx_headers_then_the_write_deadline_cuts_the_body_is_read_back_and_never_resent(
+    operation: str, is_found: bool
+) -> None:
+    key = ""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        nonlocal key
+        if request.method == "POST":
+            payload = json.loads(request.content)
+            if operation == "createConversation":
+                key = payload["conversation"]["data"]["dex_dispatch_key"]
+            else:
+                key = payload["message"]["origin_id"]
+            return httpx.Response(201, stream=HangingBody())
+        if operation == "createConversation":
+            return json_response(200, page("conversations", [conversation_wire(key)] if is_found else []))
+        return json_response(200, page("messages", [message_wire(key)] if is_found else []))
+
+    requests: list[httpx.Request] = []
+    # The read-back ends one second before the deadline, after a write window of 7/12 of it.
+    context = AttemptContext(deadline_seconds=3)
+    result = await run(operation, respond, context, requests)
+    assert isinstance(result, sdk.MutationResult), "an accepted write without a saved ID is never retried"
+    confirmed_branch = "created" if operation == "createConversation" else "replied"
+    assert result.branch == (confirmed_branch if is_found else "uncertain")
+    assert methods(requests) == ["POST", "GET"]
+    assert context.marker is not None and context.marker.state == "claimed"
+
+
+@pytest.mark.asyncio
+async def test_non_2xx_headers_then_the_write_deadline_cuts_the_body_retries_with_the_send_counted() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext(deadline_seconds=0.6)
+    result = await run(
+        "createConversation", lambda _: httpx.Response(400, stream=HangingBody()), context, requests
+    )
+    assert isinstance(result, sdk.RetryError), "an unread refusal cannot prove Re:amaze applied nothing"
+    assert methods(requests) == ["POST"]
+    assert context.marker is not None and context.marker.state == "claimed"
+
+
+@pytest.mark.asyncio
+async def test_accepted_write_read_back_that_outlasts_the_attempt_deadline_is_uncertain() -> None:
+    async def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.method == "POST":
+            return httpx.Response(201, stream=HangingBody())
+        await asyncio.sleep(60)
+        return json_response(200, page("conversations", []))
+
+    requests: list[httpx.Request] = []
+    context = AttemptContext(deadline_seconds=3)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = reamaze.Client(
+            reamaze.Config("acme"), SwitchingCredentialProvider(), transport, "http://127.0.0.1:12345/api/v1"
+        )
+        operation = sdk.OperationRef("reamaze", "createConversation")
+        call = sdk.Call(CALL_ID, CONNECTION, operation, context=context, max_sends=3)
+        result = await sdk.run_mutation(client.create_conversation(), call, CREATE_INPUT)
+    assert result.branch == "uncertain", "the next attempt could resend a write Re:amaze accepted"
+    assert methods(requests) == ["POST", "GET"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["createConversation", "replyToConversation"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        projectconfig.ObjectNotFoundError("connection"),
+        projectconfig.ConnectionNotSelectedError("connection"),
+        projectconfig.CredentialBrokerRejectedError("broker"),
+    ],
+)
+async def test_terminal_credential_failure_is_defect_before_a_send_and_uncertain_after_one(
+    operation: str, error: Exception
+) -> None:
+    credentials = SwitchingCredentialProvider()
+    credentials.error = error
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await run(operation, lambda _: json_response(500, {}), context, requests, credentials)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "defect"
+    assert not requests
+    assert context.marker is not None and context.marker.state == "notSent"
+
+    credentials.error = None
+    context = AttemptContext()
+    first = await run(operation, lambda _: json_response(502, {}), context, requests, credentials)
+    assert isinstance(first, sdk.RetryError)
+    context.next_attempt()
+    credentials.error = error
+    result = await run(operation, lambda _: json_response(500, {}), context, requests, credentials)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert methods(requests) == ["POST"]
+    assert context.heartbeat_count == 0, "no notSent is recorded after a possible send"
+
+
+@pytest.mark.asyncio
 async def test_accepted_create_with_transient_read_back_and_no_slug_is_uncertain() -> None:
     def respond(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
@@ -338,6 +448,64 @@ async def test_update_retries_an_unusable_read_before_the_change(body: bytes) ->
         with pytest.raises(sdk.RetryError):
             await sdk.run_mutation(client.update_conversation(), call, update)
     assert len(requests) == 1, "an earlier attempt's PUT may have applied, so the safe write repeats"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status, body, branch",
+    [
+        (404, b"{}", "notFound"),
+        (403, b"{}", "providerRejected"),
+        (400, b'{"errors":"' + b"x" * 4096 + b'"}', ""),
+        (301, b"{}", ""),
+        (409, b"{}", ""),
+    ],
+)
+async def test_update_first_read_selects_a_branch_only_for_a_definite_refusal(
+    status: int, body: bytes, branch: str
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(status, content=body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = reamaze.Client(
+            reamaze.Config("acme", max_response_bytes=1024),
+            SwitchingCredentialProvider(),
+            transport,
+            "http://127.0.0.1:12345/api/v1",
+        )
+        call = sdk.Call(CALL_ID, CONNECTION, sdk.OperationRef("reamaze", "updateConversation"))
+        update = reamaze.UpdateConversationInput(conversation_id="double-charge", status=2)
+        if not branch:
+            with pytest.raises(sdk.RetryError):
+                await sdk.run_mutation(client.update_conversation(), call, update)
+        else:
+            result = await sdk.run_mutation(client.update_conversation(), call, update)
+            assert result.branch == branch
+    assert methods(requests) == ["GET"], "nothing is written after an unusable first read"
+
+
+@pytest.mark.asyncio
+async def test_update_terminal_credential_failure_selects_defect_only_on_the_first_attempt() -> None:
+    credentials = SwitchingCredentialProvider()
+    credentials.error = sdk.ReauthorizationRequiredError("reconnect")
+    context = AttemptContext()
+    mock = httpx.MockTransport(lambda _: json_response(500, {}))
+    async with httpx.AsyncClient(transport=mock) as transport:
+        base_url = "http://127.0.0.1:12345/api/v1"
+        client = reamaze.Client(reamaze.Config("acme"), credentials, transport, base_url)
+        operation = sdk.OperationRef("reamaze", "updateConversation")
+        call = sdk.Call(CALL_ID, CONNECTION, operation, context=context)
+        update = reamaze.UpdateConversationInput(conversation_id="double-charge", status=2)
+        result = await sdk.run_mutation(client.update_conversation(), call, update)
+        assert result.branch == "defect"
+        context.next_attempt()
+        with pytest.raises(sdk.RetryError):
+            # An earlier attempt's PUT may have applied, so the safe write repeats.
+            await sdk.run_mutation(client.update_conversation(), call, update)
 
 
 @pytest.mark.asyncio

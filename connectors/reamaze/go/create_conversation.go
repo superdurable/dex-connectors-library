@@ -131,7 +131,7 @@ func (operation CreateConversationOperation) Invoke(call sdkgo.Call, input Creat
 		return sdkgo.NewMutationRetry[CreateConversationOutput](reamazeFailure(sdkgo.FailureAvailability, createConversationOperation,
 			"dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
 	}
-	credentials, err := operation.client.resolveCredentials(call)
+	credentials, err := operation.client.resolveWriteCredentials(call)
 	if err != nil {
 		return fencedCredentialAttempt[CreateConversationOutput](operation.client, call, fence, decision, createConversationOperation,
 			decision.Marker.ProviderID, CreateConversationBranchDefect, err)
