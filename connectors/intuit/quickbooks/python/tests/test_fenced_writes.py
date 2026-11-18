@@ -9,7 +9,12 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.intuit_quickbooks as quickbooks
@@ -307,6 +312,42 @@ async def test_unavailable_credential_broker_retries_without_counting_a_send() -
     assert isinstance(result, sdk.RetryError)
     assert result.failure.kind == sdk.FailureKind.AVAILABILITY
     assert context.marker.state == "canResend" and context.marker.send_count == 0
+    assert script.requests == []
+
+
+class FailingCredentials:
+    """Fail every credential read with error."""
+
+    def __init__(self, error: Exception) -> None:
+        """Keep the error to raise."""
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> quickbooks.Credentials:
+        """Raise the configured error."""
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_transient"),
+    [
+        (ValueError("connection is not configured"), True),
+        (RuntimeError("unlisted"), True),
+        (sdk.ReauthorizationRequiredError(), False),
+        (ObjectNotFoundError(), False),
+        (ConnectionNotSelectedError(), False),
+        (CredentialBrokerRejectedError(), False),
+    ],
+)
+async def test_credential_resolve_failures_split_into_terminal_and_transient(
+    error: Exception, is_transient: bool
+) -> None:
+    """Only the terminal classes select a branch; every other resolve failure Retries unsent."""
+    script = Script(httpx.Response(200, json=CUSTOMER))
+    result = await create(script, AttemptContext(), credentials=FailingCredentials(error))
+    assert isinstance(result, sdk.RetryError) == is_transient
+    if not is_transient:
+        assert not isinstance(result, sdk.RetryError) and result.branch not in ("uncertain", "created")
     assert script.requests == []
 
 

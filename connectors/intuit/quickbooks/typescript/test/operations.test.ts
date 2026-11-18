@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { QuickBooksClient } from '../src/client.js';
 
@@ -18,16 +19,28 @@ function client(send: (request: ProviderRequest) => Promise<ProviderResponse>, p
 }
 
 describe('QuickBooks provider boundaries', () => {
-  it('treats malformed host credentials as a terminal defect', async () => {
-    const provider = { resolve: async (): Promise<typeof credentials> => { throw new TypeError('malformed'); }, resolveWithRefresh: async (): Promise<typeof credentials> => { throw new TypeError('malformed'); } };
+  it('retries a plain TypeError from the credential source, which a fetch failure throws', async () => {
+    const provider = { resolve: async (): Promise<typeof credentials> => { throw new TypeError('fetch failed'); }, resolveWithRefresh: async (): Promise<typeof credentials> => { throw new TypeError('fetch failed'); } };
     const result = await client(async () => { throw new Error('must not send'); }, provider).getInvoice().invoke(call, { invoiceId: '130' });
-    expect(result).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
+    expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
   });
 
   it('retries a transient host refresh failure', async () => {
     const provider = { resolve: async (): Promise<typeof credentials> => { throw new Error('temporary outage'); }, resolveWithRefresh: async (): Promise<typeof credentials> => { throw new Error('temporary outage'); } };
     const result = await client(async () => { throw new Error('must not send'); }, provider).getInvoice().invoke(call, { invoiceId: '130' });
     expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+  });
+
+  it('treats only the listed credential errors as terminal', async () => {
+    for (const [error, expected] of [
+      [new Error('connection is not configured'), { kind: 'retry' }], [new CredentialBrokerUnavailableError(), { kind: 'retry' }],
+      [new ReauthorizationRequiredError(), { kind: 'branch', branch: 'providerRejected' }], [new ObjectNotFoundError(), { kind: 'branch', branch: 'defect' }],
+      [new ConnectionNotSelectedError(), { kind: 'branch', branch: 'defect' }], [new CredentialBrokerRejectedError(), { kind: 'branch', branch: 'defect' }],
+    ] as const) {
+      const provider = { resolve: async (): Promise<typeof credentials> => { throw error; }, resolveWithRefresh: async (): Promise<typeof credentials> => { throw error; } };
+      const result = await client(async () => { throw new Error('must not send'); }, provider).getInvoice().invoke(call, { invoiceId: '130' });
+      expect(result, error.name).toMatchObject(expected);
+    }
   });
 
   it('rejects invalid calendar dates before a provider request', async () => {
