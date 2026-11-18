@@ -7,7 +7,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { CreateCustomerOperation, CreateInvoiceOperation, FindCustomerOperation, GetInvoiceOperation, ListInvoicesOperation, RecordPaymentOperation, SendInvoiceOperation } from './operations.js';
 
 const productionEndpoint = 'https://quickbooks.api.intuit.com';
@@ -124,7 +124,7 @@ export class QuickBooksClient {
     catch (error) {
       const isReauthorization = error instanceof ReauthorizationRequiredError;
       // The listed SDK errors need a person; a TypeError may be a fetch failure, so it is transient.
-      const isMalformed = error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+      const isMalformed = error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
       return this.localFailure(call, isReauthorization ? 'rejected' : isMalformed ? 'defect' : 'retry',
         isReauthorization || isMalformed ? 'AUTHENTICATION' : 'AVAILABILITY', operation,
         isReauthorization ? 'QuickBooks authorization must be renewed: connect the company again' : isMalformed ? 'QuickBooks connection credentials are unavailable' : 'Intuit access token refresh is temporarily unavailable', objectID);
