@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { PipedriveClient, validatePipedriveEndpoint } from '../src/client.js';
 import { loadScenarios, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
@@ -45,6 +46,20 @@ it('classifies unavailable credential storage as retry and malformed material as
   const invalid = await malformed.getObject().invoke(call(), { objectType: 'deals', objectId: '301' });
   expect(invalid.kind).toBe('branch');
   if (invalid.kind === 'branch') expect(invalid.branch).toBe('defect');
+});
+
+it.each([
+  ['broker unavailable', new CredentialBrokerUnavailableError(), 'retry', undefined],
+  ['static not configured', new Error('connection is not configured'), 'retry', undefined],
+  ['reauthorization', new ReauthorizationRequiredError(), 'branch', 'providerRejected'],
+  ['object not found', new ObjectNotFoundError(), 'branch', 'defect'],
+  ['connection not selected', new ConnectionNotSelectedError(), 'branch', 'defect'],
+  ['broker rejected', new CredentialBrokerRejectedError(), 'branch', 'defect'],
+])('classifies a %s credential failure', async (_name, error, kind, branch) => {
+  const client = new PipedriveClient({}, source(async () => { throw error; }), { send: async () => { throw new Error('no request may be sent'); } });
+  const attempt = await client.getObject().invoke(call(), { objectType: 'deals', objectId: '301' });
+  expect(attempt.kind).toBe(kind);
+  if (attempt.kind === 'branch') expect(attempt.branch).toBe(branch);
 });
 
 it('retries an address refusal before provider dispatch', async () => {

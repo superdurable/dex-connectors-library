@@ -515,7 +515,9 @@ func TestUpsertObjectSelectsUncertainWhenAnAttemptAfterAnUnconfirmedCreateIsRefu
 		}
 		writeError(t, response, http.StatusForbidden)
 	})
-	withoutCredentials, err := pipedrive.New(pipedrive.Config{Endpoint: refusedSearch.URL}, sdkgo.StaticCredentialProvider[pipedrive.Credentials]{})
+	withoutCredentials, err := pipedrive.New(pipedrive.Config{Endpoint: refusedSearch.URL}, sdkgo.StaticCredentialProvider[pipedrive.Credentials]{
+		pipedriveConnection: {AuthMethodID: pipedrive.APITokenAuthMethodID},
+	})
 	require.NoError(t, err)
 	for name, testCase := range map[string]struct {
 		client       *pipedrive.Client

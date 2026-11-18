@@ -5,6 +5,7 @@ import { isIP } from 'node:net';
 import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { CreateObjectOperation, GetObjectOperation, ListObjectsOperation, SearchObjectsOperation, UpdateObjectOperation, UpsertObjectOperation } from './operations.js';
@@ -71,7 +72,9 @@ export class PipedriveClient {
     catch (error) {
       if (signal.aborted) return { kind: 'retry', failure: this.failure(operation, 'AVAILABILITY', 'Pipedrive connection credentials are temporarily unavailable') };
       if (error instanceof ReauthorizationRequiredError) return { kind: 'rejected', failure: this.failure(operation, 'AUTHENTICATION', 'Pipedrive authorization must be renewed; reconnect the connection') };
-      if (error instanceof Error && error.message === 'connection is not configured') return { kind: 'defect', failure: this.failure(operation, 'AUTHENTICATION', 'Pipedrive connection credentials are unavailable; reconnect the connection') };
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) {
+        return { kind: 'defect', failure: this.failure(operation, 'AUTHENTICATION', 'Pipedrive connection credentials are unavailable; reconnect the connection') };
+      }
       return { kind: 'retry', failure: this.failure(operation, 'AVAILABILITY', 'Pipedrive connection credentials are temporarily unavailable') };
     }
     if (signal.aborted) return { kind: 'retry', failure: this.failure(operation, 'AVAILABILITY', 'Pipedrive connection credentials are temporarily unavailable') };

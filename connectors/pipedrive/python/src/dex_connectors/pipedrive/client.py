@@ -21,6 +21,11 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -161,7 +166,9 @@ class Client:
                         "Pipedrive authorization must be renewed; reconnect the connection",
                     ),
                 )
-            if str(error) == "connection is not configured":
+            if isinstance(
+                error, ObjectNotFoundError | ConnectionNotSelectedError | CredentialBrokerRejectedError
+            ):
                 return None, Exchange(
                     "defect",
                     failure(

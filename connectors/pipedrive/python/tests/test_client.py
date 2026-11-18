@@ -16,6 +16,12 @@ from dex_connectors.sdk import (
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 
 from dex_connectors.pipedrive import Client, Config, Credentials, UpsertObjectInput
 from dex_connectors.pipedrive.models import decode_record_body, parse_go_rfc3339
@@ -50,7 +56,11 @@ class _FailingCredentials:
     [
         (ReauthorizationRequiredError(), "rejected", FailureKind.AUTHENTICATION),
         (OSError("temporary"), "retry", FailureKind.AVAILABILITY),
-        (ValueError("connection is not configured"), "defect", FailureKind.AUTHENTICATION),
+        (ValueError("connection is not configured"), "retry", FailureKind.AVAILABILITY),
+        (CredentialBrokerUnavailableError("broker down"), "retry", FailureKind.AVAILABILITY),
+        (ObjectNotFoundError(), "defect", FailureKind.AUTHENTICATION),
+        (ConnectionNotSelectedError(), "defect", FailureKind.AUTHENTICATION),
+        (CredentialBrokerRejectedError(), "defect", FailureKind.AUTHENTICATION),
     ],
 )
 async def test_credential_resolution_routes_terminal_and_transient_errors(
