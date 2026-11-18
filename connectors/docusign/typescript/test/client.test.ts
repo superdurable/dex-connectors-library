@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { DocuSignClient, SessionError, escapePath, goQueryEscape, type DocuSignSession } from '../src/client.js';
 import { CreateEnvelopeFromTemplateOperation, VoidEnvelopeOperation, parseDocuSignTimestamp } from '../src/operations.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
@@ -173,6 +174,9 @@ describe('incomplete error bodies', () => {
     ['connection unselected', () => new ConnectionNotSelectedError(), 'defect'],
     ['broker rejected', () => new CredentialBrokerRejectedError(), 'defect'],
     ['reauthorization', () => new ReauthorizationRequiredError(), 'defect'],
+    ['malformed stored material', () => new CredentialMaterialError('stored credential does not match the connector credential fields'), 'defect'],
+    ['SDK decoding failure', () => new TypeError('project credential decoding failed'), 'defect'],
+    ['unlisted type error', () => new TypeError('unlisted'), 'retry'],
   ] as const)('classifies %s as a %s session failure', async (_name, error, route) => {
     const fail = async () => { throw error(); };
     const client = new DocuSignClient({}, { resolve: fail, resolveWithRefresh: fail });

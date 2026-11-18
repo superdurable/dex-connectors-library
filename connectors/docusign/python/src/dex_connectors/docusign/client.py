@@ -258,7 +258,9 @@ class Client:
                 ObjectNotFoundError,
             )
 
-            if isinstance(
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error) or isinstance(
                 error, (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError)
             ):
                 raise SessionFailure(
