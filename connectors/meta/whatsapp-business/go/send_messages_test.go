@@ -356,6 +356,24 @@ func (source failingCredentialSource) Resolve(sdkgo.Call) (Credentials, error) {
 	return Credentials{}, source.err
 }
 
+func TestListPhoneNumbersRetriesTransientCredentialFailures(t *testing.T) {
+	input := ListPhoneNumbersInput{BusinessAccountID: "123456789"}
+	for _, credentialErr := range []error{projectconfig.ErrCredentialBrokerUnavailable, errors.New("project store read failed")} {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, failingCredentialSource{err: credentialErr})
+			require.NoError(t, err)
+			_, err = sdkgo.RunQuery(queryContext{}, client.ListPhoneNumbers(), testConnection, input)
+			var retryErr *sdkgo.RetryError
+			require.ErrorAs(t, err, &retryErr)
+		})
+	}
+	client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, failingCredentialSource{err: projectconfig.ErrObjectNotFound})
+	require.NoError(t, err)
+	terminal, err := sdkgo.RunQuery(queryContext{}, client.ListPhoneNumbers(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, ListPhoneNumbersBranchDefect, terminal.Branch)
+}
+
 func TestSendTextMessageTransientCredentialFailureBeforeSendRetries(t *testing.T) {
 	for _, credentialErr := range []error{projectconfig.ErrCredentialBrokerUnavailable, errors.New("project store read failed"), errors.New("connection is not configured")} {
 		t.Run(credentialErr.Error(), func(t *testing.T) {

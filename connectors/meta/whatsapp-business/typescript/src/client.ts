@@ -6,7 +6,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFou
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { ListPhoneNumbersDefinition, SendTemplateMessageDefinition, SendTextMessageDefinition } from './generated/definitions.js';
-import type { BusinessPhoneNumber, Config, Credentials, ListPhoneNumbersInput, PhoneNumbersPage, SendTemplateMessageInput, SendTextMessageInput, SentMessage } from './generated/models.js';
+import { isCredentialMaterialError, type BusinessPhoneNumber, type Config, type Credentials, type ListPhoneNumbersInput, type PhoneNumbersPage, type SendTemplateMessageInput, type SendTextMessageInput, type SentMessage } from './generated/models.js';
 
 const numericID = /^[0-9]{1,40}$/;
 const recipientID = /^[1-9][0-9]{5,14}$/;
@@ -182,11 +182,6 @@ export class WhatsAppBusinessClient {
     return resendOrSelectUncertain('AVAILABILITY', `Meta message outcome is unknown after HTTP ${status}`, retryAfterMs);
   }
 
-  private async resolveToken(call: Call): Promise<string | undefined> {
-    const resolution = await this.resolveTokenWithReason(call);
-    return 'token' in resolution ? resolution.token : undefined;
-  }
-
   /** Resolve the token, separating a transient resolution failure from a terminal one. */
   private async resolveTokenWithReason(call: Call): Promise<{ token: string } | { isTerminal: boolean; message: string }> {
     let resolved: Credentials;
@@ -198,8 +193,12 @@ export class WhatsAppBusinessClient {
 
   /** Read one page or return a provider decision without exposing its body. */
   async exchange(call: Call, operation: string, path: string): Promise<ProviderOutcome> {
-    const token = await this.resolveToken(call);
-    if (!token) return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid') };
+    const resolution = await this.resolveTokenWithReason(call);
+    if (!('token' in resolution)) {
+      if (!resolution.isTerminal) return { retry: true, failure: failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable') };
+      return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid') };
+    }
+    const token = resolution.token;
     const request: ProviderRequest = {
       url: `${this.baseUrl}${path}`, method: 'GET',
       headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, 'User-Agent': 'Dex Connector (https://superdurable.io)' },
@@ -299,7 +298,8 @@ function decodeGraphError(body: Uint8Array): { isThrottled: boolean; isTransient
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 /** Report a credential resolution failure that no retry fixes; broker outages and store reads are transient. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError
+    || isCredentialMaterialError(error);
 }
 /** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
 function effectiveMaxSends(call: Call, operationMaxSends: number): number {

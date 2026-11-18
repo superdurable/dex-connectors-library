@@ -7,7 +7,14 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBr
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { WhatsAppBusinessClient } from '../src/client.js';
 import { SendTextMessageDefinition } from '../src/generated/definitions.js';
-import type { SentMessage } from '../src/generated/models.js';
+import { CredentialMaterialError, decodeCredentials, type SentMessage } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const callId = 'dafd56f7-07e7-5223-956d-91714d91663a';
 const sendCap = SendTextMessageDefinition.maxSends!;
@@ -216,7 +223,29 @@ describe('WhatsApp bounded resend of unconfirmed messages', () => {
     expect(laterRequests).toHaveLength(1);
   });
 
-  it.each([new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()])('selects defect for a terminal credential failure before any send: %s', async credentialError => {
+  it('selects uncertain for malformed stored credentials after a possible send', async () => {
+    const { client, requests } = newClient([serverFailure]);
+    const context = new AttemptContext();
+    expect(await send(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    const { client: malformedClient } = newClient([serverFailure], undefined, undefined, new CredentialMaterialError('WhatsApp Business system-user token is unavailable'));
+    expect(await send(malformedClient, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    [new CredentialBrokerUnavailableError(), 'retry'], [new TypeError('fetch failed'), 'retry'],
+    [new ObjectNotFoundError(), 'branch'], [sdkWrappedMaterialError(), 'branch'],
+  ] as const)('listPhoneNumbers retries a transient credential failure and selects defect for a terminal one: %s', async (credentialError, kind) => {
+    const { client, requests } = newClient([serverFailure], undefined, undefined, credentialError);
+    const call = { id: callId, connection: { provider: 'whatsapp-business', name: 'whatsapp-business' }, operation: { connectorId: 'whatsapp-business', operationId: 'listPhoneNumbers' }, context: new AttemptContext() } as unknown as Call;
+    const attempt = await client.listPhoneNumbers().invoke(call, { businessAccountId: '1234567890' });
+    expect(attempt.kind).toBe(kind);
+    if (kind === 'branch') expect(attempt).toMatchObject({ branch: 'defect' });
+    expect(requests).toHaveLength(0);
+  });
+
+  it.each([new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), sdkWrappedMaterialError(), new CredentialMaterialError('WhatsApp Business system-user token is unavailable')])('selects defect for a terminal credential failure before any send: %s', async credentialError => {
     const { client, requests } = newClient([sent], undefined, undefined, credentialError);
     expect(await send(client, new AttemptContext())).toMatchObject({ branch: 'defect' });
     expect(requests).toHaveLength(0);
