@@ -69,16 +69,12 @@ setattr(new_connection_with_operations, '__module__', 'dex_connectors.microsoft_
 class CredentialMaterialError(ValueError):
     "Stored Microsoft Advertising credential material fails the connector credential checks, so no retry can succeed."
 
-setattr(CredentialMaterialError, '__module__', 'dex_connectors.microsoft_advertising.connection')
-
 
 def is_credential_material_error(error: BaseException) -> bool:
     """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
     return isinstance(error, CredentialMaterialError) or (
         isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
     )
-
-setattr(is_credential_material_error, '__module__', 'dex_connectors.microsoft_advertising.connection')
 
 
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:

@@ -1040,16 +1040,12 @@ def render_connection():
             "class CredentialMaterialError(ValueError):",
             f"    {quoted('Stored ' + connection_label + ' credential material fails the connector credential checks, so no retry can succeed.')}",
             "",
-            f"setattr(CredentialMaterialError, '__module__', 'dex_connectors.{package_name}.connection')",
-            "",
             "",
             "def is_credential_material_error(error: BaseException) -> bool:",
             "    \"\"\"Report malformed stored credential material, also behind the SDK provider's decoding ValueError.\"\"\"",
             "    return isinstance(error, CredentialMaterialError) or (",
             "        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)",
             "    )",
-            "",
-            f"setattr(is_credential_material_error, '__module__', 'dex_connectors.{package_name}.connection')",
             "",
         ]
         decoder_start = len(lines)
