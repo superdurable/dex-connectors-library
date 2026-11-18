@@ -281,8 +281,8 @@ export class UpdateRecordOperation {
       ...(response.providerErrors.length ? { providerErrors: response.providerErrors } : {}),
     }, { requestRejected: 'recordRejected' });
     const receipt = this.client.receipt(call, input.recordId, response.apiUsage);
-    if (response.status === 300) return newMutationBranch('providerRejected', empty, receipt,
-      salesforceFailure('updateRecord', 'PROTOCOL', 'Salesforce returned multiple choices for a record ID'));
+    // A 300 is defined only for external ID paths, so for a record ID it is unknown; repeating is safe.
+    if (response.status === 300) return newMutationRetry(salesforceFailure('updateRecord', 'PROTOCOL', 'Salesforce returned multiple choices for a record ID'));
     return newMutationBranch('updated', { id: input.recordId }, receipt);
   }
 }

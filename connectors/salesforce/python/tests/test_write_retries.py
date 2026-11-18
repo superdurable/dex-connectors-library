@@ -51,3 +51,32 @@ async def test_writes_retry_a_status_that_does_not_prove_a_refusal(status: int) 
         )
         upsert = await client.upsert_record_by_external_id().invoke(call, upsert_input)
         assert upsert.kind == "retry"
+
+
+@pytest.mark.asyncio
+async def test_update_retries_a_300_which_only_external_id_paths_define() -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(300, json=["/services/data/v62.0/sobjects/Opportunity/006RM000001AbcdYAC"])
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http_client:
+        client = salesforce.Client(
+            salesforce.Config(),
+            conformance.static_credentials(
+                CONNECTION,
+                salesforce.Credentials(
+                    access_token=sdk.SecretString("salesforce-token-SENTINEL"),
+                    instance_url="http://127.0.0.1:12345",
+                ),
+            ),
+            http_client,
+        )
+        call = sdk.Call(
+            sdk.CallID("c0a3b2d4-5e6f-5a7b-8c9d-0e1f2a3b4c5d"),
+            CONNECTION,
+            sdk.OperationRef("salesforce", "updateRecord"),
+        )
+        update_input = salesforce.UpdateRecordInput(
+            "Opportunity", "006RM000001AbcdYAC", {"StageName": "Closed Won"}
+        )
+        update = await client.update_record().invoke(call, update_input)
+        assert update.kind == "retry"
