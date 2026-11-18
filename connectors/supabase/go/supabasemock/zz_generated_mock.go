@@ -108,7 +108,7 @@ func UpsertRowsProviderRejected(value supabase.UpsertRowsOutput, failure *sdkgo.
 	return connectormock.Branch(supabase.UpsertRowsBranchProviderRejected, value, failure)
 }
 
-// UpsertRowsInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+// UpsertRowsInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert.
 func UpsertRowsInvalidResponse(value supabase.UpsertRowsOutput, failure *sdkgo.Failure) connectormock.Case[supabase.UpsertRowsOutput] {
 	return connectormock.Branch(supabase.UpsertRowsBranchInvalidResponse, value, failure)
 }

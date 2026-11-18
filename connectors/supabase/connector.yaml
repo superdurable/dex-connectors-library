@@ -118,7 +118,7 @@ spec:
       optional: true
     - id: invalidResponse
       goName: InvalidResponse
-      description: The provider returned malformed or oversized JSON.
+      description: Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert.
       optional: true
     - id: defect
       goName: Defect
