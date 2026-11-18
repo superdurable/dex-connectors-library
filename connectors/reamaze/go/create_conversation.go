@@ -126,33 +126,28 @@ func (operation CreateConversationOperation) Invoke(call sdkgo.Call, input Creat
 		return sdkgo.NewMutationBranch(CreateConversationBranchDefect, CreateConversationOutput{}, reamazeFailurePointer(sdkgo.FailureLocalDefect, createConversationOperation, err.Error()), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
-	var credentials Credentials
-	switch decision.Kind {
-	case singledispatch.FailClosed:
+	if decision.Kind == singledispatch.FailClosed {
 		// FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
 		return sdkgo.NewMutationRetry[CreateConversationOutput](reamazeFailure(sdkgo.FailureAvailability, createConversationOperation,
 			"dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
-	case singledispatch.ReadBackRequired, singledispatch.ReadBackThenResendAllowed:
-		credentials, err = operation.client.resolveCredentials(call)
-		if err != nil {
-			return uncertainOrRetryCredentials[CreateConversationOutput](operation.client, call, createConversationOperation, decision.Marker.ProviderID, err)
-		}
+	}
+	credentials, err := operation.client.resolveCredentials(call)
+	if err != nil {
+		return fencedCredentialAttempt[CreateConversationOutput](operation.client, call, fence, decision, createConversationOperation,
+			decision.Marker.ProviderID, CreateConversationBranchDefect, err)
+	}
+	if needsReadBack(decision) {
 		// A saved conversation ID proves Re:amaze created it, so it is read back and never resent.
 		if decision.Marker.ProviderID != "" {
 			return operation.confirmDispatchCandidate(call, credentials, decision.Marker.ProviderID, dispatchKey(call)).uncertainWhenUnconfirmed(CreateConversationOutput{})
 		}
 		readBack := operation.reconcileEarlierDispatch(call, credentials)
-		if decision.Kind == singledispatch.ReadBackRequired || !readBack.isUnconfirmed {
+		if !readBack.isAbsent || !permitsResendAfterReadBack(call, decision) {
 			return readBack.uncertainWhenUnconfirmed(CreateConversationOutput{})
 		}
 		// The read-back found no conversation with the key, so this attempt resends below the cap.
-	default:
-		credentials, err = operation.client.resolveCredentials(call)
-		if err != nil {
-			return fencedCredentialAttempt[CreateConversationOutput](fence, createConversationOperation, CreateConversationBranchDefect, err)
-		}
 	}
-	permit := newReamazeWritePermit(call, fence, decision)
+	permit := newReamazeWritePermit(fence, decision)
 	send := &fencedReamazeSend{client: operation.client, call: call, credentials: credentials, operation: createConversationOperation,
 		request: reamazeRequest{method: http.MethodPost, path: "/conversations", payload: buildCreateConversationRequest(input, dispatchKey(call))}}
 	if err := fence.Dispatch(send.dispatch); err != nil {
@@ -161,7 +156,7 @@ func (operation CreateConversationOperation) Invoke(call sdkgo.Call, input Creat
 	result := send.result
 	receipt := operation.client.receipt(call, result.response, "")
 	if hasUnusableAcceptedWrite(result) {
-		return operation.reconcileEarlierDispatch(call, credentials).resendOrSelectUncertain(CreateConversationOutput{}, permit)
+		return operation.reconcileAcceptedWrite(call, fence, credentials, "")
 	}
 	if attempt, isTerminal := fencedWriteResult[CreateConversationOutput](permit, result, receipt, fencedWriteBranches{
 		providerRejected: CreateConversationBranchProviderRejected, defect: CreateConversationBranchDefect,
@@ -170,11 +165,32 @@ func (operation CreateConversationOperation) Invoke(call sdkgo.Call, input Creat
 	}
 	conversation, err := decodeConversationBody(result.response.body, "")
 	if err != nil {
-		return operation.reconcileEarlierDispatch(call, credentials).resendOrSelectUncertain(CreateConversationOutput{}, permit)
+		return operation.reconcileAcceptedWrite(call, fence, credentials, acceptedConversationID(result.response.body))
 	}
 	_ = fence.RecordProviderID(conversation.ID)
 	return sdkgo.NewMutationBranch(CreateConversationBranchCreated, CreateConversationOutput{Conversation: conversation}, nil,
 		operation.client.receipt(call, result.response, conversation.ID))
+}
+
+// reconcileAcceptedWrite never resends a create Re:amaze answered with a 2xx: it confirms the
+// conversation in this attempt, by its slug when the answer named one, or selects uncertain.
+func (operation CreateConversationOperation) reconcileAcceptedWrite(call sdkgo.Call, fence *singledispatch.Fence, credentials Credentials, conversationID string) sdkgo.MutationAttempt[CreateConversationOutput] {
+	if conversationID == "" {
+		return operation.reconcileEarlierDispatch(call, credentials).acceptedWriteAttempt(CreateConversationOutput{}, false)
+	}
+	isProviderIDSaved := fence.RecordProviderID(conversationID) == nil
+	return operation.confirmDispatchCandidate(call, credentials, conversationID, dispatchKey(call)).acceptedWriteAttempt(CreateConversationOutput{}, isProviderIDSaved)
+}
+
+// acceptedConversationID returns a valid slug from an accepted answer that did not decode, or blank.
+func acceptedConversationID(body []byte) string {
+	var wire struct {
+		Slug string `json:"slug"`
+	}
+	if json.Unmarshal(body, &wire) != nil || validateConversationID("slug", wire.Slug) != nil {
+		return ""
+	}
+	return wire.Slug
 }
 
 // reconcileEarlierDispatch never sends: it reports the conversation an earlier attempt created, or an unconfirmed write.
@@ -199,7 +215,7 @@ func (operation CreateConversationOperation) reconcileEarlierDispatch(call sdkgo
 		return operation.confirmDispatchCandidate(call, credentials, match.candidateSlug, key)
 	}
 	if !match.isConfirmed {
-		return unconfirmedReconciliation[CreateConversationOutput](reamazeFailure(sdkgo.FailureTransport, createConversationOperation, uncertainNotFoundMessage), receipt)
+		return absentReconciliation[CreateConversationOutput](reamazeFailure(sdkgo.FailureTransport, createConversationOperation, uncertainNotFoundMessage), receipt)
 	}
 	return confirmedReconciliation(sdkgo.NewMutationBranch(CreateConversationBranchCreated, CreateConversationOutput{Conversation: match.conversation, WasAlreadyApplied: true}, nil,
 		operation.client.receipt(call, result.response, match.conversation.ID)))
@@ -220,7 +236,7 @@ func (operation CreateConversationOperation) confirmDispatchCandidate(call sdkgo
 			"an earlier attempt of this Step sent the request, and the conversation read back is invalid: "+err.Error()), receipt)
 	}
 	if !isConfirmed {
-		return unconfirmedReconciliation[CreateConversationOutput](reamazeFailure(sdkgo.FailureTransport, createConversationOperation, uncertainNotFoundMessage), receipt)
+		return absentReconciliation[CreateConversationOutput](reamazeFailure(sdkgo.FailureTransport, createConversationOperation, uncertainNotFoundMessage), receipt)
 	}
 	return confirmedReconciliation(sdkgo.NewMutationBranch(CreateConversationBranchCreated, CreateConversationOutput{Conversation: conversation, WasAlreadyApplied: true}, nil, receipt))
 }

@@ -242,13 +242,24 @@ checkpoint returns Retry without sending. A 429, 503, or provably
 undispatched connection records `canResend` and retries. Any other answer
 except a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422),
 such as a 409, 3xx, other 5xx, lost answer, or unlisted status, returns Retry.
-The next attempt reads back first: a confirmed record selects the happy path;
-an absent record permits a resend while fewer sends than the cap may have
-taken effect, and selects `uncertain` once the cap is reached. A 2xx with an
-unusable body triggers read-back in the same attempt and, when nothing is
-found, resends on the next attempt below the cap. A definite refusal of a
-first send records `canResend` before its branch; after a possible earlier
-send it selects `uncertain`.
+A refusal whose body exceeds `maxResponseBytes` is unread, so it also returns
+Retry. Every attempt after a possible send reads back first, including one
+that the fence lets send after a rate-limited resend: a confirmed record
+selects the happy path; a read that proves the record absent permits a resend
+while fewer sends than the cap may have taken effect, and selects `uncertain`
+once the cap is reached. A read-back that is refused, finds no conversation
+(404), or returns an invalid page cannot prove the write absent and selects
+`uncertain`. A 2xx means Re:amaze accepted the write, so it is never resent:
+when its body is unreadable, oversized, or malformed, the connector reads back
+in the same attempt and selects the happy path when it finds the record, and
+`uncertain` otherwise. A create answer that still names a valid conversation
+slug saves that slug in the fence first and reads the conversation by it; only
+then may a transient read failure retry, because every later attempt reads
+that slug back and never resends. A definite refusal of a first send records
+`canResend` before its branch; after a possible earlier send it selects
+`uncertain`. Credentials that cannot be loaded after a possible send record
+nothing and retry, and unusable credentials then select `uncertain`, never
+`defect`.
 
 The create request stores the Step's key in conversation `data`, then a later
 attempt searches for that key and confirms it on the conversation detail when
@@ -282,7 +293,8 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | 400, 422 | `providerRejected`, `VALIDATION` | `providerRejected`, `VALIDATION` |
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
 | 404 | `notFound` where declared, otherwise `providerRejected` | same on a first send; `uncertain` after a possible earlier send |
-| 404 during reply read-back | N/A | an unconfirmed read-back: resend below the send cap, otherwise `uncertain` |
+| 404, 401, 403, or another refusal during read-back | N/A | `uncertain`; it cannot prove the write absent |
+| refusal status whose body exceeds `maxResponseBytes` | the refusal branch for reads; Retry for the PUT | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
 | 409 | `providerRejected`, `CONFLICT`, for reads; Retry for the `updateConversation` PUT | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
 | 411, 413, 414, 415 | `providerRejected` | `providerRejected` on a first send; `uncertain` after a possible earlier send |
 | other 4xx | `providerRejected` for reads; Retry for the `updateConversation` PUT | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
@@ -291,10 +303,10 @@ the HTTP status, such as `Re:amaze rejected the request (HTTP 422)`.
 | connection refused before sending | Retry | Retry, then send |
 | 503 | Retry, after `Retry-After` when present | Retry with the next attempt’s fence marker |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | Retry; the next attempt reads back, then resends below the cap or selects `uncertain` at it |
-| oversized, interrupted, or credential-reflecting 2xx | `invalidResponse` or Retry for a read; Retry for the PUT | Read back in the same attempt; an absent record resends below the cap, otherwise `uncertain` |
-| malformed 2xx | `invalidResponse` for the read before a change; Retry for the PUT | Read back in the same attempt; an absent record resends below the cap, otherwise `uncertain` |
+| oversized, interrupted, or credential-reflecting 2xx | `invalidResponse` or Retry for a read; Retry for both requests of `updateConversation` | Never resent: read back in the same attempt; a found record selects the happy path, otherwise `uncertain` |
+| malformed 2xx | `invalidResponse` for a read; Retry for both requests of `updateConversation`, which never selects its declared `invalidResponse` | Never resent: a create answer naming a valid slug saves it and reads that conversation; otherwise read back by key; a found record selects the happy path, otherwise `uncertain` |
 | unreadable or foreign fence checkpoint | N/A | Retry without sending |
-| connection credentials that cannot be read yet, such as a storage outage | Retry, with no request | Retry, with no request |
+| connection credentials that cannot be read yet, such as a storage outage | Retry, with no request | Retry, with no request; after a possible send nothing is recorded |
 | invalid input or unusable connection credentials | `defect`, with no request | `defect`, `AUTHENTICATION` with a reconnect hint before send; `uncertain` with a reconnect hint after a possible send |
 
 The Receipt carries the Call ID and idempotency key. It includes a conversation

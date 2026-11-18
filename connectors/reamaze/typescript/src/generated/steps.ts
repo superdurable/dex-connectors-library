@@ -76,7 +76,7 @@ export interface CreateConversationStepConfig<StepInput, OperationInput = Create
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Re:amaze conclusively rejected the conversation, such as an unknown channel or an invalid status; no conversation was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached, and no conversation carries the Step's key after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent. */
+  /** No conversation carrying the Step's key could be confirmed after a send that may have created one: the send cap is reached, Re:amaze accepted the create with an unusable answer, or the read-back was refused, so one may still appear. Below the cap, a send whose outcome is unknown is read back and then resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -106,7 +106,7 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Re:amaze returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing. */
+  /** Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -140,7 +140,7 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Re:amaze conclusively rejected the message; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached, and the conversation shows no message with the Step's origin_id after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent. */
+  /** No message with the Step's origin_id could be confirmed after a send that may have added one: the send cap is reached, Re:amaze accepted the message with an unusable answer, or the read-back was refused or found no conversation, so one may still appear. Below the cap, a send whose outcome is unknown is read back and then resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

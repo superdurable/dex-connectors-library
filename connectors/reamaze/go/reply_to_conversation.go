@@ -84,29 +84,24 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, reamazeFailurePointer(sdkgo.FailureLocalDefect, replyToConversationOperation, err.Error()), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
-	var credentials Credentials
-	switch decision.Kind {
-	case singledispatch.FailClosed:
+	if decision.Kind == singledispatch.FailClosed {
 		// FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
 		return sdkgo.NewMutationRetry[ConversationReply](reamazeFailure(sdkgo.FailureAvailability, replyToConversationOperation,
 			"dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
-	case singledispatch.ReadBackRequired, singledispatch.ReadBackThenResendAllowed:
-		credentials, err = operation.client.resolveCredentials(call)
-		if err != nil {
-			return uncertainOrRetryCredentials[ConversationReply](operation.client, call, replyToConversationOperation, input.ConversationID, err)
-		}
+	}
+	credentials, err := operation.client.resolveCredentials(call)
+	if err != nil {
+		return fencedCredentialAttempt[ConversationReply](operation.client, call, fence, decision, replyToConversationOperation,
+			input.ConversationID, ReplyToConversationBranchDefect, err)
+	}
+	if needsReadBack(decision) {
 		readBack := operation.reconcileEarlierDispatch(call, credentials, input)
-		if decision.Kind == singledispatch.ReadBackRequired || !readBack.isUnconfirmed {
+		if !readBack.isAbsent || !permitsResendAfterReadBack(call, decision) {
 			return readBack.uncertainWhenUnconfirmed(output)
 		}
 		// The read-back found no message with the origin_id, so this attempt resends below the cap.
-	default:
-		credentials, err = operation.client.resolveCredentials(call)
-		if err != nil {
-			return fencedCredentialAttempt[ConversationReply](fence, replyToConversationOperation, ReplyToConversationBranchDefect, err)
-		}
 	}
-	permit := newReamazeWritePermit(call, fence, decision)
+	permit := newReamazeWritePermit(fence, decision)
 	send := &fencedReamazeSend{client: operation.client, call: call, credentials: credentials, operation: replyToConversationOperation,
 		request: reamazeRequest{method: http.MethodPost, path: conversationPath(input.ConversationID) + "/messages", payload: buildReplyRequest(input, dispatchKey(call))}}
 	if err := fence.Dispatch(send.dispatch); err != nil {
@@ -114,8 +109,9 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	}
 	result := send.result
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
+	// A 2xx accepted the message, so an unusable answer is read back now and never resent.
 	if hasUnusableAcceptedWrite(result) {
-		return operation.reconcileEarlierDispatch(call, credentials, input).resendOrSelectUncertain(output, permit)
+		return operation.reconcileEarlierDispatch(call, credentials, input).acceptedWriteAttempt(output, false)
 	}
 	if attempt, isTerminal := fencedWriteResult[ConversationReply](permit, result, receipt, fencedWriteBranches{
 		notFound: ReplyToConversationBranchNotFound, providerRejected: ReplyToConversationBranchProviderRejected, defect: ReplyToConversationBranchDefect,
@@ -124,7 +120,7 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	}
 	message, err := decodeCreatedMessage(result.response.body, input.ConversationID)
 	if err != nil {
-		return operation.reconcileEarlierDispatch(call, credentials, input).resendOrSelectUncertain(output, permit)
+		return operation.reconcileEarlierDispatch(call, credentials, input).acceptedWriteAttempt(output, false)
 	}
 	output.Message = message
 	return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt)
@@ -154,7 +150,7 @@ func (operation ReplyToConversationOperation) reconcileEarlierDispatch(call sdkg
 			return confirmedReconciliation(sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt))
 		}
 	}
-	return unconfirmedReconciliation[ConversationReply](reamazeFailure(sdkgo.FailureTransport, replyToConversationOperation, uncertainNotFoundMessage), receipt)
+	return absentReconciliation[ConversationReply](reamazeFailure(sdkgo.FailureTransport, replyToConversationOperation, uncertainNotFoundMessage), receipt)
 }
 
 // decodeCreatedMessage decodes the message object Re:amaze returns and checks its conversation when named.

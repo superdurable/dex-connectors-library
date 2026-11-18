@@ -3,7 +3,7 @@
 
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, Credentials } from './generated/models.js';
 import { CreateConversationOperation, FindContactByEmailOperation, GetConversationOperation, ReplyToConversationOperation, SearchConversationsOperation, UpdateConversationOperation } from './operations.js';
 
@@ -25,7 +25,8 @@ export type CredentialResult = { kind: 'resolved'; email: string; token: string 
 /** Classified provider exchange. */
 export type ReamazeExchange =
   | { kind: 'success'; response: ProviderResponse; requestId: string }
-  | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status: number; requestId: string };
+  | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number; status: number; requestId: string;
+    /** A non-2xx answer whose body exceeded maxResponseBytes and was not read. */ hasOversizedBody?: boolean };
 
 /** Authenticated Re:amaze API v1 client. */
 export class ReamazeClient {
@@ -93,6 +94,7 @@ export class ReamazeClient {
     const headers: Record<string, string> = { Accept: 'application/json', Authorization: `Basic ${Buffer.from(`${credentials.email}:${credentials.token}`).toString('base64')}` };
     if (body) headers['Content-Type'] = 'application/json';
     let response: ProviderResponse;
+    let hasOversizedBody = false;
     try {
       response = await this.send({ url, method, headers, ...(body ? { body } : {}), maxResponseBytes: this.maxResponseBytes,
         addressPolicy: new URL(this.endpoint).protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(new URL(this.endpoint).hostname) ? 'publicHTTPS' : 'privateNetworkHTTP',
@@ -102,9 +104,13 @@ export class ReamazeClient {
         if (error.status !== undefined && error.headers) {
           if (error.status >= 200 && error.status < 300) return this.failure('invalid', operation, 'RESPONSE_TOO_LARGE', 'Re:amaze response exceeds the configured maxResponseBytes limit', 0, error.status, safeRequestId(error.headers));
           response = { status: error.status, headers: error.headers, body: Buffer.alloc(0) };
+          hasOversizedBody = true;
         } else return this.failure('unavailable', operation, 'TRANSPORT', 'Re:amaze response could not be read');
       } else if (error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent) {
         return this.failure('notSent', operation, 'TRANSPORT', 'Re:amaze could not be reached; no request was sent');
+      } else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.headers) {
+        // Keep the status, so a write Re:amaze accepted before its body broke is never resent.
+        return this.failure('unavailable', operation, 'TRANSPORT', 'Re:amaze response could not be read', 0, error.status, safeRequestId(error.headers));
       } else return this.failure('unavailable', operation, 'TRANSPORT', 'Re:amaze request failed before a response arrived');
     }
     const requestId = safeRequestId(response.headers);
@@ -116,14 +122,14 @@ export class ReamazeClient {
     let retryAfterMs = parseRetryAfter(header(response, 'retry-after'), this.now());
     if (status === 429) { if (!retryAfterMs) retryAfterMs = 60_000; return this.failure('rateLimited', operation, 'RATE_LIMIT', 'Re:amaze rate limited the request (HTTP 429)', retryAfterMs, status, requestId); }
     if (status === 408 || status >= 500) return this.failure('unavailable', operation, 'AVAILABILITY', `Re:amaze could not complete the request (HTTP ${status})`, retryAfterMs, status, requestId);
-    if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', 'Re:amaze found no such resource in the brand (HTTP 404)', 0, status, requestId);
+    if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', 'Re:amaze found no such resource in the brand (HTTP 404)', 0, status, requestId, hasOversizedBody);
     if (status >= 300 && status < 400) return this.failure('rejected', operation, 'PROTOCOL', `Re:amaze redirected the request (HTTP ${status}); check that brand is the brand's reamaze.io subdomain`, 0, status, requestId);
     const failureKind: Failure['kind'] = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 409 ? 'CONFLICT' : status === 400 || status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION';
-    return this.failure('rejected', operation, failureKind, `Re:amaze rejected the request (HTTP ${status})`, 0, status, requestId);
+    return this.failure('rejected', operation, failureKind, `Re:amaze rejected the request (HTTP ${status})`, 0, status, requestId, hasOversizedBody);
   }
 
-  private failure(kind: Exclude<ReamazeExchange['kind'], 'success'>, operation: string, failureKind: Failure['kind'], message: string, retryAfterMs = 0, status = 0, requestId = ''): ReamazeExchange {
-    return { kind, failure: { kind: failureKind, provider: 'reamaze', operation, message }, retryAfterMs, status, requestId };
+  private failure(kind: Exclude<ReamazeExchange['kind'], 'success'>, operation: string, failureKind: Failure['kind'], message: string, retryAfterMs = 0, status = 0, requestId = '', hasOversizedBody = false): ReamazeExchange {
+    return { kind, failure: { kind: failureKind, provider: 'reamaze', operation, message }, retryAfterMs, status, requestId, ...(hasOversizedBody ? { hasOversizedBody } : {}) };
   }
 }
 
