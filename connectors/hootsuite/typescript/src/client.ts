@@ -102,7 +102,8 @@ export class HootsuiteClient {
         retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after'), this.now()),
       };
       if (error instanceof ProviderTransportError) return { ...failedExchange('request'), requestSent: !error.isProvablyNotSent };
-      return failedExchange('request');
+      // Any other failure gives no proof the request stayed local.
+      return { ...failedExchange('request'), requestSent: true };
     }
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'), this.now());
     if (Buffer.from(response.body).includes(token)) return { ...failedExchange('credential'), status: response.status, requestSent: true, retryAfterMs };
