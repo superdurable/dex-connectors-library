@@ -29,7 +29,15 @@ from dex_connectors.sdk.projectconfig.broker import (
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
-from dex_connectors.wordpress import Client, Config, CreatedPost, CreatePostInput, Credentials
+from dex_connectors.wordpress import (
+    Client,
+    Config,
+    CreatedPost,
+    CreatePostInput,
+    Credentials,
+    GetPostInput,
+    ListPostsInput,
+)
 from dex_connectors.wordpress._generated.connection import CredentialMaterialError
 from dex_connectors.wordpress._generated.definitions import CREATE_POST_DEFINITION
 
@@ -352,3 +360,39 @@ async def test_write_window_cutting_an_error_body_resends_below_cap() -> None:
     assert isinstance(result, RetryError)
     assert context.marker is not None and context.marker.state == "claimed"
     assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (CredentialBrokerUnavailableError("broker down"), False),
+        (ValueError("connection is not configured"), False),
+        (ReauthorizationRequiredError("revoked"), True),
+        (ObjectNotFoundError("missing"), True),
+        (ConnectionNotSelectedError("unselected"), True),
+        (CredentialBrokerRejectedError("refused"), True),
+        (CredentialMaterialError("WordPress credential username is required"), True),
+    ],
+)
+async def test_queries_retry_only_a_transient_credential_failure(error: Exception, is_terminal: bool) -> None:
+    """getPost and listPosts select defect only for the terminal credential set."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        config = Config(site_url="http://127.0.0.1:12345")
+        client = Client(config, FailingCredentialProvider(error), transport)
+        get_operation = OperationRef("wordpress", "getPost")
+        list_operation = OperationRef("wordpress", "listPosts")
+        get_call = Call(CALL_ID, CONNECTION, get_operation, context=AttemptContext())
+        list_call = Call(CALL_ID, CONNECTION, list_operation, context=AttemptContext())
+        results = [
+            await client.get_post().invoke(get_call, GetPostInput(42)),
+            await client.list_posts().invoke(list_call, ListPostsInput()),
+        ]
+    for result in results:
+        if is_terminal:
+            assert result.kind == "branch" and result.branch == "defect"
+        else:
+            assert result.kind == "retry"

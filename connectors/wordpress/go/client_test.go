@@ -5,6 +5,7 @@ package wordpress
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -34,6 +36,29 @@ func newTestClient(t *testing.T, siteURL string) *Client {
 	client, err := New(Config{SiteURL: siteURL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{Username: "editor", ApplicationPassword: sdkgo.NewSecretString("abcd efgh")}})
 	require.NoError(t, err)
 	return client
+}
+
+func TestQueriesRetryATransientCredentialFailure(t *testing.T) {
+	transientErrors := []error{errors.New("connection is not configured"), projectconfig.ErrCredentialBrokerUnavailable}
+	terminalErrors := []error{sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), projectconfig.ErrReauthorizationRequired,
+		projectconfig.ErrObjectNotFound, projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected}
+	for _, credentialErr := range append(transientErrors, terminalErrors...) {
+		client, err := New(Config{SiteURL: "http://127.0.0.1:1"}, failingCredentialProvider{credentialErr})
+		require.NoError(t, err)
+		isTerminal := isTerminalCredentialError(credentialErr)
+		post, postErr := sdkgo.RunQuery(queryContext{}, client.GetPost(), testConnection, GetPostInput{PostID: 42})
+		page, pageErr := sdkgo.RunQuery(queryContext{}, client.ListPosts(), testConnection, ListPostsInput{})
+		if isTerminal {
+			require.NoError(t, postErr)
+			require.NoError(t, pageErr)
+			require.Equal(t, GetPostBranchDefect, post.Branch)
+			require.Equal(t, ListPostsBranchDefect, page.Branch)
+			continue
+		}
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, postErr, &retry, "a transient credential failure retries getPost")
+		require.ErrorAs(t, pageErr, &retry, "a transient credential failure retries listPosts")
+	}
 }
 
 func TestGetPostProviderOutcomes(t *testing.T) {

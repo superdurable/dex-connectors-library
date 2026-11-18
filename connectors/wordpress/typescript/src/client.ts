@@ -11,7 +11,7 @@ import {
   BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
-import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { CreatePostDefinition, GetPostDefinition, ListPostsDefinition } from './generated/definitions.js';
 import {
   isCredentialMaterialError, type Config, type CreatePostInput, type CreatedPost, type Credentials, type GetPostInput,
@@ -42,7 +42,7 @@ export interface WordPressExchange {
   /** Complete bounded response body. */ body: Uint8Array;
   /** Provider response headers used for pagination and retry. */ headers: ProviderResponse['headers'];
   /** Retry-After delay in milliseconds. */ retryAfterMs: number;
-  /** Safe transport or credential classification; read means the body failed after its status arrived. */ error?: 'request' | 'read' | 'tooLarge' | 'auth';
+  /** Safe transport or credential classification; read means the body failed after its status arrived, authUnavailable a transient credential read. */ error?: 'request' | 'read' | 'tooLarge' | 'auth' | 'authUnavailable';
   /** Whether the request may have reached WordPress. */ requestSent: boolean;
 }
 
@@ -185,7 +185,8 @@ export class CreatePostOperation implements Mutation<CreatePostInput, CreatedPos
         { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: authorization },
         payload, signal));
     } catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError)
+      // The Fence raises these before sending, including its AggregateError for a short window and a failed notSent.
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error))
         return createRetry('TRANSPORT');
       return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT');
     }
@@ -268,6 +269,11 @@ async function localCreateFailure(fence: ReturnType<typeof newFence>, hasPossibl
   return createFailure('defect', kind);
 }
 
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
+}
+
 /** Report a credential failure that only reconnecting the connection can fix. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
@@ -331,18 +337,18 @@ export class ListPostsOperation implements Query<ListPostsInput, PostPage> {
 }
 
 async function readPost(client: WordPressClient, call: Call, path: string): Promise<WordPressExchange> {
-  const authorization = await client.authorization(call);
-  if (!authorization) return { status: 0, body: new Uint8Array(), headers: {}, retryAfterMs: 0,
-    error: 'auth', requestSent: false };
+  const resolution = await client.authorizationWithReason(call);
+  if (!('header' in resolution)) return { status: 0, body: new Uint8Array(), headers: {}, retryAfterMs: 0,
+    error: resolution.isTerminal ? 'auth' : 'authUnavailable', requestSent: false };
   return client.exchange(call, 'GET', `${client.siteUrl}${path}`, {
-    Accept: 'application/json', Authorization: authorization,
+    Accept: 'application/json', Authorization: resolution.header,
   });
 }
 
 function classifyQuery<T>(exchange: WordPressExchange, operation: 'getPost' | 'listPosts',
   empty: T): QueryAttempt<T> | undefined {
   if (exchange.error === 'auth') return queryFailure(operation, 'defect', 'AUTHENTICATION', empty);
-  if (exchange.error === 'request' || exchange.error === 'read') return queryRetry(operation, 'AVAILABILITY');
+  if (exchange.error === 'authUnavailable' || exchange.error === 'request' || exchange.error === 'read') return queryRetry(operation, 'AVAILABILITY');
   if (exchange.status === 429) return queryRetry(operation, 'RATE_LIMIT', exchange.retryAfterMs);
   if (exchange.status === 408 || exchange.status === 409 || exchange.status >= 500)
     return queryRetry(operation, 'AVAILABILITY', exchange.retryAfterMs);

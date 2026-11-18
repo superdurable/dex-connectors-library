@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { DispatchNotAllowedError, Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import {
   ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError,
@@ -154,6 +155,36 @@ describe('WordPress bounded resend of unconfirmed posts', () => {
     context.attempt = 2;
     expect(await create(client, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
+  });
+
+  it('returns Retry when the Fence refuses before sending', async () => {
+    const { client, requests } = newClient([created]);
+    class ShortWindowContext extends AttemptContext {
+      override readonly deadline = new Date(Date.now() + 50);
+      override async recordHeartbeat(): Promise<void> { throw new Error('heartbeat write failed'); }
+    }
+    // A cap of 1 makes an unknown outcome select uncertain, so Retry proves nothing was counted as sent.
+    expect(await create(client, new ShortWindowContext(), 1)).toBeInstanceOf(RetryError);
+    const refusal = vi.spyOn(Fence.prototype, 'dispatch').mockRejectedValue(new DispatchNotAllowedError());
+    try { expect(await create(client, new AttemptContext(), 1)).toBeInstanceOf(RetryError); }
+    finally { refusal.mockRestore(); }
+    expect(requests).toHaveLength(0);
+  });
+
+  it('getPost and listPosts retry a transient credential failure and select defect only for a terminal one', async () => {
+    const context = new AttemptContext();
+    const call = (operationId: string) => ({ id: callId, connection: { provider: 'wordpress', name: 'wordpress' }, operation: { connectorId: 'wordpress', operationId }, context }) as unknown as Call;
+    const transient = [new CredentialBrokerUnavailableError(), new Error('connection is not configured')];
+    const terminal = [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(), new CredentialMaterialError('username is required')];
+    for (const error of [...transient, ...terminal]) {
+      const { client, requests } = newClient([created], undefined, error);
+      const results = [await client.getPost().invoke(call('getPost'), { postId: 42 }), await client.listPosts().invoke(call('listPosts'), {})];
+      for (const result of results) {
+        if (transient.includes(error)) expect(result.kind).toBe('retry');
+        else expect(result).toMatchObject({ kind: 'branch', branch: 'defect' });
+      }
+      expect(requests).toHaveLength(0);
+    }
   });
 
   it('returns Retry when the dispatch checkpoint is unreadable', async () => {

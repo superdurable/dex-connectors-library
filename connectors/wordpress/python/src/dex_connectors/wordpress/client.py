@@ -440,7 +440,9 @@ async def _query(
     success_branch: str,
     page: int = 1,
 ) -> QueryAttempt[_Output]:
-    authorization = await client._authorization(call)
+    authorization, is_terminal_credential = await client._authorization_or_reason(call)
+    if not authorization and not is_terminal_credential:
+        return _query_retry(operation, FailureKind.AVAILABILITY)
     if not authorization:
         return _query_failure(operation, DEFECT, FailureKind.AUTHENTICATION, empty)
     endpoint = client.site_url + path + ("?" + query if query else "")
