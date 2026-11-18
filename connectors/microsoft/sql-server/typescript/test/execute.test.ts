@@ -77,6 +77,7 @@ describe('SQL Server writes', () => {
   it.each([
     ['connection lost', Object.assign(new Error('reset'), { code: 'ECONNRESET' })],
     ['server error while committing', serverError(3999, 17)],
+    ['driver AggregateError while committing', new AggregateError([Object.assign(new Error('reset'), { code: 'ECONNRESET' })], 'driver failure')],
   ])('selects uncertain after a %s and never runs the statement again', async (_name, commitError) => {
     const { client, counts } = fakeWriteSession({ commit: async () => { throw commitError; } });
     const context = new AttemptContext();
