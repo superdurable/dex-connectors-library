@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { GetIssueOperation, ListIssuesOperation, UpdateIssueStatusOperation } from './operations.js';
 
@@ -48,13 +49,16 @@ export class SentryClient {
 
   /** Send one request and classify Go-compatible provider failures. */
   async exchange(call: Call, operation: string, method: 'GET' | 'PUT', path: string, body?: Uint8Array, hasNotFoundBranch = false): Promise<SentryExchange> {
-    let token: string;
+    let resolved: Credentials;
     try {
-      const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(resolved.apiKey instanceof SecretString)) throw new TypeError('invalid credential');
-      token = resolved.apiKey.reveal();
-      if (!token.trim() || !isHeaderSafeCredential(token)) throw new TypeError('invalid credential');
-    } catch { return this.failure(operation, 'defect', 'AUTHENTICATION', 'connection credentials or request are invalid'); }
+      resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      if (isTerminalCredentialError(error)) return this.failure(operation, 'defect', 'AUTHENTICATION', 'connection credentials or request are invalid');
+      return this.failure(operation, 'retry', 'AVAILABILITY', 'connection credentials could not be read, so nothing was sent');
+    }
+    if (!(resolved?.apiKey instanceof SecretString)) return this.failure(operation, 'defect', 'AUTHENTICATION', 'connection credentials or request are invalid');
+    const token = resolved.apiKey.reveal();
+    if (!token.trim() || !isHeaderSafeCredential(token)) return this.failure(operation, 'defect', 'AUTHENTICATION', 'connection credentials or request are invalid');
     let response: ProviderResponse;
     try {
       response = await this.send({
@@ -93,6 +97,11 @@ export class SentryClient {
   private failure(operation: string, branch: Exclude<SentryExchange, { body: Uint8Array }>['branch'], kind: Failure['kind'], message: string, retryAfterMs = 0): SentryExchange {
     return { branch, failure: { kind, provider: 'sentry', operation, message }, retryAfterMs };
   }
+}
+
+/** Report a credential resolution failure that no retry fixes; every other error is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
 }
 
 function header(response: ProviderResponse, name: string): string {

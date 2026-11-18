@@ -12,12 +12,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.sentry import (
     DEFECT,
@@ -197,4 +204,51 @@ async def test_invalid_inputs_and_blank_token_are_defects_without_request() -> N
     )
     assert blank_token.branch == DEFECT
     assert blank_token.failure is not None and blank_token.failure.kind == FailureKind.AUTHENTICATION
+    assert requests == []
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError("absent"), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (LookupError("unlisted"), False),
+    ],
+)
+async def test_credential_resolve_errors_use_the_shared_terminal_set(
+    error: Exception, is_terminal: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=ISSUE)
+
+    client = Client(
+        Config(base_url="http://localhost:8848/api/0"),
+        _FailingCredentials(error),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    call = make_call(UPDATE_ISSUE_STATUS_DEFINITION)
+    update = UpdateIssueStatusInput("acme", "123", "resolved")
+    if is_terminal:
+        result = await run_mutation(client.update_issue_status(), call, update)
+        assert result.branch == DEFECT
+    else:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.update_issue_status(), call, update)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
     assert requests == []

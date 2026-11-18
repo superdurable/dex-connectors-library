@@ -5,6 +5,7 @@ package sentry
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -118,4 +120,42 @@ func TestUpdateIssueStatusHTTPAndFailure(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, UpdateIssueStatusBranchNotFound, rejected.Branch)
 	require.NotNil(t, rejected.Failure)
+}
+
+// failingCredentials fails every resolution with one error.
+type failingCredentials struct{ err error }
+
+func (credentials failingCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, credentials.err
+}
+
+func TestCredentialResolveErrorsUseTheSharedTerminalSet(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("no request may be sent") }))
+	defer server.Close()
+	for name, test := range map[string]struct {
+		err        error
+		isTerminal bool
+	}{
+		"reauthorization":         {sdkgo.ErrReauthorizationRequired, true},
+		"project reauthorization": {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":        {projectconfig.ErrObjectNotFound, true},
+		"connection not selected": {projectconfig.ErrConnectionNotSelected, true},
+		"broker rejected":         {projectconfig.ErrCredentialBrokerRejected, true},
+		"broker unavailable":      {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"not configured":          {errors.New("connection is not configured"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := New(Config{BaseURL: server.URL}, failingCredentials{test.err})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(providerTestContext{}, client.UpdateIssueStatus(), testConnection, UpdateIssueStatusInput{Organization: "acme", ID: "123", Status: "resolved"})
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, UpdateIssueStatusBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+		})
+	}
 }
