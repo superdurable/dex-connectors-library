@@ -341,9 +341,12 @@ func newZendeskDexContext(step string) *zendeskDexContext {
 	return &zendeskDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 
-// advanceAttempt starts the next attempt of the same Step execution, which sees this attempt's last heartbeat.
+// advanceAttempt starts the next attempt of the same Step execution, which sees the latest heartbeat of any attempt.
 func (context *zendeskDexContext) advanceAttempt() {
-	context.previousHeartbeat, context.recordedHeartbeat = context.recordedHeartbeat, nil
+	if context.recordedHeartbeat != nil {
+		context.previousHeartbeat = context.recordedHeartbeat
+	}
+	context.recordedHeartbeat = nil
 	context.attempt++
 }
 

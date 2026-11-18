@@ -5,7 +5,9 @@ package support_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -169,6 +171,52 @@ func TestCreateTicketValidatesInputBeforeAnyRequest(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, support.CreateTicketBranchDefect, result.Branch)
 			require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
+		})
+	}
+}
+
+func TestCreateTicketCredentialFailureSelectsDefectOnlyWhenTerminalOnTheFirstAttempt(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		err      error
+		attempt  int32
+		isDefect bool
+	}{
+		{name: "terminal first attempt", err: sdkgo.ErrReauthorizationRequired, attempt: 1, isDefect: true},
+		{name: "transient first attempt", err: errors.New("credential broker unavailable"), attempt: 1},
+		{name: "terminal later attempt", err: sdkgo.ErrReauthorizationRequired, attempt: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingZendesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+			client := newSwitchableZendeskClient(t, provider.URL, &switchableCredentials{err: test.err})
+			dexContext := newZendeskDexContext("create-credentials-" + test.name)
+			dexContext.attempt = test.attempt
+			result, err := sdkgo.RunMutation(dexContext, client.CreateTicket(), zendeskConnection, validCreateTicketInput())
+			if test.isDefect {
+				require.NoError(t, err)
+				require.Equal(t, support.CreateTicketBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
+}
+
+func TestCreateTicketRefusalWithAnUnreadableOrContradictoryBodyRetries(t *testing.T) {
+	for name, body := range map[string]string{
+		"oversized":        `{"error":"RecordInvalid","description":"` + strings.Repeat("x", 4096) + `"}`,
+		"carries a ticket": `{"error":"RecordInvalid","ticket":{"id":35437}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingZendesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, http.StatusUnprocessableEntity, body)
+			})
+			client, err := support.New(support.Config{Subdomain: testSubdomain, MaxResponseBytes: 2048}, testCredentialProvider(), support.WithAPIBaseURL(provider.URL+"/api/v2"))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newZendeskDexContext("create-unknown-refusal"), client.CreateTicket(), zendeskConnection, validCreateTicketInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the keyed request is repeated")
 		})
 	}
 }

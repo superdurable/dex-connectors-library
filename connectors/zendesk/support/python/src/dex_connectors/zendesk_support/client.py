@@ -13,7 +13,19 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote_plus
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -60,6 +72,10 @@ class Exchange:
     status: int = 0
     headers: httpx.Headers | None = None
     retry_after: float = 0
+    has_oversized_body: bool = False
+    """A non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal."""
+    has_ticket_identity: bool = False
+    """A non-2xx body carries a ticket ID, which contradicts a refusal."""
 
 
 def failure(kind: FailureKind, operation: str, message: str) -> Failure:
@@ -340,6 +356,38 @@ class Client:
                 FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
             )
 
+    async def resolve_write_credentials(
+        self, call: Call, operation: str
+    ) -> tuple[Credentials | None, Failure | None, bool]:
+        """Resolve credentials for a Mutation and report whether a failure is terminal.
+
+        A terminal failure needs the connection reconnected; any other failure may resolve
+        on a later attempt.
+        """
+        try:
+            credentials = await self.credentials.resolve(call)
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            return None, _unusable_credentials(operation), True
+        except Exception:
+            return (
+                None,
+                failure(FailureKind.AVAILABILITY, operation, "connection credentials could not be read"),
+                False,
+            )
+        try:
+            token = credentials.api_token.reveal()
+            is_usable = bare_email(credentials.email) and bool(token) and is_header_safe_credential(token)
+        except Exception:
+            is_usable = False
+        if not is_usable:
+            return None, _unusable_credentials(operation), True
+        return credentials, None, False
+
     async def exchange(
         self,
         call: Call,
@@ -396,6 +444,7 @@ class Client:
                 "retry",
                 failure(FailureKind.TRANSPORT, operation, "Zendesk request failed before a response arrived"),
             )
+        has_oversized_body = False
         try:
             body = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:
@@ -411,7 +460,9 @@ class Client:
                     headers=response.headers,
                 )
             body = b""
+            has_oversized_body = True
         except ProviderTransportError:
+            # The status is kept: a write answered 2xx was accepted even when its body breaks.
             return Exchange(
                 "retry",
                 failure(FailureKind.TRANSPORT, operation, "Zendesk response could not be read"),
@@ -434,6 +485,7 @@ class Client:
             return Exchange("success", body=body, status=status, headers=response.headers)
         summary = _describe_error(body, credentials.api_token.reveal())
         suffix = f" [{summary}]" if summary else ""
+        has_ticket_identity = _has_ticket_identity(body)
         retry_after = parse_retry_after(response.headers.get("Retry-After", ""), self.now())
         if status == 429:
             return Exchange(
@@ -466,6 +518,8 @@ class Client:
                 ),
                 status=status,
                 headers=response.headers,
+                has_oversized_body=has_oversized_body,
+                has_ticket_identity=has_ticket_identity,
             )
         if 300 <= status < 400:
             return Exchange(
@@ -496,6 +550,8 @@ class Client:
             failure(kind, operation, f"Zendesk rejected the request (HTTP {status})" + suffix),
             status=status,
             headers=response.headers,
+            has_oversized_body=has_oversized_body,
+            has_ticket_identity=has_ticket_identity,
         )
 
     def receipt(self, call: Call, exchange: Exchange, ticket_id: int = 0) -> Receipt:
@@ -510,6 +566,25 @@ class Client:
             provider_object_id=str(ticket_id) if ticket_id > 0 else "",
             observed_at=self.now(),
         )
+
+
+def _unusable_credentials(operation: str) -> Failure:
+    return failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
+
+
+def _has_ticket_identity(body: bytes) -> bool:
+    """Report a body whose ticket object carries a positive integer ID, as Go decodes it."""
+    try:
+        document = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return False
+    ticket = document.get("ticket") if isinstance(document, dict) else None
+    identifier = ticket.get("id") if isinstance(ticket, dict) else None
+    return (
+        isinstance(identifier, int)
+        and not isinstance(identifier, bool)
+        and 0 < identifier <= 9_223_372_036_854_775_807
+    )
 
 
 def _describe_error(body: bytes, secret: str) -> str:

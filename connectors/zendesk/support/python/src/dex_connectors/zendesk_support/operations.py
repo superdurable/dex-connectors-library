@@ -31,6 +31,7 @@ from dex_connectors.sdk.singledispatch import (
 from ._generated import definitions as defs
 from .client import (
     Client,
+    Credentials,
     Exchange,
     bare_email,
     decode_comment,
@@ -373,10 +374,13 @@ class CreateTicketOperation:
             return MutationAttempt.branch_result(
                 defs.DEFECT, zero, Receipt(), failure(kind, operation, str(error))
             )
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        credentials, credential_failure, is_terminal = await self.client.resolve_write_credentials(
+            call, operation
+        )
         if credential_failure:
-            if call.context is not None and call.context.attempt > 1:
-                # defect would hide a ticket an earlier attempt may have created.
+            if (call.context is not None and call.context.attempt > 1) or not is_terminal:
+                # defect would hide a ticket an earlier attempt may have created;
+                # createTicket declares no uncertain branch.
                 return MutationAttempt.retry(credential_failure)
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
@@ -413,7 +417,7 @@ class CreateTicketOperation:
             assert exchange.failure is not None
             if exchange.outcome == "defect":
                 return MutationAttempt.branch_result(defs.DEFECT, zero, receipt, exchange.failure)
-            if exchange.outcome in ("rejected", "notFound") and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+            if _is_definite_refusal(exchange):
                 return MutationAttempt.branch_result(defs.PROVIDER_REJECTED, zero, receipt, exchange.failure)
             # The keyed request is safe to repeat, and its outcome is unknown.
             return MutationAttempt.retry(exchange.failure, exchange.retry_after)
@@ -520,18 +524,23 @@ class UpdateTicketOperation:
                 )
             )
         permit = _TicketWritePermit(fence, decision, call.max_sends)
-        credentials, credential_failure = await self.client.resolve_credentials(call, operation)
+        credentials, credential_failure, is_terminal = await self.client.resolve_write_credentials(
+            call, operation
+        )
         if credential_failure:
-            if not permit.is_first_send:
-                return MutationAttempt.uncertain(zero, credential_failure, Receipt())
-            try:
-                await fence.record_not_sent()
-            except Exception:
-                return MutationAttempt.retry(
-                    failure(FailureKind.AVAILABILITY, operation, "Dex did not record the not-sent checkpoint")
-                )
-            return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
+            return await permit.credential_failure_attempt(credential_failure, is_terminal)
         assert credentials is not None
+        if permit.has_accepted_write:
+            # Zendesk accepted an earlier attempt's PUT, so this attempt only reads it back.
+            return await _AcceptedTicketWrite(
+                self.client,
+                call,
+                credentials,
+                input,
+                comment,
+                can_retry_transient_read=True,
+                is_from_earlier_attempt=True,
+            ).read_back()
         path = f"/tickets/{input.ticket_id}"
         exchange = await self.client.exchange(call, credentials, operation, "GET", path)
         receipt = self.client.receipt(call, exchange, input.ticket_id)
@@ -559,20 +568,10 @@ class UpdateTicketOperation:
             if terminal is not None:
                 return terminal
             try:
-                page = json.loads(exchange.body)
-                if not isinstance(page, dict) or not isinstance(page.get("audits"), list):
-                    raise ValueError("audit page has no audits array")
-                for audit in page["audits"]:
-                    if audit is None:
-                        continue
-                    if not isinstance(audit, dict):
-                        raise ValueError("audit is invalid")
-                    metadata = audit.get("metadata") or {}
-                    custom = metadata.get("custom") or {}
-                    if custom.get("dex_idempotency_key") == str(call.idempotency_key):
-                        return MutationAttempt.branch_result(
-                            defs.UPDATED, UpdateTicketOutput(current, True), receipt
-                        )
+                if _has_audit_with_idempotency_key(exchange.body, str(call.idempotency_key)):
+                    return MutationAttempt.branch_result(
+                        defs.UPDATED, UpdateTicketOutput(current, True), receipt
+                    )
             except (ValueError, TypeError, AttributeError) as error:
                 invalid = failure(
                     FailureKind.PROTOCOL,
@@ -594,27 +593,7 @@ class UpdateTicketOperation:
                 # An earlier send of this Step may have moved updated_at without an audit on the latest page.
                 return permit.unconfirmed_read(current_output, conflict, receipt)
             return MutationAttempt.branch_result(defs.CONFLICT, current_output, receipt, conflict)
-        change: dict[str, Any] = {
-            "metadata": {"dex_idempotency_key": str(call.idempotency_key)},
-            "safe_update": True,
-            "updated_stamp": stamp,
-        }
-        if input.status and input.status != current.status:
-            change["status"] = input.status
-        if input.priority and input.priority != current.priority:
-            change["priority"] = input.priority
-        if input.assignee_id and input.assignee_id != current.assignee_id:
-            change["assignee_id"] = input.assignee_id
-        if input.group_id and input.group_id != current.group_id:
-            change["group_id"] = input.group_id
-        tags = [tag for tag in current.tags if tag not in input.remove_tags]
-        for tag in input.add_tags:
-            if tag not in tags:
-                tags.append(tag)
-        if tags != list(current.tags):
-            change["tags"] = tags
-        if comment:
-            change["comment"] = {"body": comment.body, "public": not comment.is_internal_note}
+        change = _plan_ticket_change(input, comment, current, stamp, str(call.idempotency_key))
         if len(change) == 3:
             return MutationAttempt.branch_result(defs.UPDATED, UpdateTicketOutput(current, True), receipt)
         if permit.is_at_send_cap:
@@ -643,26 +622,31 @@ class UpdateTicketOperation:
                     "Zendesk write was not sent before the attempt deadline or checkpoint",
                 )
             )
-        receipt = self.client.receipt(call, exchange, input.ticket_id)
-        terminal = await permit.write_attempt(exchange, receipt, current_output)
-        if terminal is not None:
-            return terminal
-        try:
-            updated, _, _ = decode_ticket_envelope(exchange.body, self.client.agent_ticket_url)
-            if updated.id != input.ticket_id:
-                raise ValueError("ticket response is for another ticket")
-        except (ValueError, TypeError, KeyError) as error:
-            return permit.resend_or_uncertain(
-                current_output,
-                failure(
-                    FailureKind.PROTOCOL,
-                    operation,
-                    "Zendesk returned an invalid updated ticket: " + str(error),
-                ),
-                0,
-                receipt,
+        except TimeoutError:
+            # The write window ended after the claim, so the PUT may have applied.
+            exchange = Exchange(
+                "retry",
+                failure(FailureKind.TRANSPORT, operation, "Zendesk request failed before a response arrived"),
             )
-        return MutationAttempt.branch_result(defs.UPDATED, UpdateTicketOutput(updated), receipt)
+        receipt = self.client.receipt(call, exchange, input.ticket_id)
+        if not 200 <= exchange.status < 300:
+            return await permit.write_attempt(exchange, receipt, current_output)
+        updated = (
+            _decode_ticket_for(exchange.body, self.client.agent_ticket_url, input.ticket_id)
+            if exchange.outcome == "success"
+            else None
+        )
+        if updated is not None:
+            return MutationAttempt.branch_result(defs.UPDATED, UpdateTicketOutput(updated), receipt)
+        # Zendesk accepted the PUT, so it is never resent; the saved ticket ID makes later attempts read back.
+        try:
+            await fence.record_provider_id(str(input.ticket_id))
+            is_ticket_id_recorded = True
+        except Exception:
+            is_ticket_id_recorded = False
+        return await _AcceptedTicketWrite(
+            self.client, call, credentials, input, comment, can_retry_transient_read=is_ticket_id_recorded
+        ).read_back()
 
 
 # Only these statuses prove Zendesk applied nothing; any other non-2xx answer may have been applied.
@@ -674,12 +658,49 @@ class _TicketWritePermit:
 
     def __init__(self, fence: Fence, decision: Decision, max_sends: int) -> None:
         self.fence = fence
-        # No earlier attempt of this call may have sent.
-        self.is_first_send = decision.prior_send_upper_bound == 0
+        # An earlier attempt saved the ticket ID after Zendesk accepted its PUT.
+        self.has_accepted_write = decision.marker is not None and bool(decision.marker.provider_id)
+        # No earlier attempt of this call may have sent; SEND_ALLOWED after canResend can still carry sends.
+        self.is_first_send = (
+            decision.kind == DecisionKind.SEND_ALLOWED
+            and decision.prior_send_upper_bound == 0
+            and not self.has_accepted_write
+        )
         # Earlier sends reached the cap, so this attempt only reads back.
         self.is_at_send_cap = decision.kind == DecisionKind.READ_BACK_REQUIRED
         # This attempt's send leaves room under the cap for one more.
         self.can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < max_sends
+
+    async def credential_failure_attempt(self, problem: Failure, is_terminal: bool) -> MutationAttempt[Any]:
+        """Map unusable credentials before any request of this attempt."""
+        zero = UpdateTicketOutput(_ZERO_TICKET)
+        if not self.is_first_send:
+            # notSent would hide the earlier possible send, so nothing is recorded.
+            if is_terminal:
+                return MutationAttempt.uncertain(
+                    zero,
+                    failure(
+                        problem.kind,
+                        defs.UPDATE_TICKET_OPERATION_ID,
+                        "an earlier attempt may have written the change, and the connection credentials "
+                        "are unusable; reconnect the connection",
+                    ),
+                    Receipt(),
+                )
+            return MutationAttempt.retry(problem)
+        try:
+            await self.fence.record_not_sent()
+        except Exception:
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.AVAILABILITY,
+                    defs.UPDATE_TICKET_OPERATION_ID,
+                    "Dex did not record the not-sent checkpoint",
+                )
+            )
+        if is_terminal:
+            return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), problem)
+        return MutationAttempt.retry(problem)
 
     async def retry_before_dispatch(self, problem: Failure, retry_after: float) -> MutationAttempt[Any]:
         """Record notSent only on a first send; otherwise the claim stays counted."""
@@ -718,12 +739,11 @@ class _TicketWritePermit:
             return MutationAttempt.uncertain(value, exchange.failure, receipt)
         return _mutation_exchange(exchange, receipt, value, True)
 
-    async def write_attempt(
-        self, exchange: Exchange, receipt: Receipt, value: Any
-    ) -> MutationAttempt[Any] | None:
-        """Map the PUT; only a definite refusal of a first send selects a refusal branch."""
-        if exchange.outcome == "success":
-            return None
+    async def write_attempt(self, exchange: Exchange, receipt: Receipt, value: Any) -> MutationAttempt[Any]:
+        """Map a PUT that Zendesk did not answer with 2xx.
+
+        Only a definite refusal of a first send selects a refusal branch.
+        """
         assert exchange.failure is not None
         if exchange.outcome == "notSent" or exchange.status in (429, 503):
             try:
@@ -732,9 +752,10 @@ class _TicketWritePermit:
                 # A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
                 pass
             return MutationAttempt.retry(exchange.failure, exchange.retry_after)
-        if (exchange.outcome == "defect" and self.is_first_send) or (
-            exchange.outcome in ("rejected", "notFound") and exchange.status in _DEFINITE_REFUSAL_STATUSES
-        ):
+        if exchange.outcome == "defect" and not self.is_first_send:
+            # The PUT could not be built, and an earlier send may have applied.
+            return MutationAttempt.uncertain(value, exchange.failure, receipt)
+        if exchange.outcome == "defect" or _is_definite_refusal(exchange):
             if not self.is_first_send:
                 return MutationAttempt.uncertain(value, exchange.failure, receipt)
             try:
@@ -747,8 +768,11 @@ class _TicketWritePermit:
                         "Dex did not record the refusal checkpoint",
                     )
                 )
-            return _mutation_exchange(exchange, receipt, value, True)
-        # A 3xx, 408, 409, 410, other 5xx, unlisted status, or unusable 2xx may follow an applied write.
+            refusal = _mutation_exchange(exchange, receipt, value, True)
+            assert refusal is not None
+            return refusal
+        # A 3xx, 408, 409, 410, other 5xx, unlisted status, lost answer, oversized error body, or error body
+        # carrying a ticket may follow an applied write.
         return self.resend_or_uncertain(value, exchange.failure, exchange.retry_after, receipt)
 
     def resend_or_uncertain(
@@ -759,3 +783,175 @@ class _TicketWritePermit:
             # The claim stays the last marker, so the next attempt reads back before it resends.
             return MutationAttempt.retry(problem, retry_after)
         return MutationAttempt.uncertain(value, problem, receipt)
+
+
+class _AcceptedTicketWrite:
+    """Confirm a PUT that Zendesk answered with an unusable 2xx, or that an earlier attempt saved.
+
+    It never sends.
+    """
+
+    def __init__(
+        self,
+        client: Client,
+        call: Call,
+        credentials: Credentials,
+        input: UpdateTicketInput,
+        comment: TicketCommentInput | None,
+        *,
+        can_retry_transient_read: bool,
+        is_from_earlier_attempt: bool = False,
+    ) -> None:
+        self.client = client
+        self.call = call
+        self.credentials = credentials
+        self.input = input
+        self.comment = comment
+        # The ticket ID is checkpointed, so a Retry can only read back again.
+        self.can_retry_transient_read = can_retry_transient_read
+        # A confirmed change is reported as already applied.
+        self.is_from_earlier_attempt = is_from_earlier_attempt
+
+    async def read_back(self) -> MutationAttempt[UpdateTicketOutput]:
+        """Confirm the change by this Step's audit, or by no pending field change without a comment."""
+        operation = defs.UPDATE_TICKET_OPERATION_ID
+        zero = UpdateTicketOutput(_ZERO_TICKET)
+        key = str(self.call.idempotency_key)
+        path = f"/tickets/{self.input.ticket_id}"
+        exchange = await self.client.exchange(self.call, self.credentials, operation, "GET", path)
+        receipt = self.client.receipt(self.call, exchange, self.input.ticket_id)
+        terminal = self._read_attempt(exchange, receipt, zero)
+        if terminal is not None:
+            return terminal
+        try:
+            current, stamp, _ = decode_ticket_envelope(exchange.body, self.client.agent_ticket_url)
+            if current.id != self.input.ticket_id:
+                raise ValueError("ticket response is for another ticket")
+        except (ValueError, TypeError, KeyError) as error:
+            return self._unconfirmed(
+                zero, FailureKind.PROTOCOL, "Zendesk returned an invalid ticket: " + str(error), receipt
+            )
+        current_output = UpdateTicketOutput(current)
+        if self.comment or self.input.expected_updated_at:
+            exchange = await self.client.exchange(
+                self.call, self.credentials, operation, "GET", path + "/audits", {"sort_order": "desc"}
+            )
+            receipt = self.client.receipt(self.call, exchange, self.input.ticket_id)
+            terminal = self._read_attempt(exchange, receipt, current_output)
+            if terminal is not None:
+                return terminal
+            try:
+                if _has_audit_with_idempotency_key(exchange.body, key):
+                    return self._confirmed(current, receipt)
+            except (ValueError, TypeError, AttributeError) as error:
+                return self._unconfirmed(
+                    current_output,
+                    FailureKind.PROTOCOL,
+                    "Zendesk returned an invalid audit page: " + str(error),
+                    receipt,
+                )
+        if not self.comment and len(_plan_ticket_change(self.input, None, current, stamp, key)) == 3:
+            return self._confirmed(current, receipt)
+        return self._unconfirmed(
+            current_output,
+            FailureKind.TRANSPORT,
+            "the ticket and its latest audit page show no change by this Step",
+            receipt,
+        )
+
+    def _read_attempt(
+        self, exchange: Exchange, receipt: Receipt, value: UpdateTicketOutput
+    ) -> MutationAttempt[UpdateTicketOutput] | None:
+        """Retry a transient read only when that cannot resend; any other failed read is uncertain."""
+        if exchange.outcome == "success":
+            return None
+        assert exchange.failure is not None
+        if exchange.outcome in ("retry", "notSent") and self.can_retry_transient_read:
+            return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+        return self._unconfirmed(value, exchange.failure.kind, exchange.failure.message, receipt)
+
+    def _confirmed(self, ticket: Ticket, receipt: Receipt) -> MutationAttempt[UpdateTicketOutput]:
+        return MutationAttempt.branch_result(
+            defs.UPDATED, UpdateTicketOutput(ticket, self.is_from_earlier_attempt), receipt
+        )
+
+    def _unconfirmed(
+        self, value: UpdateTicketOutput, kind: FailureKind, reason: str, receipt: Receipt
+    ) -> MutationAttempt[UpdateTicketOutput]:
+        return MutationAttempt.uncertain(
+            value,
+            failure(
+                kind,
+                defs.UPDATE_TICKET_OPERATION_ID,
+                "Zendesk accepted an update by this Step that could not be confirmed: " + reason,
+            ),
+            receipt,
+        )
+
+
+def _is_definite_refusal(exchange: Exchange) -> bool:
+    """Report a refusal status whose readable body carries no ticket, proving Zendesk applied nothing."""
+    return (
+        exchange.outcome in ("rejected", "notFound")
+        and exchange.status in _DEFINITE_REFUSAL_STATUSES
+        and not exchange.has_oversized_body
+        and not exchange.has_ticket_identity
+    )
+
+
+def _decode_ticket_for(body: bytes, agent_ticket_url: str, ticket_id: int) -> Ticket | None:
+    """Return the ticket of a response for ticket_id, or None when it is unusable."""
+    try:
+        ticket, _, _ = decode_ticket_envelope(body, agent_ticket_url)
+    except (ValueError, TypeError, KeyError):
+        return None
+    return ticket if ticket.id == ticket_id else None
+
+
+def _has_audit_with_idempotency_key(body: bytes, idempotency_key: str) -> bool:
+    """Scan one page of the newest audits for this call's metadata entry."""
+    page = json.loads(body)
+    if not isinstance(page, dict) or not isinstance(page.get("audits"), list):
+        raise ValueError("audit page has no audits array")
+    for audit in page["audits"]:
+        if audit is None:
+            continue
+        if not isinstance(audit, dict):
+            raise ValueError("audit is invalid")
+        metadata = audit.get("metadata") or {}
+        custom = metadata.get("custom") or {}
+        if custom.get("dex_idempotency_key") == idempotency_key:
+            return True
+    return False
+
+
+def _plan_ticket_change(
+    input: UpdateTicketInput,
+    comment: TicketCommentInput | None,
+    current: Ticket,
+    stamp: str,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    """Return the safe update with only fields that differ; three entries mean nothing to write."""
+    change: dict[str, Any] = {
+        "metadata": {"dex_idempotency_key": idempotency_key},
+        "safe_update": True,
+        "updated_stamp": stamp,
+    }
+    if input.status and input.status != current.status:
+        change["status"] = input.status
+    if input.priority and input.priority != current.priority:
+        change["priority"] = input.priority
+    if input.assignee_id and input.assignee_id != current.assignee_id:
+        change["assignee_id"] = input.assignee_id
+    if input.group_id and input.group_id != current.group_id:
+        change["group_id"] = input.group_id
+    tags = [tag for tag in current.tags if tag not in input.remove_tags]
+    for tag in input.add_tags:
+        if tag not in tags:
+            tags.append(tag)
+    if tags != list(current.tags):
+        change["tags"] = tags
+    if comment:
+        change["comment"] = {"body": comment.body, "public": not comment.is_internal_note}
+    return change
