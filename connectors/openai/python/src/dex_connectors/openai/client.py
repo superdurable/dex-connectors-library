@@ -241,8 +241,8 @@ class Client:
             CredentialBrokerRejectedError,
         ):
             return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_TERMINAL_MESSAGE)
-        except (ValueError, LookupError, OSError):
-            # A later attempt may load these credentials, as in the Go and TypeScript packages.
+        except Exception:
+            # Any other resolve failure is transient, as in the Go and TypeScript packages.
             return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_UNAVAILABLE_MESSAGE)
         api_key = credentials.api_key.reveal()
         if not api_key or not is_header_safe_credential(api_key):

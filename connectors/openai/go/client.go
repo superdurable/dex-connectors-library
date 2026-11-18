@@ -580,6 +580,7 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, clientReq
 // isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
 func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
 		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
