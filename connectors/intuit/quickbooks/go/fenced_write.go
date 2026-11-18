@@ -114,21 +114,32 @@ func (write *fencedWrite[OUT]) attemptForExchange(result quickbooksExchange, rec
 	return sdkgo.NewMutationBranch(branch, write.requested, &result.failure, receipt), true
 }
 
-// unusableAccepted reads back an accepted 2xx that failed validation and otherwise treats it as unknown.
+// unusableAccepted reads back an accepted 2xx that failed validation. QuickBooks accepted the write, so it
+// is never resent: below the send cap a transient read-back failure retries the read-back alone, and every
+// other case selects uncertain.
 func (write *fencedWrite[OUT]) unusableAccepted(entityID string, receipt sdkgo.Receipt, err error) sdkgo.MutationAttempt[OUT] {
 	failure := quickbooksFailure(sdkgo.FailureProtocol, write.operation, "QuickBooks accepted the write but returned an unusable answer: "+err.Error())
 	if entityID == "" {
-		return write.resendOrSelectUncertain(failure, 0, receipt)
+		return sdkgo.NewMutationUncertain(write.requested, failure, receipt)
 	}
-	// A recorded ID makes every later attempt read back instead of resending.
-	_ = write.fence.RecordProviderID(entityID)
-	if body, isFound := readAcceptedEntity(write.client, write.call, write.operation, write.readBack.entityPath, entityID); isFound {
-		if output, isConfirmed := write.readBack.confirm(body, entityID); isConfirmed {
+	// A recorded ID makes every later attempt read back instead of resending; without it a retry could resend.
+	if recordErr := write.fence.RecordProviderID(entityID); recordErr != nil {
+		return sdkgo.NewMutationUncertain(write.requested, failure, receipt)
+	}
+	readResult := readAcceptedEntity(write.client, write.call, write.operation, write.readBack.entityPath, entityID)
+	switch readResult.outcome {
+	case exchangeSucceeded:
+		if output, isConfirmed := write.readBack.confirm(readResult.response.body, entityID); isConfirmed {
 			receipt.ProviderObjectID = entityID
 			return sdkgo.NewMutationBranch(write.readBack.happy, output, nil, receipt)
 		}
+	case exchangeRetry, exchangeInterrupted:
+		if write.canResendUnknownOutcome {
+			// The next attempt finds the recorded ID and only reads back.
+			return sdkgo.NewMutationRetry[OUT](readResult.failure, readResult.retryAfter)
+		}
 	}
-	return write.resendOrSelectUncertain(failure, 0, receipt)
+	return sdkgo.NewMutationUncertain(write.requested, failure, receipt)
 }
 
 // readBackOnly confirms an accepted earlier write by ID; it never sends.

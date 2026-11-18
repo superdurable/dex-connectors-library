@@ -105,6 +105,32 @@ func TestAcceptedUnusableWriteIsReadBackByItsSavedIDAndNeverResent(t *testing.T)
 	require.Equal(t, 3, provider.requestCount())
 }
 
+func TestAcceptedWriteWithoutAnIDIsNeverResentBelowTheCap(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply func(http.ResponseWriter)
+	}{
+		{name: "unusable body", reply: func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"Customer":{}}`)
+		}},
+		{name: "body broken after 2xx headers", reply: func(response http.ResponseWriter) {
+			response.Header().Set("Content-Type", "application/json")
+			response.Header().Set("Content-Length", "4096")
+			response.WriteHeader(http.StatusOK)
+			_, _ = response.Write([]byte(`{"Customer":{"Id":"5`)) // The declared length is never reached.
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingQuickBooks(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { test.reply(response) })
+			first := newQuickBooksDexContext("customer-accepted-" + test.name)
+			result, err := createCityAgency(t, first, provider)
+			require.NoError(t, err)
+			require.Equal(t, quickbooks.CreateCustomerBranchUncertain, result.Branch, "QuickBooks accepted the write, so it is never resent")
+			require.Equal(t, 1, provider.requestCount())
+		})
+	}
+}
+
 func TestDefiniteRefusalOfAFirstWriteRecordsCanResendAndIsNotResent(t *testing.T) {
 	provider := newRecordingQuickBooks(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
 		writeJSON(t, response, http.StatusBadRequest, faultJSON("ValidationFault", "6240"))

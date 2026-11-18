@@ -281,7 +281,10 @@ heartbeat claim with the possible send count of the Call ID before the request:
   invoice, or payment by ID, and selects success only when the read-back
   matches the request; every later attempt reads that ID back and never
   resends. `sendInvoice` reads the known invoice ID and requires `EmailSent`.
-  An inconclusive read-back counts as an unknown outcome;
+  An accepted write is never resent: a read-back that fails transiently is
+  retried, as a read-back only, while the possible sends stay below
+  `maxSends`, and a reply without a valid ID, an ID the claim cannot record,
+  or a read-back that does not confirm the write selects `uncertain`;
 - a definite refusal (HTTP 400, 401, 403, 404, 411, 413, 414, 415, 422, or a
   validation Fault) selects its branch on a first send. After a possible
   earlier send it selects `uncertain`, because the earlier send may have
