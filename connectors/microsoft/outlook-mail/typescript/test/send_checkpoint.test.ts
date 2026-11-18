@@ -120,3 +120,24 @@ it('chooses the earliest draft by parsed instant rather than timestamp text', as
   expect(result).toMatchObject({ kind: 'branch', branch: 'sent' });
   expect(sentPath).toContain('/draftEarlier/send');
 });
+
+it('selects sent without resending when the accepted send answer breaks after its headers', async () => {
+  const context = new HeartbeatContext(undefined);
+  const call = scenarioCall({ callId: 'broken-call', operation: 'sendMessage' } as Scenario, connection, 'outlook-mail', context, { idempotencyKey: 'broken-call' }) as Call;
+  let sends = 0;
+  const client = new OutlookMailClient({}, new StaticCredentialProvider([[connection, credentials]]), { refreshDriver: driver,
+    transport: async request => {
+      const path = new URL(request.url).pathname;
+      if (request.method === 'GET' && path.endsWith('/messages')) return answer(200, { value: [] });
+      if (request.method === 'POST' && path.endsWith('/messages')) return answer(201, { id: 'draft1', isDraft: true, toRecipients: [{ emailAddress: { address: 'a@example.com' } }] });
+      if (request.method === 'POST' && path.endsWith('/draft1/send')) {
+        sends++;
+        request.onResponseChunk?.(Buffer.from('{'), 202, {});
+        throw new ProviderTransportError(false, 202, {});
+      }
+      throw new Error(`unexpected request ${request.method} ${path}`);
+    } });
+  const result = await client.sendMessage().invoke(call, { to: ['a@example.com'], subject: 'Test', text: 'Body' });
+  expect(result).toMatchObject({ kind: 'branch', branch: 'sent' });
+  expect(sends).toBe(1);
+});

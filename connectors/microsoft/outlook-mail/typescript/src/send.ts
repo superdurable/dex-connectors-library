@@ -90,8 +90,8 @@ class DraftSender {
     if(this.earlierSendCount>=this.maxSends)return newMutationUncertain(message,graphFailure(operation,'TRANSPORT',`an earlier send of the draft was not confirmed and the send cap of ${this.maxSends} is reached, so the message may have been sent; it is not sent again`),this.session.receipt(zeroExchange('succeeded',graphFailure(operation,'TRANSPORT','')),draft.id));
     try{await this.call.context.recordHeartbeat(draftCheckpoint('sendDispatched',draft.id,this.earlierSendCount+1));}catch{return newMutationRetry(graphFailure(operation,'AVAILABILITY','Dex did not record the send checkpoint; nothing was sent'));}
     const result=await this.session.exchange({method:'POST',path:'/messages/'+escapePathSegment(draft.id)+'/send'});const receipt=this.session.receipt(result,draft.id);
-    // Any 2xx means Graph accepted the send; the send action returns no body to validate.
-    if(result.outcome==='succeeded'||result.outcome==='invalid')return newMutationBranch(this.branches.Sent,message,receipt);
+    // Any 2xx means Graph accepted the send, even when its body broke; a resend would duplicate it.
+    if(result.status>=200&&result.status<300)return newMutationBranch(this.branches.Sent,message,receipt);
     if(isUnprocessedSendAnswer(result)){await this.release(draft.id);return newMutationRetry(result.failure!,result.retryAfterMs);}
     if(isDefiniteSendRefusal(result)&&this.earlierSendCount===0){await this.release(draft.id);return newMutationBranch(this.branches.ProviderRejected,message,receipt,{...result.failure!,message:result.failure!.message+'; nothing was sent and the draft stays in Drafts'});}
     // An earlier send may have delivered the draft, so the next attempt reads it back.

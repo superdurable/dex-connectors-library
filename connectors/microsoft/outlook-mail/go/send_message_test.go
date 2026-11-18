@@ -132,6 +132,18 @@ func TestSendMessageLostSendAnswerIsConfirmedFromSentItemsWithoutResending(t *te
 	require.Len(t, fake.Deliveries(), 1)
 }
 
+func TestSendMessageAcceptedSendWhoseBodyBreaksIsSentWithoutResending(t *testing.T) {
+	fake := newGraphFake(t)
+	// Exchange moves a sent draft asynchronously, so a read-back could still see a draft.
+	fake.SetSendCompletionDelay(time.Hour)
+	fake.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointSendDraft, ShouldApplyFirst: true, ShouldBreakAcceptedBody: true})
+	client, _ := delegatedClient(t, fake)
+	result, err := sdkgo.RunMutation(newOutlookDexContext("broken-accepted-body"), client.SendMessage(), outlookConnection, validSendMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, outlookmail.SendMessageBranchSent, result.Branch, result.Failure)
+	require.Equal(t, 1, fake.RequestCount(graphtest.EndpointSendDraft))
+}
+
 func TestSendMessageCopyThatNeverAppearsIsResentUntilTheSendCapThenUncertain(t *testing.T) {
 	fake := newGraphFake(t)
 	fake.SetSendCompletionDelay(time.Hour)
