@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry,
-  type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
+  ReauthorizationRequiredError, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch,
+  newQueryRetry, type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
   type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
@@ -75,15 +76,18 @@ export class TelegramClient {
     return 'token' in resolution ? resolution.token : undefined;
   }
 
-  /** Resolve the bot token, separating an unavailable credential from an invalid one. */
-  async botTokenWithReason(call: Call): Promise<{ token: string } | { isInvalid: boolean }> {
+  /**
+   * Resolve the bot token, separating a terminal failure from a transient one. A revoked, missing,
+   * unselected, broker-refused, or malformed credential is terminal; any other read failure is transient.
+   */
+  async botTokenWithReason(call: Call): Promise<{ token: string } | { isTerminal: boolean }> {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
-    catch { return { isInvalid: false }; }
+    catch (error) { return { isTerminal: isTerminalCredentialError(error) }; }
     try {
       const token = credentials.botToken.reveal();
-      return tokenPattern.test(token) ? { token } : { isInvalid: true };
-    } catch { return { isInvalid: true }; }
+      return tokenPattern.test(token) ? { token } : { isTerminal: true };
+    } catch { return { isTerminal: true }; }
   }
 
   /** Send one bounded Bot API request and retain positive no-send evidence. */
@@ -167,8 +171,9 @@ export class SendMessageOperation implements Mutation<SendMessageInput, SentMess
     // An earlier send may have created the message, so a refusal of a resend proves nothing.
     const hasPossibleEarlierSend = priorSendUpperBound > 0;
     const resolution = await this.client.botTokenWithReason(call);
-    if (!('token' in resolution)) return localSendFailure(fence, hasPossibleEarlierSend, resolution.isInvalid, 'AUTHENTICATION',
-      resolution.isInvalid ? 'bot token is invalid' : 'bot token is unavailable');
+    if (!('token' in resolution)) return localSendFailure(fence, hasPossibleEarlierSend, resolution.isTerminal,
+      resolution.isTerminal ? 'AUTHENTICATION' : 'AVAILABILITY',
+      resolution.isTerminal ? 'bot token is unavailable or invalid' : 'bot token could not be read');
     const token = resolution.token;
     const body = Buffer.from(new URLSearchParams({ chat_id: input.chatId, text: input.text }).toString());
     const url = `${this.client.baseUrl}/bot${token}/sendMessage`;
@@ -247,12 +252,21 @@ async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPo
   return sendFailure('providerRejected', kind, message);
 }
 
-/** Select defect only when no earlier send may have created the message; afterwards a terminal failure selects uncertain. */
+/**
+ * Return Retry for a transient failure, recording notSent only when no earlier send may have created
+ * the message. A terminal failure selects defect before any possible send and uncertain after one.
+ */
 async function localSendFailure(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean,
   isTerminal: boolean, kind: Failure['kind'], message: string): Promise<MutationAttempt<SentMessage>> {
-  if (hasPossibleEarlierSend && isTerminal) return sendUncertain(kind, `${message}; an earlier attempt may have sent the message`);
-  // notSent would hide the earlier possible send, so nothing is recorded.
-  if (hasPossibleEarlierSend) return sendRetry(kind, `${message}; no message was sent in this attempt`);
+  if (!isTerminal) {
+    if (!hasPossibleEarlierSend) {
+      try { await fence.recordNotSent(); }
+      catch { /* Without notSent the next attempt counts this attempt as a possible send. */ }
+    }
+    // After a possible send, notSent would hide that send, so nothing is recorded.
+    return sendRetry(kind, `${message}; no message was sent in this attempt`);
+  }
+  if (hasPossibleEarlierSend) return sendUncertain(kind, `${message}; an earlier attempt may have sent the message`);
   try { await fence.recordNotSent(); }
   catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
   return sendFailure('defect', kind, message);
@@ -312,6 +326,11 @@ export class GetChatOperation implements Query<GetChatInput, Chat> {
   }
 }
 
+/** Report a credential failure that only reconnecting the connection can fix. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 function validChatID(value: unknown): boolean {
   if (typeof value !== 'string') return false;
   if (usernamePattern.test(value)) return true;
