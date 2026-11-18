@@ -309,7 +309,7 @@ async def test_refused_concurrent_mutation_keeps_its_occurrence() -> None:
     assert str(later.observed_call.idempotency_key) == str(fourth_occurrence)
 
     assert await _run_and_observe_call_id(later_call) == fourth_occurrence, "a rerun keeps its ID"
-    assert await _run_and_observe_call_id(calls[1]) == calls[1].id, "a refused call later runs with its own ID"
+    assert await _run_and_observe_call_id(calls[1]) == calls[1].id, "a refused call reruns with its ID"
 
     application_call = Call(CALL_ID, CONNECTION, OPERATION, context=context)
     assert await _run_and_observe_call_id(application_call) == CALL_ID
@@ -357,7 +357,7 @@ async def test_occurrences_follow_construction_order_only() -> None:
     assert await _run_and_observe_call_id(refused) is None
     blocking.release.set()
     await task
-    assert await _run_and_observe_call_id(derived_call()) == occurrence(6), "the refused call kept occurrence 5"
+    assert await _run_and_observe_call_id(derived_call()) == occurrence(6), "refused call kept occurrence 5"
     assert await _run_and_observe_call_id(refused) == occurrence(5), "the refused call reruns with its own ID"
 
 
