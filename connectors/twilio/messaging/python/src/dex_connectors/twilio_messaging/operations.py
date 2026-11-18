@@ -358,15 +358,39 @@ class SendMessageOperation:
         if status in _DEFINITE_REFUSAL_STATUSES and not is_body_unreadable:
             code = error_code(exchange.body)
             rejected = replace(requested, error_code=code)
-            refusal = (
-                failure(
+            refusal = rejection("sendMessage", "message", status, code)
+            if status == 401:
+                replacement, refresh_failure, is_refresh_failure_transient = (
+                    await self.client.authorization_after_rejection(call)
+                )
+                # A readable 401 proves Twilio created nothing, so a new credential or a transient
+                # refresh failure lets the next attempt send again.
+                if (refresh_failure is not None and is_refresh_failure_transient) or (
+                    replacement is not None and replacement != authorization
+                ):
+                    try:
+                        await fence.record_can_resend()
+                    except Exception:
+                        return MutationAttempt.retry(
+                            failure(
+                                "sendMessage",
+                                FailureKind.AVAILABILITY,
+                                "Twilio credential refresh and retry checkpoint are temporarily unavailable",
+                            )
+                        )
+                    return MutationAttempt.retry(
+                        refresh_failure
+                        or failure(
+                            "sendMessage",
+                            FailureKind.AUTHENTICATION,
+                            "Twilio credential changed after its rejection",
+                        )
+                    )
+                refusal = refresh_failure or failure(
                     "sendMessage",
                     FailureKind.AUTHENTICATION,
                     "Twilio rejected the message credentials; update the connection",
                 )
-                if status == 401
-                else rejection("sendMessage", "message", status, code)
-            )
             rejection_receipt = self.client.receipt(call, exchange, error_code=code)
             if has_possible_earlier_send:
                 return MutationAttempt.uncertain(rejected, refusal, rejection_receipt)

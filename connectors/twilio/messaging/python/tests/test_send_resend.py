@@ -15,10 +15,15 @@ from dex_connectors.sdk import (
     ConnectionRef,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
+)
+from dex_connectors.sdk.projectconfig.broker import (
+    CredentialBrokerUnavailableError,
+    RejectedCredentialNotRefreshedError,
 )
 from dex_connectors.sdk.singledispatch import Marker
 
@@ -96,6 +101,25 @@ def sequence(*answers: tuple[int, object]) -> Answer:
     return answer
 
 
+class RereadingCredentialProvider(StaticCredentialProvider[Credentials]):
+    """Resolve static credentials and reread them through ``refresh`` after a rejection."""
+
+    def __init__(
+        self, static: StaticCredentialProvider[Credentials], refresh: Callable[[], Credentials]
+    ) -> None:
+        super().__init__({})
+        self.static = static
+        self.refresh = refresh
+
+    async def resolve(self, call: Call) -> Credentials:
+        """Return the static credentials."""
+        return await self.static.resolve(call)
+
+    async def resolve_after_rejection(self, call: Call, driver: object) -> Credentials:
+        """Return the reread credentials, or raise the configured refresh failure."""
+        return self.refresh()
+
+
 async def send(
     answer: Answer,
     context: AttemptContext,
@@ -104,8 +128,12 @@ async def send(
     max_sends: int = SEND_MESSAGE_DEFINITION.max_sends,
     auth_token: str = "auth-token-sentinel-0123456789ab",
     max_response_bytes: int = 1048576,
+    refresh: Callable[[], Credentials] | None = None,
 ) -> MutationResult[Message] | RetryError:
-    """Run one Execute attempt of sendMessage, as the Mutation Step passes the definition cap."""
+    """Run one Execute attempt of sendMessage, as the Mutation Step passes the definition cap.
+
+    ``refresh`` makes the credential source reread credentials after a rejection by calling it.
+    """
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
@@ -116,7 +144,11 @@ async def send(
             return httpx.Response(status, content=body)
         return httpx.Response(status, content=json.dumps(body).encode())
 
-    credentials = StaticCredentialProvider({CONNECTION: Credentials(auth_token=SecretString(auth_token))})
+    credentials: StaticCredentialProvider[Credentials] = StaticCredentialProvider(
+        {CONNECTION: Credentials(auth_token=SecretString(auth_token))}
+    )
+    if refresh is not None:
+        credentials = RereadingCredentialProvider(credentials, refresh)
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         config = Config(
             account_sid=ACCOUNT, default_sender="+14155550100", max_response_bytes=max_response_bytes
@@ -340,6 +372,43 @@ async def test_named_sid_that_contains_the_credential_is_never_saved_or_read_bac
     assert hex_auth_token not in result.receipt.provider_object_id
     assert hex_auth_token not in json.dumps(context.heartbeat_value, default=str)
     assert len(requests) == 1
+
+
+UNCHANGED_TOKEN = "auth-token-sentinel-0123456789ab"
+
+
+def _raise(error: Exception) -> Callable[[], Credentials]:
+    def refresh() -> Credentials:
+        raise error
+
+    return refresh
+
+
+@pytest.mark.parametrize(
+    ("refresh", "expected"),
+    [
+        (_raise(CredentialBrokerUnavailableError("broker down")), "retry"),
+        (_raise(TimeoutError()), "retry"),
+        (lambda: Credentials(auth_token=SecretString("rotated-token-0123456789abcdef")), "retry"),
+        (_raise(ReauthorizationRequiredError("revoked")), "providerRejected"),
+        (_raise(RejectedCredentialNotRefreshedError("not refreshed")), "providerRejected"),
+        (lambda: Credentials(auth_token=SecretString(UNCHANGED_TOKEN)), "providerRejected"),
+    ],
+    ids=["broker", "timeout", "rotated", "reauthorize", "not-refreshed", "unchanged"],
+)
+async def test_readable_unauthorized_retries_only_a_new_or_transiently_unavailable_credential(
+    refresh: Callable[[], Credentials], expected: str
+) -> None:
+    """A readable 401 proves nothing was created, so a resendable outcome records canResend."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await send(lambda _: (401, {"code": 20003}), context, requests, refresh=refresh)
+    assert len(requests) == 1
+    assert context.marker is not None and context.marker.state == "canResend"
+    if expected == "retry":
+        assert isinstance(result, RetryError)
+    else:
+        assert isinstance(result, MutationResult) and result.branch == "providerRejected"
 
 
 @pytest.mark.parametrize("unreadable", ["oversized", "interrupted"])

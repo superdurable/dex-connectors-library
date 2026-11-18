@@ -441,7 +441,14 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio service is temporarily unavailable"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
 	case response.statusCode == http.StatusUnauthorized && !isBodyUnreadable:
 		// An unreadable 401 body cannot prove a refusal, so it falls through to the unknown outcome.
-		replacement, refreshFailure, _ := client.resolveAuthorizationAfterRejection(call)
+		replacement, refreshFailure, isRefreshFailureTransient := client.resolveAuthorizationAfterRejection(call)
+		if refreshFailure != nil && isRefreshFailureTransient {
+			// A readable 401 proves Twilio did not create this message, so a transient refresh failure retries.
+			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
+				return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio credential refresh and retry checkpoint are temporarily unavailable"), 0)
+			}
+			return sdkgo.NewMutationRetry[Message](*refreshFailure, 0)
+		}
 		if refreshFailure == nil && replacement != authorization {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 				return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAuthentication, "Twilio credential changed but retry checkpoint is unavailable"), 0)

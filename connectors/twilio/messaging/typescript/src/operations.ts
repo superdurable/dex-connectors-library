@@ -3,7 +3,7 @@
 
 import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import type { ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { CheckpointError, Fence, InsufficientTimeError, type Marker } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, Fence, InsufficientTimeError, type Marker } from '@superdurable/connectors-sdk/singledispatch';
 import { GetMessageDefinition, SendMessageDefinition } from './generated/definitions.js';
 import type { GetMessageInput, Message, SendMessageInput } from './generated/models.js';
 import { buildSendRequest, errorCode, retryAfter, twilioFailure, zeroMessage, type TwilioAuthorization, type TwilioClient, type TwilioExchange } from './client.js';
@@ -67,7 +67,8 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
     try {
       exchange = await fence.dispatch(signal => this.client.exchange(call, auth.authorization, 'POST', `${this.client.messagesURL}.json`, sendRequest.form, signal));
     } catch (cause) {
-      if (cause instanceof CheckpointError || cause instanceof InsufficientTimeError || cause instanceof AggregateError) return newMutationRetry(twilioFailure('sendMessage', 'TRANSPORT', 'Twilio dispatch checkpoint or attempt time is unavailable'));
+      // The Fence raises these before sending, including its AggregateError for a short window and a failed notSent.
+      if (cause instanceof CheckpointError || cause instanceof InsufficientTimeError || cause instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(cause)) return newMutationRetry(twilioFailure('sendMessage', 'TRANSPORT', 'Twilio dispatch checkpoint or attempt time is unavailable'));
       return resendOrSelectUncertain('TRANSPORT', 'Twilio message outcome is unknown');
     }
     if ('error' in exchange) {
@@ -108,6 +109,12 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
     // An unreadable 401 body cannot prove a refusal, so it falls through to the unknown outcome.
     if (response.status === 401 && !isBodyUnreadable) {
       const refreshed = await this.client.authorizationAfterRejection(call);
+      // A readable 401 proves Twilio did not create this message, so a transient refresh failure retries.
+      if ('failure' in refreshed && refreshed.isTransient) {
+        try { await fence.recordCanResend(); }
+        catch { return newMutationRetry(twilioFailure('sendMessage', 'AVAILABILITY', 'Twilio credential refresh and retry checkpoint are temporarily unavailable')); }
+        return newMutationRetry(refreshed.failure);
+      }
       if ('authorization' in refreshed && (refreshed.authorization.username !== auth.authorization.username || refreshed.authorization.password !== auth.authorization.password)) {
         try { await fence.recordCanResend(); }
         catch { return newMutationRetry(twilioFailure('sendMessage', 'AUTHENTICATION', 'Twilio credential changed but retry checkpoint is unavailable')); }
@@ -168,6 +175,11 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
       return newMutationBranch('accepted', message, this.client.receipt(call, exchange.response, providerId));
     } catch { return newMutationUncertain(requested, twilioFailure('sendMessage', 'PROTOCOL', 'Twilio accepted message could not be confirmed'), this.client.receipt(call, exchange.response, providerId)); }
   }
+}
+
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
 }
 
 /** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
