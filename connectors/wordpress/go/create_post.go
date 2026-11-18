@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -90,7 +91,10 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil {
-		return localCreateFailure(fence, hasPossibleEarlierSend, false, sdkgo.FailureAuthentication, "connection credentials are unavailable")
+		if isTerminalCredentialError(err) {
+			return localCreateFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials are unavailable")
+		}
+		return localCreateFailure(fence, hasPossibleEarlierSend, false, sdkgo.FailureAvailability, "connection credentials could not be read")
 	}
 	password := strings.ReplaceAll(credentials.ApplicationPassword.Reveal(), " ", "")
 	if credentials.Validate() != nil || !validWordPressUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(password) {
@@ -109,11 +113,18 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 	}
 	observation := &dispatchObservation{}
 	var response *http.Response
+	var body []byte
+	var readErr error
 	err = fence.Dispatch(func(requestContext context.Context) error {
 		request = request.WithContext(httptrace.WithClientTrace(requestContext, observation.clientTrace()))
 		var sendErr error
 		response, sendErr = operation.client.httpClient.Do(request)
-		return sendErr
+		if sendErr != nil {
+			return sendErr
+		}
+		// Dispatch cancels requestContext on return, so the body is read here; its status classifies a read failure.
+		body, readErr = providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		return nil
 	})
 	if err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
@@ -140,7 +151,6 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 		return createRetry(kind, "WordPress did not create the post", retryAfter)
 	}
 	isSuccessStatus := response.StatusCode >= 200 && response.StatusCode < 300
-	body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	isBodyReadable := readErr == nil
 	var wire struct {
 		ID     int64  `json:"id"`
@@ -214,19 +224,30 @@ func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend
 	return createFailure(CreatePostBranchProviderRejected, kind, message)
 }
 
-// localCreateFailure selects defect only when no earlier send may have created the post. After a
-// possible send, a terminal failure selects uncertain and a transient one returns Retry.
+// localCreateFailure returns Retry for a transient failure, recording notSent only when no earlier
+// send may have created the post. A terminal failure selects defect before any possible send and
+// uncertain after one.
 func localCreateFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CreatedPost] {
-	if hasPossibleEarlierSend && isTerminal {
-		return createUncertain(kind, message+"; an earlier attempt may have created the post")
+	if !isTerminal {
+		if !hasPossibleEarlierSend {
+			// Without notSent the next attempt counts this attempt as a possible send, which only lowers the cap.
+			_ = fence.RecordNotSent()
+		}
+		// After a possible send, notSent would hide that send, so nothing is recorded.
+		return createRetry(kind, message+"; no post was created in this attempt", 0)
 	}
 	if hasPossibleEarlierSend {
-		// notSent would hide the earlier possible send, so nothing is recorded.
-		return createRetry(kind, message+"; no post was created in this attempt", 0)
+		return createUncertain(kind, message+"; an earlier attempt may have created the post")
 	}
 	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
 	_ = fence.RecordNotSent()
 	return createFailure(CreatePostBranchDefect, kind, message)
+}
+
+// isTerminalCredentialError reports a credential failure that only reconnecting the connection can fix.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func validCreatedPostStatus(status string) bool {
