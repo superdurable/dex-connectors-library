@@ -13,7 +13,7 @@ import {
 } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { GetChatDefinition, SendMessageDefinition } from './generated/definitions.js';
-import type { Chat, Config, Credentials, GetChatInput, SendMessageInput, SentMessage } from './generated/models.js';
+import { isCredentialMaterialError, type Chat, type Config, type Credentials, type GetChatInput, type SendMessageInput, type SentMessage } from './generated/models.js';
 
 const tokenPattern = /^[0-9]+:[A-Za-z0-9_-]+$/;
 const usernamePattern = /^@[A-Za-z0-9_]{5,32}$/;
@@ -329,7 +329,7 @@ export class GetChatOperation implements Query<GetChatInput, Chat> {
 /** Report a credential failure that only reconnecting the connection can fix. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 function validChatID(value: unknown): boolean {
   if (typeof value !== 'string') return false;

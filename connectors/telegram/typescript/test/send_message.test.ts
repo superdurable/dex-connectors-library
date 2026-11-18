@@ -9,7 +9,7 @@ import {
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { TelegramClient } from '../src/client.js';
 import { SendMessageDefinition } from '../src/generated/definitions.js';
-import type { SentMessage } from '../src/generated/models.js';
+import { CredentialMaterialError, type SentMessage } from '../src/generated/models.js';
 
 const callId = 'bbe66292-151f-5c40-bdfe-0553b4fb902f';
 const sendCap = SendMessageDefinition.maxSends!;
@@ -202,6 +202,7 @@ describe('Telegram bounded resend of unconfirmed messages', () => {
   it.each([
     new ReauthorizationRequiredError(), new ObjectNotFoundError(),
     new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(),
+    new CredentialMaterialError('credential bot_token is required'), new TypeError('project credential decoding failed'),
   ])('selects defect before any send and uncertain after one for a terminal credential failure: %s', async error => {
     const { client, requests } = newClient([serverFailure]);
     const { client: terminal } = newClient([serverFailure], undefined, error);

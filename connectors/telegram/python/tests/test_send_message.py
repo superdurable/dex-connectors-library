@@ -30,6 +30,7 @@ from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 from dex_connectors.telegram import Client, Config, Credentials, SendMessageInput, SentMessage
+from dex_connectors.telegram._generated.connection import CredentialMaterialError
 from dex_connectors.telegram._generated.definitions import SEND_MESSAGE_DEFINITION
 
 CONNECTION = ConnectionRef("telegram", "telegram")
@@ -296,6 +297,17 @@ async def test_transient_credential_failure_after_possible_send_keeps_the_claim(
     assert len(requests) == 1
 
 
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Telegram credential bot_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
 @pytest.mark.parametrize(
     "error",
     [
@@ -303,6 +315,8 @@ async def test_transient_credential_failure_after_possible_send_keeps_the_claim(
         ObjectNotFoundError("missing"),
         ConnectionNotSelectedError("unselected"),
         CredentialBrokerRejectedError("refused"),
+        CredentialMaterialError("Telegram credential bot_token is required"),
+        _sdk_wrapped_material_error(),
     ],
 )
 async def test_terminal_credential_failure(error: Exception) -> None:
