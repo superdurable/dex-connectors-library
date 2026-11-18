@@ -16,8 +16,20 @@ from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.xero import Client, Config
+from dex_connectors.xero._generated.connection import CredentialMaterialError
 from dex_connectors.xero.client import _error_summary, go_path_escape, go_query
 from dex_connectors.xero.operations import _single, _wire_decimal
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Xero credential access_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 
 @pytest.mark.parametrize(
@@ -111,6 +123,8 @@ def test_local_provider_url_rejects_non_loopback_host() -> None:
         (ObjectNotFoundError(), "defect", FailureKind.AUTHENTICATION),
         (ConnectionNotSelectedError(), "defect", FailureKind.AUTHENTICATION),
         (CredentialBrokerRejectedError(), "defect", FailureKind.AUTHENTICATION),
+        (CredentialMaterialError("Xero access_token is required"), "defect", FailureKind.AUTHENTICATION),
+        (_sdk_wrapped_material_error(), "defect", FailureKind.AUTHENTICATION),
     ],
 )
 async def test_credential_errors_keep_terminal_and_transient_outcomes(

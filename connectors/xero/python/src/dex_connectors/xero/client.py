@@ -108,7 +108,9 @@ def _error_summary(body: bytes, token: str) -> str:
 
 def _is_terminal_credential_error(error: BaseException) -> bool:
     """Report a resolve failure no later attempt clears; every other resolve error is transient."""
-    return isinstance(
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

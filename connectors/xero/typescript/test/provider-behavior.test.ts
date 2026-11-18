@@ -6,7 +6,7 @@ import { ReauthorizationRequiredError, RetryError, SecretString, StaticCredentia
 import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { XeroClient, encodeGoQuery, escapeGoPath } from '../src/client.js';
-import type { Credentials } from '../src/generated/models.js';
+import { CredentialMaterialError, type Credentials } from '../src/generated/models.js';
 
 const connection = { provider: 'xero', name: 'xero-test' };
 const token = 'xero-test-access-token-0123456789';
@@ -59,6 +59,8 @@ it('separates terminal, transient, and broken credential sources', async () => {
     [new ConnectionNotSelectedError(), 'defect'],
     [new CredentialBrokerRejectedError(), 'defect'],
     [new TypeError('fetch failed'), 'retry'],
+    [new CredentialMaterialError('credential access_token is required'), 'defect'],
+    [new TypeError('project credential decoding failed'), 'defect'],
   ] as const) {
     const credentials = { resolveWithRefresh: async () => { throw error; }, resolve: async () => { throw error; } };
     const client = new XeroClient({}, credentials, { send: async () => { throw new Error('provider must not be called'); } });

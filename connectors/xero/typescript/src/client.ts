@@ -5,7 +5,7 @@ import { BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetr
 import { ReauthorizationRequiredError, SecretString, defaultTriggerLogger, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials, CredentialSource } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type CredentialSource } from './generated/models.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import { ListContactsOperation, FindContactByEmailOperation, GetInvoiceOperation, ListInvoicesOperation, CreateInvoiceOperation, RecordPaymentOperation } from './operations.js';
 
@@ -241,7 +241,7 @@ export function escapeGoPath(value: string): string {
 /** Report a resolve failure no later attempt clears; a TypeError may be a fetch failure, so it is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
-    || error instanceof CredentialBrokerRejectedError;
+    || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 function firstHeader(value: string | string[] | number | undefined): string | undefined { return Array.isArray(value) ? value[0] : typeof value === 'string' ? value : undefined; }
 function failure(kind: Failure['kind'], operation: string, message: string): Failure { return { kind, provider: 'xero', operation, message }; }
