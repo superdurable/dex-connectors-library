@@ -374,8 +374,8 @@ contains the access token is dropped.
 | 429 | Retry, after `Retry-After` when present | same |
 | 408, 5xx, a dropped connection or unreadable response | Retry | same |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `invalidResponse` |
-| revoked authorization (`invalid_code` on refresh) | `providerRejected`, `AUTHENTICATION` | same |
-| token refresh outage | Retry | same |
+| revoked authorization (`invalid_code` on refresh), a missing or unselected connection, or a credential broker refusal | `providerRejected`, `AUTHENTICATION` | same |
+| any other credential failure, such as a token refresh or broker outage or a connection the static provider does not configure | Retry | same |
 | invalid input, an unknown data center, a foreign `api_domain`, or an unusable token | `defect`, with no request | same |
 
 Zoho CRM meters API credits per rolling 24 hours by edition and limits

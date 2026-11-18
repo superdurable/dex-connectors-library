@@ -26,6 +26,8 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -291,7 +293,12 @@ class Client:
         """Resolve a token, send once, and refresh after one conclusive 401."""
         try:
             credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
-        except ReauthorizationRequiredError:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             return Exchange(
                 "rejected",
                 failure=failure(
