@@ -58,13 +58,13 @@ func (dexContext *testDexContext) nextAttempt() *testDexContext {
 	return dexContext
 }
 
-func (*testDexContext) FlowID() string                          { return "clickup-flow" }
-func (*testDexContext) RunID() string                           { return "run" }
-func (*testDexContext) FlowStartedAt() time.Time                { return time.Unix(1, 0) }
-func (dexContext *testDexContext) StepExecutionID() string      { return dexContext.step }
-func (*testDexContext) FromStepExecutionID() string             { return "" }
-func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo   { return nil }
-func (dexContext *testDexContext) FirstAttemptAt() time.Time    { return dexContext.firstAttemptAt }
+func (*testDexContext) FlowID() string                        { return "clickup-flow" }
+func (*testDexContext) RunID() string                         { return "run" }
+func (*testDexContext) FlowStartedAt() time.Time              { return time.Unix(1, 0) }
+func (dexContext *testDexContext) StepExecutionID() string    { return dexContext.step }
+func (*testDexContext) FromStepExecutionID() string           { return "" }
+func (*testDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (dexContext *testDexContext) FirstAttemptAt() time.Time  { return dexContext.firstAttemptAt }
 func (dexContext *testDexContext) Attempt() int32 {
 	dexContext.mutex.Lock()
 	defer dexContext.mutex.Unlock()

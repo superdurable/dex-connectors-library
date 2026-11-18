@@ -45,7 +45,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Google Cloud Storage", Explanation: "Upload an object to the selected Google Cloud Storage bucket."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Uploaded:             sdkgo.GoTo(completeResult{}),
+			Uploaded:            sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
 	}

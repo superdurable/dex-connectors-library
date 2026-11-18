@@ -16,7 +16,9 @@ const conformanceFixturePathPrefix = "/1"
 
 type conformanceTransportOption struct{ transport *http.Client }
 
-func (option conformanceTransportOption) applyClientOption(client *Client) { client.httpClient = option.transport }
+func (option conformanceTransportOption) applyClientOption(client *Client) {
+	client.httpClient = option.transport
+}
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
@@ -24,7 +26,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, conformanceTransportOption{transport})
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"search": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.Search(), testConnection),
+		"search":     newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.Search(), testConnection),
 		"saveObject": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.SaveObject(), testConnection, scenario.CallID),
 	}}
 }

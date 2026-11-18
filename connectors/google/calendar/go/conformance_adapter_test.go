@@ -18,10 +18,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	context := newCalendarDexContext("conformance")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listEvents": newConformanceQueryInvocation(t, scenario.Input, context, client.ListEvents(), calendarConnection),
-		"getEvent": newConformanceQueryInvocation(t, scenario.Input, context, client.GetEvent(), calendarConnection),
-		"createEvent": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateEvent(), calendarConnection, scenario.CallID),
-		"updateEvent": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateEvent(), calendarConnection, scenario.CallID),
+		"listEvents":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListEvents(), calendarConnection),
+		"getEvent":      newConformanceQueryInvocation(t, scenario.Input, context, client.GetEvent(), calendarConnection),
+		"createEvent":   newConformanceMutationInvocation(t, scenario.Input, context, client.CreateEvent(), calendarConnection, scenario.CallID),
+		"updateEvent":   newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateEvent(), calendarConnection, scenario.CallID),
 		"queryFreeBusy": newConformanceQueryInvocation(t, scenario.Input, context, client.QueryFreeBusy(), calendarConnection),
 	}}
 }

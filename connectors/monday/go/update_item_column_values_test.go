@@ -53,10 +53,19 @@ func TestUpdateItemColumnValuesRetriesEveryUnknownOutcome(t *testing.T) {
 		"oversized item": func(response http.ResponseWriter) {
 			writeJSON(t, response, http.StatusOK, `{"data":{"change_multiple_column_values":{"id":"`+testItemID+`","name":"`+strings.Repeat("x", 2048)+`"}}}`)
 		},
-		"unlisted status":     func(response http.ResponseWriter) { writeJSON(t, response, http.StatusTeapot, `{"errors":[{"message":"SENTINEL"}]}`) },
-		"unknown error code":  func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"errors":[{"extensions":{"code":"SomethingNew"}}]}`) },
-		"redirect":            func(response http.ResponseWriter) { response.Header().Set("Location", "https://example.invalid/"); response.WriteHeader(http.StatusFound) },
-		"refusal beside item": func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"data":{"change_multiple_column_values":{"id":"x"}},"errors":[{"extensions":{"code":"ColumnValueException"}}]}`) },
+		"unlisted status": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusTeapot, `{"errors":[{"message":"SENTINEL"}]}`)
+		},
+		"unknown error code": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"errors":[{"extensions":{"code":"SomethingNew"}}]}`)
+		},
+		"redirect": func(response http.ResponseWriter) {
+			response.Header().Set("Location", "https://example.invalid/")
+			response.WriteHeader(http.StatusFound)
+		},
+		"refusal beside item": func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusOK, `{"data":{"change_multiple_column_values":{"id":"x"}},"errors":[{"extensions":{"code":"ColumnValueException"}}]}`)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingMonday(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { reply(response) })
