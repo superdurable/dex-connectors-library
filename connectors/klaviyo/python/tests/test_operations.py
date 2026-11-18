@@ -43,6 +43,7 @@ from dex_connectors.klaviyo import (
     Credentials,
     GetProfileInput,
 )
+from dex_connectors.klaviyo._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("klaviyo", "klaviyo")
 KEY = "pk_test"
@@ -72,6 +73,17 @@ def event_call() -> Call:
     return Call(CallID(str(uuid4())), CONNECTION, CREATE_EVENT_DEFINITION.operation)
 
 
+def _sdk_decoding_failure() -> ValueError:
+    """Build the SDK project provider's wrapper around a malformed stored credential."""
+    try:
+        try:
+            raise CredentialMaterialError("Klaviyo credential private_api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
 class _FailingCredentials:
     def __init__(self, error: Exception) -> None:
         self.error = error
@@ -91,6 +103,8 @@ class _FailingCredentials:
         (ObjectNotFoundError(), False),
         (ConnectionNotSelectedError(), False),
         (CredentialBrokerRejectedError(), False),
+        (CredentialMaterialError("Klaviyo credential private_api_key is required"), False),
+        (_sdk_decoding_failure(), False),
     ],
 )
 async def test_event_classifies_credential_resolve_failures(error: Exception, is_transient: bool) -> None:
@@ -164,9 +178,9 @@ async def test_profile_branches(response: httpx.Response, branch: str, kind: Fai
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("status", "branch"), [(200, PROVIDER_REJECTED), (400, PROVIDER_REJECTED), (401, PROVIDER_REJECTED)]
+    ("status", "branch"), [(400, PROVIDER_REJECTED), (401, PROVIDER_REJECTED), (422, PROVIDER_REJECTED)]
 )
-async def test_event_needs_202(status: int, branch: str) -> None:
+async def test_event_definite_refusal_is_rejected(status: int, branch: str) -> None:
     result = await run_mutation(
         make_client(httpx.Response(status)).create_event(),
         event_call(),
@@ -176,7 +190,7 @@ async def test_event_needs_202(status: int, branch: str) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status", [408, 409, 429, 500])
+@pytest.mark.parametrize("status", [200, 302, 408, 409, 425, 429, 451, 500])
 async def test_safe_failures_retry(status: int) -> None:
     with pytest.raises(RetryError):
         await run_mutation(
