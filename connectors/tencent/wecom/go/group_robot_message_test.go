@@ -348,6 +348,24 @@ func TestSendGroupRobotMessageRetriesACredentialFailureAfterAPossibleSend(t *tes
 	require.Equal(t, 1, fake.sendCount())
 }
 
+func TestSendGroupRobotMessageSelectsUncertainForAnInvalidWebhookKeyAfterAPossibleSend(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}
+	client := newTestClient(t, fake.server.URL)
+	ctx := singledispatchtest.NewContext("invalid-key-after-send-flow", "post-step")
+	_, err := sdkgo.RunMutation(ctx, client.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	invalidKey, err := New(Config{BaseURL: fake.server.URL}, sdkgo.StaticCredentialProvider[Credentials]{
+		testRobotConnection: {AuthMethodID: groupRobotAuthMethodID, WebhookKey: sdkgo.NewSecretString("bad key")},
+	})
+	require.NoError(t, err)
+	uncertain, err := sdkgo.RunMutation(ctx, invalidKey.SendGroupRobotMessage(), testRobotConnection, testRobotText)
+	require.NoError(t, err)
+	require.Equal(t, SendGroupRobotMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, fake.sendCount())
+}
+
 func TestSendGroupRobotMessageRejectsInvalidInputBeforePosting(t *testing.T) {
 	for _, testCase := range []struct {
 		name  string

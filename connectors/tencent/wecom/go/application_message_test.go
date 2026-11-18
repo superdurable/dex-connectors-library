@@ -509,6 +509,45 @@ func TestSendApplicationMessageNeverSelectsDefectAfterAPossibleSend(t *testing.T
 	require.Equal(t, 1, fake.sendCount())
 }
 
+func TestSendApplicationMessageSelectsUncertainForARefusalAfterAPossibleSend(t *testing.T) {
+	for _, refusal := range []fakeReply{
+		{body: `{"errcode":81013,"errmsg":"user, department, and tag are all invalid"}`},
+		{status: http.StatusBadRequest},
+	} {
+		t.Run(fmt.Sprintf("%d %s", refusal.status, refusal.body), func(t *testing.T) {
+			fake := newFakeWeCom(t)
+			fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}, refusal}
+			client := newWindowedTestClient(t, fake.server.URL, testCredentials())
+			ctx := singledispatchtest.NewContext("refusal-after-send-flow", "send-step")
+			_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+			requireRetry(t, err)
+			ctx.AdvanceAttempt()
+			uncertain, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+			require.NoError(t, err)
+			require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch, "a refusal of a repeat cannot prove the first send failed")
+			requireSecretFree(t, uncertain.Failure.Message)
+			require.Equal(t, 2, fake.sendCount())
+		})
+	}
+}
+
+func TestSendApplicationMessageSelectsUncertainForInvalidCredentialsAfterAPossibleSend(t *testing.T) {
+	fake := newFakeWeCom(t)
+	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}
+	client := newTestClient(t, fake.server.URL)
+	ctx := singledispatchtest.NewContext("invalid-credentials-after-send-flow", "send-step")
+	_, err := sdkgo.RunMutation(ctx, client.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	requireRetry(t, err)
+	ctx.AdvanceAttempt()
+	invalidAgent := newWindowedTestClient(t, fake.server.URL, sdkgo.StaticCredentialProvider[Credentials]{
+		testApplicationConnection: {AuthMethodID: applicationAuthMethodID, CorpID: testCorpID, AgentID: "not-a-number", CorpSecret: sdkgo.NewSecretString(testCorpSecret)},
+	})
+	uncertain, err := sdkgo.RunMutation(ctx, invalidAgent.SendApplicationMessage(), testApplicationConnection, testApplicationText)
+	require.NoError(t, err)
+	require.Equal(t, SendApplicationMessageBranchUncertain, uncertain.Branch)
+	require.Equal(t, 1, fake.sendCount())
+}
+
 func TestSendApplicationMessageSelectsUncertainForATokenRefusalAfterAPossibleSend(t *testing.T) {
 	fake := newFakeWeCom(t)
 	fake.sendReplies = []fakeReply{{status: http.StatusInternalServerError}}

@@ -111,15 +111,19 @@ func (operation SendApplicationMessageOperation) Invoke(call sdkgo.Call, input S
 		failure := newFailure("sendApplicationMessage", sdkgo.FailureTransport, "an earlier attempt may have delivered the message and WeCom's four-hour duplicate check would no longer suppress a resend; check with the recipients before sending again")
 		return sdkgo.NewMutationUncertain(SentApplicationMessage{}, failure, sdkgo.Receipt{})
 	}
-	// An earlier attempt may have sent, so a local or token failure now retries instead of failing the Step.
+	// Without a fence, any later attempt may follow an accepted send.
 	hasPossibleEarlierSend := call.Context.Attempt() > 1
+	// After a possible earlier send, a terminal local failure selects uncertain instead of defect.
 	localFailure := func(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
 		if hasPossibleEarlierSend {
-			return retryApplicationSend(kind, message+"; nothing was sent in this attempt")
+			return uncertainApplicationSend(kind, message+"; an earlier attempt may have delivered the message")
 		}
 		return rejectedApplicationSend(SendApplicationMessageBranchDefect, kind, message)
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil && hasPossibleEarlierSend {
+		return retryApplicationSend(sdkgo.FailureAuthentication, "WeCom application credentials are unavailable; nothing was sent in this attempt")
+	}
 	if err != nil || credentials.Validate() != nil {
 		return localFailure(sdkgo.FailureAuthentication, "WeCom application credentials are unavailable")
 	}
@@ -165,15 +169,15 @@ func (operation SendApplicationMessageOperation) Invoke(call sdkgo.Call, input S
 	}
 	// Closing the response cannot change the provider outcome already received.
 	defer func() { _ = response.Body.Close() }()
-	return operation.classifyResponse(call.Context, response, tokenKey, token.token)
+	return operation.classifyResponse(call.Context, response, tokenKey, token.token, hasPossibleEarlierSend)
 }
 
-func (operation SendApplicationMessageOperation) classifyResponse(ctx context.Context, response *http.Response, tokenKey accessTokenCacheKey, accessToken string) sdkgo.MutationAttempt[SentApplicationMessage] {
+func (operation SendApplicationMessageOperation) classifyResponse(ctx context.Context, response *http.Response, tokenKey accessTokenCacheKey, accessToken string, hasPossibleEarlierSend bool) sdkgo.MutationAttempt[SentApplicationMessage] {
 	if response.StatusCode == http.StatusTooManyRequests {
 		return retryApplicationSend(sdkgo.FailureRateLimit, "WeCom rate limited the application message")
 	}
 	if isDefiniteRefusalStatus(response.StatusCode) {
-		return rejectedApplicationSend(SendApplicationMessageBranchProviderRejected, sdkgo.FailureProviderRejection, "WeCom rejected the application message with HTTP "+strconv.Itoa(response.StatusCode))
+		return rejectOrSelectUncertainApplicationSend(hasPossibleEarlierSend, sdkgo.FailureProviderRejection, "WeCom rejected the application message with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	if response.StatusCode != http.StatusOK {
 		// WeCom's duplicate check suppresses a repeat of an accepted send, so an unknown outcome retries.
@@ -213,7 +217,20 @@ func (operation SendApplicationMessageOperation) classifyResponse(ctx context.Co
 	case isRetryableErrcode(errcode):
 		return retryApplicationSend(failureKindForErrcode(errcode), rejectionMessage("WeCom deferred the application message", errcode))
 	}
-	return rejectedApplicationSend(SendApplicationMessageBranchProviderRejected, failureKindForErrcode(errcode), rejectionMessage("WeCom rejected the application message", errcode))
+	return rejectOrSelectUncertainApplicationSend(hasPossibleEarlierSend, failureKindForErrcode(errcode), rejectionMessage("WeCom rejected the application message", errcode))
+}
+
+// rejectOrSelectUncertainApplicationSend selects providerRejected only when no earlier attempt may have delivered.
+func rejectOrSelectUncertainApplicationSend(hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	if hasPossibleEarlierSend {
+		// A refusal of this attempt cannot prove an earlier attempt delivered nothing.
+		return uncertainApplicationSend(kind, message+"; an earlier attempt may have delivered the message")
+	}
+	return rejectedApplicationSend(SendApplicationMessageBranchProviderRejected, kind, message)
+}
+
+func uncertainApplicationSend(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	return sdkgo.NewMutationUncertain(SentApplicationMessage{}, newFailure("sendApplicationMessage", kind, message), sdkgo.Receipt{})
 }
 
 // validateApplicationInput returns a safe message describing the first invalid field, or "".

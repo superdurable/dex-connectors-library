@@ -83,7 +83,7 @@ automatic repost.
 | Retry | errcode -1 (system busy), 45009 (frequency limit, retried after one minute), or 45033 (concurrency limit); HTTP 429 or 503; a DNS, dial, or proxy CONNECT failure of net/http's own Transport before a connection was made; or an unreadable checkpoint |
 | Retry and post again below the cap | HTTP 5xx other than 503, 408, 409, or any 4xx other than 400, 401, 403, 404, 411, 413, 414, 415, and 422; an interrupted, malformed, or oversized response; any other transport failure, including any transport failure of a custom `WithHTTPClient` RoundTripper; or a lost Worker |
 | `providerRejected` | on a first post, any other errcode, such as 93000 (invalid webhook or robot removed), 93004 (robot disabled), or 45002 (content too large), or HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 |
-| `uncertain` | an unknown outcome at the send cap, or a refusal after an earlier possible post |
+| `uncertain` | an unknown outcome at the send cap, or a refusal, a connection that is not `group-robot`, or a malformed `webhook_key` after an earlier possible post |
 | `defect` | invalid input, a connection that is not `group-robot`, or a malformed `webhook_key` before any possible post; nothing was posted |
 
 Wire `uncertain` only when the application can ask a person to check the
@@ -119,9 +119,9 @@ accepted message, and an unconfirmed attempt retries. Two consequences follow:
 | Outcome | Selected when |
 | --- | --- |
 | `sent` | errcode 0, including partial delivery |
-| Retry | errcode -1, 45009, or 45033; errcode 40014, 41001, or 42001 after discarding the cached token; HTTP 429, 408, 5xx, or any status other than 200 and 400, 401, 403, 404, 411, 413, 414, 415, and 422; a transport failure; an interrupted, malformed, or oversized response; or, on a later attempt, a local credential failure, while within `DuplicateCheckResendCutoff` |
-| `providerRejected` | a refused token request on the first attempt, such as 40001 (invalid secret), 40013 (invalid corp ID), or 60020 (untrusted IP), or a refused send, such as 81013 (no valid recipient), 40056 (invalid AgentId), or 301002 (token for another application) |
-| `uncertain` | a retry at or after `DuplicateCheckResendCutoff`, or a refused token request on a later attempt; an earlier attempt may have delivered the message |
+| Retry | errcode -1, 45009, or 45033; errcode 40014, 41001, or 42001 after discarding the cached token; HTTP 429, 408, 5xx, or any status other than 200 and 400, 401, 403, 404, 411, 413, 414, 415, and 422; a transport failure; an interrupted, malformed, or oversized response; or, on a later attempt, unavailable credentials, while within `DuplicateCheckResendCutoff` |
+| `providerRejected` | on the first attempt, a refused token request, such as 40001 (invalid secret), 40013 (invalid corp ID), or 60020 (untrusted IP), or a refused send, such as 81013 (no valid recipient), 40056 (invalid AgentId), or 301002 (token for another application) |
+| `uncertain` | a retry at or after `DuplicateCheckResendCutoff`, or, on a later attempt, a refused token request, a refused send, or malformed application credentials; an earlier attempt may have delivered the message |
 | `defect` | invalid input, a connection that is not `application`, or malformed application credentials on the first attempt; nothing was sent |
 
 The operation declares `repeatOnUnknown: safe` because the duplicate check
