@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/tencent/wecom/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,9 +38,10 @@ type guidanceManifest struct {
 		Operations []struct {
 			Name      string `yaml:"name"`
 			Execution struct {
-				Durability    string `yaml:"durability"`
-				DispatchFence bool   `yaml:"dispatchFence"`
-				Retry         any    `yaml:"retry"`
+				Durability      string `yaml:"durability"`
+				DispatchFence   bool   `yaml:"dispatchFence"`
+				RepeatOnUnknown string `yaml:"repeatOnUnknown"`
+				Retry           any    `yaml:"retry"`
 			} `yaml:"execution"`
 			Branches []struct {
 				ID string `yaml:"id"`
@@ -137,10 +139,12 @@ func TestOperationExecutionMatchesTheirRepeatSafety(t *testing.T) {
 	require.True(t, robot.Execution.DispatchFence)
 	require.Equal(t, []string{"sent", "providerRejected", "uncertain", "defect"}, branchIDs(robot.Branches))
 	require.Equal(t, "sendApplicationMessage", application.Name)
-	require.Equal(t, "async", application.Execution.Durability)
-	require.False(t, application.Execution.DispatchFence)
+	require.Equal(t, "sync", application.Execution.Durability, "the single-dispatch fence needs sync heartbeats")
+	require.True(t, application.Execution.DispatchFence)
+	require.Empty(t, application.Execution.RepeatOnUnknown, "WeCom's suppression of a repeat is unconfirmed, so the limited send cap applies")
+	require.Equal(t, sdkgo.RepeatOnUnknownLimited, wecom.SendApplicationMessageDefinition.RepeatOnUnknown)
 	require.Nil(t, application.Execution.Retry, "the default one-hour retry window must stay inside the four-hour duplicate check")
-	require.Equal(t, []string{"sent", "providerRejected", "uncertain", "defect"}, branchIDs(application.Branches), "uncertain covers only a retry past the duplicate check window")
+	require.Equal(t, []string{"sent", "providerRejected", "uncertain", "defect"}, branchIDs(application.Branches))
 }
 
 func TestREADMENamesTheManifestDefaults(t *testing.T) {

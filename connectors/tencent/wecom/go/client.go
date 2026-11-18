@@ -14,16 +14,21 @@
 package wecom
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -44,8 +49,8 @@ func (option httpClientOption) applyClientOption(client *Client) {
 
 // WithHTTPClient supplies the transport for WeCom requests. New copies the client, keeps its
 // Transport, disables redirects, and applies the configured timeout when the client sets none.
-// A Transport other than *http.Transport cannot prove that a failed group robot post never left
-// the process, so every transport error from it selects uncertain instead of retrying.
+// A Transport other than *http.Transport cannot prove that a failed write never left the
+// process, so every transport error from it counts as a possible send toward the send cap.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
 
 // Client holds immutable WeCom settings, resolves credentials for each call, and caches one
@@ -112,6 +117,71 @@ func isStandardTransport(transport http.RoundTripper) bool {
 	}
 	_, isStandard := transport.(*http.Transport)
 	return isStandard
+}
+
+// fencedExchange is the WeCom answer to one fenced write, read before the Fence cancels the request.
+type fencedExchange struct {
+	statusCode int
+	retryAfter time.Duration
+	body       []byte
+	// bodyErr is providerhttp.ErrBodyTooLarge for an oversized body, or the error that broke the read.
+	bodyErr error
+	// isUnsentDialFailure proves the request never left the process.
+	isUnsentDialFailure bool
+}
+
+// dispatchFencedWrite reads the body inside the callback because the Fence cancels the request context on return.
+func (client *Client) dispatchFencedWrite(fence *singledispatch.Fence, request *http.Request) (fencedExchange, error) {
+	var exchange fencedExchange
+	var didGetConnection atomic.Bool
+	err := fence.Dispatch(func(requestContext context.Context) error {
+		trace := &httptrace.ClientTrace{GotConn: func(httptrace.GotConnInfo) { didGetConnection.Store(true) }}
+		response, sendErr := client.httpClient.Do(request.WithContext(httptrace.WithClientTrace(requestContext, trace)))
+		if sendErr != nil {
+			return sendErr
+		}
+		// Closing the response cannot change the provider outcome already received.
+		defer func() { _ = response.Body.Close() }()
+		exchange.statusCode = response.StatusCode
+		exchange.retryAfter = providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+		if isSuccessStatus(response.StatusCode) || isDefiniteRefusalStatus(response.StatusCode) {
+			exchange.body, exchange.bodyErr = providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, singledispatch.ErrCheckpoint) && !errors.Is(err, singledispatch.ErrInsufficientTime) {
+		// Only net/http's Transport proves a dial-phase failure sent nothing; any other error may follow a sent write.
+		exchange.isUnsentDialFailure = client.hasStandardTransport && !didGetConnection.Load() && isUnsentDialError(err)
+	}
+	return exchange, err
+}
+
+// isReadableRefusal reports a refusal-status body that was read in full and reports no accepted message.
+func (exchange fencedExchange) isReadableRefusal() bool {
+	if exchange.bodyErr != nil {
+		return false
+	}
+	var acceptance struct {
+		Errcode   *int   `json:"errcode"`
+		MessageID string `json:"msgid"`
+	}
+	if json.Unmarshal(exchange.body, &acceptance) != nil {
+		return true
+	}
+	return (acceptance.Errcode == nil || *acceptance.Errcode != errcodeSuccess) && acceptance.MessageID == ""
+}
+
+// isBrokenSuccessBody reports a 2xx whose body broke mid-read: WeCom answered, so the write may exist.
+func (exchange fencedExchange) isBrokenSuccessBody() bool {
+	return isSuccessStatus(exchange.statusCode) && exchange.bodyErr != nil && !errors.Is(exchange.bodyErr, providerhttp.ErrBodyTooLarge)
+}
+
+func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as store reads, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // isUnsentDialError reports a DNS, dial, or proxy CONNECT failure, which net/http's Transport
