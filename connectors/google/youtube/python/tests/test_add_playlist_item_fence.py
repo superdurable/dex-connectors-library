@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Fence behavior of addPlaylistItem that the Go-recorded scenarios cannot express."""
 
+import asyncio
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import dex_connectors.sdk as sdk
@@ -154,9 +156,108 @@ async def test_body_that_breaks_after_2xx_headers_is_never_resent() -> None:
         inserts += 1
         return httpx.Response(200, stream=BrokenBodyStream())
 
-    results, _ = await run_attempts(answer, 1)
-    assert results[0].kind == "uncertain"
+    results, _ = await run_attempts(answer, 4)
+    assert [result.kind for result in results] == ["retry", "retry", "retry", "uncertain"]
     assert inserts == 1
+
+
+class StalledBodyStream(httpx.AsyncByteStream):
+    """Stall after 2xx headers until the Fence write window ends."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(5)
+        yield b"{}"
+
+
+async def test_write_deadline_that_cuts_an_accepted_body_is_never_resent() -> None:
+    """2xx headers arrived, so the Fence write-window timeout proves the insert."""
+    inserts = 0
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal inserts
+        if request.method == "GET":
+            return httpx.Response(200, json=EMPTY_LISTING)
+        inserts += 1
+        return httpx.Response(200, stream=StalledBodyStream())
+
+    context = HeartbeatContext(call_id=CALL_ID)
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    first, _ = await run_attempts(answer, 1, context=context)
+    assert first[0].kind == "retry"
+    context.deadline = datetime.now(UTC) + timedelta(seconds=30)
+    context.attempt += 1
+    later, _ = await run_attempts(answer, 3, context=context)
+    assert [result.kind for result in later] == ["retry", "retry", "uncertain"]
+    assert inserts == 1
+
+
+async def test_transient_listing_failure_after_acceptance_lists_again() -> None:
+    inserts = 0
+    listings = 0
+    item = {
+        "id": "UExpdGVt",
+        "snippet": {
+            "playlistId": "PLexample123", "title": "Launch", "position": 0,
+            "publishedAt": "2026-10-13T17:00:00Z",
+            "resourceId": {"kind": "youtube#video", "videoId": "dQw4w9WgXcQ"},
+        },
+        "contentDetails": {"videoPublishedAt": "2026-10-01T16:00:00Z"},
+    }
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal inserts, listings
+        if request.method == "GET":
+            listings += 1
+            if listings == 2:
+                return httpx.Response(503)
+            if listings > 2:
+                return httpx.Response(200, json={"pageInfo": {"totalResults": 1}, "items": [item]})
+            return httpx.Response(200, json=EMPTY_LISTING)
+        inserts += 1
+        return httpx.Response(200, json={"kind": "youtube#playlistItem"})
+
+    results, _ = await run_attempts(answer, 2)
+    assert [result.kind for result in results] == ["retry", "branch"]
+    assert results[1].branch == "added"
+    assert inserts == 1
+
+
+async def test_refusal_carrying_an_item_id_is_listed_and_never_resent() -> None:
+    inserts = 0
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal inserts
+        if request.method == "GET":
+            return httpx.Response(200, json=EMPTY_LISTING)
+        inserts += 1
+        return httpx.Response(409, json={"kind": 7, "id": "UExpdGVt"})
+
+    results, _ = await run_attempts(answer, 4)
+    assert results[-1].kind == "uncertain"
+    assert inserts == 1
+
+
+async def test_oversized_refusal_body_is_an_unknown_outcome() -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return httpx.Response(200, json=EMPTY_LISTING)
+        return httpx.Response(400, content=b"x" * (128 << 10))
+
+    results, _ = await run_attempts(answer, 1)
+    assert results[0].kind == "retry"
+
+
+async def test_transient_credential_failure_before_the_first_insert_retries_with_not_sent() -> None:
+    credentials = StaticManageCredentials()
+    credentials.is_unavailable = True
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    results, context = await run_attempts(answer, 1, credentials)
+    assert results[0].kind == "retry"
+    marker = context.get_last_heartbeat_value(Marker)
+    assert isinstance(marker, Marker) and marker.state.value == "notSent"
 
 
 async def test_transient_credential_failure_after_possible_insert_retries() -> None:

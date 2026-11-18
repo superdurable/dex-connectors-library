@@ -127,10 +127,10 @@ type replaceAllTextReply struct {
 
 // runGuardedWrite writes one batch only at the required revision, so a repeated dispatch can never apply it twice.
 func runGuardedWrite[OUT any](client *Client, call sdkgo.Call, target guardedWriteTarget, change guardedChange[OUT]) sdkgo.MutationAttempt[OUT] {
-	credential, failure := client.resolveCredential(call, target.operationID)
+	credential, failure, isCredentialFailureRetryable := client.resolveWriteCredential(call, target.operationID)
 	if failure != nil {
-		if call.Context.Attempt() > 1 {
-			// An earlier attempt may have written, so defect could hide an applied change.
+		if isCredentialFailureRetryable || call.Context.Attempt() > 1 {
+			// A transient outage clears later; an earlier attempt may have written, so defect could hide an applied change.
 			return sdkgo.NewMutationRetry[OUT](*failure, 0)
 		}
 		return sdkgo.NewMutationBranch(target.defect, *new(OUT), failure, sdkgo.Receipt{})

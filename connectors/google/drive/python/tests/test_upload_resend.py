@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of uploadFile: accepted uploads are never resent."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
@@ -10,6 +11,7 @@ from typing import get_origin
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.providerhttp import MAX_ERROR_BODY_BYTES
 
 import dex_connectors.google_drive as drive
 
@@ -137,6 +139,46 @@ async def test_a_broken_success_body_is_looked_up_on_later_attempts_and_never_re
     context.attempt += 1
     assert await _run(fake, context) == "uploaded"
     assert fake.uploads == 1
+
+
+class StalledStream(httpx.AsyncByteStream):
+    """A response body that stalls after the 2xx headers arrived."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(5)
+        yield b"{}"
+
+
+@pytest.mark.asyncio
+async def test_a_write_deadline_that_cuts_an_accepted_body_is_looked_up_and_never_resent() -> None:
+    """2xx headers arrived, so the Fence write-window timeout proves the upload."""
+    fake = FakeDrive()
+    fake.upload_outcomes.append(fake.stores(httpx.Response(200, stream=StalledStream())))
+    fake.is_lookup_hidden = True
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    assert await _run(fake, context) == "retry"
+    context.attempt += 1
+    context.deadline = datetime.now(UTC) + timedelta(seconds=30)
+    assert await _run(fake, context) == "retry"
+    fake.is_lookup_hidden = False
+    context.attempt += 1
+    assert await _run(fake, context) == "uploaded"
+    assert fake.uploads == 1
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_whose_body_is_oversized_is_an_unknown_outcome() -> None:
+    """An oversized refusal body might hide a file ID, so it is looked up and resent, never rejected."""
+    oversized = b"x" * (drive.Config().max_response_bytes + MAX_ERROR_BODY_BYTES + 1)
+    fake = FakeDrive(
+        lambda: httpx.Response(400, content=oversized), lambda: httpx.Response(200, json=CREATED_FILE)
+    )
+    context = AttemptContext()
+    assert await _run(fake, context) == "retry"
+    context.attempt += 1
+    assert await _run(fake, context) == "uploaded"
+    assert fake.uploads == 2
 
 
 @pytest.mark.asyncio

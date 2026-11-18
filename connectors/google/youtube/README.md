@@ -68,15 +68,20 @@ the video again. An interrupted attempt that leaves no checkpoint also leads to
 this read-back.
 
 A 2xx insert response that is malformed, oversized, or breaks while its body is
-read means YouTube accepted the insert, so it is never resent: the attempt lists
-the playlist once and selects `added` when the video is shown and `uncertain`
-otherwise.
+read, and a response of any other status whose body names an item ID, means
+YouTube accepted the insert, so it is never resent: the attempt lists the
+playlist and selects `added` when the video is shown. Otherwise it saves the
+item ID, or the acceptance itself, and later attempts only list the playlist
+until the send cap, where `uncertain` is selected.
 
-Only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, or Google's
-`quotaExceeded` reason, is a definite refusal of the insert. On a first insert
-it selects its branch and is never resent; after an earlier insert that may have
-taken effect it selects `uncertain`. Credentials that cannot be resolved after
-an earlier possible insert return Retry; a revoked grant selects `uncertain`.
+Only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 whose body was read in
+full, or Google's `quotaExceeded` reason, is a definite refusal of the insert.
+A refusal body over the error limit might hide an item ID, so it is an unknown
+outcome. On a first insert a definite refusal selects its branch and is never
+resent; after an earlier insert that may have taken effect it selects
+`uncertain`. Credentials that cannot be resolved or refreshed return Retry, on
+a first insert too; a revoked grant selects `uncertain` after an earlier
+possible insert.
 
 ## Agent tools
 

@@ -100,6 +100,8 @@ type googleResponse struct {
 	header    http.Header
 	body      []byte
 	requestID string
+	// isErrorBodyOversized reports a non-2xx body dropped for its size, which could hide a created object.
+	isErrorBodyOversized bool
 }
 
 type googleRequestError struct {
@@ -244,6 +246,19 @@ func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (Cr
 	return credential, nil
 }
 
+// resolveWriteCredential is resolveCredential that also reports whether a later attempt may succeed.
+// Only reauthorization or an invalid credential is terminal; every other resolution error is transient.
+func (client *Client) resolveWriteCredential(call sdkgo.Call, operationID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
+	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !sdkgo.IsReauthorizationRequired(err) {
+		return Credentials{}, docsFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are temporarily unavailable"), true
+	}
+	if err != nil || validateResolvedCredentials(credential) != nil {
+		return Credentials{}, docsFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable; reconnect the connection"), false
+	}
+	return credential, nil, false
+}
+
 // sendRead performs one idempotent Google read and classifies every non-2xx or unreadable response.
 func (client *Client) sendRead(
 	call sdkgo.Call,
@@ -326,6 +341,7 @@ func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, requ
 		if isOversized {
 			// An oversized error body carries no usable reason, so the status alone classifies it.
 			response.body = nil
+			response.isErrorBodyOversized = true
 			readErr = nil
 		}
 		if readErr != nil || closeErr != nil {

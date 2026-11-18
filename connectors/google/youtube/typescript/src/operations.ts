@@ -5,7 +5,7 @@ import { definitionMaxSends, newQueryBranch, newQueryRetry, newMutationBranch, n
 import { SearchVideosDefinition, GetVideoDefinition, GetChannelDefinition, ListPlaylistItemsDefinition, AddPlaylistItemDefinition } from './generated/definitions.js';
 import type { SearchVideosInput, VideoSearchPage, VideoSearchResult, GetVideoInput, Video, GetChannelInput, Channel, ListPlaylistItemsInput, PlaylistItemPage, PlaylistItem, AddPlaylistItemInput, AddedPlaylistItem } from './generated/models.js';
 import { Fence } from '@superdurable/connectors-sdk/singledispatch';
-import { YouTubeExchangeError, type YouTubeClient, type YouTubeResponse } from './client.js';
+import { YouTubeExchangeError, insertedItemID, type YouTubeClient, type YouTubeResponse } from './client.js';
 
 const videoID = /^[A-Za-z0-9_-]{11}$/;
 const channelID = /^UC[A-Za-z0-9_-]{22}$/;
@@ -56,8 +56,9 @@ function failBeforeInsertOrSelectUncertain(hasPossibleEarlierSend: boolean, oper
   if (error.disposition === 'providerRejected' && error.kind === 'AUTHENTICATION') return rejectOrSelectUncertain(true, operation, error, call, objectID, uncertainPrefix);
   return newMutationRetry(failure(operation, error.kind as Failure['kind'], `${uncertainPrefix}${error.message}`), error.retryAfterMs);
 }
-/** Report credentials that could not be resolved or refreshed, without a revoked grant. */
-function isTransientCredentialFailure(error: YouTubeExchangeError): boolean { return error.disposition === 'defect' && error.kind === 'AUTHENTICATION'; }
+// The checkpoint provider ID of an insert YouTube accepted without a usable item ID; a saved
+// provider ID makes later attempts only list the playlist, never insert.
+const acceptedInsertWithoutItemID = 'dex:acceptedWithoutItemId';
 function defect<T>(operation: string, empty: T, message: string): QueryAttempt<T> { return newQueryBranch('defect', empty, zeroReceipt(), failure(operation, 'VALIDATION', message)); }
 function invalid<T>(operation: string, empty: T, message: string, call: Call, objectID: string, response: YouTubeResponse): QueryAttempt<T> { return newQueryBranch('invalidResponse', empty, receipt(call, objectID, response), failure(operation, 'PROTOCOL', message)); }
 function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid provider object'); return value as Record<string, unknown>; }
@@ -245,9 +246,11 @@ export class AddPlaylistItemOperation implements Mutation<AddPlaylistItemInput, 
     // Every attempt lists first, so after any possible earlier insert this listing is the read-back.
     try { response = await this.client.exchange(call, operation, '/playlistItems', encoded.query!, true); }
     catch (cause) {
-      if (cause instanceof YouTubeExchangeError && cause.disposition === 'retry' && decision.kind === 'sendAllowed' && !hasPossibleEarlierSend) {
+      const isRetryable = cause instanceof YouTubeExchangeError && (cause.disposition === 'retry' || cause.isTransientCredentialFailure);
+      if (isRetryable && decision.kind === 'sendAllowed' && !hasPossibleEarlierSend) {
         try { await fence.recordNotSent(); } catch { /* A lost notSent marker makes the next attempt count one more possible insert. */ }
       }
+      if (isRetryable) return newMutationRetry(failure(operation, cause.kind as Failure['kind'], cause.message), cause.retryAfterMs);
       return failBeforeInsertOrSelectUncertain(hasPossibleEarlierSend, operation, cause, call, input.playlistId, readBackPrefix);
     }
     let page: PlaylistItemPage;
@@ -264,30 +267,38 @@ export class AddPlaylistItemOperation implements Mutation<AddPlaylistItemInput, 
       if (cause instanceof YouTubeExchangeError && cause.disposition === 'writeUnconfirmed')
         return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, cause.kind as Failure['kind'], cause.message), cause.retryAfterMs, receipt(call, input.playlistId, cause.response));
       if (cause instanceof YouTubeExchangeError && cause.disposition === 'acceptedUnreadable')
-        return this.confirmAcceptedInsert(call, listInput, encoded.query!, failure(operation, cause.kind as Failure['kind'], cause.message));
+        return this.confirmAcceptedInsert(call, fence, listInput, encoded.query!, failure(operation, cause.kind as Failure['kind'], cause.message), insertedItemID(cause.response?.body));
+      if (cause instanceof YouTubeExchangeError && cause.isTransientCredentialFailure) {
+        // A 401 or an unstarted insert changed nothing, and the next attempt lists first.
+        if (decision.kind === 'sendAllowed' && !hasPossibleEarlierSend) {
+          try { await fence.recordNotSent(); } catch { /* After a dispatched 401 the Fence refuses notSent; canResend below covers it. */ }
+        }
+        try { await fence.recordCanResend(); } catch { /* Before dispatch the Fence refuses canResend; a lost marker only overcounts. */ }
+        return newMutationRetry(failure(operation, cause.kind as Failure['kind'], cause.message));
+      }
       if (cause instanceof YouTubeExchangeError && cause.disposition !== 'retry' && !hasPossibleEarlierSend) {
         try { await fence.recordCanResend(); } catch { /* The refusal ends the Step, so a lost checkpoint cannot cause another insert. */ }
-      }
-      if (hasPossibleEarlierSend && cause instanceof YouTubeExchangeError && isTransientCredentialFailure(cause)) {
-        try { await fence.recordCanResend(); } catch { /* A 401 or an unstarted insert changed nothing, and the next attempt lists first. */ }
-        return newMutationRetry(failure(operation, cause.kind as Failure['kind'], cause.message));
       }
       return rejectOrSelectUncertain(hasPossibleEarlierSend, operation, cause, call, input.playlistId, 'an earlier attempt may have added the video, and YouTube refused the resend: ');
     }
     let inserted: Record<string, unknown>;
     try { inserted = decoded(response); }
-    catch { return this.confirmAcceptedInsert(call, listInput, encoded.query!, failure(operation, 'PROTOCOL', 'YouTube returned a malformed insert response')); }
+    catch { return this.confirmAcceptedInsert(call, fence, listInput, encoded.query!, failure(operation, 'PROTOCOL', 'YouTube returned a malformed insert response'), insertedItemID(response.body)); }
     let item: PlaylistItem;
     try {
       item = playlistItem(inserted, input.playlistId);
       if (item.videoId !== input.videoId) throw new TypeError('YouTube returned an item for a different video');
-    } catch { return this.confirmAcceptedInsert(call, listInput, encoded.query!, failure(operation, 'PROTOCOL', 'YouTube returned an invalid or different inserted item')); }
+    } catch { return this.confirmAcceptedInsert(call, fence, listInput, encoded.query!, failure(operation, 'PROTOCOL', 'YouTube returned an invalid or different inserted item'), insertedItemID(response.body)); }
     try { await fence.recordProviderId(item.id); } catch { /* A lost provider ID marker still counts this insert, so the cap still holds. */ }
     return newMutationBranch('added', { item, wasAlreadyPresent: false }, receipt(call, item.id, response));
   }
 
-  /** List the playlist after YouTube accepted this insert with an unusable body; it is never resent. */
-  private async confirmAcceptedInsert(call: Call, listInput: ListPlaylistItemsInput, query: Record<string, string>, acceptance: Failure): Promise<MutationAttempt<AddedPlaylistItem>> {
+  /**
+   * List the playlist after YouTube accepted this insert with an unusable body; it is never resent. A saved item ID,
+   * or the saved acceptance itself, makes later attempts list again up to the send cap; uncertain is selected here
+   * only when neither could be saved.
+   */
+  private async confirmAcceptedInsert(call: Call, fence: Fence, listInput: ListPlaylistItemsInput, query: Record<string, string>, acceptance: Failure, acceptedItemID: string): Promise<MutationAttempt<AddedPlaylistItem>> {
     let readBackReceipt = receipt(call, listInput.playlistId);
     try {
       const response = await this.client.exchange(call, 'addPlaylistItem', '/playlistItems', query, true);
@@ -298,7 +309,11 @@ export class AddPlaylistItemOperation implements Mutation<AddPlaylistItemInput, 
       // Any read-back failure leaves the accepted insert unconfirmed, and it is never resent.
       if (cause instanceof YouTubeExchangeError && cause.response) readBackReceipt = receipt(call, listInput.playlistId, cause.response);
     }
-    return newMutationUncertain(zeroAdded, { ...acceptance, message: `${acceptance.message}; YouTube accepted the insert, so it is not sent again, and the playlist listing does not show it; check the playlist` }, readBackReceipt);
+    try {
+      await fence.recordProviderId(acceptedItemID || acceptedInsertWithoutItemID);
+      return newMutationRetry({ ...acceptance, message: `${acceptance.message}; YouTube accepted the insert, so it is not sent again, and the playlist listing does not show it yet; the next attempt lists again` });
+    } catch { /* Without a saved acceptance a later attempt could insert again, so select uncertain. */ }
+    return newMutationUncertain(zeroAdded, { ...acceptance, message: `${acceptance.message}; YouTube accepted the insert, so it is not sent again, the playlist listing does not show it, and its acceptance checkpoint failed; check the playlist` }, readBackReceipt);
   }
 
   /**

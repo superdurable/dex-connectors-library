@@ -100,8 +100,13 @@ class Client:
         token: str | None = None,
         method: str = "GET",
         body: bytes | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one bounded HTTP request without returning provider error text."""
+        """Send one bounded HTTP request without returning provider error text.
+
+        `observed_statuses` receives the response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Google answered.
+        """
         if token is None:
             token, error = await self.resolve_token(call)
             if error:
@@ -127,6 +132,8 @@ class Client:
             return Exchange(error="not_built")
         except httpx.HTTPError:
             return Exchange(error="request", request_sent=True)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         try:
             retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
             try:

@@ -205,9 +205,18 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	if isAcceptedStatus && response.readErr != nil {
 		return client.reconcileAcceptedUpload(call, fence, &credential, idempotencyKey, response.requestID, "")
 	}
+	// A non-2xx body that broke or exceeded the limit might hide a file ID, so its outcome is unknown.
+	if response.readErr != nil {
+		return client.reconcileUpload(call, fence, &credential, idempotencyKey, response.requestID, canResendUnknownOutcome)
+	}
 	reasons := providerhttp.ReadErrorTokens(response.body, googleErrorTokenPointers)
 	var resource driveFileResource
-	hasAcceptedFile := json.Unmarshal(response.body, &resource) == nil && resource.ID != ""
+	// Only the ID decides acceptance, so a mistyped other field cannot hide a created file.
+	var acceptedFile struct {
+		ID string `json:"id"`
+	}
+	isResourceDecoded := json.Unmarshal(response.body, &resource) == nil
+	hasAcceptedFile := json.Unmarshal(response.body, &acceptedFile) == nil && acceptedFile.ID != ""
 	if response.status == http.StatusUnauthorized && !hasAcceptedFile {
 		if client.refreshRejectedUploadCredential(call) == nil {
 			return retryUploadAfterRejection(fence, sdkgo.FailureAuthentication, "provider rejected the upload credential", 0)
@@ -219,7 +228,7 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 		return retryUploadAfterRejection(fence, sdkgo.FailureRateLimit, "provider returned a retryable upload status", delay)
 	}
 	if isAcceptedStatus {
-		if hasAcceptedFile {
+		if hasAcceptedFile && isResourceDecoded {
 			if file, err := convertFileResource(resource); err == nil {
 				// The accepted result is known even if its extra read-back checkpoint is lost.
 				_ = fence.RecordProviderID(file.ID)
@@ -227,11 +236,11 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 				return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: file}, nil, receipt)
 			}
 		}
-		return client.reconcileAcceptedUpload(call, fence, &credential, idempotencyKey, response.requestID, resource.ID)
+		return client.reconcileAcceptedUpload(call, fence, &credential, idempotencyKey, response.requestID, acceptedFile.ID)
 	}
 	if hasAcceptedFile {
 		// A file ID contradicts a refusal, so the upload may exist; it is read back and never resent.
-		return client.reconcileAcceptedUpload(call, fence, &credential, idempotencyKey, response.requestID, resource.ID)
+		return client.reconcileAcceptedUpload(call, fence, &credential, idempotencyKey, response.requestID, acceptedFile.ID)
 	}
 	if isDefiniteUploadRefusal(response.status) {
 		return rejectUploadOrSelectUncertain(call, client, fence, hasPossibleEarlierSend, statusFailureKind(response.status, reasons), "provider rejected the upload", receipt)

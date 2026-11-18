@@ -345,7 +345,7 @@ spec:
         - {id: quotaExhausted, goName: QuotaExhausted, description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "YouTube returned an invalid or oversized response to the check before any insert.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap or after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap, including after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or credentials are invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

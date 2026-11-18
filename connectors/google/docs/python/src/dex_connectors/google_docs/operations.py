@@ -307,13 +307,13 @@ class _GuardedWrite:
             return MutationAttempt.branch_result(
                 "defect", zero, Receipt(), failure(self.operation, FailureKind.VALIDATION, str(error))
             )
-        credential = await self.client.credential(call)
+        credential, is_credential_failure_retryable = await self.client.write_credential(call)
         if credential is None:
             problem = failure(
                 self.operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
             )
-            if call.context is not None and call.context.attempt > 1:
-                # An earlier attempt may have written, so defect could hide an applied change.
+            if is_credential_failure_retryable or (call.context is not None and call.context.attempt > 1):
+                # A transient outage clears later; after an earlier write, defect could hide it.
                 return MutationAttempt.retry(problem)
             return MutationAttempt.branch_result("defect", zero, Receipt(), problem)
         return await self._read_and_write(call, input, credential)

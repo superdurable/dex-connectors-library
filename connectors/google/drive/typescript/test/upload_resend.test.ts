@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { DriveClient } from '../src/client.js';
 import { UploadFileDefinition } from '../src/generated/definitions.js';
 import type { CredentialSource, Credentials } from '../src/generated/models.js';
@@ -86,6 +86,23 @@ describe('Drive uploadFile never resends an accepted upload', () => {
     const branches: string[] = [];
     for (let attempt = 0; attempt < 3; attempt++, context.attempt++) branches.push(await run(fake, context));
     expect(branches).toEqual(['retry', 'retry', 'uncertain']);
+    expect(fake.uploads).toBe(1);
+  });
+
+  it('treats a refusal whose body is oversized as an unknown outcome', async () => {
+    const fake = new FakeDrive([async () => { throw new BodyTooLargeError(400, {}); }, async () => json(200, createdFile)]);
+    const context = new AttemptContext();
+    expect(await run(fake, context)).toBe('retry');
+    context.attempt++;
+    expect(await run(fake, context)).toBe('uploaded');
+    expect(fake.uploads).toBe(2);
+  });
+
+  it('records canResend for a 429 whose body breaks', async () => {
+    const fake = new FakeDrive([async () => { throw new ProviderTransportError(false, 429, {}); }]);
+    const context = new AttemptContext();
+    expect(await run(fake, context)).toBe('retry');
+    expect(JSON.stringify(context.marker)).toContain('canResend');
     expect(fake.uploads).toBe(1);
   });
 

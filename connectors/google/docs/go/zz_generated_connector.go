@@ -424,7 +424,7 @@ var CreateDocumentDefinition = sdkgo.MutationDefinition{
 		{ID: CreateDocumentBranchCreated, Description: "Google created the document or returned the one an earlier attempt of the same Step execution created."},
 		{ID: CreateDocumentBranchProviderRejected, Description: "Google conclusively rejected the creation or the duplicate lookup, such as a missing parent folder; no document was created.", Optional: true},
 		{ID: CreateDocumentBranchInvalidResponse, Description: "Google returned an invalid or oversized duplicate-lookup response before the creation was sent.", Optional: true},
-		{ID: CreateDocumentBranchUncertain, Description: "A creation may have been sent and cannot be confirmed: the duplicate lookup found nothing when the send cap was reached, Google accepted it with an unusable response that carries no file ID, or Google refused a resend; the document may exist, and the connector sends nothing after selecting this branch.", Optional: true},
+		{ID: CreateDocumentBranchUncertain, Description: "A creation may have been sent and cannot be confirmed: the duplicate lookup found nothing when the send cap was reached, including after Google accepted it with an unusable response that carries no file ID, Google refused a resend, or the connection needed reauthorization after a possible send; the document may exist, and the connector sends nothing after selecting this branch.", Optional: true},
 		{ID: CreateDocumentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

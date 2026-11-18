@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type FailureKind, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -10,6 +10,11 @@ import { GetDocumentTextOperation, CreateDocumentOperation, ReplaceDocumentTextO
 
 /** Replaceable bounded transport for an in-process provider stand-in. */
 export type DocsTransport = (request: ProviderRequest) => Promise<ProviderResponse>;
+
+/** A bounded Google response, marking a non-2xx body dropped for its size. */
+export interface DocsResponse extends ProviderResponse {
+  /** The non-2xx body exceeded the error limit, so it could hide a created object. */ isErrorBodyTooLarge?: boolean;
+}
 
 /** Constructor-injected transport, clock, and manifest refresh driver. */
 export interface DocsClientOptions {
@@ -77,12 +82,19 @@ export class DocsClient {
   /** Bind the appendText operation. */ appendText(): AppendTextOperation { return new AppendTextOperation(this); }
 
   /** Resolve the current access token, including a host-coordinated refresh. */
+  /**
+   * Resolve one call's credentials. Throws ReauthorizationRequiredError when the connection must be
+   * reconnected or holds an unusable credential, and a TypeError for an outage a later attempt may clear.
+   */
   async resolveCredentials(call: Call): Promise<Credentials> {
-    try {
-      const credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal);
-      if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? '') || !['google-oauth', 'workspace-domain-delegation', ''].includes(credentials.authMethodId ?? '')) throw new TypeError('invalid credential');
-      return credentials;
-    } catch { throw new TypeError('connection credentials are unavailable'); }
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); }
+    catch (error) {
+      if (error instanceof ReauthorizationRequiredError) throw new ReauthorizationRequiredError();
+      throw new TypeError('connection credentials are unavailable');
+    }
+    if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? '') || !['google-oauth', 'workspace-domain-delegation', ''].includes(credentials.authMethodId ?? '')) throw new ReauthorizationRequiredError();
+    return credentials;
   }
 
   /** Ask the host to refresh after one rejected access token. */
@@ -93,7 +105,7 @@ export class DocsClient {
   }
 
   /** Send one request; an idempotent request may refresh once after a 401. */
-  async request(call: Call, credentials: Credentials, method: string, url: string, body?: Uint8Array, contentType?: string, singleDispatch = false, signal?: AbortSignal): Promise<ProviderResponse> {
+  async request(call: Call, credentials: Credentials, method: string, url: string, body?: Uint8Array, contentType?: string, singleDispatch = false, signal?: AbortSignal): Promise<DocsResponse> {
     let current = credentials;
     for (let attempt = 0; attempt < 2; attempt++) {
       const token = current.accessToken?.reveal() ?? '';
@@ -105,11 +117,11 @@ export class DocsClient {
         addressPolicy: 'unrestricted', timeoutMs: 25_000,
         ...(signal ? { signal } : { signal: call.context.cancellationSignal }),
       };
-      let response: ProviderResponse;
+      let response: DocsResponse;
       try { response = await this.#transport(request); }
       catch (error) {
         if (error instanceof BodyTooLargeError) {
-          if (error.status && (error.status < 200 || error.status >= 300)) response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+          if (error.status && (error.status < 200 || error.status >= 300)) response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array(), isErrorBodyTooLarge: true };
           else throw new DocsRequestError(false, true, error.status ?? 0, error.headers ?? {});
         } else {
           const isBeforeSend = !!error && typeof error === 'object' && ('beforeSend' in error && error.beforeSend === true || 'isProvablyNotSent' in error && error.isProvablyNotSent === true);
@@ -122,7 +134,7 @@ export class DocsClient {
         throw new DocsRequestError(false, true, response.status, response.headers);
       }
       if ((response.status < 200 || response.status >= 300) && response.body.byteLength > Math.max(this.maxResponseBytes, 65_536)) {
-        response = { ...response, body: new Uint8Array() };
+        response = { ...response, body: new Uint8Array(), isErrorBodyTooLarge: true };
       }
       if (response.status !== 401 || attempt !== 0 || singleDispatch || !('resolveAfterRejection' in this.#credentials)) return response;
       try {

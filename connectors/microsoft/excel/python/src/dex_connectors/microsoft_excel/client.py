@@ -171,9 +171,19 @@ class Client:
         return credential
 
     async def request(
-        self, call: Call, credential: Credentials, method: str, target: str, body: bytes | None = None
+        self,
+        call: Call,
+        credential: Credentials,
+        method: str,
+        target: str,
+        body: bytes | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> GraphResponse:
-        """Send one request and refresh once after a rejected access token."""
+        """Send one request and refresh once after a rejected access token.
+
+        `observed_statuses` receives each response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Graph answered.
+        """
         if self._local_provider_url:
             target = self._local_provider_url + target.removeprefix("https://graph.microsoft.com")
         for attempt in range(2):
@@ -194,6 +204,8 @@ class Client:
                 response = await self.http_client.send(request, stream=True, follow_redirects=False)
             except (httpx.HTTPError, OSError):
                 raise GraphTransportError() from None
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             try:
                 limit = max(self.config.max_response_bytes, 64 * 1024)
                 collected = bytearray()

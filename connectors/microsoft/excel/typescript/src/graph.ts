@@ -101,8 +101,11 @@ export class GraphClient {
     return credentials;
   }
 
-  /** Send one Graph request and at most one forced refresh after a 401. */
-  async request(call: Call, credentials: Credentials, method: string, path: string, body?: unknown): Promise<GraphResult> {
+  /**
+   * Send one Graph request and at most one forced refresh after a 401. `signal`, such as the
+   * single-dispatch write window, replaces the Step cancellation signal when given.
+   */
+  async request(call: Call, credentials: Credentials, method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<GraphResult> {
     let current = credentials;
     for (let attempt = 0; attempt < 2; attempt++) {
       let status = 0;
@@ -112,7 +115,7 @@ export class GraphClient {
         headers: { Authorization: `Bearer ${current.accessToken.reveal()}`, Accept: 'application/json', ...(encoded ? { 'Content-Type': 'application/json' } : {}) },
         ...(encoded ? { body: encoded } : {}), maxResponseBytes: Math.max(this.maxResponseBytes, 65_536),
         addressPolicy: this.#endpoint.startsWith('http://') ? 'privateNetworkHTTP' : 'publicHTTPS', timeoutMs: 20_000,
-        signal: call.context.cancellationSignal,
+        signal: signal ?? call.context.cancellationSignal,
         onResponseChunk: (_chunk, responseStatus, responseHeaders) => { status = responseStatus; headers = responseHeaders; },
       };
       let result: GraphResult;

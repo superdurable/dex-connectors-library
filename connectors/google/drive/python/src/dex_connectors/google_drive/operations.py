@@ -1065,6 +1065,7 @@ class UploadFileOperation:
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
             return self._uncertain(call, "prior upload cannot be confirmed by read-back")
         body, content_type = _multipart_body(input, content, key)
+        observed_statuses: list[int] = []
         try:
             response = await fence.dispatch(
                 lambda _deadline: self.client.exchange(
@@ -1083,6 +1084,7 @@ class UploadFileOperation:
                     body=body,
                     content_type=content_type,
                     retry_unauthorized=False,
+                    observed_statuses=observed_statuses,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError):
@@ -1092,6 +1094,9 @@ class UploadFileOperation:
                 )
             )
         except (DispatchNotAllowedError, TimeoutError):
+            if any(200 <= status < 300 for status in observed_statuses):
+                # The write window cut the body after 2xx headers, so the upload is read back, never resent.
+                return await self._reconcile_accepted(call, fence, credentials, key, "", "")
             return await self._reconcile(call, fence, credentials, key, "", can_resend_unknown_outcome)
         if response.error == "beforeSend":
             return await self._retry_after_rejection(
@@ -1110,7 +1115,8 @@ class UploadFileOperation:
         is_accepted_status = 200 <= response.status < 300
         if is_accepted_status and (response.error or response.is_body_too_large):
             return await self._reconcile_accepted(call, fence, credentials, key, response.request_id, "")
-        if response.error:
+        # A non-2xx body that broke or exceeded the limit might hide a file ID, so its outcome is unknown.
+        if response.error or response.is_error_body_too_large:
             return await self._reconcile(
                 call, fence, credentials, key, response.request_id, can_resend_unknown_outcome
             )

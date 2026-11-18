@@ -188,7 +188,7 @@ export class AppendTableRowsOperation implements Mutation<AppendTableRowsInput, 
     if (attempt.isSendForbidden || !attempt.fence)
       return newMutationUncertain({ appendedKeys: [], alreadyPresentKeys: presentKeys }, excelFailure('appendTableRows', 'TRANSPORT', 'the append reached the send cap, and the key column does not show every row yet'), lookupReceipt);
     let response: GraphResult;
-    try { response = await attempt.fence.dispatch(() => this.graph.request(call, credentials, 'POST', `${table}/rows/add`, body)); }
+    try { response = await attempt.fence.dispatch(signal => this.graph.request(call, credentials, 'POST', `${table}/rows/add`, body, signal)); }
     catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError)
         return newMutationRetry(excelFailure('appendTableRows', 'AVAILABILITY', 'Dex did not record the dispatch checkpoint; nothing was sent'));

@@ -269,7 +269,7 @@ func (operation AddPlaylistItemOperation) Invoke(call sdkgo.Call, input AddPlayl
 	// Every attempt lists first, so after any possible earlier insert this listing is the read-back.
 	existing, receipt, outcome := operation.client.listPlaylistItems(call, "addPlaylistItem", listInput, query, true)
 	if outcome != nil {
-		if outcome.disposition == outcomeRetry {
+		if outcome.disposition == outcomeRetry || outcome.isTransientCredentialFailure {
 			if decision.Kind == singledispatch.SendAllowed && !hasPossibleEarlierSend {
 				// A lost notSent marker makes the next attempt count one more possible insert.
 				_ = fence.RecordNotSent()
@@ -305,33 +305,42 @@ func (operation AddPlaylistItemOperation) Invoke(call sdkgo.Call, input AddPlayl
 		case outcomeWriteUnconfirmed:
 			return resendOrSelectUncertain(canResendUnknownOutcome, outcome.failure, outcome.retryAfter, outcome.receipt)
 		case outcomeAcceptedUnreadable:
-			return operation.confirmAcceptedInsert(call, listInput, query, outcome.failure)
+			return operation.confirmAcceptedInsert(call, fence, listInput, query, outcome.failure, insertedItemID(response.body))
+		}
+		if outcome.isTransientCredentialFailure {
+			// A 401 or an unstarted insert changed nothing, and the next attempt lists again first.
+			if decision.Kind == singledispatch.SendAllowed && !hasPossibleEarlierSend {
+				// Before dispatch this keeps the send count; after a dispatched 401 the Fence refuses it.
+				_ = fence.RecordNotSent()
+			}
+			// After a dispatched 401 this marks the insert unprocessed; before dispatch the Fence refuses it.
+			_ = fence.RecordCanResend()
+			return sdkgo.NewMutationRetry[AddedPlaylistItem](outcome.failure, 0)
 		}
 		if !hasPossibleEarlierSend {
 			// The refusal ends the Step, so a lost checkpoint cannot cause another insert.
 			_ = fence.RecordCanResend()
-		}
-		if hasPossibleEarlierSend && isTransientCredentialFailure(*outcome) {
-			// A 401 or an unstarted insert changed nothing, and the next attempt lists again first.
-			_ = fence.RecordCanResend()
-			return sdkgo.NewMutationRetry[AddedPlaylistItem](outcome.failure, 0)
 		}
 		return rejectOrSelectUncertain(hasPossibleEarlierSend, *outcome, "an earlier attempt may have added the video, and YouTube refused the resend: ")
 	}
 	receipt = operation.client.receipt(call, input.PlaylistID, response.header)
 	var inserted providerPlaylistItem
 	if err := decodeResponse(response.body, &inserted); err != nil {
-		return operation.confirmAcceptedInsert(call, listInput, query, providerFailure("addPlaylistItem", sdkgo.FailureProtocol, "YouTube returned a malformed insert response"))
+		return operation.confirmAcceptedInsert(call, fence, listInput, query, providerFailure("addPlaylistItem", sdkgo.FailureProtocol, "YouTube returned a malformed insert response"), insertedItemID(response.body))
 	}
 	item, err := convertProviderPlaylistItem(inserted, input.PlaylistID)
 	if err != nil || item.VideoID != input.VideoID {
-		return operation.confirmAcceptedInsert(call, listInput, query, providerFailure("addPlaylistItem", sdkgo.FailureProtocol, "YouTube returned an invalid or different inserted item"))
+		return operation.confirmAcceptedInsert(call, fence, listInput, query, providerFailure("addPlaylistItem", sdkgo.FailureProtocol, "YouTube returned an invalid or different inserted item"), insertedItemID(response.body))
 	}
 	// A lost provider ID marker still counts this insert, so the cap still holds.
 	_ = fence.RecordProviderID(item.ID)
 	receipt.ProviderObjectID = item.ID
 	return sdkgo.NewMutationBranch(AddPlaylistItemBranchAdded, AddedPlaylistItem{Item: item}, nil, receipt)
 }
+
+// acceptedInsertWithoutItemID is the checkpoint provider ID of an insert YouTube accepted without a usable
+// item ID; a saved provider ID makes later attempts only list the playlist, never insert.
+const acceptedInsertWithoutItemID = "dex:acceptedWithoutItemId"
 
 // resendOrSelectUncertain retries a possibly applied insert while the send cap allows another insert.
 func resendOrSelectUncertain(canResendUnknownOutcome bool, failure sdkgo.Failure, retryDelay time.Duration, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddedPlaylistItem] {
@@ -363,20 +372,24 @@ func failBeforeInsertOrSelectUncertain(hasPossibleEarlierSend bool, outcome prov
 	return sdkgo.NewMutationRetry[AddedPlaylistItem](providerFailure("addPlaylistItem", outcome.failure.Kind, uncertainPrefix+outcome.failure.Message), outcome.retryAfter)
 }
 
-// isTransientCredentialFailure reports credentials that could not be resolved or refreshed, without a revoked grant.
-func isTransientCredentialFailure(outcome providerOutcome) bool {
-	return outcome.disposition == outcomeDefect && outcome.failure.Kind == sdkgo.FailureAuthentication
-}
-
 // confirmAcceptedInsert lists the playlist after YouTube accepted this attempt's insert with an unusable
-// body. The insert is never resent, so anything except a shown item selects uncertain.
-func (operation AddPlaylistItemOperation) confirmAcceptedInsert(call sdkgo.Call, listInput ListPlaylistItemsInput, query url.Values, acceptance sdkgo.Failure) sdkgo.MutationAttempt[AddedPlaylistItem] {
+// body. The insert is never resent: a saved item ID, or the saved acceptance itself, makes later
+// attempts list again up to the send cap; uncertain is selected here only when neither could be saved.
+func (operation AddPlaylistItemOperation) confirmAcceptedInsert(call sdkgo.Call, fence *singledispatch.Fence, listInput ListPlaylistItemsInput, query url.Values, acceptance sdkgo.Failure, acceptedItemID string) sdkgo.MutationAttempt[AddedPlaylistItem] {
 	existing, receipt, outcome := operation.client.listPlaylistItems(call, "addPlaylistItem", listInput, query, true)
 	if outcome == nil && len(existing.Items) > 0 {
 		receipt.ProviderObjectID = existing.Items[0].ID
 		return sdkgo.NewMutationBranch(AddPlaylistItemBranchAdded, AddedPlaylistItem{Item: existing.Items[0]}, nil, receipt)
 	}
-	acceptance.Message += "; YouTube accepted the insert, so it is not sent again, and the playlist listing does not show it; check the playlist"
+	savedID := acceptedItemID
+	if savedID == "" {
+		savedID = acceptedInsertWithoutItemID
+	}
+	if fence.RecordProviderID(savedID) == nil {
+		acceptance.Message += "; YouTube accepted the insert, so it is not sent again, and the playlist listing does not show it yet; the next attempt lists again"
+		return sdkgo.NewMutationRetry[AddedPlaylistItem](acceptance, 0)
+	}
+	acceptance.Message += "; YouTube accepted the insert, so it is not sent again, the playlist listing does not show it, and its acceptance checkpoint failed; check the playlist"
 	return sdkgo.NewMutationUncertain(AddedPlaylistItem{}, acceptance, receipt)
 }
 

@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -312,6 +313,24 @@ func TestCreateContactRetriesAReadBackWhoseBodyBreaks(t *testing.T) {
 	require.Equal(t, CreateContactBranchCreated, result.Branch)
 	require.Equal(t, 1, posts)
 	require.Equal(t, 2, reads)
+}
+
+func TestCreateContactReadsALateBodyInsideTheWriteWindow(t *testing.T) {
+	posts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		posts++
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		time.Sleep(50 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"resourceName":"people/c127","names":[{"displayName":"Ada"}]}`))
+	}))
+	defer server.Close()
+	ctx := singledispatchtest.NewContext("late-body-contact-flow", "create-contact-step")
+	result, err := sdkgo.RunMutation(ctx, newTestClient(t, server.URL).CreateContact(), testConnection, CreateContactInput{GivenName: "Ada"})
+	require.NoError(t, err)
+	require.Equal(t, CreateContactBranchCreated, result.Branch)
+	require.Equal(t, "people/c127", result.Value.ResourceName)
+	require.Equal(t, 1, posts)
 }
 
 func TestCreateContactTreatsAnUnreadableRefusalAsUnknown(t *testing.T) {

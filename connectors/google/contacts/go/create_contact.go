@@ -126,11 +126,19 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	}
 	var didGetConnection atomic.Bool
 	var response *http.Response
+	var responseBody []byte
+	var readErr error
 	err = fence.Dispatch(func(requestContext context.Context) error {
 		trace := &httptrace.ClientTrace{GotConn: func(httptrace.GotConnInfo) { didGetConnection.Store(true) }}
 		request = request.WithContext(httptrace.WithClientTrace(requestContext, trace))
-		response, err = operation.client.httpClient.Do(request)
-		return err
+		var sendErr error
+		response, sendErr = operation.client.httpClient.Do(request)
+		if sendErr != nil {
+			return sendErr
+		}
+		// The request context ends when Dispatch returns, so the body is read inside the write window.
+		responseBody, readErr = providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		return nil
 	})
 	if err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
@@ -153,7 +161,6 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		}
 		return createRetry(kind, "Google did not create the contact", retryAfter)
 	}
-	responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	isResponseUnsafe := bytes.Contains(responseBody, []byte(credentials.AccessToken.Reveal()))
 	var person personWire
 	contact, hasContact := Contact{}, false

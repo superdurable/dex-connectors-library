@@ -4,7 +4,7 @@
 import { expect, it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { HeartbeatContext, loadScenarios, scenarioCall } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
-import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { YouTubeClient } from '../src/client.js';
 
 const connection = { provider: 'google', name: 'youtube' };
@@ -115,9 +115,56 @@ it('never resends an insert whose 2xx body breaks after the headers', async () =
     inserts++;
     throw new ProviderTransportError(false, 200, {});
   };
-  const { results } = await runAttempts(send, 1);
-  expect(results[0]!.kind).toBe('uncertain');
+  const { results } = await runAttempts(send, 4);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'retry', 'retry', 'uncertain']);
   expect(inserts).toBe(1);
+});
+
+it('lists again on the next attempt after a transient listing failure follows an accepted insert', async () => {
+  let inserts = 0;
+  let listings = 0;
+  const item = { id: 'UExpdGVt', snippet: { playlistId: 'PLexample123', title: 'Launch', position: 0, publishedAt: '2026-10-13T17:00:00Z', resourceId: { kind: 'youtube#video', videoId: 'dQw4w9WgXcQ' } }, contentDetails: { videoPublishedAt: '2026-10-01T16:00:00Z' } };
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') {
+      listings++;
+      if (listings === 2) return { status: 503, headers: {}, body: new Uint8Array() };
+      return { status: 200, headers: {}, body: listings > 2 ? new TextEncoder().encode(JSON.stringify({ pageInfo: { totalResults: 1 }, items: [item] })) : emptyListing };
+    }
+    inserts++;
+    return { status: 200, headers: {}, body: new TextEncoder().encode('{"kind":"youtube#playlistItem"}') };
+  };
+  const { results } = await runAttempts(send, 2);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'branch']);
+  expect(results[1]!.kind === 'branch' && results[1]!.branch).toBe('added');
+  expect(inserts).toBe(1);
+});
+
+it('lists a refusal carrying an item ID and never resends it', async () => {
+  let inserts = 0;
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    inserts++;
+    return { status: 409, headers: {}, body: new TextEncoder().encode('{"kind":7,"id":"UExpdGVt"}') };
+  };
+  const { results } = await runAttempts(send, 4);
+  expect(results[3]!.kind).toBe('uncertain');
+  expect(inserts).toBe(1);
+});
+
+it('treats an oversized refusal body as an unknown outcome', async () => {
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: emptyListing };
+    throw new BodyTooLargeError(400, {});
+  };
+  const { results } = await runAttempts(send, 1);
+  expect(results[0]!.kind).toBe('retry');
+});
+
+it('retries a transient credential failure before the first insert and records notSent', async () => {
+  const provider = { resolve: async () => { throw new Error('credential store unavailable'); } };
+  const { results, context } = await runAttempts(async () => { throw new Error('no request is expected'); }, 1, provider);
+  expect(results[0]!.kind).toBe('retry');
+  expect(JSON.stringify(context.marker)).toContain('notSent');
 });
 
 it('retries a transient credential failure after a possible insert', async () => {

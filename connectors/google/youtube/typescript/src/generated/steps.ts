@@ -156,7 +156,7 @@ export interface AddPlaylistItemStepConfig<StepInput, OperationInput = AddPlayli
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** YouTube returned an invalid or oversized response to the check before any insert. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap or after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again. */
+  /** An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap, including after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

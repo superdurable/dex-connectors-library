@@ -173,7 +173,7 @@ export const AddPlaylistItemBranchQuotaExhausted = AddPlaylistItemBranch.QuotaEx
 export const AddPlaylistItemBranchProviderRejected = AddPlaylistItemBranch.ProviderRejected;
 /** YouTube returned an invalid or oversized response to the check before any insert. */
 export const AddPlaylistItemBranchInvalidResponse = AddPlaylistItemBranch.InvalidResponse;
-/** An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap or after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again. */
+/** An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap, including after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again. */
 export const AddPlaylistItemBranchUncertain = AddPlaylistItemBranch.Uncertain;
 /** Local input, connection configuration, or credentials are invalid. */
 export const AddPlaylistItemBranchDefect = AddPlaylistItemBranch.Defect;
@@ -186,7 +186,7 @@ export const AddPlaylistItemDefinition: MutationDefinition = {
     { id: "quotaExhausted", description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", optional: true },
     { id: "providerRejected", description: "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", optional: true },
     { id: "invalidResponse", description: "YouTube returned an invalid or oversized response to the check before any insert.", optional: true },
-    { id: "uncertain", description: "An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap or after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again.", optional: true },
+    { id: "uncertain", description: "An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap, including after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
