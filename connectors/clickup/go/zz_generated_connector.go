@@ -422,7 +422,7 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 		{ID: CreateTaskBranchCreated, Description: "ClickUp created the task; a retried attempt that found its own earlier task in the List reports it instead of creating another."},
 		{ID: CreateTaskBranchNotFound, Description: "The List does not exist or the connection cannot see it; nothing was created.", Optional: true},
 		{ID: CreateTaskBranchProviderRejected, Description: "ClickUp conclusively rejected the task, such as an unknown status, assignee, or custom field value, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateTaskBranchUncertain, Description: "Earlier attempts sent the create up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching task, so the task may exist; the connector does not send it again.", Optional: true},
+		{ID: CreateTaskBranchUncertain, Description: "Earlier attempts sent the create up to the send cap, ClickUp accepted it without a usable task ID, or read-back after a possible send cannot confirm a single matching task, including a List that is now missing, so the task may exist; the connector does not send it again.", Optional: true},
 		{ID: CreateTaskBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -506,7 +506,7 @@ var UpdateTaskDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTaskBranchUpdated, Description: "ClickUp applied every requested change, including when the task already had those values, and the Value holds the task it returned."},
 		{ID: UpdateTaskBranchNotFound, Description: "The task does not exist or the connection cannot see it.", Optional: true},
 		{ID: UpdateTaskBranchProviderRejected, Description: "ClickUp conclusively rejected the change, such as a status that is not in the task's List or missing permission.", Optional: true},
-		{ID: UpdateTaskBranchInvalidResponse, Description: "ClickUp returned an invalid or oversized task after the update, so the change may have been applied.", Optional: true},
+		{ID: UpdateTaskBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: the update is safe to repeat, so an invalid or oversized task after the update retries.", Optional: true},
 		{ID: UpdateTaskBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -588,7 +588,7 @@ var UpdateTaskTagsDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTaskTagsBranchUpdated, Description: "ClickUp applied every tag change, and the Value holds the task's tags read back."},
 		{ID: UpdateTaskTagsBranchNotFound, Description: "The task does not exist or the connection cannot see it.", Optional: true},
 		{ID: UpdateTaskTagsBranchProviderRejected, Description: "ClickUp conclusively rejected a tag change, such as missing permission; earlier changes in the same Step may have been applied.", Optional: true},
-		{ID: UpdateTaskTagsBranchInvalidResponse, Description: "ClickUp returned an invalid or oversized task when its tags were read back; the tag changes were applied.", Optional: true},
+		{ID: UpdateTaskTagsBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: the tag changes are safe to repeat, so an invalid or oversized task read back retries.", Optional: true},
 		{ID: UpdateTaskTagsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -670,7 +670,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "The comment is on the task; a retried attempt that found its own earlier comment reports it instead of adding another."},
 		{ID: AddCommentBranchNotFound, Description: "The task does not exist or the connection cannot see it; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "ClickUp conclusively rejected the comment, such as missing permission; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "Earlier attempts sent the comment up to the send cap, or ClickUp accepted it, and read-back cannot confirm a single matching comment, so the comment may exist; the connector does not send it again.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "Earlier attempts sent the comment up to the send cap, ClickUp accepted it without a usable comment ID, or read-back after a possible send cannot confirm a single matching comment, including a task that is now missing, so the comment may exist; the connector does not send it again.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

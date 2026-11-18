@@ -26,23 +26,26 @@ function mutationExchange<T>(exchange: Outcome, output: T, receipt: ReceiptDraft
   return newMutationBranch(branch, output, receipt, exchange.failure);
 }
 /** What a sent write proves: only a definite refusal status selects a refusal branch. */
-type WriteOutcome = 'accepted' | 'notApplied' | 'notFound' | 'rejected' | 'unknown' | 'defect';
+type WriteOutcome = 'accepted' | 'notApplied' | 'notFound' | 'rejected' | 'unknown' | 'defect' | 'acceptedUnreadable';
 const definiteWriteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
-/** Classify a sent write; `notApplied` is a 429, a 503, or a request that never left, and `unknown` may have applied. */
+/**
+ * Classify a sent write; `notApplied` is a 429, a 503, or a request that never left, `unknown` may have applied,
+ * and `acceptedUnreadable` is a 2xx without a usable body.
+ */
 function classifyWrite(exchange: Exchange): WriteOutcome {
   if (exchange.kind === 'succeeded') return 'accepted';
   if (exchange.kind === 'notSent' || exchange.kind === 'rateLimited') return 'notApplied';
   if (exchange.kind === 'defect') return 'defect';
+  if (exchange.status >= 200 && exchange.status < 300) return 'acceptedUnreadable';
   if (exchange.kind === 'invalid') return 'unknown';
   if (exchange.status === 503) return 'notApplied';
+  if (exchange.isErrorBodyTooLarge) return 'unknown';
   if (exchange.kind === 'notFound' && exchange.status !== 410) return 'notFound';
   if (exchange.kind === 'rejected' && definiteWriteRefusalStatuses.has(exchange.status)) return 'rejected';
   return 'unknown';
 }
 /** Map a repeat-safe write without a 2xx: only a definite outcome selects a branch, and an unknown one retries. */
 function repeatableWriteFailure<T>(exchange: Outcome, output: T, receipt: ReceiptDraft): MutationAttempt<T> {
-  // A 2xx proves the change applied, so only its body is unusable.
-  if (exchange.kind === 'invalid') return newMutationBranch('invalidResponse', output, receipt, exchange.failure);
   const outcome = classifyWrite(exchange);
   if (outcome === 'notFound') return newMutationBranch('notFound', output, receipt, exchange.failure);
   if (outcome === 'rejected') return newMutationBranch('providerRejected', output, receipt, exchange.failure);
@@ -244,7 +247,8 @@ export class UpdateTaskOperation implements Mutation<UpdateTaskInput, UpdateTask
     const responseReceipt = receipt(this.client, call, input.taskId);
     if (result.kind !== 'succeeded') return repeatableWriteFailure(result, output, responseReceipt);
     try { return newMutationBranch('updated', { task: taskBody(result.response.body, false) }, responseReceipt); }
-    catch { return failedDecode('updateTask', output, responseReceipt); }
+    // Repeating the absolute update is safe, so an unusable 2xx retries.
+    catch { return newMutationRetry(failure('PROTOCOL', 'updateTask', 'ClickUp accepted the update but returned an invalid task')); }
   }
 }
 
@@ -266,9 +270,11 @@ export class UpdateTaskTagsOperation implements Mutation<UpdateTaskTagsInput, Up
       return repeatableWriteFailure(result, output, responseReceipt);
     }
     const result = await this.client.exchange(call, 'updateTaskTags', 'GET', path(input.taskId), undefined, undefined, operationSignal);
+    // Repeating the tag changes is safe, so an unusable read-back retries the whole set.
+    if (result.kind === 'invalid') return newMutationRetry(result.failure);
     if (result.kind !== 'succeeded') return mutationExchange(result, output, responseReceipt);
     try { output.tags = taskBody(result.response.body, false).tags; return newMutationBranch('updated', output, responseReceipt); }
-    catch { return failedDecode('updateTaskTags', output, responseReceipt); }
+    catch { return newMutationRetry(failure('PROTOCOL', 'updateTaskTags', 'ClickUp applied the tag changes but returned an invalid task')); }
   }
 }
 
@@ -308,8 +314,8 @@ class FencedWrite {
     return new FencedWrite(operation, fence, decision);
   }
 
-  /** Whether an earlier send may have taken effect, so this attempt reads back first. */
-  get needsReadBack(): boolean { return this.decision.kind !== 'sendAllowed' || this.providerId !== ''; }
+  /** Whether an earlier send may have taken effect, so this attempt reads back first; sendAllowed after canResend can carry earlier sends. */
+  get needsReadBack(): boolean { return this.decision.kind !== 'sendAllowed' || this.hasPossibleEarlierSend || this.providerId !== ''; }
 
   /** Send once behind the fence, or return the Retry when the fence refuses to send. */
   async dispatch<Output>(send: (signal: AbortSignal) => Promise<Exchange>): Promise<{ exchange: Exchange } | { attempt: MutationAttempt<Output> }> {
@@ -327,12 +333,19 @@ class FencedWrite {
     if (outcome === 'defect') {
       // Credentials were unavailable or the request was never built, so nothing was sent.
       try { await this.fence.recordCanResend(); } catch { /* A lost checkpoint only keeps the claim. */ }
-      return this.hasPossibleEarlierSend ? newMutationUncertain(output, exchange.failure, responseReceipt) : newMutationBranch('defect', output, responseReceipt, exchange.failure);
+      if (!this.hasPossibleEarlierSend) return newMutationBranch('defect', output, responseReceipt, exchange.failure);
+      // ClickUp credential failures cannot be told apart as transient, so they retry; a build failure is terminal.
+      if (exchange.failure.kind === 'AUTHENTICATION') return this.credentialRetry(exchange.failure);
+      return newMutationUncertain(output, exchange.failure, responseReceipt);
     }
     if (outcome === 'notFound' || outcome === 'rejected') {
       if (this.hasPossibleEarlierSend) return newMutationUncertain(output, exchange.failure, responseReceipt);
       try { await this.fence.recordCanResend(); } catch { return newMutationRetry(failure('AVAILABILITY', this.operation, 'ClickUp rejection checkpoint could not be recorded')); }
       return newMutationBranch(outcome === 'notFound' ? 'notFound' : 'providerRejected', output, responseReceipt, exchange.failure);
+    }
+    if (outcome === 'acceptedUnreadable') {
+      // ClickUp accepted the write but its ID is unreadable, so it is never sent again.
+      return newMutationUncertain(output, failure(exchange.failure.kind, this.operation, `ClickUp accepted the write but its response is unusable, so it is not sent again: ${exchange.failure.message}`), responseReceipt);
     }
     // The claim stays the last marker, so the next attempt counts this send.
     return newMutationRetry(exchange.failure, Math.max(exchange.retryAfterMs, unknownWriteSettleMs));
@@ -343,9 +356,25 @@ class FencedWrite {
     try { await this.fence.recordProviderId(providerId); } catch { /* The accepted result stands; a lost checkpoint keeps the claim. */ }
   }
 
+  /** Retry an unusable 2xx only when its ID is saved, so the next attempt reads it back; otherwise select uncertain. */
+  async retryAcceptedReadBackOrSelectUncertain<Output>(providerId: string, output: Output, responseReceipt: ReceiptDraft, message: string): Promise<MutationAttempt<Output>> {
+    if (providerId) {
+      try {
+        await this.fence.recordProviderId(providerId);
+        return newMutationRetry(failure('PROTOCOL', this.operation, `${message}, so the next attempt reads it back`), unknownWriteSettleMs);
+      } catch { /* Without a saved ID the write is not read back, so uncertain is selected below. */ }
+    }
+    return newMutationUncertain(output, failure('PROTOCOL', this.operation, `${message}, so it is not sent again`), responseReceipt);
+  }
+
+  /** Retry a credential failure after a possible earlier send without recording notSent. */
+  credentialRetry<Output>(cause: Failure): MutationAttempt<Output> {
+    return newMutationRetry(failure(cause.kind, this.operation, `an earlier attempt of this Step may have sent the write and the connection credentials are unavailable to read it back: ${cause.message}`));
+  }
+
   /** Permit one send when the fence allows it after a read-back that confirmed nothing, and otherwise select uncertain. */
   missingReadBack<Output>(output: Output, responseReceipt: ReceiptDraft, subject: 'create' | 'comment', cause: Failure): MutationAttempt<Output> | undefined {
-    if (this.decision.kind === 'readBackThenResendAllowed' && !this.providerId) return undefined;
+    if ((this.decision.kind === 'readBackThenResendAllowed' || this.decision.kind === 'sendAllowed') && !this.providerId) return undefined;
     const confirmed = subject === 'create' ? 'task' : subject;
     return newMutationUncertain(output, failure(cause.kind, this.operation, `earlier attempts of this Step sent the ${subject} up to the send cap or were accepted, and read-back cannot confirm the ${confirmed}, so it is not sent again: ${cause.message}`), responseReceipt);
   }
@@ -392,12 +421,7 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
     if (result.kind !== 'succeeded') return write.unaccepted(result, output, responseReceipt);
     let task: Task;
     try { task = taskBody(result.response.body, false); }
-    catch {
-      const reference = createdTaskReference(result.response.body);
-      // The next attempt reads this task back by ID and never resends it.
-      if (reference) await write.recordAccepted(reference);
-      return newMutationRetry(failure('PROTOCOL', 'createTask', 'ClickUp accepted the task but returned an invalid task, so the next attempt reads it back'), unknownWriteSettleMs);
-    }
+    catch { return write.retryAcceptedReadBackOrSelectUncertain(createdTaskReference(result.response.body), output, responseReceipt, 'ClickUp accepted the task but returned an invalid task'); }
     await write.recordAccepted(task.id);
     return newMutationBranch('created', { ...output, task }, receipt(this.client, call, task.id));
   }
@@ -409,6 +433,7 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
       const result = await this.client.exchange(call, 'createTask', 'GET', path(write.providerId));
       if (result.kind !== 'succeeded') {
         if (isRetryable(result)) return newMutationRetry(result.failure, result.retryAfterMs);
+        if (result.kind === 'defect') return write.credentialRetry(result.failure);
         return write.missingReadBack(output, responseReceipt, 'create', result.failure);
       }
       let task: Task;
@@ -422,7 +447,9 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
     const result = await this.client.exchange(call, 'createTask', 'GET', `/list/${input.listId}/task`, query);
     if (result.kind !== 'succeeded') {
       if (isRetryable(result)) return newMutationRetry(result.failure, result.retryAfterMs);
-      if (result.kind === 'notFound') return newMutationBranch('notFound', output, responseReceipt, result.failure);
+      if (result.kind === 'defect') return write.credentialRetry(result.failure);
+      // An earlier send may have created the task before the List became unreadable.
+      if (result.kind === 'notFound') return unreadableParentAfterPossibleSend('createTask', 'created the task', 'List', output, responseReceipt, result.failure);
       return write.missingReadBack(output, responseReceipt, 'create', result.failure);
     }
     let matches: Task[];
@@ -433,6 +460,11 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
     const task = matches[0]!;
     return newMutationBranch('created', { ...output, task, wasAlreadyApplied: true }, receipt(this.client, call, task.id));
   }
+}
+
+/** Select uncertain when read-back finds the target missing after a possible earlier send. */
+function unreadableParentAfterPossibleSend<Output>(operation: string, effect: string, parent: string, output: Output, responseReceipt: ReceiptDraft, cause: Failure): MutationAttempt<Output> {
+  return newMutationUncertain(output, failure(cause.kind, operation, `an earlier attempt of this Step may have ${effect}, and the ${parent} can no longer be read back, so it is not sent again: ${cause.message}`), responseReceipt);
 }
 
 /** Return the task ID of an accepted create whose task is otherwise unusable, or an empty string. */
@@ -462,9 +494,9 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     const result = sent.exchange;
     const responseReceipt = receipt(this.client, call, input.taskId);
     if (result.kind !== 'succeeded') return write.unaccepted(result, output, responseReceipt);
-    let id: string, createdAt: string | undefined;
-    try { const data = decodeObject(result.response.body); id = identifier(data.id); if (!taskIdPattern.test(id)) throw new TypeError('invalid comment ID'); createdAt = milliseconds(data.date); }
-    catch { return newMutationRetry(failure('PROTOCOL', 'addComment', 'ClickUp accepted the comment but returned no valid comment ID, so the next attempt reads the comments back'), unknownWriteSettleMs); }
+    let id = '', createdAt: string | undefined;
+    try { const data = decodeObject(result.response.body); id = identifier(data.id); if (!taskIdPattern.test(id)) { id = ''; throw new TypeError('invalid comment ID'); } createdAt = milliseconds(data.date); }
+    catch { return write.retryAcceptedReadBackOrSelectUncertain(id, output, responseReceipt, 'ClickUp accepted the comment but returned an invalid comment'); }
     await write.recordAccepted(id);
     return newMutationBranch('added', { ...output, commentId: id, ...(createdAt ? { createdAt } : {}) }, { ...responseReceipt, metadata: { commentId: id } });
   }
@@ -475,7 +507,9 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     const responseReceipt = receipt(this.client, call, input.taskId);
     if (result.kind !== 'succeeded') {
       if (isRetryable(result)) return newMutationRetry(result.failure, result.retryAfterMs);
-      if (result.kind === 'notFound') return newMutationBranch('notFound', output, responseReceipt, result.failure);
+      if (result.kind === 'defect') return write.credentialRetry(result.failure);
+      // An earlier send may have added the comment before the task became unreadable.
+      if (result.kind === 'notFound') return unreadableParentAfterPossibleSend('addComment', 'added the comment', 'task', output, responseReceipt, result.failure);
       return write.missingReadBack(output, responseReceipt, 'comment', result.failure);
     }
     let matches: { id: string; createdAt?: string | undefined }[];

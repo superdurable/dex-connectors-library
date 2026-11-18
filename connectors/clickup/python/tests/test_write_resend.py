@@ -86,7 +86,11 @@ def json_response(status: int, value: object) -> httpx.Response:
 
 
 async def run(
-    operation: str, responder: Responder, context: AttemptContext, requests: list[httpx.Request]
+    operation: str,
+    responder: Responder,
+    context: AttemptContext,
+    requests: list[httpx.Request],
+    has_credentials: bool = True,
 ) -> sdk.MutationResult[object] | str:
     """Run one Execute attempt and return its result, or `retry`."""
 
@@ -94,15 +98,10 @@ async def run(
         requests.append(request)
         return responder(request)
 
+    credentials = Credentials(sdk.SecretString("pk_4411723_TESTTOKEN"), sdk.SecretString("webhook-secret"))
     client = Client(
         Config(),
-        sdk.StaticCredentialProvider(
-            {
-                CONNECTION: Credentials(
-                    sdk.SecretString("pk_4411723_TESTTOKEN"), sdk.SecretString("webhook-secret")
-                )
-            }
-        ),
+        sdk.StaticCredentialProvider({CONNECTION: credentials} if has_credentials else {}),
         httpx.AsyncClient(transport=httpx.MockTransport(respond)),
         api_base_url="http://127.0.0.1:12345/api/v2",
     )
@@ -262,3 +261,82 @@ async def test_accepted_comment_is_matched_only_by_its_saved_id() -> None:
     result = await run("addComment", lambda _: json_response(200, comments), context, requests)
     assert branch_of(result) == "added"
     assert methods(requests) == ["GET"]
+
+
+class BrokenBodyStream(httpx.AsyncByteStream):
+    """Fail after the response headers arrived."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        raise httpx.ReadError("connection lost while reading the body")
+        yield b""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["createTask", "addComment"])
+async def test_resend_after_a_can_resend_marker_reads_back_first(operation: str) -> None:
+    empty = {"tasks": []} if operation == "createTask" else {"comments": []}
+    accepted = task_body(TASK_ID) if operation == "createTask" else {"id": "700002", "date": "1767225603000"}
+
+    def responder(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return json_response(200, empty)
+        posts = methods(requests).count("POST")
+        if posts == 1:
+            raise httpx.ReadError("connection lost after the request was sent")
+        return json_response(429 if posts == 2 else 200, accepted)
+
+    context, requests = AttemptContext(), []
+    for attempt in (1, 2):
+        context.attempt = attempt
+        assert await run(operation, responder, context, requests) == "retry"
+    assert marker_of(context).state == State.CAN_RESEND
+    context.attempt = 3
+    result = await run(operation, responder, context, requests)
+    assert branch_of(result) in ("created", "added")
+    assert methods(requests) == ["POST", "GET", "POST", "GET", "POST"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("operation", "status", "error_code"),
+    [("createTask", 404, "ITEM_013"), ("createTask", 401, "OAUTH_027"), ("addComment", 404, "ITEM_013")],
+)
+async def test_read_back_of_a_missing_target_after_a_possible_send_is_uncertain(
+    operation: str, status: int, error_code: str
+) -> None:
+    marker = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
+    context, requests = AttemptContext(2, marker), []
+    result = await run(operation, lambda _: json_response(status, {"ECODE": error_code}), context, requests)
+    assert branch_of(result) == "uncertain"
+    assert methods(requests) == ["GET"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["createTask", "addComment"])
+@pytest.mark.parametrize(
+    "response",
+    [
+        lambda: httpx.Response(200, stream=BrokenBodyStream()),
+        lambda: json_response(200, {"name": "no identity"}),
+    ],
+    ids=["body breaks after 2xx headers", "no identity"],
+)
+async def test_accepted_write_without_an_identity_is_uncertain_and_never_resent(
+    operation: str, response: Callable[[], httpx.Response]
+) -> None:
+    context, requests = AttemptContext(), []
+    result = await run(operation, lambda _: response(), context, requests)
+    assert branch_of(result) == "uncertain"
+    assert methods(requests) == ["POST"]
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_after_a_possible_send_retries_without_not_sent() -> None:
+    marker = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
+    context, requests = AttemptContext(2, marker), []
+    result = await run(
+        "createTask", lambda _: pytest.fail("request sent"), context, requests, has_credentials=False
+    )
+    assert result == "retry"
+    assert marker_of(context).state == State.CLAIMED
+    assert requests == []

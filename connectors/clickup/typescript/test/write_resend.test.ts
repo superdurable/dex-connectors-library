@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ClickUpClient } from '../src/client.js';
 import { AddCommentDefinition, CreateTaskDefinition } from '../src/generated/definitions.js';
 
@@ -34,17 +34,20 @@ function task(id: string, parent: string | null = null): Record<string, unknown>
   return { id, name: taskName, status: { status: 'open', type: 'open' }, date_created: String(firstAttemptAt.getTime() + 1_000), list: { id: listId }, parent };
 }
 
-function newClient(respond: Responder) {
+function newClient(respond: Responder, hasCredentials = true) {
   const requests: ProviderRequest[] = [];
-  const client = new ClickUpClient({}, { resolve: async () => ({ apiToken: new SecretString('pk_4411723_TESTTOKEN') }) }, {
+  const client = new ClickUpClient({}, { resolve: async () => {
+    if (!hasCredentials) throw new Error('credentials unavailable');
+    return { apiToken: new SecretString('pk_4411723_TESTTOKEN') };
+  } }, {
     send: async (request: ProviderRequest) => { requests.push(request); return respond(request, requests.length - 1); },
   });
   return { client, requests };
 }
 
-async function run(client: ClickUpClient, operation: 'createTask' | 'addComment', context: AttemptContext): Promise<MutationResult<unknown> | 'retry'> {
+async function run(client: ClickUpClient, operation: 'createTask' | 'addComment', context: AttemptContext, maxSends?: number): Promise<MutationResult<unknown> | 'retry'> {
   const definition = operation === 'createTask' ? CreateTaskDefinition : AddCommentDefinition;
-  const call = { id: callId, connection: { provider: 'clickup', name: 'clickup-test' }, operation: definition.operation, context } as unknown as Call;
+  const call = { id: callId, connection: { provider: 'clickup', name: 'clickup-test' }, operation: definition.operation, context, ...(maxSends ? { maxSendsOverride: maxSends } : {}) } as unknown as Call;
   try {
     return operation === 'createTask'
       ? await runMutation(client.createTask(), call, { listId, name: taskName })
@@ -136,5 +139,58 @@ describe('ClickUp read-back and bounded resend of unknown writes', () => {
     const context = new AttemptContext(2, { callId, attempt: 1, state: 'claimed', providerId: '700001', sendCount: 1 });
     expect(branchOf(await run(client, 'addComment', context))).toBe('added');
     expect(methods(requests)).toEqual(['GET']);
+  });
+
+  it.each(['createTask', 'addComment'] as const)('%s reads back before resending after a resend received HTTP 429', async operation => {
+    const accepted = operation === 'createTask' ? task(taskId) : { id: '700002', date: '1767225603000' };
+    const { client, requests } = newClient(request => {
+      if (request.method === 'GET') return json(200, operation === 'createTask' ? { tasks: [], last_page: true } : { comments: [] });
+      const posts = methods(requests).filter(method => method === 'POST').length;
+      return posts === 1 ? json(500, { ECODE: 'SERVER_001' }) : posts === 2 ? json(429, { ECODE: 'RATE_001' }) : json(200, accepted);
+    });
+    const context = new AttemptContext();
+    for (; context.attempt <= 2; context.attempt++) expect(await run(client, operation, context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'canResend' });
+    expect(branchOf(await run(client, operation, context))).toMatch(/^(created|added)$/);
+    expect(methods(requests)).toEqual(['POST', 'GET', 'POST', 'GET', 'POST']);
+  });
+
+  it.each([
+    { operation: 'createTask' as const, status: 404, code: 'ITEM_013' },
+    { operation: 'createTask' as const, status: 401, code: 'OAUTH_027' },
+    { operation: 'addComment' as const, status: 404, code: 'ITEM_013' },
+  ])('$operation selects uncertain when read-back after a possible send gets HTTP $status', async ({ operation, status, code }) => {
+    const { client, requests } = newClient(() => json(status, { ECODE: code }));
+    const context = new AttemptContext(2, { callId, attempt: 1, state: 'claimed', sendCount: 1 });
+    expect(branchOf(await run(client, operation, context))).toBe('uncertain');
+    expect(methods(requests)).toEqual(['GET']);
+  });
+
+  it.each(['createTask', 'addComment'] as const)('%s selects uncertain and never resends a 2xx without an identity', async operation => {
+    for (const respond of [
+      (): ProviderResponse => { throw new ProviderTransportError(false, 200, {}); },
+      (): ProviderResponse => json(200, { name: 'no identity' }),
+    ]) {
+      const { client, requests } = newClient(respond);
+      expect(branchOf(await run(client, operation, new AttemptContext()))).toBe('uncertain');
+      expect(methods(requests)).toEqual(['POST']);
+    }
+  });
+
+  it('retries a credential failure after a possible send without recording notSent', async () => {
+    const { client, requests } = newClient(() => { throw new Error('request sent'); }, false);
+    const context = new AttemptContext(2, { callId, attempt: 1, state: 'claimed', sendCount: 1 });
+    expect(await run(client, 'createTask', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'claimed', attempt: 1 });
+    expect(requests).toHaveLength(0);
+  });
+
+  it('applies the application send cap through the fence', async () => {
+    const { client, requests } = newClient(request => request.method === 'POST' ? json(500, { ECODE: 'SERVER_001' }) : json(200, { tasks: [], last_page: true }));
+    const context = new AttemptContext();
+    expect(await run(client, 'createTask', context, 1)).toBe('retry');
+    context.attempt = 2;
+    expect(branchOf(await run(client, 'createTask', context, 1))).toBe('uncertain');
+    expect(methods(requests)).toEqual(['POST', 'GET']);
   });
 });

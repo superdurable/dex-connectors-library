@@ -143,9 +143,6 @@ def _mutation_failure(
 def _repeatable_write_failure(result: Exchange, output: T, receipt: Receipt) -> MutationAttempt[T]:
     """Map a repeat-safe write without a usable 2xx: only a definite outcome selects a branch."""
     cause = _exchange_failure(result)
-    if result.kind == "invalid":
-        # A 2xx proves the change applied, so only its body is unusable.
-        return MutationAttempt.branch_result("invalidResponse", output, receipt, cause)
     write_outcome = result.write_outcome
     if write_outcome == "not_found":
         return MutationAttempt.branch_result("notFound", output, receipt, cause)
@@ -566,10 +563,8 @@ class UpdateTaskOperation:
             task = decode_task(decode_object(result.body))
             return MutationAttempt.branch_result("updated", UpdateTaskOutput(task), receipt)
         except (TypeError, ValueError, KeyError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                output,
-                receipt,
+            # Repeating the absolute update is safe, so an unusable 2xx retries.
+            return MutationAttempt.retry(
                 failure(
                     "updateTask",
                     FailureKind.PROTOCOL,
@@ -632,6 +627,9 @@ class UpdateTaskTagsOperation:
         result = await _budgeted_exchange(
             self.client, deadline, credentials, "GET", _task_path(input.task_id)
         )
+        if result.kind == "invalid":
+            # Repeating the tag changes is safe, so an unusable read-back retries the whole set.
+            return MutationAttempt.retry(_exchange_failure(result))
         if result.kind != "succeeded":
             return _mutation_failure(result, output, receipt)
         try:
@@ -640,10 +638,7 @@ class UpdateTaskTagsOperation:
                 "updated", UpdateTaskTagsOutput(input.task_id, task.tags, output.applied_changes), receipt
             )
         except (TypeError, ValueError, KeyError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                output,
-                receipt,
+            return MutationAttempt.retry(
                 failure(
                     "updateTaskTags",
                     FailureKind.PROTOCOL,
@@ -715,29 +710,48 @@ class _FencedWrite:
 
     @property
     def needs_read_back(self) -> bool:
-        """Whether an earlier send may have taken effect, so this attempt reads back first."""
-        return self.decision.kind != DecisionKind.SEND_ALLOWED or bool(self.provider_id)
+        """Whether an earlier send may have taken effect, so this attempt reads back first.
+
+        SEND_ALLOWED after a canResend marker can still carry earlier possible sends.
+        """
+        return (
+            self.decision.kind != DecisionKind.SEND_ALLOWED
+            or self.has_possible_earlier_send
+            or bool(self.provider_id)
+        )
 
     @property
     def can_resend_after_missing_read_back(self) -> bool:
         """Whether a read-back that confirms nothing still permits one send."""
-        return self.decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED and not self.provider_id
+        return (
+            self.decision.kind
+            in (DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, DecisionKind.SEND_ALLOWED)
+            and not self.provider_id
+        )
 
     async def credential_failure(self, output: Any, cause: Failure) -> MutationAttempt[Any]:
         """Map a credential failure before the send."""
-        # notSent after a possible earlier send would hide it, so only a first-send decision records it.
-        if self.decision.kind == DecisionKind.SEND_ALLOWED:
-            try:
-                await self.fence.record_not_sent()
-            except Exception:
-                return MutationAttempt.retry(
-                    failure(
-                        self.operation,
-                        FailureKind.AVAILABILITY,
-                        "ClickUp setup failed and the not-sent checkpoint could not be recorded",
-                    )
+        if self.has_possible_earlier_send:
+            # ClickUp credential failures cannot be told apart as transient, so nothing is recorded.
+            return MutationAttempt.retry(
+                failure(
+                    self.operation,
+                    cause.kind,
+                    "an earlier attempt of this Step may have sent the write and the connection "
+                    f"credentials are unavailable to read it back: {cause.message}",
                 )
-        return self.defect_or_select_uncertain(output, Receipt(), cause)
+            )
+        try:
+            await self.fence.record_not_sent()
+        except Exception:
+            return MutationAttempt.retry(
+                failure(
+                    self.operation,
+                    FailureKind.AVAILABILITY,
+                    "ClickUp setup failed and the not-sent checkpoint could not be recorded",
+                )
+            )
+        return MutationAttempt.branch_result("defect", output, Receipt(), cause)
 
     async def dispatch(
         self, send: Callable[[], Awaitable[Exchange]], output: Any
@@ -793,6 +807,18 @@ class _FencedWrite:
         if write_outcome in ("not_found", "rejected"):
             branch = "notFound" if write_outcome == "not_found" else "providerRejected"
             return await self.reject_or_select_uncertain(branch, output, receipt, cause)
+        if write_outcome == "accepted_unreadable":
+            # ClickUp accepted the write but its ID is unreadable, so it is never sent again.
+            return MutationAttempt.uncertain(
+                output,
+                failure(
+                    self.operation,
+                    cause.kind,
+                    "ClickUp accepted the write but its response is unusable, so it is not sent again: "
+                    + cause.message,
+                ),
+                receipt,
+            )
         # The claim stays the last marker, so the next attempt counts this send.
         return MutationAttempt.retry(
             cause, max(result.retry_after.total_seconds(), _UNKNOWN_WRITE_SETTLE_SECONDS)
@@ -804,6 +830,28 @@ class _FencedWrite:
             await self.fence.record_provider_id(provider_id)
         except Exception:
             pass  # The accepted result stands; a lost identity checkpoint keeps the claim.
+
+    async def retry_accepted_read_back_or_select_uncertain(
+        self, provider_id: str, output: Any, receipt: Receipt, message: str
+    ) -> MutationAttempt[Any]:
+        """Retry an unusable 2xx only when its ID is saved, so the next attempt reads it back."""
+        if provider_id:
+            try:
+                await self.fence.record_provider_id(provider_id)
+            except Exception:
+                pass  # Without a saved ID, the write is not read back, so uncertain is selected below.
+            else:
+                return MutationAttempt.retry(
+                    failure(
+                        self.operation, FailureKind.PROTOCOL, message + ", so the next attempt reads it back"
+                    ),
+                    _UNKNOWN_WRITE_SETTLE_SECONDS,
+                )
+        return MutationAttempt.uncertain(
+            output,
+            failure(self.operation, FailureKind.PROTOCOL, message + ", so it is not sent again"),
+            receipt,
+        )
 
     async def reject_or_select_uncertain(
         self, branch: str, output: Any, receipt: Receipt, cause: Failure
@@ -851,6 +899,22 @@ class _FencedWrite:
             ),
             receipt,
         )
+
+
+def _unreadable_parent_after_possible_send(
+    operation: str, effect: str, parent: str, output: T, receipt: Receipt, cause: Failure
+) -> MutationAttempt[T]:
+    """Select uncertain when read-back finds the target missing after a possible earlier send."""
+    return MutationAttempt.uncertain(
+        output,
+        failure(
+            operation,
+            cause.kind,
+            f"an earlier attempt of this Step may have {effect}, and the {parent} can no longer be "
+            f"read back, so it is not sent again: {cause.message}",
+        ),
+        receipt,
+    )
 
 
 def _created_task_reference(body: bytes) -> str:
@@ -969,18 +1033,11 @@ class CreateTaskOperation:
         try:
             task = decode_task(decode_object(sent.body))
         except (TypeError, ValueError, KeyError):
-            reference = _created_task_reference(sent.body)
-            if reference:
-                # The next attempt reads this task back by ID and never resends it.
-                await write.record_accepted(reference)
-            return MutationAttempt.retry(
-                failure(
-                    "createTask",
-                    FailureKind.PROTOCOL,
-                    "ClickUp accepted the task but returned an invalid task, "
-                    "so the next attempt reads it back",
-                ),
-                _UNKNOWN_WRITE_SETTLE_SECONDS,
+            return await write.retry_accepted_read_back_or_select_uncertain(
+                _created_task_reference(sent.body),
+                output,
+                receipt,
+                "ClickUp accepted the task but returned an invalid task",
             )
         await write.record_accepted(task.id)
         return MutationAttempt.branch_result(
@@ -1032,7 +1089,10 @@ class CreateTaskOperation:
         if result.is_retryable:
             return MutationAttempt.retry(_exchange_failure(result), result.retry_after.total_seconds())
         if result.kind == "not_found":
-            return MutationAttempt.branch_result("notFound", output, receipt, _exchange_failure(result))
+            # An earlier send may have created the task before the List became unreadable.
+            return _unreadable_parent_after_possible_send(
+                "createTask", "created the task", "List", output, receipt, _exchange_failure(result)
+            )
         if result.kind != "succeeded":
             return write.missing_read_back(output, receipt, "create", _exchange_failure(result))
         try:
@@ -1130,21 +1190,17 @@ class AddCommentOperation:
         receipt = self.client.receipt(call, input.task_id)
         if sent.kind != "succeeded":
             return await write.unaccepted(sent, output, receipt)
+        comment_id = ""
         try:
             wire = decode_object(sent.body)
             comment_id = flexible_id(wire.get("id"))
             if not task_id(comment_id):
+                comment_id = ""
                 raise ValueError("invalid comment ID")
             created_at = unix_milliseconds(wire.get("date"))
         except (TypeError, ValueError, KeyError):
-            return MutationAttempt.retry(
-                failure(
-                    "addComment",
-                    FailureKind.PROTOCOL,
-                    "ClickUp accepted the comment but returned no valid comment ID, "
-                    "so the next attempt reads the comments back",
-                ),
-                _UNKNOWN_WRITE_SETTLE_SECONDS,
+            return await write.retry_accepted_read_back_or_select_uncertain(
+                comment_id, output, receipt, "ClickUp accepted the comment but returned an invalid comment"
             )
         await write.record_accepted(comment_id)
         return MutationAttempt.branch_result(
@@ -1169,7 +1225,10 @@ class AddCommentOperation:
         if result.is_retryable:
             return MutationAttempt.retry(_exchange_failure(result), result.retry_after.total_seconds())
         if result.kind == "not_found":
-            return MutationAttempt.branch_result("notFound", output, receipt, _exchange_failure(result))
+            # An earlier send may have added the comment before the task became unreadable.
+            return _unreadable_parent_after_possible_send(
+                "addComment", "added the comment", "task", output, receipt, _exchange_failure(result)
+            )
         if result.kind != "succeeded":
             return write.missing_read_back(output, receipt, "comment", _exchange_failure(result))
         provider_id = write.provider_id

@@ -163,9 +163,9 @@ never returned.
 | --- | --- | --- |
 | `429` | Retry after `X-RateLimit-Reset`, at most one minute | Retry; ClickUp applied nothing |
 | `408`, `5xx`, dropped connection | Retry | Keep the dispatch checkpoint and retry, so the next attempt reads back |
-| `404`, or `401` with a Workspace-not-authorized `ECODE` (`OAUTH_023`, `OAUTH_026`, `OAUTH_027`, `OAUTH_029` to `OAUTH_045`) | `notFound` | `notFound` |
-| other `401`, `403`, `400`, other `4xx`, `3xx` | `providerRejected` | `providerRejected` |
-| unusable or oversized `2xx` | `invalidResponse` | Retry with the checkpoint held |
+| `404`, or `401` with a Workspace-not-authorized `ECODE` (`OAUTH_023`, `OAUTH_026`, `OAUTH_027`, `OAUTH_029` to `OAUTH_045`) | `notFound` | `notFound` for a first send; `uncertain` after a possible earlier send |
+| other `401`, `403`, `400`, other `4xx`, `3xx` | `providerRejected` | `providerRejected` for a first send with a definite status |
+| unusable, unreadable, or oversized `2xx` | Reads: `invalidResponse`; updates: Retry | Retry to read back by a returned ID, otherwise `uncertain`; never sent again |
 | invalid input or token | `defect`, no request | `defect`, no request |
 
 ClickUp's rate limit is per token and per minute (100 requests on Free,
@@ -215,11 +215,13 @@ it):
 | --- | --- |
 | `200` with a task | `created`; the task ID is saved in the checkpoint |
 | `429`, `503`, or a connection that never opened | Retry, and the create is sent again without a read-back |
-| timeout, dropped connection, `408`, `409`, `410`, `425`, other `5xx`, a redirect, another unlisted status, or an unusable `2xx` | Retry after at least five seconds; the next attempt reads back first |
+| timeout, dropped connection, `408`, `409`, `410`, `425`, other `5xx`, a redirect, another unlisted status, or an error body over `maxResponseBytes` | Retry after at least five seconds; the next attempt reads back first |
+| `2xx` whose body is unusable, unreadable, or oversized | Retry when the body still names the task ID, so the next attempt reads it back; otherwise `uncertain`. It is never sent again |
 | `404` | `notFound` |
 | `400`, `401`, `403`, `411`, `413`, `414`, `415`, `422` | `providerRejected` |
 
-An attempt after a possible earlier send reads back before it sends. When
+An attempt after a possible earlier send reads back before it sends, including
+an attempt after a resend that got `429` or `503`. When
 ClickUp returned a task ID, it reads `GET /task/{task_id}` and never resends:
 the task found reports `created` with `WasAlreadyApplied`, and otherwise the
 attempt selects `uncertain`. Without an ID, it reads `GET /list/{list_id}/task`
@@ -228,7 +230,10 @@ tasks and subtasks included. Exactly one task with the requested name and
 parent reports `created` with `WasAlreadyApplied`; several select `uncertain`;
 none sends the create again while possible sends stay below the cap, and
 selects `uncertain` at the cap. A refusal or local defect after a possible
-earlier send also selects `uncertain`. Put the application's own request key in
+earlier send also selects `uncertain`, as does a read-back that finds the List
+missing (`404`, or `401` with a Workspace-not-authorized `ECODE`). A credential
+failure after a possible earlier send retries without recording that nothing was
+sent. Put the application's own request key in
 the name, as the example puts the blocked task's ID in brackets, so the
 read-back is unambiguous.
 
@@ -241,9 +246,9 @@ pointer to `""` clears it with ClickUp's documented single space), `Status`,
 membership, so a repeated `PUT` leaves the same task, the manifest declares
 `repeatOnUnknown: safe`, and every unknown outcome retries, including a `409`,
 `410`, redirect, or other status outside `400`, `401`, `403`, `404`, `411`,
-`413`, `414`, `415`, and `422`. A `2xx` proves the change applied, so an
-unusable body selects `invalidResponse`. The `Value` is the task ClickUp
-returns. Clearing the
+`413`, `414`, `415`, and `422`. A `2xx` with an unusable, unreadable, or
+oversized body also retries, so the declared `invalidResponse` branch is no
+longer selected. The `Value` is the task ClickUp returns. Clearing the
 priority or the due date is not offered.
 
 ### updateTaskTags
@@ -254,7 +259,7 @@ path, are rejected. Each change is its own request, and the operation then
 reads the task back for its tags. A rejection after some changes reports
 `AppliedChanges`; a retry repeats them all, which changes nothing, so the
 operation is `repeatOnUnknown: safe` and classifies statuses as `updateTask`
-does.
+does; an unusable task read back also retries.
 
 ### addComment
 
@@ -263,7 +268,8 @@ does.
 and send cap match `createTask`; the read-back is `GET /task/{task_id}/comment`,
 the 25 newest comments. A saved comment ID matches only that comment;
 otherwise a comment matches by text, ignoring whitespace differences, created
-since five minutes before the Step's first attempt.
+since five minutes before the Step's first attempt. A read-back that finds the
+task missing after a possible earlier send selects `uncertain`.
 
 ### findMemberByEmail
 

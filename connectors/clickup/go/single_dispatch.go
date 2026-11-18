@@ -66,24 +66,28 @@ func startFencedWrite[OUT any](call sdkgo.Call, definition sdkgo.MutationDefinit
 }
 
 // needsReadBack reports that an earlier send may have taken effect, so this attempt reads back first.
+// SendAllowed after a canResend marker can still carry earlier possible sends.
 func (write *fencedWrite) needsReadBack() bool {
-	return write.decision.Kind != singledispatch.SendAllowed || write.decision.Marker.ProviderID != ""
+	return write.decision.Kind != singledispatch.SendAllowed || write.hasPossibleEarlierSend || write.decision.Marker.ProviderID != ""
 }
 
 // canResendAfterMissingReadBack reports that a read-back that confirms nothing still permits one send.
 func (write *fencedWrite) canResendAfterMissingReadBack() bool {
-	return write.decision.Kind == singledispatch.ReadBackThenResendAllowed && write.decision.Marker.ProviderID == ""
+	isSendDecision := write.decision.Kind == singledispatch.ReadBackThenResendAllowed || write.decision.Kind == singledispatch.SendAllowed
+	return isSendDecision && write.decision.Marker.ProviderID == ""
 }
 
 // credentialFailureAttempt maps a credential failure before the send.
 func credentialFailureAttempt[OUT any](write *fencedWrite, operationID string, failure sdkgo.Failure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
-	// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-	if write.decision.Kind == singledispatch.SendAllowed {
-		if err := write.fence.RecordNotSent(); err != nil {
-			return sdkgo.NewMutationRetry[OUT](clickupFailure(sdkgo.FailureAvailability, operationID, "ClickUp setup failed and the not-sent checkpoint could not be recorded"), 0)
-		}
+	if write.hasPossibleEarlierSend {
+		// ClickUp credential failures cannot be told apart as transient, so nothing is recorded and the attempt retries.
+		return sdkgo.NewMutationRetry[OUT](clickupFailure(failure.Kind, operationID,
+			"an earlier attempt of this Step may have sent the write and the connection credentials are unavailable to read it back: "+failure.Message), 0)
 	}
-	return defectOrSelectUncertain(write, defect, echo, failure, sdkgo.Receipt{})
+	if err := write.fence.RecordNotSent(); err != nil {
+		return sdkgo.NewMutationRetry[OUT](clickupFailure(sdkgo.FailureAvailability, operationID, "ClickUp setup failed and the not-sent checkpoint could not be recorded"), 0)
+	}
+	return sdkgo.NewMutationBranch(defect, echo, &failure, sdkgo.Receipt{})
 }
 
 // dispatchFencedWrite sends once behind the fence; it returns a terminal attempt when the fence forbids sending.
@@ -121,6 +125,10 @@ func attemptForUnacceptedWrite[OUT any](write *fencedWrite, operationID string, 
 		return rejectOrSelectUncertain(write, operationID, branches.notFound, echo, result.failure, receipt)
 	case writeRejected:
 		return rejectOrSelectUncertain(write, operationID, branches.providerRejected, echo, result.failure, receipt)
+	case writeAcceptedUnreadable:
+		// ClickUp accepted the write but its ID is unreadable, so it is never sent again.
+		return sdkgo.NewMutationUncertain(echo, clickupFailure(result.failure.Kind, operationID,
+			"ClickUp accepted the write but its response is unusable, so it is not sent again: "+result.failure.Message), receipt)
 	default:
 		// The claim stays the last marker, so the next attempt counts this send.
 		return sdkgo.NewMutationRetry[OUT](result.failure, max(result.retryAfter, unknownWriteSettleDelay))
@@ -131,6 +139,15 @@ func attemptForUnacceptedWrite[OUT any](write *fencedWrite, operationID string, 
 func recordAcceptedWrite(write *fencedWrite, providerID string) {
 	// The accepted result stands; a lost identity checkpoint only keeps the claim.
 	_ = write.fence.RecordProviderID(providerID)
+}
+
+// retryAcceptedReadBackOrSelectUncertain retries a 2xx with an unusable body only when its ID is saved,
+// so the next attempt reads it back and never resends it.
+func retryAcceptedReadBackOrSelectUncertain[OUT any](write *fencedWrite, operationID string, providerID string, echo OUT, message string, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	if providerID != "" && write.fence.RecordProviderID(providerID) == nil {
+		return sdkgo.NewMutationRetry[OUT](clickupFailure(sdkgo.FailureProtocol, operationID, message+", so the next attempt reads it back"), unknownWriteSettleDelay)
+	}
+	return sdkgo.NewMutationUncertain(echo, clickupFailure(sdkgo.FailureProtocol, operationID, message+", so it is not sent again"), receipt)
 }
 
 // rejectOrSelectUncertain selects a refusal branch only when no earlier send may have written.

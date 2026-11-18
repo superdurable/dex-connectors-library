@@ -153,12 +153,11 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 	task, err := decodeTaskBody(result.response.body, false)
 	if err != nil {
 		var reference createdTaskReference
-		if json.Unmarshal(result.response.body, &reference) == nil && taskIDPattern.MatchString(reference.ID) {
-			// The next attempt reads this task back by ID and never resends it.
-			recordAcceptedWrite(write, reference.ID)
+		if json.Unmarshal(result.response.body, &reference) != nil || !taskIDPattern.MatchString(reference.ID) {
+			reference.ID = ""
 		}
-		return sdkgo.NewMutationRetry[CreateTaskOutput](clickupFailure(sdkgo.FailureProtocol, createTaskOperation,
-			"ClickUp accepted the task but returned an invalid task, so the next attempt reads it back: "+err.Error()), unknownWriteSettleDelay)
+		return retryAcceptedReadBackOrSelectUncertain(write, createTaskOperation, reference.ID, output,
+			"ClickUp accepted the task but returned an invalid task ("+err.Error()+")", receipt)
 	}
 	recordAcceptedWrite(write, task.ID)
 	output.Task, receipt.ProviderObjectID = task, task.ID
@@ -180,7 +179,9 @@ func (operation CreateTaskOperation) reconcileEarlierCreate(
 	case readBackRetry:
 		return sdkgo.NewMutationRetry[CreateTaskOutput](readBack.failure, readBack.retryAfter), true
 	case readBackParentNotFound:
-		return sdkgo.NewMutationBranch(CreateTaskBranchNotFound, output, &readBack.failure, receipt), true
+		// An earlier send may have created the task before the List became unreadable.
+		return sdkgo.NewMutationUncertain(output, clickupFailure(readBack.failure.Kind, createTaskOperation,
+			"an earlier attempt of this Step may have created the task, and the List can no longer be read back, so it is not sent again: "+readBack.failure.Message), receipt), true
 	case readBackMissing:
 		if write.canResendAfterMissingReadBack() {
 			return sdkgo.MutationAttempt[CreateTaskOutput]{}, false
