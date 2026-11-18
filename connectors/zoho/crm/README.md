@@ -342,7 +342,10 @@ Worker loss, so every operation is built to be repeated:
 - **updateRecord** sets absolute values, so a repeat writes the same values.
 - Every unconfirmed outcome is retried: a 5xx, a 408, a 429, a dropped
   connection, or an unreadable response. Zoho runs the selected automations
-  again on each repeated write.
+  again on each repeated write: a repeated `upsertRecord` or `updateRecord`
+  re-runs every workflow, approval, or blueprint automation that `Triggers`
+  selects, such as a workflow email or a field update. Choose automations that
+  are safe to run twice, or set `ShouldSkipAutomation` when they are not.
 
 `TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex` proves the
 upsert on a real Dex Server: the fake applies the first contact upsert, its
