@@ -107,7 +107,7 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Gorgias conclusively rejected the ticket, such as an unknown assignee or an over-long subject; no ticket was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached, and Gorgias shows no ticket with the Step's external ID after sends whose outcome could not be confirmed, so one may still appear. Below the cap, an unconfirmed send is read back and then resent. */
+  /** A ticket may exist that this Step cannot confirm: the send cap is reached and Gorgias shows no ticket with the Step's external ID, Gorgias accepted the ticket but reading it back failed, or after a possible send the read-back was refused or the credentials became unusable. Below the cap, an unconfirmed send is read back and then resent; an accepted ticket is never resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -171,7 +171,7 @@ export interface AddNoteStepConfig<StepInput, OperationInput = AddNoteInput, Ope
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Gorgias conclusively rejected the note or reply, or a reply's ticket could not be read, has no customer email to answer, or shows no address known to be the helpdesk's; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached, and the ticket shows no message with the Step's external ID after sends whose outcome could not be confirmed, so the note or reply may still appear. Below the cap, an unconfirmed send is read back and then resent. */
+  /** A note or reply may exist that this Step cannot confirm: the send cap is reached and the ticket shows no message with the Step's external ID, Gorgias accepted the message but reading it back failed, or after a possible send the read-back was refused, the ticket could not be read to route a reply, or the credentials became unusable. Below the cap, an unconfirmed send is read back and then resent; an accepted message is never resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

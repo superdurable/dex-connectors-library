@@ -108,7 +108,9 @@ func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketI
 // Invoke sends POST /api/tickets under the SDK single-dispatch fence and the manifest send cap.
 // A 429, 503, or connection that never opened is retried and sends again. Any other unconfirmed
 // outcome is retried; the next attempt first looks the ticket up by external_id, selects created
-// when found, resends while the cap allows, and selects uncertain at the cap.
+// when found, resends while the cap allows, and selects uncertain at the cap. A 2xx is never resent:
+// when its answer is unusable, the ticket is read back by the ID it names or by external_id, and
+// uncertain is selected when that read cannot confirm it.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	if err := validateCreateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, gorgiasFailurePointer(sdkgo.FailureValidation, createTicketOperation, err.Error()), sdkgo.Receipt{})
@@ -118,11 +120,15 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 	if endedAttempt != nil {
 		return *endedAttempt
 	}
-	credentials, failure := operation.client.resolveCredentials(call, createTicketOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, createTicketOperation)
 	if failure != nil {
-		return credentialFailureAttempt[CreateTicketOutput](permit, *failure, CreateTicketBranchDefect)
+		return credentialFailureAttempt[CreateTicketOutput](permit, *failure, isTerminal, CreateTicketBranchDefect)
 	}
-	if permit.needsReadBack() {
+	if ticketID, hasSavedID := permit.savedProviderID(); hasSavedID {
+		// Gorgias accepted an earlier attempt's ticket, so it is read back by ID and never sent again.
+		return operation.confirmTicket(call, credentials, ticketID, true, true)
+	}
+	if permit.hasPossibleEarlierSend() {
 		if attempt, isTerminal := operation.findEarlierTicket(call, credentials, permit); isTerminal {
 			return attempt
 		}
@@ -139,12 +145,40 @@ func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicke
 		return attempt
 	}
 	ticket, _, err := decodeTicketBody(result.response.body, 0)
-	if err != nil {
-		return sdkgo.NewMutationRetry[CreateTicketOutput](gorgiasFailure(sdkgo.FailureProtocol, createTicketOperation,
-			"Gorgias accepted the ticket but returned an invalid ticket: "+err.Error()), reconcileDelay)
+	if result.outcome == exchangeSucceeded && err == nil {
+		// The answer already proves acceptance, so a lost checkpoint changes nothing.
+		_ = recordAcceptedWrite(permit, ticket.ID)
+		return sdkgo.NewMutationBranch(CreateTicketBranchCreated, CreateTicketOutput{Ticket: ticket}, nil, operation.client.receipt(call, result.response, ticket.ID))
 	}
-	recordAcceptedWrite(permit, ticket.ID)
-	return sdkgo.NewMutationBranch(CreateTicketBranchCreated, CreateTicketOutput{Ticket: ticket}, nil, operation.client.receipt(call, result.response, ticket.ID))
+	return operation.confirmAcceptedTicket(call, credentials, permit, result)
+}
+
+// confirmAcceptedTicket reads back a ticket Gorgias accepted with an unusable answer: by ID when the answer
+// names this Step's ticket, otherwise once by external ID. It never resends.
+func (operation CreateTicketOperation) confirmAcceptedTicket(call sdkgo.Call, credentials Credentials, permit gorgiasWritePermit, result gorgiasExchange) sdkgo.MutationAttempt[CreateTicketOutput] {
+	if ticketID := acceptedObjectID(result.response, string(call.IdempotencyKey), 0); ticketID > 0 {
+		return operation.confirmTicket(call, credentials, ticketID, recordAcceptedWrite(permit, ticketID), false)
+	}
+	ticket, isFound, lookup, receipt := operation.lookUpTicketByExternalID(call, credentials)
+	found := sdkgo.NewMutationBranch(CreateTicketBranchCreated, CreateTicketOutput{Ticket: ticket}, nil, receipt)
+	return acceptedWriteAttempt(false, lookup, isFound, found, receipt, createTicketOperation, "ticket")
+}
+
+// confirmTicket reads GET /api/tickets/{id} and confirms it is this Step's ticket by its external ID.
+func (operation CreateTicketOperation) confirmTicket(call sdkgo.Call, credentials Credentials, ticketID int64, isProviderIDSaved bool, wasCreatedByEarlierAttempt bool) sdkgo.MutationAttempt[CreateTicketOutput] {
+	if ticketID < 1 {
+		return sdkgo.NewMutationUncertain(CreateTicketOutput{}, gorgiasFailure(sdkgo.FailureProtocol, createTicketOperation,
+			"Gorgias accepted the ticket, but the checkpointed ticket ID is unreadable"), sdkgo.Receipt{})
+	}
+	result := operation.client.exchange(call, credentials, createTicketOperation, gorgiasRequest{method: http.MethodGet, path: ticketPath(ticketID)})
+	receipt := operation.client.receipt(call, result.response, ticketID)
+	ticket, isFound := Ticket{}, false
+	if result.outcome == exchangeSucceeded {
+		decoded, _, err := decodeTicketBody(result.response.body, ticketID)
+		ticket, isFound = decoded, err == nil && decoded.ExternalID == string(call.IdempotencyKey)
+	}
+	found := sdkgo.NewMutationBranch(CreateTicketBranchCreated, CreateTicketOutput{Ticket: ticket, WasCreatedByEarlierAttempt: wasCreatedByEarlierAttempt}, nil, receipt)
+	return acceptedWriteAttempt(isProviderIDSaved, result, isFound, found, receipt, createTicketOperation, "ticket")
 }
 
 // findEarlierTicket looks up the ticket an earlier attempt may have created, by the external ID it wrote.

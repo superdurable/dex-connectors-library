@@ -11,7 +11,19 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -60,6 +72,14 @@ class Exchange:
     status: int = 0
     headers: httpx.Headers | None = None
     retry_after: float = 0
+    body_too_large: bool = False
+    """The body exceeded max_response_bytes and was not read, so it cannot prove a refusal."""
+    object_id: int = 0
+    """The top-level id a readable body names; a write answer that carries one was accepted."""
+    object_external_id: str = ""
+    """The top-level external_id beside object_id, or empty."""
+    object_ticket_id: int = 0
+    """The top-level ticket_id beside object_id, or zero."""
 
 
 class Client:
@@ -156,6 +176,39 @@ class Client:
                 FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
             )
 
+    async def resolve_write_credentials(
+        self, call: Call, operation: str
+    ) -> tuple[Credentials | None, Failure | None, bool]:
+        """Resolve credentials and report whether a failure is terminal.
+
+        Terminal means revoked, unselected, or unusable credentials, which another attempt cannot repair;
+        any other provider error is a credential read that may succeed on a later attempt.
+        """
+        unusable = failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
+        try:
+            credentials = await self.credentials.resolve(call)
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            return None, unusable, True
+        except Exception:
+            unread = failure(FailureKind.AVAILABILITY, operation, "connection credentials could not be read")
+            return None, unread, False
+        try:
+            is_usable = (
+                bare_email(credentials.email)
+                and ":" not in credentials.email
+                and is_header_safe_credential(credentials.api_key.reveal())
+            )
+        except (AttributeError, TypeError, ValueError):
+            is_usable = False
+        if not is_usable:
+            return None, unusable, True
+        return credentials, None, False
+
     async def exchange(
         self,
         call: Call,
@@ -192,7 +245,14 @@ class Client:
                 if error.provably_not_sent
                 else "Gorgias request failed before a response arrived"
             )
-            return Exchange(outcome, failure(FailureKind.TRANSPORT, operation, message))
+            # A status that arrived before the failure is kept, so a 2xx still proves acceptance.
+            return Exchange(
+                outcome,
+                failure(FailureKind.TRANSPORT, operation, message),
+                status=error.status_code or 0,
+                headers=error.headers,
+            )
+        body_too_large = False
         try:
             body = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:
@@ -207,7 +267,7 @@ class Client:
                     status=response.status_code,
                     headers=response.headers,
                 )
-            body = b""
+            body, body_too_large = b"", True
         except ProviderTransportError:
             return Exchange(
                 "unavailable",
@@ -215,6 +275,7 @@ class Client:
                 status=response.status_code,
                 headers=response.headers,
             )
+        object_id, object_external_id, object_ticket_id = _object_marker(body)
         if 200 <= response.status_code < 300:
             if credentials.api_key.reveal().encode() in body:
                 return Exchange(
@@ -226,8 +287,31 @@ class Client:
                     ),
                     status=response.status_code,
                     headers=response.headers,
+                    object_id=object_id,
+                    object_external_id=object_external_id,
+                    object_ticket_id=object_ticket_id,
                 )
-            return Exchange("success", body=body, status=response.status_code, headers=response.headers)
+            return Exchange(
+                "success",
+                body=body,
+                status=response.status_code,
+                headers=response.headers,
+                object_id=object_id,
+                object_external_id=object_external_id,
+                object_ticket_id=object_ticket_id,
+            )
+        return replace(
+            self._classify_failure_status(response, body, credentials, operation),
+            body_too_large=body_too_large,
+            object_id=object_id,
+            object_external_id=object_external_id,
+            object_ticket_id=object_ticket_id,
+        )
+
+    def _classify_failure_status(
+        self, response: httpx.Response, body: bytes, credentials: Credentials, operation: str
+    ) -> Exchange:
+        """Map a non-2xx response; Gorgias documents 429 as a request it did not perform."""
         status = response.status_code
         summary = describe_error(body, credentials.api_key.reveal())
         suffix = f" [{summary}]" if summary else ""
@@ -324,6 +408,35 @@ def describe_error(body: bytes, secret: str) -> str:
         return "; ".join(parts)
     except (ValueError, TypeError, KeyError, AttributeError):
         return ""
+
+
+def _object_marker(body: bytes) -> tuple[int, str, int]:
+    """Return the top-level id, external_id, and ticket_id a body names.
+
+    Zeros mean the body is not a well-typed JSON object.
+    """
+    try:
+        document = json.loads(body)
+    except (ValueError, TypeError):
+        return 0, "", 0
+    if not isinstance(document, dict):
+        return 0, "", 0
+    object_id, ticket_id = document.get("id"), document.get("ticket_id")
+    external_id = document.get("external_id")
+    if (
+        not _is_optional_int64(object_id)
+        or not _is_optional_int64(ticket_id)
+        or not (external_id is None or isinstance(external_id, str))
+    ):
+        return 0, "", 0
+    return object_id or 0, external_id or "", ticket_id or 0
+
+
+def _is_optional_int64(value: Any) -> bool:
+    """Match a JSON value Go decodes into an int64 field: null or an integer in range."""
+    if value is None:
+        return True
+    return isinstance(value, int) and not isinstance(value, bool) and -(2**63) <= value < 2**63
 
 
 def bare_email(value: str) -> bool:

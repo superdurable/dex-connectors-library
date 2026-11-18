@@ -33,8 +33,6 @@ type singleDispatchBranches struct {
 type gorgiasWritePermit struct {
 	fence    *singledispatch.Fence
 	decision singledispatch.Decision
-	// isFirstSend means no earlier attempt of this call may have sent.
-	isFirstSend bool
 }
 
 // beginGorgiasWrite starts the SDK fence under the manifest send cap; a returned attempt ends this attempt before any request.
@@ -42,6 +40,7 @@ func beginGorgiasWrite[OUT any](call sdkgo.Call, operation string, executeTimeou
 	var zero OUT
 	fence, err := singledispatch.NewFence(call, executeTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
+		// NewFence rejects only an invalid call or timeout, so no attempt of this call can have sent.
 		attempt := sdkgo.NewMutationBranch(defect, zero, gorgiasFailurePointer(sdkgo.FailureLocalDefect, operation, "single-dispatch fence could not start"), sdkgo.Receipt{})
 		return gorgiasWritePermit{}, &attempt
 	}
@@ -52,12 +51,14 @@ func beginGorgiasWrite[OUT any](call sdkgo.Call, operation string, executeTimeou
 			"the dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
 		return gorgiasWritePermit{}, &attempt
 	}
-	return gorgiasWritePermit{fence: fence, decision: decision, isFirstSend: decision.MaximumPriorSends == 0}, nil
+	return gorgiasWritePermit{fence: fence, decision: decision}, nil
 }
 
-// needsReadBack reports that an earlier attempt may have sent, so Gorgias is searched by external ID first.
-func (permit gorgiasWritePermit) needsReadBack() bool {
-	return permit.decision.Kind != singledispatch.SendAllowed || permit.decision.MaximumPriorSends > 0
+// hasPossibleEarlierSend reports that an earlier attempt may have sent, so Gorgias is searched first and
+// nothing selects a refusal or defect branch. SendAllowed after a canResend checkpoint can still count sends.
+func (permit gorgiasWritePermit) hasPossibleEarlierSend() bool {
+	return permit.decision.Kind != singledispatch.SendAllowed || permit.decision.MaximumPriorSends > 0 ||
+		permit.decision.Marker.ProviderID != ""
 }
 
 // canSendAfterUnconfirmedReadBack reports room under the cap and no saved ID proving Gorgias accepted a send.
@@ -65,37 +66,58 @@ func (permit gorgiasWritePermit) canSendAfterUnconfirmedReadBack() bool {
 	return permit.decision.Kind != singledispatch.ReadBackRequired && permit.decision.Marker.ProviderID == ""
 }
 
-// credentialFailureAttempt maps unusable credentials before any send in this attempt.
-func credentialFailureAttempt[OUT any](permit gorgiasWritePermit, failure sdkgo.Failure, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
+// savedProviderID returns the Gorgias ID an earlier attempt checkpointed after Gorgias accepted the write.
+// It reports a saved but unreadable ID with zero, which no read-back can confirm.
+func (permit gorgiasWritePermit) savedProviderID() (int64, bool) {
+	if permit.decision.Marker.ProviderID == "" {
+		return 0, false
+	}
+	providerID, err := strconv.ParseInt(permit.decision.Marker.ProviderID, 10, 64)
+	if err != nil || providerID < 1 {
+		return 0, true
+	}
+	return providerID, true
+}
+
+// credentialFailureAttempt maps unusable credentials before any send in this attempt. After a possible earlier
+// send nothing is recorded: a transient failure retries and a terminal one selects uncertain.
+func credentialFailureAttempt[OUT any](permit gorgiasWritePermit, failure sdkgo.Failure, isTerminal bool, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
 	var zero OUT
-	if !permit.isFirstSend {
+	if permit.hasPossibleEarlierSend() {
 		// notSent would hide the earlier possible send, so nothing is recorded.
+		if !isTerminal {
+			return sdkgo.NewMutationRetry[OUT](gorgiasFailure(sdkgo.FailureAvailability, failure.Operation,
+				"connection credentials could not be read; nothing was sent in this attempt"), 0)
+		}
 		return sdkgo.NewMutationUncertain(zero, gorgiasFailure(failure.Kind, failure.Operation,
-			"an earlier attempt of this Step may have sent the request and the connection credentials are unavailable to read it back"), sdkgo.Receipt{})
+			"an earlier attempt of this Step may have sent the request and the connection credentials are unusable to read it back; reconnect the connection"), sdkgo.Receipt{})
 	}
 	if err := permit.fence.RecordNotSent(); err != nil {
 		return sdkgo.NewMutationRetry[OUT](gorgiasFailure(sdkgo.FailureAvailability, failure.Operation, "Dex did not record the not-sent checkpoint"), 0)
 	}
+	if !isTerminal {
+		return sdkgo.NewMutationRetry[OUT](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(defect, zero, &failure, sdkgo.Receipt{})
 }
 
-// readBackAttempt maps an external-ID lookup; it returns false when this attempt may send.
+// readBackAttempt maps an external-ID lookup; it returns false when this attempt may send. Only a readable
+// answer, valid or not, permits a resend: a refused lookup, such as a missing ticket or an auth error, selects uncertain.
 func readBackAttempt[OUT any](permit gorgiasWritePermit, result gorgiasExchange, isFound bool, found sdkgo.MutationAttempt[OUT],
 	receipt sdkgo.Receipt, operation string, resource string) (sdkgo.MutationAttempt[OUT], bool) {
 	switch {
 	case result.outcome == exchangeSucceeded && isFound:
 		return found, true
-	case result.outcome == exchangeRateLimited || result.outcome == exchangeNotSent || result.outcome == exchangeUnavailable:
+	case isTransientExchange(result):
 		return sdkgo.NewMutationRetry[OUT](result.failure, reconcileDelayAfter(result.retryAfter, reconcileLookupRetryDelay)), true
-	}
-	if permit.canSendAfterUnconfirmedReadBack() {
+	case (result.outcome == exchangeSucceeded || result.outcome == exchangeInvalid) && permit.canSendAfterUnconfirmedReadBack():
 		return sdkgo.MutationAttempt[OUT]{}, false
 	}
 	failure := gorgiasFailure(sdkgo.FailureTransport, operation,
 		"earlier attempts of this Step may have sent the request, the send cap is reached, and Gorgias shows no "+resource+" with its external ID")
 	if result.outcome != exchangeSucceeded {
 		failure = gorgiasFailure(result.failure.Kind, operation,
-			"earlier attempts of this Step may have sent the request, the send cap is reached, and Gorgias could not confirm it: "+result.failure.Message)
+			"earlier attempts of this Step may have sent the request, and Gorgias could not confirm it: "+result.failure.Message)
 	}
 	var zero OUT
 	return sdkgo.NewMutationUncertain(zero, failure, receipt), true
@@ -103,7 +125,7 @@ func readBackAttempt[OUT any](permit gorgiasWritePermit, result gorgiasExchange,
 
 // preSendRetryAttempt retries a failed read before this attempt's send; only a first send records notSent.
 func preSendRetryAttempt[OUT any](permit gorgiasWritePermit, failure sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[OUT] {
-	if permit.decision.Kind == singledispatch.SendAllowed {
+	if !permit.hasPossibleEarlierSend() {
 		// A lost notSent leaves no marker, so the next attempt reads back before it sends.
 		_ = permit.fence.RecordNotSent()
 	}
@@ -125,12 +147,14 @@ func sendGorgiasWrite[OUT any](permit gorgiasWritePermit, client *Client, creden
 	return result, nil
 }
 
-// writeAttemptForExchange maps a sent write. Only a definite refusal selects a refusal branch; any other
-// outcome returns Retry, and the next attempt reads back before it resends or selects uncertain at the cap.
+// writeAttemptForExchange maps a sent write and returns false when Gorgias accepted it, even with an unusable
+// answer. Only a definite refusal selects a refusal branch; any other outcome returns Retry, and the next
+// attempt reads back before it resends or selects uncertain at the cap.
 func writeAttemptForExchange[OUT any](permit gorgiasWritePermit, result gorgiasExchange, receipt sdkgo.Receipt, branches singleDispatchBranches) (sdkgo.MutationAttempt[OUT], bool) {
-	switch result.outcome {
-	case exchangeSucceeded:
+	if isAcceptedWrite(result.response) {
 		return sdkgo.MutationAttempt[OUT]{}, false
+	}
+	switch result.outcome {
 	case exchangeRateLimited, exchangeNotSent:
 		// A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
 		_ = permit.fence.RecordCanResend()
@@ -141,22 +165,70 @@ func writeAttemptForExchange[OUT any](permit gorgiasWritePermit, result gorgiasE
 			return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
 		}
 	case exchangeNotFound:
-		branch := branches.notFound
-		if branch == "" {
-			branch = branches.providerRejected
+		if isDefiniteRefusal(result) {
+			branch := branches.notFound
+			if branch == "" {
+				branch = branches.providerRejected
+			}
+			return rejectGorgiasWrite[OUT](permit, result, receipt, branch), true
 		}
-		return rejectGorgiasWrite[OUT](permit, result, receipt, branch), true
 	case exchangeDefect:
-		if permit.isFirstSend {
-			return rejectGorgiasWrite[OUT](permit, result, sdkgo.Receipt{}, branches.defect), true
-		}
+		// The request was never built; after a possible earlier send this selects uncertain.
+		return rejectGorgiasWrite[OUT](permit, result, sdkgo.Receipt{}, branches.defect), true
 	case exchangeRejected:
-		if isDefiniteRefusalStatus(result.response.statusCode) {
+		if isDefiniteRefusal(result) {
 			return rejectGorgiasWrite[OUT](permit, result, receipt, branches.providerRejected), true
 		}
 	}
-	// A 3xx, 408, 409, other 5xx, unlisted status, or unusable 2xx may follow an applied write.
+	// A 3xx, 408, 409, other 5xx, unlisted status, or refusal with an unread body may follow an applied write.
 	return sdkgo.NewMutationRetry[OUT](result.failure, reconcileDelayAfter(result.retryAfter, reconcileDelay)), true
+}
+
+// isAcceptedWrite reports a 2xx, or any answer naming a created object: Gorgias applied the write.
+func isAcceptedWrite(response gorgiasResponse) bool {
+	return (response.statusCode >= 200 && response.statusCode < 300) || response.object.ID > 0
+}
+
+// acceptedObjectID returns the ID an accepted answer names for this Step's write, or zero when it names none
+// or names another object. ticketID zero skips the ticket check.
+func acceptedObjectID(response gorgiasResponse, externalID string, ticketID int64) int64 {
+	object := response.object
+	isOtherExternalID := object.ExternalID != nil && *object.ExternalID != "" && *object.ExternalID != externalID
+	isOtherTicket := ticketID != 0 && object.TicketID != 0 && object.TicketID != ticketID
+	if object.ID < 1 || isOtherExternalID || isOtherTicket {
+		return 0
+	}
+	return object.ID
+}
+
+// acceptedWriteAttempt maps the read-back of a write Gorgias accepted; it never permits a resend. A transient
+// failure retries only when the provider ID is checkpointed, so the next attempt reads back by it.
+func acceptedWriteAttempt[OUT any](isProviderIDSaved bool, result gorgiasExchange, isFound bool, found sdkgo.MutationAttempt[OUT],
+	receipt sdkgo.Receipt, operation string, resource string) sdkgo.MutationAttempt[OUT] {
+	switch {
+	case result.outcome == exchangeSucceeded && isFound:
+		return found
+	case isProviderIDSaved && isTransientExchange(result):
+		return sdkgo.NewMutationRetry[OUT](result.failure, reconcileDelayAfter(result.retryAfter, reconcileLookupRetryDelay))
+	}
+	failure := gorgiasFailure(sdkgo.FailureProtocol, operation,
+		"Gorgias accepted the request, but reading the "+resource+" back did not confirm it")
+	if result.outcome != exchangeSucceeded {
+		failure = gorgiasFailure(result.failure.Kind, operation,
+			"Gorgias accepted the request, but the "+resource+" could not be read back: "+result.failure.Message)
+	}
+	var zero OUT
+	return sdkgo.NewMutationUncertain(zero, failure, receipt)
+}
+
+// isTransientExchange reports a request another attempt may repeat: a 429, a connection that never opened, or an outage.
+func isTransientExchange(result gorgiasExchange) bool {
+	return result.outcome == exchangeRateLimited || result.outcome == exchangeNotSent || result.outcome == exchangeUnavailable
+}
+
+// isDefiniteRefusal reports a refusal status whose body was read, which proves Gorgias applied nothing.
+func isDefiniteRefusal(result gorgiasExchange) bool {
+	return isDefiniteRefusalStatus(result.response.statusCode) && !result.response.isBodyTooLarge
 }
 
 // isDefiniteRefusalStatus reports a status that proves Gorgias applied nothing.
@@ -174,7 +246,7 @@ func isDefiniteRefusalStatus(statusCode int) bool {
 // rejectGorgiasWrite selects a refusal branch only when no earlier send of this call may have applied.
 func rejectGorgiasWrite[OUT any](permit gorgiasWritePermit, result gorgiasExchange, receipt sdkgo.Receipt, branch sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
 	var zero OUT
-	if !permit.isFirstSend {
+	if permit.hasPossibleEarlierSend() {
 		return sdkgo.NewMutationUncertain(zero, result.failure, receipt)
 	}
 	if err := permit.fence.RecordCanResend(); err != nil {
@@ -183,9 +255,9 @@ func rejectGorgiasWrite[OUT any](permit gorgiasWritePermit, result gorgiasExchan
 	return sdkgo.NewMutationBranch(branch, zero, &result.failure, receipt)
 }
 
-// recordAcceptedWrite checkpoints the accepted provider ID; acceptance is already known if it fails.
-func recordAcceptedWrite(permit gorgiasWritePermit, providerID int64) {
-	_ = permit.fence.RecordProviderID(strconv.FormatInt(providerID, 10))
+// recordAcceptedWrite checkpoints the accepted provider ID and reports whether Dex saved it.
+func recordAcceptedWrite(permit gorgiasWritePermit, providerID int64) bool {
+	return permit.fence.RecordProviderID(strconv.FormatInt(providerID, 10)) == nil
 }
 
 // reconcileDelayAfter honors a Gorgias Retry-After of at least minimumDelay, capped by maximumReconcileDelay.

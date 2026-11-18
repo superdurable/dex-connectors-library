@@ -197,18 +197,27 @@ func TestAddNoteWithALostResponseFindsTheMessageByExternalIDWithoutResending(t *
 	require.Equal(t, 2, provider.requestCount())
 }
 
-func TestAddNoteWithAnEarlierSendAndUnavailableCredentialsSelectsUncertain(t *testing.T) {
-	provider := newRecordingGorgias(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
-	input := gorgias.AddNoteInput{TicketID: 5512, Body: "Triaged."}
-	first := newGorgiasDexContext("note-credentials")
-	_, err := sdkgo.RunMutation(first, newGorgiasClient(t, provider.URL).AddNote(), gorgiasConnection, input)
-	require.Error(t, err)
+func TestAddNoteCredentialFailureAfterAnEarlierSendRetriesOrSelectsUncertain(t *testing.T) {
+	for _, test := range credentialFailureCases {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingGorgias(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
+			input := gorgias.AddNoteInput{TicketID: 5512, Body: "Triaged."}
+			first := newGorgiasDexContext("note-credentials-" + test.name)
+			_, err := sdkgo.RunMutation(first, newGorgiasClient(t, provider.URL).AddNote(), gorgiasConnection, input)
+			require.Error(t, err)
 
-	withoutCredentials := newGorgiasClientWithCredentials(t, provider.URL, sdkgo.StaticCredentialProvider[gorgias.Credentials]{})
-	result, err := sdkgo.RunMutation(first.nextAttempt(), withoutCredentials.AddNote(), gorgiasConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, gorgias.AddNoteBranchUncertain, result.Branch, "a possibly sent note is never reported as a defect")
-	require.Equal(t, 1, provider.requestCount())
+			second := first.nextAttempt()
+			result, err := sdkgo.RunMutation(second, newGorgiasClientWithCredentials(t, provider.URL, test.credentials).AddNote(), gorgiasConnection, input)
+			require.Equal(t, 1, provider.requestCount())
+			require.Empty(t, second.recordedHeartbeat, "notSent would hide the earlier possible send")
+			if !test.isTerminal {
+				requireRetry(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, gorgias.AddNoteBranchUncertain, result.Branch, "a possibly sent note is never reported as a defect")
+		})
+	}
 }
 
 func TestAddNoteResendsAnUnknownOutcomeBelowTheSendCapAndSelectsUncertainAtTheCap(t *testing.T) {
@@ -334,4 +343,51 @@ func TestAddNoteBranches(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, gorgias.AddNoteBranchDefect, result.Branch)
 	}
+}
+
+func TestAddNoteAcceptedWithABrokenBodyIsReadBackAndNeverResent(t *testing.T) {
+	for _, isFound := range []bool{true, false} {
+		var provider *recordingGorgias
+		provider = newRecordingGorgias(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+			if request.Method == http.MethodPost {
+				breakBodyAfterHeaders(t, response, http.StatusCreated)
+				return
+			}
+			var messages []map[string]any
+			if isFound {
+				messages = append(messages, messageJSON(77, 5512, "internal-note", true, "2026-01-28T09:00:00", externalIDOf(t, provider.request(0).body)))
+			}
+			writeValue(t, response, http.StatusOK, ticketJSON(5512, "open", nil, messages))
+		})
+		result, err := sdkgo.RunMutation(newGorgiasDexContext("note-broken-body"), newGorgiasClient(t, provider.URL).AddNote(), gorgiasConnection,
+			gorgias.AddNoteInput{TicketID: 5512, Body: "Triaged."})
+		require.NoError(t, err, "an accepted note is never retried without a saved message ID")
+		require.Equal(t, 2, provider.requestCount())
+		require.Equal(t, http.MethodGet, provider.request(1).method)
+		if !isFound {
+			require.Equal(t, gorgias.AddNoteBranchUncertain, result.Branch)
+			continue
+		}
+		require.Equal(t, gorgias.AddNoteBranchAdded, result.Branch)
+		require.Equal(t, int64(77), result.Value.Message.ID)
+	}
+}
+
+func TestAddNoteReadBackOfAMissingTicketAfterAnEarlierSendSelectsUncertain(t *testing.T) {
+	provider := newRecordingGorgias(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			dropConnection(t, response)
+			return
+		}
+		writeJSON(t, response, http.StatusNotFound, `{"error":{"msg":"not_found"}}`)
+	})
+	client := newGorgiasClient(t, provider.URL)
+	input := gorgias.AddNoteInput{TicketID: 5512, Body: "Triaged."}
+	first := newGorgiasDexContext("note-missing-ticket")
+	_, err := sdkgo.RunMutation(first, client.AddNote(), gorgiasConnection, input)
+	require.Error(t, err)
+	result, err := sdkgo.RunMutation(first.nextAttempt(), client.AddNote(), gorgiasConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, gorgias.AddNoteBranchUncertain, result.Branch, "a missing ticket after a possible send is never notFound")
+	require.Equal(t, 2, provider.requestCount(), "a refused read-back never resends")
 }
