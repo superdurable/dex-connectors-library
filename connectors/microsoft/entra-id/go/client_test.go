@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -119,10 +120,18 @@ func TestOversizedResponsesRedirectsAndMissingCredentials(t *testing.T) {
 	graph.Intercept = func(graphfake.Request, int) (graphfake.Answer, bool) {
 		return graphfake.Answer{Status: http.StatusFound}, true
 	}
-	redirected, err := sdkgo.RunQuery(newTestDexContext("redirect"), newTestClient(t, graph, entraid.Config{}).GetUser(), testConnection, entraid.GetUserInput{UserKey: userID})
-	require.NoError(t, err)
-	require.Equal(t, entraid.GetUserBranchProviderRejected, redirected.Branch)
+	_, err = sdkgo.RunQuery(newTestDexContext("redirect"), newTestClient(t, graph, entraid.Config{}).GetUser(), testConnection, entraid.GetUserInput{UserKey: userID})
+	require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind, "an unlisted status leaves the outcome unknown")
 	require.Len(t, graph.Requests(), 2, "the redirect is never followed")
+
+	graph.Intercept = func(request graphfake.Request, _ int) (graphfake.Answer, bool) {
+		if request.Method == http.MethodPatch {
+			return graphfake.Answer{Status: http.StatusBadRequest, Body: map[string]any{"error": map[string]any{"message": strings.Repeat("x", 70_000)}}}, true
+		}
+		return graphfake.Answer{}, false
+	}
+	_, err = sdkgo.RunMutation(newTestDexContext("oversized-refusal"), small.DisableUser(), testConnection, entraid.DisableUserInput{UserKey: userID})
+	require.Equal(t, sdkgo.FailureTransport, requireRetry(t, err).Kind, "an oversized refusal body leaves the outcome unknown")
 }
 
 type rejectionRefreshingCredentialProvider struct {

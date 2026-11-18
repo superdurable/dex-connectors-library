@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { UploadObjectOperation, DownloadObjectOperation, ListObjectsOperation } from './operations.js';
 
 /** Injectable provider transport and OAuth refresh dependencies. */
@@ -120,7 +120,7 @@ export class CloudStorageClient {
 /** Report a resolve failure that only reconnection repairs; any other one is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 function failedExchange(error: NonNullable<StorageExchange['error']>): StorageExchange {

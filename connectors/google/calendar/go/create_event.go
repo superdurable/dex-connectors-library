@@ -97,7 +97,8 @@ func (operation CreateEventOperation) Invoke(call sdkgo.Call, input CreateEventI
 		requestFailure := asProviderRequestError(err)
 		switch requestFailure.kind {
 		case sdkgo.FailureResponseTooLarge:
-			return sdkgo.NewMutationBranch(CreateEventBranchInvalidResponse, CreateEventOutput{}, failurePointer(requestFailure.kind, operationID, requestFailure.message), operation.client.receipt(call, response, eventID))
+			// The write is safe to repeat, and the retry's pre-read finds an accepted event.
+			return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(requestFailure.kind, operationID, requestFailure.message), 0)
 		case sdkgo.FailureLocalDefect:
 			return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failurePointer(requestFailure.kind, operationID, requestFailure.message), sdkgo.Receipt{})
 		default:
@@ -121,7 +122,7 @@ func (operation CreateEventOperation) Invoke(call sdkgo.Call, input CreateEventI
 		if err != nil {
 			message = "provider returned an invalid event: " + err.Error()
 		}
-		return sdkgo.NewMutationBranch(CreateEventBranchInvalidResponse, CreateEventOutput{}, failurePointer(sdkgo.FailureProtocol, operationID, message), receipt)
+		return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(sdkgo.FailureProtocol, operationID, message), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateEventBranchCreated, CreateEventOutput{Event: event}, nil, receipt)
 }
@@ -137,13 +138,16 @@ func (operation CreateEventOperation) existingEventAttempt(call sdkgo.Call, read
 		}
 		return sdkgo.NewMutationBranch(CreateEventBranchCreated, CreateEventOutput{Event: read.event, WasAlreadyCreated: true}, nil, receipt)
 	case eventReadMissing:
+		// After an earlier attempt, the unreadable event may be this Step's, so only the retry budget ends the wait.
+		if call.Context != nil && call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(sdkgo.FailureAvailability, operationID, "Google reports the event ID as taken but does not return the event yet"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateEventBranchConflict, CreateEventOutput{}, failurePointer(sdkgo.FailureConflict, operationID, "event ID is used by an event the connection cannot read"), receipt)
-	case eventReadRetry:
+	case eventReadRetry, eventReadInvalid:
+		// The write is safe to repeat, so an unusable read retries instead of selecting invalidResponse.
 		return sdkgo.NewMutationRetry[CreateEventOutput](read.failure, read.retryAfter)
 	case eventReadRejected:
 		return sdkgo.NewMutationBranch(CreateEventBranchProviderRejected, CreateEventOutput{}, &read.failure, receipt)
-	case eventReadInvalid:
-		return sdkgo.NewMutationBranch(CreateEventBranchInvalidResponse, CreateEventOutput{}, &read.failure, receipt)
 	default:
 		return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, &read.failure, sdkgo.Receipt{})
 	}

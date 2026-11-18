@@ -90,8 +90,11 @@ func (operation UploadObjectOperation) Invoke(call sdkgo.Call, input UploadObjec
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 		return uploadRetry(sdkgo.FailureAvailability, "Google Cloud Storage upload is temporarily unavailable", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
-	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated {
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && isDefiniteRefusalStatus(response.StatusCode) {
 		return uploadFailure(UploadObjectBranchProviderRejected, sdkgo.FailureProviderRejection, "Google rejected HTTP "+strconv.Itoa(response.StatusCode))
+	}
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated {
+		return uploadRetry(sdkgo.FailureAvailability, "Google answered HTTP "+strconv.Itoa(response.StatusCode)+", which leaves the upload unknown", 0)
 	}
 	responseBody, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if err != nil || bytes.Contains(responseBody, []byte(credentials.AccessToken.Reveal())) {
@@ -127,6 +130,10 @@ func (operation UploadObjectOperation) confirmExistingObject(call sdkgo.Call, in
 	if mediaResponse.err != nil || mediaResponse.status == http.StatusTooManyRequests || mediaResponse.status >= 500 {
 		return uploadRetry(sdkgo.FailureAvailability, "existing object could not be confirmed", mediaResponse.retryAfter)
 	}
+	// After an earlier attempt, the unreadable object may be this Step's upload.
+	if mediaResponse.status != http.StatusOK && (!isDefiniteRefusalStatus(mediaResponse.status) || hasPossibleEarlierAttempt(call)) {
+		return uploadRetry(sdkgo.FailureAvailability, "existing object could not be confirmed", 0)
+	}
 	if mediaResponse.status != http.StatusOK {
 		return uploadFailure(UploadObjectBranchProviderRejected, sdkgo.FailureProviderRejection, "Google denied object confirmation")
 	}
@@ -134,6 +141,21 @@ func (operation UploadObjectOperation) confirmExistingObject(call sdkgo.Call, in
 		return uploadFailure(UploadObjectBranchObjectExists, sdkgo.FailureProviderRejection, "an object with different content already exists")
 	}
 	return sdkgo.NewMutationBranch(UploadObjectBranchUploaded, object, nil, sdkgo.Receipt{})
+}
+
+// isDefiniteRefusalStatus reports the statuses that prove Google refused the request; any other one is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+// hasPossibleEarlierAttempt reports a later attempt, whose predecessor may have sent the upload.
+func hasPossibleEarlierAttempt(call sdkgo.Call) bool {
+	return call.Context != nil && call.Context.Attempt() > 1
 }
 
 func uploadFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[Object] {

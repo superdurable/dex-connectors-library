@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -137,6 +138,22 @@ func TestOversizedResponsesSelectInvalidResponse(t *testing.T) {
 	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 }
 
+func TestWritesRetryAnOversizedSuccessOrRefusalBody(t *testing.T) {
+	directory := newFakeDirectory(t)
+	directory.seedUser("ada@example.com", nil)
+	client, err := workspaceadmin.New(workspaceadmin.Config{Endpoint: directory.URL, MaxResponseBytes: 64}, staticCredentials())
+	require.NoError(t, err)
+
+	_, err = sdkgo.RunMutation(newTestDexContext("oversized-write"), client.SuspendUser(), testConnection, workspaceadmin.SuspendUserInput{UserKey: "ada@example.com"})
+	require.Equal(t, sdkgo.FailureResponseTooLarge, requireRetry(t, err).Kind, "a safe write never selects invalidResponse")
+
+	directory.setIntercept(func(recordedRequest, int) (int, any, bool) {
+		return http.StatusBadRequest, map[string]any{"error": map[string]any{"message": strings.Repeat("x", 70_000)}}, true
+	})
+	_, err = sdkgo.RunMutation(newTestDexContext("oversized-refusal"), client.SuspendUser(), testConnection, workspaceadmin.SuspendUserInput{UserKey: "ada@example.com"})
+	require.Equal(t, sdkgo.FailureTransport, requireRetry(t, err).Kind, "an oversized refusal body leaves the outcome unknown")
+}
+
 func TestRedirectsAreNotFollowedWithTheCredential(t *testing.T) {
 	directory := newFakeDirectory(t)
 	directory.setIntercept(func(recordedRequest, int) (int, any, bool) {
@@ -144,9 +161,8 @@ func TestRedirectsAreNotFollowedWithTheCredential(t *testing.T) {
 	})
 	client := newTestClient(t, directory.URL)
 
-	result, err := sdkgo.RunQuery(newTestDexContext("redirect"), client.GetUser(), testConnection, workspaceadmin.GetUserInput{UserKey: "ada@example.com"})
-	require.NoError(t, err)
-	require.Equal(t, workspaceadmin.GetUserBranchProviderRejected, result.Branch)
+	_, err := sdkgo.RunQuery(newTestDexContext("redirect"), client.GetUser(), testConnection, workspaceadmin.GetUserInput{UserKey: "ada@example.com"})
+	require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind, "an unlisted status leaves the outcome unknown")
 	require.Len(t, directory.recorded(), 1)
 }
 

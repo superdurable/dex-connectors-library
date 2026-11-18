@@ -129,7 +129,11 @@ func (operation CreateUserOperation) Invoke(call sdkgo.Call, input CreateUserInp
 		return sdkgo.NewMutationRetry[CreateUserOutput](directoryFailure(exchange.failure.Kind, operationID, "insert response is unusable; the retry reads the account back"), 0)
 	case exchangeNotFound, exchangeRejected:
 		failure := exchange.failure
-		return sdkgo.NewMutationBranch(CreateUserBranchProviderRejected, CreateUserOutput{}, &failure, operation.client.receipt(call, exchange.response, ""))
+		refusal := sdkgo.NewMutationBranch(CreateUserBranchProviderRejected, CreateUserOutput{}, &failure, operation.client.receipt(call, exchange.response, ""))
+		if hasPossibleEarlierAttempt(call) {
+			return operation.confirmRefusalAfterEarlierAttempt(call, &credential, request.PrimaryEmail, creationKey, refusal)
+		}
+		return refusal
 	default:
 		return mutationAttemptFromExchange[CreateUserOutput](operation.client, call, exchange, createUserReadBackFailureBranches)
 	}
@@ -148,7 +152,8 @@ func (operation CreateUserOperation) convergeOnExistingAddress(call sdkgo.Call, 
 		return sdkgo.NewMutationBranch(CreateUserBranchAlreadyExists, CreateUserOutput{User: read.user},
 			failurePointer(sdkgo.FailureConflict, operationID, "address belongs to an account this Step did not create"), receipt)
 	case exchangeNotFound:
-		if operation.isWithinCreationVisibilityWindow(call) {
+		// After an earlier attempt, the unreadable account may be this Step's, so only the retry budget ends the wait.
+		if hasPossibleEarlierAttempt(call) || operation.isWithinCreationVisibilityWindow(call) {
 			return sdkgo.NewMutationRetry[CreateUserOutput](directoryFailure(sdkgo.FailureAvailability, operationID, "Google reports the address as taken but does not return the account yet"), 0)
 		}
 		return sdkgo.NewMutationBranch(CreateUserBranchAlreadyExists, CreateUserOutput{},
@@ -157,6 +162,27 @@ func (operation CreateUserOperation) convergeOnExistingAddress(call sdkgo.Call, 
 	default:
 		return mutationAttemptFromExchange[CreateUserOutput](operation.client, call, read.exchange, createUserReadBackFailureBranches)
 	}
+}
+
+// confirmRefusalAfterEarlierAttempt reads the address back, because an earlier attempt may have created the account.
+func (operation CreateUserOperation) confirmRefusalAfterEarlierAttempt(call sdkgo.Call, credential *Credentials, primaryEmail string, creationKey string, refusal sdkgo.MutationAttempt[CreateUserOutput]) sdkgo.MutationAttempt[CreateUserOutput] {
+	read := operation.client.readUser(call, credential, "createUser", primaryEmail)
+	switch read.exchange.outcome {
+	case exchangeSucceeded:
+		if read.resource.hasCreationKey(creationKey) {
+			return sdkgo.NewMutationBranch(CreateUserBranchCreated, CreateUserOutput{User: read.user, WasAlreadyCreated: true}, nil, operation.client.receipt(call, read.exchange.response, read.user.ID))
+		}
+		return refusal
+	case exchangeNotFound:
+		return refusal
+	default:
+		return mutationAttemptFromExchange[CreateUserOutput](operation.client, call, read.exchange, createUserReadBackFailureBranches)
+	}
+}
+
+// hasPossibleEarlierAttempt reports a later attempt, whose predecessor may have sent the write.
+func hasPossibleEarlierAttempt(call sdkgo.Call) bool {
+	return call.Context != nil && call.Context.Attempt() > 1
 }
 
 // isWithinCreationVisibilityWindow tolerates Google's documented propagation delay after an account is created.

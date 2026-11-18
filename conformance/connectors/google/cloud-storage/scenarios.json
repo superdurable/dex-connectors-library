@@ -994,6 +994,62 @@
       "operation": "uploadObject"
     },
     {
+      "callId": "b44bc3f4-6493-53b1-96ad-56dd79d07fac",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/storage/v1/b/example-bucket/o",
+          "query": {
+            "ifGenerationMatch": [
+              "0"
+            ],
+            "name": [
+              "reports/a.txt"
+            ],
+            "uploadType": [
+              "media"
+            ]
+          },
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-storage-token"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b44bc3f4-6493-53b1-96ad-56dd79d07fac",
+      "input": {
+        "bucket": "example-bucket",
+        "contentBase64": "aGVsbG8=",
+        "contentType": "text/plain",
+        "name": "reports/a.txt"
+      },
+      "name": "uploadObject-unlistedStatusRetries",
+      "operation": "uploadObject"
+    },
+    {
       "callId": "b44bc3f4-6493-53b1-96ad-56dd79d07fab",
       "exchanges": [],
       "expected": {

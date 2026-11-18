@@ -105,15 +105,12 @@ func setAccountEnabled(client *Client, call sdkgo.Call, rawUserKey string, isEna
 	receipt := client.receipt(call, read.response, "")
 	user, _, err := decodeUser(read.response.body, true)
 	if err != nil {
-		return sdkgo.NewMutationBranch(branches.failure.invalidResponse, User{}, failurePointer(sdkgo.FailureProtocol, branches.operationID, "provider returned an invalid account: "+err.Error()), receipt)
+		return sdkgo.NewMutationRetry[User](graphFailure(sdkgo.FailureProtocol, branches.operationID, "provider returned an invalid account: "+err.Error()), 0)
 	}
 	receipt.ProviderObjectID = user.ID
 	if user.IsAccountEnabled != isEnabled {
-		if client.isWithinPropagationWindow(call) {
-			return sdkgo.NewMutationRetry[User](graphFailure(sdkgo.FailureAvailability, branches.operationID, "Microsoft Graph does not report the change yet"), 0)
-		}
-		return sdkgo.NewMutationBranch(branches.failure.rejected, user,
-			failurePointer(sdkgo.FailureProviderRejection, branches.operationID, "Microsoft Graph returned the account without the requested accountEnabled value"), receipt)
+		// A read that contradicts the accepted absolute write is unknown, and the write is safe to repeat.
+		return sdkgo.NewMutationRetry[User](graphFailure(sdkgo.FailureAvailability, branches.operationID, "Microsoft Graph does not report the change yet"), 0)
 	}
 	return sdkgo.NewMutationBranch(branches.applied, user, nil, receipt)
 }

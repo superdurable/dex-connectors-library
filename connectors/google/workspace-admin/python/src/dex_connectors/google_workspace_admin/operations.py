@@ -222,7 +222,8 @@ def _query_exchange(
 def _mutation_exchange(
     operation: str, exchange: Exchange, call: Call, zero: Any, *, not_found: str = "notFound"
 ) -> MutationAttempt[Any]:
-    if exchange.outcome == "retry":
+    # Every write is safe to repeat, so an unusable response retries instead of selecting invalidResponse.
+    if exchange.outcome in ("retry", "invalidResponse"):
         return MutationAttempt.retry(exchange.failure(operation), exchange.retry_after)
     branch = {
         "notFound": not_found,
@@ -506,15 +507,7 @@ class CreateUserOperation(_Operation):
                     return _mutation_exchange(
                         operation, invalid, call, CreateUserOutput(), not_found="providerRejected"
                     )
-                ids = resource.get("externalIds")
-                matched = isinstance(ids, list) and any(
-                    isinstance(item, dict)
-                    and item.get("type") == "custom"
-                    and item.get("customType") == "dexIdempotencyKey"
-                    and item.get("value") == key
-                    for item in ids
-                )
-                if matched:
+                if _has_creation_key(resource, key):
                     return MutationAttempt.branch_result(
                         "created", CreateUserOutput(user, True), read.receipt(call, user.id)
                     )
@@ -531,7 +524,8 @@ class CreateUserOperation(_Operation):
             if read.outcome == "notFound":
                 context = call.context
                 first_attempt = getattr(context, "first_attempt_at", None) if context else None
-                if (
+                # After an earlier attempt, the unreadable account may be this Step's.
+                if _has_possible_earlier_attempt(call) or (
                     isinstance(first_attempt, datetime)
                     and (datetime.now(UTC) - first_attempt).total_seconds() < 60
                 ):
@@ -561,7 +555,51 @@ class CreateUserOperation(_Operation):
                     "insert response is unusable; the retry reads the account back",
                 )
             )
-        return _mutation_exchange(operation, exchange, call, CreateUserOutput(), not_found="providerRejected")
+        refusal = _mutation_exchange(
+            operation, exchange, call, CreateUserOutput(), not_found="providerRejected"
+        )
+        if exchange.outcome in ("notFound", "rejected") and _has_possible_earlier_attempt(call):
+            return await self._confirm_refusal(call, credential, email, key, refusal)
+        return refusal
+
+    async def _confirm_refusal(
+        self, call: Call, credential: Any, email: str, key: str, refusal: MutationAttempt[CreateUserOutput]
+    ) -> MutationAttempt[CreateUserOutput]:
+        """Read the address back, because an earlier attempt may have created the account."""
+        read = await self.client.exchange(call, credential, "GET", "/users/" + path_escape(email))
+        if read.outcome == "notFound":
+            return refusal
+        if read.outcome != "success":
+            return _mutation_exchange(
+                "createUser", read, call, CreateUserOutput(), not_found="providerRejected"
+            )
+        try:
+            user, resource = _decoded_user(read.body)
+        except ValueError:
+            return MutationAttempt.retry(
+                _failure("createUser", FailureKind.PROTOCOL, "provider returned an invalid account")
+            )
+        if _has_creation_key(resource, key):
+            return MutationAttempt.branch_result(
+                "created", CreateUserOutput(user, True), read.receipt(call, user.id)
+            )
+        return refusal
+
+
+def _has_possible_earlier_attempt(call: Call) -> bool:
+    """Report a later attempt, whose predecessor may have sent the write."""
+    return call.context is not None and call.context.attempt > 1
+
+
+def _has_creation_key(resource: dict[str, Any], key: str) -> bool:
+    ids = resource.get("externalIds")
+    return isinstance(ids, list) and any(
+        isinstance(item, dict)
+        and item.get("type") == "custom"
+        and item.get("customType") == "dexIdempotencyKey"
+        and item.get("value") == key
+        for item in ids
+    )
 
 
 class _SuspensionOperation(_Operation):
@@ -604,29 +642,23 @@ class _SuspensionOperation(_Operation):
         try:
             user, _ = _decoded_user(exchange.body)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                User(),
-                exchange.receipt(call),
+            return MutationAttempt.retry(
                 _failure(
                     self.operation_name,
                     FailureKind.PROTOCOL,
                     "provider returned an invalid account: " + str(error),
-                ),
+                )
             )
-        receipt = exchange.receipt(call, user.id)
         if user.is_suspended != self.suspended:
-            return MutationAttempt.branch_result(
-                "providerRejected",
-                user,
-                receipt,
+            # A 2xx that contradicts the absolute write is unknown, and the write is safe to repeat.
+            return MutationAttempt.retry(
                 _failure(
                     self.operation_name,
-                    FailureKind.PROVIDER_REJECTION,
+                    FailureKind.PROTOCOL,
                     "Google returned the account without the requested suspension state",
-                ),
+                )
             )
-        return MutationAttempt.branch_result(self.success_branch, user, receipt)
+        return MutationAttempt.branch_result(self.success_branch, user, exchange.receipt(call, user.id))
 
 
 class SuspendUserOperation(_SuspensionOperation):
@@ -714,15 +746,12 @@ class AddUserToGroupOperation(_Operation):
                 try:
                     membership = _membership(read.body, group)
                 except ValueError as error:
-                    return MutationAttempt.branch_result(
-                        "invalidResponse",
-                        AddUserToGroupOutput(GroupMembership(role="")),
-                        read.receipt(call),
+                    return MutationAttempt.retry(
                         _failure(
                             operation,
                             FailureKind.PROTOCOL,
                             "provider returned an invalid membership: " + str(error),
-                        ),
+                        )
                     )
                 return MutationAttempt.branch_result(
                     "added", AddUserToGroupOutput(membership, True), read.receipt(call, membership.member_id)

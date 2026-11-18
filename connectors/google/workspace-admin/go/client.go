@@ -336,10 +336,22 @@ func (client *Client) classifyFailureStatus(operationID string, response directo
 		return directoryExchange{outcome: exchangeNotFound, response: response, failure: directoryFailure(sdkgo.FailureNotFound, operationID, "resource was not found")}
 	case response.status == http.StatusConflict:
 		return directoryExchange{outcome: exchangeConflict, response: response, failure: directoryFailure(sdkgo.FailureConflict, operationID, describeReason("provider reported a conflicting resource", reason))}
-	default:
+	case isDefiniteRefusalStatus(response.status):
 		message := describeReason(fmt.Sprintf("provider rejected the request with HTTP %d", response.status), reason)
 		return directoryExchange{outcome: exchangeRejected, response: response, failure: directoryFailure(statusFailureKind(response.status), operationID, message)}
+	default:
+		return client.retryExchange(operationID, response, sdkgo.FailureAvailability, describeReason(fmt.Sprintf("provider answered HTTP %d, which leaves the outcome unknown", response.status), reason))
 	}
+}
+
+// isDefiniteRefusalStatus reports the statuses that prove Google refused the request; any other one is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 // retryExchange asks Dex to retry after Google's Retry-After delay, capped at one hour.
@@ -393,9 +405,9 @@ func (client *Client) send(call sdkgo.Call, credential *Credentials, request dir
 			return response, &directoryRequestError{kind: sdkgo.FailureResponseTooLarge, message: "provider response exceeds the configured limit"}
 		}
 		if isOversized {
-			// An oversized error body carries no usable reason, so the status alone classifies it.
+			// An oversized error body may hide acceptance or a retryable reason, so the outcome is unknown.
 			response.body = nil
-			readErr = nil
+			return response, &directoryRequestError{kind: sdkgo.FailureTransport, message: "provider error response exceeds the configured limit"}
 		}
 		if readErr != nil || closeErr != nil {
 			return response, &directoryRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
@@ -504,8 +516,9 @@ func queryAttemptFromExchange[T any](client *Client, call sdkgo.Call, exchange d
 }
 
 // mutationAttemptFromExchange converts a failed exchange into a Mutation Retry or the operation's branch.
+// Every write is safe to repeat, so an unusable response retries instead of selecting invalidResponse.
 func mutationAttemptFromExchange[T any](client *Client, call sdkgo.Call, exchange directoryExchange, branches failureBranches) sdkgo.MutationAttempt[T] {
-	if exchange.outcome == exchangeRetry {
+	if exchange.outcome == exchangeRetry || exchange.outcome == exchangeInvalidResponse {
 		return sdkgo.NewMutationRetry[T](exchange.failure, exchange.retryAfter)
 	}
 	var zero T

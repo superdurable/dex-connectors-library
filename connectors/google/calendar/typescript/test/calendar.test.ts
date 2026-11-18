@@ -3,8 +3,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, CredentialProvider, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { CalendarClient, pathEscape } from '../src/client.js';
+import { CredentialMaterialError, decodeCredentials } from '../src/generated/models.js';
 import { parseDate, parseInstant, validateEventTimes } from '../src/event.js';
 
 const reference = { provider: 'google', name: 'calendar-unit' };
@@ -48,11 +49,35 @@ describe('credential resolve failures', () => {
     { name: 'object not found', failure: new ObjectNotFoundError(), isTerminal: true },
     { name: 'connection not selected', failure: new ConnectionNotSelectedError(), isTerminal: true },
     { name: 'broker rejected', failure: new CredentialBrokerRejectedError(), isTerminal: true },
+    { name: 'malformed material', failure: new CredentialMaterialError('stored credential is malformed'), isTerminal: true },
     { name: 'broker unavailable', failure: new CredentialBrokerUnavailableError(), isTerminal: false },
     { name: 'static connection not configured', failure: new Error('connection is not configured'), isTerminal: false },
   ])('selects defect only for a terminal $name failure', async ({ failure, isTerminal }) => {
     const client = new CalendarClient({}, { resolve: async () => { throw failure; } } as never, { send: async () => { throw new Error('unexpected provider call'); } });
     const result = await client.createEvent().invoke(call, input);
     expect(result).toMatchObject(isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry' });
+  });
+
+  it('selects defect for malformed stored material behind the released SDK provider', async () => {
+    const store = {
+      scope: { projectId: 'project-1', kind: 'live' },
+      readCredentialMaterial: async () => ({ material: { credentials: { unexpected: 'value' } }, connection: {} }),
+    };
+    const provider = new CredentialProvider(store as never, { connectorId: 'google-calendar', connectionName: 'calendar-unit' }, decodeCredentials);
+    const client = new CalendarClient({}, provider as never, { send: async () => { throw new Error('unexpected provider call'); } });
+    expect(await client.createEvent().invoke(call, input)).toMatchObject({ kind: 'branch', branch: 'defect' });
+  });
+});
+
+describe('createEvent after an earlier attempt', () => {
+  it.each([
+    { attempt: 1, expected: { kind: 'branch', branch: 'conflict' } },
+    { attempt: 2, expected: { kind: 'retry' } },
+  ])('treats a taken but unreadable event ID by attempt ($attempt)', async ({ attempt, expected }) => {
+    const credentials = new StaticCredentialProvider([[reference, { accessToken: new SecretString('token') }]]);
+    const send = async (request: { method: string }) => ({ status: request.method === 'POST' ? 409 : 404, headers: {}, body: Buffer.from('{}') });
+    const client = new CalendarClient({}, credentials as never, { send } as never);
+    const attemptCall = { ...call, context: { ...call.context, attempt } } as Call;
+    expect(await client.createEvent().invoke(attemptCall, input)).toMatchObject(expected);
   });
 });

@@ -10,7 +10,7 @@ import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk'
 export interface Config {
   /** Google API root URL to which the connector appends /admin/directory/v1; leave blank for Google's public Admin SDK host. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway. */
   endpoint?: string;
-  /** Maximum complete Admin SDK Directory API response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 500 accounts are larger. Blank keeps the limit, and an oversized response selects invalidResponse. */
+  /** Maximum complete Admin SDK Directory API response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 500 accounts are larger. Blank keeps the limit; an oversized response selects invalidResponse on a read and retries a write. */
   maxResponseBytes?: number;
   /** Number of accounts listUsers requests per page when the Step input leaves pageSize at zero; enter a whole number from 1 to 500, Google's maximum, only to trade smaller, faster pages for fewer requests. Blank uses the displayed default. */
   listUsersPageSize?: number;

@@ -160,9 +160,35 @@ func (operation CreateUserOperation) Invoke(call sdkgo.Call, input CreateUserInp
 		return sdkgo.NewMutationRetry[CreateUserOutput](graphFailure(exchange.failure.Kind, operationID, "create response is unusable; the retry reads the account back"), 0)
 	case exchangeNotFound, exchangeRejected:
 		failure := exchange.failure
-		return sdkgo.NewMutationBranch(CreateUserBranchProviderRejected, CreateUserOutput{}, &failure, operation.client.receipt(call, exchange.response, ""))
+		refusal := sdkgo.NewMutationBranch(CreateUserBranchProviderRejected, CreateUserOutput{}, &failure, operation.client.receipt(call, exchange.response, ""))
+		if hasPossibleEarlierAttempt(call) {
+			return operation.confirmRefusalAfterEarlierAttempt(call, &credential, request.UserPrincipalName, creationKey, refusal)
+		}
+		return refusal
 	default:
 		return mutationAttemptFromExchange[CreateUserOutput](operation.client, call, exchange, createUserReadBackFailureBranches)
+	}
+}
+
+// confirmRefusalAfterEarlierAttempt reads the user principal name back, because an earlier attempt may have created the account.
+func (operation CreateUserOperation) confirmRefusalAfterEarlierAttempt(
+	call sdkgo.Call, credential *Credentials, userPrincipalName string, creationKey string, refusal sdkgo.MutationAttempt[CreateUserOutput],
+) sdkgo.MutationAttempt[CreateUserOutput] {
+	read := operation.client.readUser(call, credential, "createUser", userPrincipalName, creationKeySelectedProperties)
+	switch read.outcome {
+	case exchangeSucceeded:
+		user, resource, err := decodeUser(read.response.body, true)
+		if err != nil {
+			return sdkgo.NewMutationRetry[CreateUserOutput](graphFailure(sdkgo.FailureProtocol, "createUser", "provider returned an invalid account: "+err.Error()), 0)
+		}
+		if resource.hasCreationKey(operation.client.creationKeyAttribute, creationKey) {
+			return sdkgo.NewMutationBranch(CreateUserBranchCreated, CreateUserOutput{User: user, WasAlreadyCreated: true}, nil, operation.client.receipt(call, read.response, user.ID))
+		}
+		return refusal
+	case exchangeNotFound:
+		return refusal
+	default:
+		return mutationAttemptFromExchange[CreateUserOutput](operation.client, call, read, createUserReadBackFailureBranches)
 	}
 }
 
@@ -177,7 +203,7 @@ func (operation CreateUserOperation) convergeOnExistingUserPrincipalName(
 		receipt := operation.client.receipt(call, read.response, "")
 		user, resource, err := decodeUser(read.response.body, true)
 		if err != nil {
-			return sdkgo.NewMutationBranch(CreateUserBranchInvalidResponse, CreateUserOutput{}, failurePointer(sdkgo.FailureProtocol, operationID, "provider returned an invalid account: "+err.Error()), receipt)
+			return sdkgo.NewMutationRetry[CreateUserOutput](graphFailure(sdkgo.FailureProtocol, operationID, "provider returned an invalid account: "+err.Error()), 0)
 		}
 		receipt.ProviderObjectID = user.ID
 		if resource.hasCreationKey(operation.client.creationKeyAttribute, creationKey) {
@@ -186,7 +212,8 @@ func (operation CreateUserOperation) convergeOnExistingUserPrincipalName(
 		return sdkgo.NewMutationBranch(CreateUserBranchAlreadyExists, CreateUserOutput{User: user},
 			failurePointer(sdkgo.FailureConflict, operationID, "user principal name belongs to an account this Step did not create"), receipt)
 	case exchangeNotFound:
-		if operation.client.isWithinPropagationWindow(call) {
+		// After an earlier attempt, the unreadable account may be this Step's, so only the retry budget ends the wait.
+		if hasPossibleEarlierAttempt(call) || operation.client.isWithinPropagationWindow(call) {
 			return sdkgo.NewMutationRetry[CreateUserOutput](graphFailure(sdkgo.FailureAvailability, operationID, "Microsoft Graph rejected the account but does not return the user principal name yet"), 0)
 		}
 		if hasObjectConflictDetail(createExchange.response.body) {

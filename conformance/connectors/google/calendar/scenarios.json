@@ -1365,22 +1365,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "event": {
-            "calendarId": "",
-            "end": {},
-            "id": "",
-            "isAllDay": false,
-            "start": {},
-            "status": "",
-            "transparency": ""
-          },
-          "wasAlreadyCreated": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1407,7 +1395,83 @@
         },
         "summary": "Planning"
       },
-      "name": "createEvent-invalid",
+      "name": "createEvent-unusable-response-retries",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "requestBody": {
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 412
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "calendarId": "primary",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-unlisted-status-retries",
       "operation": "createEvent"
     },
     {
@@ -1887,22 +1951,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "event": {
-            "calendarId": "",
-            "end": {},
-            "id": "",
-            "isAllDay": false,
-            "start": {},
-            "status": "",
-            "transparency": ""
-          },
-          "wasAlreadyApplied": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1928,7 +1980,7 @@
         },
         "summary": "Updated planning"
       },
-      "name": "updateEvent-invalid",
+      "name": "updateEvent-unusable-response-retries",
       "operation": "updateEvent"
     },
     {
