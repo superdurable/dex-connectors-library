@@ -126,18 +126,18 @@ class Client:
                 ),
                 "providerRejected",
             )
-        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
-            return (
-                None,
-                Failure(
-                    FailureKind.AUTHENTICATION,
-                    "discord",
-                    operation,
-                    "Discord connection credentials are unavailable or invalid",
-                ),
-                "defect",
-            )
-        except Exception:
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return (
+                    None,
+                    Failure(
+                        FailureKind.AUTHENTICATION,
+                        "discord",
+                        operation,
+                        "Discord connection credentials are unavailable or invalid",
+                    ),
+                    "defect",
+                )
             # Nothing reached Discord, so a transient credential failure retries.
             return (
                 None,
@@ -189,3 +189,13 @@ class Client:
             idempotency_key=call.idempotency_key,
             provider_object_id=object_id,
         )
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure no later attempt clears; every other resolve error is transient."""
+    # Imported here because the generated connection module imports this client.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error, (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError)
+    )

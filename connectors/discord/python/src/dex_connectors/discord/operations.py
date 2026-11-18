@@ -182,7 +182,7 @@ def _classify(response: ProviderResponse, operation: str, now: datetime) -> tupl
         except ValueError:
             pass
         return "retry", _failure(operation, FailureKind.RATE_LIMIT, "Discord rate limited the request"), delay
-    if status == 408 or (status >= 500 and status != 501):
+    if status == 408 or status >= 500:
         delay = parse_retry_after(response.headers.get("Retry-After", ""), now)
         return (
             "retry",
@@ -235,16 +235,23 @@ def _classify(response: ProviderResponse, operation: str, now: datetime) -> tupl
             ),
             0,
         )
-    if 300 <= status < 400:
+    if status in (404, 411, 414, 415, 422):
         return (
             "providerRejected",
-            _failure(operation, FailureKind.PROTOCOL, f"Discord redirected the request (HTTP {status})"),
+            _failure(
+                operation,
+                FailureKind.PROVIDER_REJECTION,
+                f"Discord rejected the request (HTTP {status}{detail})",
+            ),
             0,
         )
+    # A redirect or unlisted status proves nothing, so the request is retried.
     return (
-        "providerRejected",
+        "retry",
         _failure(
-            operation, FailureKind.PROVIDER_REJECTION, f"Discord rejected the request (HTTP {status}{detail})"
+            operation,
+            FailureKind.AVAILABILITY,
+            f"Discord answered with an unexpected status (HTTP {status}{detail})",
         ),
         0,
     )
@@ -311,7 +318,8 @@ def _query_outcome(
 def _mutation_outcome(
     branch: str, output: _Output, failure: Failure | None, delay: float, receipt: Receipt
 ) -> MutationAttempt[_Output]:
-    if branch == "retry":
+    # Both writes are declared safe, so an oversized answer retries instead of selecting invalidResponse.
+    if branch in ("retry", "invalidResponse"):
         assert failure is not None
         return MutationAttempt.retry(failure, delay)
     return MutationAttempt.branch_result(branch, output, receipt, failure)
@@ -462,13 +470,8 @@ class CreateMessageOperation:
         try:
             message = _message(_decode_json(response.body), input.channel_id)
         except ValueError as error:
-            return _mutation_outcome(
-                "invalidResponse",
-                empty,
-                _failure("createMessage", FailureKind.PROTOCOL, str(error)),
-                0,
-                receipt,
-            )
+            # A resend inside the nonce window returns the same message, so a malformed answer retries.
+            return MutationAttempt.retry(_failure("createMessage", FailureKind.PROTOCOL, str(error)))
         return _mutation_outcome("created", message, None, 0, self.client.receipt(call, message.id))
 
 
@@ -519,9 +522,7 @@ class AddReactionOperation:
             self.client, call, "addReaction", "PUT", path, input.message_id
         )
         if branch:
-            return _mutation_outcome(
-                "providerRejected" if branch == "invalidResponse" else branch, empty, failure, delay, receipt
-            )
+            return _mutation_outcome(branch, empty, failure, delay, receipt)
         return _mutation_outcome(
             "added", AddedReaction(input.channel_id, input.message_id, input.emoji), None, 0, receipt
         )

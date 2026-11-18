@@ -81,7 +81,7 @@ export interface CreateMessageStepConfig<StepInput, OperationInput = CreateMessa
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Discord applied or rejected the message but returned an invalid or oversized response. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized answer now retries, because a resend inside the nonce window returns the same message. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

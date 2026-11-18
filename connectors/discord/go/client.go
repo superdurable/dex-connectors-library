@@ -284,7 +284,7 @@ func classifyErrorResponse(operation string, response providerResponse, now time
 			disposition: outcomeRetry, retryAfter: rateLimitDelay(response, now),
 			failure: providerFailure(operation, sdkgo.FailureRateLimit, "Discord rate limited the request"),
 		}
-	case status == http.StatusRequestTimeout || (status >= 500 && status != http.StatusNotImplemented):
+	case status == http.StatusRequestTimeout || status >= 500:
 		return providerOutcome{
 			disposition: outcomeRetry, retryAfter: providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), now),
 			failure: providerFailure(operation, sdkgo.FailureAvailability, fmt.Sprintf("Discord is temporarily unavailable (HTTP %d%s)", status, detail)),
@@ -297,10 +297,15 @@ func classifyErrorResponse(operation string, response providerResponse, now time
 		return terminalOutcome(outcomeNotFound, operation, sdkgo.FailureNotFound, fmt.Sprintf("Discord found no such channel, message, or emoji (HTTP 404%s)", detail))
 	case status == http.StatusBadRequest || status == http.StatusRequestEntityTooLarge:
 		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureValidation, fmt.Sprintf("Discord rejected the request as invalid (HTTP %d%s)", status, detail))
-	case status >= 300 && status < 400:
-		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureProtocol, fmt.Sprintf("Discord redirected the request (HTTP %d)", status))
-	default:
+	case status == http.StatusNotFound || status == http.StatusLengthRequired || status == http.StatusRequestURITooLong ||
+		status == http.StatusUnsupportedMediaType || status == http.StatusUnprocessableEntity:
 		return terminalOutcome(outcomeRejected, operation, sdkgo.FailureProviderRejection, fmt.Sprintf("Discord rejected the request (HTTP %d%s)", status, detail))
+	default:
+		// A redirect or unlisted status proves nothing, so the request is retried.
+		return providerOutcome{
+			disposition: outcomeRetry,
+			failure:     providerFailure(operation, sdkgo.FailureAvailability, fmt.Sprintf("Discord answered with an unexpected status (HTTP %d%s)", status, detail)),
+		}
 	}
 }
 
@@ -369,7 +374,8 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 // mutationAttemptForOutcome maps an unsuccessful exchange to Retry or a branch; both writes are repeat-safe.
 func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
-	if outcome.disposition == outcomeRetry {
+	// Both writes are declared safe, so an oversized answer retries instead of selecting invalidResponse.
+	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)

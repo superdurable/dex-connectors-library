@@ -919,22 +919,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "author": {
-            "id": "",
-            "isBot": false,
-            "username": ""
-          },
-          "channelId": "",
-          "content": "",
-          "id": "",
-          "timestamp": "0001-01-01T00:00:00Z",
-          "type": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -944,7 +932,7 @@
         "content": "Release today @everyone",
         "replyToMessageId": "998877665544332211"
       },
-      "name": "createMessage-invalid-response",
+      "name": "createMessage-invalid-response-retries",
       "operation": "createMessage"
     },
     {

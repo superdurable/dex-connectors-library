@@ -67,7 +67,7 @@ CREATE_MESSAGE_DEFINITION = MutationDefinition(
         BranchDefinition(CREATED, "Discord created the message, or returned the message an earlier attempt created with the same nonce.", False),
         BranchDefinition(NOT_FOUND, "Discord knows no channel with the ID.", True),
         BranchDefinition(PROVIDER_REJECTED, "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", True),
-        BranchDefinition(INVALID_RESPONSE, "Discord applied or rejected the message but returned an invalid or oversized response.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized answer now retries, because a resend inside the nonce window returns the same message.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or credentials are invalid.", True),
     ),
     StepDefaults(

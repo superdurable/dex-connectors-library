@@ -99,7 +99,10 @@ export class CreateMessageOperation implements Mutation<CreateMessageInput, Mess
     try {
       const message = decodeMessage(decodeObject(result.response.body), input.channelId);
       return newMutationBranch('created', message, this.client.receipt(call, message.id));
-    } catch { return mutationFailure('createMessage', 'invalidResponse', 'PROTOCOL', zeroMessage, this.client.receipt(call, input.channelId)); }
+    } catch (error) {
+      // A resend inside the nonce window returns the same message, so a malformed answer retries.
+      return newMutationRetry({ kind: 'PROTOCOL', provider: 'discord', operation: 'createMessage', message: error instanceof Error ? error.message : 'Discord response is invalid' });
+    }
   }
 }
 
@@ -116,7 +119,7 @@ export class AddReactionOperation implements Mutation<AddReactionInput, AddedRea
       if (!customEmoji.test(input.emoji) && !isUnicodeEmojiCandidate(input.emoji)) throw new Error('emoji must be a Unicode emoji or a custom emoji as name:id');
     } catch (error) { return mutationFailure('addReaction', 'defect', 'VALIDATION', zeroReaction, {}, error); }
     const result = await this.client.exchange(call, 'addReaction', 'PUT', `/channels/${input.channelId}/messages/${input.messageId}/reactions/${pathEscape(input.emoji)}/@me`, input.messageId);
-    if ('outcome' in result) return mutationOutcome(result.outcome, zeroReaction, false);
+    if ('outcome' in result) return mutationOutcome(result.outcome, zeroReaction);
     return newMutationBranch('added', { channelId: input.channelId, messageId: input.messageId, emoji: input.emoji }, this.client.receipt(call, input.messageId));
   }
 }
@@ -169,10 +172,10 @@ function queryOutcome<T>(outcome: ExchangeFailure, zero: T): QueryAttempt<T> {
   if (outcome.disposition === 'retry') return newQueryRetry(outcome.failure, outcome.retryAfterMs);
   return newQueryBranch(outcome.disposition === 'rejected' ? 'providerRejected' : outcome.disposition, zero, outcome.receipt, outcome.failure);
 }
-function mutationOutcome<T>(outcome: ExchangeFailure, zero: T, hasInvalidResponse = true): MutationAttempt<T> {
-  if (outcome.disposition === 'retry') return newMutationRetry(outcome.failure, outcome.retryAfterMs);
-  const branch = outcome.disposition === 'rejected' || (!hasInvalidResponse && outcome.disposition === 'invalidResponse') ? 'providerRejected' : outcome.disposition;
-  return newMutationBranch(branch, zero, outcome.receipt, outcome.failure);
+function mutationOutcome<T>(outcome: ExchangeFailure, zero: T): MutationAttempt<T> {
+  // Both writes are declared safe, so an oversized answer retries instead of selecting invalidResponse.
+  if (outcome.disposition === 'retry' || outcome.disposition === 'invalidResponse') return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+  return newMutationBranch(outcome.disposition === 'rejected' ? 'providerRejected' : outcome.disposition, zero, outcome.receipt, outcome.failure);
 }
 function queryFailure<T>(operation: string, branch: string, kind: Failure['kind'], zero: T, receipt: ReceiptDraft, error?: unknown): QueryAttempt<T> {
   return newQueryBranch(branch, zero, receipt, { kind, provider: 'discord', operation, message: error instanceof Error ? error.message : 'Discord response is invalid' });

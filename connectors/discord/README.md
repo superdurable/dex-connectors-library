@@ -1,6 +1,6 @@
 # Discord Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.3.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/discord`.
 
@@ -13,7 +13,7 @@ an announcement, react to it, and confirm it with a read-back.
 Its Go module is `github.com/superdurable/dex-connectors-library/connectors/discord/go`.
 The connector ID is `discord`.
 
-The TypeScript package is `@superdurable/connector-discord` at v0.1.0. It supports all four operations and no Triggers. See the [TypeScript package](typescript/README.md) and its [runnable announcement example](typescript/examples/channel-announcement/README.md).
+The TypeScript package is `@superdurable/connector-discord` at v0.1.1. It supports all four operations and no Triggers. See the [TypeScript package](typescript/README.md) and its [runnable announcement example](typescript/examples/channel-announcement/README.md).
 
 ## Operations
 
@@ -91,10 +91,16 @@ repeating the PUT converges.
 | 403, such as 50001 Missing Access or 50013 Missing Permissions | `providerRejected` | `AUTHORIZATION` |
 | 400 or 413, such as 50035 Invalid Form Body or 30010 maximum reactions | `providerRejected` | `VALIDATION` |
 | 429 | Retry after the body's `retry_after`, else `Retry-After` | `RATE_LIMIT` |
-| 408, 5xx other than 501 | Retry, honoring `Retry-After` | `AVAILABILITY` |
+| 408, any 5xx | Retry, honoring `Retry-After` | `AVAILABILITY` |
 | transport failure, interrupted body | Retry | `TRANSPORT` |
-| any other status | `providerRejected` | `PROVIDER_REJECTION` |
-| malformed JSON, a different channel, more messages than the limit, an oversized body | `invalidResponse` (`providerRejected` for `addReaction`) | `PROTOCOL` or `RESPONSE_TOO_LARGE` |
+| other 404, 411, 414, 415, or 422 | `providerRejected` | `PROVIDER_REJECTION` |
+| 3xx or any other status | Retry | `AVAILABILITY` |
+| malformed JSON, a different channel, more messages than the limit, an oversized body | `invalidResponse` for a Query; Retry for `createMessage` and `addReaction` | `PROTOCOL` or `RESPONSE_TOO_LARGE` |
+
+Both writes are declared `repeatOnUnknown: safe`: `createMessage` resends the same enforced nonce inside
+its two-minute retry budget, and `addReaction` repeats an idempotent PUT. An application that widens the
+`createMessage` retry budget beyond Discord's few-minute nonce window can post a duplicate. Malformed
+stored credential material selects `defect`.
 
 A Failure names only a documented numeric Discord error code, never Discord's
 message text. An unwired optional branch fails the Flow. The connector has no

@@ -356,7 +356,7 @@ var CreateMessageDefinition = sdkgo.MutationDefinition{
 		{ID: CreateMessageBranchCreated, Description: "Discord created the message, or returned the message an earlier attempt created with the same nonce."},
 		{ID: CreateMessageBranchNotFound, Description: "Discord knows no channel with the ID.", Optional: true},
 		{ID: CreateMessageBranchProviderRejected, Description: "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", Optional: true},
-		{ID: CreateMessageBranchInvalidResponse, Description: "Discord applied or rejected the message but returned an invalid or oversized response.", Optional: true},
+		{ID: CreateMessageBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized answer now retries, because a resend inside the nonce window returns the same message.", Optional: true},
 		{ID: CreateMessageBranchDefect, Description: "Local input, connection configuration, or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

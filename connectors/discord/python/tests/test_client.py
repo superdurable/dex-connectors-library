@@ -76,7 +76,8 @@ async def test_message_timestamp_without_timezone_is_invalid_response() -> None:
             IdempotencyKey("bad-timestamp"),
         )
         attempt = await client.create_message().invoke(call, CreateMessageInput(channel_id, "hello"))
-        assert attempt.branch == "invalidResponse"
+        # The nonce makes a resend safe, so a malformed answer retries.
+        assert attempt.kind == "retry"
 
 
 @pytest.mark.asyncio
