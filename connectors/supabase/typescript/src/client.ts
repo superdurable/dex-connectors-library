@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type CredentialProvider, type Failure, type MutationAttempt, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, ReauthorizationRequiredError, zeroReceipt, type Call, type CredentialProvider, type Failure, type MutationAttempt, type QueryAttempt } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, Credentials, SelectRowsOutput, UpsertRowsOutput } from './generated/models.js';
 import { SelectRowsOperation, UpsertRowsOperation } from './operations.js';
@@ -39,7 +40,13 @@ export class SupabaseClient {
   /** Make one exchange, applying the Go provider status and body rules. */
   async exchange(call: Call, operation: string, method: 'GET' | 'POST', path: string, query: URLSearchParams, body?: Uint8Array): Promise<Exchange> {
     let token: string;
-    try { token = (await this.credentials.resolve(call, call.context.cancellationSignal)).apiKey.reveal(); }
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) {
+      if (!isTerminalCredentialError(error)) return { failure: failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable; nothing was sent') };
+      return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable') };
+    }
+    try { token = credentials.apiKey.reveal(); }
     catch { return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable') }; }
     if (!token || !isHeaderSafeCredential(token)) return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credential is invalid') };
     const sortedQuery = [...query.entries()].sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
@@ -69,6 +76,12 @@ export class SupabaseClient {
     if (!Array.isArray(parsed)) return { branch: 'invalidResponse', failure: failure(operation, 'PROTOCOL', 'provider returned an incomplete response') };
     return { body: response.body };
   }
+}
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
 function classifyStatus(operation: string, status: number, retryHeader: string | string[] | undefined): Exchange | undefined {

@@ -31,9 +31,9 @@ Start at [https://supabase.com/dashboard/projects](https://supabase.com/dashboar
 | --- | --- |
 | Documented success response with valid JSON shape | Happy-path branch |
 | 400, 401, 403, 409 (constraint conflict), or another definite 4xx | Optional `providerRejected` branch |
-| 408, 429, 5xx, or transport interruption | Retry until the Step budget expires |
+| 408, 429, 5xx, transport interruption, or a transient credential failure such as an unavailable credential broker | Retry until the Step budget expires |
 | Malformed, incomplete, or oversized success response | Optional `invalidResponse` branch |
-| Invalid input or credential | Optional `defect` branch |
+| Invalid input, an invalid credential, a required reauthorization, a missing or unselected connection, or a credential broker refusal | Optional `defect` branch |
 
 Provider error bodies are never copied into Failures. A Flow fails when an optional branch is selected without wiring. The default retry policy is exponential from one second to five minutes, with unlimited attempts within one hour.
 

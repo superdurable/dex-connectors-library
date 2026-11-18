@@ -29,6 +29,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -171,7 +173,15 @@ class Client:
         """
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except Exception as error:
+            if not _is_terminal_credential_error(error):
+                return _outcome(
+                    "",
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "connection credentials are temporarily unavailable; nothing was sent",
+                    is_retry=True,
+                )
             return _outcome(
                 DEFECT, operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
             )
@@ -358,6 +368,19 @@ def _is_identifier(value: object) -> bool:
 
 def _is_column_list(value: object) -> bool:
     return isinstance(value, str) and _COLUMN_LIST.fullmatch(value) is not None
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential failure that no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _outcome(

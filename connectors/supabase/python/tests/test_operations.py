@@ -11,12 +11,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.supabase import (
     DEFECT,
@@ -198,6 +205,47 @@ async def test_transport_failure_retries() -> None:
     with pytest.raises(RetryError) as raised:
         await run_query(client.select_rows(), select_call(), SelectRowsInput("members"))
     assert raised.value.failure.kind == FailureKind.AVAILABILITY
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_credential_failures_select_defect_only_when_terminal(
+    error: Exception, is_terminal: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    class FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=ROWS)
+
+    client = Client(
+        Config("http://localhost:8848/rest/v1"),
+        FailingCredentials(),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    if is_terminal:
+        result = await run_mutation(client.upsert_rows(), upsert_call(), UPSERT)
+        assert result.branch == DEFECT
+    else:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.upsert_rows(), upsert_call(), UPSERT)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+    assert requests == []
 
 
 @pytest.mark.asyncio
