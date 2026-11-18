@@ -394,7 +394,8 @@ func (client *Client) send(call sdkgo.Call, credentials *Credentials, request gr
 			return result, &providerRequestError{kind: sdkgo.FailureResponseTooLarge, message: "provider response exceeds configured limit"}
 		}
 		if readErr != nil || closeErr != nil {
-			return graphResponse{}, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
+			// The status stays, so a caller can tell an accepted write whose body broke.
+			return result, &providerRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
 		}
 		result.body = content
 		if response.StatusCode != http.StatusUnauthorized || attempt != 0 {
@@ -404,6 +405,10 @@ func (client *Client) send(call sdkgo.Call, credentials *Credentials, request gr
 			return result, nil
 		}
 		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		if refreshErr != nil && !isTerminalCredentialError(refreshErr) {
+			// Graph did not process the rejected request; a later attempt refreshes again.
+			return result, &providerRequestError{kind: sdkgo.FailureAvailability, message: "credential refresh after a rejection is temporarily unavailable"}
+		}
 		if refreshErr != nil || validateResolvedCredentials(replacement) != nil {
 			return result, nil
 		}

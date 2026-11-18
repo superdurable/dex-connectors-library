@@ -58,13 +58,13 @@ func (operation CancelStatementOperation) Invoke(call sdkgo.Call, input CancelSt
 		return cancelAttemptForFailure(requestFailure(err), sdkgo.Receipt{})
 	}
 	defer response.Body.Close()
-	body := readErrorBody(response)
+	body, isBodyComplete := readWriteErrorBody(response)
 	if response.StatusCode == http.StatusOK {
 		status := decodeStatementStatus(body)
 		cancellation := StatementCancellation{StatementHandle: input.StatementHandle}
 		return sdkgo.NewMutationBranch(CancelStatementBranchCanceled, cancellation, nil, client.receipt(call, input.StatementHandle, status))
 	}
-	failure := retryUnknownWriteRefusal(classifyUnsuccessfulResponse(response, body, client.now()))
+	failure := retryIncompleteWriteRefusal(retryUnknownWriteRefusal(classifyUnsuccessfulResponse(response, body, client.now())), isBodyComplete)
 	receipt := client.receipt(call, input.StatementHandle, failure.status)
 	if isRepeatedCancelOfStoppedStatement(call, failure) {
 		// An earlier attempt may have canceled it; canceled already allows a statement that finished first.

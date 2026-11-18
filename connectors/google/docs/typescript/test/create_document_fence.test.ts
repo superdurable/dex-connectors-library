@@ -142,6 +142,35 @@ it('never resends a create whose 2xx body breaks after the headers', async () =>
   expect(creates).toBe(1);
 });
 
+it.each([
+  ['without an ID', '{"name":"Missing ID"}', 'dex:acceptedWithoutDocumentId'],
+  ['with an ID', '{"id":"newDoc1","mimeType":7}', 'newDoc1'],
+])('saves an accepted create %s before the lookup that follows it', async (_name, acceptedBody, expectedMarker) => {
+  const client = newClient(async request => {
+    if (request.method === 'POST') { isCreated = true; return reply(200, acceptedBody); }
+    if (isCreated) markersSeenByLookup.push(JSON.stringify(context.marker));
+    return reply(200, emptyLookup);
+  });
+  let isCreated = false;
+  const markersSeenByLookup: string[] = [];
+  const context = new HeartbeatContext(undefined, undefined, `docs-${Math.random()}`, callId);
+  const result = await client.createDocument().invoke(callFor(context), input);
+  expect(result.kind).toBe('retry');
+  expect(markersSeenByLookup[0]).toContain(`"providerId":"${expectedMarker}"`);
+});
+
+it('retries a 429 whose body breaks without counting it against the cap', async () => {
+  let creates = 0;
+  const { results, context } = await runAttempts(async request => {
+    if (request.method === 'GET') return reply(200, emptyLookup);
+    creates++;
+    throw new ProviderTransportError(false, 429, {});
+  }, 1);
+  expect(results[0]!.kind).toBe('retry');
+  expect(creates).toBe(1);
+  expect(JSON.stringify(context.marker)).toContain('canResend');
+});
+
 it('looks the document up again after a rate-limited resend', async () => {
   const methods: string[] = [];
   const statuses = [500, 429, 500];

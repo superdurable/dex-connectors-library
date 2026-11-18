@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { CheckpointError, InsufficientTimeError, newFence } from "@superdurable/connectors-sdk/singledispatch";
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence } from "@superdurable/connectors-sdk/singledispatch";
 import {
   definitionMaxSends,
   newMutationBranch,
@@ -869,6 +869,13 @@ function isDefiniteGraphRefusal(response: GraphResponse): boolean {
   }
 }
 
+/** Report a Fence error raised before the POST left the process. */
+function isFenceRefusalBeforeSend(error: unknown): boolean {
+  if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError) return true;
+  // The Fence raises this for a short window whose notSent checkpoint also failed.
+  return error instanceof AggregateError && error.errors.some((cause) => cause instanceof InsufficientTimeError);
+}
+
 /** One createEvent attempt's Fence decision and resolved connection. */
 class CreateEventAttempt {
   private credentials?: Credentials;
@@ -958,10 +965,15 @@ class CreateEventAttempt {
       response = await this.fence.dispatch((signal) => this.http.send(this.call, this.credentials!, "POST",
         calendarPath(this.root, this.input.calendarId ?? "") + "/events", undefined, createPayload(this.input, this.key), "", "", signal));
     } catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError)
+      if (isFenceRefusalBeforeSend(error))
         return newMutationRetry(failure(op, "AVAILABILITY", "the event POST was not sent in this attempt"));
       if (!(error instanceof RequestFailure)) return this.resendOrUncertain(failure(op, "TRANSPORT", "create outcome is unknown; the retry looks the idempotency key up first"), 0);
       if (error.response.status >= 200 && error.response.status < 300) return this.acceptedWithoutEvent(error.response);
+      if (error.kind === "AVAILABILITY" && error.response.status === 401) {
+        // Graph refused the POST, and the credential refresh failed transiently.
+        await this.fence.recordCanResend().catch(() => undefined);
+        return newMutationRetry(failure(op, error.kind, error.message));
+      }
       if (error.kind === "LOCAL_DEFECT" && !this.state.hasPossibleEarlierSend)
         return newMutationBranch("defect", emptyCreate(), zeroReceipt(), failure(op, error.kind, error.message));
       return this.resendOrUncertain(failure(op, "TRANSPORT", "create outcome is unknown; the retry looks the idempotency key up first"), 0, error.response);

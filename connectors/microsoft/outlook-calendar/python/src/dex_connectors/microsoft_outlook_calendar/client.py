@@ -5,6 +5,7 @@
 import ipaddress
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -491,8 +492,14 @@ class Client:
         payload: Any = None,
         if_match: str = "",
         next_link: str = "",
+        on_response_status: Callable[[int], None] | None = None,
     ) -> GraphResponse:
-        """Send one bounded Graph request, retrying one rejected credential once."""
+        """Send one bounded Graph request, retrying one rejected credential once.
+
+        on_response_status, when set, receives each response status as soon as its headers arrive.
+        A body that breaks raises a TRANSPORT RequestFailure that keeps the status. After a 401, a
+        transient refresh failure raises an AVAILABILITY RequestFailure that keeps the 401.
+        """
         target = self.base_url + path + (("?" + _query(query)) if query else "")
         if next_link:
             target = (
@@ -519,11 +526,14 @@ class Client:
                 headers.append(("Content-Type", "application/json"))
             if if_match:
                 headers.append(("If-Match", if_match))
+            metadata: GraphResponse | None = None
             try:
                 async with self.http_client.stream(
                     method, target, headers=headers, content=encoded, timeout=20, follow_redirects=False
                 ) as response:
                     metadata = GraphResponse(response.status_code, response.headers.copy())
+                    if on_response_status is not None:
+                        on_response_status(response.status_code)
                     body = b""
                     async for chunk in response.aiter_bytes():
                         body += chunk
@@ -537,13 +547,28 @@ class Client:
             except RequestFailure:
                 raise
             except (httpx.HTTPError, OSError) as error:
-                raise RequestFailure(FailureKind.TRANSPORT, "provider request failed") from error
+                # The status stays, so a caller can tell an accepted write whose body broke.
+                raise RequestFailure(FailureKind.TRANSPORT, "provider request failed", metadata) from error
             if result.status != 401 or attempt:
                 return result
             if not isinstance(self.credentials, RejectedCredentialRefreshingProvider):
                 return result
             try:
                 credentials = await self.credentials.resolve_after_rejection(call, None)  # type: ignore[arg-type]
+            except _TERMINAL_CREDENTIAL_ERRORS:
+                return result
+            except Exception as error:
+                from ._generated.connection import is_credential_material_error
+
+                if is_credential_material_error(error):
+                    return result
+                # Graph did not process the rejected request; a later attempt refreshes again.
+                raise RequestFailure(
+                    FailureKind.AVAILABILITY,
+                    "credential refresh after a rejection is temporarily unavailable",
+                    result,
+                ) from error
+            try:
                 token = credentials.access_token.reveal() if credentials.access_token is not None else ""
                 if not is_header_safe_credential(token):
                     return result
@@ -1331,6 +1356,7 @@ class _CreateEventAttempt:
         operation = "createEvent"
         credentials = self.credentials
         assert credentials is not None
+        observed_statuses: list[int] = []
 
         async def post(_write_deadline: datetime) -> GraphResponse:
             return await self.client.send(
@@ -1339,6 +1365,7 @@ class _CreateEventAttempt:
                 "POST",
                 _calendar_path(self.root, self.input.calendar_id) + "/events",
                 payload=_create_payload(self.input, self.key),
+                on_response_status=observed_statuses.append,
             )
 
         try:
@@ -1348,11 +1375,26 @@ class _CreateEventAttempt:
                 _failure(operation, FailureKind.AVAILABILITY, "the event POST was not sent in this attempt")
             )
         except TimeoutError:
-            # The write window closed with the answer pending; a 2xx may have arrived, so it is never resent.
-            return await self._accepted_without_event(GraphResponse())
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # The write window cut an accepted body, so the event is only read back.
+                return await self._accepted_without_event(GraphResponse(observed_statuses[-1]))
+            return self._resend_or_uncertain(
+                _failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "create outcome is unknown; the retry looks the idempotency key up first",
+                ),
+                0,
+                GraphResponse(),
+            )
         except RequestFailure as error:
-            if error.kind == FailureKind.RESPONSE_TOO_LARGE and 200 <= error.response.status < 300:
+            if 200 <= error.response.status < 300:
+                # A 2xx whose body broke or overflowed was accepted, so it is only read back.
                 return await self._accepted_without_event(error.response)
+            if error.kind == FailureKind.AVAILABILITY and error.response.status == 401:
+                # Graph refused the POST, and the credential refresh failed transiently.
+                await self._record_best_effort(self.fence.record_can_resend)
+                return MutationAttempt.retry(_failure(operation, error.kind, str(error)))
             if error.kind == FailureKind.LOCAL_DEFECT and not self.has_possible_earlier_send:
                 return MutationAttempt.branch_result(
                     "defect", CreateEventOutput(), Receipt(), _failure(operation, error.kind, str(error))

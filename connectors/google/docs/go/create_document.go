@@ -324,7 +324,8 @@ func (client *Client) createAttemptFromResponse(call sdkgo.Call, send createDocu
 		}
 		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(statusFailureKind(response.status, tokens), createDocumentOperationID, "provider temporarily rejected the create"), delay)
-	case response.status == http.StatusUnauthorized && !response.isErrorBodyOversized:
+	// A 401 whose body could not be read in full might hide a document ID, so its outcome is unknown.
+	case response.status == http.StatusUnauthorized && sendErr == nil && !response.isErrorBodyOversized:
 		refreshed, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
 		if refreshErr != nil && !isTerminalCredentialError(refreshErr) {
 			// Google refuses an unauthenticated create before processing it, so a transient refresh failure retries.
@@ -372,20 +373,27 @@ func (client *Client) reconcileCreateAfterSend(call sdkgo.Call, send createDocum
 }
 
 // reconcileAcceptedCreate handles a 2xx create whose body is unusable or unreadable. Drive created the
-// document, so it is never resent: the lookup confirms it, or a saved file ID makes the next attempt
-// read it back; otherwise uncertain is selected.
+// document, so it is never resent: the acceptance is saved before any lookup, the lookup confirms it,
+// or the saved file ID or acceptance makes the next attempt read it back; otherwise uncertain is selected.
 func (client *Client) reconcileAcceptedCreate(call sdkgo.Call, send createDocumentSend, credential *Credentials, idempotencyKey string, receipt sdkgo.Receipt, body []byte, failureKind sdkgo.FailureKind) sdkgo.MutationAttempt[CreateDocumentOutput] {
+	documentID := createdDocumentID(body)
+	acceptanceMarker := acceptedCreateWithoutDocumentID
+	if documentID != "" {
+		acceptanceMarker = documentID
+	}
+	// Saved before the lookup, so an attempt that ends during it can never resend.
+	isAcceptanceSaved := send.fence.RecordProviderID(acceptanceMarker) == nil
 	if document := client.findCreatedDocumentAfterSend(call, credential, idempotencyKey); document != nil {
 		receipt.ProviderObjectID = document.DocumentID
 		// The confirmed result is known even if its extra checkpoint is lost.
 		_ = send.fence.RecordProviderID(document.DocumentID)
 		return sdkgo.NewMutationBranch(CreateDocumentBranchCreated, CreateDocumentOutput{Document: *document}, nil, receipt)
 	}
-	if documentID := createdDocumentID(body); documentID != "" && send.fence.RecordProviderID(documentID) == nil {
+	if isAcceptanceSaved && documentID != "" {
 		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(failureKind, createDocumentOperationID, "provider accepted the create with an unusable response; the next attempt reads the document back"), 0)
 	}
 	// The saved acceptance makes later attempts look the document up without sending again, up to the cap.
-	if send.fence.RecordProviderID(acceptedCreateWithoutDocumentID) == nil {
+	if isAcceptanceSaved {
 		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(failureKind, createDocumentOperationID,
 			"provider accepted the create with an unusable response, and the duplicate lookup does not show it yet; the next attempt looks it up again"), 0)
 	}

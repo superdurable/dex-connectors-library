@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,6 +42,15 @@ func TestWritesRetryAStatusThatDoesNotProveARefusal(t *testing.T) {
 		_, err = cancel(client, writeOutcomeHandle)
 		requireRetry(t, err, sdkgo.FailureAvailability)
 	}
+}
+
+func TestWritesRetryARefusalWhoseBodyIsOversized(t *testing.T) {
+	oversized := `{"code":"002003","message":"` + strings.Repeat("x", 1<<20) + `"}`
+	client := newAnsweringClient(t, http.StatusUnprocessableEntity, oversized)
+	_, err := submit(newStep(), client, snowflake.SubmitStatementInput{Statement: "SELECT 1"})
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	_, err = cancel(client, writeOutcomeHandle)
+	requireRetry(t, err, sdkgo.FailureAvailability)
 }
 
 func TestARepeatedCancelRefusedForAKnownHandleSelectsCanceled(t *testing.T) {

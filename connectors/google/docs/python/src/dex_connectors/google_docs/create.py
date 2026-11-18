@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Duplicate-aware Google Drive document creation."""
 
+import asyncio
 import json
 import secrets
 from dataclasses import dataclass
@@ -147,10 +148,26 @@ def _lookup_url(client: Client, key: str) -> str:
     )
 
 
+def _lookup_timeout_seconds(call: Call) -> float | None:
+    """Return the time left before the attempt deadline, less a margin, as Go bounds its lookup."""
+    deadline = getattr(call.context, "deadline", None)
+    if not isinstance(deadline, datetime):
+        return None
+    remaining = (deadline - datetime.now(UTC)).total_seconds()
+    margin = min(1.0, max(0.001, remaining / 10))
+    return max(0.0, remaining - margin)
+
+
 async def _lookup(
     client: Client, call: Call, credential: Credentials, key: str
 ) -> tuple[Exchange, str, Any, Receipt | None, float, CreatedDocument | None, bool]:
-    exchange = await client.exchange(call, credential, "GET", _lookup_url(client, key))
+    try:
+        exchange = await asyncio.wait_for(
+            client.exchange(call, credential, "GET", _lookup_url(client, key)), _lookup_timeout_seconds(call)
+        )
+    except TimeoutError:
+        # The attempt deadline cut the lookup; an unfinished lookup is an unknown read.
+        exchange = Exchange(error="lookupTimeout")
     branch, problem, receipt, delay = _read_result(
         client,
         call,
@@ -502,7 +519,8 @@ async def _after_create(
             ),
             parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC)),
         )
-    if response.status == 401 and not response.is_error_body_too_large:
+    # A 401 whose body could not be read in full might hide a document ID, so its outcome is unknown.
+    if response.status == 401 and not response.error and not response.is_error_body_too_large:
         if not hasattr(client._credentials, "resolve_after_rejection"):
             return await _reject_or_select_uncertain(
                 send, FailureKind.AUTHENTICATION, "provider rejected the create credential", receipt
@@ -635,9 +653,16 @@ async def _reconcile_accepted(
 ) -> MutationAttempt[CreateDocumentOutput]:
     """Handle a 2xx create whose body is unusable or unreadable; Drive created it, so it is never resent.
 
-    The lookup confirms it, or a saved file ID makes the next attempt read it back; otherwise
-    uncertain is selected.
+    The acceptance is saved before any lookup, the lookup confirms it, or the saved file ID or
+    acceptance makes the next attempt read it back; otherwise uncertain is selected.
     """
+    document_id = _created_document_id(response.body)
+    # Saved before the lookup, so an attempt that ends during it can never resend.
+    try:
+        await send.fence.record_provider_id(document_id or ACCEPTED_CREATE_WITHOUT_DOCUMENT_ID)
+        is_acceptance_saved = True
+    except Exception:
+        is_acceptance_saved = False
     if document := await _find_after_send(client, call, credential, key):
         try:
             await send.fence.record_provider_id(document.document_id)
@@ -646,23 +671,17 @@ async def _reconcile_accepted(
         return MutationAttempt.branch_result(
             "created", CreateDocumentOutput(document), client.receipt(call, response, document.document_id)
         )
-    document_id = _created_document_id(response.body)
-    if document_id:
-        try:
-            await send.fence.record_provider_id(document_id)
-            return MutationAttempt.retry(
-                failure(
-                    "createDocument",
-                    kind,
-                    "provider accepted the create with an unusable response; "
-                    "the next attempt reads the document back",
-                )
+    if is_acceptance_saved and document_id:
+        return MutationAttempt.retry(
+            failure(
+                "createDocument",
+                kind,
+                "provider accepted the create with an unusable response; "
+                "the next attempt reads the document back",
             )
-        except Exception:
-            pass  # Without the saved ID, the acceptance marker below still forbids a resend.
-    try:
+        )
+    if is_acceptance_saved:
         # The saved acceptance makes later attempts look the document up without sending again, up to the cap.
-        await send.fence.record_provider_id(ACCEPTED_CREATE_WITHOUT_DOCUMENT_ID)
         return MutationAttempt.retry(
             failure(
                 "createDocument",
@@ -671,8 +690,6 @@ async def _reconcile_accepted(
                 "does not show it yet; the next attempt looks it up again",
             )
         )
-    except Exception:
-        pass  # Without a saved acceptance a later attempt could resend, so select uncertain.
     return MutationAttempt.uncertain(
         CreateDocumentOutput(),
         failure(

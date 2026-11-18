@@ -430,6 +430,36 @@ func TestAddPlaylistItemNeverResendsAnAcceptedInsert(t *testing.T) {
 		require.Equal(t, youtube.AddPlaylistItemBranchAdded, result.Branch)
 		require.Equal(t, 1, fake.inserts)
 	})
+	t.Run("the acceptance is saved before the listing that follows it", func(t *testing.T) {
+		for _, accepted := range []struct{ body, marker string }{
+			{`{"kind":"youtube#playlistItem"}`, "dex:acceptedWithoutItemId"},
+			{`{"id":"UExpdGVt","snippet":7}`, "UExpdGVt"},
+		} {
+			ctx := singledispatchtest.NewContext("youtube-flow", "add-saved-first-"+accepted.marker)
+			isInserted := false
+			var markersSeenByListing []string
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					if isInserted {
+						heartbeats := ctx.Heartbeats()
+						markersSeenByListing = append(markersSeenByListing, string(heartbeats[len(heartbeats)-1]))
+					}
+					_, _ = response.Write([]byte(`{"pageInfo":{"totalResults":0},"items":[]}`))
+					return
+				}
+				isInserted = true
+				_, _ = response.Write([]byte(accepted.body))
+			}))
+			t.Cleanup(server.Close)
+			client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
+			input := youtube.AddPlaylistItemInput{PlaylistID: testPlaylistID, VideoID: testVideoID}
+			_, err := sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.NotEmpty(t, markersSeenByListing)
+			require.Contains(t, markersSeenByListing[0], `"providerId":"`+accepted.marker+`"`)
+		}
+	})
 	t.Run("body that breaks after 2xx headers is never resent", func(t *testing.T) {
 		inserts := 0
 		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {

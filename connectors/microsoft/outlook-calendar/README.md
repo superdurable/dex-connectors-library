@@ -73,8 +73,10 @@ reauthorization, and so does a refreshed grant whose `scope` lacks
 `https://graph.microsoft.com/` form). The check never requires
 `offline_access`. After a 401 from Graph the connector asks once for a refresh,
 which the project connection performs only when the stored expiry has passed,
-and then retries once; otherwise the 401 selects `providerRejected`. There is
-never a refresh loop.
+and then retries once; otherwise the 401 selects `providerRejected`. When that
+refresh fails transiently, such as an unavailable credential broker, the
+attempt retries instead, because Graph did not process the rejected request.
+There is never a refresh loop.
 
 ### App-only for one mailbox (`app-only`)
 
@@ -168,9 +170,11 @@ offer and does not rely on any undocumented behavior:
   `401`, `403`, `404`, `411`, `413`, `414`, `415`, or `422` whose body names no
   created item ID selects `providerRejected`, and only when no earlier attempt
   may have sent; after a possible earlier send it selects `uncertain`.
-- A 2xx is never resent. An unusable 2xx body records acceptance, reads the key
-  back, and later attempts only read back, selecting `uncertain` when the event
-  still cannot be found. `invalidResponse` now means only that the lookup
+- A 2xx is never resent. An unusable 2xx body, including one that breaks or is
+  cut by the write deadline after the status arrived, records acceptance, reads
+  the key back, and later attempts only read back, selecting `uncertain` when
+  the event still cannot be found. A write deadline that passes before any
+  status arrived is an unknown outcome. `invalidResponse` now means only that the lookup
   before any send was unusable, so nothing was sent.
 - A credential failure after a possible earlier send retries when transient and
   selects `uncertain` when terminal. Malformed stored credential material is

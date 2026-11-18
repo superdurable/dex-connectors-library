@@ -177,12 +177,15 @@ attempt retries while the cap allows another send, and the next attempt
 searches again before resending, also after a resend that Google rate
 limited. A 2xx whose body is unusable, oversized, or breaks while read, and a
 response of any other status whose body names a file ID, means Drive created
-the document, so it is never resent: the attempt searches once, then saves the
-file ID the body carries and reads it back on the next attempt. Without an ID
-it saves the acceptance itself, and later attempts search again without
-sending until the cap, where `uncertain` is selected. A saved document ID is
-always read back instead of resent. A definite refusal (400, 401, 403, 404,
-411, 413, 414, 415, or 422) whose body was read in full selects
+the document, so it is never resent: before any search the attempt saves the
+file ID the body carries, or without an ID the acceptance itself, so an attempt
+that ends during the search can never resend. It then searches once, saves the
+found ID, and otherwise retries: a saved ID is read back on the next attempt,
+and a saved acceptance makes later attempts search again without sending until
+the cap, where `uncertain` is selected. A saved document ID is always read back
+instead of resent. The search is bounded by the attempt deadline. A definite
+refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422) whose body was read in
+full selects
 `providerRejected` on the first send and is never resent; after an earlier
 unconfirmed send it selects `uncertain`. A refusal body over the error limit
 might hide a file ID, so it is an unknown outcome. Below the

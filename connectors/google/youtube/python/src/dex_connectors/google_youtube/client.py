@@ -1259,8 +1259,14 @@ class AddPlaylistItemOperation:
         """List the playlist after YouTube accepted this insert with an unusable body; never resend it.
 
         A saved item ID, or the saved acceptance itself, makes later attempts list again up to the
-        send cap; uncertain is selected here only when neither could be saved.
+        send cap; uncertain is selected here only when neither could be saved. The acceptance is saved
+        before the listing, so an attempt that ends during it never inserts again.
         """
+        try:
+            await fence.record_provider_id(accepted_item_id or ACCEPTED_INSERT_WITHOUT_ITEM_ID)
+            is_acceptance_saved = True
+        except Exception:
+            is_acceptance_saved = False
         body, receipt, outcome = await self.client._exchange(
             call,
             "addPlaylistItem",
@@ -1276,11 +1282,14 @@ class AddPlaylistItemOperation:
             except ValueError:
                 page = None
             if page is not None and page.items:
+                try:
+                    await fence.record_provider_id(page.items[0].id)
+                except Exception:
+                    pass  # The listed item is authoritative even if this extra checkpoint is lost.
                 return MutationAttempt.branch_result(
                     ADDED, AddedPlaylistItem(page.items[0]), _with_object_id(receipt, page.items[0].id)
                 )
-        try:
-            await fence.record_provider_id(accepted_item_id or ACCEPTED_INSERT_WITHOUT_ITEM_ID)
+        if is_acceptance_saved:
             return MutationAttempt.retry(
                 _failure(
                     acceptance.operation,
@@ -1290,8 +1299,7 @@ class AddPlaylistItemOperation:
                     "does not show it yet; the next attempt lists again",
                 )
             )
-        except Exception:
-            pass  # Without a saved acceptance a later attempt could insert again, so select uncertain.
+        # Without a saved acceptance a later attempt could insert again, so select uncertain.
         return MutationAttempt.uncertain(
             AddedPlaylistItem(),
             _failure(

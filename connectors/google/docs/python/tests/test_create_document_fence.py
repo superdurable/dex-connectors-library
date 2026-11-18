@@ -301,6 +301,70 @@ async def test_rejected_lookup_after_possible_send_retries_below_the_cap_and_is_
     assert at_cap[0].kind == "uncertain"
 
 
+@pytest.mark.parametrize(
+    ("accepted_body", "expected_marker"),
+    [
+        ({"name": "Missing ID"}, "dex:acceptedWithoutDocumentId"),
+        ({"id": "newDoc1", "mimeType": 7}, "newDoc1"),
+    ],
+)
+async def test_the_acceptance_is_saved_before_the_lookup_that_follows_it(
+    accepted_body: dict[str, Any], expected_marker: str
+) -> None:
+    context = HeartbeatContext(call_id=CALL_ID)
+    is_created = False
+    markers_seen_by_lookup: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal is_created
+        if is_lookup(request):
+            if is_created:
+                markers_seen_by_lookup.append(json.dumps(context.heartbeat_payload, default=str))
+            return httpx.Response(200, json=EMPTY_LOOKUP)
+        is_created = True
+        return httpx.Response(200, json=accepted_body)
+
+    results, _ = await run_attempts(answer, 1, context=context)
+    assert results[0].kind == "retry"
+    assert markers_seen_by_lookup and f'"providerId": "{expected_marker}"' in markers_seen_by_lookup[0]
+
+
+async def test_an_unreadable_401_body_is_an_unknown_outcome() -> None:
+    class Broken401Stream(httpx.AsyncByteStream):
+        async def __aiter__(self):  # type: ignore[no-untyped-def]
+            yield b'{"error":{"code":401'
+            raise httpx.ReadError("connection reset")
+
+    creates = 0
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal creates
+        if is_lookup(request):
+            return httpx.Response(200, json=EMPTY_LOOKUP)
+        creates += 1
+        return httpx.Response(401, stream=Broken401Stream())
+
+    revoked = RejectedRefreshCredentials(sdk.ReauthorizationRequiredError())
+    results, _ = await run_attempts(answer, 3, revoked)
+    # A refusal needs a readable body, so the create is resent below the cap and uncertain at it.
+    assert [result.kind for result in results] == ["retry", "retry", "uncertain"]
+    assert creates == 3
+
+
+async def test_the_lookup_is_bounded_by_the_attempt_deadline() -> None:
+    async def answer(request: httpx.Request) -> httpx.Response:
+        assert is_lookup(request)
+        await asyncio.sleep(30)
+        return httpx.Response(200, json=EMPTY_LOOKUP)
+
+    context = HeartbeatContext(call_id=CALL_ID)
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.5)
+    started = datetime.now(UTC)
+    results, _ = await run_attempts(answer, 1, context=context)  # type: ignore[arg-type]
+    assert results[0].kind == "retry"
+    assert datetime.now(UTC) - started < timedelta(seconds=5)
+
+
 async def test_incomplete_lookup_at_the_cap_retries() -> None:
     def answer(request: httpx.Request) -> httpx.Response:
         assert is_lookup(request)

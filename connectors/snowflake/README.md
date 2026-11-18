@@ -177,8 +177,12 @@ the connection's warehouse, role, database, schema, and `timeout`, and `MULTI_ST
 | `providerRejected` | 422 (a compilation error, an unknown object, a privilege error), 400, 401, 403, 404, 411, 413, 414, or 415; nothing ran |
 | `defect` | Invalid input, a placeholder mismatch, or unusable credentials; no request was sent |
 
-Both writes declare `repeatOnUnknown: safe`. 429, 500, 502, 503, 504, 408, a redirect, any other
-status, a dropped connection, and a 2xx without a readable handle return Retry,
+Both writes declare `repeatOnUnknown: safe`. `submitStatement` runs application-supplied SQL, so,
+like the SQL connectors' `execute`, its repeat safety depends on the statement; the operation stays
+`safe`, and the application chooses statements that are safe to run twice (see
+[Retries, duplicates, and durability](#retries-duplicates-and-durability)). 429, 500, 502, 503, 504, 408, a redirect, any other
+status, a dropped connection, a refusal whose error body is unreadable or over 1 MiB, and a 2xx
+without a readable handle return Retry,
 after `Retry-After` when Snowflake sends one. A credential failure selects `defect` only for a
 required reauthorization, a missing or unselected connection, a credential broker refusal, or
 credential material that fails a local check; any other credential failure returns Retry.
@@ -231,7 +235,10 @@ if it has already executed successfully, so the operation returns Retry, never `
 lost response. Snowflake does not document a resubmission that arrives while the first statement
 is still queued or running, which may occur during a retry after Worker loss;
 this connector assumes it returns the same statement, and that is unverified against the live API.
-A statement that failed may run again on a resubmission. The example's integration test answers the
+A statement that failed may run again on a resubmission. Because `requestId` deduplication of an
+in-flight statement is unverified, a non-idempotent statement, such as an `INSERT` without a
+business key, must not rely on it: make the statement itself safe to repeat, for example a `MERGE`
+keyed by a business ID. The example's integration test answers the
 first submission until its Worker is stopped; the replacement sends the same
 `requestId`, and the scripted API runs the statement once. Snowflake notes that `retry=true` adds a
 statement-history lookup to each submission.

@@ -121,6 +121,34 @@ async def run_attempts(
     return results, context
 
 
+@pytest.mark.parametrize(
+    ("accepted_body", "expected_marker"),
+    [
+        (b'{"kind":"youtube#playlistItem"}', "dex:acceptedWithoutItemId"),
+        (b'{"id":"UExpdGVt","snippet":7}', "UExpdGVt"),
+    ],
+)
+async def test_the_acceptance_is_saved_before_the_listing_that_follows_it(
+    accepted_body: bytes, expected_marker: str
+) -> None:
+    context = HeartbeatContext(call_id=CALL_ID)
+    is_inserted = False
+    markers_seen_by_listing: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal is_inserted
+        if request.method == "GET":
+            if is_inserted:
+                markers_seen_by_listing.append(str(context.heartbeat_payload))
+            return httpx.Response(200, json=EMPTY_LISTING)
+        is_inserted = True
+        return httpx.Response(200, content=accepted_body)
+
+    results, _ = await run_attempts(answer, 1, context=context)
+    assert results[0].kind == "retry"
+    assert markers_seen_by_listing and expected_marker in markers_seen_by_listing[0]
+
+
 async def test_rate_limited_resend_still_reads_back_on_the_next_attempt() -> None:
     methods: list[str] = []
     statuses = [500, 429, 500]

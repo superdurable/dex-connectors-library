@@ -299,20 +299,27 @@ export class AddPlaylistItemOperation implements Mutation<AddPlaylistItemInput, 
    * only when neither could be saved.
    */
   private async confirmAcceptedInsert(call: Call, fence: Fence, listInput: ListPlaylistItemsInput, query: Record<string, string>, acceptance: Failure, acceptedItemID: string): Promise<MutationAttempt<AddedPlaylistItem>> {
+    // Saved before the listing, so an attempt that ends during it never inserts again.
+    let isAcceptanceSaved = true;
+    try { await fence.recordProviderId(acceptedItemID || acceptedInsertWithoutItemID); }
+    catch { isAcceptanceSaved = false; }
     let readBackReceipt = receipt(call, listInput.playlistId);
     try {
       const response = await this.client.exchange(call, 'addPlaylistItem', '/playlistItems', query, true);
       readBackReceipt = receipt(call, listInput.playlistId, response);
       const page = playlistPage(response, listInput);
-      if (page.items?.length) return newMutationBranch('added', { item: page.items[0]!, wasAlreadyPresent: false }, receipt(call, page.items[0]!.id, response));
+      if (page.items?.length) {
+        try { await fence.recordProviderId(page.items[0]!.id); }
+        catch { /* The listed item is authoritative even if this extra checkpoint is lost. */ }
+        return newMutationBranch('added', { item: page.items[0]!, wasAlreadyPresent: false }, receipt(call, page.items[0]!.id, response));
+      }
     } catch (cause) {
       // Any read-back failure leaves the accepted insert unconfirmed, and it is never resent.
       if (cause instanceof YouTubeExchangeError && cause.response) readBackReceipt = receipt(call, listInput.playlistId, cause.response);
     }
-    try {
-      await fence.recordProviderId(acceptedItemID || acceptedInsertWithoutItemID);
+    if (isAcceptanceSaved)
       return newMutationRetry({ ...acceptance, message: `${acceptance.message}; YouTube accepted the insert, so it is not sent again, and the playlist listing does not show it yet; the next attempt lists again` });
-    } catch { /* Without a saved acceptance a later attempt could insert again, so select uncertain. */ }
+    // Without a saved acceptance a later attempt could insert again, so select uncertain.
     return newMutationUncertain(zeroAdded, { ...acceptance, message: `${acceptance.message}; YouTube accepted the insert, so it is not sent again, the playlist listing does not show it, and its acceptance checkpoint failed; check the playlist` }, readBackReceipt);
   }
 

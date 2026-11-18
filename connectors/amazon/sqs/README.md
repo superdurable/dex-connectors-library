@@ -171,7 +171,11 @@ execution sends the Call ID as `ReceiveRequestAttemptId`, so a retry within
 five minutes gets the same batch and receipt handles back. A standard queue has
 no such ID: messages a lost response received stay hidden until their
 visibility timeout ends and are then delivered again, with a higher
-`ReceiveCount`. They are delayed, never lost.
+`ReceiveCount`. They are delayed, never lost. Each repeated receive raises
+`ApproximateReceiveCount`, so on a queue whose redrive policy has a small
+`maxReceiveCount`, retries after lost responses can move a message to the
+dead-letter queue before the Flow processes it. Keep `maxReceiveCount` well
+above the Step's expected retries.
 
 ### deleteMessage
 

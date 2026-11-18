@@ -510,6 +510,28 @@ func TestCreateDocumentRefreshes401AndRetriesOnNextAttempt(t *testing.T) {
 	require.Equal(t, 2, countRecordedCreates(server.recorded()))
 }
 
+func TestCreateDocumentUnreadable401BodyIsAnUnknownOutcome(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		if request.method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+			return
+		}
+		// The declared length is never written, so the client's body read fails after the 401.
+		response.Header().Set("Content-Length", "500")
+		response.WriteHeader(http.StatusUnauthorized)
+		_, _ = response.Write([]byte(`{"error":{"code":401`))
+	})
+	credentials := &refreshingCreateCredentials{token: "token-a"}
+	client, err := docs.New(docs.Config{DocsEndpoint: server.URL, DriveEndpoint: server.URL}, credentials)
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("docs-flow", "unreadable-401")
+	result, attempts := runCreateDocumentUntilBranch(t, ctx, client)
+	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch, "an unreadable 401 never proves a refusal")
+	require.Equal(t, 3, attempts)
+	require.Equal(t, 3, countRecordedCreates(server.recorded()))
+	require.Zero(t, credentials.refreshes, "only a readable 401 triggers a refresh")
+}
+
 func TestCreateDocumentFenceCountsASkippedAttemptAsAPossibleSend(t *testing.T) {
 	provider := fakegoogledocs.New(t, docsTestToken)
 	provider.QueueCreateResponses(fakegoogledocs.CreateResponseUnavailableWithoutCreating)
@@ -595,6 +617,39 @@ func TestCreateDocumentUnusableAcceptedBodyIsLookedUpUntilTheCapAndNeverResent(t
 	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
 	require.Equal(t, 4, attempts, "lookups continue until the send cap of 3 is reached")
 	require.Equal(t, 1, countRecordedCreates(server.recorded()))
+}
+
+func TestCreateDocumentSavesTheAcceptanceBeforeTheLookupThatFollowsIt(t *testing.T) {
+	for name, acceptedBody := range map[string]string{
+		"without an ID": `{"name":"Missing ID"}`,
+		"with an ID":    `{"id":"newDoc1","mimeType":7}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := singledispatchtest.NewContext("docs-flow", "accepted-saved-first-"+strings.ReplaceAll(name, " ", "-"))
+			isCreated := false
+			var markersSeenByLookup []string
+			server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+				if request.method == http.MethodPost {
+					isCreated = true
+					writeJSON(t, response, http.StatusOK, acceptedBody)
+					return
+				}
+				if isCreated {
+					heartbeats := ctx.Heartbeats()
+					markersSeenByLookup = append(markersSeenByLookup, string(heartbeats[len(heartbeats)-1]))
+				}
+				writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+			})
+			_, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
+			requireRetry(t, err, sdkgo.FailureProtocol)
+			require.NotEmpty(t, markersSeenByLookup)
+			expected := "dex:acceptedWithoutDocumentId"
+			if strings.Contains(acceptedBody, "newDoc1") {
+				expected = "newDoc1"
+			}
+			require.Contains(t, markersSeenByLookup[0], `"providerId":"`+expected+`"`, "the lookup runs only after the acceptance is saved")
+		})
+	}
 }
 
 func TestCreateDocumentAcceptedWithoutIDIsFoundByALaterLookup(t *testing.T) {

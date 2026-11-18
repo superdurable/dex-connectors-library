@@ -130,7 +130,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
-        # Every attempt sends the same requestId with retry=true, which Snowflake deduplicates.
+        # Application-supplied SQL, like SQL execute: the application keeps the statement safe to repeat.
         repeatOnUnknown: safe
       mocks:
         - name: acceptedAccountUsageQuery

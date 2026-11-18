@@ -199,6 +199,31 @@ func readErrorBody(response *http.Response) []byte {
 	return body
 }
 
+// maxWriteErrorBodyBytes matches the Python port's bound for a non-200 body.
+const maxWriteErrorBodyBytes = 1 << 20
+
+// readWriteErrorBody reads a status or error body and reports whether it was read in full within the bound.
+func readWriteErrorBody(response *http.Response) ([]byte, bool) {
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxWriteErrorBodyBytes+1))
+	if err != nil {
+		return nil, false
+	}
+	if len(body) > maxWriteErrorBodyBytes {
+		return body[:maxWriteErrorBodyBytes], false
+	}
+	return body, true
+}
+
+// retryIncompleteWriteRefusal makes a refusal whose body was unreadable or oversized an unknown outcome.
+func retryIncompleteWriteRefusal(failure classifiedFailure, isBodyComplete bool) classifiedFailure {
+	if isBodyComplete || failure.disposition != dispositionRejected {
+		return failure
+	}
+	failure.disposition, failure.kind = dispositionRetry, sdkgo.FailureAvailability
+	failure.message += "; the error body could not be read in full"
+	return failure
+}
+
 func transportFailure() classifiedFailure {
 	return classifiedFailure{disposition: dispositionRetry, kind: sdkgo.FailureTransport, message: (&transportError{}).Error()}
 }

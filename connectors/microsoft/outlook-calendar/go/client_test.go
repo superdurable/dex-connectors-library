@@ -275,6 +275,8 @@ func TestCredentialFailuresAreClassifiedTheSameWayWithoutProviderRequest(t *test
 
 type rejectionRefreshingCredentialProvider struct {
 	forcedRefreshes int
+	// refreshErrors are returned, in order, by the first forced refreshes.
+	refreshErrors []error
 }
 
 func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (outlookcalendar.Credentials, error) {
@@ -296,6 +298,9 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	sdkgo.CredentialRefreshDriver[outlookcalendar.Credentials],
 ) (outlookcalendar.Credentials, error) {
 	provider.forcedRefreshes++
+	if provider.forcedRefreshes <= len(provider.refreshErrors) {
+		return outlookcalendar.Credentials{}, provider.refreshErrors[provider.forcedRefreshes-1]
+	}
 	return outlookcalendar.Credentials{AuthMethodID: outlookcalendar.MicrosoftOAuthAuthMethodID, AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
 }
 

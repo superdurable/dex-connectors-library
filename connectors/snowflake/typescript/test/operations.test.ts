@@ -87,6 +87,12 @@ describe('Snowflake SQL API adapter', () => {
     expect(await client.cancelStatement().invoke(call, { statementHandle: handle })).toMatchObject({ kind: 'retry' });
   });
 
+  it('retries a write refusal whose error body is over 1 MiB', async () => {
+    const client = answering(422, { code: '002003', message: 'x'.repeat(1 << 20) });
+    expect(await client.submitStatement().invoke(call, { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry' });
+    expect(await client.cancelStatement().invoke(call, { statementHandle: handle })).toMatchObject({ kind: 'retry' });
+  });
+
   it('selects canceled when a repeated cancel is refused for a known handle', async () => {
     const repeated = { ...call, context: { ...call.context, attempt: 2 } } as Call;
     const refused = answering(422, { code: '000605', sqlState: '01000', statementHandle: handle });
