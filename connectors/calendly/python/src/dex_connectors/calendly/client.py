@@ -173,7 +173,17 @@ class Client:
                 "the Calendly connection is missing, not selected, or refused by the credential broker; "
                 "check it in Dex Web Connections",
             )
-        except Exception:
+        except Exception as error:
+            # Imported here because the generated connection module imports this module.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return (
+                    None,
+                    FailureKind.AUTHENTICATION,
+                    "the stored Calendly connection credentials are malformed; "
+                    "authorize it again in Dex Web Connections",
+                )
             return (
                 None,
                 FailureKind.AVAILABILITY,

@@ -6,7 +6,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFou
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { ListScheduledEventsOperation, GetScheduledEventOperation, ListEventInviteesOperation, CancelScheduledEventOperation, CreateSchedulingLinkOperation, CreateWebhookSubscriptionOperation } from './operations.js';
 
 const apiBaseURL = 'https://api.calendly.com';
@@ -75,6 +75,7 @@ export class CalendlyClient {
       if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) {
         return { kind: 'terminal', message: 'the Calendly connection is missing, not selected, or refused by the credential broker; check it in Dex Web Connections' };
       }
+      if (isCredentialMaterialError(error)) return { kind: 'terminal', message: 'the stored Calendly connection credentials are malformed; authorize it again in Dex Web Connections' };
       return { kind: 'transient', message: 'the Calendly access token could not be loaded or refreshed yet' };
     }
     const accessToken = credentials.accessToken instanceof SecretString ? credentials.accessToken.reveal() : '';
