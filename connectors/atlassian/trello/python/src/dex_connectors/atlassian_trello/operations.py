@@ -5,6 +5,7 @@
 import json
 import math
 import re
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -305,6 +306,7 @@ class _FencedWrite:
         self.call, self.operation, self.fence, self.decision = call, operation, fence, decision
         self.can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         self.has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        self.is_first_send = decision.kind == DecisionKind.SEND_ALLOWED and not self.has_possible_earlier_send
 
     @classmethod
     async def start(
@@ -360,8 +362,8 @@ class _FencedWrite:
 
     async def credential_failure(self, output: Any, cause: Failure) -> MutationAttempt[Any]:
         """Map a credential failure before the send."""
-        # notSent after a possible earlier send would hide it, so only a first-send decision records it.
-        if self.decision.kind == DecisionKind.SEND_ALLOWED:
+        # notSent after a possible earlier send would hide it, so only a first send records it.
+        if self.is_first_send:
             try:
                 await self.fence.record_not_sent()
             except Exception:
@@ -430,6 +432,15 @@ class _FencedWrite:
             pass  # The accepted result stands; a lost identity checkpoint keeps the claim.
 
 
+def _accepted_uncertain(output: Any, cause: Failure, receipt: Receipt) -> MutationAttempt[Any]:
+    """Never resend a write Trello accepted, because Trello offers no lookup by Call ID."""
+    return MutationAttempt.uncertain(
+        output,
+        replace(cause, message=cause.message + "; Trello has no lookup by Call ID, so it is not sent again"),
+        receipt,
+    )
+
+
 def _credentials_unavailable(operation: str) -> Failure:
     return failure(
         operation,
@@ -456,8 +467,8 @@ async def _single_dispatch(
     call, operation = write.call, write.operation
     receipt = call_receipt(call, object_id=request_path.split("/")[2] if not_found else "")
     if not _has_dispatch_window(call):
-        # notSent after a possible earlier send would hide it, so only a first-send decision records it.
-        if write.decision.kind == DecisionKind.SEND_ALLOWED:
+        # notSent after a possible earlier send would hide it, so only a first send records it.
+        if write.is_first_send:
             try:
                 await write.fence.record_not_sent()
             except Exception:
@@ -478,6 +489,13 @@ async def _single_dispatch(
     try:
         response = await write.fence.dispatch(
             lambda deadline: client.request(credentials, "POST", request_path, payload=payload)
+        )
+    except TimeoutError:
+        # The write window closed after dispatch, so the outcome is unknown.
+        return None, write.resend_or_select_uncertain(
+            requested,
+            failure(operation, FailureKind.TRANSPORT, f"Trello {subject} outcome is unknown"),
+            receipt,
         )
     except (CheckpointError, InsufficientAttemptTimeError):
         return None, MutationAttempt.retry(
@@ -515,6 +533,8 @@ async def _single_dispatch(
     sent_receipt = call_receipt(call, response, receipt.provider_object_id)
     if route == "retry":
         return response, await write.record_can_resend(delay, reason)
+    if route == "acceptedUnreadable":
+        return response, _accepted_uncertain(requested, reason, sent_receipt)
     if route == "uncertain":
         return response, write.resend_or_select_uncertain(requested, reason, sent_receipt)
     branch = "notFound" if not_found and route == "notFound" else "providerRejected"
@@ -584,7 +604,7 @@ class CreateCardOperation:
                 raise ValueError("card response must be an object")
             card_id = trello_id(resource.get("id", ""), "cardId")
         except (ValueError, TypeError, KeyError):
-            return write.resend_or_select_uncertain(
+            return _accepted_uncertain(
                 requested,
                 failure(
                     "createCard",
@@ -660,7 +680,7 @@ class AddCommentOperation:
                 raise ValueError("comment response must be an object")
             comment_id = trello_id(resource.get("id", ""), "commentId")
         except (ValueError, TypeError, KeyError):
-            return write.resend_or_select_uncertain(
+            return _accepted_uncertain(
                 requested,
                 failure(
                     "addComment",
@@ -815,7 +835,9 @@ class UpdateCardOperation:
             self.client, call, credentials, card_id, "updateCard"
         )
         if route != "accepted":
-            return _update_read_result(call, output, read_response, route, reason, delay, card_id)
+            # Trello accepted the PUT, so an unusable read-back retries the repeatable update.
+            assert reason is not None
+            return MutationAttempt.retry(reason, delay)
         assert card is not None
         wrong = _first_unapplied_field(input, fields, card)
         if wrong:

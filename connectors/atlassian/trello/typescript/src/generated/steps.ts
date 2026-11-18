@@ -79,7 +79,7 @@ export interface CreateCardStepConfig<StepInput, OperationInput = CreateCardInpu
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically. */
+  /** The send cap is reached, or Trello accepted the card without a usable answer, and the outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -143,7 +143,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically. */
+  /** The send cap is reached, or Trello accepted the comment without a usable answer, and the outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

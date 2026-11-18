@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
-from dex_connectors.sdk.singledispatch import Marker
+from dex_connectors.sdk.singledispatch import Marker, State
 
 import dex_connectors.atlassian_trello as trello
 from dex_connectors.atlassian_trello._generated.definitions import (
@@ -161,3 +161,33 @@ async def test_unreadable_checkpoint_retries_without_sending() -> None:
     context.heartbeat_read_error = RuntimeError("heartbeat store unavailable")
     assert await run("createCard", 200, "{}", context, requests) == "retry"
     assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_name", ["createCard", "addComment"])
+async def test_accepted_write_with_an_unusable_body_is_never_resent(operation_name: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert await run(operation_name, 200, "not json", context, requests) == "uncertain"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_after_a_possible_send_keeps_the_checkpoint() -> None:
+    # Attempt 1 may have created the card; attempt 2's resend got a 429.
+    earlier = Marker(CALL_ID, 2, State.CAN_RESEND, send_count=1)
+    context = AttemptContext(attempt=3, heartbeat_value=earlier)
+    client = trello.Client(
+        trello.Config("http://127.0.0.1:12345/1"),
+        sdk.StaticCredentialProvider({}),
+        httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(500))),
+    )
+    operation = sdk.OperationRef("trello", "createCard")
+    call = sdk.Call(CALL_ID, CONNECTION, operation, context=context, max_sends=3)
+    card = trello.CreateCardInput(LIST_ID, "Approved")
+    try:
+        result = await sdk.run_mutation(client.create_card(), call, card)
+    finally:
+        await client.http_client.aclose()
+    assert result.branch == "uncertain"
+    assert context.heartbeat_value is earlier, "notSent would hide the earlier possible send"

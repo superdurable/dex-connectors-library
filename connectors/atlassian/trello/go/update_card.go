@@ -124,7 +124,8 @@ func (operation UpdateCardOperation) Invoke(call sdkgo.Call, input UpdateCardInp
 	}
 	card, readReceipt, classification := client.readCard(session, updateCardOperationID, update.cardID)
 	if classification.outcome != readSucceeded {
-		return cardReadAttempt(classification, output, readReceipt)
+		// Trello accepted the PUT, so an unusable read-back retries the repeatable update instead of failing it.
+		return sdkgo.NewMutationRetry[UpdateCardOutput](classification.failure, classification.retryAfter)
 	}
 	if field := update.expectation.firstUnappliedField(card); field != "" {
 		return sdkgo.NewMutationBranch(UpdateCardBranchInvalidResponse, output, failurePointer(updateCardOperationID, sdkgo.FailureProtocol,

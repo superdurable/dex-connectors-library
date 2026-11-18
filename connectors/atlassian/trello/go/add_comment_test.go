@@ -55,21 +55,23 @@ func TestAddCommentRetriesWithoutSendingWhenAttemptWindowIsTooShort(t *testing.T
 
 func TestAddCommentBranches(t *testing.T) {
 	for name, test := range map[string]struct {
-		reply  func(http.ResponseWriter)
-		branch sdkgo.BranchID
+		reply      func(http.ResponseWriter)
+		branch     sdkgo.BranchID
+		isAccepted bool
 	}{
-		"missing card":   {func(response http.ResponseWriter) { writeText(t, response, http.StatusNotFound, "SENTINEL") }, trello.AddCommentBranchNotFound},
-		"no permission":  {func(response http.ResponseWriter) { writeText(t, response, http.StatusUnauthorized, "SENTINEL") }, trello.AddCommentBranchProviderRejected},
-		"server error":   {func(response http.ResponseWriter) { writeText(t, response, http.StatusInternalServerError, "SENTINEL") }, trello.AddCommentBranchUncertain},
-		"conflict":       {func(response http.ResponseWriter) { writeText(t, response, http.StatusConflict, "SENTINEL") }, trello.AddCommentBranchUncertain},
-		"lost response":  {func(response http.ResponseWriter) { dropConnection(t, response) }, trello.AddCommentBranchUncertain},
-		"unusable reply": {func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"type":"commentCard"}`) }, trello.AddCommentBranchUncertain},
+		"missing card":   {func(response http.ResponseWriter) { writeText(t, response, http.StatusNotFound, "SENTINEL") }, trello.AddCommentBranchNotFound, false},
+		"no permission":  {func(response http.ResponseWriter) { writeText(t, response, http.StatusUnauthorized, "SENTINEL") }, trello.AddCommentBranchProviderRejected, false},
+		"server error":   {func(response http.ResponseWriter) { writeText(t, response, http.StatusInternalServerError, "SENTINEL") }, trello.AddCommentBranchUncertain, false},
+		"conflict":       {func(response http.ResponseWriter) { writeText(t, response, http.StatusConflict, "SENTINEL") }, trello.AddCommentBranchUncertain, false},
+		"lost response":  {func(response http.ResponseWriter) { dropConnection(t, response) }, trello.AddCommentBranchUncertain, false},
+		"unusable reply": {func(response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"type":"commentCard"}`) }, trello.AddCommentBranchUncertain, true},
 	} {
 		provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
 		ctx := newTrelloDexContext("comment-branches")
 		input := trello.AddCommentInput{CardID: testCardID, Text: "Approved."}
 		expectedSends := 1
-		if test.branch == trello.AddCommentBranchUncertain {
+		// An accepted comment is never resent, so only an unknown outcome is.
+		if test.branch == trello.AddCommentBranchUncertain && !test.isAccepted {
 			// An unknown outcome is resent below a cap of 2, then selects uncertain.
 			_, err := sdkgo.RunMutation(ctx, newTrelloClient(t, provider.URL).AddComment(), trelloConnection, input, sdkgo.WithMaxSends(2))
 			require.Error(t, err, name)

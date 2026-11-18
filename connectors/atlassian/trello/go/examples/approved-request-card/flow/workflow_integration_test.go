@@ -282,7 +282,7 @@ func TestLostWorkerDuringCreateResendsWithinTheSendCapWithRealDex(t *testing.T) 
 	require.Eventually(t, func() bool { return provider.createCount(cardName) == 1 }, 30*time.Second, 50*time.Millisecond,
 		"the first attempt must reach Trello")
 	harness.replaceWorker(t)
-	// Released held creates answer without a card, so every resend stays unconfirmed.
+	// Released held creates answer 500 after storing a card, so every resend stays unconfirmed.
 	close(provider.holdsCreate)
 
 	harness.waitForPhase(t, flowID, PhaseNeedsReconciliation)
@@ -480,6 +480,8 @@ func (provider *fakeTrello) createCard(response http.ResponseWriter, request *ht
 		case <-provider.holdsCreate:
 		case <-request.Context().Done():
 		}
+		// A 500 leaves the outcome unknown; an empty 2xx would mean accepted.
+		provider.writeText(response, http.StatusInternalServerError, "held create released")
 	case strings.Contains(name, markerSlowCreate):
 		provider.delayedRequests.Add(1)
 		defer provider.delayedRequests.Done()

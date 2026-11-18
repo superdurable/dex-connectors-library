@@ -355,7 +355,7 @@ def classify_response(
         if 200 <= status < 300:
             if response.interrupted:
                 return (
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.TRANSPORT,
@@ -365,7 +365,7 @@ def classify_response(
                 )
             if response.oversized:
                 return (
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.RESPONSE_TOO_LARGE,
@@ -375,7 +375,7 @@ def classify_response(
                 )
             if response.reflects_secret:
                 return (
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.PROTOCOL,
