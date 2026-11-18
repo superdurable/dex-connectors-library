@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    FailureKind,
     IdempotencyKey,
     OperationRef,
     SecretString,
@@ -113,3 +114,46 @@ async def test_invalid_media_type_never_stores_or_reads_text() -> None:
         get = await client.get_object_text().invoke(call, GetObjectTextInput(key="report.txt"))
         assert get.branch == "unsupportedContent"
         assert len(requests) == 1
+
+
+async def test_put_object_selects_provider_rejected_for_a_permanent_redirect_without_repeating() -> None:
+    """A 301 PermanentRedirect names another Region, a definite refusal that no repeat clears."""
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            301,
+            headers={"X-Amz-Bucket-Region": "ap-southeast-2"},
+            content=b"<Error><Code>PermanentRedirect</Code></Error>",
+        )
+
+    connection = ConnectionRef("amazon-s3", "s3-test")
+    credentials = StaticCredentialProvider(
+        {
+            connection: Credentials(
+                SecretString("AKIAS3CONNECTORTEST1"),
+                SecretString("safe-secret"),
+                SecretString(""),
+            )
+        }
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        client = Client(
+            Config(endpoint="http://127.0.0.1:12345", default_bucket="acme-reports", region="eu-west-1"),
+            credentials,
+            http_client,
+            lambda: datetime(2026, 10, 25, 9, tzinfo=UTC),
+        )
+        call = Call(
+            CallID("5908a179-2147-5839-9c64-529cd36f77d7"),
+            connection,
+            OperationRef("amazon-s3", "putObject"),
+            IdempotencyKey("stable-key"),
+        )
+        put = await client.put_object().invoke(
+            call, PutObjectInput(key="report.txt", content_type="text/plain", text_content="hello")
+        )
+    assert put.kind == "branch" and put.branch == "providerRejected"
+    assert put.failure is not None and put.failure.kind == FailureKind.PROVIDER_REJECTION
+    assert len(requests) == 1

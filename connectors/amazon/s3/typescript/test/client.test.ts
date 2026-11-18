@@ -88,6 +88,19 @@ it('keeps the released startSession result for a transient credential failure', 
   expect(await client.startSession(call)).toBeUndefined();
 });
 
+it('selects providerRejected for a putObject 301 PermanentRedirect without repeating', async () => {
+  let requests = 0;
+  const client = new S3Client({ endpoint: 'http://127.0.0.1:12345', region: 'eu-west-1', defaultBucket: 'acme-reports' },
+    { resolve: async () => testCredentials },
+    { now: () => new Date('2026-10-25T09:00:00Z'), send: async () => {
+      requests++;
+      return { status: 301, headers: { 'x-amz-bucket-region': 'ap-southeast-2' }, body: new TextEncoder().encode('<Error><Code>PermanentRedirect</Code></Error>') };
+    } });
+  expect(await client.putObject().invoke(call, { key: 'report.txt', contentType: 'text/plain', textContent: 'hello' }))
+    .toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'PROVIDER_REJECTION' } });
+  expect(requests).toBe(1);
+});
+
 it.each([405, 409, 425, 451])('retries a putObject answered with unlisted HTTP %i', async status => {
   const client = new S3Client({ endpoint: 'http://127.0.0.1:12345', region: 'eu-west-1', defaultBucket: 'acme-reports' },
     { resolve: async () => testCredentials },

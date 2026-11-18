@@ -201,6 +201,23 @@ func TestPutObjectRetriesAnUnlistedStatusBecauseItsOutcomeIsUnknown(t *testing.T
 	}
 }
 
+func TestPutObjectSelectsProviderRejectedForAPermanentRedirectWithoutRepeating(t *testing.T) {
+	store := newFakeStore(t)
+	var puts int
+	store.Intercept(func(request s3fake.Request) *s3fake.Response {
+		if request.Method == http.MethodPut {
+			puts++
+		}
+		return &s3fake.Response{StatusCode: http.StatusMovedPermanently, Code: "PermanentRedirect", Header: http.Header{"X-Amz-Bucket-Region": {"ap-southeast-2"}}}
+	})
+	result, err := runMutation(t, newDexContext("wrong-region-put"), newPathStyleClient(t, store).PutObject(), reportInput(false))
+	require.NoError(t, err)
+	require.Equal(t, s3.PutObjectBranchProviderRejected, result.Branch)
+	require.Equal(t, sdkgo.FailureProviderRejection, result.Failure.Kind)
+	require.Equal(t, 1, puts)
+	requireNoSecrets(t, result)
+}
+
 func TestPutObjectRetriesATransportFailureBecauseARepeatConverges(t *testing.T) {
 	store := newFakeStore(t)
 	client := newPathStyleClient(t, store)
