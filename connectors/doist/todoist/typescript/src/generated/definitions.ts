@@ -51,9 +51,9 @@ export const UpdateTaskBranch = {
 } as const;
 /** Todoist confirmed every specified field and returned the task. */
 export const UpdateTaskBranchUpdated = UpdateTaskBranch.Updated;
-/** Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task. */
+/** Todoist reports that the task does not exist. An accepted update whose read-back finds no active task repeats instead. */
 export const UpdateTaskBranchNotFound = UpdateTaskBranch.NotFound;
-/** Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer. */
+/** Todoist conclusively rejected the update. An accepted update whose read-back is rejected repeats instead. */
 export const UpdateTaskBranchProviderRejected = UpdateTaskBranch.ProviderRejected;
 /** Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization. */
 export const UpdateTaskBranchDefect = UpdateTaskBranch.Defect;
@@ -62,8 +62,8 @@ export const UpdateTaskDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "updateTaskContent" },
   branches: [
     { id: "updated", description: "Todoist confirmed every specified field and returned the task." },
-    { id: "notFound", description: "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", optional: true },
-    { id: "providerRejected", description: "Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer.", optional: true },
+    { id: "notFound", description: "Todoist reports that the task does not exist. An accepted update whose read-back finds no active task repeats instead.", optional: true },
+    { id: "providerRejected", description: "Todoist conclusively rejected the update. An accepted update whose read-back is rejected repeats instead.", optional: true },
     { id: "defect", description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

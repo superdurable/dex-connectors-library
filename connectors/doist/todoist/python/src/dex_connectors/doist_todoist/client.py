@@ -272,9 +272,11 @@ class Client:
         request_id: str = "",
         budget: _AttemptBudget | None = None,
         is_write: bool = False,
+        trace: _RequestDispatchTrace | None = None,
     ) -> _Exchange:
+        """Send one bounded request; ``trace`` keeps the response status for a caller's deadline."""
         if budget is None:
-            return await self._send_raw(operation, token, method, path, payload, request_id)
+            return await self._send_raw(operation, token, method, path, payload, request_id, trace)
         deadline = budget.write_deadline if is_write else budget.attempt_deadline
         remaining = deadline - time.monotonic()
         if budget.minimum_request_seconds <= 0 or remaining < budget.minimum_request_seconds:
@@ -287,8 +289,9 @@ class Client:
                 transient=True,
                 undispatched=True,
             )
-        try:
+        if trace is None:
             trace = _RequestDispatchTrace()
+        try:
             return await asyncio.wait_for(
                 self._send_raw(operation, token, method, path, payload, request_id, trace), remaining
             )
@@ -569,34 +572,26 @@ class UpdateTaskOperation:
             )
             if read.failure is None and read_matches:
                 return MutationAttempt.branch_result("updated", read_task or Task(), Receipt())
-            if read.local_defect:
-                assert read.failure is not None
-                return MutationAttempt.branch_result("defect", Task(), Receipt(), read.failure)
+            # An accepted update never selects a failure branch; the repeated replacement answers instead.
             if read.status == 404:
-                return MutationAttempt.branch_result(
-                    "notFound",
-                    Task(),
-                    Receipt(),
+                return MutationAttempt.retry(
                     _failure(
                         operation,
                         FailureKind.NOT_FOUND,
                         "Todoist answered the update, but the task is no longer active; "
-                        "it may be completed or deleted, so the specified fields are unconfirmed",
-                    ),
+                        "the specified fields are unconfirmed, so the update repeats",
+                    )
                 )
             if read.status in DEFINITE_WRITE_REFUSAL_STATUSES:
                 assert read.failure is not None
-                return MutationAttempt.branch_result(
-                    "providerRejected",
-                    Task(),
-                    Receipt(),
+                return MutationAttempt.retry(
                     _failure(
                         operation,
                         read.failure.kind,
                         f"Todoist rejected the read-back with HTTP {read.status}, "
                         "so the update could not be confirmed; repeating it is safe "
                         "because it sets absolute field values",
-                    ),
+                    )
                 )
             return MutationAttempt.retry(
                 read.failure
@@ -751,9 +746,12 @@ class _FencedCreate:
         return MutationAttempt.retry(rejected.failure, rejected.retry_after)
 
     async def dispatch(
-        self, send: Callable[[datetime], Awaitable[_Exchange]]
+        self, send: Callable[[datetime], Awaitable[_Exchange]], trace: _RequestDispatchTrace
     ) -> "_Exchange | MutationAttempt[Task]":
-        """Send once behind the Fence, or return the attempt when the Fence forbids sending."""
+        """Send once behind the Fence, or return the attempt when the Fence forbids sending.
+
+        ``trace`` is the send's request trace; its status decides a write window that ends mid-body.
+        """
         try:
             return await self.fence.dispatch(send)
         except (CheckpointError, InsufficientAttemptTimeError):
@@ -774,6 +772,18 @@ class _FencedCreate:
                 )
             )
         except TimeoutError:
+            if 200 <= trace.response_status < 300:
+                # Todoist accepted the creation before the body arrived, so a resend could duplicate it.
+                return MutationAttempt.uncertain(
+                    Task(),
+                    _failure(
+                        "createTask",
+                        FailureKind.TRANSPORT,
+                        "Todoist accepted the creation but its response was cut off, "
+                        "so the task is unconfirmed",
+                    ),
+                    Receipt(),
+                )
             return self.resend_or_select_uncertain(
                 _failure(
                     "createTask", FailureKind.TRANSPORT, "Todoist request did not return a complete response"
@@ -917,6 +927,7 @@ class CreateTaskOperation:
         if rejected is not None:
             return await write.credential_failure(rejected)
         assert token is not None
+        trace = _RequestDispatchTrace()
         dispatched = await write.dispatch(
             lambda _deadline: self.client._send(
                 operation,
@@ -927,7 +938,9 @@ class CreateTaskOperation:
                 str(call.idempotency_key),
                 budget=budget,
                 is_write=True,
-            )
+                trace=trace,
+            ),
+            trace,
         )
         if isinstance(dispatched, MutationAttempt):
             return dispatched

@@ -57,9 +57,9 @@ export class UpdateTaskOperation implements Mutation<UpdateTaskInput, Task> {
     const operation = 'updateTaskContent';
     const readBack = await this.client.taskRequest(call, attempt, operation, 'GET', input.taskId);
     if (!readBack.failure && matchesUpdate(readBack.task!, input)) return newMutationBranch('updated', readBack.task!, zeroReceipt());
-    if (readBack.isLocalDefect) return newMutationBranch('defect', emptyTask, zeroReceipt(), readBack.failure!);
-    if (readBack.status === 404) return newMutationBranch('notFound', emptyTask, zeroReceipt(), todoistFailure(operation, 'NOT_FOUND', 'Todoist answered the update, but the task is no longer active; it may be completed or deleted, so the specified fields are unconfirmed'));
-    if (definiteWriteRefusalStatuses.has(readBack.status)) return newMutationBranch('providerRejected', emptyTask, zeroReceipt(), todoistFailure(operation, readBack.failure!.kind, `Todoist rejected the read-back with HTTP ${readBack.status}, so the update could not be confirmed; repeating it is safe because it sets absolute field values`));
+    // An accepted update never selects a failure branch; the repeated replacement answers instead.
+    if (readBack.status === 404) return newMutationRetry(todoistFailure(operation, 'NOT_FOUND', 'Todoist answered the update, but the task is no longer active; the specified fields are unconfirmed, so the update repeats'));
+    if (definiteWriteRefusalStatuses.has(readBack.status)) return newMutationRetry(todoistFailure(operation, readBack.failure!.kind, `Todoist rejected the read-back with HTTP ${readBack.status}, so the update could not be confirmed; repeating it is safe because it sets absolute field values`));
     if (readBack.failure) return newMutationRetry(readBack.failure, readBack.retryAfterMs);
     if (answer.failure) return newMutationRetry(answer.failure, answer.retryAfterMs);
     return newMutationRetry(todoistFailure(operation, 'PROTOCOL', 'Todoist did not confirm the specified fields'));

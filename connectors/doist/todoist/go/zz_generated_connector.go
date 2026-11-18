@@ -288,8 +288,8 @@ var UpdateTaskDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTaskContent"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateTaskBranchUpdated, Description: "Todoist confirmed every specified field and returned the task."},
-		{ID: UpdateTaskBranchNotFound, Description: "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", Optional: true},
-		{ID: UpdateTaskBranchProviderRejected, Description: "Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer.", Optional: true},
+		{ID: UpdateTaskBranchNotFound, Description: "Todoist reports that the task does not exist. An accepted update whose read-back finds no active task repeats instead.", Optional: true},
+		{ID: UpdateTaskBranchProviderRejected, Description: "Todoist conclusively rejected the update. An accepted update whose read-back is rejected repeats instead.", Optional: true},
 		{ID: UpdateTaskBranchDefect, Description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

@@ -101,8 +101,9 @@ that time, and every request, including a read-back, within five sixths; the
 rest covers recording the result. These limits also cut a longer `Timeout` or
 caller-supplied `http.Client.Timeout`. A request with less than a tenth of the
 attempt time left is not sent: the attempt retries, and a skipped create
-read-back retries only that read-back, as described below. A create POST cut off by its limit has
-an unknown outcome, so it resends up to the send cap described below, and an
+read-back retries only that read-back, as described below. A create POST cut off by its limit
+before any response headers has an unknown outcome, so it resends up to the send cap described
+below; one cut off after 2xx headers was accepted and selects `uncertain`. An
 update cut off by its limit retries.
 Credentials are resolved once per attempt, before its first request, and a
 read-back reuses them. A residual risk remains: a heavily loaded engine may not
@@ -285,7 +286,8 @@ redirect protection.
 Real Dex tests cover Attributes, result routing, retry, a create answer
 confirmed by task ID, a credential read that fails once, update replacement
 after applied/unapplied 503 responses, an unusable update answer whose read-back
-finds no active task or is forbidden, retained Display RPCs,
+finds no active task or is forbidden (the update repeats, and only the repeated
+update's definite answer selects `notFound` or `providerRejected`), retained Display RPCs,
 rejection, unwired failure branches, pagination, create request identity across
 rate-limit and 503 retries, and delete retry after an applied write. See the
 [CRUD example](go/examples/task-crud/README.md) and

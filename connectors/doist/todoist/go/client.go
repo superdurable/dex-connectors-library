@@ -286,18 +286,17 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	}
 }
 
-// confirmUpdate reads back an unconfirmed 2xx. GET returns only active tasks, so 404 means completed or deleted.
+// confirmUpdate reads back an unconfirmed 2xx. An accepted update never selects a failure branch;
+// the repeated absolute replacement answers definitively instead.
 func (operation UpdateTaskOperation) confirmUpdate(budget attemptBudget, credentials Credentials, input UpdateTaskInput, answer exchangeResult) sdkgo.MutationAttempt[Task] {
 	readBack := operation.client.sendTaskRequest(budget.remainingWindow(), credentials, "updateTaskContent", http.MethodGet, input.TaskID, nil)
 	switch {
 	case readBack.failure == nil && taskMatchesUpdate(readBack.task, input):
 		return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, readBack.task, nil, sdkgo.Receipt{})
-	case readBack.isLocalDefect:
-		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, Task{}, readBack.failure, sdkgo.Receipt{})
 	case readBack.status == http.StatusNotFound:
-		return sdkgo.NewMutationBranch(UpdateTaskBranchNotFound, Task{}, failure("updateTaskContent", sdkgo.FailureNotFound, "Todoist answered the update, but the task is no longer active; it may be completed or deleted, so the specified fields are unconfirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Task](*failure("updateTaskContent", sdkgo.FailureNotFound, "Todoist answered the update, but the task is no longer active; the specified fields are unconfirmed, so the update repeats"), 0)
 	case isDefiniteWriteRefusalStatus(readBack.status):
-		return sdkgo.NewMutationBranch(UpdateTaskBranchProviderRejected, Task{}, failure("updateTaskContent", readBack.failure.Kind, "Todoist rejected the read-back with HTTP "+strconv.Itoa(readBack.status)+", so the update could not be confirmed; repeating it is safe because it sets absolute field values"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[Task](*failure("updateTaskContent", readBack.failure.Kind, "Todoist rejected the read-back with HTTP "+strconv.Itoa(readBack.status)+", so the update could not be confirmed; repeating it is safe because it sets absolute field values"), 0)
 	case readBack.failure != nil:
 		return sdkgo.NewMutationRetry[Task](*readBack.failure, readBack.retryAfter)
 	case answer.failure != nil:
