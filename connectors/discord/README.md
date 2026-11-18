@@ -131,7 +131,11 @@ require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 ## Security
 
 The bot token is a `secretString` credential resolved for every call, so a
-reset token applies without restarting the Worker. It travels only in the
+reset token applies without restarting the Worker. A reauthorization-required
+connection selects `providerRejected`; a missing or unselected connection, a
+credential broker rejection, or a malformed token selects `defect`; every other
+credential failure, such as an unavailable broker, retries without a request.
+The token travels only in the
 `Authorization: Bot <token>` header and never in a URL, Result, Failure,
 receipt, or log. Create it under **Bot > Reset Token** at
 [discord.com/developers/applications](https://discord.com/developers/applications)

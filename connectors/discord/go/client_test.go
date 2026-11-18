@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/discord/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func messageJSON(id string, content string) string {
@@ -110,6 +112,45 @@ func TestInvalidInputAndCredentialsSelectDefectWithoutARequest(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, discord.GetChannelBranchDefect, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Empty(t, provider.recordedRequests())
+}
+
+type failingDiscordCredentials struct{ err error }
+
+func (provider failingDiscordCredentials) Resolve(sdkgo.Call) (discord.Credentials, error) {
+	return discord.Credentials{}, provider.err
+}
+
+func TestCredentialFailuresRetryUnlessTerminal(t *testing.T) {
+	provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {
+		writeJSON(t, response, http.StatusOK, `{}`)
+	})
+	for _, testCase := range []struct {
+		err    error
+		branch sdkgo.BranchID
+	}{
+		{sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), discord.CreateMessageBranchProviderRejected},
+		{projectconfig.ErrReauthorizationRequired, discord.CreateMessageBranchProviderRejected},
+		{projectconfig.ErrObjectNotFound, discord.CreateMessageBranchDefect},
+		{projectconfig.ErrConnectionNotSelected, discord.CreateMessageBranchDefect},
+		{projectconfig.ErrCredentialBrokerRejected, discord.CreateMessageBranchDefect},
+		{projectconfig.ErrCredentialBrokerUnavailable, ""},
+		{errors.New("connection is not configured"), ""},
+	} {
+		t.Run(testCase.err.Error(), func(t *testing.T) {
+			client, err := discord.New(discord.Config{Endpoint: provider.URL}, failingDiscordCredentials{err: testCase.err})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newStepDexContext("create-credential"), client.CreateMessage(), discordConnection, discord.CreateMessageInput{ChannelID: testChannelID, Content: "hello"})
+			if testCase.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, testCase.branch, result.Branch)
+		})
+	}
 	require.Empty(t, provider.recordedRequests())
 }
 

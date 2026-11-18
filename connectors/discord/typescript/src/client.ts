@@ -3,6 +3,7 @@
 
 import { BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { AddReactionOperation, CreateMessageOperation, GetChannelOperation, ListChannelMessagesOperation } from './operations.js';
 
@@ -67,16 +68,18 @@ export class DiscordClient {
 
   /** Resolve credentials, perform one exchange, and classify its outcome. */
   async exchange(call: Call, operation: string, method: string, path: string, objectId: string, body?: unknown): Promise<ExchangeResult> {
-    let token: string;
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.botToken instanceof SecretString)) throw new TypeError('invalid Discord bot token');
-      token = credentials.botToken.reveal();
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid Discord bot token');
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: this.failure('rejected', operation, 'AUTHENTICATION', 'the Discord connection must be authorized again') };
-      return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Discord connection credentials are unavailable or invalid') };
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError)
+        return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Discord connection credentials are unavailable or invalid') };
+      // Nothing reached Discord, so a transient credential failure retries.
+      return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'Discord connection credentials are temporarily unavailable') };
     }
+    const token = credentials.botToken instanceof SecretString ? credentials.botToken.reveal() : '';
+    if (!token || !isHeaderSafeCredential(token)) return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Discord connection credentials are unavailable or invalid') };
     let encoded: Uint8Array | undefined;
     try { if (body !== undefined) encoded = Buffer.from(JSON.stringify(body), 'utf8'); }
     catch { return { outcome: this.failure('defect', operation, 'LOCAL_DEFECT', `${operation} request could not be encoded`) }; }

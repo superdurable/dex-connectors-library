@@ -16,6 +16,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -124,7 +126,7 @@ class Client:
                 ),
                 "providerRejected",
             )
-        except Exception:
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
             return (
                 None,
                 Failure(
@@ -134,6 +136,18 @@ class Client:
                     "Discord connection credentials are unavailable or invalid",
                 ),
                 "defect",
+            )
+        except Exception:
+            # Nothing reached Discord, so a transient credential failure retries.
+            return (
+                None,
+                Failure(
+                    FailureKind.AVAILABILITY,
+                    "discord",
+                    operation,
+                    "Discord connection credentials are temporarily unavailable",
+                ),
+                "retry",
             )
         if credentials is None or not is_header_safe_credential(credentials.bot_token.reveal()):
             return (

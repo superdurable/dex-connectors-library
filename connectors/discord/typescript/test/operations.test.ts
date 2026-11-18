@@ -5,6 +5,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { DiscordClient } from '../src/client.js';
 
 const call = { id: 'deb1de08-84b3-554e-91d5-e46e685d1f56', idempotencyKey: 'test-key',
@@ -22,6 +23,24 @@ it('treats revoked credentials as a terminal rejection without HTTP', async () =
   const result = await client.getChannel().invoke(call, { channelId });
   expect(result.kind).toBe('branch');
   if (result.kind === 'branch') { expect(result.branch).toBe('providerRejected'); expect(result.failure?.kind).toBe('AUTHENTICATION'); }
+  expect(requestCount).toBe(0);
+});
+
+it.each([
+  { error: new ObjectNotFoundError(), branch: 'defect' },
+  { error: new ConnectionNotSelectedError(), branch: 'defect' },
+  { error: new CredentialBrokerRejectedError(), branch: 'defect' },
+  { error: new CredentialBrokerUnavailableError(), branch: undefined },
+  { error: new Error('connection is not configured'), branch: undefined },
+  { error: new TypeError('fetch failed'), branch: undefined },
+])('retries a transient credential failure and keeps a terminal one: $error.name', async ({ error, branch }) => {
+  let requestCount = 0;
+  const client = new DiscordClient({}, { resolve: async () => { throw error; } }, {
+    send: async () => { requestCount++; throw new Error('unexpected request'); },
+  });
+  const result = await client.createMessage().invoke(call, { channelId, content: 'hello' });
+  if (branch) expect(result).toMatchObject({ kind: 'branch', branch });
+  else expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
   expect(requestCount).toBe(0);
 });
 

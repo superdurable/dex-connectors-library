@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -240,12 +241,22 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, request pro
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *providerOutcome) {
 	credentials, err := client.credentials.Resolve(call)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "the Discord connection must be authorized again", sdkgo.Receipt{})
+	case err != nil && !isTerminalCredentialError(err):
+		// Nothing reached Discord, so a transient credential failure retries.
+		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "Discord connection credentials are temporarily unavailable", sdkgo.Receipt{})
 	case err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.BotToken.Reveal()):
 		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "Discord connection credentials are unavailable or invalid", sdkgo.Receipt{})
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) outcome(disposition outcomeDisposition, operation string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) *providerOutcome {
