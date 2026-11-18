@@ -375,7 +375,9 @@ class GetChatOperation:
             return _chat_failure(
                 DEFECT, FailureKind.VALIDATION, "chatId must be a decimal ID or public @username"
             )
-        token = await self.client.resolve_bot_token(call)
+        token, is_terminal_credential = await self.client.resolve_bot_token_or_reason(call)
+        if not token and not is_terminal_credential:
+            return _chat_retry(FailureKind.AVAILABILITY, "bot token is temporarily unavailable")
         if not token:
             return _chat_failure(DEFECT, FailureKind.AUTHENTICATION, "bot token is unavailable or invalid")
         try:

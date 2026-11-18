@@ -98,6 +98,9 @@ func (operation GetChatOperation) Invoke(call sdkgo.Call, input GetChatInput) sd
 		return failedQuery(GetChatBranchDefect, sdkgo.FailureValidation, "chatId must be a decimal ID or public @username")
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return retryQuery(sdkgo.FailureAvailability, "bot token is temporarily unavailable", 0)
+	}
 	if err != nil || credentials.Validate() != nil {
 		return failedQuery(GetChatBranchDefect, sdkgo.FailureAuthentication, "bot token is unavailable or invalid")
 	}

@@ -29,7 +29,7 @@ from dex_connectors.sdk.projectconfig.broker import (
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
-from dex_connectors.telegram import Client, Config, Credentials, SendMessageInput, SentMessage
+from dex_connectors.telegram import Client, Config, Credentials, GetChatInput, SendMessageInput, SentMessage
 from dex_connectors.telegram._generated.connection import CredentialMaterialError
 from dex_connectors.telegram._generated.definitions import SEND_MESSAGE_DEFINITION
 
@@ -358,3 +358,34 @@ async def test_write_window_cutting_an_error_body_resends_below_cap() -> None:
     assert isinstance(result, RetryError)
     assert context.marker is not None and context.marker.state == "claimed"
     assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (CredentialBrokerUnavailableError("broker down"), False),
+        (ValueError("connection is not configured"), False),
+        (ReauthorizationRequiredError("revoked"), True),
+        (ObjectNotFoundError("missing"), True),
+        (ConnectionNotSelectedError("unselected"), True),
+        (CredentialBrokerRejectedError("refused"), True),
+        (CredentialMaterialError("Telegram credential bot_token is required"), True),
+    ],
+)
+async def test_get_chat_retries_only_a_transient_credential_failure(
+    error: Exception, is_terminal: bool
+) -> None:
+    """getChat selects defect only for the terminal credential set."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        config = Config(base_url="http://127.0.0.1:12345")
+        client = Client(config, FailingCredentialProvider(error), transport)
+        call = Call(CALL_ID, CONNECTION, OperationRef("telegram", "getChat"), context=AttemptContext())
+        result = await client.get_chat().invoke(call, GetChatInput("@meridian_team"))
+    if is_terminal:
+        assert result.kind == "branch" and result.branch == "defect"
+    else:
+        assert result.kind == "retry"
