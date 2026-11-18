@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -88,10 +90,23 @@ class Client:
             return "", "credential"
         except (ValueError, LookupError, OSError):
             return "", "refresh"
-        token = credentials.access_token.reveal()
-        if not is_header_safe_credential(token):
+        return _header_safe_token(credentials)
+
+    async def resolve_write_token(self, call: Call) -> tuple[str, str]:
+        """Return a header-safe bearer token for a write, or a safe failure class.
+
+        ``credential`` means a revoked, missing, unselected, broker-refused, or malformed
+        credential that only reconnecting fixes; ``refresh`` means any other read failure,
+        which may succeed on a later attempt.
+        """
+        try:
+            credentials = await self.credentials.resolve(call)
+        except Exception as error:
+            return "", "credential" if isinstance(error, _TERMINAL_CREDENTIAL_ERRORS) else "refresh"
+        try:
+            return _header_safe_token(credentials)
+        except (ValueError, AttributeError):
             return "", "credential"
-        return token, ""
 
     async def request(
         self,
@@ -101,8 +116,12 @@ class Client:
         *,
         token: str | None = None,
         payload: dict[str, Any] | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one bounded HTTP request without returning provider error text."""
+        """Send one bounded HTTP request without returning provider error text.
+
+        ``observed_statuses`` receives the status once headers arrive, before the body is read.
+        """
         if token is None:
             token, error = await self.resolve_token(call)
             if error:
@@ -125,11 +144,17 @@ class Client:
                     else None
                 ),
             )
+        except (httpx.HTTPError, ValueError):
+            return Exchange(error="request")
+        try:
             response, _ = await send_traced(self.http_client, request)
         except ProviderTransportError as error:
             return Exchange(error="request", request_sent=not error.provably_not_sent)
-        except (httpx.HTTPError, ValueError):
-            return Exchange(error="request")
+        except httpx.HTTPError:
+            # Only a transport failure carries no-send evidence, so this request may have been sent.
+            return Exchange(error="request", request_sent=True)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         try:
             retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
             try:
@@ -144,3 +169,19 @@ class Client:
             return Exchange(response.status_code, body, retry_after, read_error, True)
         finally:
             await response.aclose()
+
+
+# Only reconnecting the connection fixes these credential failures; any other one is transient.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+
+
+def _header_safe_token(credentials: Credentials) -> tuple[str, str]:
+    token = credentials.access_token.reveal()
+    if not is_header_safe_credential(token):
+        return "", "credential"
+    return token, ""

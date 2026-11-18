@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry,
-  type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
+  ReauthorizationRequiredError, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch,
+  newQueryRetry, type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
   type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
@@ -87,17 +88,20 @@ export class WordPressClient {
     return 'header' in resolution ? resolution.header : undefined;
   }
 
-  /** Resolve the Basic authorization header, separating unavailable from invalid credentials. */
-  async authorizationWithReason(call: Call): Promise<{ header: string } | { isInvalid: boolean }> {
+  /**
+   * Resolve the Basic authorization header, separating a terminal failure from a transient one. A revoked,
+   * missing, unselected, broker-refused, or malformed credential is terminal; any other read failure is transient.
+   */
+  async authorizationWithReason(call: Call): Promise<{ header: string } | { isTerminal: boolean }> {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
-    catch { return { isInvalid: false }; }
+    catch (error) { return { isTerminal: isTerminalCredentialError(error) }; }
     try {
       const username = credentials.username;
       const password = credentials.applicationPassword.reveal().replaceAll(' ', '');
-      if (!username || /[:\r\n\0]/.test(username) || !password || /[\r\n\0]/.test(password)) return { isInvalid: true };
+      if (!username || /[:\r\n\0]/.test(username) || !password || /[\r\n\0]/.test(password)) return { isTerminal: true };
       return { header: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}` };
-    } catch { return { isInvalid: true }; }
+    } catch { return { isTerminal: true }; }
   }
 
   /** Send one bounded REST request and retain positive no-send evidence. */
@@ -171,7 +175,8 @@ export class CreatePostOperation implements Mutation<CreatePostInput, CreatedPos
     // An earlier send may have created the post, so a refusal of a resend proves nothing.
     const hasPossibleEarlierSend = priorSendUpperBound > 0;
     const resolution = await this.client.authorizationWithReason(call);
-    if (!('header' in resolution)) return localCreateFailure(fence, hasPossibleEarlierSend, resolution.isInvalid, 'AUTHENTICATION');
+    if (!('header' in resolution)) return localCreateFailure(fence, hasPossibleEarlierSend, resolution.isTerminal,
+      resolution.isTerminal ? 'AUTHENTICATION' : 'AVAILABILITY');
     const authorization = resolution.header;
     let exchange: WordPressExchange;
     try {
@@ -243,15 +248,30 @@ async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPo
   return createFailure('providerRejected', kind);
 }
 
-/** Select defect only when no earlier send may have created the post; afterwards a terminal failure selects uncertain. */
+/**
+ * Return Retry for a transient failure, recording notSent only when no earlier send may have created
+ * the post. A terminal failure selects defect before any possible send and uncertain after one.
+ */
 async function localCreateFailure(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean,
   isTerminal: boolean, kind: Failure['kind']): Promise<MutationAttempt<CreatedPost>> {
-  if (hasPossibleEarlierSend && isTerminal) return createUncertain(kind);
-  // notSent would hide the earlier possible send, so nothing is recorded.
-  if (hasPossibleEarlierSend) return createRetry(kind);
+  if (!isTerminal) {
+    if (!hasPossibleEarlierSend) {
+      try { await fence.recordNotSent(); }
+      catch { /* Without notSent the next attempt counts this attempt as a possible send. */ }
+    }
+    // After a possible send, notSent would hide that send, so nothing is recorded.
+    return createRetry(kind);
+  }
+  if (hasPossibleEarlierSend) return createUncertain(kind);
   try { await fence.recordNotSent(); }
   catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
   return createFailure('defect', kind);
+}
+
+/** Report a credential failure that only reconnecting the connection can fix. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
 function rejectionKind(status: number): Failure['kind'] {

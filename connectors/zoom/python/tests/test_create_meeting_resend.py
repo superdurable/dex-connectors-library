@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Zoom meeting creates whose outcome is unknown."""
 
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
@@ -339,4 +340,41 @@ async def test_credential_failure_after_possible_send_retries() -> None:
     context.attempt = 2
     result = await create(lambda _: SERVER_FAILURE, context, requests, has_credentials=False)
     assert isinstance(result, RetryError)
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize("unreadable", ["oversized", "interrupted"])
+async def test_unreadable_unauthorized_body_is_an_unknown_outcome(unreadable: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    first: tuple[int, object] = (
+        (401, b'{"code":124,"message":"' + b"x" * 65536 + b'"}')
+        if unreadable == "oversized"
+        else (401, BrokenBodyStream())
+    )
+    answer = sequence(first, (401, {"code": 124, "message": "Invalid access token"}))
+    assert isinstance(await create(answer, context, requests), RetryError)
+    assert context.marker is not None and context.marker.state == State.CLAIMED
+    context.attempt = 2
+    result = await create(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 2
+
+
+class StalledBodyStream(httpx.AsyncByteStream):
+    """Stall the response body past the Fence write window, then drop the connection."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(2)
+        yield b"{"
+        raise httpx.ReadError("connection dropped")
+
+
+async def test_success_headers_then_write_deadline_cutting_the_body_are_never_resent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    # A short Step deadline shortens the Fence write window to about 0.7 seconds.
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await create(lambda _: (201, StalledBodyStream()), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
     assert len(requests) == 1

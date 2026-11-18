@@ -521,13 +521,20 @@ class CreateMeetingOperation:
                 else MutationAttempt.branch_result("defect", empty, Receipt(), problem)
             )
         assert credentials is not None
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _deadline: self.client.exchange(
-                    call, credentials, "POST", "/users/me/meetings", payload=payload, fenced=True
+                    call,
+                    credentials,
+                    "POST",
+                    "/users/me/meetings",
+                    payload=payload,
+                    fenced=True,
+                    observed_statuses=observed_statuses,
                 )
             )
-        except (CheckpointError, InsufficientAttemptTimeError):
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
             return MutationAttempt.retry(
                 failure(
                     operation,
@@ -535,7 +542,18 @@ class CreateMeetingOperation:
                     "Zoom create was not sent before the attempt deadline or checkpoint",
                 )
             )
-        except (TimeoutError, DispatchNotAllowedError):
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # Zoom created the meeting before the write deadline cut its body, so it is never resent.
+                return MutationAttempt.uncertain(
+                    requested,
+                    failure(
+                        operation,
+                        FailureKind.TRANSPORT,
+                        "Zoom accepted the create, but its response was interrupted",
+                    ),
+                    self.client.receipt(call),
+                )
             return self._resend_or_select_uncertain(
                 call,
                 can_resend,
@@ -652,7 +670,8 @@ class CreateMeetingOperation:
         assert problem is not None
         receipt = self.client.receipt(call, error_code=code)
         is_body_unreadable = exchange.is_body_too_large or exchange.has_body_read_failed
-        if exchange.status == 401:
+        # An unreadable 401 body cannot prove a refusal, so it falls through to the unknown outcome.
+        if exchange.status == 401 and not is_body_unreadable:
             resolver = getattr(self.client.credentials, "resolve_after_rejection", None)
             if resolver is None:
                 return await _reject_or_select_uncertain(

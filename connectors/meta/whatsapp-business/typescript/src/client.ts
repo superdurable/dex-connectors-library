@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { SecretString, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { ListPhoneNumbersDefinition, SendTemplateMessageDefinition, SendTextMessageDefinition } from './generated/definitions.js';
@@ -110,13 +111,14 @@ export class WhatsAppBusinessClient {
       canResendUnknownOutcome ? newMutationRetry(failure(operation, kind, message), retryAfterMs) : newMutationUncertain(zero, failure(operation, kind, message));
     const resolution = await this.resolveTokenWithReason(call);
     if (!('token' in resolution)) {
-      const message = resolution.isInvalid ? 'connection credentials are invalid' : 'connection credentials are unavailable';
-      // Invalid credentials will not recover, so an earlier possible send stays uncertain.
-      if (hasPossibleEarlierSend && resolution.isInvalid) return newMutationUncertain(zero, failure(operation, 'AUTHENTICATION', `${message}; an earlier attempt may have sent the WhatsApp message`));
+      const { message } = resolution;
+      // Terminal credentials will not recover, so an earlier possible send stays uncertain.
+      if (hasPossibleEarlierSend && resolution.isTerminal) return newMutationUncertain(zero, failure(operation, 'AUTHENTICATION', `${message}; an earlier attempt may have sent the WhatsApp message`));
       // notSent would hide the earlier possible send, so nothing is recorded.
       if (hasPossibleEarlierSend) return newMutationRetry(failure(operation, 'AUTHENTICATION', `${message}; no message was sent in this attempt`));
       try { await fence.recordNotSent(); }
-      catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
+      catch { /* No claim was made, so a lost notSent checkpoint cannot count a send. */ }
+      if (!resolution.isTerminal) return newMutationRetry(failure(operation, 'AVAILABILITY', `${message}; no message was sent`));
       return newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', message));
     }
     const token = resolution.token;
@@ -185,13 +187,13 @@ export class WhatsAppBusinessClient {
     return 'token' in resolution ? resolution.token : undefined;
   }
 
-  /** Resolve the token, separating an unavailable provider from an invalid credential. */
-  private async resolveTokenWithReason(call: Call): Promise<{ token: string } | { isInvalid: boolean }> {
+  /** Resolve the token, separating a transient resolution failure from a terminal one. */
+  private async resolveTokenWithReason(call: Call): Promise<{ token: string } | { isTerminal: boolean; message: string }> {
     let resolved: Credentials;
     try { resolved = await this.credentials.resolve(call, call.context.cancellationSignal); }
-    catch { return { isInvalid: false }; }
+    catch (error) { return { isTerminal: isTerminalCredentialError(error), message: 'connection credentials are unavailable' }; }
     const token = resolved.accessToken instanceof SecretString ? resolved.accessToken.reveal() : '';
-    return token && isHeaderSafeCredential(token) ? { token } : { isInvalid: true };
+    return token && isHeaderSafeCredential(token) ? { token } : { isTerminal: true, message: 'connection credentials are invalid' };
   }
 
   /** Read one page or return a provider decision without exposing its body. */
@@ -295,6 +297,10 @@ function decodeGraphError(body: Uint8Array): { isThrottled: boolean; isTransient
 }
 // Only these statuses prove Meta refused a send; other 4xx statuses leave the outcome unknown.
 const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+/** Report a credential resolution failure that no retry fixes; broker outages and store reads are transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+}
 /** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
 function effectiveMaxSends(call: Call, operationMaxSends: number): number {
   return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;

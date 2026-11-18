@@ -540,6 +540,91 @@ func TestSendMessageFenceNeverResendsUnconfirmedSuccessResponses(t *testing.T) {
 	}
 }
 
+func TestSendMessageFenceReadsBackAnAcceptedSIDWhoseMessageDoesNotDecode(t *testing.T) {
+	provider := newTwilioFake(t, func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			writeBody(response, messageJSON(testMessageSID, "queued", "null"))
+			return
+		}
+		response.WriteHeader(http.StatusCreated)
+		writeBody(response, messageJSON(testMessageSID, "Not A Status", "null"))
+	})
+	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
+	ctx := singledispatchtest.NewContext("twilio-fence-accepted-undecodable", "send-message")
+	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+	require.NoError(t, err)
+	require.Equal(t, messaging.SendMessageBranchAccepted, result.Branch)
+	require.Equal(t, testMessageSID, result.Value.SID)
+	requests := provider.recordedRequests()
+	require.Len(t, requests, 2)
+	require.Equal(t, http.MethodGet, requests[1].method)
+	ctx.AdvanceAttempt()
+	require.Equal(t, testMessageSID, readPersistedMarker(t, ctx).ProviderID)
+}
+
+func TestSendMessageFenceNeverSavesANamedSIDThatContainsTheCredential(t *testing.T) {
+	const hexAuthToken = "0123456789abcdef0123456789abcdef"
+	reflectedSID := "SM" + hexAuthToken
+	for _, statusCode := range []int{http.StatusCreated, http.StatusConflict} {
+		t.Run(http.StatusText(statusCode), func(t *testing.T) {
+			provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(statusCode)
+				writeBody(response, messageJSON(reflectedSID, "queued", "null"))
+			})
+			credentials := staticCredentials(messaging.Credentials{AuthMethodID: messaging.AuthTokenAuthMethodID, AuthToken: sdkgo.NewSecretString(hexAuthToken)})
+			client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, credentials)
+			ctx := singledispatchtest.NewContext("twilio-fence-reflected-sid", "send-message")
+			result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+			require.NoError(t, err)
+			require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+			require.Len(t, provider.recordedRequests(), 1, "a SID that contains the credential is never read back")
+			require.NotContains(t, result.Receipt.ProviderObjectID, hexAuthToken)
+			ctx.AdvanceAttempt()
+			require.Empty(t, readPersistedMarker(t, ctx).ProviderID)
+		})
+	}
+}
+
+func TestSendMessageFenceTreatsAnUnreadableUnauthorizedBodyAsAnUnknownOutcome(t *testing.T) {
+	for _, testCase := range []struct {
+		name    string
+		respond func(http.ResponseWriter)
+	}{
+		{"oversized body", func(response http.ResponseWriter) {
+			response.WriteHeader(http.StatusUnauthorized)
+			writeBody(response, `{"code":20003,"message":"`+strings.Repeat("x", 70<<10)+`"}`)
+		}},
+		{"interrupted body", func(response http.ResponseWriter) {
+			response.Header().Set("Content-Length", "1000")
+			response.WriteHeader(http.StatusUnauthorized)
+			writeBody(response, "{")
+		}},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var posts atomic.Int32
+			provider := newTwilioFake(t, func(response http.ResponseWriter, _ *http.Request) {
+				if posts.Add(1) == 1 {
+					testCase.respond(response)
+					return
+				}
+				response.WriteHeader(http.StatusUnauthorized)
+				writeBody(response, errorJSON(http.StatusUnauthorized, 20003))
+			})
+			client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
+			ctx := singledispatchtest.NewContext("twilio-fence-unreadable-unauthorized", "send-message")
+			_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an unreadable 401 cannot prove that Twilio refused the message")
+			ctx.AdvanceAttempt()
+			require.Equal(t, singledispatch.StateClaimed, readPersistedMarker(t, ctx).State)
+			result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
+			require.NoError(t, err)
+			require.Equal(t, messaging.SendMessageBranchUncertain, result.Branch)
+			require.Len(t, provider.recordedRequests(), 2)
+		})
+	}
+}
+
 func TestSendMessageFenceLeavesUnconfirmableReadBackUncertain(t *testing.T) {
 	for _, testCase := range []struct {
 		name    string

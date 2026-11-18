@@ -430,6 +430,45 @@ func TestCreateMeetingAcceptedUnusableResponseIsNeverResent(t *testing.T) {
 	}
 }
 
+func TestCreateMeetingTreatsAnUnreadableUnauthorizedBodyAsAnUnknownOutcome(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		respond func(http.ResponseWriter)
+	}{
+		{"oversized body", func(response http.ResponseWriter) {
+			writeJSON(t, response, http.StatusUnauthorized, `{"code":124,"message":"`+strings.Repeat("x", providerhttp.MaxErrorBodyBytes)+`"}`)
+		}},
+		{"interrupted body", func(response http.ResponseWriter) {
+			response.Header().Set("Content-Length", "100")
+			response.WriteHeader(http.StatusUnauthorized)
+			if _, err := response.Write([]byte(`{"code":`)); err != nil {
+				t.Errorf("write partial Zoom 401: %v", err)
+			}
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+				if index == 0 {
+					test.respond(response)
+					return
+				}
+				writeJSON(t, response, http.StatusUnauthorized, `{"code":124,"message":"Invalid access token"}`)
+			})
+			context := singledispatchtest.NewContext("zoom-flow", "unreadable-unauthorized")
+			client := newZoomClient(t, provider.URL)
+			_, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an unreadable 401 cannot prove that Zoom refused the create")
+			require.Equal(t, singledispatch.StateClaimed, lastSingleDispatchMarker(t, context).State)
+			context.AdvanceAttempt()
+			result, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+			require.NoError(t, err)
+			require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
+			require.Equal(t, 2, provider.requestCount())
+		})
+	}
+}
+
 func TestCreateMeetingClientErrorWithACreatedIDIsReadBackNotResent(t *testing.T) {
 	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPost {

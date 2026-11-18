@@ -122,13 +122,13 @@ provider lookups; an unreadable or foreign checkpoint retries without sending.
 | Outcome | Result |
 | --- | --- |
 | 2xx with a valid message | `accepted`, with the SID and status, usually `queued` or `accepted` |
-| 400, 401, 403, 404, 411, 413, 414, 415, or 422 on a first send | `providerRejected`, with the Twilio error code in `Value.ErrorCode` and the Receipt's `twilioErrorCode`; a 401 retries only if a fresh credential differs |
+| 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a readable body on a first send | `providerRejected`, with the Twilio error code in `Value.ErrorCode` and the Receipt's `twilioErrorCode`; a 401 retries only if a fresh credential differs |
 | The same refusal, terminal credentials, or an unbuildable request after an earlier possible send | `uncertain` |
 | 429 or 503 | Retry, after `Retry-After` when Twilio sends it |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 408, 409, 3xx, another 4xx, 5xx other than 503, or an error status whose body is oversized or unreadable, after dispatch | Retry and resend below the send cap, `uncertain` at the cap |
-| Error status whose body names a created message SID | Checkpoint the SID and read the message back, never resent; when the SID checkpoint fails, a read-back that cannot finish selects `uncertain` instead of Retry |
-| 2xx whose body is oversized, unreadable, or has no usable message | `uncertain`, never resent, because Twilio created the message |
+| Timeout, dropped connection, 408, 409, 3xx, another 4xx, 5xx other than 503, or an error status, 401 included, whose body is oversized or unreadable, after dispatch | Retry and resend below the send cap, `uncertain` at the cap |
+| Error status, or 2xx with an unusable message, whose body names a created message SID | Checkpoint the SID and read the message back, never resent; when the SID checkpoint fails, a read-back that cannot finish selects `uncertain` instead of Retry |
+| 2xx whose body is oversized, unreadable, cut off by the write deadline, or has no message SID | `uncertain`, never resent, because Twilio created the message |
 | 2xx with a message SID that is for another account or reflects the credential | `uncertain`, never resent |
 
 Twilio documents that [429 requests are not processed](https://www.twilio.com/docs/api/errors/20429)

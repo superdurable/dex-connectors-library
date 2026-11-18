@@ -341,14 +341,14 @@ class SchedulePostOperation:
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         # An earlier send may have scheduled the message, so a refusal of a resend proves nothing.
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
-        token, error = await self.client.resolve_token(call)
+        token, error = await self.client.resolve_write_token(call)
         if error == "credential":
             return await _local_schedule_failure(
                 fence,
                 has_possible_earlier_send,
                 True,
                 FailureKind.AUTHENTICATION,
-                "connection credentials require reauthorization",
+                "connection credentials are unavailable or require reauthorization",
             )
         if error:
             if not has_possible_earlier_send:
@@ -363,13 +363,32 @@ class SchedulePostOperation:
             "scheduledSendTime": input.scheduled_send_time,
         }
 
+        observed_statuses: list[int] = []
+
         async def send(_deadline: datetime) -> Exchange:
-            return await self.client.request(call, "POST", "/v1/messages", token=token, payload=payload)
+            return await self.client.request(
+                call,
+                "POST",
+                "/v1/messages",
+                token=token,
+                payload=payload,
+                observed_statuses=observed_statuses,
+            )
 
         try:
             exchange = await fence.dispatch(send)
         except (CheckpointError, InsufficientAttemptTimeError):
             return _mutation_retry(FailureKind.TRANSPORT, "Hootsuite dispatch did not start")
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # The write window cut the body after a 2xx, so Hootsuite accepted the request.
+                return _mutation_uncertain(
+                    FailureKind.TRANSPORT,
+                    "Hootsuite accepted the request, but its response could not be read",
+                )
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "Hootsuite schedule outcome is unknown"
+            )
         except Exception:
             return _resend_or_select_uncertain(
                 can_resend_unknown_outcome, FailureKind.TRANSPORT, "Hootsuite schedule outcome is unknown"

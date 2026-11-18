@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of WordPress posts whose creation outcome is unknown."""
 
-from collections.abc import Callable
+import asyncio
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -11,13 +12,21 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    CredentialProvider,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 from dex_connectors.wordpress import Client, Config, CreatedPost, CreatePostInput, Credentials
@@ -80,6 +89,7 @@ async def create(
     max_sends: int = CREATE_POST_DEFINITION.max_sends,
     username: str = "editor",
     max_response_bytes: int = 1048576,
+    credentials: CredentialProvider[Credentials] | None = None,
 ) -> MutationResult[CreatedPost] | RetryError:
     """Run one Execute attempt of createPost, as the Mutation Step passes the definition cap."""
 
@@ -90,7 +100,8 @@ async def create(
             return httpx.Response(status, stream=body)
         return httpx.Response(status, json=body)
 
-    credentials = StaticCredentialProvider({CONNECTION: Credentials(username, SecretString("abcd efgh"))})
+    if credentials is None:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(username, SecretString("abcd efgh"))})
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         config = Config(site_url="http://127.0.0.1:12345", max_response_bytes=max_response_bytes)
         client = Client(config, credentials, transport)
@@ -237,3 +248,93 @@ async def test_invalid_credentials_after_possible_send_select_uncertain() -> Non
     assert len(requests) == 1
     result = await create(lambda _: SERVER_FAILURE, AttemptContext(), requests, username="a:b")
     assert isinstance(result, MutationResult) and result.branch == "defect"
+
+
+class FailingCredentialProvider:
+    """Raise one fixed error for every credential read."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    "error", [CredentialBrokerUnavailableError("broker down"), ValueError("connection is not configured")]
+)
+async def test_transient_credential_failure_before_send_retries(error: Exception) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await create(
+        lambda _: (201, CREATED_BODY), context, requests, credentials=FailingCredentialProvider(error)
+    )
+    assert isinstance(result, RetryError), "a transient credential failure returns Retry, not defect"
+    assert context.marker is not None and context.marker.state == "notSent"
+    context.attempt = 2
+    result = await create(lambda _: (201, CREATED_BODY), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "created"
+    assert context.marker is not None and context.marker.send_count == 1
+    assert len(requests) == 1
+
+
+async def test_transient_credential_failure_after_possible_send_keeps_the_claim() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert isinstance(await create(lambda _: SERVER_FAILURE, context, requests), RetryError)
+    context.attempt = 2
+    unavailable = FailingCredentialProvider(CredentialBrokerUnavailableError("broker down"))
+    result = await create(lambda _: SERVER_FAILURE, context, requests, credentials=unavailable)
+    assert isinstance(result, RetryError)
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ReauthorizationRequiredError("revoked"),
+        ObjectNotFoundError("missing"),
+        ConnectionNotSelectedError("unselected"),
+        CredentialBrokerRejectedError("refused"),
+    ],
+)
+async def test_terminal_credential_failure(error: Exception) -> None:
+    requests: list[httpx.Request] = []
+    terminal = FailingCredentialProvider(error)
+    result = await create(lambda _: SERVER_FAILURE, AttemptContext(), requests, credentials=terminal)
+    assert isinstance(result, MutationResult) and result.branch == "defect"
+    context = AttemptContext()
+    assert isinstance(await create(lambda _: SERVER_FAILURE, context, requests), RetryError)
+    context.attempt = 2
+    result = await create(lambda _: SERVER_FAILURE, context, requests, credentials=terminal)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+class StalledBodyStream(httpx.AsyncByteStream):
+    """Send part of a response body, then stall past the Fence write window."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"id":'
+        await asyncio.sleep(5)
+        yield b'43,"status":"draft"}'
+
+
+async def test_write_window_cutting_an_accepted_body_selects_uncertain() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await create(lambda _: (201, StalledBodyStream()), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+async def test_write_window_cutting_an_error_body_resends_below_cap() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await create(lambda _: (500, StalledBodyStream()), context, requests)
+    assert isinstance(result, RetryError)
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1

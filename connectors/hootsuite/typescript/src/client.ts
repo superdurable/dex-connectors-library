@@ -5,6 +5,7 @@ import { definitionMaxSends, SecretString, ReauthorizationRequiredError, resolve
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ListSocialProfilesDefinition, ListScheduledPostsDefinition, SchedulePostDefinition } from './generated/definitions.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, Credentials, ListSocialProfilesInput, SocialProfile, SocialProfilesPage, ListScheduledPostsInput, ScheduledPost, ScheduledPostsPage, SchedulePostInput, ScheduledPostReceipt } from './generated/models.js';
@@ -60,12 +61,24 @@ export class HootsuiteClient {
 
   /** Resolve a header-safe access token for the current call. */
   async resolveToken(call: Call): Promise<string | HootsuiteExchange> {
+    return this.resolveTokenClassifying(call, error => error instanceof ReauthorizationRequiredError);
+  }
+
+  /**
+   * Resolve a header-safe access token for a write. A revoked, missing, unselected, or broker-refused
+   * connection is `credential`; any other read failure is `refresh` and may succeed on a later attempt.
+   */
+  async resolveWriteToken(call: Call): Promise<string | HootsuiteExchange> {
+    return this.resolveTokenClassifying(call, isTerminalCredentialError);
+  }
+
+  private async resolveTokenClassifying(call: Call, isTerminal: (error: unknown) => boolean): Promise<string | HootsuiteExchange> {
     try {
       const resolved = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       const token = resolved.accessToken instanceof SecretString ? resolved.accessToken.reveal() : '';
       return token && isHeaderSafeCredential(token) ? token : failedExchange('credential');
     } catch (error) {
-      return failedExchange(error instanceof ReauthorizationRequiredError ? 'credential' : 'refresh');
+      return failedExchange(isTerminal(error) ? 'credential' : 'refresh');
     }
   }
 
@@ -193,9 +206,9 @@ export class SchedulePostOperation implements Mutation<SchedulePostInput, Schedu
     const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
     // An earlier send may have scheduled the message, so a refusal of a resend proves nothing.
     const hasPossibleEarlierSend = priorSendUpperBound > 0;
-    const token = await this.client.resolveToken(call);
+    const token = await this.client.resolveWriteToken(call);
     if (typeof token !== 'string') {
-      if (token.error === 'credential') return localScheduleFailure(fence, hasPossibleEarlierSend, failure(operation, 'AUTHENTICATION', 'connection credentials require reauthorization'));
+      if (token.error === 'credential') return localScheduleFailure(fence, hasPossibleEarlierSend, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or require reauthorization'));
       // notSent would hide an earlier possible send, so it is recorded only before any send.
       if (!hasPossibleEarlierSend) {
         try { await fence.recordNotSent(); }
@@ -279,6 +292,12 @@ async function localScheduleFailure(fence: ReturnType<typeof newFence>, hasPossi
   try { await fence.recordNotSent(); }
   catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
   return newMutationBranch('defect', emptyReceipt(), {}, localFailure);
+}
+
+/** Report a credential failure that only reconnecting the connection can fix. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
 function rejectionKind(status: number): Failure['kind'] {

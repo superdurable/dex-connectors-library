@@ -21,8 +21,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -68,6 +71,13 @@ _Output = TypeVar("_Output", Post, PostPage)
 _CREATED_STATUSES = frozenset({"draft", "publish", "pending", "private", "future"})
 # Only these statuses prove WordPress refused a write; other 4xx statuses leave the outcome unknown.
 _DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+# Only reconnecting the connection fixes these credential failures; any other one is transient.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 
 
 class Config(_GeneratedConfig):
@@ -136,11 +146,15 @@ class Client:
         return (await self._authorization_or_reason(call))[0]
 
     async def _authorization_or_reason(self, call: Call) -> tuple[str, bool]:
-        """Return the Basic authorization value, or empty and whether the credentials are invalid."""
+        """Return the Basic authorization value, or empty and whether the failure is terminal.
+
+        The flag is True for a revoked, missing, unselected, broker-refused, or malformed
+        credential, and False for a transient read failure such as an unavailable broker.
+        """
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, AttributeError):
-            return "", False
+        except Exception as error:
+            return "", isinstance(error, _TERMINAL_CREDENTIAL_ERRORS)
         try:
             username = credentials.username
             password = credentials.application_password.reveal().replace(" ", "")
@@ -153,12 +167,17 @@ class Client:
         token = base64.b64encode(f"{username}:{password}".encode()).decode("ascii")
         return f"Basic {token}", False
 
-    async def request(self, request: httpx.Request) -> Exchange:
-        """Read a bounded response while preserving positive no-send evidence."""
+    async def request(self, request: httpx.Request, observed_statuses: list[int] | None = None) -> Exchange:
+        """Read a bounded response while preserving positive no-send evidence.
+
+        ``observed_statuses`` receives the status once headers arrive, before the body is read.
+        """
         try:
             response, _ = await send_traced(self.http_client, request)
         except ProviderTransportError as error:
             return Exchange(error="request", request_sent=not error.provably_not_sent)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         try:
             retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
             try:
@@ -241,16 +260,16 @@ class CreatePostOperation:
         can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         # An earlier send may have created the post, so a refusal of a resend proves nothing.
         has_possible_earlier_send = decision.prior_send_upper_bound > 0
-        authorization, is_invalid = await self.client._authorization_or_reason(call)
+        authorization, is_terminal = await self.client._authorization_or_reason(call)
         if not authorization:
             return await _local_create_failure(
                 fence,
                 has_possible_earlier_send,
-                is_invalid,
-                FailureKind.AUTHENTICATION,
-                "connection credentials are invalid"
-                if is_invalid
-                else "connection credentials are unavailable",
+                is_terminal,
+                FailureKind.AUTHENTICATION if is_terminal else FailureKind.AVAILABILITY,
+                "connection credentials are unavailable or invalid"
+                if is_terminal
+                else "connection credentials could not be read",
             )
         request = self.client.http_client.build_request(
             "POST",
@@ -263,13 +282,24 @@ class CreatePostOperation:
             content=payload,
         )
 
+        observed_statuses: list[int] = []
+
         async def send(_deadline: datetime) -> Exchange:
-            return await self.client.request(request)
+            return await self.client.request(request, observed_statuses)
 
         try:
             exchange = await fence.dispatch(send)
         except (CheckpointError, InsufficientAttemptTimeError):
             return _create_retry(FailureKind.TRANSPORT, "WordPress dispatch was not started")
+        except TimeoutError:
+            if observed_statuses and 200 <= observed_statuses[-1] < 300:
+                # The write window cut the body after a 2xx, so WordPress created the post.
+                return _create_uncertain(
+                    FailureKind.TRANSPORT, "WordPress accepted the post, but its response could not be read"
+                )
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "WordPress post outcome is unknown"
+            )
         except Exception:
             return _resend_or_select_uncertain(
                 can_resend_unknown_outcome, FailureKind.TRANSPORT, "WordPress post outcome is unknown"
@@ -545,15 +575,21 @@ async def _reject_or_select_uncertain(
 async def _local_create_failure(
     fence: Fence, has_possible_earlier_send: bool, is_terminal: bool, kind: FailureKind, message: str
 ) -> MutationAttempt[CreatedPost]:
-    """Select defect only when no earlier send may have created the post.
+    """Return Retry for a transient failure, and select defect or uncertain for a terminal one.
 
-    After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+    A transient failure records notSent only when no earlier send may have created the post.
+    A terminal failure selects defect before any possible send and uncertain after one.
     """
-    if has_possible_earlier_send and is_terminal:
-        return _create_uncertain(kind, message + "; an earlier attempt may have created the post")
-    if has_possible_earlier_send:
-        # notSent would hide the earlier possible send, so nothing is recorded.
+    if not is_terminal:
+        if not has_possible_earlier_send:
+            try:
+                await fence.record_not_sent()
+            except Exception:
+                pass  # Without notSent the next attempt counts this attempt as a possible send.
+        # After a possible send, notSent would hide that send, so nothing is recorded.
         return _create_retry(kind, message + "; no post was created in this attempt")
+    if has_possible_earlier_send:
+        return _create_uncertain(kind, message + "; an earlier attempt may have created the post")
     try:
         await fence.record_not_sent()
     except Exception:

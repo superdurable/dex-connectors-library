@@ -203,9 +203,18 @@ class Client:
         return (username, password), None, False
 
     async def exchange(
-        self, authorization: tuple[str, str], method: str, url: str, form: list[tuple[str, str]] | None = None
+        self,
+        authorization: tuple[str, str],
+        method: str,
+        url: str,
+        form: list[tuple[str, str]] | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Perform one request without redirects or transparent HTTP replay."""
+        """Perform one request without redirects or transparent HTTP replay.
+
+        ``observed_statuses`` receives the HTTP status once headers arrive, before the body is read,
+        so a caller cut off by a write deadline still knows whether Twilio accepted the request.
+        """
         token = base64.b64encode(f"{authorization[0]}:{authorization[1]}".encode()).decode("ascii")
         headers = {"Authorization": f"Basic {token}", "Accept": "application/json"}
         content = None
@@ -220,6 +229,8 @@ class Client:
             response, _ = await send_traced(self._http_client, request)
         except ProviderTransportError as error:
             return Exchange(error="beforeSend" if error.provably_not_sent else "afterSend")
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         limit = self.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
         try:
             body = await read_bounded_body(response, limit)

@@ -30,6 +30,11 @@ class AttemptContext {
   async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
 }
 
+/** A Step deadline 1.2 seconds away, which shortens the Fence write window to about 0.7 seconds. */
+class ShortDeadlineContext extends AttemptContext {
+  override readonly deadline = new Date(Date.now() + 1_200);
+}
+
 interface TwilioAnswer { status: number; body: string; bodyError?: 'transport' | 'stalled' | 'tooLarge' }
 
 const created: TwilioAnswer = { status: 201, body: JSON.stringify({ sid: messageSid, account_sid: accountSid, from: '+14155550100', to: '+14155550123', status: 'queued' }) };
@@ -178,6 +183,55 @@ describe('Twilio bounded resend of unconfirmed messages', () => {
     context.attempt = 2;
     expect(await send(client, context)).toMatchObject({ branch: 'accepted' });
     expect(requests).toHaveLength(2);
+  });
+
+  it('reads back an accepted SID whose message does not decode instead of resending', async () => {
+    const undecodable = JSON.stringify({ ...JSON.parse(created.body), status: 'Not A Status' });
+    const { client, requests } = newClient(request => request.method === 'POST' ? { status: 201, body: undecodable } : { status: 200, body: created.body });
+    const context = new AttemptContext();
+    expect(await send(client, context)).toMatchObject({ branch: 'accepted', value: { sid: messageSid } });
+    expect(JSON.stringify(context.marker)).toContain(messageSid);
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+  });
+
+  it.each([201, 409])('never saves or reads back a named SID that contains the credential after HTTP %i', async status => {
+    const hexAuthToken = '0123456789abcdef0123456789abcdef';
+    const reflected = JSON.stringify({ ...JSON.parse(created.body), sid: `SM${hexAuthToken}` });
+    const { client, requests } = newClient([{ status, body: reflected }], hexAuthToken);
+    const context = new AttemptContext();
+    const result = await send(client, context);
+    expect(result).toMatchObject({ branch: 'uncertain' });
+    expect(JSON.stringify((result as MutationResult<Message>).receipt)).not.toContain(hexAuthToken);
+    expect(JSON.stringify(context.marker)).not.toContain(hexAuthToken);
+    expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    { status: 401, body: '', bodyError: 'transport' },
+    { status: 401, body: '', bodyError: 'tooLarge' },
+  ] as TwilioAnswer[])('treats an unreadable 401 body as an unknown outcome: %j', async answer => {
+    const { client, requests } = newClient([answer, { status: 401, body: '{"code":20003}' }]);
+    const context = new AttemptContext();
+    expect(await send(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+    context.attempt = 2;
+    expect(await send(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('never resends when the write deadline cuts a body after 2xx headers', async () => {
+    const requests: ProviderRequest[] = [];
+    const resolve = async () => ({ authMethodId: 'auth-token', authToken: new SecretString('auth-token-sentinel-0123456789ab') });
+    const client = new TwilioClient({ accountSid, defaultSender: '+14155550100' }, { resolve }, {
+      send: (request: ProviderRequest) => {
+        requests.push(request);
+        // Headers arrived; the Fence write window then aborts the body read, as sendProviderRequest reports it.
+        return new Promise((_, reject) => request.signal?.addEventListener('abort', () => reject(new ProviderTransportError(false, 201, {})), { once: true }));
+      },
+    });
+    const context = new ShortDeadlineContext();
+    expect(await send(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
   });
 
   it('selects uncertain for terminal credentials after a possible send and defect before any send', async () => {

@@ -3,9 +3,11 @@
 This runnable Flow calls `sendApplicationMessage` with the static `wecom-app`
 connection and completes with WeCom's msgid and the recipients it skipped.
 Optional branches, including `uncertain`, are unwired so they fail the Flow.
-WeCom duplicate checking makes every retry safe within four hours, so the
-default one-hour retry policy never reaches `uncertain`; only a retry 3 hours
-50 minutes or more after the first attempt selects it.
+An unknown outcome sends the identical request again, which WeCom duplicate
+checking should suppress within four hours, but only up to the send cap
+(default 3); `uncertain` is selected at the cap, when WeCom answered but the
+response broke, or for a retry 3 hours 50 minutes or more after the first
+attempt.
 
 ## Strict FDG 2.0 generation
 

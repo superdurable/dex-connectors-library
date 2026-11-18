@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Facebook Page posts whose outcome is unknown."""
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -10,12 +11,20 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    CredentialProvider,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
 )
 from dex_connectors.sdk.singledispatch import Marker
 
@@ -45,13 +54,35 @@ class BrokenBodyStream(httpx.AsyncByteStream):
         raise httpx.ReadError("connection dropped")
 
 
+class LateBodyStream(httpx.AsyncByteStream):
+    """Send the accepted body only after the Fence write window has closed."""
+
+    def __init__(self, delay_seconds: float) -> None:
+        self.delay_seconds = delay_seconds
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(self.delay_seconds)
+        yield PUBLISHED[1]
+
+
+class FailingCredentialProvider:
+    """Fail every credential resolution with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        """Raise the configured credential error."""
+        raise self.error
+
+
 class AttemptContext:
     """Keep the last heartbeat across Execute attempts like Dex does."""
 
-    def __init__(self) -> None:
+    def __init__(self, deadline_seconds: float = 30) -> None:
         self.attempt = 1
         self.run_id = "run"
-        self.deadline = datetime.now(UTC) + timedelta(seconds=30)
+        self.deadline = datetime.now(UTC) + timedelta(seconds=deadline_seconds)
         self.heartbeat_value: object = None
         self.read_error: Exception | None = None
 
@@ -86,6 +117,7 @@ async def publish(
     max_sends: int = PUBLISH_TEXT_POST_DEFINITION.max_sends,
     token: str = TOKEN,
     max_response_bytes: int = 1048576,
+    credential_error: Exception | None = None,
 ) -> MutationResult[PublishedPost] | RetryError:
     """Run one Execute attempt of publishTextPost, answering requests in order."""
 
@@ -96,7 +128,11 @@ async def publish(
             return httpx.Response(status, stream=body)
         return httpx.Response(status, content=body)
 
-    credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString(token))})
+    credentials: CredentialProvider[Credentials] = StaticCredentialProvider(
+        {CONNECTION: Credentials(SecretString(token))}
+    )
+    if credential_error is not None:
+        credentials = FailingCredentialProvider(credential_error)
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         config = Config(base_url="http://127.0.0.1:12345/v25.0", max_response_bytes=max_response_bytes)
         client = Client(config, credentials, transport)
@@ -209,6 +245,48 @@ async def test_accepted_body_breaking_after_headers_selects_uncertain() -> None:
     result = await publish([(200, BrokenBodyStream())], AttemptContext(), requests)
     assert isinstance(result, MutationResult) and result.branch == "uncertain"
     assert len(requests) == 1
+
+
+async def test_accepted_body_arriving_after_write_window_is_published_once() -> None:
+    requests: list[httpx.Request] = []
+    # The 1.2 s deadline closes the write window after 0.7 s, before the body arrives.
+    result = await publish([(200, LateBodyStream(1.0))], AttemptContext(deadline_seconds=1.2), requests)
+    assert isinstance(result, MutationResult) and result.branch == "published"
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    "error",
+    [CredentialBrokerUnavailableError("broker down"), OSError("store read failed"), RuntimeError("bug")],
+)
+async def test_transient_credential_failure_before_send_retries_without_a_send(error: Exception) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    assert isinstance(await publish([PUBLISHED], context, requests, credential_error=error), RetryError)
+    assert requests == []
+    assert context.marker is not None and context.marker.state == "notSent"
+    context.attempt = 2
+    result = await publish([PUBLISHED], context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "published"
+    assert context.marker is not None and context.marker.send_count == 1
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ReauthorizationRequiredError(),
+        ObjectNotFoundError(),
+        ConnectionNotSelectedError(),
+        CredentialBrokerRejectedError(),
+        ValueError("connection is not configured"),
+    ],
+)
+async def test_terminal_credential_failure_before_send_selects_defect(error: Exception) -> None:
+    requests: list[httpx.Request] = []
+    result = await publish([PUBLISHED], AttemptContext(), requests, credential_error=error)
+    assert isinstance(result, MutationResult) and result.branch == "defect"
+    assert requests == []
 
 
 async def test_unreadable_client_error_is_unknown() -> None:

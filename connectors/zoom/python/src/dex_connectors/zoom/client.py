@@ -179,11 +179,16 @@ class Client:
         query: dict[str, str] | None = None,
         payload: dict[str, object] | None = None,
         fenced: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send once, refreshing after a rejected bearer only for unfenced calls."""
+        """Send once, refreshing after a rejected bearer only for unfenced calls.
+
+        ``observed_statuses`` receives each HTTP status once headers arrive, before the body is read,
+        so a caller cut off by a write deadline still knows whether Zoom accepted the request.
+        """
         token = credentials.access_token.reveal()
         for attempt in range(2):
-            exchange = await self.send_once(token, method, path, query, payload)
+            exchange = await self.send_once(token, method, path, query, payload, observed_statuses)
             if exchange.error or exchange.status != 401 or fenced or attempt != 0:
                 return exchange
             resolver = getattr(self.credentials, "resolve_after_rejection", None)
@@ -205,8 +210,12 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: dict[str, object] | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Perform one HTTP exchange without following redirects."""
+        """Perform one HTTP exchange without following redirects.
+
+        ``observed_statuses`` receives the HTTP status once headers arrive, before the body is read.
+        """
         target = self.endpoint + path
         if query:
             target += "?" + _encode_query(query)
@@ -226,6 +235,8 @@ class Client:
             response, _ = await send_traced(self.http_client, request)
         except ProviderTransportError as error:
             return Exchange(error="transport", is_dispatched=not error.provably_not_sent)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         limit = self.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
         try:
             contents = await read_bounded_body(response, limit)

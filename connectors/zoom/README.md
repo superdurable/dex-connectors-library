@@ -180,14 +180,14 @@ been verified against a live Zoom account.
 | Outcome | Result |
 | --- | --- |
 | 201 with a valid meeting | `created`, with the meeting ID and join URL |
-| 400, 403, 404, 411, 413, 414, 415, or 422 | `providerRejected` with Zoom's error code after checkpointing that no meeting was created; after an earlier possible send, `uncertain` |
-| 401 | Force one credential refresh; on success checkpoint permission to retry, otherwise `providerRejected` (or `uncertain` after an earlier possible send) |
+| 400, 403, 404, 411, 413, 414, 415, or 422 with a readable body | `providerRejected` with Zoom's error code after checkpointing that no meeting was created; after an earlier possible send, `uncertain` |
+| 401 with a readable body | Force one credential refresh; on success checkpoint permission to retry, otherwise `providerRejected` (or `uncertain` after an earlier possible send) |
 | 429 with Zoom's documented daily-limit message | `providerRejected` with a connector-owned rate-limit message (or `uncertain` after an earlier possible send) |
 | Other 429, including per-second and unrecognized messages, or 503 | Checkpoint permission to retry after Zoom's delay when supplied; retry exhaustion fails the Flow |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 3xx, 408, 409, another 4xx, another 5xx, or an error status whose body is oversized or unreadable, after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
+| Timeout, dropped connection, 3xx, 408, 409, another 4xx, another 5xx, or an error status, 401 included, whose body is oversized or unreadable, after dispatch | Retry and resend below the send cap; `uncertain` at the cap |
 | Error status whose body names a created meeting ID | Checkpoint the ID and read the meeting back, without another create; when the ID checkpoint fails, a read-back that cannot finish selects `uncertain` instead of Retry |
-| 2xx whose body is oversized, unreadable, malformed, reflects the credential, or has a meeting ID but an otherwise unusable meeting | `uncertain`, without another create, because Zoom created the meeting |
+| 2xx whose body is oversized, unreadable, cut off by the write deadline, malformed, reflects the credential, or has a meeting ID but an otherwise unusable meeting | `uncertain`, without another create, because Zoom created the meeting |
 | Invalid credentials or an unbuildable request after an earlier possible send | `uncertain`, without another create |
 | Later attempt with an accepted meeting ID checkpoint | Read the meeting back; transient read failure retries without another create |
 | Later attempt at the send cap without a meeting ID | `uncertain`, without another create |
