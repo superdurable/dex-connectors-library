@@ -3,7 +3,7 @@
 
 import { resolveCredential, resolveCredentialAfterRejection, ReauthorizationRequiredError, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { SearchConversationsOperation, GetConversationOperation, ReplyToConversationOperation, UpdateConversationOperation, FindCustomerByEmailOperation } from './operations.js';
@@ -30,7 +30,7 @@ export interface HelpScoutWebhookSettings {
 /** One response or sanitized transport failure from the Help Scout API. */
 export type HelpScoutExchange =
   | { response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean }
-  | { error: unknown; status?: number; headers?: ProviderResponse['headers'] };
+  | { error: unknown; status?: number; headers?: ProviderResponse['headers']; isNotBuilt?: boolean };
 
 /** Resolve the renewable credential before a provider request. */
 export type CredentialResolution =
@@ -92,20 +92,23 @@ export class HelpScoutClient {
     return this.exchangeWithToken(call, credential.token, method, path, query, payload, allowRefresh);
   }
 
-  /** Send with a token already resolved for a multi-request operation. */
-  async exchangeWithToken(call: Call, accessToken: string, method: string, path: string, query?: Readonly<Record<string, string>>, payload?: unknown, allowRefresh = true, requestTimeoutMs = 25_000): Promise<HelpScoutExchange> {
+  /**
+   * Send with a token already resolved for a multi-request operation. `signal`, when given, replaces the
+   * Step cancellation signal, such as a Fence write-window signal that also follows Step cancellation.
+   */
+  async exchangeWithToken(call: Call, accessToken: string, method: string, path: string, query?: Readonly<Record<string, string>>, payload?: unknown, allowRefresh = true, requestTimeoutMs = 25_000, signal?: AbortSignal): Promise<HelpScoutExchange> {
     const encodedQuery = query ? Object.entries(query).sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(([name, value]) => `${goQueryEscape(name)}=${goQueryEscape(value)}`).join('&') : '';
     const url = `${apiBaseURL}${path}${encodedQuery ? `?${encodedQuery}` : ''}`;
     let body: Uint8Array | undefined;
     try { if (payload !== undefined) body = Buffer.from(JSON.stringify(payload)); }
-    catch { return { error: new TypeError('Help Scout request could not be built') }; }
+    catch { return { error: new TypeError('Help Scout request could not be built'), isNotBuilt: true }; }
     let token = accessToken;
     for (let attempt = 0; attempt < 2; attempt++) {
       const request: ProviderRequest = {
         url, method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json; charset=UTF-8' } : {}) },
         ...(body ? { body } : {}), maxResponseBytes: this.#maxResponseBytes, maxErrorResponseBytes: MaxErrorBodyBytes,
         ignoreErrorBodyReadFailure: true, addressPolicy: 'publicHTTPS', timeoutMs: requestTimeoutMs,
-        signal: call.context.cancellationSignal,
+        signal: signal ?? call.context.cancellationSignal,
       };
       let exchange: { response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean };
       let observedStatus = 0;
@@ -114,7 +117,10 @@ export class HelpScoutClient {
       try { exchange = { response: await this.#send(request), accessToken: token }; }
       catch (error) {
         if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers) exchange = { response: { status: error.status, headers: error.headers, body: new Uint8Array() }, accessToken: token, ...(error.status >= 200 && error.status < 300 ? { isTooLarge: true as const } : {}) };
-        else return { error, status: observedStatus, headers: observedHeaders };
+        else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status) {
+          // The status arrived before the body broke, so a 2xx write was accepted.
+          return { error, status: error.status, headers: error.headers ?? observedHeaders };
+        } else return { error, status: observedStatus, headers: observedHeaders };
       }
       if (exchange.response.status >= 200 && exchange.response.status < 300 && token && Buffer.from(exchange.response.body).includes(Buffer.from(token))) return { ...exchange, isMalformed: true };
       if (exchange.response.status !== 401 || !allowRefresh || attempt > 0 || !('resolveAfterRejection' in this.#credentials)) return exchange;

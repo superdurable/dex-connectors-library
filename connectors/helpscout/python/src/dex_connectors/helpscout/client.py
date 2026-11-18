@@ -66,6 +66,14 @@ class Exchange:
     token: str = ""
 
 
+@dataclass(slots=True)
+class ResponseHead:
+    """Status and headers of the latest response, kept when a write window cuts off its body."""
+
+    status: int = 0
+    headers: httpx.Headers = field(default_factory=httpx.Headers)
+
+
 class Client:
     """Resolve an access token per call and send bounded Inbox API requests.
 
@@ -177,8 +185,12 @@ class Client:
         payload: object | None = None,
         *,
         allow_refresh: bool = True,
+        response_head: ResponseHead | None = None,
     ) -> Exchange:
-        """Send once, refreshing a rejected token once when the source supports it."""
+        """Send once, refreshing a rejected token once when the source supports it.
+
+        response_head, when given, receives each response's status and headers before its body is read.
+        """
         target = _API_BASE + path
         if query:
             target += "?" + encode_query_values(query)
@@ -205,6 +217,8 @@ class Client:
                 return Exchange(error="beforeSend" if error.provably_not_sent else "afterSend")
             except (httpx.HTTPError, ValueError):
                 return Exchange(error="transport")
+            if response_head is not None:
+                response_head.status, response_head.headers = response.status_code, response.headers
             limit = (
                 self.config.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
             )

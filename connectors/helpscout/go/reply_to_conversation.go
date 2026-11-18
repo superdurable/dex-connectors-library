@@ -99,40 +99,24 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 			helpScoutFailurePointer(operationID, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
-	switch decision.Kind {
-	case singledispatch.FailClosed:
+	if decision.Kind == singledispatch.FailClosed {
 		// FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
 		return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability,
 			"the dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
-	case singledispatch.ReadBackRequired:
-		return client.readBackReply(call, output, decision.Marker)
-	case singledispatch.ReadBackThenResendAllowed:
-		// Help Scout returns a thread ID only for a created thread, so a saved one is read back and never resent.
-		if decision.Marker.ProviderID != "" {
-			return client.readBackReply(call, output, decision.Marker)
-		}
 	}
+	// Help Scout reads a thread back only by its ID, which it returns only for a created thread.
+	if decision.Kind == singledispatch.ReadBackRequired || decision.Marker.ProviderID != "" {
+		return client.readBackReply(call, output, decision.Marker)
+	}
+	isEarlierSendPossible := decision.Kind != singledispatch.SendAllowed || decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != ""
 	permit := replySendPermit{
 		fence:                   fence,
-		isFirstSend:             decision.MaximumPriorSends == 0,
+		isFirstSend:             !isEarlierSendPossible,
 		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
 	}
 	credentials, err := client.resolveCredentials(call)
 	if err != nil {
-		if !errors.Is(err, errHelpScoutCredentialsUnavailable) {
-			if !permit.isFirstSend {
-				return client.uncertainReply(call, output, "an earlier attempt may have sent the thread, and authorization failed before a resend")
-			}
-			return credentialMutationAttempt(operationID, ReplyToConversationBranchDefect, output, err)
-		}
-		// After a possible earlier send, notSent would hide that send, so nothing is recorded.
-		if permit.isFirstSend {
-			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
-				return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability,
-					"the thread was not sent and Dex could not persist its retry checkpoint"), 0)
-			}
-		}
-		return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability, err.Error()), 0)
+		return client.credentialFailureReply(call, output, permit, err)
 	}
 	if !input.IsInternalNote && input.CustomerID == 0 {
 		customerID, attempt, isTerminal := client.readPrimaryCustomerID(call, &credentials, output, permit)
@@ -144,8 +128,13 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	request := buildThreadRequest(input, output.CustomerID)
 	encodedBody, err := json.Marshal(request.payload)
 	if err != nil {
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output,
-			helpScoutFailurePointer(operationID, sdkgo.FailureLocalDefect, errHelpScoutRequestInvalid.Error()), sdkgo.Receipt{})
+		failure := helpScoutFailure(operationID, sdkgo.FailureLocalDefect, errHelpScoutRequestInvalid.Error())
+		if !permit.isFirstSend {
+			// defect would hide an earlier possible send.
+			return sdkgo.NewMutationUncertain(output, failure, client.receipt(call, output.ConversationID, ""))
+		}
+		_ = fence.RecordNotSent() // The Step ends at defect, so a lost checkpoint changes nothing.
+		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, &failure, sdkgo.Receipt{})
 	}
 	sendAttempt := &replySendAttempt{client: client, credentials: credentials, request: request, encodedBody: encodedBody}
 	err = fence.Dispatch(sendAttempt.send)
@@ -183,6 +172,24 @@ func (attempt *replySendAttempt) send(requestContext context.Context) error {
 	return err
 }
 
+// credentialFailureReply sends nothing. After a possible earlier send it records nothing, so that send
+// stays counted, and a terminal failure selects uncertain instead of defect.
+func (client *Client) credentialFailureReply(call sdkgo.Call, output ConversationReply, permit replySendPermit, err error) sdkgo.MutationAttempt[ConversationReply] {
+	operationID := ReplyToConversationDefinition.Operation.OperationID
+	isTransient := errors.Is(err, errHelpScoutCredentialsUnavailable)
+	if !permit.isFirstSend {
+		if isTransient {
+			return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability, err.Error()), 0)
+		}
+		return client.uncertainReply(call, output, "an earlier attempt may have sent the thread, and authorization failed before a resend")
+	}
+	if checkpointErr := permit.fence.RecordNotSent(); checkpointErr != nil && isTransient {
+		return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability,
+			"the thread was not sent and Dex could not persist its retry checkpoint"), 0)
+	}
+	return credentialMutationAttempt(operationID, ReplyToConversationBranchDefect, output, err)
+}
+
 // readPrimaryCustomerID reads the conversation before this attempt's send. A terminal read after a
 // possible earlier send selects uncertain, because a refusal branch would hide that send.
 func (client *Client) readPrimaryCustomerID(
@@ -193,12 +200,17 @@ func (client *Client) readPrimaryCustomerID(
 	readContext, cancel, canRead := boundedReplyReadContext(call.Context)
 	defer cancel()
 	if !canRead {
-		_ = fence.RecordNotSent() // Refused after a possible earlier send, so that send stays counted.
+		if permit.isFirstSend {
+			_ = fence.RecordNotSent() // A lost checkpoint only counts one more possible send.
+		}
 		return 0, sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureAvailability,
 			"too little attempt time remains to read the primary customer before sending"), 0), true
 	}
 	response, err := client.send(readContext, call, credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(output.ConversationID)})
-	customerID, attempt, isTerminal, isRefusal := client.decodePrimaryCustomerID(call, credentials, output, fence, response, err)
+	customerID, attempt, isTerminal, isRefusal := client.decodePrimaryCustomerID(call, credentials, output, response, err)
+	if isTerminal && !isRefusal && permit.isFirstSend {
+		_ = fence.RecordNotSent() // A lost checkpoint only counts one more possible send.
+	}
 	if isRefusal && !permit.isFirstSend {
 		return 0, client.uncertainReply(call, output, "an earlier attempt may have sent the thread, and the conversation read before a resend failed"), true
 	}
@@ -207,7 +219,7 @@ func (client *Client) readPrimaryCustomerID(
 
 // decodePrimaryCustomerID maps the customer read; isRefusal marks a terminal refusal branch.
 func (client *Client) decodePrimaryCustomerID(
-	call sdkgo.Call, credentials *Credentials, output ConversationReply, fence *singledispatch.Fence, response helpScoutResponse, err error,
+	call sdkgo.Call, credentials *Credentials, output ConversationReply, response helpScoutResponse, err error,
 ) (int64, sdkgo.MutationAttempt[ConversationReply], bool, bool) {
 	operationID := ReplyToConversationDefinition.Operation.OperationID
 	if err == nil && response.statusCode == http.StatusMovedPermanently {
@@ -223,9 +235,6 @@ func (client *Client) decodePrimaryCustomerID(
 		invalidResponse: ReplyToConversationBranchProviderRejected,
 	}
 	if attempt, isTerminal, isRetry := classifyIdempotentMutationExchange(client, call, operationID, *credentials, response, err, branches, output.ConversationID, output); isTerminal {
-		if isRetry {
-			_ = fence.RecordNotSent() // Refused after a possible earlier send, so that send stays counted.
-		}
 		return 0, attempt, true, !isRetry
 	}
 	conversation, err := decodeConversationBody(response.body, output.ConversationID)
@@ -242,8 +251,8 @@ func (client *Client) decodePrimaryCustomerID(
 	return conversation.PrimaryCustomer.ID, sdkgo.MutationAttempt[ConversationReply]{}, false, false
 }
 
-// classifyReplyExchange maps the fenced write. Only a definite refusal selects a refusal branch; any
-// other outcome may have created the thread, so it resends while the send cap allows.
+// classifyReplyExchange maps the fenced write. A 2xx is accepted and never resent. Only a definite refusal
+// selects a refusal branch; any other outcome may have created the thread, so it resends while the cap allows.
 func (client *Client) classifyReplyExchange(
 	call sdkgo.Call, output ConversationReply, credentials Credentials, response helpScoutResponse, err error,
 	observation *dispatchObservation, permit replySendPermit,
@@ -256,12 +265,9 @@ func (client *Client) classifyReplyExchange(
 	}
 	switch {
 	case err != nil && errors.Is(err, errHelpScoutRequestInvalid):
-		failure := helpScoutFailure(operationID, sdkgo.FailureLocalDefect, errHelpScoutRequestInvalid.Error())
-		if !permit.isFirstSend {
-			// defect would hide an earlier possible send.
-			return client.resendOrSelectUncertain(call, output, permit, failure, 0, sdkgo.Receipt{})
-		}
-		return client.rejectReply(call, output, permit, ReplyToConversationBranchDefect, failure, sdkgo.Receipt{})
+		// rejectReply selects uncertain after a possible earlier send, because defect would hide it.
+		return client.rejectReply(call, output, permit, ReplyToConversationBranchDefect,
+			helpScoutFailure(operationID, sdkgo.FailureLocalDefect, errHelpScoutRequestInvalid.Error()), sdkgo.Receipt{})
 	case err != nil && observation.isProvablyUndispatched():
 		_ = permit.fence.RecordCanResend() // A lost checkpoint leaves the claim, so the next attempt counts this send.
 		return sdkgo.NewMutationRetry[ConversationReply](helpScoutFailure(operationID, sdkgo.FailureTransport,
@@ -272,11 +278,12 @@ func (client *Client) classifyReplyExchange(
 	case isSuccess:
 		output.ThreadID = parseResourceID(response.header.Get(resourceIDHeader))
 		if output.ThreadID == 0 {
-			// Without a thread ID the answer cannot be read back, so it counts as an unknown outcome.
-			return client.resendOrSelectUncertain(call, output, permit, helpScoutFailure(operationID, sdkgo.FailureTransport,
-				"Help Scout answered the thread without a valid Resource-Id; the thread may exist"), 0, client.receipt(call, output.ConversationID, ""))
+			// Help Scout accepted the thread, and without its ID no read-back can confirm it, so it is never resent.
+			return sdkgo.NewMutationUncertain(output, helpScoutFailure(operationID, sdkgo.FailureProtocol,
+				"Help Scout accepted the thread without a valid Resource-Id; the thread may exist"), client.receipt(call, output.ConversationID, ""))
 		}
-		_ = permit.fence.RecordProviderID(strconv.FormatInt(output.ThreadID, 10)) // A lost ID still forbids another send.
+		// The 2xx Resource-Id confirms the thread; a lost ID leaves only the claim for a later attempt.
+		_ = permit.fence.RecordProviderID(strconv.FormatInt(output.ThreadID, 10))
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, client.receipt(call, output.ThreadID, ""))
 	}
 	outcome := client.classifyFailure(operationID, response, credentials)

@@ -81,7 +81,7 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a 2xx without a thread ID, or an accepted thread could not be confirmed by read-back. Without a thread ID, an unknown outcome is resent while the cap allows. */
+  /** The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, or an unlisted status; Help Scout accepted the thread with a 2xx but no valid thread ID; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
