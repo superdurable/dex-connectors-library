@@ -45,7 +45,7 @@ func TestSendMessageSubmitsOneMessageWithAStableMessageID(t *testing.T) {
 
 	replayed, err := sdkgo.RunMutation(ctx.nextAttempt(), fixture.client(t).SendMessage(), emailConnection, validSendMessageInput())
 	require.NoError(t, err)
-	require.Equal(t, email.SendMessageBranchUncertain, replayed.Branch, "a replay after an accepted submission never resubmits")
+	require.Equal(t, email.SendMessageBranchSent, replayed.Branch, "a replay after an accepted submission never resubmits")
 	require.Len(t, fixture.smtp.Submissions(), 1)
 
 	submissions := fixture.smtp.Submissions()
@@ -70,6 +70,24 @@ func TestSendMessageSubmitsOneMessageWithAStableMessageID(t *testing.T) {
 	require.Equal(t, "quoted-printable", header.Get("Content-Transfer-Encoding"))
 	require.Equal(t, strings.ReplaceAll(validSendMessageInput().Text, "\n", "\r\n")+"\r\n", text,
 		"a line holding only a dot survives dot-stuffing, and SMTP ends the message with a line break")
+}
+
+func TestSendMessageReplayAfterAnAcceptedSubmissionIsSentWithoutSubmitting(t *testing.T) {
+	fixture := newMailFixture(t)
+	first := newEmailDexContext("accepted")
+	accepted, err := sdkgo.RunMutation(first, fixture.client(t).SendMessage(), emailConnection, validSendMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, email.SendMessageBranchSent, accepted.Branch)
+
+	replayed, err := sdkgo.RunMutation(first.nextAttempt(), fixture.client(t).SendMessage(), emailConnection, validSendMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, email.SendMessageBranchSent, replayed.Branch, "the checkpoint proves the server accepted the message")
+	require.Nil(t, replayed.Failure)
+	require.Equal(t, accepted.Value.MessageID, replayed.Value.MessageID)
+	require.Equal(t, accepted.Value.Recipients, replayed.Value.Recipients)
+	require.Equal(t, accepted.Value.Subject, replayed.Value.Subject)
+	require.True(t, replayed.Value.SentAt.IsZero(), "the replay did not submit, so the Date header is unknown")
+	require.Len(t, fixture.smtp.Submissions(), 1, "the replay never submits again")
 }
 
 func TestSendMessageRetriesWithoutSubmittingAfterAForeignCheckpoint(t *testing.T) {

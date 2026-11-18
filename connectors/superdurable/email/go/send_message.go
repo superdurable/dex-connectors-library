@@ -71,6 +71,9 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	if err != nil {
 		return operation.refuseLocally(decision, sdkgo.FailureLocalDefect, "the message could not be rendered", message.sentMessage())
 	}
+	if attempt, isAccepted := acceptedSubmissionAttempt(decision, SendMessageBranchSent, message.sentMessage()); isAccepted {
+		return attempt
+	}
 	if attempt, isTerminal := submissionAttemptBeforeSend(decision, sendMessageOperation, message.sentMessage()); isTerminal {
 		return attempt
 	}

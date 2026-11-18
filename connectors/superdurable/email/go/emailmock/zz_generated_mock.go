@@ -204,7 +204,7 @@ func GetMessageRejectedReadLogin() connectormock.Case[email.Message] {
 // GetMessageDefault is the manifest default, customerRefundRequest, which New installs.
 func GetMessageDefault() connectormock.Case[email.Message] { return GetMessageCustomerRefundRequest() }
 
-// SendMessageSent selects the sent branch: The SMTP server accepted the message for delivery.
+// SendMessageSent selects the sent branch: The SMTP server accepted the message for delivery, in this attempt or, with a blank sentAt, in an earlier one.
 func SendMessageSent(value email.SentMessage, failure *sdkgo.Failure) connectormock.Case[email.SentMessage] {
 	return connectormock.Branch(email.SendMessageBranchSent, value, failure)
 }
@@ -246,7 +246,7 @@ func SendMessageDefault() connectormock.Case[email.SentMessage] {
 	return SendMessageNewCustomerMessage()
 }
 
-// ReplyToMessageSent selects the sent branch: The SMTP server accepted the reply for delivery.
+// ReplyToMessageSent selects the sent branch: The SMTP server accepted the reply for delivery, in this attempt or, with a blank sentAt, in an earlier one.
 func ReplyToMessageSent(value email.SentMessage, failure *sdkgo.Failure) connectormock.Case[email.SentMessage] {
 	return connectormock.Branch(email.ReplyToMessageBranchSent, value, failure)
 }

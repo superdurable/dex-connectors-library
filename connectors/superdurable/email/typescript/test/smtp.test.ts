@@ -137,14 +137,21 @@ test('a refusal after an earlier possible submission is uncertain', async () => 
   recipientReply = 250;
 });
 
-test('a replay after an accepted submission is uncertain without resubmitting', async () => {
+test('a replay after an accepted submission is sent without resubmitting', async () => {
   loseFinalAnswer = false; recipientReply = 250; authReply = 235;
   const before = submissions;
   const { call: invocation, nextAttempt } = call();
   const input = { to: ['jane@example.com'], subject: 'Sent once', text: 'Hello' };
   expect((await client().sendMessage().invoke(invocation, input)).kind).toBe('branch');
   nextAttempt();
-  expect((await client().sendMessage().invoke(invocation, input)).kind).toBe('uncertain');
+  const replayed = await client().sendMessage().invoke(invocation, input);
+  expect(replayed.kind).toBe('branch');
+  if (replayed.kind === 'branch') {
+    expect(replayed.branch).toBe('sent');
+    expect(replayed.value.recipients).toEqual(['jane@example.com']);
+    expect(replayed.value.sentAt).toBeUndefined();
+  }
+  expect(replayed.failure).toBeUndefined();
   expect(submissions).toBe(before + 1);
 });
 

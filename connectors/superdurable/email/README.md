@@ -300,14 +300,17 @@ take these positions:
 - After an earlier submission may have been accepted, a refusal, unusable
   credentials, or a source that can no longer be read selects `uncertain`
   instead of `providerRejected`, `notFound`, `invalidResponse`, or `defect`.
-  A replay after an accepted submission selects `uncertain` without
-  submitting again.
+  A replay after an accepted submission never submits again: it selects
+  `sent` with the rebuilt message and a blank `sentAt`, because the
+  checkpoint proves the server accepted it. A `replyToMessage` replay reads
+  the source again to rebuild the reply and selects `uncertain` when the
+  source can no longer be read.
 
 Keep these two Steps sync to reduce replay risk before an async result commit.
 Both durability modes use the same attempt and retry rules. The ten attempts
 within ten minutes leave room for the three submissions plus temporary SMTP
 refusals. The root integration test forces a second Execute after an accepted
-submission and confirms it selects `uncertain` without resubmitting. The
+submission and confirms it selects `sent` without resubmitting. The
 example's lost-Worker test replaces the Worker while the server holds the
 final-dot answer; the next attempt counts that submission and sends the reply
 once more. Dex's `RecordHeartbeat` returns once the checkpoint enters the

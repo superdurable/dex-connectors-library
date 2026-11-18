@@ -406,7 +406,7 @@ const SendMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var SendMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMessage"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: SendMessageBranchSent, Description: "The SMTP server accepted the message for delivery."},
+		{ID: SendMessageBranchSent, Description: "The SMTP server accepted the message for delivery, in this attempt or, with a blank sentAt, in an earlier one."},
 		{ID: SendMessageBranchProviderRejected, Description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent.", Optional: true},
 		{ID: SendMessageBranchUncertain, Description: "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again.", Optional: true},
 		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
@@ -484,7 +484,7 @@ const ReplyToMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToMessage"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: ReplyToMessageBranchSent, Description: "The SMTP server accepted the reply for delivery."},
+		{ID: ReplyToMessageBranchSent, Description: "The SMTP server accepted the reply for delivery, in this attempt or, with a blank sentAt, in an earlier one."},
 		{ID: ReplyToMessageBranchNotFound, Description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent.", Optional: true},
 		{ID: ReplyToMessageBranchProviderRejected, Description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent.", Optional: true},
 		{ID: ReplyToMessageBranchInvalidResponse, Description: "The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent.", Optional: true},
