@@ -4,6 +4,7 @@
 package stripe_test
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -256,42 +257,59 @@ func TestStripeKeyedWritesRetryUnknownStatusesAndRejectDefiniteOnes(t *testing.T
 }
 
 func TestStripeKeyedWritesSelectUncertainForTerminalCredentialsAfterFirstAttempt(t *testing.T) {
+	terminal := map[string]sdkgo.CredentialProvider[stripe.Credentials]{
+		"blank key":               sdkgo.StaticCredentialProvider[stripe.Credentials]{stripeConnection: {}},
+		"sdk reauthorization":     failingResolveCredentials{sdkgo.NewReauthorizationRequiredError(nil)},
+		"project reauthorization": failingResolveCredentials{projectconfig.ErrReauthorizationRequired},
+		"object not found":        failingResolveCredentials{projectconfig.ErrObjectNotFound},
+		"not selected":            failingResolveCredentials{projectconfig.ErrConnectionNotSelected},
+		"broker rejected":         failingResolveCredentials{projectconfig.ErrCredentialBrokerRejected},
+	}
 	for _, write := range stripeWriteCases() {
-		t.Run(write.name, func(t *testing.T) {
-			client, err := stripe.New(stripe.Config{Endpoint: "http://127.0.0.1:1"}, sdkgo.StaticCredentialProvider[stripe.Credentials]{})
-			require.NoError(t, err)
-			outcome, err := write.invoke(client, newStripeDexContext("credentials"))
-			require.NoError(t, err)
-			require.Equal(t, sdkgo.BranchID("defect"), outcome.branch)
-			ctx := newStripeDexContext("credentials")
-			ctx.attempt = 2
-			outcome, err = write.invoke(client, ctx)
-			require.NoError(t, err)
-			require.Equal(t, sdkgo.BranchID("uncertain"), outcome.branch, "an earlier attempt may have created the object")
-			require.Equal(t, sdkgo.FailureAuthentication, outcome.failure.Kind)
-		})
+		for name, credentials := range terminal {
+			t.Run(write.name+" "+name, func(t *testing.T) {
+				client, err := stripe.New(stripe.Config{Endpoint: "http://127.0.0.1:1"}, credentials)
+				require.NoError(t, err)
+				outcome, err := write.invoke(client, newStripeDexContext("credentials"))
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.BranchID("defect"), outcome.branch)
+				ctx := newStripeDexContext("credentials")
+				ctx.attempt = 2
+				outcome, err = write.invoke(client, ctx)
+				require.NoError(t, err)
+				require.Equal(t, sdkgo.BranchID("uncertain"), outcome.branch, "an earlier attempt may have created the object")
+				require.Equal(t, sdkgo.FailureAuthentication, outcome.failure.Kind)
+			})
+		}
 	}
 }
 
-// unavailableBrokerCredentials fails every resolve the way a temporarily unreachable credential broker does.
-type unavailableBrokerCredentials struct{}
+// failingResolveCredentials fails every resolve with resolveErr.
+type failingResolveCredentials struct{ resolveErr error }
 
-func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (stripe.Credentials, error) {
-	return stripe.Credentials{}, fmt.Errorf("%w: HTTP 503", projectconfig.ErrCredentialBrokerUnavailable)
+func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (stripe.Credentials, error) {
+	return stripe.Credentials{}, credentials.resolveErr
 }
 
-func TestStripeKeyedWritesRetryAnUnavailableCredentialBrokerOnEveryAttempt(t *testing.T) {
+func TestStripeKeyedWritesRetryATransientCredentialFailureOnEveryAttempt(t *testing.T) {
+	transient := map[string]sdkgo.CredentialProvider[stripe.Credentials]{
+		"broker unavailable": failingResolveCredentials{fmt.Errorf("%w: HTTP 503", projectconfig.ErrCredentialBrokerUnavailable)},
+		"not configured":     sdkgo.StaticCredentialProvider[stripe.Credentials]{},
+		"unlisted":           failingResolveCredentials{errors.New("unlisted resolve failure")},
+	}
 	for _, write := range stripeWriteCases() {
-		t.Run(write.name, func(t *testing.T) {
-			client, err := stripe.New(stripe.Config{Endpoint: "http://127.0.0.1:1"}, unavailableBrokerCredentials{})
-			require.NoError(t, err)
-			for _, attempt := range []int32{1, 2} {
-				ctx := newStripeDexContext("broker")
-				ctx.attempt = attempt
-				_, err = write.invoke(client, ctx)
-				requireStripeRetry(t, err, sdkgo.FailureAvailability)
-			}
-		})
+		for name, credentials := range transient {
+			t.Run(write.name+" "+name, func(t *testing.T) {
+				client, err := stripe.New(stripe.Config{Endpoint: "http://127.0.0.1:1"}, credentials)
+				require.NoError(t, err)
+				for _, attempt := range []int32{1, 2} {
+					ctx := newStripeDexContext("broker")
+					ctx.attempt = attempt
+					_, err = write.invoke(client, ctx)
+					requireStripeRetry(t, err, sdkgo.FailureAvailability)
+				}
+			})
+		}
 	}
 }
 

@@ -21,7 +21,11 @@ from dex_connectors.sdk import (
     run_mutation,
     run_query,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.stripe import (
     Client,
@@ -786,10 +790,9 @@ async def test_refund_readback_is_bounded_to_three_pages(match_on_third_page: bo
 async def test_missing_credentials_are_authentication_defects(operation: str) -> None:
     """A missing connection never sends an unauthenticated provider request."""
     result: Any
-    credentials: StaticCredentialProvider[Credentials] = StaticCredentialProvider({})
     client = Client(
         Config("http://127.0.0.1:12345/v1"),
-        credentials,
+        _FailingCredentials(ConnectionNotSelectedError()),  # type: ignore[arg-type]
         httpx.AsyncClient(
             transport=httpx.MockTransport(lambda request: pytest.fail("sent without credentials"))
         ),
@@ -827,10 +830,9 @@ class _LaterAttemptContext:
 async def test_missing_credentials_select_uncertain_after_first_attempt(operation: str) -> None:
     """A later attempt may follow a created object, so terminal credentials select uncertain."""
     result: Any
-    credentials: StaticCredentialProvider[Credentials] = StaticCredentialProvider({})
     client = Client(
         Config("http://127.0.0.1:12345/v1"),
-        credentials,
+        _FailingCredentials(ObjectNotFoundError()),  # type: ignore[arg-type]
         httpx.AsyncClient(
             transport=httpx.MockTransport(lambda request: pytest.fail("sent without credentials"))
         ),
@@ -845,20 +847,33 @@ async def test_missing_credentials_select_uncertain_after_first_attempt(operatio
     assert result.branch == "uncertain" and result.failure.kind == FailureKind.AUTHENTICATION
 
 
-class _UnavailableBrokerCredentials:
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
     async def resolve(self, _call: Call) -> Credentials:
-        raise CredentialBrokerUnavailableError()
+        raise self.error
 
 
 @pytest.mark.parametrize(
     "operation", ["createCardCheckoutSession", "createACHCheckoutSession", "createRefund"]
 )
-async def test_unavailable_credential_broker_retries_on_every_attempt(operation: str) -> None:
-    """A broker outage sends nothing, so neither defect nor uncertain may be selected."""
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError(),
+        ValueError("connection is not configured"),
+        RuntimeError("unlisted"),
+    ],
+)
+async def test_unavailable_credential_broker_retries_on_every_attempt(
+    operation: str, error: Exception
+) -> None:
+    """A transient resolve failure sends nothing, so neither defect nor uncertain may be selected."""
     result: Any
     client = Client(
         Config("http://127.0.0.1:12345/v1"),
-        _UnavailableBrokerCredentials(),  # type: ignore[arg-type]
+        _FailingCredentials(error),  # type: ignore[arg-type]
         httpx.AsyncClient(
             transport=httpx.MockTransport(lambda request: pytest.fail("sent without credentials"))
         ),
