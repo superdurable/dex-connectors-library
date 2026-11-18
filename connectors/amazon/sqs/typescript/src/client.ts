@@ -2,12 +2,19 @@
 // SPDX-License-Identifier: MIT
 
 import { createHash, createHmac } from 'node:crypto';
-import { type Call, type CredentialProvider, type Failure, type Receipt } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure, type Receipt } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { type Config, type Credentials } from './generated/models.js';
 import { ChangeMessageVisibilityOperation, DeleteMessageOperation, ReceiveMessagesOperation } from './operations.js';
 
 const provider = 'amazon-sqs';
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 const regionPattern = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 const queueNamePattern = /^[A-Za-z0-9_-]{1,80}$/;
 const ownerPattern = /^[A-Za-z0-9_-]{1,64}$/;
@@ -95,10 +102,15 @@ export class SQSClient {
     return { url: queueUrl, isFIFO };
   }
 
-  /** Resolve one current access key without retaining it in a result. */
-  async resolveCredentials(call: Call): Promise<Credentials | undefined> {
+  /**
+   * Resolve one current access key without retaining it in a result.
+   * Returns null for a transient credential failure and undefined for a terminal or invalid credential.
+   */
+  async resolveCredentials(call: Call): Promise<Credentials | null | undefined> {
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) { return isTerminalCredentialError(error) ? undefined : null; }
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
       const key = credentials.accessKeyId?.reveal();
       const secret = credentials.secretAccessKey?.reveal();
       const token = credentials.sessionToken?.reveal() ?? '';

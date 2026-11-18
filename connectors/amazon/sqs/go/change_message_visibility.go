@@ -71,7 +71,10 @@ func (operation ChangeMessageVisibilityOperation) Invoke(call sdkgo.Call, input 
 		return sdkgo.NewMutationBranch(ChangeMessageVisibilityBranchDefect, ChangedMessageVisibility{},
 			defectFailure(changeMessageVisibilityOperationID, err), sdkgo.Receipt{})
 	}
-	session, cancel, failure := client.startSession(call, changeMessageVisibilityOperationID)
+	session, cancel, failure, shouldRetry := client.startSession(call, changeMessageVisibilityOperationID)
+	if shouldRetry {
+		return sdkgo.NewMutationRetry[ChangedMessageVisibility](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(ChangeMessageVisibilityBranchDefect, ChangedMessageVisibility{}, failure, sdkgo.Receipt{})
 	}

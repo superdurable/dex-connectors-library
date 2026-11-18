@@ -132,7 +132,11 @@ Execute timeout. Transport failures, 408, 429, `RequestThrottled`,
 honoring `Retry-After`. `QueueDoesNotExist`, credential and signature errors,
 `AccessDenied`, KMS key errors, `OverLimit`, and other 4xx select
 `providerRejected`. Failures name the HTTP status and the SQS error code, such
-as `HTTP 400 QueueDoesNotExist`, never the error message text. Receipts carry
+as `HTTP 400 QueueDoesNotExist`, never the error message text. Before sending,
+a connection credential failure selects `defect` only when reauthorization is
+required, the connection is missing or not selected, the credential broker
+refused, or the access key fails a local check; any other one, such as an
+unavailable credential broker, returns Retry. Receipts carry
 the Call ID, the queue URL (with `#<messageId>` when the input names the
 message), and the `x-amzn-RequestId` response header.
 

@@ -17,12 +17,19 @@ from dex_connectors.sdk import (
     ConnectionRef,
     FailureKind,
     IdempotencyKey,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
 )
 from dex_connectors.sdk.projectconfig import load_dex_web_project
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.amazon_sqs import (
     CHANGE_MESSAGE_VISIBILITY_DEFINITION,
@@ -337,6 +344,40 @@ async def test_delete_error_classification(response: httpx.Response, branch: str
     assert SECRET not in result.failure.message and "expired" not in result.failure.message
     assert result.receipt.provider_request_id == "req-error"
     assert result.receipt.provider_object_id == QUEUE + "#order-1042"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_credential_failures_select_defect_only_when_terminal(
+    error: Exception, is_terminal: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    class FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    client = make_client(answer(httpx.Response(200, json={}), requests=requests), FailingCredentials())
+    input = DeleteMessageInput(QUEUE, "receipt-1")
+    if is_terminal:
+        result = await run_mutation(client.delete_message(), call_for(DELETE_MESSAGE_DEFINITION), input)
+        assert result.branch == DEFECT
+    else:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.delete_message(), call_for(DELETE_MESSAGE_DEFINITION), input)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+    assert requests == []
 
 
 @pytest.mark.asyncio

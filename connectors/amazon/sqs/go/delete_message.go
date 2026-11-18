@@ -54,7 +54,10 @@ func (operation DeleteMessageOperation) Invoke(call sdkgo.Call, input DeleteMess
 	if err != nil {
 		return sdkgo.NewMutationBranch(DeleteMessageBranchDefect, DeletedMessage{}, defectFailure(deleteMessageOperationID, err), sdkgo.Receipt{})
 	}
-	session, cancel, failure := client.startSession(call, deleteMessageOperationID)
+	session, cancel, failure, shouldRetry := client.startSession(call, deleteMessageOperationID)
+	if shouldRetry {
+		return sdkgo.NewMutationRetry[DeletedMessage](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(DeleteMessageBranchDefect, DeletedMessage{}, failure, sdkgo.Receipt{})
 	}
