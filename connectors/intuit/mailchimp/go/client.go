@@ -146,6 +146,8 @@ type mailchimpExchange struct {
 	response   mailchimpResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+	// isErrorBodyTooLarge means a non-2xx body exceeded maxResponseBytes, so it proves no refusal.
+	isErrorBodyTooLarge bool
 }
 
 // mailchimpErrorSummary holds only the problem title and field names; detail and messages are text and never read.
@@ -282,7 +284,9 @@ func (client *Client) exchangeWithContext(ctx context.Context, connection resolv
 		}
 		return mailchimpExchange{outcome: exchangeSucceeded, response: response}
 	}
-	return client.classifyFailureStatus(response, connection.credentials, operation)
+	result := client.classifyFailureStatus(response, connection.credentials, operation)
+	result.isErrorBodyTooLarge = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
+	return result
 }
 
 func (client *Client) buildRequest(ctx context.Context, connection resolvedConnection, request mailchimpRequest) (*http.Request, error) {

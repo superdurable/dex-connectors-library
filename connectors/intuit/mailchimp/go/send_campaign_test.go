@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -362,6 +363,36 @@ func TestSendCampaignSelectsUncertainOnlyAtTheSendCap(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, mailchimp.SendCampaignBranchUncertain, result.Branch, "an application cap of 1 never resends")
 	require.Equal(t, 1, single.sendCount())
+}
+
+func TestSendCampaignRetriesATransientCredentialFailureBeforeTheFirstSend(t *testing.T) {
+	provider := newCampaignScript(t, "save")
+	ctx := newMailchimpDexContext("send-credentials-before-send")
+	client, err := mailchimp.New(mailchimp.Config{}, failingMailchimpCredentials{err: errors.New("credential store unavailable")},
+		mailchimp.WithAPIBaseURL(provider.URL+"/3.0"))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(ctx, client.SendCampaign(), mailchimpConnection, validSendCampaignInput())
+	requireRetry(t, err)
+	marker := recordedMarker(t, ctx)
+	require.Equal(t, singledispatch.StateNotSent, marker.State, "nothing was sent, so the next attempt counts no send")
+	require.Zero(t, marker.SendCount)
+	require.Zero(t, provider.requestCount())
+}
+
+func TestSendCampaignTreatsARefusalWithAnOversizedBodyAsAnUnknownOutcome(t *testing.T) {
+	provider := newCampaignScript(t, "save", func(response http.ResponseWriter) {
+		writeJSON(t, response, http.StatusBadRequest, `{"title":"Bad Request","padding":"`+strings.Repeat("x", 4194304)+`"}`)
+	})
+	ctx := newMailchimpDexContext("send-oversized-refusal")
+	_, err := runSendCampaign(t, ctx, provider.URL)
+	requireRetry(t, err)
+	marker := recordedMarker(t, ctx)
+	require.Equal(t, singledispatch.StateClaimed, marker.State, "an unread refusal proves nothing, so the send counts")
+	require.Equal(t, int32(1), marker.SendCount)
+	result, err := runSendCampaign(t, ctx.nextAttempt(), provider.URL)
+	require.NoError(t, err)
+	require.Equal(t, mailchimp.SendCampaignBranchSent, result.Branch, "the read-back shows a draft, so the capped resend goes out")
+	require.Equal(t, 2, provider.sendCount())
 }
 
 func TestSendCampaignSelectsADefiniteRefusalOfTheFirstSendWithoutResending(t *testing.T) {

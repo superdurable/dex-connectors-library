@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Mailchimp campaign sends whose outcome is unknown."""
 
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
@@ -359,3 +360,58 @@ async def test_safe_writes_retry_unknown_statuses() -> None:
                 mailchimp.UpsertMemberInput(LIST_ID, "ben@example.com", status_if_new="subscribed"),
             )
         assert attempt.kind == "retry", reply.status_code
+
+
+class _HangingStream(httpx.AsyncByteStream):
+    async def __aiter__(self):  # type: ignore[override]
+        yield b"{"
+        await asyncio.sleep(30)
+
+
+@pytest.mark.asyncio
+async def test_write_window_cutting_a_2xx_body_is_sent_and_never_resent() -> None:
+    """2xx headers arrived before the write deadline cut the body, so Mailchimp accepted the send."""
+    script = CampaignScript("save", lambda: httpx.Response(200, stream=_HangingStream()))
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    assert branch(await send(script, context)) == "sent"
+    assert script.sends == 1
+
+
+@pytest.mark.asyncio
+async def test_transient_credential_failure_before_any_send_records_not_sent() -> None:
+    """A transient lookup before the first send is never a defect; it records notSent and retries."""
+    script = CampaignScript("save")
+    context = AttemptContext()
+    result = await send(script, context, credentials=FailingCredentials(RuntimeError("store unavailable")))
+    assert isinstance(result, sdk.RetryError)
+    assert context.marker.state == "notSent" and context.marker.send_count == 0
+    assert script.requests == []
+
+
+@pytest.mark.asyncio
+async def test_refusal_with_an_oversized_body_is_an_unknown_outcome() -> None:
+    """An unread refusal body proves nothing, so the send counts and the next attempt reads first."""
+    oversized = b'{"title":"Bad Request","padding":"' + b"x" * 4_194_304 + b'"}'
+    script = CampaignScript("save", lambda: httpx.Response(400, content=oversized))
+    context = AttemptContext()
+    assert isinstance(await send(script, context), sdk.RetryError)
+    assert context.marker.state == "claimed" and context.marker.send_count == 1
+    context.attempt = 2
+    assert branch(await send(script, context)) == "sent"
+    assert script.sends == 2
+
+
+@pytest.mark.asyncio
+async def test_safe_writes_retry_a_transient_credential_failure() -> None:
+    """upsertMember and updateMemberTags retry a transient lookup instead of selecting defect."""
+    client = mailchimp.Client(mailchimp.Config(), FailingCredentials(RuntimeError("store unavailable")))  # type: ignore[arg-type]
+    call = sdk.Call(CALL_ID, CONNECTION, sdk.OperationRef("mailchimp", "upsertMember"))
+    upserted = await client.upsert_member().invoke(
+        call, mailchimp.UpsertMemberInput(LIST_ID, "ben@example.com", status_if_new="subscribed")
+    )
+    tagged = await client.update_member_tags().invoke(
+        call, mailchimp.UpdateMemberTagsInput(LIST_ID, "ben@example.com", add_tags=("vip",))
+    )
+    assert (upserted.kind, tagged.kind) == ("retry", "retry")
+    await client.aclose()

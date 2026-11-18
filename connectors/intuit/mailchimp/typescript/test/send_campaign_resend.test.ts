@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { MailchimpClient } from '../src/client.js';
 import { SendCampaignDefinition, UpsertMemberDefinition } from '../src/generated/definitions.js';
 import type { SendCampaignOutput } from '../src/generated/models.js';
@@ -222,5 +222,40 @@ describe('Mailchimp sendCampaign bounded resend', () => {
       const attempt = await newClient(() => answer).upsertMember().invoke(call, { listId, emailAddress: 'ben@example.com', statusIfNew: 'subscribed' });
       expect(attempt.kind).toBe('retry');
     }
+  });
+
+  it('records notSent and retries a transient credential failure before any send', async () => {
+    const script = new CampaignScript('save');
+    const context = new AttemptContext();
+    expect(await send(script, context, undefined, new Error('credential store unavailable'))).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'notSent' });
+    expect(script.requests).toHaveLength(0);
+  });
+
+  it('treats a refusal whose body exceeds the limit as an unknown outcome', async () => {
+    const script = new CampaignScript('save');
+    let sends = 0;
+    const client = new MailchimpClient({}, { resolve: async () => ({ apiKey: new SecretString('mailchimpfixturekey-us6') }) }, {
+      send: async (request: ProviderRequest) => {
+        if (request.method === 'POST' && sends++ === 0) throw new BodyTooLargeError(400, {});
+        const { status, body } = script.answer(request);
+        return { status, headers: {}, body: Buffer.from(body) };
+      },
+    });
+    const context = new AttemptContext();
+    const call = { id: callId, connection: { provider: 'mailchimp', name: 'test' }, operation: SendCampaignDefinition.operation, context } as unknown as Call;
+    const run = async () => { try { return await runMutation(client.sendCampaign(), call, { campaignId, expectedListId: listId }); } catch (error) { if (error instanceof RetryError) return error; throw error; } };
+    expect(await run()).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'claimed', sendCount: 1 });
+    context.attempt = 2;
+    expect(await run()).toMatchObject({ branch: 'sent' });
+    expect(sends).toBe(2);
+  });
+
+  it('retries a transient credential failure of upsertMember and updateMemberTags', async () => {
+    const client = newClient(() => { throw new Error('no request is expected'); }, new Error('credential store unavailable'));
+    const call = { id: callId, connection: { provider: 'mailchimp', name: 'test' }, operation: UpsertMemberDefinition.operation, context: new AttemptContext() } as unknown as Call;
+    expect((await client.upsertMember().invoke(call, { listId, emailAddress: 'ben@example.com', statusIfNew: 'subscribed' })).kind).toBe('retry');
+    expect((await client.updateMemberTags().invoke(call, { listId, emailAddress: 'ben@example.com', addTags: ['vip'] })).kind).toBe('retry');
   });
 });

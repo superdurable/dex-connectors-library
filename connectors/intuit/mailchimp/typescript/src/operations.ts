@@ -81,8 +81,9 @@ export class UpsertMemberOperation implements Mutation<UpsertMemberInput, Upsert
     const operation = 'upsertMember';
     const validation = validateUpsertInput(input);
     if (validation) return newMutationBranch('defect', emptyUpsert, zeroReceipt(), mailchimpFailure(operation, 'VALIDATION', validation));
-    const connection = await this.client.resolveConnection(call);
-    if (!connection) return credentialMutationDefect(operation, emptyUpsert);
+    const resolved = await this.client.resolveClassifiedConnection(call);
+    if (!('connection' in resolved)) return resolved.isTransient ? credentialRetry(operation) : credentialMutationDefect(operation, emptyUpsert);
+    const connection = resolved.connection;
     const hash = subscriberHash(input.emailAddress);
     const body = { email_address: input.emailAddress, status_if_new: input.statusIfNew,
       ...(input.status ? { status: input.status } : {}),
@@ -108,8 +109,9 @@ export class UpdateMemberTagsOperation implements Mutation<UpdateMemberTagsInput
     const operation = 'updateMemberTags';
     const validation = validateTagsInput(input);
     if (validation) return newMutationBranch('defect', emptyTags, zeroReceipt(), mailchimpFailure(operation, 'VALIDATION', validation));
-    const connection = await this.client.resolveConnection(call);
-    if (!connection) return credentialMutationDefect(operation, emptyTags);
+    const resolved = await this.client.resolveClassifiedConnection(call);
+    if (!('connection' in resolved)) return resolved.isTransient ? credentialRetry(operation) : credentialMutationDefect(operation, emptyTags);
+    const connection = resolved.connection;
     const hash = subscriberHash(input.emailAddress);
     const tags = [...(input.addTags ?? []).map(name => ({ name, status: 'active' })), ...(input.removeTags ?? []).map(name => ({ name, status: 'inactive' }))];
     const body = { tags, ...(input.shouldSuppressAutomations ? { is_syncing: true } : {}) };
@@ -160,8 +162,8 @@ class SendCampaignAttempt {
     const operation = 'sendCampaign';
     const resolved = await this.client.resolveClassifiedConnection(this.call);
     if (!('connection' in resolved)) {
-      // A later attempt reads the campaign before any resend; notSent would hide the earlier send.
-      if (this.hasPossibleEarlierSend && resolved.isTransient) return newMutationRetry(mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'));
+      // A later attempt reads the campaign before any send; notSent is recorded only before any send.
+      if (resolved.isTransient) return this.retryBeforeSend(mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable'), 0);
       if (this.hasPossibleEarlierSend) return newMutationUncertain(emptySend, mailchimpFailure(operation, 'AUTHENTICATION', 'an earlier attempt may have sent the campaign, and the connection credentials are unavailable to read it; reconnect the connection'), zeroReceipt());
       return credentialMutationDefect(operation, emptySend);
     }
@@ -271,6 +273,7 @@ const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415,
 
 /** Report an outcome that does not prove Mailchimp refused or skipped a write. */
 function isOutcomeUnknownAfterDispatch(exchange: MailchimpExchange): boolean {
+  if (exchange.isErrorBodyTooLarge) return true;
   if (['rateLimited', 'notSent', 'unavailable', 'invalid'].includes(exchange.outcome)) return true;
   return exchange.outcome === 'rejected' && !definiteRefusalStatuses.has(exchange.status);
 }
@@ -290,6 +293,7 @@ function mutationExchange<T>(exchange: MailchimpExchange, receipt: ReceiptDraft,
 }
 function credentialQueryDefect<T>(operation: string, zero: T): QueryAttempt<T> { return newQueryBranch('defect', zero, zeroReceipt(), mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
 function credentialMutationDefect<T>(operation: string, zero: T): MutationAttempt<T> { return newMutationBranch('defect', zero, zeroReceipt(), mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
+function credentialRetry<T>(operation: string): MutationAttempt<T> { return newMutationRetry(mailchimpFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable')); }
 function validateResourceID(name: string, value: string): string { return /^[A-Za-z0-9]{1,64}$/.test(value) ? '' : `${name} must be a Mailchimp ID of 1 to 64 letters and digits`; }
 function validateEmail(value: string): string {
   if (!value || Buffer.byteLength(value) > 254) return 'emailAddress must be one email address of at most 254 bytes';

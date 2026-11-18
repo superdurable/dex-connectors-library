@@ -105,9 +105,9 @@ func (operation SendCampaignOperation) Invoke(call sdkgo.Call, input SendCampaig
 func (attempt *sendCampaignAttempt) readThenSend() sdkgo.MutationAttempt[SendCampaignOutput] {
 	connection, failure, isTransient := attempt.client.resolveClassifiedConnection(attempt.call, sendCampaignOperation)
 	if failure != nil {
-		if attempt.hasPossibleEarlierSend && isTransient {
-			// A later attempt reads the campaign before any resend; notSent would hide the earlier send.
-			return sdkgo.NewMutationRetry[SendCampaignOutput](*failure, 0)
+		if isTransient {
+			// A later attempt reads the campaign before any send; notSent is recorded only before any send.
+			return attempt.retryBeforeSend(*failure, 0)
 		}
 		if attempt.hasPossibleEarlierSend {
 			return sdkgo.NewMutationUncertain(SendCampaignOutput{}, mailchimpFailure(sdkgo.FailureAuthentication, sendCampaignOperation,
