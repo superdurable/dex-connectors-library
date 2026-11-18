@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type MutationResult } from '@superdurable/connectors-sdk';
+import {
+  ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError,
+} from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { HootsuiteClient } from '../src/client.js';
 import { SchedulePostDefinition } from '../src/generated/definitions.js';
@@ -34,12 +37,14 @@ interface HootsuiteAnswer { status: number; body: string; bodyError?: 'transport
 const scheduled: HootsuiteAnswer = { status: 200, body: '{"data":[{"id":"4138476039","state":"SCHEDULED","socialProfile":{"id":"115185509"}}]}' };
 const serverFailure: HootsuiteAnswer = { status: 500, body: '{"errors":[{"message":"internal error"}]}' };
 
-function newClient(answers: HootsuiteAnswer[], accessToken = 'test-hootsuite-token') {
+function newClient(answers: HootsuiteAnswer[], accessToken = 'test-hootsuite-token', resolveError?: Error) {
   const requests: ProviderRequest[] = [];
-  const credentials = new StaticCredentialProvider([[connection, {
+  const staticCredentials = new StaticCredentialProvider([[connection, {
     oauthClientId: 'test-client', oauthClientSecret: new SecretString('test-client-secret'),
     accessToken: new SecretString(accessToken), refreshToken: new SecretString('test-refresh-token'),
   }]]);
+  const failingCredentials = { resolve: async () => { throw resolveError; } } as unknown as typeof staticCredentials;
+  const credentials = resolveError ? failingCredentials : staticCredentials;
   const client = new HootsuiteClient({ baseUrl: 'http://127.0.0.1:12345' } as never, credentials, {
     send: async (request: ProviderRequest) => {
       requests.push(request);
@@ -184,5 +189,32 @@ describe('Hootsuite bounded resend of unconfirmed scheduled messages', () => {
     expect(await schedule(invalidClient, context)).toMatchObject({ branch: 'uncertain' });
     expect(requests).toHaveLength(1);
     expect(await schedule(invalidClient, new AttemptContext())).toMatchObject({ branch: 'defect' });
+  });
+
+  it.each([new CredentialBrokerUnavailableError(), new Error('connection is not configured')])(
+    'returns Retry and records notSent for a transient credential failure before any send: %s', async error => {
+      const { client: unavailable } = newClient([scheduled], undefined, error);
+      const { client, requests } = newClient([scheduled]);
+      const context = new AttemptContext();
+      expect(await schedule(unavailable, context)).toBeInstanceOf(RetryError);
+      expect(context.marker).toMatchObject({ state: 'notSent' });
+      context.attempt = 2;
+      expect(await schedule(client, context)).toMatchObject({ branch: 'scheduled' });
+      expect(context.marker).toMatchObject({ sendCount: 1 });
+      expect(requests).toHaveLength(1);
+    });
+
+  it.each([
+    new ReauthorizationRequiredError(), new ObjectNotFoundError(),
+    new ConnectionNotSelectedError(), new CredentialBrokerRejectedError(),
+  ])('selects defect before any send and uncertain after one for a terminal credential failure: %s', async error => {
+    const { client, requests } = newClient([serverFailure]);
+    const { client: terminal } = newClient([serverFailure], undefined, error);
+    expect(await schedule(terminal, new AttemptContext())).toMatchObject({ branch: 'defect' });
+    const context = new AttemptContext();
+    expect(await schedule(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    expect(await schedule(terminal, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests).toHaveLength(1);
   });
 });

@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -91,8 +92,8 @@ func (operation SchedulePostOperation) Invoke(call sdkgo.Call, input SchedulePos
 	// An earlier send may have scheduled the message, so a refusal of this resend cannot prove nothing changed.
 	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := sdkgo.ResolveCredential(call.Context, operation.client.credentials, call, operation.client.refreshDriver)
-	if sdkgo.IsReauthorizationRequired(err) {
-		return localScheduleFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials require reauthorization")
+	if isTerminalCredentialError(err) {
+		return localScheduleFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials are unavailable or require reauthorization")
 	}
 	if err != nil {
 		if !hasPossibleEarlierSend {
@@ -117,11 +118,18 @@ func (operation SchedulePostOperation) Invoke(call sdkgo.Call, input SchedulePos
 	}
 	observation := &dispatchObservation{}
 	var response *http.Response
+	var body []byte
+	var readErr error
 	err = fence.Dispatch(func(requestContext context.Context) error {
 		request = request.WithContext(httptrace.WithClientTrace(requestContext, observation.clientTrace()))
 		var sendErr error
 		response, sendErr = operation.client.httpClient.Do(request)
-		return sendErr
+		if sendErr != nil {
+			return sendErr
+		}
+		// Dispatch cancels requestContext on return, so the body is read here; its status classifies a read failure.
+		body, readErr = providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		return nil
 	})
 	if err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
@@ -148,7 +156,6 @@ func (operation SchedulePostOperation) Invoke(call sdkgo.Call, input SchedulePos
 		return scheduleRetry(failureKind, "Hootsuite did not schedule the message", retryAfter)
 	}
 	isSuccessStatus := response.StatusCode >= 200 && response.StatusCode < 300
-	body, readErr := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	isBodyReadable := readErr == nil
 	var wire struct {
 		Data []struct {
@@ -243,6 +250,12 @@ func localScheduleFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bo
 	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
 	_ = fence.RecordNotSent()
 	return scheduleFailure(SchedulePostBranchDefect, kind, message)
+}
+
+// isTerminalCredentialError reports a credential failure that only reconnecting the connection can fix.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func numericSocialProfileID(id string) bool {

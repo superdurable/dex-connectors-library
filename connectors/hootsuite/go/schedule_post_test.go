@@ -4,6 +4,7 @@
 package hootsuite
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,9 +12,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
@@ -267,4 +270,71 @@ func TestSchedulePostInvalidCredentialAfterPossibleSendSelectsUncertain(t *testi
 	defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("first-credential-flow", "schedule-post-step"), invalidClient.SchedulePost(), testConnection, exampleSchedule)
 	require.NoError(t, err)
 	require.Equal(t, SchedulePostBranchDefect, defect.Branch)
+}
+
+// failingCredentialProvider returns one fixed error for every credential read.
+type failingCredentialProvider struct{ err error }
+
+func (provider failingCredentialProvider) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, provider.err
+}
+
+func (provider failingCredentialProvider) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
+	return Credentials{}, provider.err
+}
+
+func TestSchedulePostTransientCredentialFailureBeforeSendRetries(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusOK}, []string{scheduledBody})
+	ctx := singledispatchtest.NewContext("transient-credential-flow", "schedule-post-step")
+	unavailable, err := New(Config{BaseURL: server.URL}, failingCredentialProvider{projectconfig.ErrCredentialBrokerUnavailable})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(ctx, unavailable.SchedulePost(), testConnection, exampleSchedule)
+	require.Error(t, err, "a transient credential failure returns Retry, not defect")
+	require.Equal(t, singledispatch.StateNotSent, lastMarker(t, ctx).State)
+	ctx.AdvanceAttempt()
+	scheduled, err := sdkgo.RunMutation(ctx, newTestClient(t, server.URL).SchedulePost(), testConnection, exampleSchedule)
+	require.NoError(t, err)
+	require.Equal(t, SchedulePostBranchScheduled, scheduled.Branch)
+	require.EqualValues(t, 1, lastMarker(t, ctx).SendCount)
+	require.Equal(t, 1, *requests)
+}
+
+func TestSchedulePostTerminalCredentialFailure(t *testing.T) {
+	server, requests := newScriptedServer(t, []int{http.StatusInternalServerError}, []string{`{}`})
+	terminalErrors := []error{sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), projectconfig.ErrObjectNotFound,
+		projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected}
+	for _, credentialErr := range terminalErrors {
+		t.Run(credentialErr.Error(), func(t *testing.T) {
+			terminal, err := New(Config{BaseURL: server.URL}, failingCredentialProvider{credentialErr})
+			require.NoError(t, err)
+			defect, err := sdkgo.RunMutation(singledispatchtest.NewContext("terminal-credential-flow", "schedule-post-step"), terminal.SchedulePost(), testConnection, exampleSchedule)
+			require.NoError(t, err)
+			require.Equal(t, SchedulePostBranchDefect, defect.Branch)
+			ctx := singledispatchtest.NewContext("terminal-after-send-flow", "schedule-post-step")
+			_, err = sdkgo.RunMutation(ctx, newTestClient(t, server.URL).SchedulePost(), testConnection, exampleSchedule)
+			require.Error(t, err)
+			ctx.AdvanceAttempt()
+			uncertain, err := sdkgo.RunMutation(ctx, terminal.SchedulePost(), testConnection, exampleSchedule)
+			require.NoError(t, err)
+			require.Equal(t, SchedulePostBranchUncertain, uncertain.Branch, "an earlier attempt may have scheduled the message")
+		})
+	}
+	require.Equal(t, len(terminalErrors), *requests)
+}
+
+func TestSchedulePostReadsALateBodyInsideTheWriteWindow(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		time.Sleep(50 * time.Millisecond)
+		_, err := fmt.Fprint(w, scheduledBody)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	scheduled, err := sdkgo.RunMutation(singledispatchtest.NewContext("late-body-flow", "schedule-post-step"), newTestClient(t, server.URL).SchedulePost(), testConnection, exampleSchedule)
+	require.NoError(t, err)
+	require.Equal(t, SchedulePostBranchScheduled, scheduled.Branch)
+	require.Equal(t, 1, requests)
 }

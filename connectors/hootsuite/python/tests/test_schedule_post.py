@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Hootsuite scheduled messages whose outcome is unknown."""
 
-from collections.abc import Callable
+import asyncio
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -11,13 +12,21 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    CredentialProvider,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 from dex_connectors.hootsuite import (
@@ -80,6 +89,7 @@ async def schedule(
     access_token: str = "test-hootsuite-token",
     max_response_bytes: int = 1048576,
     has_credentials: bool = True,
+    credential_provider: CredentialProvider[Credentials] | None = None,
 ) -> MutationResult[ScheduledPostReceipt] | RetryError:
     """Run one Execute attempt of schedulePost, as the Mutation Step passes the definition cap."""
 
@@ -96,7 +106,8 @@ async def schedule(
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
         client = Client(
             Config(base_url="http://127.0.0.1:12345", max_response_bytes=max_response_bytes),
-            StaticCredentialProvider({CONNECTION: credentials} if has_credentials else {}),
+            credential_provider
+            or StaticCredentialProvider({CONNECTION: credentials} if has_credentials else {}),
             transport,
         )
         operation = OperationRef("hootsuite", "schedulePost")
@@ -257,3 +268,120 @@ async def test_invalid_credential_after_possible_send_selects_uncertain() -> Non
     assert len(requests) == 1
     result = await schedule(lambda _: SERVER_FAILURE, AttemptContext(), requests, access_token="bad\ntoken")
     assert isinstance(result, MutationResult) and result.branch == "defect"
+
+
+class FailingCredentialProvider:
+    """Raise one fixed error for every credential read."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError("broker down"),
+        ValueError("connection is not configured"),
+        RuntimeError("unexpected"),
+    ],
+)
+async def test_transient_credential_failure_before_send_retries(error: Exception) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    failing = FailingCredentialProvider(error)
+    result = await schedule(lambda _: (200, SCHEDULED_BODY), context, requests, credential_provider=failing)
+    assert isinstance(result, RetryError), "a transient credential failure returns Retry, not defect"
+    assert context.marker is not None and context.marker.state == "notSent"
+    context.attempt = 2
+    result = await schedule(lambda _: (200, SCHEDULED_BODY), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "scheduled"
+    assert context.marker is not None and context.marker.send_count == 1
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ReauthorizationRequiredError("revoked"),
+        ObjectNotFoundError("missing"),
+        ConnectionNotSelectedError("unselected"),
+        CredentialBrokerRejectedError("refused"),
+    ],
+)
+async def test_terminal_credential_failure(error: Exception) -> None:
+    requests: list[httpx.Request] = []
+    terminal = FailingCredentialProvider(error)
+    result = await schedule(
+        lambda _: SERVER_FAILURE, AttemptContext(), requests, credential_provider=terminal
+    )
+    assert isinstance(result, MutationResult) and result.branch == "defect"
+    context = AttemptContext()
+    assert isinstance(await schedule(lambda _: SERVER_FAILURE, context, requests), RetryError)
+    context.attempt = 2
+    result = await schedule(lambda _: SERVER_FAILURE, context, requests, credential_provider=terminal)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+class StalledBodyStream(httpx.AsyncByteStream):
+    """Send part of a response body, then stall past the Fence write window."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"data":'
+        await asyncio.sleep(5)
+        yield b"[]}"
+
+
+async def test_write_window_cutting_an_accepted_body_selects_uncertain() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await schedule(lambda _: (200, StalledBodyStream()), context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert len(requests) == 1
+
+
+async def test_write_window_cutting_an_error_body_resends_below_cap() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    result = await schedule(lambda _: (500, StalledBodyStream()), context, requests)
+    assert isinstance(result, RetryError)
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1
+
+
+class DecodingFailureTransport(httpx.AsyncBaseTransport):
+    """Raise a non-transport httpx error after the request was handed to the transport."""
+
+    def __init__(self, requests: list[httpx.Request]) -> None:
+        self.requests = requests
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        self.requests.append(request)
+        raise httpx.DecodingError("malformed response")
+
+
+async def test_non_transport_http_error_counts_as_a_possible_send() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    credentials = Credentials(
+        "test-client", SecretString("test-client-secret"), SecretString("test-token"), SecretString("refresh")
+    )
+    async with httpx.AsyncClient(transport=DecodingFailureTransport(requests)) as transport:
+        client = Client(
+            Config(base_url="http://127.0.0.1:12345"),
+            StaticCredentialProvider({CONNECTION: credentials}),
+            transport,
+        )
+        call = Call(
+            CALL_ID, CONNECTION, OperationRef("hootsuite", "schedulePost"), context=context, max_sends=3
+        )
+        post = SchedulePostInput("A useful update", "115185509", "2026-11-15T14:00:00Z")
+        with pytest.raises(RetryError):
+            await run_mutation(client.schedule_post(), call, post)
+    assert context.marker is not None and context.marker.state == "claimed", "canResend would hide the send"
+    assert len(requests) == 1
