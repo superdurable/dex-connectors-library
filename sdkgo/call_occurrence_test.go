@@ -67,6 +67,14 @@ func TestConcurrentCallOfTheSameMutationIsRefusedBeforeSending(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, testMutationSucceeded, sequentialResult.Branch, "a call after the first ends runs")
 	require.Equal(t, 1, running.invokes)
+
+	reference := testsupport.NewDexContext("flow-concurrent", "step-concurrent")
+	referenceCalls := []*mutationOperation{{}, {}, {}}
+	for _, operation := range referenceCalls {
+		_, err := sdkgo.RunMutation(reference, operation, testConnection, "reference")
+		require.NoError(t, err)
+	}
+	require.Equal(t, referenceCalls[2].call.ID, sequential.call.ID, "the refused call kept ordinal 2, so this call is occurrence 3")
 }
 
 func TestQueriesOfTheSameOperationMayOverlap(t *testing.T) {

@@ -616,7 +616,9 @@ operation started concurrently in a varying order could swap Call IDs between
 attempts, so concurrent Mutation calls of one operation in a Step are
 unsupported: `RunMutation`, and an agent tool, selects `defect` without
 invoking the operation when an earlier call of the same operation in the Step
-attempt is still running. Mutations of different operations may run
+attempt is still running. The refused call still consumes its place in the
+count, so the Call IDs of later calls depend only on call order, never on
+which calls happened to overlap. Mutations of different operations may run
 concurrently, and Queries are not restricted.
 
 When `RecordProviderID`'s heartbeat fails, the Fence returns the error but

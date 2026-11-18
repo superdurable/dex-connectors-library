@@ -165,7 +165,8 @@ type Call struct {
 	// call of the same operation mixes in n. Counts restart each attempt, so IDs stay
 	// stable across retries only when the Step makes its calls in a deterministic order.
 	// RunMutation refuses, with defect and before Invoke, a call that starts while an
-	// earlier call of the same operation in the Step attempt is still running.
+	// earlier call of the same operation in the Step attempt is still running; the refused
+	// call still counts, so later IDs follow call order.
 	ID CallID `json:"id"`
 	// IdempotencyKey is the provider-safe deduplication key for the call.
 	IdempotencyKey IdempotencyKey `json:"idempotencyKey,omitempty"`

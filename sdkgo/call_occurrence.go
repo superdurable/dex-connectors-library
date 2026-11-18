@@ -33,15 +33,16 @@ func nextCallOccurrence(ctx dex.Context, operation OperationRef) int {
 }
 
 // beginMutationOccurrence refuses a call while an earlier one runs, since overlapping calls could swap ordinals.
+// A refused call still consumes its ordinal, so later ordinals follow call order, not timing.
 func beginMutationOccurrence(ctx dex.Context, operation OperationRef) (int, func(), error) {
 	occurrences := stepCallOccurrences.For(ctx)
 	occurrences.mu.Lock()
 	defer occurrences.mu.Unlock()
+	occurrences.counts[operation]++
 	if occurrences.runningMutations[operation] {
 		return 0, nil, fmt.Errorf("concurrent calls of connector operation %s %s in one Step are not supported; an earlier call of it is still running, so this call was not sent", operation.ConnectorID, operation.OperationID)
 	}
 	occurrences.runningMutations[operation] = true
-	occurrences.counts[operation]++
 	end := func() {
 		occurrences.mu.Lock()
 		defer occurrences.mu.Unlock()
