@@ -715,6 +715,31 @@ func TestCreatePageFenceNeverUsesAStaleResendMarker(t *testing.T) {
 	require.Equal(t, 1, provider.requestCount())
 }
 
+func TestCreatePageReadsASavedPageIDBackWhenTheDecisionAllowsASend(t *testing.T) {
+	provider := newRecordingNotion(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		if request.Method == http.MethodPost && index > 0 {
+			writeJSON(t, response, http.StatusInternalServerError, `{"object":"error"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, pageJSON(testPageID, "Ada Lovelace"))
+	})
+	client := newNotionClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page")
+	result, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	ctx.AdvanceAttempt()
+	ctx.AdvanceAttempt()
+	seedPersistedMarker(t, ctx, singledispatch.Marker{
+		CallID: result.Receipt.CallID, Attempt: 2, State: singledispatch.StateCanResend,
+		ProviderID: testPageID, SendCount: 1,
+	})
+	result, err = sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
+	require.NoError(t, err)
+	require.Equal(t, notion.CreatePageBranchCreated, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(1).method, "a saved page ID is read back, never resent")
+}
+
 func TestCreatePageTimeoutAfterDispatchIsResentBelowTheSendCap(t *testing.T) {
 	release := make(chan struct{})
 	provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {

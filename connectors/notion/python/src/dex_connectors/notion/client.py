@@ -173,8 +173,13 @@ class Client:
         payload: object | None = None,
         query: list[tuple[str, str]] | None = None,
         timeout: float = 20,
+        observed_statuses: list[int] | None = None,
     ) -> ProviderResponse:
-        """Send one request without redirects and read at most the configured body limit."""
+        """Send one request without redirects and read at most the configured body limit.
+
+        ``observed_statuses`` receives the HTTP status once headers arrive, before the body is read,
+        so a caller whose write window cuts the body read still knows the provider answered.
+        """
         headers = {
             "Authorization": f"Bearer {token}",
             "Notion-Version": NOTION_VERSION,
@@ -199,6 +204,8 @@ class Client:
             response, _ = await send_traced(self.http_client, request)
         except ProviderTransportError as error:
             return ProviderResponse(error=error)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         limit = self.max_response_bytes if 200 <= response.status_code < 300 else 65536
         try:
             body = await read_bounded_body(response, limit)

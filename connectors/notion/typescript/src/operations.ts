@@ -154,7 +154,7 @@ export class CreatePageOperation implements Mutation<CreatePageInput, CreatePage
     if (decision.kind === 'failClosed') return newMutationRetry(failure('createPage', 'AVAILABILITY', 'page dispatch checkpoint could not be read; nothing was sent'));
     const savedPageId = decision.marker?.callId === call.id ? decision.marker.providerId : undefined;
     // Notion returned this page ID for an accepted earlier send, so it is read back, never resent.
-    if (decision.kind !== 'sendAllowed' && savedPageId) return this.confirmPage(call, savedPageId, {}, false);
+    if (savedPageId) return this.confirmPage(call, savedPageId, {}, false);
     if (decision.kind === 'readBackRequired') return newMutationUncertain(emptyCreate, failure('createPage', 'PROTOCOL', 'page creations up to the send cap may have been sent without a confirmable ID'), {});
     const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
     const canResendUnknownOutcome = priorSendUpperBound + 1 < (operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1);

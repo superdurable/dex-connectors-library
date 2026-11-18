@@ -112,7 +112,7 @@ func (operation CreatePageOperation) Invoke(call sdkgo.Call, input CreatePageInp
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[CreatePageOutput](newFailure(createPageOperationID, sdkgo.FailureAvailability, "Notion page dispatch checkpoint could not be read; nothing was sent"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed && decision.Marker.CallID == call.ID && decision.Marker.ProviderID != "" {
+	if decision.Marker.CallID == call.ID && decision.Marker.ProviderID != "" {
 		// Notion returned this page ID for an accepted earlier send, so it is read back, never resent.
 		return client.readBackCreatedPage(call, decision.Marker.ProviderID)
 	}

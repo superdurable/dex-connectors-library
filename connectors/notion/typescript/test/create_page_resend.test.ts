@@ -100,6 +100,26 @@ describe('Notion createPage bounded resend', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it('records canResend and retries a 429 whose body breaks, so it is not counted as a send', async () => {
+    const requests: ProviderRequest[] = [];
+    const client = new NotionClient({}, { resolve: async () => ({ apiToken: new SecretString('ntn_test_token_value') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 429, {}); },
+    });
+    const context = new AttemptContext();
+    expect(await createPage(client, context)).toBeInstanceOf(RetryError);
+    expect(context.marker).toMatchObject({ state: 'canResend' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('reads a saved page ID back even when the decision allows a send', async () => {
+    const { client, requests } = newClient(() => ({ status: 500, body: {} }));
+    const context = new AttemptContext();
+    context.attempt = 3;
+    context.marker = { callId, attempt: 2, state: 'canResend', providerId: pageId, sendCount: 1 };
+    expect(await createPage(client, context)).toMatchObject({ branch: 'created', value: { pageId } });
+    expect(requests.map(request => request.method)).toEqual(['GET']);
+  });
+
   it('selects uncertain when an accepted page ID was not saved and its read-back fails', async () => {
     const requests: ProviderRequest[] = [];
     const context = new AttemptContext();

@@ -306,6 +306,15 @@ have created the page.
   covers a timeout after dispatch, a 409 `conflict_error`, a 529, a 503
   without a committed ID, every other 5xx, and any status not listed above,
   such as 406 `row_limit_exceeded`. A resend can create a second page.
+- A 503 without a committed ID deliberately counts as a possible send, unlike
+  a 429. Notion warns that a write can be saved and still answer 503, so the
+  connector never records `canResend` for it, and the send cap bounds the
+  resends. This holds whether the 503 body is readable or breaks.
+- A 429 whose body is oversized or breaks while it arrives still records
+  `canResend` and retries, because a 429 proves nothing was written.
+- When the fence write window ends after Notion answered 2xx but before its
+  body arrived, the page was accepted, so `createPage` selects `uncertain`
+  without a resend. A 429 cut off this way records `canResend` and retries.
 - A 503 whose `additional_data.committed_resource_id` names the saved page
   reads that page back. A transient read failure retries the read without
   resending POST; a confirmed page selects `created`. A later attempt with a
