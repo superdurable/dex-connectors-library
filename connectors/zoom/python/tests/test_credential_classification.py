@@ -19,8 +19,20 @@ from dex_connectors.sdk.projectconfig import (
 )
 
 import dex_connectors.zoom as zoom
+from dex_connectors.zoom._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("zoom", "zoom-test")
+
+
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Zoom credential access_token is required")
+        except ValueError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
 
 
 @pytest.mark.asyncio
@@ -34,6 +46,8 @@ CONNECTION = ConnectionRef("zoom", "zoom-test")
         (CredentialBrokerUnavailableError(), False),
         (ValueError("connection is not configured"), False),
         (RuntimeError("unlisted"), False),
+        (CredentialMaterialError("Zoom credential access_token is required"), True),
+        (sdk_wrapped_material_error(), True),
     ],
 )
 async def test_credential_resolution_classification(error: Exception, is_terminal: bool) -> None:

@@ -7,7 +7,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBr
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { ZoomClient } from '../src/client.js';
 import { CreateMeetingDefinition } from '../src/generated/definitions.js';
-import type { CreateMeetingInput, Meeting } from '../src/generated/models.js';
+import { CredentialMaterialError, type CreateMeetingInput, type Meeting } from '../src/generated/models.js';
 
 const callId = 'd095d4cd-8f7d-53db-926e-50307d935d1f';
 const sendCap = CreateMeetingDefinition.maxSends!;
@@ -276,6 +276,8 @@ describe('Zoom bounded resend of unconfirmed meeting creates', () => {
     { error: new CredentialBrokerUnavailableError(), terminal: false },
     { error: new Error('connection is not configured'), terminal: false },
     { error: new TypeError('fetch failed'), terminal: false },
+    { error: new CredentialMaterialError('credential access_token is required'), terminal: true },
+    { error: new TypeError('project credential decoding failed'), terminal: true },
   ])('classifies a credential failure before any send: $error.name', async ({ error, terminal }) => {
     const resolve = async () => { throw error; };
     const client = new ZoomClient({ endpoint: 'http://127.0.0.1:12345/v2' } as never, { resolve, resolveWithRefresh: resolve } as never, {

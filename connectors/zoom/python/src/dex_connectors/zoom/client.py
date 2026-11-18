@@ -163,7 +163,19 @@ class Client:
                 ),
                 False,
             )
-        except Exception:
+        except Exception as error:
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return (
+                    None,
+                    failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "Zoom connection credentials are unavailable; reconnect the connection",
+                    ),
+                    False,
+                )
             return (
                 None,
                 failure(
