@@ -95,10 +95,6 @@ function querySessionFailure<T>(error: unknown, zero: T, operation: string): Que
   if (error instanceof JiraSessionFailure) return error.retry ? newQueryRetry(error.failure, error.retryAfterMs) : newQueryBranch('defect', zero, {}, error.failure);
   return newQueryRetry(jiraFailure(operation, 'AVAILABILITY', 'Jira setup is temporarily unavailable'));
 }
-function mutationSessionFailure<T>(error: unknown, zero: T, operation: string): MutationAttempt<T> {
-  if (error instanceof JiraSessionFailure) return error.retry ? newMutationRetry(error.failure, error.retryAfterMs) : newMutationBranch('defect', zero, {}, error.failure);
-  return newMutationRetry(jiraFailure(operation, 'AVAILABILITY', 'Jira setup is temporarily unavailable'));
-}
 export function rejection(operation: string, subject: string, status: number, fields: string[]): Failure { return jiraFailure(operation, statusFailureKind(status), `Jira rejected the ${subject} with HTTP ${status}${fields.length ? ` (fields: ${fields.join(', ')})` : ''}`); }
 export function rejectedFields(body: Uint8Array): string[] {
   try { const root = decodeObject(body); const errors = root.errors; return errors && typeof errors === 'object' && !Array.isArray(errors) ? Object.keys(errors).filter(key => fieldId.test(key)).sort().slice(0, 20) : []; }
@@ -465,9 +461,41 @@ function classifyWrite(operation: string, subject: string, exchange: JiraExchang
   }
   if (status === 429) return result('retry', jiraFailure(operation, 'RATE_LIMIT', `Jira rate limited the ${subject} before writing it`), [], retryAfter(response));
   if (status === 503) return result('retry', jiraFailure(operation, 'AVAILABILITY', `Jira ${subject} is temporarily unavailable`), [], retryAfter(response));
+  // A refusal status proves nothing when its body could not be read in full.
+  if (!isCompleteResponse(exchange)) return result('uncertain', jiraFailure(operation, 'TRANSPORT', `Jira ${subject} outcome is unknown after HTTP ${status} with an unreadable body`));
   if (status === 404) return result('notFound', rejection(operation, subject, status, []));
   if (definiteWriteRefusalStatuses.has(status)) { const fields = rejectedFields(response.body); return result('rejected', rejection(operation, subject, status, fields), fields); }
   return result('uncertain', jiraFailure(operation, 'AVAILABILITY', `Jira ${subject} outcome is unknown after HTTP ${status}`));
+}
+
+/** Explains why a repeated attempt does not transition again. */
+const unprovenEarlierTransitionMessage = 'an earlier attempt may have transitioned the issue and its status does not prove the destination, so the transition is not sent again; set destinationStatusName so a retried Step recognizes it';
+
+/** One attempt's fence and whether an earlier attempt may have transitioned the issue. */
+class TransitionAttempt {
+  constructor(private readonly fence: Fence, readonly hasPossibleEarlierTransition: boolean) {}
+  /** Return Retry before any send; a first attempt records notSent so the next may send. */
+  async retryBeforeSend(failure: Failure, retryAfterMs: number): Promise<MutationAttempt<TransitionIssueOutput>> {
+    if (!this.hasPossibleEarlierTransition) {
+      try { await this.fence.recordNotSent(); } catch { /* A lost notSent only makes the next attempt read without transitioning. */ }
+    }
+    return newMutationRetry(failure, retryAfterMs);
+  }
+  /** Record that Jira did not process this send, then return Retry. */
+  async retryUnprocessedSend(failure: Failure, retryAfterMs: number): Promise<MutationAttempt<TransitionIssueOutput>> {
+    try { await this.fence.recordCanResend(); } catch { return newMutationRetry(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira retry checkpoint could not be recorded'), retryAfterMs); }
+    return newMutationRetry(failure, retryAfterMs);
+  }
+  /** Select a definite refusal of this attempt's only possible send. */
+  async rejectFirstSend(branch: string, output: TransitionIssueOutput, receipt: ReceiptDraft, failure: Failure): Promise<MutationAttempt<TransitionIssueOutput>> {
+    try { await this.fence.recordCanResend(); } catch { return newMutationRetry(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira rejection checkpoint could not be recorded')); }
+    return newMutationBranch(branch, output, receipt, failure);
+  }
+}
+
+/** Report a response whose body was read in full; only then can it prove a refusal. */
+function isCompleteResponse(exchange: JiraExchange): boolean {
+  return 'response' in exchange && !exchange.isTooLarge && !exchange.reflectsSecret && !exchange.isBodyIncomplete;
 }
 
 /** Move an issue through one available workflow transition. */
@@ -485,36 +513,59 @@ export class TransitionIssueOperation implements Mutation<TransitionIssueInput, 
       for (const [name, value] of [['transitionName', transitionName], ['destinationStatusName', destinationName], ['resolutionName', resolutionName]]) if (value) validateSingleLine(value, name!, 255);
       if (!transitionId && !transitionName && !destinationName) throw new TypeError('set transitionId, transitionName, or destinationStatusName');
     } catch (error) { return newMutationBranch('defect', zeroTransition, {}, jiraFailure('transitionIssue', 'VALIDATION', message(error))); }
+    // The default cap of one send: a repeated transition could move the issue again.
+    const fence = newFence(call, TransitionIssueDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000);
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira dispatch checkpoint is unreadable, so nothing was sent in this attempt'));
+    const attempt = new TransitionAttempt(fence, needsReadBack(decision));
     let session: JiraSession;
     try { session = await this.client.startSession(call, 'transitionIssue'); }
-    catch (error) { return mutationSessionFailure(error, zeroTransition, 'transitionIssue'); }
+    catch (error) {
+      const failure = error instanceof JiraSessionFailure ? error : undefined;
+      if (!failure || failure.retry || attempt.hasPossibleEarlierTransition) return attempt.retryBeforeSend(failure?.failure ?? jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira setup is temporarily unavailable'), failure?.retryAfterMs ?? 0);
+      return newMutationBranch('defect', zeroTransition, {}, failure.failure);
+    }
     const first = await this.readTransitions(session, issue);
-    if (first.kind !== 'ok') return this.readFailure(first);
+    if (first.kind !== 'ok') {
+      if (first.kind === 'retry') return attempt.retryBeforeSend(first.failure, first.retryAfterMs);
+      if (attempt.hasPossibleEarlierTransition) return attempt.retryBeforeSend(first.failure, 0);
+      return this.readFailure(first);
+    }
     const snapshot = first.snapshot, receipt = first.receipt;
     const output: TransitionIssueOutput = { issueId: snapshot.issueId, issueKey: snapshot.issueKey, previousStatus: snapshot.status, status: snapshot.status };
     if (destinationName && snapshot.status.name.toLowerCase() === destinationName.toLowerCase()) return newMutationBranch('transitioned', { ...output, isAlreadyInDestinationStatus: true }, receipt);
     const matches = snapshot.transitions.filter(transition => (!transitionId || transition.id === transitionId) && (!transitionName || transition.name.trim().toLowerCase() === transitionName.toLowerCase()) && (!destinationName || transition.destinationStatus.name.toLowerCase() === destinationName.toLowerCase()));
+    if (matches.length === 1 && matches[0]!.destinationStatus.id === snapshot.status.id) return newMutationBranch('transitioned', { ...output, transition: matches[0]!, isAlreadyInDestinationStatus: true }, receipt);
+    if (attempt.hasPossibleEarlierTransition) return attempt.retryBeforeSend(jiraFailure('transitionIssue', 'AVAILABILITY', unprovenEarlierTransitionMessage), 0);
     if (matches.length !== 1) return newMutationBranch('transitionUnavailable', { ...output, ...(snapshot.transitions.length ? { availableTransitions: snapshot.transitions } : {}) }, receipt, jiraFailure('transitionIssue', matches.length ? 'VALIDATION' : 'CONFLICT', matches.length ? `${matches.length} transitions available from status ${snapshot.status.id} match the request; set transitionId` : `no transition available from status ${snapshot.status.id} matches the request`));
     const chosen = matches[0]!; output.transition = chosen;
-    if (chosen.destinationStatus.id === snapshot.status.id) return newMutationBranch('transitioned', { ...output, isAlreadyInDestinationStatus: true }, receipt);
     const payload = { transition: { id: chosen.id }, ...(resolutionName ? { fields: { resolution: { name: resolutionName } } } : {}) };
-    const write = await this.client.exchange(session, 'POST', `/issue/${pathEscape(issue)}/transitions`, undefined, payload);
+    let write: JiraExchange;
+    try { write = await fence.dispatch(signal => this.client.exchangeFencedWrite(session, 'POST', `/issue/${pathEscape(issue)}/transitions`, payload, signal)); }
+    catch { return newMutationRetry(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira dispatch checkpoint or request budget is unavailable, so the issue was not transitioned')); }
     const writeResponse = 'response' in write ? write.response : undefined;
     const writeReceipt = this.client.receipt(session, writeResponse, snapshot.issueKey);
-    if (writeResponse && writeResponse.status >= 200 && writeResponse.status < 300) return newMutationBranch('transitioned', { ...output, status: chosen.destinationStatus }, writeReceipt);
-    if (writeResponse?.status === 404) return newMutationBranch('notFound', output, writeReceipt, jiraFailure('transitionIssue', 'NOT_FOUND', 'Jira issue was not found or is not visible to the connection'));
-    if (writeResponse?.status === 429) return newMutationRetry(jiraFailure('transitionIssue', 'RATE_LIMIT', 'Jira rate limited the transition before performing it'), retryAfter(writeResponse));
-    if ('error' in write && write.isProvablyNotSent) return newMutationRetry(jiraFailure('transitionIssue', 'TRANSPORT', 'Jira could not be reached, so the issue was not transitioned'));
+    // A 2xx whose body broke, including at the write deadline, still moved the issue.
+    const isAccepted = writeResponse ? writeResponse.status >= 200 && writeResponse.status < 300 : 'error' in write && write.acceptedStatus !== undefined;
+    if (isAccepted) return newMutationBranch('transitioned', { ...output, status: chosen.destinationStatus }, writeReceipt);
+    if (writeResponse?.status === 404 && isCompleteResponse(write)) return attempt.rejectFirstSend('notFound', output, writeReceipt, jiraFailure('transitionIssue', 'NOT_FOUND', 'Jira issue was not found or is not visible to the connection'));
+    if (writeResponse?.status === 429) return attempt.retryUnprocessedSend(jiraFailure('transitionIssue', 'RATE_LIMIT', 'Jira rate limited the transition before performing it'), retryAfter(writeResponse));
+    if (writeResponse?.status === 503) return attempt.retryUnprocessedSend(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira transitions are temporarily unavailable'), retryAfter(writeResponse));
+    if ('error' in write && write.isProvablyNotSent) return attempt.retryUnprocessedSend(jiraFailure('transitionIssue', 'TRANSPORT', 'Jira could not be reached, so the issue was not transitioned'), 0);
+    // An unknown outcome keeps the claim, so later attempts never transition again.
     const reread = await this.readTransitions(session, issue);
-    if (reread.kind !== 'ok') return newMutationRetry(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira transition outcome could not be read back'));
-    if (reread.snapshot.status.id === chosen.destinationStatus.id) return newMutationBranch('transitioned', { ...output, status: reread.snapshot.status }, writeReceipt);
-    if (writeResponse && definiteWriteRefusalStatuses.has(writeResponse.status)) {
-      const fields = rejectedFields(writeResponse.body);
-      return newMutationBranch('providerRejected', { ...output, status: reread.snapshot.status, ...(fields.length ? { rejectedFieldIds: fields } : {}) }, writeReceipt, rejection('transitionIssue', 'transition', writeResponse.status, fields));
+    if (reread.kind === 'ok' && reread.snapshot.status.id === chosen.destinationStatus.id) return newMutationBranch('transitioned', { ...output, status: reread.snapshot.status }, writeReceipt);
+    const isDefiniteRefusal = !!writeResponse && isCompleteResponse(write) && definiteWriteRefusalStatuses.has(writeResponse.status);
+    if (reread.kind !== 'ok') {
+      if (isDefiniteRefusal) return attempt.retryUnprocessedSend(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira refused the transition and the issue could not be read back'), 0);
+      return newMutationRetry(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira transition outcome could not be read back'));
     }
-    // An unexpected status leaves the outcome unknown; the next attempt rereads before writing.
+    if (writeResponse && isDefiniteRefusal) {
+      const fields = rejectedFields(writeResponse.body);
+      return attempt.rejectFirstSend('providerRejected', { ...output, status: reread.snapshot.status, ...(fields.length ? { rejectedFieldIds: fields } : {}) }, writeReceipt, rejection('transitionIssue', 'transition', writeResponse.status, fields));
+    }
     if (writeResponse && writeResponse.status < 400) return newMutationRetry(jiraFailure('transitionIssue', 'PROTOCOL', `Jira returned unexpected HTTP ${writeResponse.status} for the transition`));
-    if (writeResponse?.status === 409) return newMutationRetry(jiraFailure('transitionIssue', 'CONFLICT', 'Jira reported a conflicting update, so the transition is retried'), retryAfter(writeResponse));
+    if (writeResponse?.status === 409) return newMutationRetry(jiraFailure('transitionIssue', 'CONFLICT', 'Jira reported a conflicting update; the outcome of the transition is unknown'), retryAfter(writeResponse));
     return newMutationRetry(jiraFailure('transitionIssue', 'AVAILABILITY', 'Jira did not confirm the transition and the issue has not moved yet'), writeResponse ? retryAfter(writeResponse) : 0);
   }
   private async readTransitions(session: JiraSession, issue: string): Promise<{ kind: 'ok'; snapshot: { issueId: string; issueKey: string; status: IssueStatus; transitions: TransitionReference[] }; receipt: ReceiptDraft } | { kind: 'retry'; failure: Failure; retryAfterMs: number } | { kind: 'branch'; branch: string; failure: Failure; receipt: ReceiptDraft }> {

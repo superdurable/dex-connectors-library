@@ -84,6 +84,11 @@ class Exchange:
     not_sent: bool = False
     request_defect: bool = False
 
+    @property
+    def is_complete(self) -> bool:
+        """Report a response whose body was read in full; only then can it prove a refusal."""
+        return not (self.transport_error or self.too_large or self.body_failed or self.reflects_secret)
+
 
 @dataclass(frozen=True, slots=True)
 class Classification:
@@ -320,8 +325,12 @@ class Client:
         payload: Any = None,
         query: dict[str, str] | None = None,
         fenced: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one bounded exchange, refreshing a rejected read credential once."""
+        """Send one bounded exchange, refreshing a rejected read credential once.
+
+        ``observed_statuses`` receives each status when its headers arrive, before the body is read.
+        """
         url = self.endpoint
         if not gateway:
             url += f"/ex/jira/{path_escape(cloud_id)}/rest/api/3"
@@ -337,7 +346,7 @@ class Client:
         except (TypeError, ValueError):
             return Exchange(request_defect=True)
         for index in range(2):
-            result = await self._send_once(credentials, method, url, body)
+            result = await self._send_once(credentials, method, url, body, observed_statuses)
             if (
                 fenced
                 or result.status != 401
@@ -354,7 +363,12 @@ class Client:
         return result
 
     async def _send_once(
-        self, credentials: Credentials, method: str, url: str, body: bytes | None
+        self,
+        credentials: Credentials,
+        method: str,
+        url: str,
+        body: bytes | None,
+        observed_statuses: list[int] | None,
     ) -> Exchange:
         token = credentials.access_token.reveal()
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
@@ -366,6 +380,8 @@ class Client:
             return Exchange(request_defect=True)
         try:
             response, _ = await send_traced(self.http_client, request)
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             limit = (
                 self.config.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
             )
@@ -532,6 +548,16 @@ class Client:
                 "retry",
                 failure(operation, FailureKind.AVAILABILITY, f"Jira {subject} is temporarily unavailable"),
                 self.retry_after(response),
+            )
+        if not response.is_complete:
+            # A refusal status proves nothing when its body could not be read in full.
+            return Classification(
+                "uncertain",
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Jira {subject} outcome is unknown after HTTP {status} with an unreadable body",
+                ),
             )
         fields = rejected_fields(response.body)
         if status == 404:

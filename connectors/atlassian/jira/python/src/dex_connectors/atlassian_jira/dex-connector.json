@@ -291,7 +291,7 @@
       "kind": "mutation",
       "operationId": "transitionIssue",
       "inputType": "TransitionIssueInput",
-      "description": "Move one issue through its workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the issue has already made.",
+      "description": "Move one issue through its workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the issue has already made. A single-dispatch fence sends the transition at most once; after a possible earlier transition, a repeated attempt only rereads the issue and succeeds when it is in the destination status.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

@@ -128,6 +128,26 @@ func TestAcceptedWritesWithBrokenBodiesAreNeverResent(t *testing.T) {
 	}
 }
 
+func TestRefusalStatusWithAnUnreadableBodyIsAnUnknownOutcome(t *testing.T) {
+	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		switch {
+		case request.URL.Path == testSitePrefix+"/search/jql":
+			writeJSON(t, response, http.StatusOK, `{"issues":[]}`)
+		case request.Method == http.MethodGet:
+			writeJSON(t, response, http.StatusOK, `{"comments":[]}`)
+		default:
+			writeTruncatedJSON(response, http.StatusBadRequest)
+		}
+	})
+	client := newJiraClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("jira-flow", "issue-cut-refusal"), client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+	_, err = sdkgo.RunMutation(singledispatchtest.NewContext("jira-flow", "comment-cut-refusal"), client.AddComment(), jiraConnection,
+		jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."})
+	requireRetry(t, err, sdkgo.FailureTransport)
+	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/search/jql"), "the unknown create is read back")
+}
+
 func TestAcceptedIssueWithoutIDIsUncertainWhenReadBackIsRateLimited(t *testing.T) {
 	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.URL.Path == testSitePrefix+"/search/jql" {

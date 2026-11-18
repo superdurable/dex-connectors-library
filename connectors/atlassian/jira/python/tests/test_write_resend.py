@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Jira creates and comments whose outcome is unknown."""
 
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
@@ -27,12 +28,25 @@ TRUNCATED_BODY = "<truncated>"
 """A scripted body that sends the status and headers, then breaks the connection."""
 
 
+STALLED_BODY = "<stalled>"
+"""A scripted body that sends the status and headers, then stalls past the write window."""
+
+
 class BrokenStream(httpx.AsyncByteStream):
     """A response body that fails after the status and headers arrived."""
 
     async def __aiter__(self):  # type: ignore[no-untyped-def]
         yield b'{"id":"100'
         raise httpx.ReadError("connection reset")
+
+
+class StalledStream(httpx.AsyncByteStream):
+    """A response body that stops sending after the status and headers arrived."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        yield b'{"id":"100'
+        await asyncio.sleep(30)
+        yield b'43"}'
 
 
 class ScriptedCredentials:
@@ -101,6 +115,7 @@ async def run(
     *,
     max_sends: int = CREATE_ISSUE_DEFINITION.max_sends,
     credential_provider: object | None = None,
+    transition: jira.TransitionIssueInput | None = None,
 ) -> sdk.MutationResult[object] | sdk.RetryError:
     """Run one Execute attempt of a Jira write against a scripted provider."""
 
@@ -109,6 +124,9 @@ async def run(
         status, body = answer(request)
         if body == TRUNCATED_BODY:
             return httpx.Response(status, stream=BrokenStream(), headers={"Content-Type": "application/json"})
+        if body == STALLED_BODY:
+            headers = {"Content-Type": "application/json"}
+            return httpx.Response(status, stream=StalledStream(), headers=headers)
         return httpx.Response(status, content=body.encode(), headers={"Content-Type": "application/json"})
 
     credentials = jira.Credentials(
@@ -128,6 +146,9 @@ async def run(
             max_sends=max_sends,
         )
         try:
+            if transition is not None:
+                moved = await sdk.run_mutation(client.transition_issue(), call, transition)
+                return moved  # type: ignore[return-value]
             if operation_name == "createIssue":
                 return await sdk.run_mutation(client.create_issue(), call, ISSUE_INPUT)  # type: ignore[return-value]
             return await sdk.run_mutation(client.add_comment(), call, COMMENT_INPUT)  # type: ignore[return-value]
@@ -307,3 +328,162 @@ async def test_credential_failure_after_a_possible_send_records_no_not_sent_mark
     result = await run("createIssue", answer, context, requests, credential_provider=credentials)
     assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
     assert posts(requests, "/issue") == 2
+
+
+def short_write_window_context() -> AttemptContext:
+    """Return a first attempt whose Fence write window ends well before a stalled body finishes."""
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.5)
+    return context
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_name", ["createIssue", "addComment"])
+async def test_success_headers_then_the_write_deadline_cuts_the_body_is_never_resent(
+    operation_name: str,
+) -> None:
+    requests: list[httpx.Request] = []
+    context = short_write_window_context()
+    result = await run(operation_name, empty_search_or(201, STALLED_BODY), context, requests)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert sum(1 for request in requests if request.method == "POST" and "jql" not in request.url.path) == 1
+
+
+@pytest.mark.asyncio
+async def test_refusal_status_with_an_unreadable_body_is_an_unknown_outcome() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await run("createIssue", empty_search_or(400, TRUNCATED_BODY), context, requests)
+    assert isinstance(result, sdk.RetryError), "a cut refusal body may hide an accepted create"
+    assert context.marker is not None and context.marker.state == "claimed"
+
+
+TRANSITION = jira.TransitionIssueInput(issue_id_or_key="OPS-42", transition_name="Stop Progress")
+IN_PROGRESS_ISSUE = (
+    '{"id":"10042","key":"OPS-42","fields":{"status":{"id":"3","name":"In Progress",'
+    '"statusCategory":{"key":"indeterminate"}}},"transitions":[{"id":"21","name":"Stop Progress",'
+    '"to":{"id":"1","name":"To Do","statusCategory":{"key":"new"}}}]}'
+)
+TO_DO_ISSUE = (
+    '{"id":"10042","key":"OPS-42","fields":{"status":{"id":"1","name":"To Do",'
+    '"statusCategory":{"key":"new"}}},"transitions":[{"id":"21","name":"Stop Progress",'
+    '"to":{"id":"3","name":"In Progress","statusCategory":{"key":"indeterminate"}}}]}'
+)
+
+
+def issue_then_post(issue: list[str], post: tuple[int, str]) -> Answer:
+    """Answer each issue read with the current issue and each transition with ``post``."""
+
+    def answer(request: httpx.Request) -> tuple[int, str]:
+        if request.method == "GET":
+            return 200, issue[0]
+        return post
+
+    return answer
+
+
+@pytest.mark.asyncio
+async def test_transition_after_an_unknown_outcome_is_never_sent_again() -> None:
+    requests: list[httpx.Request] = []
+    issue = [IN_PROGRESS_ISSUE]
+    context = AttemptContext()
+    answer = issue_then_post(issue, (502, "{}"))
+    first = await run("transitionIssue", answer, context, requests, transition=TRANSITION)
+    assert isinstance(first, sdk.RetryError)
+    # Jira applied the toggle late; a resend would move the issue back.
+    issue[0] = TO_DO_ISSUE
+    for attempt in (2, 3):
+        context.attempt = attempt
+        retried = await run("transitionIssue", answer, context, requests, transition=TRANSITION)
+        assert isinstance(retried, sdk.RetryError)
+    assert posts(requests, "/transitions") == 1
+
+
+@pytest.mark.asyncio
+async def test_repeated_transition_recognizes_the_destination_status() -> None:
+    requests: list[httpx.Request] = []
+    issue = [TO_DO_ISSUE]
+    context = AttemptContext()
+    move = jira.TransitionIssueInput(
+        issue_id_or_key="OPS-42", transition_id="21", destination_status_name="In Progress"
+    )
+    answer = issue_then_post(issue, (504, ""))
+    first = await run("transitionIssue", answer, context, requests, transition=move)
+    assert isinstance(first, sdk.RetryError)
+    issue[0] = IN_PROGRESS_ISSUE
+    context.attempt = 2
+    result = await run("transitionIssue", answer, context, requests, transition=move)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "transitioned"
+    assert posts(requests, "/transitions") == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("status", "body"), [(404, "{}"), (200, '{"id":"x"}'), (403, "{}")])
+async def test_repeated_transition_never_selects_a_failure_branch(status: int, body: str) -> None:
+    requests: list[httpx.Request] = []
+    result = await run(
+        "transitionIssue", lambda _request: (status, body), AttemptContext(attempt=2), requests,
+        transition=TRANSITION,
+    )
+    assert isinstance(result, sdk.RetryError)
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_transition_rate_limit_allows_the_next_attempt_to_send() -> None:
+    requests: list[httpx.Request] = []
+    issue = [IN_PROGRESS_ISSUE]
+    statuses = [(429, "{}"), (204, "")]
+
+    def answer(request: httpx.Request) -> tuple[int, str]:
+        if request.method == "GET":
+            return 200, issue[0]
+        return statuses.pop(0)
+
+    context = AttemptContext()
+    first = await run("transitionIssue", answer, context, requests, transition=TRANSITION)
+    assert isinstance(first, sdk.RetryError)
+    assert context.marker is not None and context.marker.state == "canResend"
+    context.attempt = 2
+    result = await run("transitionIssue", answer, context, requests, transition=TRANSITION)
+    assert isinstance(result, sdk.MutationResult) and result.branch == "transitioned"
+    assert posts(requests, "/transitions") == 2
+
+
+@pytest.mark.asyncio
+async def test_transition_success_headers_then_the_write_deadline_cuts_the_body_is_transitioned() -> None:
+    requests: list[httpx.Request] = []
+    result = await run(
+        "transitionIssue", issue_then_post([IN_PROGRESS_ISSUE], (200, STALLED_BODY)),
+        short_write_window_context(), requests, transition=TRANSITION,
+    )
+    assert isinstance(result, sdk.MutationResult) and result.branch == "transitioned"
+    assert posts(requests, "/transitions") == 1
+
+
+@pytest.mark.asyncio
+async def test_transition_credential_failures_follow_the_send_history() -> None:
+    requests: list[httpx.Request] = []
+    credentials = ScriptedCredentials()
+    credentials.mode = "invalid"
+    answer = issue_then_post([IN_PROGRESS_ISSUE], (204, ""))
+    result = await run(
+        "transitionIssue", answer, AttemptContext(), requests,
+        credential_provider=credentials, transition=TRANSITION,
+    )
+    assert isinstance(result, sdk.MutationResult) and result.branch == "defect"
+    later = await run(
+        "transitionIssue", answer, AttemptContext(attempt=2), requests,
+        credential_provider=credentials, transition=TRANSITION,
+    )
+    assert isinstance(later, sdk.RetryError), "a terminal failure after a possible send never selects defect"
+    credentials.mode = "transient"
+    context = AttemptContext()
+    transient = await run(
+        "transitionIssue", answer, context, requests,
+        credential_provider=credentials, transition=TRANSITION,
+    )
+    assert isinstance(transient, sdk.RetryError)
+    assert context.marker is not None and context.marker.state == "notSent"
+    assert requests == []

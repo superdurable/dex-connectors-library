@@ -600,6 +600,70 @@ async def _transition_snapshot(
         )
 
 
+_UNPROVEN_EARLIER_TRANSITION = (
+    "an earlier attempt may have transitioned the issue and its status does not prove the destination, "
+    "so the transition is not sent again; set destinationStatusName so a retried Step recognizes it"
+)
+
+
+class _TransitionAttempt:
+    """One attempt's fence and whether an earlier attempt may have transitioned the issue."""
+
+    def __init__(self, fence: Fence, has_possible_earlier_transition: bool) -> None:
+        self.fence = fence
+        self.has_possible_earlier_transition = has_possible_earlier_transition
+
+    async def retry_before_send(
+        self, cause: Failure, retry_after: float
+    ) -> MutationAttempt[TransitionIssueOutput]:
+        """Return Retry before any send; a first attempt records notSent so the next may send."""
+        if not self.has_possible_earlier_transition:
+            try:
+                await self.fence.record_not_sent()
+            except Exception:
+                # A lost notSent only makes the next attempt read without transitioning.
+                pass
+        return MutationAttempt.retry(cause, retry_after)
+
+    async def retry_unprocessed_send(
+        self, cause: Failure, retry_after: float
+    ) -> MutationAttempt[TransitionIssueOutput]:
+        """Record that Jira did not process this send, then return Retry."""
+        try:
+            await self.fence.record_can_resend()
+        except Exception:
+            return MutationAttempt.retry(
+                failure(
+                    "transitionIssue", FailureKind.AVAILABILITY, "Jira retry checkpoint could not be recorded"
+                ),
+                retry_after,
+            )
+        return MutationAttempt.retry(cause, retry_after)
+
+    async def reject_first_send(
+        self, branch: str, output: TransitionIssueOutput, receipt: Receipt, cause: Failure
+    ) -> MutationAttempt[TransitionIssueOutput]:
+        """Select a definite refusal of this attempt's only possible send."""
+        try:
+            await self.fence.record_can_resend()
+        except Exception:
+            return MutationAttempt.retry(
+                failure(
+                    "transitionIssue",
+                    FailureKind.AVAILABILITY,
+                    "Jira rejection checkpoint could not be recorded",
+                )
+            )
+        return _mutation(branch, output, receipt, cause)
+
+    async def record_can_resend_best_effort(self) -> None:
+        """Record that nothing was sent; a lost checkpoint only keeps the claim."""
+        try:
+            await self.fence.record_can_resend()
+        except Exception:
+            pass
+
+
 class TransitionIssueOperation:
     """Move one issue through an available Jira transition."""
 
@@ -634,13 +698,40 @@ class TransitionIssueOperation:
                 failure("transitionIssue", FailureKind.VALIDATION, str(error)),
             )
         try:
+            # The default cap of one send: a repeated transition could move the issue again.
+            fence = Fence(call, timedelta(seconds=30))
+            decision = await fence.decide()
+        except ValueError:
+            return _mutation(
+                "defect",
+                TransitionIssueOutput(),
+                Receipt(),
+                failure(
+                    "transitionIssue",
+                    FailureKind.LOCAL_DEFECT,
+                    "Jira dispatch fence could not be constructed",
+                ),
+            )
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
+                failure(
+                    "transitionIssue",
+                    FailureKind.AVAILABILITY,
+                    "Jira dispatch checkpoint is unreadable, so nothing was sent in this attempt",
+                )
+            )
+        attempt = _TransitionAttempt(fence, _needs_read_back(decision))
+        try:
             credentials, cloud_id = await self.client.session(call, "transitionIssue")
         except SessionError as error:
-            return cast(
-                MutationAttempt[TransitionIssueOutput], _session_result(error, TransitionIssueOutput(), True)
-            )
+            if error.retryable or attempt.has_possible_earlier_transition:
+                return await attempt.retry_before_send(error.failure, error.retry_after)
+            return _mutation("defect", TransitionIssueOutput(), Receipt(), error.failure)
         snapshot, early = await _transition_snapshot(self.client, call, credentials, cloud_id, issue_id)
         if early is not None:
+            if early.kind == "retry" or attempt.has_possible_earlier_transition:
+                assert early.failure is not None
+                return await attempt.retry_before_send(early.failure, early.retry_after_seconds)
             return early
         assert snapshot is not None
         found_id, key, status, available = snapshot
@@ -657,6 +748,16 @@ class TransitionIssueOperation:
             and (not transition_name or _equal_fold(item.name.strip(), transition_name))
             and (not destination or _equal_fold(item.destination_status.name, destination))
         ]
+        if len(matches) == 1 and matches[0].destination_status.id == status.id:
+            return _mutation(
+                "transitioned",
+                replace(output, transition=matches[0], is_already_in_destination_status=True),
+                receipt,
+            )
+        if attempt.has_possible_earlier_transition:
+            return await attempt.retry_before_send(
+                failure("transitionIssue", FailureKind.AVAILABILITY, _UNPROVEN_EARLIER_TRANSITION), 0
+            )
         if len(matches) != 1:
             kind = FailureKind.CONFLICT if not matches else FailureKind.VALIDATION
             message = (
@@ -672,29 +773,38 @@ class TransitionIssueOperation:
             )
         chosen = matches[0]
         output = replace(output, transition=chosen)
-        if chosen.destination_status.id == status.id:
-            return _mutation("transitioned", replace(output, is_already_in_destination_status=True), receipt)
         payload: dict[str, Any] = {"transition": {"id": chosen.id}}
         if resolution:
             payload["fields"] = {"resolution": {"name": resolution}}
-        response = await self.client.request(
-            call,
-            credentials,
-            "POST",
-            "/issue/" + path_escape(issue_id) + "/transitions",
-            cloud_id=cloud_id,
-            payload=payload,
-        )
+        path = "/issue/" + path_escape(issue_id) + "/transitions"
+        dispatch = _WriteDispatch(self.client, call, credentials, cloud_id, path, payload)
+        try:
+            response = await fence.dispatch(dispatch.send)
+        except TimeoutError:
+            if dispatch.has_observed_success():
+                # Jira accepted the transition before the write window cut its body.
+                return _mutation("transitioned", replace(output, status=chosen.destination_status), receipt)
+            response = Exchange(transport_error=True)
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            return MutationAttempt.retry(
+                failure(
+                    "transitionIssue",
+                    FailureKind.AVAILABILITY,
+                    "Jira dispatch checkpoint or request budget is unavailable, "
+                    "so the issue was not transitioned",
+                )
+            )
         receipt = self.client.receipt(call, response, key)
         if response.request_defect:
+            await attempt.record_can_resend_best_effort()
             return _mutation(
                 "defect", output, receipt,
                 failure("transitionIssue", FailureKind.LOCAL_DEFECT, "Jira request could not be built"),
             )
         if not response.transport_error and 200 <= response.status < 300:
             return _mutation("transitioned", replace(output, status=chosen.destination_status), receipt)
-        if response.status == 404:
-            return _mutation(
+        if response.status == 404 and response.is_complete:
+            return await attempt.reject_first_send(
                 "notFound",
                 output,
                 receipt,
@@ -704,8 +814,8 @@ class TransitionIssueOperation:
                     "Jira issue was not found or is not visible to the connection",
                 ),
             )
-        if response.status == 429:
-            return MutationAttempt.retry(
+        if not response.transport_error and response.status == 429:
+            return await attempt.retry_unprocessed_send(
                 failure(
                     "transitionIssue",
                     FailureKind.RATE_LIMIT,
@@ -713,18 +823,39 @@ class TransitionIssueOperation:
                 ),
                 self.client.retry_after(response),
             )
+        if not response.transport_error and response.status == 503:
+            return await attempt.retry_unprocessed_send(
+                failure(
+                    "transitionIssue",
+                    FailureKind.AVAILABILITY,
+                    "Jira transitions are temporarily unavailable",
+                ),
+                self.client.retry_after(response),
+            )
         if response.transport_error and response.not_sent:
-            return MutationAttempt.retry(
+            return await attempt.retry_unprocessed_send(
                 failure(
                     "transitionIssue",
                     FailureKind.TRANSPORT,
                     "Jira could not be reached, so the issue was not transitioned",
-                )
+                ),
+                0,
             )
+        # An unknown outcome keeps the claim, so later attempts never transition again.
         reread, read_failure = await _transition_snapshot(self.client, call, credentials, cloud_id, issue_id)
         if reread is not None and reread[2].id == chosen.destination_status.id:
             return _mutation("transitioned", replace(output, status=reread[2]), receipt)
+        is_definite_refusal = response.is_complete and response.status in DEFINITE_WRITE_REFUSAL_STATUSES
         if read_failure is not None:
+            if is_definite_refusal:
+                return await attempt.retry_unprocessed_send(
+                    failure(
+                        "transitionIssue",
+                        FailureKind.AVAILABILITY,
+                        "Jira refused the transition and the issue could not be read back",
+                    ),
+                    0,
+                )
             return MutationAttempt.retry(
                 failure(
                     "transitionIssue",
@@ -733,8 +864,15 @@ class TransitionIssueOperation:
                 )
             )
         assert reread is not None
+        if is_definite_refusal:
+            fields = rejected_fields(response.body)
+            return await attempt.reject_first_send(
+                "providerRejected",
+                replace(output, status=reread[2], rejected_field_ids=fields),
+                receipt,
+                rejection_failure("transitionIssue", "transition", response.status, fields),
+            )
         if not response.transport_error and response.status < 400:
-            # An unexpected status leaves the outcome unknown; the next attempt rereads before writing.
             return MutationAttempt.retry(
                 failure(
                     "transitionIssue",
@@ -742,20 +880,12 @@ class TransitionIssueOperation:
                     f"Jira returned unexpected HTTP {response.status} for the transition",
                 )
             )
-        if not response.transport_error and response.status in DEFINITE_WRITE_REFUSAL_STATUSES:
-            fields = rejected_fields(response.body)
-            return _mutation(
-                "providerRejected",
-                replace(output, status=reread[2], rejected_field_ids=fields),
-                receipt,
-                rejection_failure("transitionIssue", "transition", response.status, fields),
-            )
-        if response.status == 409:
+        if not response.transport_error and response.status == 409:
             return MutationAttempt.retry(
                 failure(
                     "transitionIssue",
                     FailureKind.CONFLICT,
-                    "Jira reported a conflicting update, so the transition is retried",
+                    "Jira reported a conflicting update; the outcome of the transition is unknown",
                 ),
                 self.client.retry_after(response),
             )
@@ -963,6 +1093,8 @@ class _WriteDispatch:
     ) -> None:
         self.client, self.call, self.credentials = client, call, credentials
         self.cloud_id, self.path, self.payload = cloud_id, path, payload
+        self.observed_statuses: list[int] = []
+        """Statuses seen when headers arrived, kept when the write window cuts the body read."""
 
     async def send(self, deadline: datetime) -> Exchange:
         """Send once after Fence has persisted the claim."""
@@ -974,7 +1106,12 @@ class _WriteDispatch:
             cloud_id=self.cloud_id,
             payload=self.payload,
             fenced=True,
+            observed_statuses=self.observed_statuses,
         )
+
+    def has_observed_success(self) -> bool:
+        """Report that Jira answered 2xx before the write window expired."""
+        return bool(self.observed_statuses) and 200 <= self.observed_statuses[-1] < 300
 
 
 @dataclass(frozen=True)
@@ -1206,6 +1343,23 @@ class _FencedWrite:
         try:
             response = await fence.dispatch(dispatch.send)
         except TimeoutError:
+            if dispatch.has_observed_success():
+                # Jira accepted the write before the window cut its body, so it is never resent.
+                return await self._reconcile(
+                    call,
+                    credentials,
+                    cloud_id,
+                    requested,
+                    marker,
+                    "",
+                    _accepted_write_policy(False),
+                    failure(
+                        self.operation,
+                        FailureKind.TRANSPORT,
+                        f"Jira accepted the {self.subject} but the write deadline cut off its response",
+                    ),
+                    receipt,
+                )
             return await self._reconcile(
                 call,
                 credentials,
