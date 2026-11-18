@@ -3,7 +3,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type MutationAttempt } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type MutationAttempt } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { TeamsClient } from '../src/client.js';
 import type { Credentials, PostMessageOutput } from '../src/generated/models.js';
 
@@ -139,5 +140,33 @@ describe('fenced Microsoft Teams posts', () => {
     const result = await post(() => json(403, { error: { code: 'Forbidden' } }), new AttemptContext(), methods);
     expect(result).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
     expect(methods).toEqual(['POST']);
+  });
+
+  const terminalCredentialErrors: Error[] = [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()];
+  const transientCredentialErrors: Error[] = [new CredentialBrokerUnavailableError(), new RejectedCredentialNotRefreshedError(), new Error('connection is not configured'), new TypeError('unlisted')];
+
+  /** Resolves a static token before firstFailingAttempt and throws error from then on. */
+  class FailingFromAttemptCredentials extends AttemptCredentials {
+    constructor(readonly error: Error, readonly firstFailingAttempt: number) { super(); }
+    override async resolve(call: Call): Promise<Credentials> {
+      if ((call.context as unknown as AttemptContext).attempt >= this.firstFailingAttempt) throw this.error;
+      return super.resolve(call);
+    }
+  }
+
+  it.each([...terminalCredentialErrors, ...transientCredentialErrors].map(error => [error.name, error] as const))('classifies %s like every connector', async (_name, error) => {
+    const isTerminal = terminalCredentialErrors.includes(error);
+    const methods: string[] = [];
+    const first = await post(badGateway, new AttemptContext(), methods, 'channel', new FailingFromAttemptCredentials(error, 1));
+    expect(methods).toEqual([]);
+    expect(first).toMatchObject(isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry' });
+
+    const context = new AttemptContext();
+    const laterFailing = new FailingFromAttemptCredentials(error, 2);
+    expect((await post(badGateway, context, methods, 'channel', laterFailing)).kind).toBe('retry');
+    context.attempt = 2;
+    const later = await post(badGateway, context, methods, 'channel', laterFailing);
+    expect(methods).toEqual(['POST']);
+    expect(later.kind).toBe(isTerminal ? 'uncertain' : 'retry');
   });
 });

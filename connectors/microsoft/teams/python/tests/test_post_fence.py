@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import pytest
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -14,10 +15,18 @@ from dex_connectors.sdk import (
     CredentialProvider,
     MutationResult,
     OperationRef,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     run_mutation,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
+from dex_connectors.sdk.projectconfig.broker import RejectedCredentialNotRefreshedError
 
 from dex_connectors.microsoft_teams import (
     Client,
@@ -256,3 +265,54 @@ async def test_definite_refusal_is_never_resent() -> None:
     result = await post(lambda _r, _i: forbidden, context, requests)
     assert isinstance(result, MutationResult) and result.branch == "providerRejected"
     assert methods(requests) == ["POST"]
+
+
+TERMINAL_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
+    ReauthorizationRequiredError(),
+    ObjectNotFoundError(),
+    ConnectionNotSelectedError(),
+    CredentialBrokerRejectedError(),
+)
+TRANSIENT_CREDENTIAL_ERRORS: tuple[Exception, ...] = (
+    CredentialBrokerUnavailableError(),
+    RejectedCredentialNotRefreshedError(),
+    ValueError("connection is not configured"),
+    TimeoutError(),
+    RuntimeError("unlisted"),
+)
+
+
+class FailingFromAttemptCredentials(AttemptCredentials):
+    """Resolve the token before `first_failing_attempt` and raise `error` from then on."""
+
+    def __init__(self, error: Exception, first_failing_attempt: int) -> None:
+        super().__init__()
+        self.error = error
+        self.first_failing_attempt = first_failing_attempt
+
+    async def resolve(self, call: Call) -> Credentials:
+        """Raise the configured error from the configured attempt."""
+        if call.context.attempt >= self.first_failing_attempt:
+            raise self.error
+        return await super().resolve(call)
+
+
+@pytest.mark.parametrize("error", TERMINAL_CREDENTIAL_ERRORS + TRANSIENT_CREDENTIAL_ERRORS)
+async def test_every_credential_failure_is_classified_the_same_way(error: Exception) -> None:
+    """Only the four terminal classes end the post; every other failure retries without a request."""
+    is_terminal = error in TERMINAL_CREDENTIAL_ERRORS
+    first_branch, later_branch = ("defect", "uncertain") if is_terminal else ("retry", "retry")
+    requests: list[httpx.Request] = []
+    first = await post(lambda _r, _i: BAD_GATEWAY, AttemptContext(), requests,
+                       credentials=FailingFromAttemptCredentials(error, 1))
+    assert requests == []
+    assert (first.branch if isinstance(first, MutationResult) else "retry") == first_branch
+
+    context = AttemptContext()
+    later_failing = FailingFromAttemptCredentials(error, 2)
+    unknown = await post(lambda _r, _i: BAD_GATEWAY, context, requests, credentials=later_failing)
+    assert isinstance(unknown, RetryError)
+    context.attempt = 2
+    later = await post(lambda _r, _i: BAD_GATEWAY, context, requests, credentials=later_failing)
+    assert methods(requests) == ["POST"]
+    assert (later.branch if isinstance(later, MutationResult) else "retry") == later_branch

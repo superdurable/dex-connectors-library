@@ -26,6 +26,11 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -382,10 +387,17 @@ class Client:
         return PostChatMessageOperation(self)
 
     async def resolve_credentials(self, call: Call) -> Credentials:
-        """Resolve and validate the current access token."""
+        """Resolve and validate the current access token.
+
+        Raises ReauthorizationRequiredError for every terminal credential failure; any other
+        exception is transient.
+        """
         self.operation_deadline.set(time.monotonic() + 25)
-        async with asyncio.timeout(25):
-            credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
+        try:
+            async with asyncio.timeout(25):
+                credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError) as error:
+            raise ReauthorizationRequiredError() from error
         if not is_header_safe_credential(credentials.access_token.reveal()):
             raise ReauthorizationRequiredError()
         return credentials
