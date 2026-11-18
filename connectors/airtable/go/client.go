@@ -40,6 +40,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -281,10 +282,18 @@ func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, o
 	switch {
 	case sdkgo.IsReauthorizationRequired(err):
 		return Credentials{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "the Airtable connection must be authorized again", sdkgo.Receipt{})
+	case isTransientCredentialFailure(err):
+		// A write may have applied in an earlier attempt, so a passing outage must not select defect.
+		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "Airtable connection credentials are temporarily unavailable", sdkgo.Receipt{})
 	case err != nil || !providerhttp.IsHeaderSafeCredential(credentials.PersonalAccessToken.Reveal()):
 		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "Airtable connection credentials are unavailable", sdkgo.Receipt{})
 	}
 	return credentials, nil
+}
+
+// isTransientCredentialFailure reports a credential read that failed in transit or ran out of time.
+func isTransientCredentialFailure(err error) bool {
+	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }
 
 func (client *Client) outcome(disposition outcomeDisposition, operation string, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt) *providerOutcome {

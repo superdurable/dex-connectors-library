@@ -36,6 +36,7 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -292,6 +293,16 @@ class Client:
                 _Disposition.REJECTED,
                 _failure(
                     operation, FailureKind.AUTHENTICATION, "the Airtable connection must be authorized again"
+                ),
+            )
+        except (CredentialBrokerUnavailableError, TimeoutError):
+            # A write may have applied in an earlier attempt, so a passing outage must not select defect.
+            return _Outcome(
+                _Disposition.RETRY,
+                _failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "Airtable connection credentials are temporarily unavailable",
                 ),
             )
         except (ValueError, LookupError, OSError):

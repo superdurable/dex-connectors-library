@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 
 from dex_connectors.airtable import (
     DEFECT,
@@ -283,6 +284,28 @@ async def test_inconsistent_upsert_answer_retries(body: object) -> None:
             UpsertRecordsInput(BASE, "Log", ("Case ID",), (RecordUpsert({"Case ID": "case-1"}),)),
         )
     assert raised.value.failure.kind == FailureKind.PROTOCOL
+
+
+@pytest.mark.asyncio
+async def test_write_retries_temporarily_unavailable_credentials() -> None:
+    """An earlier attempt may have applied the write, so a broker outage must not select defect."""
+
+    class BrokerOutage:
+        async def resolve(self, call: Call) -> Credentials:
+            raise CredentialBrokerUnavailableError("credential broker is unavailable")
+
+    client = Client(
+        Config("http://localhost:8848"),
+        BrokerOutage(),
+        httpx.AsyncClient(transport=httpx.MockTransport(fixed(httpx.Response(500)))),
+    )
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(
+            client.update_records(),
+            call_for(UPDATE_RECORDS_DEFINITION),
+            UpdateRecordsInput(BASE, "Policies", (RecordUpdate(RECORD_ID, {"a": 1}),)),
+        )
+    assert raised.value.failure.kind == FailureKind.AVAILABILITY
 
 
 @pytest.mark.asyncio

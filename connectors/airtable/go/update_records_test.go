@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/airtable/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestUpdateRecordsPatchesNamedFieldsByRecordID(t *testing.T) {
@@ -107,6 +108,23 @@ func TestUpdateRecordsRetriesAnAnswerForAnotherRecord(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry, "repeating absolute values is safe")
 	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+}
+
+type brokerOutageCredentials struct{}
+
+func (brokerOutageCredentials) Resolve(sdkgo.Call) (airtable.Credentials, error) {
+	return airtable.Credentials{}, projectconfig.ErrCredentialBrokerUnavailable
+}
+
+func TestUpdateRecordsRetriesATransientCredentialFailure(t *testing.T) {
+	client, err := airtable.New(airtable.Config{Endpoint: "http://127.0.0.1:1"}, brokerOutageCredentials{})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newStepDexContext("update-broker-outage"), client.UpdateRecords(), airtableConnection, airtable.UpdateRecordsInput{
+		BaseID: testBaseID, TableIDOrName: testTableID,
+		Records: []airtable.RecordUpdate{{ID: "recPolicyStandard", Fields: map[string]airtable.CellValue{"Status": airtable.TextCellValue("done")}}},
+	})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an earlier attempt may have applied the write, so defect would be wrong")
 }
 
 func TestUpdateRecordsRetriesAnOversizedAnswer(t *testing.T) {

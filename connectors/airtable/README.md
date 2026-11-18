@@ -189,6 +189,7 @@ unknown record ID is never created; a `404` selects `notFound`.
 | Malformed, inconsistent, or oversized `2xx` | `invalidResponse` on reads; Retry on `upsertRecords` and `updateRecords`, which may have applied and are safe to repeat | `PROTOCOL` or `RESPONSE_TOO_LARGE` |
 | Oversized non-`2xx` | `invalidResponse` on reads; Retry on the writes | `RESPONSE_TOO_LARGE` |
 | Invalid input or connection | `defect`, with no request | `VALIDATION` or `AUTHENTICATION` |
+| Credential broker temporarily unavailable | Retry, with no request | `AVAILABILITY` |
 
 A Failure names only the HTTP status and Airtable's uppercase error type, such
 as `INVALID_VALUE_FOR_COLUMN`, never Airtable's message text or the token. A

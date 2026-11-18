@@ -3,6 +3,7 @@
 
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { AirtableClient } from '../src/client.js';
 
@@ -47,6 +48,14 @@ it.each([
   expect(update.kind).toBe('retry');
   const upsert = await client.upsertRecords().invoke(call, { ...input, fieldsToMergeOn: ['Case ID'], records: [{ fields: { 'Case ID': 'case-1' } }] });
   expect(upsert.kind).toBe('retry');
+});
+
+it('retries a write whose credentials are temporarily unavailable', async () => {
+  const client = new AirtableClient({}, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } }, {
+    send: async () => { throw new Error('unexpected request'); },
+  });
+  const update = await client.updateRecords().invoke(call, { ...input, records: [{ id: 'recPolicyStandard', fields: { Status: 'done' } }] });
+  expect(update.kind).toBe('retry');
 });
 
 it('escapes text filters in the provider request without sending the token in the body', async () => {
