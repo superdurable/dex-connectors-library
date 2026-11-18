@@ -1070,4 +1070,268 @@ func TestUpsertReplacementRetryCanAppendAfterRowDeletion(t *testing.T) {
 	require.Equal(t, 1, posts)
 }
 
+// scriptedSheet serves the rows to each GET unless a scripted lookup status is queued, and
+// answers each POST with the next scripted append response.
+type scriptedSheet struct {
+	mutex          sync.Mutex
+	rows           [][]string
+	lookupStatuses []int
+	appends        []func(sheet *scriptedSheet, response http.ResponseWriter)
+	posts          int
+}
+
+func (sheet *scriptedSheet) serve(t *testing.T) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		sheet.mutex.Lock()
+		defer sheet.mutex.Unlock()
+		response.Header().Set("Content-Type", "application/json")
+		switch request.Method {
+		case http.MethodGet:
+			if len(sheet.lookupStatuses) > 0 {
+				status := sheet.lookupStatuses[0]
+				sheet.lookupStatuses = sheet.lookupStatuses[1:]
+				if status != 0 {
+					response.WriteHeader(status)
+					return
+				}
+			}
+			require.NoError(t, json.NewEncoder(response).Encode(map[string]any{"range": "Customers", "values": sheet.rows}))
+		case http.MethodPost:
+			sheet.posts++
+			require.LessOrEqual(t, sheet.posts, len(sheet.appends), "unexpected append")
+			sheet.appends[sheet.posts-1](sheet, response)
+		default:
+			t.Errorf("unexpected method %s", request.Method)
+		}
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
+func appendStatus(status int, addedRows ...[]string) func(*scriptedSheet, http.ResponseWriter) {
+	return func(sheet *scriptedSheet, response http.ResponseWriter) {
+		sheet.rows = append(sheet.rows, addedRows...)
+		response.WriteHeader(status)
+	}
+}
+
+func TestUpsertDuplicateKeyRowsAfterAPossibleAppendAreUncertain(t *testing.T) {
+	duplicate := [][]string{{"a-1", "Ada"}, {"a-1", "Ada"}}
+	t.Run("read-back in the sending attempt", func(t *testing.T) {
+		sheet := &scriptedSheet{rows: [][]string{{"accountId", "name"}}, appends: []func(*scriptedSheet, http.ResponseWriter){
+			appendStatus(http.StatusInternalServerError, duplicate...),
+		}}
+		client := newSheetsClient(t, sheet.serve(t).URL)
+		ctx := singledispatchtest.NewContext("sheet-flow", "duplicate-read-back")
+		result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+		require.NoError(t, err)
+		require.Equal(t, spreadsheet.UpsertRowBranchUncertain, result.Branch)
+		require.Equal(t, 1, sheet.posts)
+	})
+	t.Run("lookup in a later attempt", func(t *testing.T) {
+		sheet := &scriptedSheet{rows: [][]string{{"accountId", "name"}}, lookupStatuses: []int{0, http.StatusServiceUnavailable}, appends: []func(*scriptedSheet, http.ResponseWriter){
+			appendStatus(http.StatusInternalServerError, duplicate...),
+		}}
+		client := newSheetsClient(t, sheet.serve(t).URL)
+		ctx := singledispatchtest.NewContext("sheet-flow", "duplicate-lookup")
+		_, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+		ctx.AdvanceAttempt()
+		result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+		require.NoError(t, err)
+		require.Equal(t, spreadsheet.UpsertRowBranchUncertain, result.Branch)
+		require.Equal(t, 1, sheet.posts)
+	})
+}
+
+func TestUpsertFailedLookupAfterAPossibleAppendRetriesUntilTheSendCap(t *testing.T) {
+	sheet := &scriptedSheet{
+		rows: [][]string{{"accountId", "name"}},
+		// Lookup, read-back, rejected lookup, lookup, unavailable read-back, rejected lookup at the cap.
+		lookupStatuses: []int{0, 0, http.StatusForbidden, 0, http.StatusServiceUnavailable, http.StatusForbidden},
+		appends: []func(*scriptedSheet, http.ResponseWriter){
+			appendStatus(http.StatusInternalServerError), appendStatus(http.StatusInternalServerError),
+		},
+	}
+	client := newSheetsClient(t, sheet.serve(t).URL)
+	ctx := singledispatchtest.NewContext("sheet-flow", "failed-lookup-cap")
+	var retry *sdkgo.RetryError
+	for attempt := range 3 {
+		result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+		require.ErrorAs(t, err, &retry, "attempt %d: %+v", attempt+1, result.Failure)
+		ctx.AdvanceAttempt()
+	}
+	// The read-back-only attempt 2 counts as a possible send, so attempt 4 is at the cap of 3.
+	result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, result.Branch)
+	require.Equal(t, 2, sheet.posts)
+}
+
+type failingAttemptCredentialSource struct {
+	resolutions      int
+	failedResolution int
+}
+
+func (source *failingAttemptCredentialSource) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
+	source.resolutions++
+	if source.resolutions == source.failedResolution {
+		return spreadsheet.Credentials{}, errors.New("credential refresh unavailable")
+	}
+	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString("sheets-token")}, nil
+}
+
+func (source *failingAttemptCredentialSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[spreadsheet.Credentials]) (spreadsheet.Credentials, error) {
+	return source.Resolve(call)
+}
+
+// Attempt 1 is unknown, attempt 2's resend gets 429, and the earlier append lands late.
+func TestUpsertReadsBackAfterARateLimitedResendAndAPreSendRetry(t *testing.T) {
+	sheet := &scriptedSheet{rows: [][]string{{"accountId", "name"}}, appends: []func(*scriptedSheet, http.ResponseWriter){
+		appendStatus(http.StatusInternalServerError),
+		appendStatus(http.StatusTooManyRequests, []string{"a-1", "Ada"}),
+	}}
+	server := sheet.serve(t)
+	for _, test := range []struct {
+		name             string
+		failedResolution int
+	}{
+		{name: "read back on the next attempt"},
+		// A transient credential failure after the 429 must not record notSent.
+		{name: "read back after a pre-send retry", failedResolution: 3},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sheet.mutex.Lock()
+			sheet.rows, sheet.posts = [][]string{{"accountId", "name"}}, 0
+			sheet.mutex.Unlock()
+			client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, &failingAttemptCredentialSource{failedResolution: test.failedResolution})
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("sheet-flow", "rate-limited-resend")
+			attempts := 2
+			if test.failedResolution != 0 {
+				attempts = 3
+			}
+			var retry *sdkgo.RetryError
+			for range attempts {
+				_, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+				require.ErrorAs(t, err, &retry)
+				ctx.AdvanceAttempt()
+			}
+			result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+			require.NoError(t, err)
+			require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+			require.Equal(t, "inserted", result.Value.Action)
+			require.Equal(t, 2, sheet.posts)
+		})
+	}
+}
+
+func TestUpsertAcceptedAppendIsNeverResentWhenItsRowIsMissing(t *testing.T) {
+	for _, test := range []struct {
+		name           string
+		append         func(*scriptedSheet, http.ResponseWriter)
+		lookupStatuses []int
+		attempts       int
+	}{
+		{name: "unparsable success", append: func(_ *scriptedSheet, response http.ResponseWriter) {
+			_, _ = response.Write([]byte(`{"updates":`))
+		}, attempts: 1},
+		{name: "refusal naming the appended range", append: func(_ *scriptedSheet, response http.ResponseWriter) {
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"updates":{"updatedRange":"'Customers'!A2:B2"}}`))
+		}, attempts: 1},
+		{name: "unavailable read-back then a later lookup", append: func(_ *scriptedSheet, response http.ResponseWriter) {
+			_, _ = response.Write([]byte(`{"updates":{}}`))
+		}, lookupStatuses: []int{0, http.StatusServiceUnavailable}, attempts: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sheet := &scriptedSheet{rows: [][]string{{"accountId", "name"}}, lookupStatuses: test.lookupStatuses, appends: []func(*scriptedSheet, http.ResponseWriter){test.append}}
+			client := newSheetsClient(t, sheet.serve(t).URL)
+			ctx := singledispatchtest.NewContext("sheet-flow", "accepted-missing")
+			var result sdkgo.MutationResult[spreadsheet.UpsertRowOutput]
+			var err error
+			for attempt := 1; attempt <= test.attempts; attempt++ {
+				if attempt > 1 {
+					ctx.AdvanceAttempt()
+				}
+				result, err = sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+				if attempt < test.attempts {
+					var retry *sdkgo.RetryError
+					require.ErrorAs(t, err, &retry)
+				}
+			}
+			require.NoError(t, err)
+			require.Equal(t, spreadsheet.UpsertRowBranchUncertain, result.Branch)
+			require.Equal(t, 1, sheet.posts)
+		})
+	}
+}
+
+func TestUpsertInterruptedSuccessBodyWithAMissingRowIsUncertain(t *testing.T) {
+	var writes atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		require.NoError(t, json.NewEncoder(response).Encode(map[string]any{"range": "Customers", "values": [][]string{{"accountId", "name"}}}))
+	}))
+	t.Cleanup(server.Close)
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{
+		sheetsConnection: {AccessToken: sdkgo.NewSecretString("sheets-token")},
+	}, spreadsheet.WithHTTPClient(&http.Client{Transport: sheetRoundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		if request.Method == http.MethodPost {
+			writes.Add(1)
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(interruptedWriteBody{}), Request: request}, nil
+		}
+		return http.DefaultTransport.RoundTrip(request)
+	})}))
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("sheet-flow", "interrupted-missing")
+	result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, result.Branch)
+	require.Equal(t, int32(1), writes.Load())
+}
+
+func TestUpsertUnreadableAppendRefusalIsAnUnknownOutcome(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		brokenBody  bool
+		maxBytes    int64
+		oversizeLen int
+	}{
+		{name: "oversized refusal body", maxBytes: 128, oversizeLen: 256},
+		{name: "refusal body that breaks", brokenBody: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sheet := &scriptedSheet{rows: [][]string{{"accountId", "name"}}, appends: []func(*scriptedSheet, http.ResponseWriter){
+				func(_ *scriptedSheet, response http.ResponseWriter) {
+					response.WriteHeader(http.StatusBadRequest)
+					_, _ = response.Write([]byte(strings.Repeat("x", test.oversizeLen)))
+				},
+			}}
+			server := sheet.serve(t)
+			options := []spreadsheet.Option{}
+			var brokenPosts atomic.Int32
+			if test.brokenBody {
+				options = append(options, spreadsheet.WithHTTPClient(&http.Client{Transport: sheetRoundTripperFunc(func(request *http.Request) (*http.Response, error) {
+					if request.Method == http.MethodPost {
+						brokenPosts.Add(1)
+						return &http.Response{StatusCode: http.StatusBadRequest, Header: http.Header{}, Body: io.NopCloser(interruptedWriteBody{}), Request: request}, nil
+					}
+					return http.DefaultTransport.RoundTrip(request)
+				})}))
+			}
+			client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL, MaxResponseBytes: test.maxBytes}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{
+				sheetsConnection: {AccessToken: sdkgo.NewSecretString("sheets-token")},
+			}, options...)
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("sheet-flow", "unreadable-refusal")
+			_, err = sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, int32(1), int32(sheet.posts)+brokenPosts.Load())
+		})
+	}
+}
+
 var _ context.Context = (*singledispatchtest.Context)(nil)

@@ -4060,6 +4060,297 @@
         "sendCount": 3,
         "state": "claimed"
       }
+    },
+    {
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C3\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"],[\"new@example.test\",\"New\",\"pending\"],[\"new@example.test\",\"New\",\"pending\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "action": "",
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "name": "upsertRow-claimed-duplicate-keys-uncertain",
+      "operation": "upsertRow",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "name": "upsertRow-claimed-lookup-rejected-below-send-cap-retries",
+      "operation": "upsertRow",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "action": "",
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "name": "upsertRow-claimed-lookup-rejected-at-send-cap-uncertain",
+      "operation": "upsertRow",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "exchanges": [
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"updates\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "new@example.test",
+                "New",
+                "pending"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "9975cc31-7411-5b09-805b-efa1f3d91fad"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"range\":\"'Contacts'!A1:C1\",\"majorDimension\":\"ROWS\",\"values\":[[\"email\",\"name\",\"status\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'",
+          "query": {
+            "majorDimension": [
+              "ROWS"
+            ],
+            "valueRenderOption": [
+              "FORMATTED_VALUE"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "providerId": "'Contacts'",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "action": "",
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+      "input": {
+        "keyColumn": "email",
+        "keyValue": "new@example.test",
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": {
+          "email": "new@example.test",
+          "name": "New",
+          "status": "pending"
+        }
+      },
+      "name": "upsertRow-accepted-unparsable-missing-uncertain",
+      "operation": "upsertRow"
     }
   ],
   "schemaVersion": 1
