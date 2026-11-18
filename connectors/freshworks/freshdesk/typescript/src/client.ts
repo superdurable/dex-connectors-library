@@ -32,7 +32,7 @@ export type Exchange =
   | { outcome: 'succeeded'; response: ProviderResponse }
   | {
     outcome: 'rateLimited' | 'notSent' | 'serviceUnavailable' | 'unavailable' | 'notFound' | 'invalid' | 'defect' | 'rejected'; failure: Failure; response?: ProviderResponse; retryAfterMs: number;
-    /** A non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal. */ isBodyIncomplete?: boolean;
+    /** A non-2xx body exceeded maxResponseBytes or reflected the credential, so it cannot prove a refusal. */ isBodyIncomplete?: boolean;
     /** A created object's id in a non-2xx body, which means acceptance. */ bodyProviderID?: number;
   };
 
@@ -103,6 +103,8 @@ export class FreshdeskClient {
         if (Buffer.from(response.body).includes(Buffer.from(key))) return { outcome: 'invalid', response, failure: this.failure(operation, 'PROTOCOL', 'Freshdesk response reflected the connection credential'), retryAfterMs: 0 };
         return { outcome: 'succeeded', response };
       }
+      // A credential-reflecting refusal body is untrusted, so it cannot prove a refusal either.
+      if (key !== '' && Buffer.from(response.body).includes(Buffer.from(key))) return { ...this.classifyStatus(operation, key, response), isBodyIncomplete: true };
       return this.classifyStatus(operation, key, response);
     } catch (error) {
       if (error instanceof BodyTooLargeError) {

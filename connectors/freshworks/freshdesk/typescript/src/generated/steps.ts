@@ -106,7 +106,7 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Freshdesk returned an invalid or oversized ticket on the read before the change, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead. */
+  /** Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on the read or after the change repeats the absolute change. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

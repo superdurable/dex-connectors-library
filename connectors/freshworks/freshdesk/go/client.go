@@ -145,7 +145,7 @@ type freshdeskExchange struct {
 	response   freshdeskResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
-	// isBodyIncomplete means a non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal.
+	// isBodyIncomplete means a non-2xx body exceeded maxResponseBytes or reflected the credential, so it cannot prove a refusal.
 	isBodyIncomplete bool
 	// bodyProviderID is a created object's id found in a non-2xx body, which means acceptance.
 	bodyProviderID int64
@@ -239,6 +239,7 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 // isTerminalCredentialError identifies a credential state that retry alone cannot repair.
 func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
 		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
@@ -306,7 +307,9 @@ func (client *Client) exchangeWithContext(requestContext context.Context, creden
 		return freshdeskExchange{outcome: exchangeSucceeded, response: response}
 	}
 	result := client.classifyFailureStatus(response, credentials, operation)
-	result.isBodyIncomplete = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
+	apiKey := credentials.APIKey.Reveal()
+	// A credential-reflecting refusal body is untrusted, so it cannot prove a refusal either.
+	result.isBodyIncomplete = errors.Is(readErr, providerhttp.ErrBodyTooLarge) || (apiKey != "" && bytes.Contains(body, []byte(apiKey)))
 	result.bodyProviderID = acceptedProviderID(body)
 	return result
 }

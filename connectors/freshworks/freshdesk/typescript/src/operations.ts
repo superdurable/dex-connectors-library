@@ -91,6 +91,12 @@ function updateExchange(client: FreshdeskClient, call: Call, exchange: Exchange,
   const branch = exchange.outcome === 'notFound' ? 'notFound' : exchange.outcome === 'invalid' ? 'invalidResponse' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
   return newMutationBranch(branch, value, client.receipt(call, exchange.response, objectID), exchange.failure);
 }
+/** An updateTicket answer other than success or a definite refusal with a trusted body. */
+function isUnknownUpdateExchange(exchange: Exchange): exchange is Exclude<Exchange, { outcome: 'succeeded' }> {
+  if (exchange.outcome === 'succeeded') return false;
+  if (exchange.isBodyIncomplete) return true;
+  return exchange.outcome !== 'notFound' && exchange.outcome !== 'defect' && !(exchange.outcome === 'rejected' && definiteRefusalStatuses.has(exchange.response?.status ?? 0));
+}
 async function credential(client: FreshdeskClient, call: Call, operation: string): Promise<{ key: string } | { failure: Failure; transient: boolean }> { return client.resolveCredential(call, operation); }
 
 /** Search one Freshdesk filter page, optionally using a contact lookup. */
@@ -392,10 +398,13 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     if ('failure' in resolved) return resolved.transient || call.context.attempt > 1 ? newMutationRetry(resolved.failure) : newMutationBranch('defect', zero, {}, resolved.failure);
     const path = `/tickets/${input.ticketId}`;
     const read = await this.client.exchange(call, operation, resolved.key, 'GET', path);
+    // An earlier attempt's PUT may have applied, so the read selects a branch only when definite.
+    if (isUnknownUpdateExchange(read)) return newMutationRetry(read.failure, read.retryAfterMs);
     const readTerminal = updateExchange(this.client, call, read, zero, input.ticketId); if (readTerminal) return readTerminal;
     let current: Ticket;
     try { current = ticket(parse((read as { response: ProviderResponse }).response.body), input.ticketId); }
-    catch { return mutationFailure(this.client, call, operation, 'invalidResponse', zero, 'PROTOCOL', 'Freshdesk returned an invalid ticket', read.response, input.ticketId); }
+    // An invalid ticket is an unknown answer, so the safe change repeats.
+    catch { return newMutationRetry(this.client.failure(operation, 'PROTOCOL', 'Freshdesk returned an invalid ticket')); }
     const change: Record<string, unknown> = {};
     if (input.status && input.status !== current.status) change.status = input.status;
     if (input.priority && input.priority !== current.priority) change.priority = input.priority;
@@ -407,7 +416,7 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     if (!Object.keys(change).length) return newMutationBranch('updated', { ticket: current, wasAlreadyApplied: true }, this.client.receipt(call, read.response, input.ticketId));
     const write = await this.client.exchange(call, operation, resolved.key, 'PUT', path, undefined, change);
     // The PUT sets final values, so an unknown outcome repeats it.
-    if (write.outcome !== 'succeeded' && (write.isBodyIncomplete || (write.outcome !== 'notFound' && write.outcome !== 'defect' && !(write.outcome === 'rejected' && definiteRefusalStatuses.has(write.response?.status ?? 0))))) return newMutationRetry(write.failure, write.retryAfterMs);
+    if (isUnknownUpdateExchange(write)) return newMutationRetry(write.failure, write.retryAfterMs);
     const writeTerminal = updateExchange(this.client, call, write, { ticket: current }, input.ticketId); if (writeTerminal) return writeTerminal;
     try { return newMutationBranch('updated', { ticket: ticket(parse((write as { response: ProviderResponse }).response.body), input.ticketId) }, this.client.receipt(call, write.response, input.ticketId)); }
     catch { return newMutationRetry(this.client.failure(operation, 'PROTOCOL', 'Freshdesk accepted the change but returned an invalid updated ticket')); }

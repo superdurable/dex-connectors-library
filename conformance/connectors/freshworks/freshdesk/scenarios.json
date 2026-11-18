@@ -1705,19 +1705,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "ticket": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": 0,
-            "priority": 0,
-            "status": 0,
-            "updatedAt": "0001-01-01T00:00:00Z"
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1726,7 +1717,7 @@
         "status": 3,
         "ticketId": 1201
       },
-      "name": "updateTicket-invalid-response",
+      "name": "updateTicket-invalid-read-retries",
       "operation": "updateTicket"
     },
     {

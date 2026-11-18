@@ -89,7 +89,7 @@ UPDATE_TICKET_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The ticket holds the requested values, written now or by an earlier attempt.", False),
         BranchDefinition(NOT_FOUND, "The ticket does not exist or is not visible to the connection's agent.", True),
         BranchDefinition(PROVIDER_REJECTED, "Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket.", True),
-        BranchDefinition(INVALID_RESPONSE, "Freshdesk returned an invalid or oversized ticket on the read before the change, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead.", True),
+        BranchDefinition(INVALID_RESPONSE, "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on the read or after the change repeats the absolute change.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", True),
     ),
     StepDefaults(

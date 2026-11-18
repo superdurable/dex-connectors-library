@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import ObjectNotFoundError
 from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -64,7 +65,7 @@ class Exchange:
     headers: httpx.Headers | None = None
     body: bytes = b""
     retry_after: float = 0
-    # A non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal.
+    # A non-2xx body exceeded maxResponseBytes or reflected the credential, so it cannot prove a refusal.
     is_body_incomplete: bool = False
     # A created object's id in a non-2xx body, which means acceptance.
     body_provider_id: int = 0
@@ -154,7 +155,7 @@ class Client:
         try:
             credentials = await self.credentials.resolve(call)
         except (
-            LookupError,
+            ObjectNotFoundError,
             ReauthorizationRequiredError,
             ConnectionNotSelectedError,
             CredentialBrokerRejectedError,
@@ -382,7 +383,8 @@ class Client:
             status,
             exchange.headers,
             retry_after=delay,
-            is_body_incomplete=exchange.outcome == "invalid",
+            # A credential-reflecting refusal body is untrusted, so it cannot prove a refusal either.
+            is_body_incomplete=exchange.outcome == "invalid" or (bool(key) and key.encode() in exchange.body),
             body_provider_id=accepted_provider_id(exchange.body),
         )
 

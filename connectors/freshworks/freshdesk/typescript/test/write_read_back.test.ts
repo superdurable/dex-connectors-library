@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { FreshdeskClient } from '../src/client.js';
 import type { AddNoteOutput, CreateTicketOutput, Credentials } from '../src/generated/models.js';
 
@@ -131,7 +132,12 @@ describe('Freshdesk accepted and possibly sent writes', () => {
     expect(sequence.requests).toHaveLength(3);
   });
 
-  for (const [name, error, kind] of [['terminal', new ReauthorizationRequiredError(), 'uncertain'], ['transient', new Error('store unavailable'), 'retry']] as const) {
+  for (const [name, error, kind] of [
+    ['terminal', new ReauthorizationRequiredError(), 'uncertain'], ['missing connection object', new ObjectNotFoundError(), 'uncertain'],
+    ['unselected connection', new ConnectionNotSelectedError(), 'uncertain'], ['broker refusal', new CredentialBrokerRejectedError(), 'uncertain'],
+    ['transient', new Error('store unavailable'), 'retry'], ['broker outage', new CredentialBrokerUnavailableError(), 'retry'],
+    ['unconfigured static connection', new Error('connection is not configured'), 'retry'],
+  ] as const) {
     it(`records nothing for a ${name} credential failure after a possible send`, async () => {
       const sequence = new AttemptSequence(unknownThenRateLimited(json(201, ticketWire)));
       await unknownSendThenRateLimitedResend(sequence);
@@ -158,6 +164,19 @@ describe('Freshdesk accepted and possibly sent writes', () => {
     const updated = new AttemptSequence(request => { if (request.method === 'GET') return json(200, { ...ticketWire, status: 3 }); throw new BodyTooLargeError(400, {}); });
     expect((await updated.run('updateTicket', { ticketId: 1207, status: 2 })).kind).toBe('retry');
   });
+
+  for (const [status, body, branch] of [
+    [404, {}, 'notFound'], [403, {}, 'providerRejected'], [200, { id: 1207 }, ''], [409, {}, ''], [500, {}, ''], [301, {}, ''],
+    [400, { description: 'inertKey' }, ''],
+  ] as const) {
+    it(`selects an update branch on the read only for a definite answer: HTTP ${status} ${JSON.stringify(body)}`, async () => {
+      const sequence = new AttemptSequence(() => json(status, body));
+      const attempt = await sequence.run('updateTicket', { ticketId: 1207, status: 2 });
+      expect(sequence.requests.map(request => request.method)).toEqual(['GET']);
+      if (!branch) expect(attempt.kind).toBe('retry');
+      else expect(attempt.kind === 'branch' && attempt.branch).toBe(branch);
+    });
+  }
 
   it('selects defect for a terminal credential failure only on the first update attempt', async () => {
     const reconnect: CredentialProvider<Credentials> = { resolve: async () => { throw new ReauthorizationRequiredError(); } };

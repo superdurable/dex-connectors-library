@@ -264,7 +264,7 @@ func UpdateTicketProviderRejected(value freshdesk.UpdateTicketOutput, failure *s
 	return connectormock.Branch(freshdesk.UpdateTicketBranchProviderRejected, value, failure)
 }
 
-// UpdateTicketInvalidResponse selects the invalidResponse branch: Freshdesk returned an invalid or oversized ticket on the read before the change, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead.
+// UpdateTicketInvalidResponse selects the invalidResponse branch: Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on the read or after the change repeats the absolute change.
 func UpdateTicketInvalidResponse(value freshdesk.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[freshdesk.UpdateTicketOutput] {
 	return connectormock.Branch(freshdesk.UpdateTicketBranchInvalidResponse, value, failure)
 }
@@ -297,7 +297,7 @@ func UpdateTicketUpdateRejected() connectormock.Case[freshdesk.UpdateTicketOutpu
 	return connectormock.Branch(freshdesk.UpdateTicketBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Freshdesk rejected the ticket update."})
 }
 
-// UpdateTicketInvalidUpdatedTicket is the manifest mock invalidUpdatedTicket: The ticket read before the change is malformed, so no change was sent.
+// UpdateTicketInvalidUpdatedTicket is the manifest mock invalidUpdatedTicket: Kept for compatibility: the ticket read before the change is malformed, which the connector now retries.
 func UpdateTicketInvalidUpdatedTicket() connectormock.Case[freshdesk.UpdateTicketOutput] {
 	var value freshdesk.UpdateTicketOutput
 	return connectormock.Branch(freshdesk.UpdateTicketBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Freshdesk returned an invalid ticket."})
