@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { GetProjectOperation, ListIssuesOperation, UpdateIssueLabelsOperation } from './operations.js';
 
@@ -48,15 +49,16 @@ export class GitLabClient {
 
   /** Resolve credentials, send one request, and classify the provider response. */
   async exchange(call: Call, operation: string, method: 'GET' | 'PUT', path: string, body?: string): Promise<GitLabExchange> {
-    let token: string;
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.accessToken instanceof SecretString)) throw new TypeError('invalid credential');
-      token = credentials.accessToken.reveal();
-      if (!token || !isHeaderSafeCredential(token)) throw new TypeError('invalid credential');
-    } catch {
-      return this.failure('defect', operation, 'AUTHENTICATION', 'connection credentials are unavailable');
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      if (isTerminalCredentialError(error)) return this.failure('defect', operation, 'AUTHENTICATION', 'connection credentials are unavailable');
+      return this.failure('retry', operation, 'AVAILABILITY', 'connection credentials could not be read, so nothing was sent');
     }
+    if (!(credentials?.accessToken instanceof SecretString)) return this.failure('defect', operation, 'AUTHENTICATION', 'connection credentials are invalid');
+    const token = credentials.accessToken.reveal();
+    if (!token || !isHeaderSafeCredential(token)) return this.failure('defect', operation, 'AUTHENTICATION', 'connection credentials are invalid');
     try {
       const response = await this.send({
         url: this.baseUrl + path, method,
@@ -92,6 +94,11 @@ export class GitLabClient {
   private failure(branch: Exclude<GitLabExchange, { response: ProviderResponse }>['branch'], operation: string, kind: Failure['kind'], message: string, retryAfterMs = 0): GitLabExchange {
     return { branch, failure: { kind, provider: 'gitlab', operation, message }, retryAfterMs };
   }
+}
+
+/** Report a credential resolution failure that no retry fixes; every other error is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
 }
 
 function header(headers: ProviderResponse['headers'] | undefined, name: string): string {

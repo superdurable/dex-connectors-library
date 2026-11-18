@@ -11,12 +11,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.gitlab import (
     DEFECT,
@@ -241,4 +248,49 @@ async def test_blank_token_is_defect_without_request() -> None:
     )
     assert result.branch == DEFECT
     assert result.failure is not None and result.failure.kind == FailureKind.AUTHENTICATION
+    assert requests == []
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError("absent"), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (LookupError("unlisted"), False),
+    ],
+)
+async def test_credential_resolve_errors_use_the_shared_terminal_set(
+    error: Exception, is_terminal: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=ISSUE)
+
+    client = Client(
+        Config("http://localhost:8848/api/v4"),
+        _FailingCredentials(error),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    call = call_for(UPDATE_ISSUE_LABELS_DEFINITION)
+    if is_terminal:
+        result = await run_mutation(client.update_issue_labels(), call, UPDATE)
+        assert result.branch == DEFECT
+    else:
+        with pytest.raises(RetryError):
+            await run_mutation(client.update_issue_labels(), call, UPDATE)
     assert requests == []

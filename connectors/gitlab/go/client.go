@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -241,6 +242,9 @@ func executeQuery[T any](client *Client, call sdkgo.Call, operation string, spec
 		localFailure.Operation = operation
 		return sdkgo.NewQueryBranch(defect, zero, localFailure, sdkgo.Receipt{})
 	}
+	if errors.Is(err, errCredentialsUnreadable) {
+		return sdkgo.NewQueryRetry[T](*failure(sdkgo.FailureAvailability, operation, "connection credentials could not be read, so nothing was sent"), 0)
+	}
 	if err != nil {
 		return sdkgo.NewQueryRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "gitlab", Operation: operation, Message: "GitLab request failed"}, 0)
 	}
@@ -279,6 +283,9 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 		localFailure.Operation = operation
 		return sdkgo.NewMutationBranch(defect, zero, localFailure, sdkgo.Receipt{})
 	}
+	if errors.Is(err, errCredentialsUnreadable) {
+		return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureAvailability, operation, "connection credentials could not be read, so nothing was sent"), 0)
+	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "gitlab", Operation: operation, Message: "GitLab request failed"}, 0)
 	}
@@ -312,6 +319,9 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 
 func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) (*http.Response, *sdkgo.Failure, error) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return nil, nil, errCredentialsUnreadable
+	}
 	if err != nil {
 		return nil, failure(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), nil
 	}
@@ -348,6 +358,16 @@ func statusFailure(response *http.Response, operation string) sdkgo.Failure {
 		kind = sdkgo.FailureValidation
 	}
 	return sdkgo.Failure{Kind: kind, Provider: "gitlab", Operation: operation, Message: fmt.Sprintf("GitLab returned HTTP %d", response.StatusCode)}
+}
+
+// errCredentialsUnreadable marks a transient credential resolution failure before any request.
+var errCredentialsUnreadable = errors.New("GitLab connection credentials could not be read")
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; every other error is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func shouldRetry(response *http.Response) bool {

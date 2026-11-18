@@ -29,6 +29,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -186,12 +188,23 @@ class Client:
         """Send one request and classify it exactly like the Go executeQuery and executeMutation helpers."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return _outcome(
+                    DEFECT, operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+                )
             return _outcome(
-                DEFECT, operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+                "",
+                operation,
+                FailureKind.AVAILABILITY,
+                "connection credentials could not be read, so nothing was sent",
+                is_retry=True,
             )
-        token = credentials.access_token.reveal()
-        if not token or not is_header_safe_credential(token):
+        try:
+            token = credentials.access_token.reveal()
+        except AttributeError:
+            token = ""
+        if not isinstance(token, str) or not token or not is_header_safe_credential(token):
             return _outcome(
                 DEFECT, operation, FailureKind.AUTHENTICATION, "connection credentials are invalid"
             )
@@ -408,6 +421,19 @@ def _optional(document: dict[str, Any], name: str, default: Any) -> Any:
 def _query_failed(operation: str, value: Output, message: str) -> QueryAttempt[Output]:
     return QueryAttempt.branch_result(
         DEFECT, value, Receipt(), Failure(FailureKind.VALIDATION, CONNECTOR_ID, operation, message)
+    )
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
     )
 
 
