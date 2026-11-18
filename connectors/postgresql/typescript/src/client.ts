@@ -4,11 +4,11 @@
 import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import pg, { type Client as PgClient } from 'pg';
-import type { Call, CredentialProvider, ReceiptDraft } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ReauthorizationRequiredError, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
-import type { ClassifiedFailure } from './failures.js';
+import { TransientCredentialError, type ClassifiedFailure } from './failures.js';
 
 /** Injectable native driver factory for deterministic connector tests. */
 export interface PostgreSQLClientOptions {
@@ -67,13 +67,13 @@ export class PostgreSQLClient {
 
   /**
    * Resolve the current password outside Flow state and open one native connection, bounded by the call signal.
-   * Returns null when credentials are unavailable; a temporarily unavailable credential broker rethrows its error.
+   * Returns null for a terminal credential failure or an empty password, and throws TransientCredentialError for any other credential failure.
    */
   async connect(call: Call, signal?: AbortSignal): Promise<PgClient | null> {
     let password: string;
     try { password = (await this.credentials.resolve(call)).password.reveal(); }
     catch (error) {
-      if (error instanceof CredentialBrokerUnavailableError) throw error;
+      if (!isTerminalCredentialError(error)) throw new TransientCredentialError();
       return null;
     }
     if (!password) return null;
@@ -103,6 +103,12 @@ export class PostgreSQLClient {
     if (failure?.sqlState) metadata.sqlState = failure.sqlState;
     return { callId: call.id, ...(call.idempotencyKey ? { idempotencyKey: call.idempotencyKey } : {}), provider: 'postgresql', observedAt: this.now().toISOString(), ...(Object.keys(metadata).length ? { metadata } : {}) };
   }
+}
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
 }
 
 function hasControlCharacter(value: string): boolean { return [...value].some(character => { const code = character.codePointAt(0) ?? 0; return code < 32 || code === 127; }); }

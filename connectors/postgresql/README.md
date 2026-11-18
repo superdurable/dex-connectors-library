@@ -233,7 +233,9 @@ Every operation returns Retry, which Dex retries with the Step's one-hour defaul
 - `admin_shutdown` and `cannot_connect_now`;
 - serialization failures, deadlocks, and `lock_not_available`;
 - a connection lost before `COMMIT` was sent;
-- a temporarily unavailable credential broker, before connecting.
+- a transient credential failure, before connecting: anything other than a
+  required reauthorization, a missing or unselected connection, a credential
+  broker refusal, or an empty password, which select `defect`.
 
 PostgreSQL rolls back an open transaction when its connection ends, so a write
 that fails before `COMMIT` left nothing behind and is safe to retry.

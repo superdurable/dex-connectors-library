@@ -4,8 +4,8 @@
 import pg, { type Client as PgClient } from 'pg';
 import Cursor from 'pg-cursor';
 import { describe, expect, it, vi } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { PostgreSQLClient } from '../src/client.js';
 
 const call = { id: '00000000-0000-4000-8000-000000000001', idempotencyKey: '00000000-0000-4000-8000-000000000001' } as Call;
@@ -335,6 +335,30 @@ describe('PostgreSQL executeNonIdempotent', () => {
     const context = new AttemptContext();
     expect(await unavailable.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
     expect(context.marker?.state).toBe('notSent');
+    expect(driver.connect).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['rejected credential not refreshed', new RejectedCredentialNotRefreshedError(), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure before and after a possible COMMIT', async (_name, credentialFailure, isTerminal) => {
+    const { driver } = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] });
+    const failing = new PostgreSQLClient(configuration, { resolve: async () => { throw credentialFailure; } }, { createDriver: () => driver as unknown as PgClient });
+    const firstExpected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await failing.execute().invoke(call, balanceInput)).toMatchObject(firstExpected);
+    const context = new AttemptContext();
+    expect(await failing.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject(firstExpected);
+    expect(context.marker?.state).toBe('notSent');
+    const later = new AttemptContext();
+    later.marker = { callId: fencedCall(later).id, attempt: 2, state: 'canResend', sendCount: 1 } as { state?: string };
+    later.attempt = 3;
+    expect(await failing.executeNonIdempotent().invoke(fencedCall(later), balanceInput)).toMatchObject({ kind: isTerminal ? 'uncertain' : 'retry' });
     expect(driver.connect).not.toHaveBeenCalled();
   });
 
