@@ -389,12 +389,11 @@ def derive_step_call_id(context: dex.AsyncContext, operation: OperationRef) -> C
     call it; a Step that builds a `Call` for `run_query` or `run_mutation`
     itself calls it once per call.
 
-    For a Mutation, as in Go, `run_mutation` gives the call the occurrence
-    in the order Mutations of the operation begin, so a call refused as
-    concurrent consumes none: when that differs from the construction
-    order, the operation, Fence, receipt, and progress see the begun
-    occurrence's ID. A Mutation call keeps this ID when every earlier call
-    of the operation in the attempt ran before it, as one at a time does.
+    As in Go, a Mutation call that `run_mutation` refuses as concurrent
+    before it ever began gives up its occurrence, and later calls of the
+    operation shift down past it: the operation, Fence, receipt, and
+    progress of such a later call see the shifted occurrence's ID. Without
+    a refusal, every call keeps this ID.
     """
     if not context.flow_id or not context.step_execution_id:
         raise ValueError("connector operations require a Dex Flow and Step execution")
@@ -403,7 +402,9 @@ def derive_step_call_id(context: dex.AsyncContext, operation: OperationRef) -> C
     call_id = derive_call_id(
         context.flow_id, context.step_execution_id, operation, occurrence=occurrence
     )
-    _record_issued_call_id(context, str(call_id))
+    _record_issued_call_id(
+        context, operation.connector_id, operation.operation_id, str(call_id), occurrence
+    )
     return call_id
 
 

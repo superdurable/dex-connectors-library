@@ -583,10 +583,13 @@ count restarts each attempt, so the Step must make its calls in a
 deterministic order. Concurrent calls of the same operation could swap Call
 IDs between attempts, so `run_mutation` refuses them: a Mutation call that
 starts while an earlier call of the same operation in the Step attempt is
-still running selects `defect` without invoking the operation. As in Go, the
-refused call consumes no occurrence: `run_mutation` gives a Call ID from
-`derive_step_call_id` the occurrence of the order in which Mutations of its
-operation begin, so a later call's ID is the same in every SDK language.
+still running selects `defect` without invoking the operation. As in Go, a
+call refused before it ever began gives up its occurrence: later
+`derive_step_call_id` calls of the operation run with their occurrence
+shifted down past it, so their Call IDs match the other SDK languages.
+Without a refusal every call keeps its ID, also when it runs again. A call
+whose shifted occurrence another call already holds selects `defect` without
+invoking the operation, so two calls never share a Call ID.
 Mutations of different operations may run concurrently, and Queries are not
 restricted.
 The Step attempt state needs a hashable context that supports weak

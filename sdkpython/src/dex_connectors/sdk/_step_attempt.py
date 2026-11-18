@@ -5,6 +5,7 @@
 import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Generic, TypeVar
 
 import dex
@@ -45,14 +46,30 @@ class _StepAttemptRegistry(Generic[T]):
         return len(self._by_context)
 
 
+_OperationKey = tuple[str, str]
+
+
+@dataclass(slots=True)
+class _OperationOccurrences:
+    """Occurrence bookkeeping of one operation in one Step attempt, keyed by construction ordinal."""
+
+    constructed_count: int = 0
+    # A refused call that never began gives up its ordinal; later calls shift down past it.
+    freed_ordinals: set[int] = field(default_factory=set)
+    begun_occurrences: dict[int, int] = field(default_factory=dict)
+    ordinal_holding_occurrence: dict[int, int] = field(default_factory=dict)
+    is_mutation_running: bool = False
+
+
 @dataclass(slots=True)
 class _CallOccurrences:
-    """Per-operation counts of constructed calls, the Call IDs they were given, and begun Mutations."""
+    """Per-operation occurrences and the construction ordinal of every Call ID the SDK derived."""
 
-    constructed_counts: dict[tuple[str, str], int] = field(default_factory=dict)
-    issued_call_ids: set[str] = field(default_factory=set)
-    begun_mutation_counts: dict[tuple[str, str], int] = field(default_factory=dict)
-    running_mutations: set[tuple[str, str]] = field(default_factory=set)
+    operations: dict[_OperationKey, _OperationOccurrences] = field(default_factory=dict)
+    issued_ordinals: dict[str, tuple[_OperationKey, int]] = field(default_factory=dict)
+
+    def for_operation(self, key: _OperationKey) -> _OperationOccurrences:
+        return self.operations.setdefault(key, _OperationOccurrences())
 
 
 def _new_call_occurrences(context: dex.AsyncContext) -> _CallOccurrences:
@@ -65,34 +82,66 @@ _call_occurrences: _StepAttemptRegistry[_CallOccurrences] = _StepAttemptRegistry
 
 
 def _next_call_occurrence(context: dex.AsyncContext, connector_id: str, operation_id: str) -> int:
-    counts = _call_occurrences.value_for(context).constructed_counts
-    key = (connector_id, operation_id)
-    counts[key] = counts.get(key, 0) + 1
-    return counts[key]
+    operation = _call_occurrences.value_for(context).for_operation((connector_id, operation_id))
+    operation.constructed_count += 1
+    return operation.constructed_count
 
 
-def _record_issued_call_id(context: dex.AsyncContext, call_id: str) -> None:
-    """Remember a Call ID the SDK derived, so its Mutation may take the begun occurrence."""
-    _call_occurrences.value_for(context).issued_call_ids.add(call_id)
+def _record_issued_call_id(
+    context: dex.AsyncContext, connector_id: str, operation_id: str, call_id: str, ordinal: int
+) -> None:
+    """Remember the construction ordinal of a Call ID the SDK derived."""
+    _call_occurrences.value_for(context).issued_ordinals[call_id] = ((connector_id, operation_id), ordinal)
 
 
-def _is_issued_call_id(context: dex.AsyncContext, call_id: str) -> bool:
-    return call_id in _call_occurrences.value_for(context).issued_call_ids
+class _MutationRefusal(Enum):
+    """Why a Mutation call was refused before it was invoked; nothing was sent."""
+
+    CONCURRENT = "concurrent"
+    OCCURRENCE_HELD = "occurrenceHeld"
+
+
+@dataclass(frozen=True, slots=True)
+class _BegunMutation:
+    """A running Mutation: the occurrence of its Call ID, or None to keep it, and its end function."""
+
+    occurrence: int | None
+    end: Callable[[], None]
 
 
 def _begin_mutation_occurrence(
-    context: dex.AsyncContext, connector_id: str, operation_id: str
-) -> tuple[int, Callable[[], None]] | None:
-    """Mark a Mutation as running and return its begun occurrence and end function.
+    context: dex.AsyncContext, connector_id: str, operation_id: str, call_id: str
+) -> _BegunMutation | _MutationRefusal:
+    """Mark a Mutation as running and return the occurrence its Call ID runs with.
 
-    Returns None while another call of the operation runs, without consuming
-    an occurrence, as Go's beginMutationOccurrence does.
+    As in Go's beginMutationOccurrence, a call refused as concurrent before
+    it ever began consumes no occurrence: later SDK-derived calls of the
+    operation shift down past its ordinal. A call keeps its first begun
+    occurrence on later runs, and a call whose occurrence another call
+    already holds is refused, so two calls never share a Call ID.
     """
     occurrences = _call_occurrences.value_for(context)
     key = (connector_id, operation_id)
-    if key in occurrences.running_mutations:
-        return None
-    occurrences.running_mutations.add(key)
-    occurrence = occurrences.begun_mutation_counts.get(key, 0) + 1
-    occurrences.begun_mutation_counts[key] = occurrence
-    return occurrence, lambda: occurrences.running_mutations.discard(key)
+    operation = occurrences.for_operation(key)
+    issued = occurrences.issued_ordinals.get(call_id)
+    ordinal = issued[1] if issued is not None and issued[0] == key else None
+    if operation.is_mutation_running:
+        if ordinal is not None and ordinal not in operation.begun_occurrences:
+            operation.freed_ordinals.add(ordinal)
+        return _MutationRefusal.CONCURRENT
+    occurrence: int | None = None
+    if ordinal is not None:
+        occurrence = operation.begun_occurrences.get(ordinal)
+        if occurrence is None:
+            operation.freed_ordinals.discard(ordinal)
+            occurrence = ordinal - sum(1 for freed in operation.freed_ordinals if freed < ordinal)
+            if operation.ordinal_holding_occurrence.get(occurrence, ordinal) != ordinal:
+                return _MutationRefusal.OCCURRENCE_HELD
+            operation.begun_occurrences[ordinal] = occurrence
+            operation.ordinal_holding_occurrence[occurrence] = ordinal
+    operation.is_mutation_running = True
+
+    def end() -> None:
+        operation.is_mutation_running = False
+
+    return _BegunMutation(occurrence, end)

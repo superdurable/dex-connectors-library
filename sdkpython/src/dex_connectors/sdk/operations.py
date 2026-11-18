@@ -6,7 +6,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from typing import NoReturn, Protocol, TypeVar, cast
 
-from ._step_attempt import _begin_mutation_occurrence, _is_issued_call_id
+from ._step_attempt import _begin_mutation_occurrence, _BegunMutation, _MutationRefusal
 from .errors import Failure, FailureKind, RetryError
 from .timestamps import RFC3339NanoTimestamp
 from .types import (
@@ -105,9 +105,11 @@ async def run_mutation(
     declared uncertain route may represent an unconfirmable, non-repeatable write.
     Concurrent calls of the same operation in one Step attempt are unsupported:
     a call that starts while an earlier one is still running selects `defect`
-    without invoking the operation, so it never sends, and consumes no
-    occurrence. A Call ID from `derive_step_call_id` takes the occurrence of
-    the order in which Mutations of its operation begin, as in Go.
+    without invoking the operation, so it never sends. As in Go, such a call
+    that never began gives up its occurrence, and later `derive_step_call_id`
+    calls of the operation run with the occurrence shifted down past it. A
+    call whose shifted occurrence another call already holds also selects
+    `defect` without invoking the operation.
     """
     definition = operation.definition()
     try:
@@ -117,31 +119,31 @@ async def run_mutation(
         return _mutation_defect(call, str(error))
     if call.context is None:
         return await _run_validated_mutation(operation, definition, call, input)
-    begun = _begin_mutation_occurrence(
-        call.context, definition.operation.connector_id, definition.operation.operation_id
-    )
-    if begun is None:
+    connector_id = definition.operation.connector_id
+    operation_id = definition.operation.operation_id
+    begun = _begin_mutation_occurrence(call.context, connector_id, operation_id, str(call.id))
+    if begun == _MutationRefusal.CONCURRENT:
         return _mutation_defect(call, (
-            f"concurrent calls of connector operation {definition.operation.connector_id} "
-            f"{definition.operation.operation_id} in one Step are not supported; an earlier "
-            "call of it is still running, so this call was not sent"
+            f"concurrent calls of connector operation {connector_id} {operation_id} in one Step "
+            "are not supported; an earlier call of it is still running, so this call was not sent"
         ))
-    occurrence, end_running = begun
+    if not isinstance(begun, _BegunMutation):
+        return _mutation_defect(call, (
+            f"this call of connector operation {connector_id} {operation_id} would reuse the Call "
+            "ID of another call in this Step attempt, so this call was not sent"
+        ))
     try:
         return await _run_validated_mutation(
-            operation, definition, _call_for_begun_occurrence(call, occurrence), input
+            operation, definition, _call_for_begun_occurrence(call, begun.occurrence), input
         )
     finally:
-        end_running()
+        begun.end()
 
 
-def _call_for_begun_occurrence(call: Call, occurrence: int) -> Call:
-    """Give an SDK-derived Call ID the begun occurrence; an application-chosen ID is kept."""
+def _call_for_begun_occurrence(call: Call, occurrence: int | None) -> Call:
+    """Give an SDK-derived Call ID its begun occurrence; None keeps the Call ID."""
     context = call.context
-    if (
-        context is None or not context.flow_id or not context.step_execution_id
-        or not _is_issued_call_id(context, str(call.id))
-    ):
+    if occurrence is None or context is None or not context.flow_id or not context.step_execution_id:
         return call
     call_id = derive_call_id(
         context.flow_id, context.step_execution_id, call.operation, occurrence=occurrence

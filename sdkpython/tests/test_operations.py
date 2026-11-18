@@ -308,10 +308,60 @@ async def test_refused_concurrent_mutation_consumes_no_occurrence() -> None:
     assert result.receipt.call_id == second_occurrence
     assert str(later.observed_call.idempotency_key) == str(second_occurrence)
 
+    assert await _run_and_observe_call_id(later_call) == second_occurrence, "a rerun keeps its ID"
+
     application_call = Call(CALL_ID, CONNECTION, OPERATION, context=context)
-    kept = ExampleMutation(MutationAttempt.branch_result("success", "ok", unbound_receipt))
-    await run_mutation(kept, application_call, "application")
-    assert kept.observed_call is not None and kept.observed_call.id == CALL_ID
+    assert await _run_and_observe_call_id(application_call) == CALL_ID
+
+
+async def _run_and_observe_call_id(call: Call) -> CallID | None:
+    """Run a succeeding Mutation and return the Call ID its invoke saw, or None when refused."""
+    mutation = ExampleMutation(
+        MutationAttempt.branch_result("success", "ok", replace(RECEIPT, call_id=CallID("")))
+    )
+    await run_mutation(mutation, call, "input")
+    return mutation.observed_call.id if mutation.observed_call is not None else None
+
+
+@pytest.mark.asyncio
+async def test_occurrences_shift_only_past_calls_refused_before_they_began() -> None:
+    """Unused calls, reruns, and refusals of a running call keep IDs; a shift never reuses an ID."""
+    context = cast(dex.AsyncContext, StepContext())
+
+    def derived_call() -> Call:
+        return Call(derive_step_call_id(context, OPERATION), CONNECTION, OPERATION, context=context)
+
+    def occurrence(n: int) -> CallID:
+        return derive_call_id("flow-1", "step-1", OPERATION, occurrence=n)
+
+    first = derived_call()
+    running = BlockingMutation()
+    running.attempt = MutationAttempt.branch_result("success", "ok", replace(RECEIPT, call_id=CallID("")))
+    task = asyncio.create_task(run_mutation(running, first, "first"))
+    await running.started.wait()
+    assert await _run_and_observe_call_id(first) is None, "the running call itself is refused"
+    running.release.set()
+    await task
+    assert await _run_and_observe_call_id(first) == occurrence(1), "a rerun keeps its ID"
+    unused = derived_call()
+    assert unused.id == occurrence(2)
+    assert await _run_and_observe_call_id(derived_call()) == occurrence(3), "an unused call shifts nothing"
+
+    blocking = BlockingMutation()
+    blocking.attempt = running.attempt
+    holder = derived_call()
+    task = asyncio.create_task(run_mutation(blocking, holder, "holder"))
+    await blocking.started.wait()
+    refused = derived_call()
+    assert await _run_and_observe_call_id(refused) is None
+    blocking.release.set()
+    await task
+    assert await _run_and_observe_call_id(derived_call()) == occurrence(5), "shifted past the refused call"
+    collision = ExampleMutation(MutationAttempt.branch_result("success", "ok", RECEIPT))
+    result = await run_mutation(collision, refused, "rerun")
+    assert result.branch == "defect" and result.failure is not None
+    assert "reuse the Call ID" in result.failure.message
+    assert collision.observed_call is None, "a call whose occurrence is held never reaches invoke"
 
 
 def test_step_attempt_state_requires_a_weakly_referenceable_context() -> None:
