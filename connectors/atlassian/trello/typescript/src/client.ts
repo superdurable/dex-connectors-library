@@ -48,8 +48,13 @@ export class TrelloCredentialUnavailableError extends Error {
 
 /** Report a credential failure that no retry fixes; others, such as broker outages, may pass. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof TypeError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError ||
+  return error instanceof InvalidTrelloCredentialsError || error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError ||
     error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+}
+
+/** Resolved Trello credential material that fails the local header checks. */
+class InvalidTrelloCredentialsError extends TypeError {
+  constructor() { super('invalid Trello credentials'); this.name = 'InvalidTrelloCredentialsError'; }
 }
 
 /** Authenticated Trello REST client for one Dex connection. */
@@ -107,9 +112,9 @@ export class TrelloClient {
     let token: string;
     try {
       const credentials = await this.credentials.resolve(call, signal ?? call.context.cancellationSignal);
-      if (!(credentials.apiKey instanceof SecretString) || !(credentials.token instanceof SecretString)) throw new TypeError('invalid Trello credentials');
+      if (!(credentials.apiKey instanceof SecretString) || !(credentials.token instanceof SecretString)) throw new InvalidTrelloCredentialsError();
       apiKey = credentials.apiKey.reveal(); token = credentials.token.reveal();
-      if (![apiKey, token].every(value => quotedCredentialPattern.test(value) && !/["\\,]/.test(value))) throw new TypeError('invalid Trello credentials');
+      if (![apiKey, token].every(value => quotedCredentialPattern.test(value) && !/["\\,]/.test(value))) throw new InvalidTrelloCredentialsError();
     } catch (error) {
       return { error: new TrelloCredentialUnavailableError(isTerminalCredentialError(error)), receipt: {}, isProvablyNotSent: true };
     }

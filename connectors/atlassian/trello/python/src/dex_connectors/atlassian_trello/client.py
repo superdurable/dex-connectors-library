@@ -18,6 +18,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -140,7 +142,7 @@ class Client:
             is_header_safe_credential(value) and not any(character in value for character in '"\\,')
             for value in (credentials.api_key.reveal(), credentials.token.reveal())
         ):
-            raise ValueError("Trello connection credentials are unavailable")
+            raise _InvalidCredentialsError("Trello connection credentials are unavailable")
         return credentials
 
     async def request(
@@ -200,9 +202,22 @@ def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "trello", operation, message)
 
 
+class _InvalidCredentialsError(ValueError):
+    """Resolved Trello credential material that fails the local header checks."""
+
+
 def is_terminal_credential_error(error: BaseException) -> bool:
     """Report a credential failure no retry fixes; others, such as broker outages, may pass."""
-    return isinstance(error, (ValueError, LookupError, ReauthorizationRequiredError))
+    return isinstance(
+        error,
+        (
+            _InvalidCredentialsError,
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def credential_failure(operation: str, error: BaseException) -> Failure:
