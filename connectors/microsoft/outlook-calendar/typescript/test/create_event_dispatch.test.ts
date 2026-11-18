@@ -3,7 +3,7 @@
 
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Client } from '../src/client.js';
 import type { CreateEventInput, Credentials } from '../src/generated/models.js';
 import { HeartbeatContext, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
@@ -67,6 +67,22 @@ it('reads back a 2xx whose body breaks after the headers and never resends it', 
   });
   const { result, attempts } = await runAttempts(client, 4);
   expect(result).toMatchObject({ kind: 'branch', branch: 'created', value: { event: { id: 'evt-1' } } });
+  expect(attempts).toBe(1);
+  expect(posts).toBe(1);
+});
+
+it('reads back a 2xx whose body fails before any chunk arrived and never resends it', async () => {
+  let posts = 0;
+  const client = new Client({}, new StaticCredentialProvider([[connection, credentials]]), {
+    baseURL: 'http://127.0.0.1:12345/v1.0',
+    transport: async request => {
+      if (request.method === 'GET') return lookupAnswer(posts > 0);
+      posts++;
+      throw new ProviderTransportError(false, 201, {});
+    },
+  });
+  const { result, attempts } = await runAttempts(client, 4);
+  expect(result).toMatchObject({ kind: 'branch', branch: 'created' });
   expect(attempts).toBe(1);
   expect(posts).toBe(1);
 });

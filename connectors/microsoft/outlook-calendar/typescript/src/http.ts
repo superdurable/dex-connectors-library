@@ -12,6 +12,8 @@ import {
 } from "@superdurable/connectors-sdk";
 import {
   BodyTooLargeError,
+  ProviderStalledError,
+  ProviderTransportError,
   isHeaderSafeCredential,
   parseRetryAfter,
   readErrorTokens,
@@ -380,9 +382,19 @@ export class GraphHTTP {
               body: new Uint8Array(),
             },
           );
+        // A body failure after headers carries the status even before any chunk arrived.
+        const isHeaderFailure =
+          error instanceof ProviderTransportError ||
+          error instanceof ProviderStalledError;
         throw new RequestFailure("TRANSPORT", "provider request failed", {
-          status: observed?.status ?? 0,
-          headers: observed?.headers ?? {},
+          status:
+            (isHeaderFailure ? error.status : undefined) ||
+            observed?.status ||
+            0,
+          headers:
+            (isHeaderFailure && error.status ? error.headers : undefined) ??
+            observed?.headers ??
+            {},
           body: new Uint8Array(),
         });
       }
