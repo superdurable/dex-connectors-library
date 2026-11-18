@@ -151,6 +151,21 @@ func submissionAttemptBeforeSend(decision submissionDecision, operation string, 
 	}
 }
 
+// acceptedSubmissionAttempt selects sent with the rebuilt output when the server accepted an earlier submission.
+func acceptedSubmissionAttempt(decision submissionDecision, sentBranch sdkgo.BranchID, message SentMessage) (sdkgo.MutationAttempt[SentMessage], bool) {
+	if !decision.isAlreadyAccepted() {
+		return sdkgo.MutationAttempt[SentMessage]{}, false
+	}
+	// This attempt did not submit, so the accepted submission's Date header is unknown.
+	message.SentAt = time.Time{}
+	return sdkgo.NewMutationBranch(sentBranch, message, nil, sdkgo.Receipt{ProviderObjectID: message.MessageID}), true
+}
+
+// isAlreadyAccepted reports that the server accepted an earlier submission of this Call ID.
+func (decision submissionDecision) isAlreadyAccepted() bool {
+	return decision.kind == submissionAlreadyAccepted
+}
+
 // selectUncertainWithoutSubmitting selects uncertain for an attempt that did not submit after an earlier possible submission.
 func selectUncertainWithoutSubmitting(operation string, message SentMessage, reason string) sdkgo.MutationAttempt[SentMessage] {
 	// This attempt did not submit, so the earlier attempt's Date header is unknown.

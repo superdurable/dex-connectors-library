@@ -4,6 +4,7 @@
 
 import json
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any, cast
 
 import dex
@@ -162,8 +163,11 @@ async def test_send_message_accepted_with_stable_identifier_and_no_bcc_header(
     replayed = await client.send_message().invoke(
         make_call(context), SendMessageInput(to=("jane@example.com",), subject="Hello", text="Body")
     )
-    assert replayed.kind == "uncertain", "a replay after an accepted submission never resubmits"
-    assert server.submissions == 1
+    assert replayed.kind == "branch" and replayed.branch == "sent", "the checkpoint proves acceptance"
+    assert replayed.failure is None
+    assert replayed.value is not None and replayed.value.recipients == ("jane@example.com",)
+    assert replayed.value.sent_at == datetime.min.replace(tzinfo=UTC), "the replay did not submit"
+    assert server.submissions == 1, "a replay after an accepted submission never resubmits"
 
 
 @pytest.mark.asyncio

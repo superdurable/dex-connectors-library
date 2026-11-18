@@ -216,7 +216,7 @@ spec:
       description: Send one plain-text message over SMTP with a Message-ID derived from the Step's idempotency key. SMTP has no idempotency, so the Step runs with sync durability and counts its submissions in a checkpoint; a submission whose answer was lost is sent again, with the same Message-ID, while the send cap allows.
       idempotency: required
       branches:
-        - {id: sent, goName: Sent, description: The SMTP server accepted the message for delivery.}
+        - {id: sent, goName: Sent, description: "The SMTP server accepted the message for delivery, in this attempt or, with a blank sentAt, in an earlier one."}
         - {id: providerRejected, goName: ProviderRejected, description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
@@ -246,7 +246,7 @@ spec:
       description: Reply to one IMAP message over SMTP with In-Reply-To, References, and a Re subject so mail clients thread it, counting its submissions and resending one whose answer was lost while the send cap allows, like sendMessage.
       idempotency: required
       branches:
-        - {id: sent, goName: Sent, description: The SMTP server accepted the reply for delivery.}
+        - {id: sent, goName: Sent, description: "The SMTP server accepted the reply for delivery, in this attempt or, with a blank sentAt, in an earlier one."}
         - {id: notFound, goName: NotFound, description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent.", optional: true}

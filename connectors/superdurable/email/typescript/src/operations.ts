@@ -211,6 +211,14 @@ function attemptBeforeSubmitting(decision: SubmissionDecision, operation: string
   return undefined;
 }
 
+/** Select sent with the rebuilt output when the server accepted an earlier submission, or undefined. */
+function acceptedAttempt(decision: SubmissionDecision, value: SentMessage): MutationAttempt<SentMessage> | undefined {
+  if (decision.kind !== 'accepted') return undefined;
+  // This attempt did not submit, so the accepted submission's Date header is unknown.
+  const accepted = { ...value }; delete accepted.sentAt;
+  return newMutationBranch('sent', accepted, { providerObjectId: value.messageId });
+}
+
 /** Select branch for a failure before submitting, or uncertain after an earlier possible submission. */
 function refuseBeforeSubmitting(decision: SubmissionDecision, branch: string, mailFailure: MailFailure, operation: string, value: SentMessage): MutationAttempt<SentMessage> {
   const blocked = attemptBeforeSubmitting(decision, operation, value);
@@ -348,7 +356,7 @@ export class SendMessageOperation {
       identity = { ...zeroSent, messageId: id, from };
       message = { from, fromName: this.client.config.fromName, to: input.to || [], cc: input.cc || [], bcc: input.bcc || [], replyTo: input.replyTo, subject: input.subject, text: input.text, messageId: id, date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
     } catch (error) { return refuseBeforeSubmitting(decision, 'defect', error as MailFailure, 'sendMessage', identity); }
-    const blocked = attemptBeforeSubmitting(decision, 'sendMessage', sentValue(message));
+    const blocked = acceptedAttempt(decision, sentValue(message)) ?? attemptBeforeSubmitting(decision, 'sendMessage', sentValue(message));
     if (blocked) return blocked;
     return finishSubmission(this.client, credentials, call, decision, 'sendMessage', message);
   }
@@ -375,8 +383,9 @@ export class ReplyToMessageOperation {
       identity = { ...zeroSent, messageId: id, from };
     } catch (error) { return refuseBeforeSubmitting(decision, 'defect', error as MailFailure, operation, identity); }
     // The source may have moved since an earlier submission, so the checkpoint decides before reading it.
+    // An accepted reply reads the source only to rebuild its output, and never submits again.
     const blocked = attemptBeforeSubmitting(decision, operation, identity);
-    if (blocked) return blocked;
+    if (blocked && decision.kind !== 'accepted') return blocked;
     let session: ImapFlow | undefined;
     let message: OutgoingMail;
     try {
@@ -392,6 +401,8 @@ export class ReplyToMessageOperation {
       message = { from, fromName: this.client.config.fromName, to, cc, bcc: [], subject: truncateBytes(/^re:/i.test(subject) ? subject : `Re: ${subject}`.trim(), 998), text: input.text, messageId: id, inReplyTo: sourceID, references: sourceID ? [...(source.references || []), sourceID].slice(-20) : [], date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
       await close(session); session = undefined;
     } catch (error) {
+      // The reply was accepted earlier, and its source can no longer be read.
+      if (blocked) return blocked;
       const fresh = mutationFailure(operation, error, zeroSent, true, true);
       if (fresh.kind === 'retry') {
         await recordMarker(call, decision.maximumPriorSubmissions);
@@ -400,6 +411,8 @@ export class ReplyToMessageOperation {
       if (fresh.kind !== 'branch') return fresh;
       return refuseBeforeSubmitting(decision, fresh.branch, error instanceof MailFailure ? error : classifyMailError(error, 'IMAP'), operation, identity);
     } finally { if (session) await close(session); }
+    const accepted = acceptedAttempt(decision, sentValue(message));
+    if (accepted) return accepted;
     return finishSubmission(this.client, credentials, call, decision, operation, message);
   }
 }

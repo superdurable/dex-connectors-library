@@ -102,6 +102,34 @@ func TestReplyToMessageAtTheSendCapIsUncertainWithoutReadingOrSending(t *testing
 	require.Len(t, fixture.smtp.Submissions(), int(email.ReplyToMessageDefinition.MaxSends))
 }
 
+func TestReplyToMessageReplayAfterAnAcceptedReplyIsSentWithoutSubmitting(t *testing.T) {
+	fixture := newMailFixture(t)
+	source := fixture.appendMessage(t, "INBOX", plainMessage("jane@acme.example.com", testUsername, "Hello", "hello@acme.example.com", "Body."),
+		nil, januaryTwentyEighth)
+	input := email.ReplyToMessageInput{Message: source, Text: "Hello."}
+	first := newEmailDexContext("accepted-reply")
+	accepted, err := sdkgo.RunMutation(first, fixture.client(t).ReplyToMessage(), emailConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, email.ReplyToMessageBranchSent, accepted.Branch)
+
+	replayed, err := sdkgo.RunMutation(first.nextAttempt(), fixture.client(t).ReplyToMessage(), emailConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, email.ReplyToMessageBranchSent, replayed.Branch, "the checkpoint proves the server accepted the reply")
+	require.Equal(t, accepted.Value.MessageID, replayed.Value.MessageID)
+	require.Equal(t, accepted.Value.Recipients, replayed.Value.Recipients)
+	require.Equal(t, accepted.Value.InReplyTo, replayed.Value.InReplyTo)
+	require.True(t, replayed.Value.SentAt.IsZero(), "the replay did not submit, so the Date header is unknown")
+	require.Len(t, fixture.smtp.Submissions(), 1)
+
+	missing := source
+	missing.UID = 999
+	unreadable, err := sdkgo.RunMutation(first.nextAttempt(), fixture.client(t).ReplyToMessage(), emailConnection,
+		email.ReplyToMessageInput{Message: missing, Text: "Hello."})
+	require.NoError(t, err)
+	require.Equal(t, email.ReplyToMessageBranchUncertain, unreadable.Branch, "an unreadable source cannot rebuild the output")
+	require.Len(t, fixture.smtp.Submissions(), 1)
+}
+
 func TestReplyToMessageMissingSourceAfterAnEarlierPossibleSubmissionIsUncertain(t *testing.T) {
 	fixture := newMailFixture(t)
 	source := fixture.appendMessage(t, "INBOX", plainMessage("jane@acme.example.com", testUsername, "Hello", "hello@acme.example.com", "Body."),
