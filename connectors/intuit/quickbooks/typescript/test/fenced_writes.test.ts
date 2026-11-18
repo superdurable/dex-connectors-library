@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { QuickBooksClient } from '../src/client.js';
 import { CreateCustomerDefinition } from '../src/generated/definitions.js';
 import type { CreateCustomerOutput } from '../src/generated/models.js';
@@ -106,6 +106,36 @@ describe('QuickBooks bounded resend of writes', () => {
     } } as unknown as Script;
     expect(await create(broken, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
     expect(requests.map(request => request.method)).toEqual(['POST']);
+  });
+
+  it('never resends an accepted write whose 2xx headers arrive before the body breaks', async () => {
+    const requests: ProviderRequest[] = [];
+    const broken = { send: async (request: ProviderRequest): Promise<ProviderResponse> => {
+      requests.push(request);
+      throw new ProviderTransportError(false, 200, {});
+    } } as unknown as Script;
+    expect(await create(broken, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expect(requests.map(request => request.method)).toEqual(['POST']);
+  });
+
+  it('treats a refusal status with an oversized or broken error body as an unknown outcome', async () => {
+    const oversized = new Script([{ status: 400, body: { ...nameConflict, padding: ' '.repeat(70_000) } }, { status: 200, body: customer }]);
+    const brokenNotFound = new Script([{ status: 200, body: customer }]);
+    const sendAfterBrokenNotFound = brokenNotFound.send.bind(brokenNotFound);
+    brokenNotFound.send = async request => {
+      if (brokenNotFound.requests.length > 0) return sendAfterBrokenNotFound(request);
+      brokenNotFound.requests.push(request);
+      expect(request.ignoreErrorBodyReadFailure).toBe(false);
+      throw new ProviderTransportError(false, 404, {});
+    };
+    for (const script of [oversized, brokenNotFound]) {
+      const context = new AttemptContext();
+      expect(await create(script, context)).toBeInstanceOf(RetryError);
+      expect(context.marker).toMatchObject({ state: 'claimed', sendCount: 1 });
+      context.attempt = 2;
+      expect(await create(script, context)).toMatchObject({ branch: 'created' });
+      expect(script.requests).toHaveLength(2);
+    }
   });
 
   it('selects a definite refusal of a first write after recording canResend', async () => {

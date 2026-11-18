@@ -22,6 +22,7 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
@@ -69,6 +70,8 @@ class Exchange:
     retry_after: float = 0
     # No request byte reached QuickBooks, such as a credential failure or a refused connection.
     provably_unsent: bool = False
+    # A non-2xx body failed to read or exceeded its prefix, so it proves no refusal.
+    is_error_body_incomplete: bool = False
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -207,17 +210,20 @@ def _classify(
     return Exchange("succeeded", status=status, body=body, request_id=request_id)
 
 
-async def _read_error_body(response: httpx.Response) -> bytes:
-    """Read at most Go's 64 KiB error token prefix and close the response."""
+async def _read_error_body(response: httpx.Response) -> tuple[bytes, bool]:
+    """Read at most Go's 64 KiB error token prefix, close the response, and report an incomplete read."""
     chunks: list[bytes] = []
     remaining = MAX_ERROR_BODY_BYTES
     try:
         async for chunk in response.aiter_bytes():
-            if not remaining:
-                break
-            chunks.append(chunk[:remaining])
-            remaining -= min(len(chunk), remaining)
-        return b"".join(chunks)
+            if len(chunk) > remaining:
+                chunks.append(chunk[:remaining])
+                return b"".join(chunks), True
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        return b"".join(chunks), False
+    except (httpx.HTTPError, OSError):
+        return b"", True
     finally:
         await response.aclose()
 
@@ -380,10 +386,25 @@ class Client:
         query: dict[str, str] | None = None,
         payload: bytes | None = None,
         mutation: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Resolve credentials and issue one bounded Accounting API request."""
+        """Resolve credentials and issue one bounded Accounting API request.
+
+        Each response status is appended to `observed_statuses` when its headers arrive, so a
+        caller whose deadline cuts the body read still knows QuickBooks answered.
+        """
         try:
             credentials = await self.credentials.resolve(call)
+        except CredentialBrokerUnavailableError:
+            return Exchange(
+                "retry",
+                _failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "the Dex credential broker is temporarily unavailable; nothing was sent",
+                ),
+                provably_unsent=True,
+            )
         except ReauthorizationRequiredError:
             return Exchange(
                 "rejected",
@@ -457,6 +478,9 @@ class Client:
                 timeout=20,
             )
             response, _ = await send_traced(self.http_client, request)
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
+            is_error_body_incomplete = False
             if 200 <= response.status_code < 300:
                 try:
                     body = await read_bounded_body(response, self.config.max_response_bytes)
@@ -482,7 +506,7 @@ class Client:
                         metadata={"realmId": realm, "environment": self.config.environment},
                     )
             else:
-                body = await _read_error_body(response)
+                body, is_error_body_incomplete = await _read_error_body(response)
             result = _classify(
                 operation,
                 response.status_code,
@@ -492,6 +516,7 @@ class Client:
                 credentials.access_token.reveal(),
                 self.now(),
             )
+            result.is_error_body_incomplete = is_error_body_incomplete
             if response.status_code == 401 and hasattr(self.credentials, "resolve_after_rejection"):
                 try:
                     replacement = await self.credentials.resolve_after_rejection(call)
@@ -512,6 +537,8 @@ class Client:
                             timeout=20,
                         )
                         response, _ = await send_traced(self.http_client, replacement_request)
+                        if observed_statuses is not None:
+                            observed_statuses.append(response.status_code)
                         if 200 <= response.status_code < 300:
                             try:
                                 body = await read_bounded_body(response, self.config.max_response_bytes)
@@ -548,7 +575,7 @@ class Client:
                                     self.now(),
                                 )
                         else:
-                            body = await _read_error_body(response)
+                            body, is_error_body_incomplete = await _read_error_body(response)
                             result = _classify(
                                 operation,
                                 response.status_code,
@@ -558,6 +585,7 @@ class Client:
                                 replacement.access_token.reveal(),
                                 self.now(),
                             )
+                            result.is_error_body_incomplete = is_error_body_incomplete
                     except (httpx.HTTPError, OSError, ValueError):
                         result = Exchange(
                             "retry",

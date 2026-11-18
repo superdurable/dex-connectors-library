@@ -41,6 +41,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -268,6 +269,9 @@ func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, o
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true,
 			failure: quickbooksFailure(sdkgo.FailureAvailability, operation, "Intuit access token refresh is temporarily unavailable")}
+	case errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable):
+		return Credentials{}, "", &quickbooksExchange{outcome: exchangeRetry, isProvablyUnsent: true,
+			failure: quickbooksFailure(sdkgo.FailureAvailability, operation, "the Dex credential broker is temporarily unavailable; nothing was sent")}
 	case err != nil || validateResolvedCredentials(credentials) != nil:
 		return Credentials{}, "", &quickbooksExchange{outcome: exchangeDefect, isProvablyUnsent: true,
 			failure: quickbooksFailure(sdkgo.FailureAuthentication, operation, "QuickBooks connection credentials are unavailable")}
