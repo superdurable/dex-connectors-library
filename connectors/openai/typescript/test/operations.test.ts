@@ -4,7 +4,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { OpenAIClient, pathEscape } from '../src/client.js';
 import type { CreateRequest } from '../src/generated/models.js';
@@ -218,11 +218,45 @@ describe('createResponse checkpoint recovery', () => {
 
   it.each([
     ['unavailable', async () => { throw new Error('vault unavailable'); }, 'retry'],
+    ['reauthorization', async () => { throw new ReauthorizationRequiredError(); }, 'uncertain'],
     ['invalid', async () => ({ apiKey: new SecretString('bad\nkey') }), 'uncertain'],
   ] as const)('after a possible create, %s credentials select %s', async (_name, resolve, expected) => {
     const provider = new OpenAIClient({ endpoint: 'http://localhost:34080/v1', model: 'gpt-test' }, { resolve }, { send: async () => { throw new Error('unexpected send'); } });
-    const result = await provider.createResponse().invoke(call(2).invocation, input);
+    const { invocation, heartbeats } = call(2);
+    const result = await provider.createResponse().invoke(invocation, input);
     expect(result.kind).toBe(expected);
+    if (expected === 'retry') expect(heartbeats.at(-1)).toMatchObject({ canResend: true, sendCount: 1 });
+  });
+
+  it.each([
+    ['unavailable', async () => { throw new Error('vault unavailable'); }, 'retry'],
+    ['reauthorization', async () => { throw new ReauthorizationRequiredError(); }, 'branch'],
+  ] as const)('before any create, %s credentials select %s', async (_name, resolve, expected) => {
+    const provider = new OpenAIClient({ endpoint: 'http://localhost:34080/v1', model: 'gpt-test' }, { resolve }, { send: async () => { throw new Error('unexpected send'); } });
+    const { invocation, heartbeats } = call(1);
+    const result = await provider.createResponse().invoke(invocation, input);
+    expect(result.kind).toBe(expected);
+    if (result.kind === 'branch') expect(result.branch).toBe('defect');
+    if (expected === 'retry') expect(heartbeats.at(-1)).toMatchObject({ canResend: true, sendCount: 0 });
+  });
+
+  it.each([
+    ['oversized', async () => ({ status: 400, headers: {}, body: Buffer.alloc((64 << 10) + 1, 32) })],
+    ['cut off', async () => { throw new ProviderTransportError(false, 400, {}); }],
+    ['names a response', async () => ({ status: 400, headers: {}, body: Buffer.from('{"id":"resp_123","error":{"code":"x"}}') })],
+  ] as const)('resends a refusal whose body is %s below the cap', async (_name, answer) => {
+    let posts = 0;
+    const provider = client(async () => { posts++; return answer(); });
+    expect((await provider.createResponse().invoke(call(1).invocation, input)).kind).toBe('retry');
+    expect((await provider.createResponse().invoke(call(3).invocation, input)).kind).toBe('uncertain');
+    expect(posts).toBe(2);
+  });
+
+  it('retries a 429 whose body broke without counting a send', async () => {
+    const provider = client(async () => { throw new ProviderTransportError(false, 429, {}); });
+    const { invocation, heartbeats } = call(1);
+    expect((await provider.createResponse().invoke(invocation, input)).kind).toBe('retry');
+    expect(heartbeats.at(-1)).toMatchObject({ canResend: true, sendCount: 0 });
   });
 
   it('keeps create headers on an oversized body with no response ID', async () => {

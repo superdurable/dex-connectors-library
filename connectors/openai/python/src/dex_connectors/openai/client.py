@@ -30,7 +30,13 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
+    MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
     ProviderTransportError,
     is_header_safe_credential,
@@ -99,6 +105,7 @@ INVALID_CREATE_INPUT_MESSAGE = "input and a model of printable ASCII without spa
 NOT_SERIALIZABLE_MESSAGE = "request is not JSON serializable"
 # A later attempt may resolve these credentials; every other request-building failure repeats.
 CREDENTIALS_UNAVAILABLE_MESSAGE = "connection credentials are unavailable"
+CREDENTIALS_TERMINAL_MESSAGE = "connection credentials are missing or need reauthorization"
 _DEFAULT_MODEL = "gpt-6-sol"
 _DEFAULT_ENDPOINT = "https://api.openai.com/v1"
 _DEFAULT_MAX_RESPONSE_BYTES = 8_388_608
@@ -227,7 +234,15 @@ class Client:
         operation = call.operation.operation_id
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_TERMINAL_MESSAGE)
+        except (ValueError, LookupError, OSError):
+            # A later attempt may load these credentials, as in the Go and TypeScript packages.
             return openai_failure(FailureKind.AUTHENTICATION, operation, CREDENTIALS_UNAVAILABLE_MESSAGE)
         api_key = credentials.api_key.reveal()
         if not api_key or not is_header_safe_credential(api_key):
@@ -442,13 +457,9 @@ class CreateResponseOperation:
         is_streaming: bool,
     ) -> MutationAttempt[Response]:
         request = await self.client.build_request(call, "POST", "/responses", str(call.id), payload)
-        if (
-            isinstance(request, Failure)
-            and sends.has_possible_earlier_send
-            and request.message == CREDENTIALS_UNAVAILABLE_MESSAGE
-        ):
-            # An earlier create may exist, so a defect could prompt a second billed create.
-            return MutationAttempt.retry(request)
+        if isinstance(request, Failure) and request.message == CREDENTIALS_UNAVAILABLE_MESSAGE:
+            # Nothing was sent now, so the next attempt does not count this one.
+            return await _retry_create_response(heartbeat, request, 0, sends.prior_send_upper_bound)
         if isinstance(request, Failure) and sends.has_possible_earlier_send:
             # A lasting local failure cannot resend, and an earlier create may exist.
             return MutationAttempt.uncertain(Response(), request, response_receipt(call, "", None, ""))
@@ -490,8 +501,18 @@ class CreateResponseOperation:
         try:
             request_id = response.headers.get("X-Request-Id", "")
             if not 200 <= response.status_code < 300:
+                is_definite_refusal = (
+                    response.status_code in _DEFINITE_REFUSAL_STATUSES
+                    and await _is_definite_refusal_body(response)
+                )
                 return await _create_status_attempt(
-                    call, heartbeat, sends, response.status_code, response.headers, request_id
+                    call,
+                    heartbeat,
+                    sends,
+                    response.status_code,
+                    is_definite_refusal,
+                    response.headers,
+                    request_id,
                 )
             if is_streaming:
                 return await self._read_stream(call, heartbeat, sends, response, request_id)
@@ -652,6 +673,15 @@ class CreateResponseOperation:
         request = await self.client.build_request(
             call, "GET", "/responses/" + quote(response_id, safe="-._~$&+=:@"), "", None
         )
+        if isinstance(request, Failure) and request.message != CREDENTIALS_UNAVAILABLE_MESSAGE:
+            # A lasting credential or local failure cannot confirm the created response.
+            return _StoredResponseRead(
+                unconfirmed_failure=openai_failure(
+                    request.kind,
+                    CREATE_RESPONSE_OPERATION_ID,
+                    "response " + response_id + " read-back request could not be built: " + request.message,
+                )
+            )
         if isinstance(request, Failure):
             return _StoredResponseRead(
                 retry_failure=openai_failure(
@@ -817,14 +847,30 @@ def _resend_or_select_uncertain(
 _DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
 
 
+async def _is_definite_refusal_body(response: httpx.Response) -> bool:
+    """Report an error body read in full that names no response, so it proves a refusal."""
+    try:
+        data = await read_bounded_body(response, MAX_ERROR_BODY_BYTES)
+    except (BodyTooLargeError, ProviderTransportError):
+        return False
+    try:
+        document = json.loads(data)
+    except (ValueError, UnicodeDecodeError):
+        return True
+    response_id = document.get("id") if isinstance(document, dict) else None
+    return not isinstance(response_id, str) or not is_safe_response_id(response_id)
+
+
 async def _create_status_attempt(
     call: Call,
     heartbeat: _CreateResponseHeartbeat,
     sends: _CreateResponseSendBudget,
     status: int,
+    is_definite_refusal: bool,
     headers: httpx.Headers,
     request_id: str,
 ) -> MutationAttempt[Response]:
+    """Classify a non-2xx create; is_definite_refusal also requires a complete body naming no response."""
     failure, retry_after, is_retryable = classify_openai_status(CREATE_RESPONSE_OPERATION_ID, status, headers)
     if is_retryable:
         return await _retry_create_response(heartbeat, failure, retry_after, sends.prior_send_upper_bound)
@@ -849,8 +895,9 @@ async def _create_status_attempt(
             ),
             receipt,
         )
-    if status not in _DEFINITE_REFUSAL_STATUSES:
-        # A 5xx other than 503, a 3xx, or an unlisted 4xx can follow a stored response.
+    if not is_definite_refusal:
+        # A 5xx other than 503, a 3xx, an unlisted 4xx, or a refusal with an incomplete or
+        # response-naming body can follow a stored response.
         return _resend_or_select_uncertain(sends, failure, receipt)
     # The refusal proves this send created nothing.
     await heartbeat.record_can_resend(sends.prior_send_upper_bound)
