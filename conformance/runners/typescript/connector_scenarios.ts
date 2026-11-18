@@ -105,7 +105,12 @@ export class HeartbeatContext {
   readonly deadline = new Date(Date.now() + 30_000);
   readonly cancellationSignal = new AbortController().signal;
   readonly flowId = 'conformance-flow';
-  constructor(priorHeartbeat: unknown, fixedClock?: string, readonly scenarioName = '') {
+  /**
+   * `usesCheckpointMap` tells whether the installed SDK reads the per-call checkpoint map; reads then
+   * see a flat marker of `callId` wrapped, and older SDKs see a one-entry map of `callId` as its marker.
+   */
+  constructor(priorHeartbeat: unknown, fixedClock?: string, readonly scenarioName = '',
+    readonly callId = '', readonly usesCheckpointMap = false) {
     this.fixedClock = new Date(fixedClock ?? '1970-01-01T00:00:01Z');
     this.flowStartedAt = new Date('1970-01-01T00:00:01Z');
     this.marker = priorHeartbeat && typeof priorHeartbeat === 'object' && 'value' in priorHeartbeat
@@ -113,13 +118,61 @@ export class HeartbeatContext {
     this.attempt = priorHeartbeat === undefined ? 1 : Number((priorHeartbeat as { attempt: number }).attempt) + 1;
   }
   hasLastHeartbeatValue(): boolean { return this.marker !== undefined; }
-  getLastHeartbeatValue(): unknown { return this.marker; }
+  getLastHeartbeatValue(): unknown {
+    if (this.usesCheckpointMap && isOwnFlatMarker(this.marker, this.callId)) {
+      return { [checkpointMarkersField]: { [this.callId]: this.marker } };
+    }
+    return this.usesCheckpointMap ? this.marker : ownCheckpointEntry(this.marker, this.callId) ?? this.marker;
+  }
   async recordHeartbeat(value: unknown): Promise<void> {
     this.marker = process.env.CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT === this.scenarioName
       ? { __wrong_heartbeat_shape__: true } : value;
     if (value === undefined && process.env.CONNECTOR_CONFORMANCE_MUTATE_CLEAR_AS_NULL === this.scenarioName) this.marker = null;
     this.hasWrittenHeartbeat = true;
   }
+}
+
+const checkpointMarkersField = 'singleDispatchMarkers';
+const markerFields = new Set(['callId', 'attempt', 'state', 'providerId', 'sendCount']);
+
+/** Reports a single marker of callId, the heartbeat of SDKs before the per-call checkpoint map. */
+function isOwnFlatMarker(value: unknown, callId: string): value is Record<string, unknown> {
+  if (!callId || !value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const fields = Object.keys(value);
+  return ['callId', 'attempt', 'state'].every(field => fields.includes(field)) &&
+    fields.every(field => markerFields.has(field)) && (value as Record<string, unknown>).callId === callId;
+}
+
+/** Returns the only checkpoint-map entry when it is callId's own marker. */
+function ownCheckpointEntry(value: unknown, callId: string): Record<string, unknown> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  if (Object.keys(value).length !== 1 || !(checkpointMarkersField in value)) return undefined;
+  const entries = (value as Record<string, unknown>)[checkpointMarkersField];
+  if (!entries || typeof entries !== 'object' || Array.isArray(entries)) return undefined;
+  if (Object.keys(entries).length !== 1 || !(callId in entries)) return undefined;
+  const entry = (entries as Record<string, unknown>)[callId];
+  return isOwnFlatMarker(entry, callId) ? entry : undefined;
+}
+
+let checkpointMapProbe: Promise<boolean> | undefined;
+
+/** Asks the installed connectors SDK whether it decides from a per-call checkpoint map. */
+function installedSDKUsesCheckpointMap(): Promise<boolean> {
+  checkpointMapProbe ??= (async () => {
+    const packageDirectory = join(process.cwd(), 'node_modules', '@superdurable', 'connectors-sdk');
+    const manifest = JSON.parse(readFileSync(join(packageDirectory, 'package.json'), 'utf8')) as {
+      exports?: Record<string, { import?: string }>;
+    };
+    const entry = manifest.exports?.['./singledispatch']?.import;
+    if (!entry) return false;
+    const singledispatch = await import(pathToFileURL(join(packageDirectory, entry)).href) as {
+      decideDispatch: (callId: string, attempt: number, lastHeartbeat: unknown) => { kind: string };
+    };
+    const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
+    const checkpoint = { [checkpointMarkersField]: { [callId]: { callId, attempt: 1, state: 'notSent' } } };
+    return singledispatch.decideDispatch(callId, 2, checkpoint).kind === 'sendAllowed';
+  })();
+  return checkpointMapProbe;
 }
 
 function record(value: unknown, required: string[], optional: string[], location: string): RecordValue {
@@ -480,7 +533,8 @@ function assertHeartbeat(scenario: Scenario, context: HeartbeatContext, expected
     const encoded = outputCodec.encode(context.marker);
     if (encoded.kind !== 'json' || typeof encoded.data !== 'string') throw new Error('SDK heartbeat codec did not encode JSON');
     const heartbeat = JSON.parse(encoded.data);
-    if (!isDeepStrictEqual(heartbeat, expected.heartbeat)) {
+    if (!isDeepStrictEqual(ownCheckpointEntry(heartbeat, scenario.callId) ?? heartbeat,
+      ownCheckpointEntry(expected.heartbeat, scenario.callId) ?? expected.heartbeat)) {
       throw new Error(`${scenario.name}: heartbeat ${JSON.stringify(heartbeat)} differs from Go recording ${JSON.stringify(expected.heartbeat)}`);
     }
     context.marker = expected.heartbeat;
@@ -503,7 +557,8 @@ export async function replay(
   };
   const outputCodec = dexSDK.jsonCodec();
   const recorder = new ExchangeRecorder(scenario, pathPrefix);
-  const context = new HeartbeatContext(scenario.priorHeartbeat, scenario.fixedClock, scenario.name);
+  const context = new HeartbeatContext(scenario.priorHeartbeat, scenario.fixedClock, scenario.name,
+    scenario.callId, await installedSDKUsesCheckpointMap());
   for (const intermediate of scenario.intermediate ?? []) {
     context.hasWrittenHeartbeat = false;
     const attempt = await invoke(scenario, recorder, context);

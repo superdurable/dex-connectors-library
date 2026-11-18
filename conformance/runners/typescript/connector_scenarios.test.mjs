@@ -21,6 +21,21 @@ test('HeartbeatContext records the checkpoint map heartbeat as written', async (
   assert.deepEqual(retried.getLastHeartbeatValue(), checkpoint);
 });
 
+test('HeartbeatContext presents a recording in the installed SDK checkpoint format', () => {
+  const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
+  const marker = { callId, attempt: 1, state: 'claimed', sendCount: 1 };
+  const checkpoint = { singleDispatchMarkers: { [callId]: marker } };
+  const flatForMapSDK = new HeartbeatContext({ ...marker }, undefined, 'flat', callId, true);
+  assert.deepEqual(flatForMapSDK.getLastHeartbeatValue(), checkpoint);
+  const mapForFlatSDK = new HeartbeatContext({ attempt: 1, value: checkpoint }, undefined, 'map', callId, false);
+  assert.deepEqual(mapForFlatSDK.getLastHeartbeatValue(), marker);
+  assert.deepEqual(new HeartbeatContext({ ...marker }, undefined, 'flat', callId, false).getLastHeartbeatValue(), marker);
+  const foreign = { ...marker, callId: 'b8b7c0e5-3d8c-5d5e-9a51-0c4d2b7e6f10' };
+  assert.deepEqual(new HeartbeatContext({ attempt: 1, value: foreign }, undefined, 'foreign', callId, true).getLastHeartbeatValue(), foreign);
+  const both = { singleDispatchMarkers: { [callId]: marker, [foreign.callId]: foreign } };
+  assert.deepEqual(new HeartbeatContext({ attempt: 1, value: both }, undefined, 'both', callId, false).getLastHeartbeatValue(), both);
+});
+
 const cases = JSON.parse(readFileSync(new URL('../clock_cases.json', import.meta.url), 'utf8'));
 
 test('loadScenarios validates shared fixed clock cases', () => {

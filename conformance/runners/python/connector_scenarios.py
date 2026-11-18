@@ -24,6 +24,10 @@ from dex_connectors import sdk
 from dex_connectors.sdk.singledispatch import Marker
 
 _NO_HEARTBEAT_VALUE = object()
+# The SDK-internal checkpoint map of newer SDKs; see HeartbeatContext.get_last_heartbeat_value.
+_CHECKPOINT_MARKERS_FIELD = "singleDispatchMarkers"
+_MARKER_REQUIRED_FIELDS = frozenset({"callId", "attempt", "state"})
+_MARKER_FIELDS = _MARKER_REQUIRED_FIELDS | {"providerId", "sendCount"}
 
 
 class SyntheticRandomSource:
@@ -90,8 +94,9 @@ class HeartbeatContext:
     """Persist the connector's encoded heartbeat across fixture attempts."""
 
     def __init__(self, prior_heartbeat: dict[str, Any] | None = None,
-                 fixed_clock: str | None = None, scenario_name: str = "") -> None:
+                 fixed_clock: str | None = None, scenario_name: str = "", call_id: str = "") -> None:
         self.scenario_name = scenario_name
+        self.call_id = call_id
         self.attempt = prior_heartbeat["attempt"] + 1 if prior_heartbeat is not None else 1
         self.run_id = "run"
         self.fixed_clock = (datetime.fromisoformat(fixed_clock)
@@ -108,14 +113,20 @@ class HeartbeatContext:
         return self.has_heartbeat_value
 
     def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        """Decode the exact Go-recorded payload into the requested heartbeat type."""
+        """Decode the Go-recorded payload into the requested heartbeat type.
+
+        An SDK that reads a Marker gets this call's checkpoint-map entry; any other read gets a
+        flat marker of this call wrapped as the checkpoint map, so one recording replays on both.
+        """
         if not self.has_heartbeat_value:
             return None
         if value_type is Marker:
-            return Marker.from_wire(self.heartbeat_payload)
-        return CodecRegistry().resolve(value_type).decode(
-            Value(WireKind.JSON, json.dumps(self.heartbeat_payload))
-        )
+            entry = _own_checkpoint_entry(self.heartbeat_payload, self.call_id)
+            return Marker.from_wire(self.heartbeat_payload if entry is None else entry)
+        payload = self.heartbeat_payload
+        if _is_own_flat_marker(payload, self.call_id):
+            payload = {_CHECKPOINT_MARKERS_FIELD: {self.call_id: payload}}
+        return CodecRegistry().resolve(value_type).decode(Value(WireKind.JSON, json.dumps(payload)))
 
     async def heartbeat(self, value: object = _NO_HEARTBEAT_VALUE) -> None:
         """Record the last heartbeat for the next fixture invocation."""
@@ -139,6 +150,31 @@ def _encoded_heartbeat(value: object) -> object:
         # Dex encodes a JSON collection without a registered codec as plain JSON.
         return json.loads(json.dumps(value))
     return json.loads(CodecRegistry().resolve(type(value)).encode(value).data)
+
+
+def _is_own_flat_marker(value: object, call_id: str) -> bool:
+    """Report a single Marker of call_id, the heartbeat shape of SDKs before the checkpoint map."""
+    return (isinstance(value, dict) and _MARKER_REQUIRED_FIELDS <= value.keys() <= _MARKER_FIELDS
+            and bool(call_id) and value["callId"] == call_id)
+
+
+def _own_checkpoint_entry(value: object, call_id: str) -> dict[str, Any] | None:
+    """Return the only checkpoint-map entry when it is call_id's own marker, else None."""
+    if not isinstance(value, dict) or value.keys() != {_CHECKPOINT_MARKERS_FIELD}:
+        return None
+    entries = value[_CHECKPOINT_MARKERS_FIELD]
+    if not isinstance(entries, dict) or entries.keys() != {call_id}:
+        return None
+    entry = entries[call_id]
+    return entry if _is_own_flat_marker(entry, call_id) else None
+
+
+def _same_heartbeat(actual: object, recorded: object, call_id: str) -> bool:
+    """Compare heartbeats exactly, reading a one-entry checkpoint map of call_id as its marker."""
+    actual_entry = _own_checkpoint_entry(actual, call_id)
+    recorded_entry = _own_checkpoint_entry(recorded, call_id)
+    return _same_json_value(actual if actual_entry is None else actual_entry,
+                            recorded if recorded_entry is None else recorded_entry)
 
 
 def _keys(value: object, required: set[str], optional: set[str], where: str) -> dict[str, Any]:
@@ -629,7 +665,8 @@ async def replay(
 ) -> None:
     """Replay all attempts, then check transport mismatches and the final decision."""
     recorder = ExchangeRecorder(scenario, scenario["callId"], path_prefix)
-    context = HeartbeatContext(scenario.get("priorHeartbeat"), scenario.get("fixedClock"), scenario["name"])
+    context = HeartbeatContext(scenario.get("priorHeartbeat"), scenario.get("fixedClock"), scenario["name"],
+                               scenario["callId"])
     for intermediate in scenario.get("intermediate", []):
         context.has_written_heartbeat = False
         attempt = await invoke(scenario, recorder, context)
@@ -663,7 +700,7 @@ def assert_recorded_heartbeat(name: str, context: HeartbeatContext, recorded: ob
                 and recorded["cleared"] is True)
     assert context.has_heartbeat_value != is_clear, f"{name}: heartbeat clear differs from Go recording"
     if not is_clear:
-        assert _same_json_value(context.heartbeat_payload, recorded), (
+        assert _same_heartbeat(context.heartbeat_payload, recorded, context.call_id), (
             f"{name}: heartbeat {context.heartbeat_payload!r} differs from Go recording {recorded!r}"
         )
     context.heartbeat_payload = None if is_clear else recorded

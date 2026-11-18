@@ -61,7 +61,8 @@ async def invoke_openai(scenario: dict[str, Any], recorder: conformance.Exchange
 async def test_connector_conformance(scenario: dict[str, Any]) -> None:
     """Compare provider requests, checkpoints, and outcomes to the Go recording."""
     recorder = conformance.ExchangeRecorder(scenario, scenario["callId"], "/v1")
-    context = conformance.HeartbeatContext(scenario.get("priorHeartbeat"), scenario_name=scenario["name"])
+    context = conformance.HeartbeatContext(scenario.get("priorHeartbeat"), scenario_name=scenario["name"],
+                                           call_id=scenario["callId"])
     if scenario["name"].endswith("-deadline"):
         context.deadline = datetime.now(UTC) + timedelta(seconds=6)
     for intermediate in scenario.get("intermediate", []):

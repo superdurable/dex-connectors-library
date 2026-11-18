@@ -7,8 +7,9 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
-from connector_scenarios import HeartbeatContext, load_scenarios
+from connector_scenarios import HeartbeatContext, _same_heartbeat, load_scenarios
 from dex_connectors.sdk.singledispatch import Marker
 
 
@@ -69,6 +70,35 @@ class HeartbeatEncodingTest(unittest.TestCase):
         self.assertTrue(context.has_heartbeat_value)
         asyncio.run(context.heartbeat(Marker.from_wire(marker)))
         self.assertEqual(context.heartbeat_payload, marker)
+
+
+class HeartbeatFormatTranslationTest(unittest.TestCase):
+    call_id = "5af8fafa-06ff-5b2d-bb13-04693809fabf"
+    marker = {"callId": call_id, "attempt": 1, "state": "claimed", "sendCount": 1}
+    checkpoint = {"singleDispatchMarkers": {call_id: marker}}
+
+    def test_reads_a_flat_recording_as_the_checkpoint_map(self) -> None:
+        context = HeartbeatContext({**self.marker}, call_id=self.call_id)
+        self.assertEqual(context.get_last_heartbeat_value(dict[str, Any]), self.checkpoint)
+        self.assertEqual(context.get_last_heartbeat_value(Marker), Marker.from_wire(self.marker))
+
+    def test_reads_a_map_recording_as_its_own_marker(self) -> None:
+        context = HeartbeatContext({"attempt": 1, "value": self.checkpoint}, call_id=self.call_id)
+        self.assertEqual(context.get_last_heartbeat_value(Marker), Marker.from_wire(self.marker))
+        self.assertEqual(context.get_last_heartbeat_value(dict[str, Any]), self.checkpoint)
+
+    def test_keeps_foreign_and_multi_entry_heartbeats_unchanged(self) -> None:
+        foreign = {**self.marker, "callId": "b8b7c0e5-3d8c-5d5e-9a51-0c4d2b7e6f10"}
+        context = HeartbeatContext({"attempt": 1, "value": foreign}, call_id=self.call_id)
+        self.assertEqual(context.get_last_heartbeat_value(dict[str, Any]), foreign)
+        both = {"singleDispatchMarkers": {self.call_id: self.marker, foreign["callId"]: foreign}}
+        self.assertFalse(_same_heartbeat(both, self.marker, self.call_id))
+
+    def test_compares_either_format_exactly(self) -> None:
+        self.assertTrue(_same_heartbeat(self.checkpoint, self.marker, self.call_id))
+        self.assertTrue(_same_heartbeat(self.marker, self.checkpoint, self.call_id))
+        self.assertFalse(_same_heartbeat(self.checkpoint, {**self.marker, "sendCount": 2}, self.call_id))
+        self.assertFalse(_same_heartbeat({"__wrong_heartbeat_shape__": True}, self.marker, self.call_id))
 
 
 if __name__ == "__main__":
