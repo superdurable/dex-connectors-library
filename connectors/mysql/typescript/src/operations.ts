@@ -151,7 +151,7 @@ export class ExecuteStatementNonIdempotentOperation implements Mutation<ExecuteS
       ? await runWrite(this.client, call, input, parameters, password, async (connection, deadline) => {
         try { await fence.dispatch(() => commit(connection, deadline)); }
         catch (error) {
-          if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || error instanceof AggregateError) throw new CommitNotSentError();
+          if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error)) throw new CommitNotSentError();
           throw error;
         }
       })
@@ -179,6 +179,11 @@ type WriteOperation = 'execute' | 'executeNonIdempotent';
 interface WriteOutcome { failure?: ClassifiedFailure; receipt: ReceiptDraft; value: StatementExecution; isCommitPhase: boolean }
 
 class CommitNotSentError extends Error { constructor() { super('COMMIT was not sent'); this.name = 'CommitNotSentError'; } }
+
+/** Match only the Fence's pre-send AggregateError; a driver AggregateError after dispatch stays unknown. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
+}
 
 /** Run one statement in its own transaction and commit it through `commitTransaction`; failures before it commit nothing. */
 async function runWrite(client: MySQLClient, call: Call, input: ExecuteStatementInput, parameters: unknown[], password: string, commitTransaction: (connection: Connection, deadline: SessionDeadline) => Promise<void>): Promise<WriteOutcome> {
