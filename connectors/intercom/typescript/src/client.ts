@@ -6,6 +6,7 @@ import {
   BodyTooLargeError,
   isHeaderSafeCredential,
   parseRetryAfter,
+  ProviderStalledError,
   ProviderTransportError,
   sendProviderRequest,
   validateBaseURL,
@@ -73,7 +74,17 @@ export interface IntercomFailedExchange {
   receipt: ReceiptDraft;
   /** HTTP status when a response arrived; absent otherwise. */
   status?: number;
+  /** True when the body exceeded maxResponseBytes, so it could not be inspected. */
+  isBodyOversized?: boolean;
 }
+
+/** A resolved access token, or why it is unavailable. */
+export type AccessTokenResolution =
+  | { accessToken: string }
+  | {
+      /** True when the credential provider failed for a reason other than an unusable token. */
+      isTransient: boolean;
+    };
 
 /** One classified provider exchange. */
 export type IntercomExchange =
@@ -177,17 +188,27 @@ export class IntercomClient {
 
   /** Resolve a header-safe access token, or undefined when the connection credentials are unavailable. */
   async resolveAccessToken(call: Call): Promise<string | undefined> {
+    const resolution = await this.resolveAccessTokenResolution(call);
+    return "accessToken" in resolution ? resolution.accessToken : undefined;
+  }
+
+  /** Resolve a header-safe access token; an unusable token is terminal and a provider failure transient. */
+  async resolveAccessTokenResolution(call: Call): Promise<AccessTokenResolution> {
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentialProvider.resolve(
+      credentials = await this.credentialProvider.resolve(
         call,
         call.context.cancellationSignal,
       );
-      if (!(credentials.accessToken instanceof SecretString)) return;
-      const token = credentials.accessToken.reveal();
-      return isHeaderSafeCredential(token) ? token : undefined;
     } catch {
-      return;
+      return { isTransient: true };
     }
+    if (!(credentials.accessToken instanceof SecretString))
+      return { isTransient: false };
+    const token = credentials.accessToken.reveal();
+    return isHeaderSafeCredential(token)
+      ? { accessToken: token }
+      : { isTransient: false };
   }
 
   /** The defect Failure for unavailable connection credentials. */
@@ -242,6 +263,7 @@ export class IntercomClient {
       ...(body ? { "Content-Type": "application/json" } : {}),
     };
     let response: ProviderResponse;
+    let isBodyOversized = false;
     try {
       response = await this.sender({
         url,
@@ -267,6 +289,7 @@ export class IntercomClient {
           headers: error.headers ?? {},
           body: new Uint8Array(),
         };
+        isBodyOversized = true;
       } else if (error instanceof BodyTooLargeError)
         return {
           outcome: "invalid",
@@ -277,6 +300,25 @@ export class IntercomClient {
           ),
           retryAfterMs: 0,
           receipt,
+          ...(error.status !== undefined ? { status: error.status } : {}),
+        };
+      else if (
+        (error instanceof ProviderTransportError ||
+          error instanceof ProviderStalledError) &&
+        error.status !== undefined &&
+        error.status > 0
+      )
+        // The status stays, so a write Intercom accepted with a 2xx is never resent.
+        return {
+          outcome: "unconfirmed",
+          failure: this.failure(
+            operation,
+            "TRANSPORT",
+            "Intercom response could not be read",
+          ),
+          retryAfterMs: 0,
+          receipt,
+          status: error.status,
         };
       else if (error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent)
         return {
@@ -319,6 +361,7 @@ export class IntercomClient {
     return {
       ...this.classifyFailureStatus(call, operation, objectId, response),
       status: response.status,
+      ...(isBodyOversized ? { isBodyOversized } : {}),
     };
   }
 
@@ -422,11 +465,12 @@ export class IntercomClient {
     };
   }
 
-  /** Read a conversation with its parts rendered as plain text. */
+  /** Read a conversation with its parts rendered as plain text; a write passes its resolved token. */
   readConversation(
     call: Call,
     operation: string,
     conversationId: string,
+    dispatch?: IntercomDispatchOptions,
   ): Promise<IntercomExchange> {
     return this.exchange(
       call,
@@ -436,6 +480,7 @@ export class IntercomClient {
       new URLSearchParams({ display_as: "plaintext" }),
       undefined,
       conversationId,
+      dispatch,
     );
   }
 }
