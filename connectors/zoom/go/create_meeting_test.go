@@ -182,9 +182,9 @@ func TestCreateMeetingRetainsMalformedAcceptedProviderIDForReconciliation(t *tes
 	first, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
 	require.NoError(t, err)
 	context.AdvanceAttempt()
-	require.NoError(t, context.SetPersistedCheckpoint(singledispatch.Marker{
+	seedPersistedMarker(t, context, singledispatch.Marker{
 		CallID: first.Receipt.CallID, Attempt: 1, State: singledispatch.StateClaimed, ProviderID: "Zoom-ID-SENTINEL",
-	}))
+	})
 	second, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
 	require.NoError(t, err)
 	require.Equal(t, zoom.CreateMeetingBranchUncertain, second.Branch)
@@ -439,15 +439,12 @@ func lastSingleDispatchMarker(t *testing.T, context *singledispatchtest.Context)
 	t.Helper()
 	frames := context.Heartbeats()
 	require.NotEmpty(t, frames)
-	var marker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &marker))
-	return marker
+	return decodeRecordedMarker(t, frames[len(frames)-1])
 }
 
 func requireCheckpointState(t *testing.T, checkpoint json.RawMessage, state singledispatch.State) {
 	t.Helper()
-	var marker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(checkpoint, &marker))
+	marker := decodeRecordedMarker(t, checkpoint)
 	require.NotEmpty(t, marker.CallID)
 	require.Equal(t, int32(1), marker.Attempt)
 	require.Equal(t, state, marker.State)
@@ -476,9 +473,7 @@ func TestCreateMeetingFenceRetriesOnlyAfterDefiniteRejection(t *testing.T) {
 			require.Equal(t, provider.request(t, 0).body, provider.request(t, 1).body)
 			frames := context.Heartbeats()
 			require.GreaterOrEqual(t, len(frames), 4)
-			var first, second singledispatch.Marker
-			require.NoError(t, json.Unmarshal(frames[0], &first))
-			require.NoError(t, json.Unmarshal(frames[2], &second))
+			first, second := decodeRecordedMarker(t, frames[0]), decodeRecordedMarker(t, frames[2])
 			require.Equal(t, first.CallID, second.CallID)
 			require.Equal(t, int32(1), first.Attempt)
 			require.Equal(t, int32(2), second.Attempt)

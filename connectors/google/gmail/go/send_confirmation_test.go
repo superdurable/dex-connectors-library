@@ -525,10 +525,7 @@ func TestGmailServiceUnavailableSearchMissResendsWithTheSameMessageID(t *testing
 		require.ErrorAs(t, first.err, &retry)
 		require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, singledispatch.StateClaimed, marker.State)
 		require.Equal(t, int32(1), marker.SendCount)
 		second := runGmailSendAttempt(stepContext, client, isReply)
@@ -564,10 +561,7 @@ func TestGmailUnconfirmedSendResendsUntilTheCap(t *testing.T) {
 			// Attempt one polls four times; later attempts search once before the POST, then poll.
 			require.Equal(t, 5*attempt-1, searches)
 			stepContext.AdvanceAttempt()
-			var marker singledispatch.Marker
-			hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-			require.NoError(t, err)
-			require.True(t, hasMarker)
+			marker := readPersistedMarker(t, stepContext)
 			require.Equal(t, singledispatch.StateClaimed, marker.State)
 			require.Equal(t, int32(attempt), marker.SendCount)
 		}
@@ -612,10 +606,7 @@ func TestGmailRejectedResendKeepsTheEarlierSendUnknown(t *testing.T) {
 		require.Equal(t, 2, sends)
 		// The kept claim counts both sends, so the cap still bounds further resends.
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, singledispatch.StateClaimed, marker.State)
 		require.Equal(t, int32(2), marker.SendCount)
 	})
@@ -631,10 +622,7 @@ func TestGmailRejectedFirstSendIsProviderRejected(t *testing.T) {
 		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), result.branch)
 		// canResend proves the refused POST sent nothing, so agent hosts report failure.
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, singledispatch.StateCanResend, marker.State)
 		require.Equal(t, int32(1), marker.Attempt)
 	})
@@ -659,10 +647,7 @@ func TestGmailUnprovenRefusalOnFirstSendRetriesUnknown(t *testing.T) {
 				require.ErrorAs(t, first.err, &retry)
 				require.Contains(t, retry.Failure.Message, "Gmail may still have processed the request")
 				stepContext.AdvanceAttempt()
-				var marker singledispatch.Marker
-				hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-				require.NoError(t, err)
-				require.True(t, hasMarker)
+				marker := readPersistedMarker(t, stepContext)
 				require.Equal(t, singledispatch.StateClaimed, marker.State)
 				second := runGmailSendAttempt(stepContext, client, isReply)
 				require.NoError(t, second.err)
@@ -695,10 +680,7 @@ func TestGmailRejectedSendAfterRateLimitRecordsCanResend(t *testing.T) {
 		require.NoError(t, second.err)
 		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), second.branch)
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, singledispatch.StateCanResend, marker.State)
 		require.Equal(t, int32(2), marker.Attempt)
 	})
@@ -746,10 +728,7 @@ func TestGmailRateLimitCheckpointPermitsOneLaterPost(t *testing.T) {
 		var retry *sdkgo.RetryError
 		require.ErrorAs(t, first.err, &retry)
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, singledispatch.StateCanResend, marker.State)
 		second := runGmailSendAttempt(stepContext, client, isReply)
 		require.NoError(t, second.err)
@@ -776,10 +755,7 @@ func TestGmailSecondAttemptWithoutCheckpointSearchesThenResends(t *testing.T) {
 			require.Equal(t, 1, fake.sourceReadCount())
 		}
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		// The missing marker counts the first attempt as a possible send.
 		require.Equal(t, int32(2), marker.SendCount)
 	})
@@ -787,7 +763,7 @@ func TestGmailSecondAttemptWithoutCheckpointSearchesThenResends(t *testing.T) {
 
 // TestGmailInvalidCheckpointFailsClosedWithoutProviderRequests retries, because an earlier send may have happened.
 func TestGmailInvalidCheckpointFailsClosedWithoutProviderRequests(t *testing.T) {
-	for _, scenario := range []string{"foreign CallID", "invalid state", "heartbeat read error"} {
+	for _, scenario := range []string{"impossible send count", "heartbeat read error"} {
 		t.Run(scenario, func(t *testing.T) {
 			forSendAndReply(t, func(t *testing.T, isReply bool) {
 				fake := newGmailSendFake(t, sendFakeBehavior{})
@@ -797,10 +773,9 @@ func TestGmailInvalidCheckpointFailsClosedWithoutProviderRequests(t *testing.T) 
 				require.NotEmpty(t, callID)
 				stepContext.AdvanceAttempt()
 				switch scenario {
-				case "foreign CallID":
-					require.NoError(t, stepContext.SetPersistedCheckpoint(singledispatch.Marker{CallID: "foreign-call", Attempt: 1, State: singledispatch.StateClaimed}))
-				case "invalid state":
-					require.NoError(t, stepContext.SetPersistedCheckpoint(singledispatch.Marker{CallID: callID, Attempt: 1, State: "invalid"}))
+				case "impossible send count":
+					// One attempt cannot have claimed three sends.
+					seedPersistedMarker(t, stepContext, singledispatch.Marker{CallID: callID, Attempt: 1, State: singledispatch.StateClaimed, SendCount: 3})
 				case "heartbeat read error":
 					stepContext.SetReadError(errors.New("heartbeat unavailable"))
 				}
@@ -826,7 +801,7 @@ func TestGmailInvalidInputAfterPossibleSendRetries(t *testing.T) {
 		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
 		callID := callIDWithoutProviderRequest(t, stepContext, client, isReply)
 		stepContext.AdvanceAttempt()
-		require.NoError(t, stepContext.SetPersistedCheckpoint(singledispatch.Marker{CallID: callID, Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1}))
+		seedPersistedMarker(t, stepContext, singledispatch.Marker{CallID: callID, Attempt: 1, State: singledispatch.StateClaimed, SendCount: 1})
 		var err error
 		if isReply {
 			_, err = sdkgo.RunMutation(stepContext, client.ReplyToMessage(), gmailConnection, gmail.ReplyToMessageInput{})
@@ -854,10 +829,7 @@ func TestGmailAllowlistedRefusalWithMessageIDRetries(t *testing.T) {
 		require.ErrorAs(t, result.err, &retry)
 		require.Contains(t, retry.Failure.Message, "Gmail may still have processed the request")
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, singledispatch.StateClaimed, marker.State)
 	})
 }
@@ -872,10 +844,7 @@ func TestGmailSavedProviderIDConfirmsWithoutSearch(t *testing.T) {
 		first := runGmailSendAttempt(stepContext, client, isReply)
 		require.NoError(t, first.err)
 		stepContext.AdvanceAttempt()
-		var marker singledispatch.Marker
-		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-		require.NoError(t, err)
-		require.True(t, hasMarker)
+		marker := readPersistedMarker(t, stepContext)
 		require.Equal(t, "sent-1", marker.ProviderID)
 		second := runGmailSendAttempt(stepContext, client, isReply)
 		require.NoError(t, second.err)
@@ -904,10 +873,7 @@ func TestGmailReadBackMatchCheckpointsProviderID(t *testing.T) {
 				require.NoError(t, result.err)
 				require.Equal(t, "sent-1", result.value.MessageID)
 				stepContext.AdvanceAttempt()
-				var marker singledispatch.Marker
-				hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-				require.NoError(t, err)
-				require.True(t, hasMarker)
+				marker := readPersistedMarker(t, stepContext)
 				require.Equal(t, singledispatch.StateClaimed, marker.State)
 				require.Equal(t, "sent-1", marker.ProviderID)
 			})
@@ -1216,10 +1182,7 @@ func TestGmailCredentialFailureAfterPossibleSend(t *testing.T) {
 				require.Equal(t, 1, sends)
 				// The claim stays; notSent would let the next attempt skip read-back.
 				stepContext.AdvanceAttempt()
-				var marker singledispatch.Marker
-				hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
-				require.NoError(t, err)
-				require.True(t, hasMarker)
+				marker := readPersistedMarker(t, stepContext)
 				require.Equal(t, singledispatch.StateClaimed, marker.State)
 				require.Equal(t, int32(1), marker.Attempt)
 			})

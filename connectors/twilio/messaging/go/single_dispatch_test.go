@@ -43,10 +43,7 @@ func TestSendMessageFenceAllowsOneRetryAfterProviderRateLimitOrUnavailability(t 
 			var retry *sdkgo.RetryError
 			require.ErrorAs(t, err, &retry)
 			ctx.AdvanceAttempt()
-			var marker singledispatch.Marker
-			hasMarker, err := ctx.GetLastHeartbeatValue(&marker)
-			require.NoError(t, err)
-			require.True(t, hasMarker)
+			marker := readPersistedMarker(t, ctx)
 			require.Equal(t, singledispatch.StateCanResend, marker.State)
 			result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
 			require.NoError(t, err)
@@ -104,10 +101,8 @@ func TestSendMessageFenceResendsAnUnknownOutcomeOnlyBelowTheSendCap(t *testing.T
 	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
 	require.NoError(t, err)
 	require.Equal(t, messaging.SendMessageBranchAccepted, result.Branch)
-	var marker singledispatch.Marker
 	ctx.AdvanceAttempt()
-	_, err = ctx.GetLastHeartbeatValue(&marker)
-	require.NoError(t, err)
+	marker := readPersistedMarker(t, ctx)
 	require.EqualValues(t, 3, marker.SendCount)
 	require.Len(t, provider.recordedRequests(), 3)
 }
@@ -125,9 +120,7 @@ func TestSendMessageFenceNeverResendsADefiniteRefusal(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, messaging.SendMessageBranchProviderRejected, result.Branch)
 			ctx.AdvanceAttempt()
-			var marker singledispatch.Marker
-			_, err = ctx.GetLastHeartbeatValue(&marker)
-			require.NoError(t, err)
+			marker := readPersistedMarker(t, ctx)
 			require.Equal(t, singledispatch.StateCanResend, marker.State)
 			require.Len(t, provider.recordedRequests(), 1)
 		})
@@ -219,10 +212,7 @@ func TestSendMessageFenceClassifiesCredentialLookupBeforeSend(t *testing.T) {
 			}
 			require.Empty(t, provider.recordedRequests())
 			ctx.AdvanceAttempt()
-			var marker singledispatch.Marker
-			hasMarker, err := ctx.GetLastHeartbeatValue(&marker)
-			require.NoError(t, err)
-			require.True(t, hasMarker)
+			marker := readPersistedMarker(t, ctx)
 			require.Equal(t, singledispatch.StateNotSent, marker.State)
 		})
 	}
@@ -596,20 +586,17 @@ func TestSendMessageFenceCountsAMissedAttemptAfterAStaleResendMarker(t *testing.
 	_, err = sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
 	require.ErrorAs(t, err, &retry, "the missed attempt counts as one possible send, which stays below the cap")
 	ctx.AdvanceAttempt()
-	var marker singledispatch.Marker
-	_, err = ctx.GetLastHeartbeatValue(&marker)
-	require.NoError(t, err)
+	marker := readPersistedMarker(t, ctx)
 	require.EqualValues(t, 1, marker.SendCount)
 	require.Len(t, provider.recordedRequests(), 2)
 }
 
-func TestSendMessageFenceRetriesAForeignCheckpointWithoutSending(t *testing.T) {
+func TestSendMessageFenceRetriesAnUnreadableCheckpointWithoutSending(t *testing.T) {
 	provider := newTwilioFake(t, respondWithStatus(http.StatusCreated))
 	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, authTokenCredentials())
-	ctx := singledispatchtest.NewContext("twilio-fence-foreign", "send-message")
-	marker := singledispatch.Marker{CallID: sdkgo.CallID("foreign-call"), Attempt: 1, State: singledispatch.StateCanResend}
-	require.NoError(t, ctx.SetPersistedCheckpoint(marker))
+	ctx := singledispatchtest.NewContext("twilio-fence-unreadable", "send-message")
 	ctx.AdvanceAttempt()
+	ctx.SetReadError(errors.New("heartbeat unavailable"))
 	_, err := sdkgo.RunMutation(ctx, client.SendMessage(), twilioConnection, validSendInput())
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry, "an untrusted checkpoint never selects a terminal branch")

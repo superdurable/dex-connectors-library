@@ -643,26 +643,14 @@ func TestCreatePageDoesNotReplayOnAReusedConnectionWhenReplyIsLost(t *testing.T)
 	require.Equal(t, http.MethodPost, provider.request(1).method)
 }
 
-func TestCreatePageFenceRejectsStaleAndUnreadableMarkers(t *testing.T) {
-	for _, test := range []struct {
-		name    string
-		prepare func(*singledispatchtest.Context)
-	}{
-		{name: "foreign", prepare: func(ctx *singledispatchtest.Context) {
-			require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "wrong", Attempt: 1, State: singledispatch.StateCanResend}))
-		}},
-		{name: "unreadable", prepare: func(ctx *singledispatchtest.Context) { ctx.SetReadError(errors.New("checkpoint unavailable")) }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			provider := newRecordingNotion(t, func(http.ResponseWriter, *http.Request, int) {})
-			ctx := singledispatchtest.NewContext("notion-flow", "create-page")
-			ctx.AdvanceAttempt()
-			test.prepare(ctx)
-			_, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
-			requireRetry(t, err, sdkgo.FailureAvailability)
-			require.Zero(t, provider.requestCount(), "FailClosed never sends or selects a terminal branch")
-		})
-	}
+func TestCreatePageFenceRejectsAnUnreadableMarker(t *testing.T) {
+	provider := newRecordingNotion(t, func(http.ResponseWriter, *http.Request, int) {})
+	ctx := singledispatchtest.NewContext("notion-flow", "create-page")
+	ctx.AdvanceAttempt()
+	ctx.SetReadError(errors.New("checkpoint unavailable"))
+	_, err := sdkgo.RunMutation(ctx, newNotionClient(t, provider.URL).CreatePage(), notionConnection, validCreatePageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, provider.requestCount(), "FailClosed never sends or selects a terminal branch")
 }
 
 func TestCreatePageFenceNeverUsesAStaleResendMarker(t *testing.T) {
@@ -674,9 +662,9 @@ func TestCreatePageFenceNeverUsesAStaleResendMarker(t *testing.T) {
 	result, err := sdkgo.RunMutation(ctx, client.CreatePage(), notionConnection, validCreatePageInput())
 	require.NoError(t, err)
 	ctx.AdvanceAttempt()
-	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{
+	seedPersistedMarker(t, ctx, singledispatch.Marker{
 		CallID: result.Receipt.CallID, Attempt: 1, State: singledispatch.StateCanResend,
-	}))
+	})
 	ctx.AdvanceAttempt()
 	failedClient, err := notion.New(notion.Config{Endpoint: provider.URL}, failingCredentials{})
 	require.NoError(t, err)

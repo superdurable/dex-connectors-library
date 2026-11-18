@@ -422,7 +422,7 @@ func TestCreateDocumentPriorClaimLookupErrorsNeverResend(t *testing.T) {
 	}
 }
 
-func TestCreateDocumentLegacyCheckpointReadsBackWithoutSending(t *testing.T) {
+func TestCreateDocumentUnreadableCheckpointOnALaterAttemptReadsBackWithoutSending(t *testing.T) {
 	for _, test := range []struct {
 		name       string
 		status     int
@@ -432,14 +432,14 @@ func TestCreateDocumentLegacyCheckpointReadsBackWithoutSending(t *testing.T) {
 	}{
 		{"found", http.StatusOK, `{"files":[{"id":"oldDoc1","name":"Existing","mimeType":"application/vnd.google-apps.document"}]}`, docs.CreateDocumentBranchCreated, false},
 		{"unavailable", http.StatusServiceUnavailable, `{}`, "", true},
-		// A legacy checkpoint fails closed, which never selects a terminal branch.
+		// An unreadable checkpoint fails closed, which never selects a terminal branch.
 		{"missing", http.StatusOK, `{"files":[]}`, "", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := newRecordingServer(t, func(response http.ResponseWriter, _ recordedRequest) { writeJSON(t, response, test.status, test.body) })
-			ctx := singledispatchtest.NewContext("docs-flow", "legacy-"+test.name)
-			require.NoError(t, ctx.SetPersistedCheckpoint(map[string]string{"googleDocsDispatchedCallId": "legacy-call"}))
+			ctx := singledispatchtest.NewContext("docs-flow", "later-unreadable-"+test.name)
 			ctx.AdvanceAttempt()
+			ctx.SetReadError(errors.New("heartbeat store unavailable"))
 			result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
 			if test.wantRetry {
 				requireRetry(t, err, sdkgo.FailureAvailability)

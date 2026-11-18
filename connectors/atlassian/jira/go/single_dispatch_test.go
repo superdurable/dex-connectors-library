@@ -137,8 +137,7 @@ func TestDefiniteIssueRefusalRecordsCanResendAndIsNeverResent(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, jira.CreateIssueBranchProviderRejected, result.Branch)
 	frames := ctx.Heartbeats()
-	var lastMarker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &lastMarker))
+	lastMarker := decodeRecordedMarker(t, frames[len(frames)-1])
 	require.Equal(t, singledispatch.StateCanResend, lastMarker.State)
 	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
 }
@@ -168,13 +167,13 @@ func TestRefusalOfAResendIsUncertain(t *testing.T) {
 	require.Equal(t, 2, posts)
 }
 
-func TestUntrustedDispatchCheckpointRetriesWithoutSending(t *testing.T) {
+func TestUnreadableDispatchCheckpointRetriesWithoutSending(t *testing.T) {
 	provider := newRecordingJira(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusCreated, `{"id":"10043","key":"OPS-43"}`)
 	})
 	client := newJiraClient(t, provider.URL)
-	ctx := laterFenceContext("create-untrusted")
-	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "another-call", Attempt: 1, State: singledispatch.StateClaimed}))
+	ctx := laterFenceContext("create-unreadable")
+	ctx.SetReadError(errors.New("heartbeat unavailable"))
 	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
 	requireRetry(t, err, sdkgo.FailureAvailability)
 	commentContext := laterFenceContext("comment-unreadable")
@@ -428,15 +427,14 @@ func TestStaleCanResendMarkerReadsBackBeforeAThirdIssueWrite(t *testing.T) {
 	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
 	requireRetry(t, err, sdkgo.FailureRateLimit)
 	frames := ctx.Heartbeats()
-	var firstMarker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &firstMarker))
+	firstMarker := decodeRecordedMarker(t, frames[len(frames)-1])
 	require.Equal(t, singledispatch.StateCanResend, firstMarker.State)
 	ctx.AdvanceAttempt()
 	second, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
 	require.NoError(t, err)
 	require.Equal(t, jira.CreateIssueBranchCreated, second.Branch)
 	ctx.AdvanceAttempt()
-	require.NoError(t, ctx.SetPersistedCheckpoint(firstMarker))
+	seedPersistedMarker(t, ctx, firstMarker)
 	third, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
 	require.NoError(t, err)
 	require.Equal(t, jira.CreateIssueBranchCreated, third.Branch, "the stale marker counts the second send, which read-back finds")
@@ -475,15 +473,14 @@ func TestStaleCanResendMarkerReadsBackBeforeAThirdCommentWrite(t *testing.T) {
 	_, err := sdkgo.RunMutation(ctx, client.AddComment(), jiraConnection, input)
 	requireRetry(t, err, sdkgo.FailureAvailability)
 	frames := ctx.Heartbeats()
-	var firstMarker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &firstMarker))
+	firstMarker := decodeRecordedMarker(t, frames[len(frames)-1])
 	require.Equal(t, singledispatch.StateCanResend, firstMarker.State)
 	ctx.AdvanceAttempt()
 	second, err := sdkgo.RunMutation(ctx, client.AddComment(), jiraConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, jira.AddCommentBranchAdded, second.Branch)
 	ctx.AdvanceAttempt()
-	require.NoError(t, ctx.SetPersistedCheckpoint(firstMarker))
+	seedPersistedMarker(t, ctx, firstMarker)
 	third, err := sdkgo.RunMutation(ctx, client.AddComment(), jiraConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, jira.AddCommentBranchAdded, third.Branch, "the stale marker counts the second send, which read-back finds")
@@ -667,9 +664,7 @@ func TestPermanentCredentialFailuresBeforeDispatchSelectDefect(t *testing.T) {
 				require.Zero(t, provider.requestCount())
 				heartbeats := ctx.Heartbeats()
 				require.Len(t, heartbeats, 1)
-				var marker singledispatch.Marker
-				require.NoError(t, json.Unmarshal(heartbeats[0], &marker))
-				require.Equal(t, singledispatch.StateNotSent, marker.State)
+				require.Equal(t, singledispatch.StateNotSent, decodeRecordedMarker(t, heartbeats[0]).State)
 			})
 		}
 	}

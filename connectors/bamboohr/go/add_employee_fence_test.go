@@ -55,24 +55,15 @@ func TestAddEmployeeFenceRetriesOnlyConfirmedNonApplications(t *testing.T) {
 	}
 }
 
-func TestAddEmployeeFenceRetriesAnUntrustedCheckpointWithoutSending(t *testing.T) {
+func TestAddEmployeeFenceRetriesAnUnreadableCheckpointWithoutSending(t *testing.T) {
 	provider := newRecordingBambooHR(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no provider request is permitted") })
-	for _, scenario := range []string{"legacy", "foreign"} {
-		t.Run(scenario, func(t *testing.T) {
-			ctx := singledispatchtest.NewContext("bamboohr-flow", "add-fail-closed")
-			switch scenario {
-			case "legacy":
-				require.NoError(t, ctx.SetPersistedCheckpoint(map[string]any{"bamboohrDispatchedCallId": "old-call"}))
-			case "foreign":
-				require.NoError(t, ctx.SetPersistedCheckpoint(map[string]any{"callId": "foreign", "attempt": 1, "state": "canResend"}))
-			}
-			ctx.AdvanceAttempt()
-			_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
-			var retry *sdkgo.RetryError
-			require.ErrorAs(t, err, &retry, "FailClosed never selects a terminal branch")
-			require.Zero(t, provider.requestCount())
-		})
-	}
+	ctx := singledispatchtest.NewContext("bamboohr-flow", "add-fail-closed")
+	ctx.AdvanceAttempt()
+	ctx.SetReadError(errors.New("heartbeat unavailable"))
+	_, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "FailClosed never selects a terminal branch")
+	require.Zero(t, provider.requestCount())
 }
 
 func TestAddEmployeeFenceCountsAMissingCheckpointAsAPossibleSend(t *testing.T) {
