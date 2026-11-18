@@ -42,22 +42,30 @@ class AttemptContext:
         self.attempt = 1
         self.run_id = "run"
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
-        self.marker: Marker | None = None
+        self.heartbeat_value: object = None
         self.read_error: Exception | None = None
+
+    @property
+    def marker(self) -> Marker | None:
+        """Decode this call's marker from a single marker or the checkpoint map."""
+        if isinstance(self.heartbeat_value, Marker) or self.heartbeat_value is None:
+            return self.heartbeat_value
+        assert isinstance(self.heartbeat_value, dict)
+        return Marker.from_wire(self.heartbeat_value["singleDispatchMarkers"][str(CALL_ID)])
 
     def has_last_heartbeat_value(self) -> bool:
         """Report whether an earlier attempt recorded a heartbeat."""
         if self.read_error is not None:
             raise self.read_error
-        return self.marker is not None
+        return self.heartbeat_value is not None
 
     def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        """Return the last marker."""
-        return self.marker
+        """Return the last heartbeat exactly as the SDK wrote it."""
+        return self.heartbeat_value
 
     async def heartbeat(self, value: object = None) -> None:
-        """Record the attempt's marker."""
-        self.marker = value if isinstance(value, Marker) else None
+        """Record the attempt's heartbeat exactly as written."""
+        self.heartbeat_value = value
 
 
 Answer = Callable[[httpx.Request], tuple[int, object]]
