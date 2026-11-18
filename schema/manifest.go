@@ -947,6 +947,10 @@ func (manifest Manifest) Validate() error {
 			if !branch.Retired && branch.RetiredReason != "" {
 				problems = append(problems, operation.Name+": branch "+branch.ID+" has a retiredReason but is not retired")
 			}
+			// Retiring uncertain would hide the at-cap path that limited and unsafe Mutations must select.
+			if branch.Retired && branch.ID == "uncertain" && operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() != RepeatOnUnknownSafe {
+				problems = append(problems, operation.Name+": the uncertain branch of a limited or unsafe mutation cannot be retired")
+			}
 		}
 		if len(branches) == 0 || !branches["defect"] {
 			problems = append(problems, operation.Name+": branches must declare defect")

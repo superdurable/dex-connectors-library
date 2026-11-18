@@ -331,6 +331,10 @@ branches:
 
 - A retired branch must be optional and must not be `defect`, because local
   failures can always select `defect`.
+- A `limited` or `unsafe` Mutation, including one that omits
+  `repeatOnUnknown` and so defaults to `limited`, cannot retire `uncertain`:
+  it selects `uncertain` when the send cap is reached without a confirmed
+  write, and retiring the branch would hide that path.
 - `retiredReason` is required with `retired: true`. It states why the branch
   is no longer selected and what the connector selects instead. It is not
   allowed on a branch that is not retired. Keep the `description` accurate as

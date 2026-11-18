@@ -966,6 +966,34 @@
         {
           "if": { "properties": { "kind": { "const": "query" } } },
           "then": { "properties": { "idempotency": { "const": "none" } } }
+        },
+        {
+          "$comment": "A limited or unsafe mutation must keep its uncertain branch selectable at the send cap.",
+          "if": {
+            "required": ["kind"],
+            "properties": { "kind": { "const": "mutation" } },
+            "not": {
+              "anyOf": [
+                { "required": ["execution"], "properties": { "execution": { "required": ["repeatOnUnknown"], "properties": { "repeatOnUnknown": { "const": "safe" } } } } },
+                {
+                  "required": ["agent"],
+                  "properties": {
+                    "execution": { "not": { "required": ["repeatOnUnknown"] } },
+                    "agent": { "required": ["retry"], "properties": { "retry": { "const": "safe" } } }
+                  }
+                }
+              ]
+            }
+          },
+          "then": {
+            "properties": {
+              "branches": {
+                "not": {
+                  "contains": { "required": ["id", "retired"], "properties": { "id": { "const": "uncertain" }, "retired": { "const": true } } }
+                }
+              }
+            }
+          }
         }
       ]
     }

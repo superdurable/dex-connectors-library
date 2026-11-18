@@ -271,6 +271,85 @@ func TestManifestValidationChecksRetiredBranches(t *testing.T) {
 	require.ErrorContains(t, manifest.Validate(), "retired branch defect must be optional, not defect, and state a retiredReason")
 }
 
+func TestManifestValidationKeepsUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	const problem = "the uncertain branch of a limited or unsafe mutation cannot be retired"
+	retiredUncertain := schema.OperationBranch{ID: "uncertain", GoName: "Uncertain", Description: "The write may have happened.",
+		Optional: true, Retired: true, RetiredReason: "Never selected."}
+	for name, testCase := range map[string]struct {
+		repeatOnUnknown string
+		agentRetry      string
+		isRejected      bool
+	}{
+		"explicit limited":              {repeatOnUnknown: schema.RepeatOnUnknownLimited, isRejected: true},
+		"explicit unsafe":               {repeatOnUnknown: schema.RepeatOnUnknownUnsafe, isRejected: true},
+		"omitted defaults to limited":   {isRejected: true},
+		"omitted with safe agent retry": {agentRetry: schema.OperationAgentRetrySafe},
+		"explicit safe":                 {repeatOnUnknown: schema.RepeatOnUnknownSafe},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			operation := &manifest.Spec.Operations[0]
+			operation.Kind = "mutation"
+			operation.Idempotency = "required"
+			operation.Execution.RepeatOnUnknown = testCase.repeatOnUnknown
+			if testCase.agentRetry != "" {
+				operation.Agent = &schema.OperationAgent{Retry: testCase.agentRetry}
+			}
+			operation.Branches = append(operation.Branches, retiredUncertain)
+			err = manifest.Validate()
+			if testCase.isRejected {
+				require.ErrorContains(t, err, problem)
+				return
+			}
+			if err != nil {
+				require.NotContains(t, err.Error(), problem)
+			}
+		})
+	}
+}
+
+func TestManifestJSONSchemaKeepsUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition any
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	const resource = "https://connectors.dex.dev/connector-manifest.schema.json"
+	require.NoError(t, compiler.AddResource(resource, definition))
+	compiled, err := compiler.Compile(resource + "#/$defs/operation")
+	require.NoError(t, err)
+	operation := func(uncertain, execution, agent string) any {
+		var document any
+		require.NoError(t, json.Unmarshal([]byte(`{"name":"createThing","goName":"CreateThing","inputType":"CreateThingInput","outputType":"CreateThingOutput",`+
+			`"kind":"mutation","description":"Create one thing.","idempotency":"required",`+
+			`"branches":[{"id":"created","goName":"Created","description":"Created."},{"id":"defect","goName":"Defect","description":"Invalid.","optional":true},`+
+			`{"id":"uncertain","goName":"Uncertain","description":"The write may have happened.","optional":true`+uncertain+`}],`+
+			`"execution":{"executeMethodTimeout":"30s","durability":"async"`+execution+`}`+agent+`}`), &document))
+		return document
+	}
+	const retired = `,"retired":true,"retiredReason":"Never selected."`
+	const safeAgent = `,"agent":{"exposed":true,"retry":"safe"}`
+	for _, testCase := range []struct{ name, uncertain, execution, agent string }{
+		{"selectable uncertain", "", "", ""},
+		{"explicit safe", retired, `,"repeatOnUnknown":"safe"`, ""},
+		{"omitted with safe agent retry", retired, "", safeAgent},
+	} {
+		require.NoError(t, compiled.Validate(operation(testCase.uncertain, testCase.execution, testCase.agent)), testCase.name)
+	}
+	for _, testCase := range []struct{ name, execution, agent string }{
+		{"explicit limited", `,"repeatOnUnknown":"limited"`, ""},
+		{"explicit unsafe", `,"repeatOnUnknown":"unsafe"`, ""},
+		{"omitted defaults to limited", "", ""},
+		{"explicit limited with safe agent retry", `,"repeatOnUnknown":"limited"`, safeAgent},
+	} {
+		require.Error(t, compiled.Validate(operation(retired, testCase.execution, testCase.agent)), testCase.name)
+	}
+}
+
 func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 	fixture, err := os.ReadFile("testdata/google-oauth.yaml")
 	require.NoError(t, err)
