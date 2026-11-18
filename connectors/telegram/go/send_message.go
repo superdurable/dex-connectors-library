@@ -244,7 +244,8 @@ func localSendFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, 
 
 // isTerminalCredentialError reports a credential failure that only reconnecting the connection can fix.
 func isTerminalCredentialError(err error) bool {
-	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) ||
 		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 

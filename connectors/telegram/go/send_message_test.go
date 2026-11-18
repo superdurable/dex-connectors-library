@@ -292,7 +292,7 @@ func TestSendMessageTransientCredentialFailureBeforeSendRetries(t *testing.T) {
 
 func TestSendMessageTerminalCredentialFailure(t *testing.T) {
 	server, requests := newScriptedServer(t, []int{http.StatusInternalServerError}, []string{`{"ok":false}`})
-	terminalErrors := []error{sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), projectconfig.ErrObjectNotFound,
+	terminalErrors := []error{sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), projectconfig.ErrReauthorizationRequired, projectconfig.ErrObjectNotFound,
 		projectconfig.ErrConnectionNotSelected, projectconfig.ErrCredentialBrokerRejected}
 	for _, credentialErr := range terminalErrors {
 		t.Run(credentialErr.Error(), func(t *testing.T) {
