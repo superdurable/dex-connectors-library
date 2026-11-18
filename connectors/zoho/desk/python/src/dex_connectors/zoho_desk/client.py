@@ -15,7 +15,19 @@ from typing import Any
 from urllib.parse import quote_plus, urlsplit
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -75,6 +87,19 @@ class ResponseObservation:
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Build a secret-safe Zoho Desk failure."""
     return Failure(kind, "zoho-desk", operation, message)
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure no later attempt resolves without a person."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def _loopback(host: str | None) -> bool:
@@ -234,9 +259,7 @@ class Client:
                 self.credentials.resolve(call), self._remaining_seconds(call)
             )
         except Exception as error:
-            from dex_connectors.sdk import ReauthorizationRequiredError
-
-            return None, None, "rejected" if isinstance(error, ReauthorizationRequiredError) else "retry"
+            return None, None, "rejected" if _is_terminal_credential_error(error) else "retry"
         if not isinstance(credentials, Credentials):
             return None, None, "defect"
         token = credentials.access_token.reveal() if credentials.access_token else ""
@@ -324,9 +347,7 @@ class Client:
                 self.credentials.resolve_after_rejection(call), self._remaining_seconds(call)
             )
         except Exception as error:
-            from dex_connectors.sdk import ReauthorizationRequiredError
-
-            return "reconnect" if isinstance(error, ReauthorizationRequiredError) else "unavailable"
+            return "reconnect" if _is_terminal_credential_error(error) else "unavailable"
         rejected_token = rejected.access_token.reveal() if rejected.access_token else ""
         if (
             isinstance(replacement, Credentials)

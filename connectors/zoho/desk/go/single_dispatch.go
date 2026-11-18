@@ -225,7 +225,7 @@ func rejectedCredentialAttemptForWrite[OUT any](permit deskWritePermit, call sdk
 		return retryRejectedCredentialWrite[OUT](permit, deskFailure(sdkgo.FailureAuthentication, operation,
 			"Zoho Desk rejected the prior access token (HTTP 401); retry with its replacement"), true)
 	}
-	if err != nil && !sdkgo.IsReauthorizationRequired(err) {
+	if err != nil && !isTerminalCredentialError(err) {
 		return retryRejectedCredentialWrite[OUT](permit, deskFailure(sdkgo.FailureAuthentication, operation,
 			"Zoho Desk rejected the access token (HTTP 401); credential refresh is temporarily unavailable"), permit.isFirstSend)
 	}

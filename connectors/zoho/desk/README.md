@@ -466,8 +466,8 @@ write; "at the cap" means this send is the third possible one.
 | refusal status whose body carries a ticket or comment `id` | Retry for updateTicket's change | read back by ID, never resent, as for an accepted 2xx |
 | saved ticket or comment ID from an earlier attempt | not applicable | read back by ID, never resent: `created` or `added`, Retry on a 429, 5xx, or lost read, otherwise `uncertain` |
 | unreadable or untrusted dispatch checkpoint | not applicable | Retry, with no request |
-| revoked authorization (`invalid_code` on refresh) | `providerRejected`, `AUTHENTICATION`; updateTicket retries after its first attempt, because an earlier `PATCH` may have applied | `providerRejected` on a first send, otherwise `uncertain` |
-| token refresh outage | Retry | Retry |
+| revoked authorization (`invalid_code` on refresh), a missing or unselected connection, or a credential broker refusal | `providerRejected`, `AUTHENTICATION`; updateTicket retries after its first attempt, because an earlier `PATCH` may have applied | `providerRejected` on a first send, otherwise `uncertain` |
+| any other credential failure, such as a token refresh or broker outage or a connection the static provider does not configure | Retry | Retry |
 | invalid input, unknown data center, or unusable token | `defect`, with no request | `defect` on a first send, otherwise `uncertain`, with no request |
 
 Zoho Desk meters API credits per day and concurrent calls per edition. It sends

@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -281,6 +282,13 @@ func (client *Client) startSession(call sdkgo.Call, operation string) (*operatio
 	return client.startSessionWithContext(call.Context, call, operation)
 }
 
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 // startSessionWithContext starts a session under parent; Trigger pollers pass their own context because
 // their calls have no Dex Step context.
 func (client *Client) startSessionWithContext(parent context.Context, call sdkgo.Call, operation string) (*operationSession, context.CancelFunc, *sessionFailure) {
@@ -288,7 +296,7 @@ func (client *Client) startSessionWithContext(parent context.Context, call sdkgo
 	credentials, err := sdkgo.ResolveCredential(operationContext, client.credentials, call, client.refreshDriver)
 	var failure *sessionFailure
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		failure = &sessionFailure{route: sessionRejected, failure: deskFailure(sdkgo.FailureAuthentication, operation,
 			"Zoho authorization is revoked or expired; reconnect the connection")}
 	case err != nil:

@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk import projectconfig
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.zoho_desk as desk
@@ -446,3 +447,36 @@ async def test_update_ticket_retries_an_unusable_read() -> None:
     branch = await run("updateTicket", lambda _r, _i: response(200, "{}"), AttemptContext(), requests)
     assert branch == "retry"
     assert len(requests) == 1
+
+
+class FailingCredentials:
+    """Fail every resolution with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> desk.Credentials:
+        """Raise the configured error."""
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "branch"),
+    [
+        (projectconfig.ObjectNotFoundError("connection"), "uncertain"),
+        (projectconfig.ConnectionNotSelectedError("connection"), "uncertain"),
+        (projectconfig.CredentialBrokerRejectedError("broker"), "uncertain"),
+        (projectconfig.CredentialBrokerUnavailableError("broker"), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+    ],
+)
+async def test_every_credential_class_after_a_possible_send(error: Exception, branch: str) -> None:
+    requests: list[httpx.Request] = []
+    context = await context_after("createTicket", lambda _r, _i: response(500), 1, 1)
+    writes = context.heartbeat_writes
+    credentials = FailingCredentials(error)
+    result = await run("createTicket", lambda _r, _i: response(500), context, requests, credentials)
+    assert result == branch
+    assert context.heartbeat_writes == writes, "notSent would hide the earlier possible send"
+    assert not requests
