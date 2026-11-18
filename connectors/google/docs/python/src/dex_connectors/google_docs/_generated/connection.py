@@ -96,8 +96,13 @@ class CredentialMaterialError(ValueError):
 
 def is_credential_material_error(error: BaseException) -> bool:
     """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
-    return isinstance(error, CredentialMaterialError) or (
-        isinstance(error, ValueError) and isinstance(error.__context__, CredentialMaterialError)
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
     )
 
 

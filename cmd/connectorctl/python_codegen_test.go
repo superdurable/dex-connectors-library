@@ -530,6 +530,18 @@ def wrap_like_sdk(values):
 try: wrap_like_sdk({'unknown': 'value'})
 except ValueError as error: assert namespace['is_credential_material_error'](error), 'SDK decoding wrapper hides the material error'
 assert not namespace['is_credential_material_error'](ValueError('project credential decoding failed'))
+def wrap_shared_like_sdk(values):
+    try: namespace['decode_credentials'](values)
+    except ValueError: raise ValueError('shared project credential decoding failed') from None
+try: wrap_shared_like_sdk({'unknown': 'value'})
+except ValueError as error: assert namespace['is_credential_material_error'](error), 'SDK shared decoding wrapper hides the material error'
+class ObjectConflictError(ValueError): pass
+def wrap_in_transient(error_type, message):
+    try: namespace['decode_credentials']({'unknown': 'value'})
+    except ValueError: raise error_type(message)
+for error_type, message in ((ObjectConflictError, 'project credential decoding failed'), (ValueError, 'credential object changed concurrently')):
+    try: wrap_in_transient(error_type, message)
+    except ValueError as error: assert not namespace['is_credential_material_error'](error), 'transient error behind a material error classified as terminal: ' + repr(error)
 assert namespace['_decode_config']({'accountId':'account'}).workspace_id == ''
 assert namespace['_decode_config']({'accountId':'account', 'workspaceId':'workspace'}).workspace_id == 'workspace'
 def resolve(values, shared=False):
