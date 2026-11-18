@@ -117,7 +117,8 @@ it('treats a merged redirect after a reply as an unknown outcome', async () => {
 it('never selects defect for a reply credential failure after a possible send', async () => {
   for (const [error, kind] of [
     [new ReauthorizationRequiredError(), 'uncertain'], [new ObjectNotFoundError(), 'uncertain'], [new ConnectionNotSelectedError(), 'uncertain'],
-    [new CredentialBrokerRejectedError(), 'uncertain'], [new TypeError('broker unavailable'), 'retry'], [new CredentialBrokerUnavailableError(), 'retry'],
+    [new CredentialBrokerRejectedError(), 'uncertain'], [new TypeError('project credential decoding failed'), 'uncertain'],
+    [new TypeError('broker unavailable'), 'retry'], [new CredentialBrokerUnavailableError(), 'retry'],
     [new Error('connection is not configured'), 'retry'],
   ] as const) {
     const context = new HeartbeatContext(undefined);
@@ -162,6 +163,8 @@ it('selects defect for an update credential failure only on a terminal first att
     [new ObjectNotFoundError(), 1, 'branch'],
     [new ConnectionNotSelectedError(), 1, 'branch'],
     [new CredentialBrokerRejectedError(), 1, 'branch'],
+    // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+    [new TypeError('project credential decoding failed'), 1, 'branch'],
     [new ReauthorizationRequiredError(), 2, 'retry'],
   ] as const) {
     const context = new HeartbeatContext(undefined);
@@ -175,7 +178,7 @@ it('selects defect for an update credential failure only on a terminal first att
 
 it('retries transient reply credential failures and ends on reauthorization', async () => {
   const replyCall = { ...call('replyToConversation'), context: new HeartbeatContext(undefined) as unknown as Call['context'] };
-  const transient = new FrontClient({}, { resolve: async () => { throw new TypeError('project credential decoding failed'); } });
+  const transient = new FrontClient({}, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } });
   const first = await transient.replyToConversation().invoke(replyCall, { conversationId: 'cnv_55c8c149', text: 'Hello' });
   expect(first.kind).toBe('retry');
   const terminal = new FrontClient({}, { resolve: async () => { throw new ReauthorizationRequiredError(); } });

@@ -4,7 +4,7 @@
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, resolveCredentialAfterRejection, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { SearchConversationsOperation, GetConversationOperation, ReplyToConversationOperation, UpdateConversationOperation, FindContactByEmailOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api2.frontapp.com';
@@ -14,7 +14,7 @@ class InvalidFrontTokenError extends Error {}
 /** A credential failure another attempt cannot repair, including a token that failed local checks. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof InvalidFrontTokenError || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
-    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 /** One Front request, with an already escaped path. */

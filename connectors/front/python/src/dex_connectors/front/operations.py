@@ -155,7 +155,10 @@ def _conversation_id(value: str) -> None:
 
 def _is_terminal_credential_error(error: BaseException | None) -> bool:
     """Report a credential failure another attempt cannot repair; None means local validation failed."""
-    return error is None or isinstance(
+    # The generated connection module imports this package's client, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return error is None or is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

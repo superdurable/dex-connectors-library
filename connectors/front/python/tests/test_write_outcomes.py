@@ -33,6 +33,10 @@ from dex_connectors.front import (
     ReplyToConversationInput,
     UpdateConversationInput,
 )
+from dex_connectors.front.connection import CredentialMaterialError
+
+# The generated project credential source raises this for malformed stored material.
+MALFORMED_MATERIAL = CredentialMaterialError("Front stored credential does not match the credential fields")
 
 CALL_ID = CallID("76e76ff6-9e73-5db4-bb93-69b6a679fae5")
 CONVERSATION = {"id": "cnv_100", "status": "archived", "tags": []}
@@ -136,6 +140,7 @@ async def test_accepted_reply_without_a_usable_id_is_never_resent(response: http
         (ObjectNotFoundError("connection"), "uncertain"),
         (ConnectionNotSelectedError("connection"), "uncertain"),
         (CredentialBrokerRejectedError("broker"), "uncertain"),
+        (MALFORMED_MATERIAL, "uncertain"),
         (ConnectionError("broker unavailable"), "retry"),
         (CredentialBrokerUnavailableError("broker"), "retry"),
         (ValueError("connection is not configured"), "retry"),
@@ -145,6 +150,7 @@ async def test_accepted_reply_without_a_usable_id_is_never_resent(response: http
         "object not found",
         "not selected",
         "broker rejected",
+        "malformed material",
         "transient",
         "broker unavailable",
         "not configured",
@@ -295,6 +301,7 @@ async def test_update_retries_a_refusal_whose_body_cannot_be_read() -> None:
         (ObjectNotFoundError("connection"), 1, "branch"),
         (ConnectionNotSelectedError("connection"), 1, "branch"),
         (CredentialBrokerRejectedError("broker"), 1, "branch"),
+        (MALFORMED_MATERIAL, 1, "branch"),
         (ReauthorizationRequiredError(), 2, "retry"),
     ],
     ids=[
@@ -305,6 +312,7 @@ async def test_update_retries_a_refusal_whose_body_cannot_be_read() -> None:
         "object not found",
         "not selected",
         "broker rejected",
+        "malformed material",
         "terminal after earlier write",
     ],
 )
