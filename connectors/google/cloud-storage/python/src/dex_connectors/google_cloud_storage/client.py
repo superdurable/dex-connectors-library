@@ -11,6 +11,8 @@ from urllib.parse import urlsplit
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -92,9 +94,15 @@ class Client:
         """Return a header-safe bearer token or a safe failure class."""
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             return "", "credential"
-        except (ValueError, LookupError, OSError):
+        except Exception:  # noqa: BLE001
+            # Any unlisted resolve failure, such as an unconfigured connection, is transient.
             return "", "refresh"
         token = credentials.access_token.reveal()
         if not is_header_safe_credential(token):
