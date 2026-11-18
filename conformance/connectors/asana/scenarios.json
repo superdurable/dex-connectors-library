@@ -908,7 +908,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask_uncertain_500",
+      "name": "createTask_server_error_resend",
       "operation": "createTask"
     },
     {
@@ -963,7 +963,7 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -971,10 +971,15 @@
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "name": "[REQ-1042] Replace badge reader",
+          "projectId": "1201000000000001",
+          "sectionId": "1201000000000101"
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
       "input": {
@@ -1006,7 +1011,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask_uncertain_invalid_body",
+      "name": "createTask_accepted_invalid_body_uncertain",
       "operation": "createTask"
     },
     {
@@ -1288,13 +1293,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "taskId": "1204567890123456"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1303,7 +1305,7 @@
         "isCompleted": false,
         "taskId": "1204567890123456"
       },
-      "name": "updateTask_invalid_response",
+      "name": "updateTask_unusable_body_retry",
       "operation": "updateTask"
     },
     {
@@ -1656,7 +1658,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment_uncertain_500",
+      "name": "addComment_server_error_resend",
       "operation": "addComment"
     },
     {
@@ -1693,7 +1695,7 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
@@ -1701,17 +1703,20 @@
           "sendCount": 1,
           "state": "claimed"
         },
+        "output": {
+          "taskId": "1204567890123456"
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
       "input": {
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment_uncertain_invalid_body",
+      "name": "addComment_accepted_invalid_body_uncertain",
       "operation": "addComment"
     },
     {

@@ -428,7 +428,7 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTaskBranchCreated, Description: "Asana created the task and returned its ID."},
 		{ID: CreateTaskBranchProviderRejected, Description: "Asana conclusively rejected the task, such as an unknown project, section, assignee, or custom field value, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateTaskBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the task may exist and must not be created again automatically.", Optional: true},
+		{ID: CreateTaskBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed, or Asana accepted the create without a usable task ID; Asana has no idempotency key, so the task may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateTaskBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -508,7 +508,7 @@ var UpdateTaskDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTaskBranchUpdated, Description: "Asana applied every requested change, including when the task already had those values, and the Value holds the task read back."},
 		{ID: UpdateTaskBranchNotFound, Description: "The task or section does not exist or the connection cannot see it.", Optional: true},
 		{ID: UpdateTaskBranchProviderRejected, Description: "Asana conclusively rejected a change, such as an unknown assignee, a section of a project the task is not in, or missing permission.", Optional: true},
-		{ID: UpdateTaskBranchInvalidResponse, Description: "Asana returned an invalid or oversized task after the update.", Optional: true},
+		{ID: UpdateTaskBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: the update is safe to repeat, so an invalid or oversized task after the update retries.", Optional: true},
 		{ID: UpdateTaskBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -590,7 +590,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Asana added the comment and returned its story ID."},
 		{ID: AddCommentBranchNotFound, Description: "The task does not exist or the connection cannot see it; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Asana conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The send cap is reached and the outcome cannot be confirmed, or Asana accepted the comment without a usable story ID; Asana has no idempotency key, so the comment may exist and must not be added again automatically.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

@@ -111,7 +111,8 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	}
 	task, err := decodeTaskBody(result.response.body)
 	if err != nil || task.ID != update.taskID {
-		return sdkgo.NewMutationBranch(UpdateTaskBranchInvalidResponse, output, failurePointer(updateTaskOperationID, sdkgo.FailureProtocol, "Asana returned an invalid task after the update"), receipt)
+		// Repeating the absolute update is safe, so an unusable 2xx retries.
+		return sdkgo.NewMutationRetry[UpdateTaskOutput](newFailure(updateTaskOperationID, sdkgo.FailureProtocol, "Asana returned an invalid task after the update"), 0)
 	}
 	output.Task = &task
 	return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, output, nil, receipt)
@@ -147,7 +148,8 @@ func readBackAttempt(classification readClassification, output UpdateTaskOutput,
 	case readRejected:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchProviderRejected, output, &classification.failure, receipt)
 	default:
-		return sdkgo.NewMutationBranch(UpdateTaskBranchInvalidResponse, output, &classification.failure, receipt)
+		// The section move is safe to repeat, so an unusable read-back retries.
+		return sdkgo.NewMutationRetry[UpdateTaskOutput](classification.failure, classification.retryAfter)
 	}
 }
 

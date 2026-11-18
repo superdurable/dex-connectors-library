@@ -49,7 +49,8 @@ func TestAddCommentClassifiesPostOutcomesWithoutResendingAmbiguousWrites(t *test
 		{name: "unavailable", status: http.StatusServiceUnavailable, isRetry: true},
 		// Unknown outcomes resend on the next attempt below the send cap.
 		{name: "server error", status: http.StatusInternalServerError, isRetry: true},
-		{name: "unusable story", status: http.StatusCreated, isRetry: true},
+		// Asana accepted the comment without a usable ID, so it is never sent again.
+		{name: "unusable story", status: http.StatusCreated, branch: asana.AddCommentBranchUncertain},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {

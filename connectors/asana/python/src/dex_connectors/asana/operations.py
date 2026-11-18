@@ -113,19 +113,27 @@ async def _credential_failure(
     fence: Fence, decision: Decision, cap: _SendCap, operation: str, value: T, cause: Failure
 ) -> MutationAttempt[T]:
     """Map unavailable credentials before the send."""
-    # notSent after a possible earlier send would hide it, so only a first-send decision records it.
-    if decision.kind == DecisionKind.SEND_ALLOWED:
-        try:
-            await fence.record_not_sent()
-        except Exception:
-            return MutationAttempt.retry(
-                failure(
-                    operation,
-                    FailureKind.AVAILABILITY,
-                    "Asana setup failed and the not-sent checkpoint could not be recorded",
-                )
+    if cap.has_possible_earlier_send:
+        # notSent would hide the earlier send; Asana credential failures cannot be told apart as transient.
+        return MutationAttempt.retry(
+            failure(
+                operation,
+                cause.kind,
+                "an earlier attempt of this Step may have sent the request and the connection "
+                f"credentials are unavailable: {cause.message}",
             )
-    return _defect_or_select_uncertain(cap, value, cause, Receipt())
+        )
+    try:
+        await fence.record_not_sent()
+    except Exception:
+        return MutationAttempt.retry(
+            failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                "Asana setup failed and the not-sent checkpoint could not be recorded",
+            )
+        )
+    return MutationAttempt.branch_result("defect", value, Receipt(), cause)
 
 
 async def _attempt_for_write(
@@ -154,6 +162,9 @@ async def _attempt_for_write(
         return MutationAttempt.retry(problem, delay)
     if route == "uncertain":
         return _resend_or_select_uncertain(cap, value, problem, receipt)
+    if route == "accepted_unreadable":
+        # Asana accepted the write without a readable ID, so it is never sent again.
+        return MutationAttempt.uncertain(value, problem, receipt)
     if route == "defect":
         try:
             await fence.record_can_resend()
@@ -162,6 +173,15 @@ async def _attempt_for_write(
         return _defect_or_select_uncertain(cap, value, problem, receipt)
     branch = not_found if route == "notFound" else "providerRejected"
     return await _reject_or_select_uncertain(fence, cap, operation, branch, value, problem, receipt)
+
+
+def _accepted_without_identity(
+    operation: str, value: T, message: str, receipt: Receipt
+) -> MutationAttempt[T]:
+    """Select uncertain for a 2xx without a usable ID; the accepted write is never sent again."""
+    return MutationAttempt.uncertain(
+        value, failure(operation, FailureKind.PROTOCOL, f"{message}, so it is not sent again"), receipt
+    )
 
 
 async def _reject_or_select_uncertain(
@@ -285,8 +305,9 @@ def _write_outcome(
         )
     status = exchange.status
     if 200 <= status < 300:
+        # An unkeyed write that Asana accepted is never sent again, even without a readable ID.
         if exchange.has_body_read_failed:
-            kind = "retry" if repeatable else "uncertain"
+            kind = "retry" if repeatable else "accepted_unreadable"
             return (
                 kind,
                 failure(operation, FailureKind.TRANSPORT, f"Asana {subject} response was interrupted"),
@@ -305,7 +326,7 @@ def _write_outcome(
                     0,
                 )
             return (
-                "uncertain",
+                "accepted_unreadable",
                 failure(
                     operation,
                     FailureKind.RESPONSE_TOO_LARGE,
@@ -325,7 +346,7 @@ def _write_outcome(
                     0,
                 )
             return (
-                "uncertain",
+                "accepted_unreadable",
                 failure(
                     operation,
                     FailureKind.PROTOCOL,
@@ -346,6 +367,17 @@ def _write_outcome(
             "retry",
             failure(operation, FailureKind.AVAILABILITY, f"Asana {subject} is temporarily unavailable"),
             delay,
+        )
+    if exchange.is_body_too_large or exchange.has_body_read_failed:
+        # An error body that cannot be read in full cannot prove a refusal.
+        return (
+            "retry" if repeatable else "uncertain",
+            failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                f"Asana {subject} outcome is unknown after HTTP {status} with an unreadable body",
+            ),
+            delay if repeatable else 0,
         )
     if status == 404:
         return "notFound", rejection(operation, subject, status), 0
@@ -710,14 +742,10 @@ class CreateTaskOperation:
             resource = data_object(exchange)
             task_id = gid(resource.get("gid", ""), "task gid")
         except (ValueError, TypeError):
-            return _resend_or_select_uncertain(
-                cap,
+            return _accepted_without_identity(
+                "createTask",
                 requested,
-                failure(
-                    "createTask",
-                    FailureKind.PROTOCOL,
-                    "Asana accepted the task but returned an unusable task reference",
-                ),
+                "Asana accepted the task but returned an unusable task reference",
                 receipt,
             )
         try:
@@ -844,20 +872,19 @@ class UpdateTaskOperation:
                 if task.id != task_id:
                     raise ValueError("task ID differs")
             except ValueError:
-                return MutationAttempt.branch_result(
-                    "invalidResponse",
-                    output,
-                    receipt,
+                # Repeating the absolute update is safe, so an unusable 2xx retries.
+                return MutationAttempt.retry(
                     failure(
                         "updateTask", FailureKind.PROTOCOL, "Asana returned an invalid task after the update"
-                    ),
+                    )
                 )
             return MutationAttempt.branch_result("updated", replace(output, task=task), receipt)
         exchange = await self.client.exchange(
             call, token, "GET", f"/tasks/{task_id}", {"opt_fields": TASK_DETAIL_FIELDS}
         )
         route, problem, delay = _read_outcome(self.client, "updateTask", "task", exchange)
-        if route == "retry":
+        if route in ("retry", "invalidResponse"):
+            # The section move is safe to repeat, so an unusable read-back retries.
             assert problem is not None
             return MutationAttempt.retry(problem, delay)
         if route != "success":
@@ -865,10 +892,7 @@ class UpdateTaskOperation:
         try:
             task = _task_from_exchange(exchange)
         except ValueError:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                output,
-                receipt,
+            return MutationAttempt.retry(
                 failure("updateTask", FailureKind.PROTOCOL, "Asana returned an invalid task"),
             )
         return MutationAttempt.branch_result("updated", replace(output, task=task), receipt)
@@ -1000,14 +1024,10 @@ class AddCommentOperation:
             resource = data_object(exchange)
             story_id = gid(resource.get("gid", ""), "story gid")
         except (ValueError, TypeError):
-            return _resend_or_select_uncertain(
-                cap,
+            return _accepted_without_identity(
+                "addComment",
                 requested,
-                failure(
-                    "addComment",
-                    FailureKind.PROTOCOL,
-                    "Asana accepted the comment but returned an unusable story reference",
-                ),
+                "Asana accepted the comment but returned an unusable story reference",
                 receipt,
             )
         try:

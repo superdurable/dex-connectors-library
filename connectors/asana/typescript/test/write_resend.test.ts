@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { Client } from '../src/client.js';
 import { AddCommentDefinition, CreateTaskDefinition } from '../src/generated/definitions.js';
 
@@ -96,6 +96,39 @@ describe('Asana bounded resend of unconfirmed writes', () => {
   it('retries an untrusted checkpoint without sending', async () => {
     const { client, requests } = newClient(201, created);
     expect(await run(client, 'createTask', new AttemptContext(2, { callId: 'another-call', attempt: 1, state: 'claimed' }))).toBe('retry');
+    expect(requests).toEqual([]);
+  });
+
+  it.each(['createTask', 'addComment'] as const)('%s selects uncertain and never resends a 2xx without a usable ID', async operation => {
+    const unusable = newClient(201, '{"data":{"gid":"invalid"}}');
+    expect(await run(unusable.client, operation, new AttemptContext())).toBe('uncertain');
+    expect(unusable.requests).toHaveLength(1);
+    const requests: ProviderRequest[] = [];
+    const broken = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => ({ accessToken: new SecretString('token') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 201, {}); },
+    });
+    expect(await run(broken, operation, new AttemptContext())).toBe('uncertain');
+    expect(requests).toHaveLength(1);
+  });
+
+  it('treats an error status whose body breaks as an unknown outcome', async () => {
+    const requests: ProviderRequest[] = [];
+    const broken = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => ({ accessToken: new SecretString('token') }) }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new ProviderTransportError(false, 400, {}); },
+    });
+    const context = new AttemptContext();
+    expect(await run(broken, 'createTask', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'claimed' });
+  });
+
+  it('retries a credential failure after a possible send without recording notSent', async () => {
+    const requests: ProviderRequest[] = [];
+    const withoutCredentials = new Client({ endpoint: 'http://127.0.0.1:12345/api/1.0' }, { resolve: async () => { throw new Error('credentials unavailable'); } }, {
+      send: async (request: ProviderRequest) => { requests.push(request); throw new Error('request sent'); },
+    });
+    const context = new AttemptContext(2, { callId, attempt: 1, state: 'claimed', sendCount: 1 });
+    expect(await run(withoutCredentials, 'createTask', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'claimed', attempt: 1 });
     expect(requests).toEqual([]);
   });
 });
