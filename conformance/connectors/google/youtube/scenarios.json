@@ -2608,29 +2608,19 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "providerId": "dex:acceptedWithoutItemId",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "item": {
-            "addedAt": "0001-01-01T00:00:00Z",
-            "id": "",
-            "playlistId": "",
-            "position": 0,
-            "title": "",
-            "videoId": ""
-          },
-          "wasAlreadyPresent": false
-        },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
       "input": {
@@ -3081,36 +3071,26 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "providerId": "dex:acceptedWithoutItemId",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "item": {
-            "addedAt": "0001-01-01T00:00:00Z",
-            "id": "",
-            "playlistId": "",
-            "position": 0,
-            "title": "",
-            "videoId": ""
-          },
-          "wasAlreadyPresent": false
-        },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
       "input": {
         "playlistId": "PLexample123",
         "videoId": "dQw4w9WgXcQ"
       },
-      "name": "addPlaylistItem-insert-malformed-lagging-readback-uncertain",
+      "name": "addPlaylistItem-insert-malformed-lagging-readback-retries",
       "operation": "addPlaylistItem"
     },
     {
@@ -3356,29 +3336,19 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "RESPONSE_TOO_LARGE",
         "heartbeat": {
           "attempt": 1,
           "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "providerId": "dex:acceptedWithoutItemId",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "item": {
-            "addedAt": "0001-01-01T00:00:00Z",
-            "id": "",
-            "playlistId": "",
-            "position": 0,
-            "title": "",
-            "videoId": ""
-          },
-          "wasAlreadyPresent": false
-        },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
       "input": {

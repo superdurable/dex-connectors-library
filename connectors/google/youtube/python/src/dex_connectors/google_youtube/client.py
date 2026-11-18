@@ -114,7 +114,13 @@ class _Outcome:
     failure: Failure
     receipt: Receipt
     retry_after: float = 0
+    # Credentials could not be resolved or refreshed, without a revoked grant.
+    is_transient_credential_failure: bool = False
 
+
+# The checkpoint provider ID of an insert YouTube accepted without a usable item ID; a saved
+# provider ID makes later attempts only list the playlist, never insert.
+ACCEPTED_INSERT_WITHOUT_ITEM_ID = "dex:acceptedWithoutItemId"
 
 # Only these statuses prove YouTube refused a write; every other status is an unknown outcome.
 _DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
@@ -124,18 +130,15 @@ def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "youtube", operation, message)
 
 
-def _body_indicates_inserted_item(body: bytes) -> bool:
-    """Report an error response that still carries a created playlist item."""
+def _inserted_item_id(body: bytes) -> str:
+    """Return the playlist item ID an error response still carries, whatever its other fields hold."""
     try:
         value: Any = json.loads(body)
     except (ValueError, UnicodeDecodeError):
-        return False
-    return (
-        isinstance(value, dict)
-        and value.get("kind") == "youtube#playlistItem"
-        and isinstance(value.get("id"), str)
-        and value["id"] != ""
-    )
+        return ""
+    if isinstance(value, dict) and isinstance(value.get("id"), str):
+        return str(value["id"])
+    return ""
 
 
 def _empty_receipt() -> Receipt:
@@ -374,7 +377,9 @@ class Client:
                 FailureKind.AUTHENTICATION,
                 "YouTube connection credentials are unavailable or invalid",
             )
-            return b"", _empty_receipt(), _Outcome("defect", failure, _empty_receipt())
+            return b"", _empty_receipt(), _Outcome(
+                "defect", failure, _empty_receipt(), is_transient_credential_failure=True
+            )
         token = credential.access_token.reveal() if credential.access_token is not None else ""
         if not is_header_safe_credential(token):
             failure = _failure(
@@ -399,10 +404,20 @@ class Client:
             return await self._send_and_classify(
                 call, operation, method, url, object_id, body, credential, token, is_fenced_write=False
             )
+        observed_statuses: list[int] = []
         try:
             return await write_fence.dispatch(
                 lambda _: self._send_and_classify(
-                    call, operation, method, url, object_id, body, credential, token, is_fenced_write=True
+                    call,
+                    operation,
+                    method,
+                    url,
+                    object_id,
+                    body,
+                    credential,
+                    token,
+                    is_fenced_write=True,
+                    observed_statuses=observed_statuses,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
@@ -411,6 +426,14 @@ class Client:
             return b"", receipt, _Outcome("retry", failure, receipt)
         except TimeoutError:
             receipt = self._receipt(call, object_id)
+            if any(200 <= status < 300 for status in observed_statuses):
+                # The write window cut the body after 2xx headers, so the insert was accepted.
+                failure = _failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    "YouTube accepted the insert but its response body could not be read",
+                )
+                return b"", receipt, _Outcome("acceptedUnreadable", failure, receipt)
             failure = _failure(operation, FailureKind.TRANSPORT, "YouTube did not return a complete response")
             return b"", receipt, _Outcome("writeUnconfirmed", failure, receipt)
 
@@ -426,12 +449,15 @@ class Client:
         token: str,
         *,
         is_fenced_write: bool,
+        observed_statuses: list[int] | None = None,
     ) -> tuple[bytes, Receipt, _Outcome | None]:
         """Send once, resending after one refreshed 401, and classify the response.
 
         A fenced write retries as unprocessed only after a rate-limit refusal, HTTP 503, or a
         connection that never opened; any other failure after the claim may have applied the
-        write. A 2xx whose body cannot be read is accepted and never resent.
+        write. A 2xx whose body cannot be read is accepted and never resent. `observed_statuses`
+        receives each status as its headers arrive, so a caller whose wait is cancelled during
+        the body read still knows YouTube answered.
         """
         transport_disposition = "writeUnconfirmed" if is_fenced_write else "retry"
         for request_attempt in range(2):
@@ -457,6 +483,8 @@ class Client:
                     operation, FailureKind.TRANSPORT, "YouTube did not return a complete response"
                 )
                 return b"", receipt, _Outcome(transport_disposition, failure, receipt)
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             if (
                 response.status_code == 401
                 and request_attempt == 0
@@ -488,10 +516,13 @@ class Client:
                         FailureKind.AUTHENTICATION,
                         "YouTube connection credentials are unavailable or invalid",
                     )
-                    return b"", _empty_receipt(), _Outcome("defect", failure, _empty_receipt())
+                    return b"", _empty_receipt(), _Outcome(
+                        "defect", failure, _empty_receipt(), is_transient_credential_failure=True
+                    )
             break
         receipt = self._receipt(call, object_id, response.headers)
         is_success = 200 <= response.status_code < 300
+        is_error_body_too_large = False
         try:
             response_body = await read_bounded_body(
                 response, self.max_response_bytes if is_success else 65536
@@ -505,7 +536,7 @@ class Client:
                 )
                 disposition = "acceptedUnreadable" if is_fenced_write else "invalidResponse"
                 return b"", receipt, _Outcome(disposition, failure, receipt)
-            response_body = b""
+            response_body, is_error_body_too_large = b"", True
         except ProviderTransportError:
             if is_fenced_write and is_success:
                 failure = _failure(
@@ -577,19 +608,22 @@ class Client:
                 FailureKind.PROVIDER_REJECTION,
                 f"YouTube rejected the request (HTTP {status}{suffix})",
             )
+        failure = _failure(operation, kind, message)
+        if is_fenced_write and _inserted_item_id(response_body):
+            # An item ID contradicts any other status, so YouTube stored the insert; it is never resent.
+            return response_body, receipt, _Outcome("acceptedUnreadable", failure, receipt)
         if disposition == "retry" and is_fenced_write:
             is_proven_refusal = kind == FailureKind.RATE_LIMIT or status == 503
-            is_unprocessed = is_proven_refusal and not _body_indicates_inserted_item(response_body)
-            disposition = "retryUnprocessed" if is_unprocessed else "writeUnconfirmed"
-        failure = _failure(operation, kind, message)
+            disposition = "retryUnprocessed" if is_proven_refusal else "writeUnconfirmed"
         is_retry = disposition in ("retry", "retryUnprocessed", "writeUnconfirmed")
         if (
             is_fenced_write
             and not is_retry
             and disposition != "quotaExhausted"
-            and (status not in _DEFINITE_REFUSAL_STATUSES or _body_indicates_inserted_item(response_body))
+            and (status not in _DEFINITE_REFUSAL_STATUSES or is_error_body_too_large)
         ):
-            # Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert.
+            # Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert,
+            # and an oversized refusal body might hide an item ID.
             disposition = "writeUnconfirmed"
         return (
             response_body,
@@ -1072,7 +1106,7 @@ class AddPlaylistItemOperation:
             call, "addPlaylistItem", "GET", "/playlistItems", query, input.playlist_id, requires_manage=True
         )
         if outcome is not None:
-            if outcome.disposition == "retry":
+            if outcome.disposition == "retry" or outcome.is_transient_credential_failure:
                 if decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send:
                     try:
                         await fence.record_not_sent()
@@ -1131,18 +1165,26 @@ class AddPlaylistItemOperation:
                     can_resend_unknown_outcome, outcome.failure, outcome.retry_after, outcome.receipt
                 )
             if outcome.disposition == "acceptedUnreadable":
-                return await self._confirm_accepted_insert(call, list_input, query, outcome.failure)
+                return await self._confirm_accepted_insert(
+                    call, fence, list_input, query, outcome.failure, _inserted_item_id(body)
+                )
+            if outcome.is_transient_credential_failure:
+                # A 401 or an unstarted insert changed nothing, and the next attempt lists first.
+                if decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send:
+                    try:
+                        await fence.record_not_sent()
+                    except Exception:
+                        pass  # After a dispatched 401 the Fence refuses notSent; canResend below covers it.
+                try:
+                    await fence.record_can_resend()
+                except Exception:
+                    pass  # Before dispatch the Fence refuses canResend; a lost marker only overcounts.
+                return MutationAttempt.retry(outcome.failure)
             if not has_possible_earlier_send:
                 try:
                     await fence.record_can_resend()
                 except Exception:
                     pass  # The refusal ends the Step, so a lost checkpoint cannot cause another insert.
-            if has_possible_earlier_send and _is_transient_credential_failure(outcome):
-                try:
-                    await fence.record_can_resend()
-                except Exception:
-                    pass  # A 401 or an unstarted insert changed nothing, and the next attempt lists first.
-                return MutationAttempt.retry(outcome.failure)
             return _reject_or_select_uncertain(
                 has_possible_earlier_send,
                 outcome,
@@ -1153,11 +1195,13 @@ class AddPlaylistItemOperation:
         except ValueError:
             return await self._confirm_accepted_insert(
                 call,
+                fence,
                 list_input,
                 query,
                 _failure(
                     "addPlaylistItem", FailureKind.PROTOCOL, "YouTube returned a malformed insert response"
                 ),
+                _inserted_item_id(body),
             )
         try:
             item = _decode_playlist_item(decoded_item, input.playlist_id)
@@ -1166,6 +1210,7 @@ class AddPlaylistItemOperation:
         except ValueError:
             return await self._confirm_accepted_insert(
                 call,
+                fence,
                 list_input,
                 query,
                 _failure(
@@ -1173,6 +1218,7 @@ class AddPlaylistItemOperation:
                     FailureKind.PROTOCOL,
                     "YouTube returned an invalid or different inserted item",
                 ),
+                _inserted_item_id(body),
             )
         try:
             await fence.record_provider_id(item.id)
@@ -1183,9 +1229,19 @@ class AddPlaylistItemOperation:
         )
 
     async def _confirm_accepted_insert(
-        self, call: Call, list_input: ListPlaylistItemsInput, query: dict[str, str], acceptance: Failure
+        self,
+        call: Call,
+        fence: Fence,
+        list_input: ListPlaylistItemsInput,
+        query: dict[str, str],
+        acceptance: Failure,
+        accepted_item_id: str,
     ) -> MutationAttempt[AddedPlaylistItem]:
-        """List the playlist after YouTube accepted this insert with an unusable body; never resend it."""
+        """List the playlist after YouTube accepted this insert with an unusable body; never resend it.
+
+        A saved item ID, or the saved acceptance itself, makes later attempts list again up to the
+        send cap; uncertain is selected here only when neither could be saved.
+        """
         body, receipt, outcome = await self.client._exchange(
             call,
             "addPlaylistItem",
@@ -1204,14 +1260,27 @@ class AddPlaylistItemOperation:
                 return MutationAttempt.branch_result(
                     ADDED, AddedPlaylistItem(page.items[0]), _with_object_id(receipt, page.items[0].id)
                 )
+        try:
+            await fence.record_provider_id(accepted_item_id or ACCEPTED_INSERT_WITHOUT_ITEM_ID)
+            return MutationAttempt.retry(
+                _failure(
+                    acceptance.operation,
+                    acceptance.kind,
+                    acceptance.message
+                    + "; YouTube accepted the insert, so it is not sent again, and the playlist listing "
+                    "does not show it yet; the next attempt lists again",
+                )
+            )
+        except Exception:
+            pass  # Without a saved acceptance a later attempt could insert again, so select uncertain.
         return MutationAttempt.uncertain(
             AddedPlaylistItem(),
             _failure(
                 acceptance.operation,
                 acceptance.kind,
                 acceptance.message
-                + "; YouTube accepted the insert, so it is not sent again, and the playlist listing "
-                "does not show it; check the playlist",
+                + "; YouTube accepted the insert, so it is not sent again, the playlist listing "
+                "does not show it, and its acceptance checkpoint failed; check the playlist",
             ),
             receipt,
         )
@@ -1321,11 +1390,6 @@ def _fail_before_insert_or_select_uncertain(
         _failure("addPlaylistItem", outcome.failure.kind, uncertain_prefix + outcome.failure.message),
         outcome.retry_after,
     )
-
-
-def _is_transient_credential_failure(outcome: _Outcome) -> bool:
-    """Report credentials that could not be resolved or refreshed, without a revoked grant."""
-    return outcome.disposition == "defect" and outcome.failure.kind == FailureKind.AUTHENTICATION
 
 
 def _with_object_id(receipt: Receipt, object_id: str) -> Receipt:

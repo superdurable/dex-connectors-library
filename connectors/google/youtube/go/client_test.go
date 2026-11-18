@@ -402,15 +402,21 @@ func TestAddPlaylistItemNeverResendsAnAcceptedInsert(t *testing.T) {
 		{"oversized insert response", func(*fakeYouTube) {}, 120, sdkgo.FailureResponseTooLarge},
 	}
 	for _, test := range tests {
-		t.Run(test.name+" with lagging read-back selects uncertain", func(t *testing.T) {
+		t.Run(test.name+" with lagging read-back lists again until the cap", func(t *testing.T) {
 			fake, server := newFakeYouTube(t)
 			test.configure(fake)
 			fake.listLag = 1
 			client := newYouTubeClientWithMethod(t, server.URL, test.maxBytes, youtube.ManageAuthMethodID)
-			result, errs := addPlaylistItemAttempts(t, client, 1)
-			require.NoError(t, errs[0])
-			require.Equal(t, youtube.AddPlaylistItemBranchUncertain, result.Branch)
-			require.Equal(t, test.kind, result.Failure.Kind)
+			result, errs := addPlaylistItemAttempts(t, client, 4)
+			// The saved acceptance makes later attempts list again instead of inserting.
+			requireRetry(t, errs[0], test.kind)
+			if test.maxBytes == 0 {
+				require.NoError(t, errs[1])
+				require.Equal(t, youtube.AddPlaylistItemBranchAdded, result.Branch)
+			} else {
+				// A listing that shows the item exceeds 120 bytes too, so it never confirms the insert.
+				require.Equal(t, youtube.AddPlaylistItemBranchUncertain, result.Branch)
+			}
 			require.Equal(t, 1, fake.inserts)
 		})
 	}
@@ -437,8 +443,73 @@ func TestAddPlaylistItemNeverResendsAnAcceptedInsert(t *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 		client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
-		result, errs := addPlaylistItemAttempts(t, client, 1)
-		require.NoError(t, errs[0])
+		result, errs := addPlaylistItemAttempts(t, client, 4)
+		for _, err := range errs[:3] {
+			requireRetry(t, err, sdkgo.FailureTransport)
+		}
+		require.NoError(t, errs[3])
+		require.Equal(t, youtube.AddPlaylistItemBranchUncertain, result.Branch)
+		require.Equal(t, 1, inserts)
+	})
+	t.Run("a transient listing failure after acceptance lists again on the next attempt", func(t *testing.T) {
+		inserts, listings := 0, 0
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+			if request.Method == http.MethodGet {
+				listings++
+				switch {
+				case listings == 2:
+					response.WriteHeader(http.StatusServiceUnavailable)
+				case listings > 2:
+					_, _ = response.Write([]byte(`{"pageInfo":{"totalResults":1},"items":[{"id":"UExpdGVt","snippet":{"playlistId":"` + testPlaylistID + `","title":"Launch","position":0,"publishedAt":"2026-10-13T17:00:00Z","resourceId":{"kind":"youtube#video","videoId":"` + testVideoID + `"}},"contentDetails":{"videoPublishedAt":"2026-10-01T16:00:00Z"}}]}`))
+				default:
+					_, _ = response.Write([]byte(`{"pageInfo":{"totalResults":0},"items":[]}`))
+				}
+				return
+			}
+			inserts++
+			_, _ = response.Write([]byte(`{"kind":"youtube#playlistItem"}`))
+		}))
+		t.Cleanup(server.Close)
+		client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
+		result, errs := addPlaylistItemAttempts(t, client, 2)
+		requireRetry(t, errs[0], sdkgo.FailureProtocol)
+		require.NoError(t, errs[1])
+		require.Equal(t, youtube.AddPlaylistItemBranchAdded, result.Branch)
+		require.Equal(t, 1, inserts)
+	})
+	t.Run("an oversized refusal body is an unknown outcome", func(t *testing.T) {
+		inserts := 0
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+			if request.Method == http.MethodGet {
+				_, _ = response.Write([]byte(`{"pageInfo":{"totalResults":0},"items":[]}`))
+				return
+			}
+			inserts++
+			response.WriteHeader(http.StatusBadRequest)
+			// The client stops reading at its error limit, so the rest of this write may fail.
+			_, _ = response.Write([]byte(`{"error":"` + strings.Repeat("x", 128<<10) + `"}`))
+		}))
+		t.Cleanup(server.Close)
+		client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
+		_, errs := addPlaylistItemAttempts(t, client, 1)
+		requireRetry(t, errs[0], sdkgo.FailureValidation)
+		require.Equal(t, 1, inserts)
+	})
+	t.Run("a refusal carrying an item ID is listed and never resent", func(t *testing.T) {
+		inserts := 0
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+			if request.Method == http.MethodGet {
+				_, _ = response.Write([]byte(`{"pageInfo":{"totalResults":0},"items":[]}`))
+				return
+			}
+			inserts++
+			response.WriteHeader(http.StatusConflict)
+			_, _ = response.Write([]byte(`{"kind":7,"id":"UExpdGVt"}`))
+		}))
+		t.Cleanup(server.Close)
+		client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
+		result, errs := addPlaylistItemAttempts(t, client, 4)
+		require.NoError(t, errs[3])
 		require.Equal(t, youtube.AddPlaylistItemBranchUncertain, result.Branch)
 		require.Equal(t, 1, inserts)
 	})
@@ -491,6 +562,19 @@ func TestAddPlaylistItemReadsBackAfterARateLimitedResend(t *testing.T) {
 	requireRetry(t, errs[2], sdkgo.FailureAvailability)
 	// Attempt 3 follows a canResend marker yet still lists the playlist before inserting.
 	require.Equal(t, []string{"GET", "POST", "GET", "POST", "GET", "POST"}, requests)
+}
+
+func TestAddPlaylistItemRetriesTransientCredentialFailureBeforeTheFirstInsert(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Fatal("no request is expected") }))
+	t.Cleanup(server.Close)
+	client, err := youtube.New(youtube.Config{Endpoint: server.URL}, &failingAfterFirstCredentialProvider{isUnavailable: true})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("youtube-flow", "add-credential-transient-first")
+	_, err = sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, youtube.AddPlaylistItemInput{PlaylistID: testPlaylistID, VideoID: testVideoID})
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	heartbeats := ctx.Heartbeats()
+	require.NotEmpty(t, heartbeats)
+	require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"notSent"`)
 }
 
 func TestAddPlaylistItemRetriesTransientCredentialFailureAfterAPossibleInsert(t *testing.T) {

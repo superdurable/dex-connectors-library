@@ -124,6 +124,8 @@ type providerResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+	// isErrorBodyOversized reports a non-2xx body dropped for its size, which could hide an inserted item.
+	isErrorBodyOversized bool
 }
 
 // outcomeDisposition is the class of one unsuccessful exchange before an operation maps it to a branch.
@@ -150,6 +152,8 @@ type providerOutcome struct {
 	failure     sdkgo.Failure
 	retryAfter  time.Duration
 	receipt     sdkgo.Receipt
+	// isTransientCredentialFailure marks credentials that could not be resolved or refreshed, without a revoked grant.
+	isTransientCredentialFailure bool
 }
 
 // operationBranches names the branch each outcome selects for one operation.
@@ -285,8 +289,9 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	classified := classifyErrorResponse(operation, response, client.now())
 	classified.receipt = receipt
 	switch {
-	case classified.disposition == outcomeRetry && bodyIndicatesInsertedItem(response.body):
-		classified.disposition = outcomeWriteUnconfirmed
+	case insertedItemID(response.body) != "":
+		// An item ID contradicts any other status, so YouTube stored the insert; it is read back, never resent.
+		classified.disposition = outcomeAcceptedUnreadable
 	case classified.disposition == outcomeRetry &&
 		(classified.failure.Kind == sdkgo.FailureRateLimit || response.statusCode == http.StatusServiceUnavailable):
 		classified.disposition = outcomeRetryUnprocessed
@@ -294,8 +299,9 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 		classified.disposition = outcomeWriteUnconfirmed
 	case classified.disposition == outcomeQuotaExhausted:
 		// Google's quotaExceeded reason is an explicit refusal of the request.
-	case !isDefiniteRefusalStatus(response.statusCode) || bodyIndicatesInsertedItem(response.body):
-		// Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert.
+	case !isDefiniteRefusalStatus(response.statusCode) || response.isErrorBodyOversized:
+		// Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert,
+		// and an oversized refusal body might hide an item ID.
 		classified.disposition = outcomeWriteUnconfirmed
 	}
 	return response, &classified
@@ -312,13 +318,15 @@ func isDefiniteRefusalStatus(status int) bool {
 	return false
 }
 
-// bodyIndicatesInsertedItem reports an error response that still carries a created playlist item.
-func bodyIndicatesInsertedItem(body []byte) bool {
+// insertedItemID returns the playlist item ID an error response still carries, whatever its other fields hold.
+func insertedItemID(body []byte) string {
 	var item struct {
-		Kind string `json:"kind"`
-		ID   string `json:"id"`
+		ID string `json:"id"`
 	}
-	return json.Unmarshal(body, &item) == nil && item.Kind == "youtube#playlistItem" && item.ID != ""
+	if json.Unmarshal(body, &item) != nil {
+		return ""
+	}
+	return item.ID
 }
 
 // sendWithRefresh sends a request and, after a 401 from a refreshing source, refreshes once and resends.
@@ -379,6 +387,7 @@ func (client *Client) send(requestContext context.Context, credential Credential
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
 		if !isSuccess {
 			// An oversized error body still classifies by status alone.
+			response.isErrorBodyOversized = true
 			return response, nil
 		}
 		return response, errResponseTooLarge
@@ -448,7 +457,11 @@ func (client *Client) credentialOutcome(operation string, credential Credentials
 	switch {
 	case sdkgo.IsReauthorizationRequired(err):
 		return client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "the YouTube connection must be authorized again", sdkgo.Receipt{})
-	case err != nil, !providerhttp.IsHeaderSafeCredential(credential.AccessToken.Reveal()):
+	case err != nil:
+		outcome := client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "YouTube connection credentials are unavailable or invalid", sdkgo.Receipt{})
+		outcome.isTransientCredentialFailure = true
+		return outcome
+	case !providerhttp.IsHeaderSafeCredential(credential.AccessToken.Reveal()):
 		return client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "YouTube connection credentials are unavailable or invalid", sdkgo.Receipt{})
 	}
 	return nil
