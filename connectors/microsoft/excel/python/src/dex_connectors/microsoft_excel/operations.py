@@ -1029,11 +1029,21 @@ class AppendTableRowsOperation:
                 receipt,
             )
         append_url = table_url(input.drive_id, input.workbook_id, input.table) + "/rows/add"
+        observed_statuses: list[int] = []
         try:
             appended = await attempt.fence.dispatch(
-                lambda _: self.client.request(call, credential, "POST", append_url, body)
+                lambda _: self.client.request(
+                    call, credential, "POST", append_url, body, observed_statuses=observed_statuses
+                )
             )
         except TimeoutError:
+            if any(200 <= status < 300 for status in observed_statuses):
+                # The write window cut the body after a 2xx, which proves the append, so it is never resent.
+                return MutationAttempt.branch_result(
+                    "appended",
+                    AppendTableRowsOutput(tuple(missing), tuple(present)),
+                    _receipt(self.client, call),
+                )
             return MutationAttempt.retry(
                 _failure(
                     operation,

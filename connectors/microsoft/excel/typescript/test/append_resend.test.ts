@@ -24,7 +24,7 @@ class AttemptContext {
   readonly runId = 'run';
   readonly flowId = 'excel-resend-flow';
   readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
-  readonly deadline = new Date(Date.now() + 30_000);
+  deadline = new Date(Date.now() + 30_000);
   readonly cancellationSignal = new AbortController().signal;
   constructor(public attempt = 1) {}
   hasLastHeartbeatValue(): boolean { return this.marker !== undefined; }
@@ -65,6 +65,21 @@ describe('Excel appendTableRows bounded resend', () => {
       return respondJSON(200, request.url.includes('/columns?') ? columns : emptyKeys);
     };
     expect(await run(respond, new AttemptContext())).toBe('appended');
+    expect(posts).toHaveLength(1);
+  });
+
+  it('selects appended when the write window cuts a 2xx body and never resends', async () => {
+    const posts: ProviderRequest[] = [];
+    const respond: Respond = async request => {
+      if (request.method !== 'POST') return respondJSON(200, request.url.includes('/columns?') ? columns : emptyKeys);
+      posts.push(request);
+      // The 2xx headers arrived; the body stalls until the Fence write window aborts the request.
+      await new Promise(resolve => request.signal?.addEventListener('abort', resolve, { once: true }));
+      throw new ProviderTransportError(false, 201, {});
+    };
+    const context = new AttemptContext();
+    context.deadline = new Date(Date.now() + 1_200);
+    expect(await run(respond, context)).toBe('appended');
     expect(posts).toHaveLength(1);
   });
 

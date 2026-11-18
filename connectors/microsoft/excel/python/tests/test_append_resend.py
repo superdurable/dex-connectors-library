@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of appendTableRows and credential failures of its writes."""
 
+import asyncio
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 from typing import get_origin
@@ -110,6 +111,31 @@ async def test_a_success_status_whose_body_breaks_is_appended_and_never_resent()
         return httpx.Response(200, content=COLUMNS if request.url.path.endswith("/columns") else EMPTY_KEYS)
 
     assert await _run(respond, AttemptContext()) == "appended"
+    assert len(posts) == 1
+
+
+class StalledStream(httpx.AsyncByteStream):
+    """A response body that stalls after the 2xx headers arrived."""
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        await asyncio.sleep(5)
+        yield b'{"index":0}'
+
+
+@pytest.mark.asyncio
+async def test_a_write_deadline_that_cuts_an_accepted_body_is_appended_and_never_resent() -> None:
+    """2xx headers arrived, so the Fence write-window timeout proves the append."""
+    posts: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            posts.append(request)
+            return httpx.Response(201, stream=StalledStream())
+        return httpx.Response(200, content=COLUMNS if request.url.path.endswith("/columns") else EMPTY_KEYS)
+
+    context = AttemptContext()
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    assert await _run(respond, context) == "appended"
     assert len(posts) == 1
 
 
