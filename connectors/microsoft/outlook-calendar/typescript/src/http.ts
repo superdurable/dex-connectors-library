@@ -399,8 +399,14 @@ export class GraphHTTP {
           this.driver,
           call.context.cancellationSignal,
         );
-      } catch {
-        return response;
+      } catch (error) {
+        if (isTerminalCredentialError(error)) return response;
+        // Graph did not process the rejected request; a later attempt refreshes again.
+        throw new RequestFailure(
+          "AVAILABILITY",
+          "credential refresh after a rejection is temporarily unavailable",
+          response,
+        );
       }
       if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? "") || !["microsoft-oauth", "app-only"].includes(credentials.authMethodId ?? ""))
         return response;

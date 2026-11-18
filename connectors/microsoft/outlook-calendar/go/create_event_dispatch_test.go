@@ -116,6 +116,95 @@ func TestCreateEventRetriesAnUnreadableCheckpointWithoutARequest(t *testing.T) {
 	require.Zero(t, provider.requestCount())
 }
 
+func TestCreateEventReadsBackWhenAnAcceptedBodyBreaksAfterTheHeaders(t *testing.T) {
+	var isCreated atomic.Bool
+	var posts atomic.Int32
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			if isCreated.Load() {
+				writeJSON(t, response, http.StatusOK, `{"value":[`+timedEventJSON("evt-1", "Kickoff")+`]}`)
+				return
+			}
+			writeJSON(t, response, http.StatusOK, `{"value":[]}`)
+			return
+		}
+		posts.Add(1)
+		isCreated.Store(true)
+		// The declared length is never written, so the client's body read fails after a 201.
+		response.Header().Set("Content-Length", "4096")
+		response.WriteHeader(http.StatusCreated)
+		_, err := response.Write([]byte(`{"id":"evt-1"`))
+		require.NoError(t, err)
+	})
+	result, attempts := createEventAttempts(t, singledispatchtest.NewContext("create-broken-body", "create"), newCalendarClient(t, provider.URL), 4)
+	require.Equal(t, outlookcalendar.CreateEventBranchCreated, result.Branch)
+	require.Equal(t, 1, attempts, "the same attempt reads the marker back")
+	require.EqualValues(t, 1, posts.Load())
+	require.Equal(t, "evt-1", result.Value.Event.ID)
+}
+
+func TestCreateEventNeverResendsWhenAnAcceptedBodyBreaksAndTheLookupLags(t *testing.T) {
+	var posts atomic.Int32
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"value":[]}`)
+			return
+		}
+		posts.Add(1)
+		response.Header().Set("Content-Length", "4096")
+		response.WriteHeader(http.StatusCreated)
+		_, err := response.Write([]byte(`{"id":"evt-1"`))
+		require.NoError(t, err)
+	})
+	result, attempts := createEventAttempts(t, singledispatchtest.NewContext("create-broken-body-lag", "create"), newCalendarClient(t, provider.URL), 4)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Equal(t, 2, attempts, "the second attempt only reads back")
+	require.EqualValues(t, 1, posts.Load())
+}
+
+func TestCreateEventRetriesARefusedPostWhoseCredentialRefreshFailsTransiently(t *testing.T) {
+	var posts atomic.Int32
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"value":[]}`)
+			return
+		}
+		posts.Add(1)
+		if request.Header.Get("Authorization") == "Bearer rejected-token" {
+			writeJSON(t, response, http.StatusUnauthorized, `{"error":{"code":"InvalidAuthenticationToken"}}`)
+			return
+		}
+		writeJSON(t, response, http.StatusCreated, timedEventJSON("evt-1", "Kickoff"))
+	})
+	unavailable := errors.New("credential broker is unavailable")
+	credentials := &rejectionRefreshingCredentialProvider{refreshErrors: []error{unavailable, unavailable, unavailable}}
+	client, err := outlookcalendar.New(outlookcalendar.Config{}, credentials, outlookcalendar.WithLocalProviderURL(provider.URL))
+	require.NoError(t, err)
+	result, attempts := createEventAttempts(t, singledispatchtest.NewContext("create-refresh-transient", "create"), client, 6)
+	require.Equal(t, outlookcalendar.CreateEventBranchCreated, result.Branch, "a refused POST does not count against the cap")
+	require.Equal(t, 4, attempts)
+	require.EqualValues(t, 5, posts.Load())
+}
+
+func TestCreateEventRejectsARefusedPostWhoseCredentialRefreshIsTerminal(t *testing.T) {
+	var posts atomic.Int32
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"value":[]}`)
+			return
+		}
+		posts.Add(1)
+		writeJSON(t, response, http.StatusUnauthorized, `{"error":{"code":"InvalidAuthenticationToken"}}`)
+	})
+	credentials := &rejectionRefreshingCredentialProvider{refreshErrors: []error{sdkgo.ErrReauthorizationRequired}}
+	client, err := outlookcalendar.New(outlookcalendar.Config{}, credentials, outlookcalendar.WithLocalProviderURL(provider.URL))
+	require.NoError(t, err)
+	result, attempts := createEventAttempts(t, singledispatchtest.NewContext("create-refresh-terminal", "create"), client, 3)
+	require.Equal(t, outlookcalendar.CreateEventBranchProviderRejected, result.Branch)
+	require.Equal(t, 1, attempts)
+	require.EqualValues(t, 1, posts.Load())
+}
+
 func TestCreateEventNeverResendsAfterAnAcceptedUnreadableAnswer(t *testing.T) {
 	provider, posts := fencedCreateProvider(t, func() bool { return false }, func(int32) (int, string) {
 		return http.StatusCreated, `{"id":`

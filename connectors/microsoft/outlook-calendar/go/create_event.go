@@ -211,8 +211,13 @@ func (attempt *createEventAttempt) send() sdkgo.MutationAttempt[CreateEventOutpu
 	if sendErr != nil {
 		requestFailure := asProviderRequestError(sendErr)
 		switch {
-		case requestFailure.kind == sdkgo.FailureResponseTooLarge && isSuccessStatus(response.statusCode):
+		case isSuccessStatus(response.statusCode):
+			// A 2xx whose body broke or overflowed was accepted, so it is only read back.
 			return attempt.acceptedWithoutEvent(response)
+		case requestFailure.kind == sdkgo.FailureAvailability && response.statusCode == http.StatusUnauthorized:
+			// Graph refused the POST, and the credential refresh failed transiently.
+			_ = attempt.fence.RecordCanResend()
+			return sdkgo.NewMutationRetry[CreateEventOutput](calendarFailure(requestFailure.kind, createEventOperationID, requestFailure.message), 0)
 		case requestFailure.kind == sdkgo.FailureLocalDefect && !attempt.hasPossibleEarlierSend:
 			return sdkgo.NewMutationBranch(CreateEventBranchDefect, CreateEventOutput{}, failurePointer(requestFailure.kind, createEventOperationID, requestFailure.message), sdkgo.Receipt{})
 		}
