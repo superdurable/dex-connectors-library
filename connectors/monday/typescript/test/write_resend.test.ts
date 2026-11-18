@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { MondayClient } from '../src/client.js';
 import { AddUpdateDefinition, CreateItemDefinition, UpdateItemColumnValuesDefinition } from '../src/generated/definitions.js';
 
@@ -99,9 +99,53 @@ describe('monday.com bounded resend of unconfirmed writes', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('treats a refusal beside a mutation value as unknown', async () => {
+  it('selects uncertain for a refusal beside a mutation value and never resends it', async () => {
     const beside = { data: { create_item: { id: 'x' } }, errors: [{ extensions: { code: 'ColumnValueException' } }] };
-    expect(await run(newClient(200, beside).client, 'createItem', new AttemptContext())).toBe('retry');
+    const { client, requests } = newClient(200, beside);
+    expect(await run(client, 'createItem', new AttemptContext())).toBe('uncertain');
+    expect(requests).toHaveLength(1);
+  });
+
+  it('selects uncertain when a 2xx body breaks after its headers and never resends it', async () => {
+    for (const failure of [new ProviderTransportError(false, 200, {}), new ProviderStalledError(200, {})]) {
+      const requests: ProviderRequest[] = [];
+      const credentials = async () => ({ authMethodId: 'personal-api-token', apiToken: new SecretString(token) });
+      const client = new MondayClient({}, { resolve: credentials, resolveWithRefresh: credentials }, {
+        apiURL: 'http://127.0.0.1/v2', send: async (request: ProviderRequest) => { requests.push(request); throw failure; },
+      });
+      const context = new AttemptContext();
+      expect(await run(client, 'createItem', context)).toBe('uncertain');
+      expect(context.marker).toMatchObject({ state: 'claimed' });
+      expect(requests).toHaveLength(1);
+    }
+  });
+
+  it('keeps counting toward the cap after a rate-limited resend', async () => {
+    const context = new AttemptContext();
+    for (const [attempt, status] of [[1, 500], [2, 429], [3, 500]] as const) {
+      context.attempt = attempt;
+      expect(await run(newClient(status).client, 'createItem', context)).toBe('retry');
+    }
+    context.attempt = 4;
+    expect(await run(newClient(500).client, 'createItem', context)).toBe('uncertain');
+  });
+
+  it('never records notSent for a credential failure after a rate-limited resend', async () => {
+    const context = new AttemptContext();
+    for (const [attempt, status] of [[1, 500], [2, 429]] as const) {
+      context.attempt = attempt;
+      expect(await run(newClient(status).client, 'addUpdate', context)).toBe('retry');
+    }
+    const before = context.marker;
+    const missing = async () => { throw new Error('connection credentials are unavailable'); };
+    const requests: ProviderRequest[] = [];
+    const broken = new MondayClient({}, { resolve: missing, resolveWithRefresh: missing }, {
+      apiURL: 'http://127.0.0.1/v2', send: async (request: ProviderRequest) => { requests.push(request); return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(addedUpdate)) }; },
+    });
+    context.attempt = 3;
+    expect(await run(broken, 'addUpdate', context)).toBe('uncertain');
+    expect(context.marker).toBe(before);
+    expect(requests).toHaveLength(0);
   });
 
   it('records canResend for a definite refusal of a first send and never resends it', async () => {

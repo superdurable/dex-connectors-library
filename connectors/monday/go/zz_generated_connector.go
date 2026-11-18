@@ -509,7 +509,7 @@ var CreateItemDefinition = sdkgo.MutationDefinition{
 		{ID: CreateItemBranchCreated, Description: "monday.com created the item, or replayed the item this Step already created, and returned it."},
 		{ID: CreateItemBranchNotFound, Description: "The board or group does not exist or the connection cannot see it; nothing was created.", Optional: true},
 		{ID: CreateItemBranchProviderRejected, Description: "monday.com conclusively rejected the item, such as an invalid column value, a missing status label, the board's item limit, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateItemBranchUncertain, Description: "The send cap is reached, or monday.com identified the item without a usable result, and the outcome cannot be confirmed; the item may exist and must not be created again automatically.", Optional: true},
+		{ID: CreateItemBranchUncertain, Description: "The send cap is reached, or monday.com returned an item value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the item may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateItemBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -675,7 +675,7 @@ var AddUpdateDefinition = sdkgo.MutationDefinition{
 		{ID: AddUpdateBranchAdded, Description: "monday.com added the update, or replayed the update this Step already added, and returned it."},
 		{ID: AddUpdateBranchNotFound, Description: "The item does not exist or the connection cannot see it; nothing was added.", Optional: true},
 		{ID: AddUpdateBranchProviderRejected, Description: "monday.com conclusively rejected the update, such as missing permission; nothing was added.", Optional: true},
-		{ID: AddUpdateBranchUncertain, Description: "The send cap is reached, or monday.com identified the update without a usable result, and the outcome cannot be confirmed; the update may exist and must not be added again automatically.", Optional: true},
+		{ID: AddUpdateBranchUncertain, Description: "The send cap is reached, or monday.com returned an update value without a usable result or a success whose body broke, and the outcome cannot be confirmed; the update may exist and must not be added again automatically.", Optional: true},
 		{ID: AddUpdateBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

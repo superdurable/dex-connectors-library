@@ -115,6 +115,8 @@ class Exchange:
     """A listed refusal status or error code, or a request never sent."""
     credential_reflected: bool = False
     """The response echoed the connection credential."""
+    success_body_unreadable: bool = False
+    """A 2xx whose body broke after its headers, so a write may have been accepted."""
 
 
 class Client:
@@ -378,6 +380,7 @@ class Client:
                 status,
                 replayed=replayed,
                 problem=failure(operation, FailureKind.TRANSPORT, "monday.com response could not be read"),
+                success_body_unreadable=200 <= status < 300,
             )
         if token.reveal().encode() in body:
             return Exchange(

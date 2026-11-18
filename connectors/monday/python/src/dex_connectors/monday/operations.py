@@ -35,7 +35,7 @@ from ._generated.definitions import (
     LIST_ITEMS_DEFINITION,
     UPDATE_ITEM_COLUMN_VALUES_DEFINITION,
 )
-from .client import Client, Credentials, Exchange, classify_write, failure
+from .client import Client, Credentials, Exchange, classify_write, failure, has_mutation_field_value
 from .item import COLUMN_ID, NUMERIC_ID, column_ids, decode_item, encode_column_values, numeric_id
 from .models import (
     AddUpdateInput,
@@ -138,6 +138,10 @@ class _FencedWrite:
         self.call, self.operation, self.fence, self.decision = call, operation, fence, decision
         self.can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
         self.has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        # After a possible earlier send, even sendAllowed after canResend, notSent would hide that send.
+        self.can_record_not_sent = (
+            decision.kind == DecisionKind.SEND_ALLOWED and not self.has_possible_earlier_send
+        )
 
     @classmethod
     async def start(
@@ -188,8 +192,7 @@ class _FencedWrite:
     async def pre_send_failure(self, resolution: Exchange, output: Any) -> MutationAttempt[Any]:
         """Map a credential failure that ended the attempt before any send."""
         assert resolution.problem is not None
-        # notSent after a possible earlier send would hide it, so only a first-send decision records it.
-        if self.decision.kind == DecisionKind.SEND_ALLOWED:
+        if self.can_record_not_sent:
             try:
                 await self.fence.record_not_sent()
             except Exception:
@@ -219,8 +222,7 @@ class _FencedWrite:
         call, operation = self.call, self.operation
         deadline = getattr(call.context, "deadline", None)
         if deadline is not None and deadline - datetime.now(UTC) < _MINIMUM_DISPATCH_WINDOW:
-            # notSent after a possible earlier send would hide it, so only a first-send decision records it.
-            if self.decision.kind == DecisionKind.SEND_ALLOWED:
+            if self.can_record_not_sent:
                 try:
                     await self.fence.record_not_sent()
                 except Exception:
@@ -265,6 +267,16 @@ class _FencedWrite:
         self, exchange: Exchange, mutation_field: str, output: Any, receipt: Receipt
     ) -> MutationAttempt[Any] | None:
         """Map every sent outcome except an accepted one, as Go's attemptForWrite does."""
+        if exchange.success_body_unreadable or has_mutation_field_value(exchange.data, mutation_field):
+            # monday.com may have accepted the write, so a resend could create it again.
+            cause = exchange.problem
+            if exchange.outcome == "succeeded" or cause is None:
+                cause = failure(
+                    self.operation,
+                    FailureKind.PROTOCOL,
+                    "monday.com accepted the write but returned an unusable result",
+                )
+            return MutationAttempt.uncertain(output, cause, receipt)
         disposition = classify_write(exchange, mutation_field)
         if disposition == "accepted":
             return None

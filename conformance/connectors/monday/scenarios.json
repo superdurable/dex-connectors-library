@@ -1812,6 +1812,87 @@
       "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
       "exchanges": [
         {
+          "body": "{\"data\":{\"create_item\":{\"name\":\"Fire drill\"}},\"errors\":[{\"extensions\":{\"code\":\"ColumnValueException\"}}]}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"date4\":{\"date\":\"2026-02-18\"},\"status\":{\"label\":\"Done\"},\"text\":\"Ready\"}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Fire drill"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "itemName": "Fire drill"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "fixedClock": "2026-10-01T00:00:00Z",
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "date4": {
+            "date": "2026-02-18",
+            "type": "date"
+          },
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          },
+          "text": {
+            "text": "Ready",
+            "type": "text"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Fire drill"
+      },
+      "name": "createItem-value-beside-refusal-uncertain",
+      "operation": "createItem"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
           "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
           "keyMode": "derived",
           "method": "POST",

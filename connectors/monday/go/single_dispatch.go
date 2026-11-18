@@ -61,10 +61,15 @@ func startFencedWrite[OUT any](call sdkgo.Call, definition sdkgo.MutationDefinit
 	}, sdkgo.MutationAttempt[OUT]{}, false
 }
 
+// canRecordNotSent reports whether a pre-send Retry may checkpoint notSent. After a possible earlier
+// send, even a sendAllowed decision after canResend, notSent would hide that send.
+func (write *fencedWrite) canRecordNotSent() bool {
+	return write.decision.Kind == singledispatch.SendAllowed && !write.hasPossibleEarlierSend
+}
+
 // preSendFailureAttempt maps a credential failure that ended the attempt before any send.
 func preSendFailureAttempt[OUT any](write *fencedWrite, operationID string, result mondayExchange, echo OUT, branches fencedWriteBranches) sdkgo.MutationAttempt[OUT] {
-	// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-	if write.decision.Kind == singledispatch.SendAllowed {
+	if write.canRecordNotSent() {
 		if err := write.fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[OUT](mondayFailure(sdkgo.FailureAvailability, operationID, "monday.com not-sent checkpoint could not be recorded"), 0)
 		}
@@ -85,8 +90,7 @@ func preSendFailureAttempt[OUT any](write *fencedWrite, operationID string, resu
 func dispatchFencedWrite[OUT any](write *fencedWrite, client *Client, call sdkgo.Call, credentials Credentials, operationID string, request graphQLRequest, echo OUT, defect sdkgo.BranchID) (mondayExchange, sdkgo.MutationAttempt[OUT], bool) {
 	var result mondayExchange
 	if !hasRequestBudget(call.Context, requestDeadlineMargin+minimumMutationRequestWindow) {
-		// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-		if write.decision.Kind == singledispatch.SendAllowed {
+		if write.canRecordNotSent() {
 			if err := write.fence.RecordNotSent(); err != nil {
 				return result, sdkgo.NewMutationRetry[OUT](mondayFailure(sdkgo.FailureAvailability, operationID, "monday.com not-sent checkpoint could not be recorded"), 0), true
 			}
@@ -115,6 +119,14 @@ func dispatchFencedWrite[OUT any](write *fencedWrite, client *Client, call sdkgo
 // attemptForWrite maps every sent outcome except an accepted one: a definite outcome selects its
 // branch, and an unknown one resends while the send cap allows.
 func attemptForWrite[OUT any](write *fencedWrite, operationID string, result mondayExchange, mutationField string, echo OUT, receipt sdkgo.Receipt, branches fencedWriteBranches) (sdkgo.MutationAttempt[OUT], bool) {
+	if result.isSuccessBodyUnreadable || hasMutationFieldValue(result.response.data, mutationField) {
+		// monday.com may have accepted the write, so a resend could create it again.
+		failure := result.failure
+		if result.outcome == exchangeSucceeded {
+			failure = mondayFailure(sdkgo.FailureProtocol, operationID, "monday.com accepted the write but returned an unusable result")
+		}
+		return sdkgo.NewMutationUncertain(echo, failure, receipt), true
+	}
 	switch classifyWrite(result, mutationField) {
 	case writeAccepted:
 		return sdkgo.MutationAttempt[OUT]{}, false
