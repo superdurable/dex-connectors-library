@@ -161,6 +161,15 @@ describe('Asana bounded resend of unconfirmed writes', () => {
   });
 
   it.each([
+    ['not configured', () => new Error('connection is not configured')],
+    ['unlisted', () => new TypeError('unlisted credential store error')],
+  ])('retries an unlisted credential failure (%s) before any send', async (_name, newError) => {
+    const { client, requests } = newClientWithCredentialError(newError());
+    expect(await run(client, 'createTask', new AttemptContext())).toBe('retry');
+    expect(requests).toEqual([]);
+  });
+
+  it.each([
     ['createTask', `{"data":{"gid":"${taskId}","permalink_url":7}}`],
     ['createTask', `{"data":{"gid":"${taskId}","created_at":7}}`],
     ['addComment', `{"data":{"gid":"${taskId}","created_by":"someone"}}`],

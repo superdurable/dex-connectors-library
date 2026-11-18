@@ -222,14 +222,21 @@ async def test_unreadable_error_body_is_an_unknown_outcome() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation", ["createTask", "addComment"])
+@pytest.mark.parametrize(
+    "error",
+    [CredentialBrokerUnavailableError(), ValueError("unlisted"), LookupError("unlisted"), None],
+    ids=["broker unavailable", "unlisted value", "unlisted lookup", "static connection not configured"],
+)
 async def test_transient_credential_failure_after_a_possible_send_retries_without_not_sent(
-    operation: str,
+    operation: str, error: Exception | None
 ) -> None:
     requests: list[httpx.Request] = []
     marker = Marker(CALL_ID, 1, State.CLAIMED, send_count=1)
     context = AttemptContext(2, marker)
-    unavailable = CredentialBrokerUnavailableError()
-    assert await run(operation, 201, CREATED, context, requests, credential_error=unavailable) == "retry"
+    result = await run(
+        operation, 201, CREATED, context, requests, has_credentials=error is not None, credential_error=error
+    )
+    assert result == "retry"
     assert context.marker is not None and context.marker.state == "claimed" and context.marker.attempt == 1
     assert requests == []
 
@@ -243,12 +250,11 @@ async def test_transient_credential_failure_after_a_possible_send_retries_withou
         ConnectionNotSelectedError(),
         CredentialBrokerRejectedError(),
         ObjectNotFoundError("absent"),
-        None,
     ],
-    ids=["reauthorization", "not selected", "broker rejected", "object not found", "missing connection"],
+    ids=["reauthorization", "not selected", "broker rejected", "object not found"],
 )
 async def test_terminal_credential_failure_after_a_possible_send_is_uncertain(
-    operation: str, error: Exception | None
+    operation: str, error: Exception
 ) -> None:
     for marker in (
         Marker(CALL_ID, 1, State.CLAIMED, send_count=1),
