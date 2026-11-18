@@ -311,7 +311,7 @@ before sending again returns Retry. Exhausting retries fails the Flow; it never
 turns into uncertainty. A Mutation that cannot produce uncertainty omits that
 branch and target. Invalid Attempts and local SDK defects fail closed to the
 standard `defect` branch. See the [uncertainty audit](uncertain-audit.md) for
-current declarations; the tiers supersede its never-resend verdicts.
+each operation's tier, read-back, and `uncertain` conditions.
 
 `FailureKind` records a safe fact, not retry policy. Authentication,
 authorization, not-found, rate-limit, transport, protocol, provider rejection,
