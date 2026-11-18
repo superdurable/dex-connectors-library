@@ -42,23 +42,41 @@ class HeartbeatContext:
     def __init__(self, attempt: int = 1, previous: object | None = None) -> None:
         self.attempt = attempt
         self.previous = previous
+        self.read_error: Exception | None = None
+        self.call_id: CallID | None = None
         self.run_id = "run-1"
         self.flow_started_at = datetime(2026, 3, 4, 9, 15, tzinfo=UTC)
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
-        self.heartbeats: list[Marker] = []
+        self.heartbeat_values: list[object] = []
+
+    @property
+    def heartbeats(self) -> list[Marker]:
+        """Decode this call's marker from each heartbeat, whatever checkpoint format the SDK wrote."""
+        return [_own_marker(value, self.call_id) for value in self.heartbeat_values]
 
     def has_last_heartbeat_value(self) -> bool:
         """Report whether a prior attempt left a checkpoint."""
-        return self.previous is not None
+        return self.previous is not None or self.read_error is not None
 
-    def get_last_heartbeat_value(self, value_type: type[Marker]) -> object:
-        """Return the inert prior marker to the SDK fence."""
+    def get_last_heartbeat_value(self, value_type: type[object]) -> object:
+        """Return the seeded prior marker in the checkpoint format the SDK reads."""
+        if self.read_error is not None:
+            raise self.read_error
+        if isinstance(self.previous, Marker) and value_type is not Marker:
+            return {"singleDispatchMarkers": {str(self.previous.call_id): self.previous.to_wire()}}
         return self.previous
 
     async def heartbeat(self, value: object) -> None:
-        """Capture the SDK's non-secret dispatch marker."""
-        assert isinstance(value, Marker)
-        self.heartbeats.append(value)
+        """Capture the SDK's non-secret heartbeat exactly as written."""
+        self.heartbeat_values.append(value)
+
+
+def _own_marker(value: object, call_id: CallID | None) -> Marker:
+    """Decode a single marker or this call's checkpoint-map entry."""
+    if isinstance(value, Marker):
+        return value
+    assert isinstance(value, dict) and call_id is not None
+    return Marker.from_wire(value["singleDispatchMarkers"][str(call_id)])
 
 
 def _call(
@@ -67,6 +85,7 @@ def _call(
 ) -> Call:
     """Build the Call a MutationStep passes, with the definition's send cap unless overridden."""
     call_id = call_id or CallID(str(uuid4()))
+    context.call_id = call_id
     definition = SEND_MESSAGE_DEFINITION if operation_id == "sendMessage" else REPLY_TO_MESSAGE_DEFINITION
     return Call(
         call_id, ConnectionRef("google", "support"), OperationRef("gmail", operation_id),
@@ -432,11 +451,11 @@ async def test_service_unavailable_keeps_the_claim_after_sent_mail_miss() -> Non
 
 
 @pytest.mark.asyncio
-async def test_foreign_checkpoint_fails_before_any_provider_request() -> None:
-    """A foreign heartbeat fails closed, retries, and cannot reach Gmail."""
+async def test_unreadable_checkpoint_fails_before_any_provider_request() -> None:
+    """A heartbeat read error fails closed, retries, and cannot reach Gmail."""
     context = HeartbeatContext(2)
     call = _call(context)
-    context.previous = Marker(CallID(str(uuid4())), 1, State.NOT_SENT)
+    context.read_error = RuntimeError("heartbeat store unavailable")
     attempt, requests = await _invoke(call, httpx.MockTransport(lambda _: httpx.Response(200)))
     assert attempt.kind == "retry" and attempt.failure is not None
     assert "an earlier send may still be delivered" in attempt.failure.message
