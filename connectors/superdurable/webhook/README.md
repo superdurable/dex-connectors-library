@@ -303,7 +303,7 @@ This snippet comes from
 
 ## Verification
 
-The module requires `sdkgo v0.30.0`. Run its checks standalone, as CI does:
+The module requires `sdkgo v0.38.0`. Run its checks standalone, as CI does:
 
 ```bash
 GOWORK=off go test -race ./...

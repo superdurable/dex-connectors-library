@@ -291,6 +291,7 @@ var SendEventDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type SendEventResult = sdkgo.MutationResult[SendEventOutput]
@@ -309,6 +310,8 @@ type SendEventStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendEventResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendEventOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendEventStep[IN any](config SendEventStepConfig[IN]) sdkgo.MutationStep[IN, SendEventInput, SendEventOutput] {
