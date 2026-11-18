@@ -34,7 +34,7 @@ CREATE_RESPONSE_DEFINITION = MutationDefinition(
         BranchDefinition(COMPLETED, "OpenAI completed the response.", False),
         BranchDefinition(FAILED, "OpenAI returned a terminal failed or incomplete response. A cancelled response is not failed: the next attempt creates a new one.", True),
         BranchDefinition(PROVIDER_REJECTED, "OpenAI conclusively rejected the response request.", True),
-        BranchDefinition(UNCERTAIN, "A request may have created a response that cannot be confirmed: the send cap was reached without a response ID observed or checkpointed, for example after HTTP 408 or 409 or a 5xx other than 503; a 2xx answer, streamed or not, yielded no readable response ID, so it is never resent; a resend was refused after an earlier possible create; or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", True),
+        BranchDefinition(UNCERTAIN, "A request may have created a response that cannot be confirmed: the send cap was reached without a response ID observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a refusal status whose error body is incomplete or names a response; a lasting credential failure followed a possible create; a 2xx answer, streamed or not, yielded no readable response ID, so it is never resent; a resend was refused after an earlier possible create; or the stored response cannot be read back. The Responses API documents no deduplication of create requests.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

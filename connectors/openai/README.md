@@ -197,8 +197,11 @@ instead of creating another. Without a known Response ID, `createResponse` is
 a `limited` operation with `maxSends: 3` (override per Step with `MaxSends`):
 an unknown outcome returns Retry while possible creates stay below the cap, so
 the next attempt sends again, and selects `uncertain` at the cap. An unsent
-request, HTTP 429 or 503, or a definite refusal does not count as a create; a
-`cancelled` Response counts, since it may be billed. Dex may lose heartbeat
+request, HTTP 429 or 503, credentials the broker cannot load yet, or a definite
+refusal does not count as a create; a `cancelled` Response counts, since it may
+be billed. A refusal status counts as definite only when its error body was
+read in full and names no Response ID; an oversized, cut off, or
+Response-naming error body is an unknown outcome. Dex may lose heartbeat
 details, for example when the Dex Server stops during an attempt. Every attempt
 a checkpoint cannot rule out then counts as a possible create, and a checkpoint
 from an earlier release without `sendCount` counts every earlier attempt.
@@ -213,9 +216,9 @@ exists, and without its ID it cannot be read back.
 | --- | --- | --- |
 | `createResponse` | `completed` (required) | OpenAI completed the Response. |
 | `createResponse` | `failed` | OpenAI returned a terminal `failed` or `incomplete` Response, streamed or not. |
-| `createResponse` | `providerRejected` | A conclusive refusal of the first possible create: HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422. |
+| `createResponse` | `providerRejected` | A conclusive refusal of the first possible create: HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a complete error body that names no Response ID. |
 | `createResponse` | `uncertain` | A request may have created a Response that cannot be confirmed: the send cap was reached with no Response ID observed, for example after HTTP 408, HTTP 409, a 3xx, another 4xx, or a 5xx other than 503; a `2xx` answer, streamed or not, did not yield a readable Response ID; a resend was refused after an earlier possible create; the Response has no recognized status; or reading it back returned 401, 403, 404, another 4xx other than 408, 409, or 429, or an unreadable body. |
-| `createResponse` | `defect` | The input, the model, credentials, or connection configuration is invalid on the first attempt; nothing is sent. On a later attempt, since an earlier create may exist, unavailable credentials retry and any other such failure selects `uncertain`. |
+| `createResponse` | `defect` | The input, the model, credentials, or connection configuration is invalid, or the connection needs reauthorization, on the first attempt; nothing is sent. Credentials the broker cannot load yet retry on every attempt without counting a create. On a later attempt, since an earlier create may exist, any lasting failure selects `uncertain`; a lasting credential failure while reading a known Response back selects `uncertain` too. |
 | `retrieveResponse` | `found` (required) | The Response exists and was returned. |
 | `retrieveResponse` | `notFound` | OpenAI returned 404. |
 | `retrieveResponse` | `providerRejected` | Another conclusive refusal. |

@@ -18,6 +18,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,6 +30,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -262,9 +264,9 @@ func (operation CreateResponseOperation) Invoke(call sdkgo.Call, input CreateReq
 // heartbeat and then sends one create request.
 func (operation CreateResponseOperation) sendCreateRequest(call sdkgo.Call, heartbeat *createResponseHeartbeat, sends createResponseSendBudget, payload map[string]any, streaming bool) sdkgo.MutationAttempt[Response] {
 	request, failure := operation.client.newRequest(call, http.MethodPost, "/responses", string(call.ID), payload)
-	if failure != nil && sends.hasPossibleEarlierSend() && failure.isTransient {
-		// An earlier create may exist, so a defect could prompt a second billed create; nothing was sent now.
-		return sdkgo.NewMutationRetry[Response](failure.failure, 0)
+	if failure != nil && failure.isTransient {
+		// Nothing was sent now, so the next attempt does not count this one.
+		return retryCreateResponse(heartbeat, failure.failure, 0, sends.priorSendUpperBound)
 	}
 	if failure != nil && sends.hasPossibleEarlierSend() {
 		// A lasting local failure cannot resend, and an earlier create may exist.
@@ -298,7 +300,8 @@ func (operation CreateResponseOperation) sendCreateRequest(call sdkgo.Call, hear
 	defer response.Body.Close()
 	requestID := response.Header.Get("X-Request-Id")
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return createStatusAttempt(call, heartbeat, sends, response.StatusCode, response.Header, requestID)
+		isDefiniteRefusal := isDefiniteOpenAIRefusal(response.StatusCode) && isDefiniteRefusalBody(response.Body)
+		return createStatusAttempt(call, heartbeat, sends, response.StatusCode, isDefiniteRefusal, response.Header, requestID)
 	}
 	if streaming {
 		return operation.readStream(call, heartbeat, sends, response.Body, response.Header, requestID)
@@ -427,6 +430,11 @@ type storedResponseRead struct {
 
 func (client *Client) readStoredResponse(call sdkgo.Call, responseID string, pollDeadline time.Time) storedResponseRead {
 	request, failure := client.newRequest(call, http.MethodGet, "/responses/"+url.PathEscape(responseID), "", nil)
+	if failure != nil && !failure.isTransient {
+		// A lasting credential or local failure cannot confirm the created response.
+		unconfirmedFailure := openAIFailure(failure.failure.Kind, "createResponse", "response "+responseID+" read-back request could not be built: "+failure.failure.Message)
+		return storedResponseRead{unconfirmedFailure: &unconfirmedFailure}
+	}
 	if failure != nil {
 		retryFailure := openAIFailure(failure.failure.Kind, "createResponse", "response "+responseID+" read-back request could not be built")
 		return storedResponseRead{retryFailure: &retryFailure}
@@ -534,6 +542,9 @@ func (operation RetrieveResponseOperation) Invoke(call sdkgo.Call, input Retriev
 
 func (client *Client) newRequest(call sdkgo.Call, method, path string, clientRequestID string, payload any) (*http.Request, *requestFailure) {
 	credential, err := client.credentials.Resolve(call)
+	if isTerminalCredentialError(err) {
+		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureAuthentication, call.Operation.OperationID, "connection credentials are missing or need reauthorization")}
+	}
 	if err != nil {
 		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureAuthentication, call.Operation.OperationID, "connection credentials are unavailable"), isTransient: true}
 	}
@@ -566,6 +577,28 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, clientReq
 	return request, nil
 }
 
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+// isDefiniteRefusalBody reports an error body read in full that names no response, so it proves a refusal.
+func isDefiniteRefusalBody(body io.Reader) bool {
+	data, err := io.ReadAll(io.LimitReader(body, providerhttp.MaxErrorBodyBytes+1))
+	if err != nil || int64(len(data)) > providerhttp.MaxErrorBodyBytes {
+		return false
+	}
+	var decoded struct {
+		ID any `json:"id"`
+	}
+	if json.Unmarshal(data, &decoded) != nil {
+		return true
+	}
+	responseID, isString := decoded.ID.(string)
+	return !isString || !isSafeResponseID(responseID)
+}
+
 func (client *Client) readResponse(body io.Reader, operation string) (wireResponse, *sdkgo.Failure) {
 	data, err := io.ReadAll(io.LimitReader(body, client.maxResponseBytes+1))
 	if err != nil {
@@ -584,7 +617,8 @@ func (client *Client) readResponse(body io.Reader, operation string) (wireRespon
 	return wire, nil
 }
 
-func createStatusAttempt(call sdkgo.Call, heartbeat *createResponseHeartbeat, sends createResponseSendBudget, status int, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
+// createStatusAttempt classifies a non-2xx create answer; isDefiniteRefusal also requires a complete error body naming no response.
+func createStatusAttempt(call sdkgo.Call, heartbeat *createResponseHeartbeat, sends createResponseSendBudget, status int, isDefiniteRefusal bool, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
 	failure, retryAfter, isRetryable := classifyOpenAIStatus("createResponse", status, header)
 	if isRetryable {
 		return retryCreateResponse(heartbeat, failure, retryAfter, sends.priorSendUpperBound)
@@ -599,8 +633,9 @@ func createStatusAttempt(call sdkgo.Call, heartbeat *createResponseHeartbeat, se
 		// OpenAI offers no key or read-back that could resolve a conflicting create.
 		return resendOrSelectUncertain(sends, openAIFailure(sdkgo.FailureConflict, "createResponse",
 			"provider returned HTTP 409 without a response ID, so a response may exist"), receipt)
-	case !isDefiniteOpenAIRefusal(status):
-		// A 5xx other than 503, a 3xx, or an unlisted 4xx can follow a stored response.
+	case !isDefiniteRefusal:
+		// A 5xx other than 503, a 3xx, an unlisted 4xx, or a refusal with an incomplete or
+		// response-naming body can follow a stored response.
 		return resendOrSelectUncertain(sends, failure, receipt)
 	}
 	// The refusal proves this send created nothing; a later Agent run may start fresh.

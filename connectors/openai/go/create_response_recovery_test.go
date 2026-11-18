@@ -20,6 +20,7 @@ import (
 	openai "github.com/superdurable/dex-connectors-library/connectors/openai/go"
 	"github.com/superdurable/dex-connectors-library/connectors/openai/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -460,6 +461,86 @@ func TestCreateResponseCredentialFailureAfterAPossibleCreate(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "never defect after a possible create")
+		})
+	}
+}
+
+// failingCredentials fails every Resolve with err.
+type failingCredentials struct{ err error }
+
+func (credentials failingCredentials) Resolve(sdkgo.Call) (openai.Credentials, error) {
+	return openai.Credentials{}, credentials.err
+}
+
+// A broker that cannot answer yet retries without counting a send; a lasting failure is a defect before
+// any send and uncertain after a possible one.
+func TestCreateResponseClassifiesTransientAndTerminalCredentialFailures(t *testing.T) {
+	for name, test := range map[string]struct {
+		err           error
+		attempt       int32
+		wantBranch    sdkgo.BranchID
+		wantSendCount int32
+	}{
+		"broker unavailable before a send": {err: projectconfig.ErrCredentialBrokerUnavailable, attempt: 1, wantSendCount: 0},
+		"broker unavailable after a send":  {err: projectconfig.ErrCredentialBrokerUnavailable, attempt: 2, wantSendCount: 1},
+		"reauthorization before a send":    {err: sdkgo.ErrReauthorizationRequired, attempt: 1, wantBranch: openai.CreateResponseBranchDefect},
+		"reauthorization after a send":     {err: sdkgo.ErrReauthorizationRequired, attempt: 2, wantBranch: openai.CreateResponseBranchUncertain},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := openai.New(openai.Config{Endpoint: "https://api.openai.example/v1"}, failingCredentials{err: test.err})
+			require.NoError(t, err)
+			ctx := testsupport.NewDexContext("flow-1", "credentials-"+name)
+			ctx.AttemptNo = test.attempt
+			result, err := runCreateResponse(ctx, client)
+			if test.wantBranch != "" {
+				require.NoError(t, err)
+				require.Equal(t, test.wantBranch, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			var checkpoint struct {
+				CanResend bool  `json:"canResend"`
+				SendCount int32 `json:"sendCount"`
+			}
+			isFound, err := ctx.GetLastHeartbeatValue(&checkpoint)
+			require.NoError(t, err)
+			require.True(t, isFound && checkpoint.CanResend, "this attempt sent nothing")
+			require.Equal(t, test.wantSendCount, checkpoint.SendCount)
+		})
+	}
+}
+
+// A refusal status whose body is oversized, cut off, or names a response proves no refusal.
+func TestCreateResponseRefusalThatProvesNothingResendsBelowTheCap(t *testing.T) {
+	for name, reply := range map[string]func(http.ResponseWriter, *http.Request){
+		"oversized": func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"error":{"code":"x"}}` + strings.Repeat(" ", 64<<10)))
+		},
+		"cut off": func(response http.ResponseWriter, _ *http.Request) {
+			response.Header().Set("Content-Length", "200")
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"error":`))
+		},
+		"names a response": func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(http.StatusBadRequest)
+			_, _ = response.Write([]byte(`{"id":"resp_123","error":{"code":"x"}}`))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			script, server := newProviderScript(t, reply, reply)
+			client := newClient(t, server.URL)
+			ctx := testsupport.NewDexContext("flow-1", "unproven-refusal-"+name)
+			_, err := runCreateResponse(ctx, client)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			later := testsupport.NewDexContext("flow-1", "unproven-refusal-"+name)
+			later.AttemptNo = 3
+			result, err := runCreateResponse(later, client)
+			require.NoError(t, err)
+			require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch, "the third possible send reached the cap")
+			require.Equal(t, []string{http.MethodPost, http.MethodPost}, script.requestMethods())
 		})
 	}
 }
