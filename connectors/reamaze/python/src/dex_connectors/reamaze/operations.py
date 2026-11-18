@@ -4,9 +4,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
+from collections.abc import Coroutine
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from dex_connectors.sdk import (
@@ -119,8 +121,9 @@ def _mutation_exchange(
     if exchange.outcome == "succeeded":
         return None
     assert exchange.failure is not None
-    # An oversized or credential-reflecting answer is unknown, so the safe update repeats.
-    if exchange.is_retryable_read or exchange.outcome == "invalid":
+    # An earlier attempt's PUT may have applied, so only a definite refusal selects a branch.
+    is_unknown_refusal = exchange.outcome in {"rejected", "not_found"} and not _is_definite_refusal(exchange)
+    if exchange.is_retryable_read or exchange.outcome == "invalid" or is_unknown_refusal:
         return MutationAttempt.retry(exchange.failure, exchange.retry_after_seconds)
     branch = {
         "not_found": definitions.NOT_FOUND,
@@ -481,8 +484,13 @@ class UpdateConversationOperation:
                 reamaze_failure(FailureKind.VALIDATION, operation, str(error)),
             )
         try:
-            credentials = await self.client.resolve_credentials(call)
+            credentials = await self.client.resolve_write_credentials(call)
         except (CredentialsUnavailableError, CredentialsUnusableError) as error:
+            is_later_attempt = call.context is not None and call.context.attempt > 1
+            if isinstance(error, CredentialsUnusableError) and is_later_attempt:
+                # defect would hide a change an earlier attempt may have sent; repeating it is safe.
+                unusable = reamaze_failure(FailureKind.AUTHENTICATION, operation, str(error))
+                return MutationAttempt.retry(unusable)
             return _mutation_credentials_error(operation, error, _zero_output(operation))
         path = conversation_path(input.conversation_id)
         read = await self.client.exchange(call, credentials, operation, "GET", path)
@@ -513,12 +521,7 @@ class UpdateConversationOperation:
         write = await self.client.exchange(
             call, credentials, operation, "PUT", path, payload={"conversation": change}
         )
-        if write.outcome == "invalid" or (
-            write.outcome in {"rejected", "not_found"} and not _is_definite_refusal(write)
-        ):
-            # The PUT sets final values, so an unknown outcome, including an oversized answer, repeats it.
-            assert write.failure is not None
-            return MutationAttempt.retry(write.failure, write.retry_after_seconds)
+        # The PUT sets final values, so an unknown outcome, including an oversized answer, repeats it.
         classified = _mutation_exchange(
             self.client, call, operation, write, current_output, object_id=input.conversation_id
         )
@@ -606,6 +609,47 @@ def _accepted_write_attempt(
         assert attempt.failure is not None
         return MutationAttempt.uncertain(value, attempt.failure, receipt)
     return attempt
+
+
+def _is_success_status(observed_statuses: list[int]) -> bool:
+    """Report that the dispatch saw 2xx headers, so Re:amaze accepted the write."""
+    return bool(observed_statuses) and 200 <= observed_statuses[0] < 300
+
+
+def _write_window_cut_accepted_body(operation: str, status: int) -> Exchange:
+    """Return the unusable accepted exchange of a 2xx whose body the fence write window cut off."""
+    return Exchange(
+        "unavailable",
+        reamaze_failure(
+            FailureKind.TRANSPORT,
+            operation,
+            "Re:amaze accepted the write, but its answer did not arrive within the write window",
+        ),
+        status=status,
+    )
+
+
+# Matches Go's reconciliationContext, which ends a read-back one second before the attempt deadline.
+_READ_BACK_DEADLINE_MARGIN = timedelta(seconds=1)
+
+
+async def _read_back_before_deadline(
+    call: Call, operation: str, read_back: Coroutine[Any, Any, _ReadBack], value: Any, receipt: Receipt
+) -> _ReadBack:
+    """Finish an accepted write's read-back before the attempt deadline, or report it as transient."""
+    deadline = call.context.deadline if call.context is not None else None
+    if deadline is None:
+        return await read_back
+    remaining = (deadline - _READ_BACK_DEADLINE_MARGIN - datetime.now(UTC)).total_seconds()
+    try:
+        return await asyncio.wait_for(read_back, max(remaining, 0))
+    except TimeoutError:
+        failure = reamaze_failure(
+            FailureKind.TRANSPORT,
+            operation,
+            "Re:amaze accepted the write, but reading it back did not finish before the attempt deadline",
+        )
+        return _ReadBack(MutationAttempt.retry(failure))
 
 
 async def _fenced_credential_error(
@@ -822,7 +866,7 @@ class CreateConversationOperation:
             )
         provider_id = decision.marker.provider_id if decision.marker else ""
         try:
-            credentials = await self.client.resolve_credentials(call)
+            credentials = await self.client.resolve_write_credentials(call)
         except (CredentialsUnavailableError, CredentialsUnusableError) as error:
             return await _fenced_credential_error(
                 fence, decision, self.client, call, operation, error, zero, provider_id
@@ -836,6 +880,7 @@ class CreateConversationOperation:
                 return read_back.attempt
             # The read-back found no conversation with the key, so this attempt resends below the cap.
         is_first_send = decision.prior_send_upper_bound == 0
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _: self.client.exchange(
@@ -845,6 +890,7 @@ class CreateConversationOperation:
                     "POST",
                     "/conversations",
                     payload=_create_payload(input, _dispatch_key(call)),
+                    on_response_status=observed_statuses.append,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
@@ -857,12 +903,14 @@ class CreateConversationOperation:
                 )
             )
         except TimeoutError:
-            # The claim stays, so the next attempt counts this send and reads back first.
-            return MutationAttempt.retry(
-                reamaze_failure(
-                    FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
+            if not _is_success_status(observed_statuses):
+                # The claim stays, so the next attempt counts this send and reads back first.
+                return MutationAttempt.retry(
+                    reamaze_failure(
+                        FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
+                    )
                 )
-            )
+            exchange = _write_window_cut_accepted_body(operation, observed_statuses[0])
         # A 2xx whose body could not be read or used still created the conversation.
         if 200 <= exchange.status < 300 and exchange.outcome != "succeeded":
             return await self._reconcile_accepted(call, fence, credentials, "")
@@ -891,12 +939,16 @@ class CreateConversationOperation:
         self, call: Call, fence: Fence, credentials: Any, conversation_id: str
     ) -> MutationAttempt[CreateConversationOutput]:
         """Never resend an accepted create: confirm it now, by its slug when named, or select uncertain."""
-        zero = _zero_output("createConversation")
+        operation = "createConversation"
+        zero = _zero_output(operation)
         if not conversation_id:
+            receipt = self.client.receipt(call, Exchange(""))
             return _accepted_write_attempt(
-                await self._reconcile(call, credentials),
+                await _read_back_before_deadline(
+                    call, operation, self._reconcile(call, credentials), zero, receipt
+                ),
                 zero,
-                self.client.receipt(call, Exchange("")),
+                receipt,
                 is_provider_id_saved=False,
             )
         try:
@@ -904,10 +956,13 @@ class CreateConversationOperation:
             is_provider_id_saved = True
         except Exception:
             is_provider_id_saved = False
+        receipt = self.client.receipt(call, Exchange(""), conversation_id)
         return _accepted_write_attempt(
-            await self._confirm_candidate(call, credentials, conversation_id),
+            await _read_back_before_deadline(
+                call, operation, self._confirm_candidate(call, credentials, conversation_id), zero, receipt
+            ),
             zero,
-            self.client.receipt(call, Exchange(""), conversation_id),
+            receipt,
             is_provider_id_saved=is_provider_id_saved,
         )
 
@@ -1083,7 +1138,7 @@ class ReplyToConversationOperation:
                 )
             )
         try:
-            credentials = await self.client.resolve_credentials(call)
+            credentials = await self.client.resolve_write_credentials(call)
         except (CredentialsUnavailableError, CredentialsUnusableError) as error:
             return await _fenced_credential_error(
                 fence, decision, self.client, call, operation, error, zero, input.conversation_id
@@ -1103,6 +1158,7 @@ class ReplyToConversationOperation:
             message["suppress_notifications"] = True
         if input.should_suppress_auto_resolve:
             message["suppress_autoresolve"] = True
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _: self.client.exchange(
@@ -1112,6 +1168,7 @@ class ReplyToConversationOperation:
                     "POST",
                     conversation_path(input.conversation_id) + "/messages",
                     payload={"message": message},
+                    on_response_status=observed_statuses.append,
                 )
             )
         except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
@@ -1124,17 +1181,21 @@ class ReplyToConversationOperation:
                 )
             )
         except TimeoutError:
-            # The claim stays, so the next attempt counts this send and reads back first.
-            return MutationAttempt.retry(
-                reamaze_failure(
-                    FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
+            if not _is_success_status(observed_statuses):
+                # The claim stays, so the next attempt counts this send and reads back first.
+                return MutationAttempt.retry(
+                    reamaze_failure(
+                        FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
+                    )
                 )
-            )
+            exchange = _write_window_cut_accepted_body(operation, observed_statuses[0])
         accepted_receipt = self.client.receipt(call, Exchange(""), input.conversation_id)
         # A 2xx whose body could not be read or used still added the message, so it is never resent.
         if 200 <= exchange.status < 300 and exchange.outcome != "succeeded":
             return _accepted_write_attempt(
-                await self._reconcile(call, credentials, input),
+                await _read_back_before_deadline(
+                    call, operation, self._reconcile(call, credentials, input), zero, accepted_receipt
+                ),
                 zero,
                 accepted_receipt,
                 is_provider_id_saved=False,
@@ -1166,7 +1227,9 @@ class ReplyToConversationOperation:
             decoded = decode_message(document)
         except ValueError:
             return _accepted_write_attempt(
-                await self._reconcile(call, credentials, input),
+                await _read_back_before_deadline(
+                    call, operation, self._reconcile(call, credentials, input), zero, accepted_receipt
+                ),
                 zero,
                 accepted_receipt,
                 is_provider_id_saved=False,

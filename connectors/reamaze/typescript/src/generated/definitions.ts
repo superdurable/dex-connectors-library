@@ -118,7 +118,7 @@ export const UpdateConversationBranchNotFound = UpdateConversationBranch.NotFoun
 export const UpdateConversationBranchProviderRejected = UpdateConversationBranch.ProviderRejected;
 /** Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe. */
 export const UpdateConversationBranchInvalidResponse = UpdateConversationBranch.InvalidResponse;
-/** Local input, connection configuration, or connector definition is invalid. */
+/** Local input, connection configuration, or connector definition is invalid; unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent. */
 export const UpdateConversationBranchDefect = UpdateConversationBranch.Defect;
 /** Manifest definition for updateConversation. */
 export const UpdateConversationDefinition: MutationDefinition = {
@@ -128,7 +128,7 @@ export const UpdateConversationDefinition: MutationDefinition = {
     { id: "notFound", description: "The conversation does not exist in the brand or is not visible to the connection's user.", optional: true },
     { id: "providerRejected", description: "Re:amaze conclusively rejected the change, such as an assignee email that is not a staff user.", optional: true },
     { id: "invalidResponse", description: "Kept for existing Flows and mocks; the connector no longer selects it. An invalid or oversized conversation, on the read before the change or in answer to it, returns Retry, because an earlier attempt may have applied the change and repeating it is safe.", optional: true },
-    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid; unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
   repeatOnUnknown: "safe",

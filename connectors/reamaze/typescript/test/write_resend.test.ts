@@ -17,8 +17,9 @@ class AttemptContext {
   readonly runId = 'run';
   readonly flowId = 'reamaze-write-resend-flow';
   readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
-  readonly deadline = new Date(Date.now() + 120_000);
+  readonly deadline: Date;
   readonly cancellationSignal = new AbortController().signal;
+  constructor(deadlineMs = 120_000) { this.deadline = new Date(Date.now() + deadlineMs); }
   hasLastHeartbeatValue(): boolean { return this.heartbeat !== undefined; }
   getLastHeartbeatValue(): unknown { return this.heartbeat; }
   async recordHeartbeat(value: unknown): Promise<void> { this.heartbeatCount++; this.heartbeat = value; }
@@ -127,6 +128,32 @@ describe.each<WriteOperation>(['createConversation', 'replyToConversation'])('Re
     }
   });
 
+  it.each([true, false])('never resends a 2xx whose body the write window cuts off (found: %s)', async isFound => {
+    let key = '';
+    const { client, methods } = newClient(async request => {
+      if (request.method !== 'POST') return found(operation, key, isFound);
+      key = keyOf(operation, request);
+      // The headers arrived; the SDK sender reports the cut body with the status it saw.
+      await new Promise(resolve => request.signal?.addEventListener('abort', resolve, { once: true }));
+      throw new ProviderTransportError(false, 201, {});
+    });
+    const result = await run(client, operation, new AttemptContext(600));
+    expect(result).toMatchObject({ branch: isFound ? confirmedBranch : 'uncertain' });
+    expect(methods()).toEqual(['POST', 'GET']);
+  });
+
+  it('selects uncertain when the read-back of an accepted write outlasts the attempt deadline', async () => {
+    const { client, methods } = newClient(async request => {
+      if (request.method === 'POST') {
+        await new Promise(resolve => request.signal?.addEventListener('abort', resolve, { once: true }));
+        throw new ProviderTransportError(false, 201, {});
+      }
+      return new Promise<ProviderResponse>(() => {});
+    });
+    expect(await run(client, operation, new AttemptContext(1_600))).toMatchObject({ branch: 'uncertain' });
+    expect(methods()).toEqual(['POST', 'GET']);
+  });
+
   it('selects uncertain when the read-back of an accepted write without a saved ID is rate limited', async () => {
     const { client, methods } = newClient(request => request.method === 'POST' ? json(201, { unexpected: true }) : json(429, {}));
     expect(await run(client, operation, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
@@ -159,6 +186,32 @@ it.each([
   // An earlier attempt's PUT may have applied, so the safe write repeats.
   await expect(runMutation(client.updateConversation(), call, { conversationId: 'double-charge', status: 2 })).rejects.toBeInstanceOf(RetryError);
   expect(requests).toHaveLength(1);
+});
+
+it.each([
+  ['an oversized refusal', () => { throw new BodyTooLargeError(400, {}); }, ''],
+  ['a redirect', () => json(301, {}), ''],
+  ['a conflict', () => json(409, {}), ''],
+  ['a definite 403', () => json(403, {}), 'providerRejected'],
+  ['a definite 404', () => json(404, {}), 'notFound'],
+] as const)('selects an updateConversation branch on the first read only for a definite refusal: %s', async (_, answer, branch) => {
+  const { client, methods } = newClient(answer);
+  const call = { id: callId, connection: { provider: 'reamaze', name: 'reamaze-test' }, operation: UpdateConversationDefinition.operation, context: new AttemptContext() } as unknown as Call;
+  const update = runMutation(client.updateConversation(), call, { conversationId: 'double-charge', status: 2 });
+  if (branch) await expect(update).resolves.toMatchObject({ branch });
+  else await expect(update).rejects.toBeInstanceOf(RetryError);
+  expect(methods()).toEqual(['GET']);
+});
+
+it('selects defect for a terminal updateConversation credential failure only on the first attempt', async () => {
+  const { client, requests } = newClient(() => json(500, {}), { credentialError: () => new ReauthorizationRequiredError() });
+  const context = new AttemptContext();
+  const call = { id: callId, connection: { provider: 'reamaze', name: 'reamaze-test' }, operation: UpdateConversationDefinition.operation, context } as unknown as Call;
+  await expect(runMutation(client.updateConversation(), call, { conversationId: 'double-charge', status: 2 })).resolves.toMatchObject({ branch: 'defect' });
+  context.nextAttempt();
+  // An earlier attempt's PUT may have applied, so the safe write repeats.
+  await expect(runMutation(client.updateConversation(), call, { conversationId: 'double-charge', status: 2 })).rejects.toBeInstanceOf(RetryError);
+  expect(requests).toHaveLength(0);
 });
 
 it('reads an accepted undecodable create back by its saved slug', async () => {
