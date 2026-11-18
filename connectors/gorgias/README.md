@@ -243,11 +243,14 @@ these positions:
 - **updateTicket** declares `repeatOnUnknown: safe`. Its writes set absolute
   field values computed from a fresh read and add or remove tags as sets, so a
   second dispatch sends the same values or finds them applied. It keeps async
-  durability. After a write may have been sent, only a definite refusal (400,
-  401, 403, 404, 411, 413, 414, 415, or 422) selects a branch; every other
-  outcome, including a 5xx, 409, 3xx, lost response, or invalid answer to the
-  write or to the read after it, is retried. `invalidResponse` covers only the
-  read before any write, so that attempt changed nothing.
+  durability. An earlier attempt's write may have applied before any read of
+  this attempt, so only a definite refusal (400, 401, 403, 404, 411, 413, 414,
+  415, or 422) selects a branch; every other outcome, including a 5xx, 409,
+  3xx, lost response, or invalid or oversized answer to the first read, a
+  write, or the read after it, is retried. `invalidResponse` stays declared
+  but is no longer selected. Revoked or unusable credentials select `defect`
+  only on the first attempt; a later attempt returns Retry, because `defect`
+  would hide a change an earlier attempt may have sent.
 - **createTicket** and **addNote** are `limited` writes with the manifest send
   cap of three possible sends (`execution.maxSends`, default 3; an application
   may override it per Step). They run with sync durability under the SDK
@@ -260,7 +263,8 @@ these positions:
   again without a lookup.
 - A 2xx proves Gorgias accepted the write, and it is never sent again. When
   the 2xx body is invalid, oversized, credential-reflecting, or breaks while
-  it is read, the attempt reads the write back once: by the ID the body names
+  it is read, including when the fence write window ends after the 2xx
+  headers arrived, the attempt reads the write back once: by the ID the body names
   for this Step's ticket or message, which the fence saves first, or else by
   `external_id`. A confirmed write selects `created` or `added`. A 429, 408,
   5xx, or refused connection on that read returns Retry only when the fence
@@ -321,8 +325,8 @@ field names under `error.data`, such as
 `Gorgias rejected the request (HTTP 400) [fields: subject]`. A token that
 contains the API key is dropped.
 
-A write here means an `updateTicket` write or the read after it, and the
-`createTicket` or `addNote` send. Reads include `updateTicket`'s first read.
+A write here means every `updateTicket` request, including its first read,
+and the `createTicket` or `addNote` send.
 
 | Response | Reads | Writes |
 | --- | --- | --- |
@@ -335,7 +339,7 @@ A write here means an `updateTicket` write or the read after it, and the
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | Retry; a create or message reads back, resends below the cap, and selects `uncertain` at the cap |
 | oversized, malformed, credential-reflecting, or broken 2xx | `invalidResponse` | Retry for `updateTicket`; a create or message is read back once and never resent |
 | invalid input | `defect`, with no request | `defect`, with no request |
-| connection credentials | `defect`, with no request | revoked or unusable: `defect`, or `uncertain` after a possible earlier create or message send; unreadable this time: Retry |
+| connection credentials | `defect`, with no request | revoked or unusable: `defect`, or `uncertain` after a possible earlier create or message send, or Retry on a later `updateTicket` attempt; unreadable this time: Retry |
 
 Gorgias limits API-key integrations to 40 requests per 20-second window, a
 10-second window for Enterprise accounts, and answers 429 with `Retry-After`

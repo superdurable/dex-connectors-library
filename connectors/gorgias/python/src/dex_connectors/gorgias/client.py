@@ -218,8 +218,13 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
-        """Send one request and classify the outcome without selecting an operation branch."""
+        """Send one request and classify the outcome without selecting an operation branch.
+
+        on_response_status receives the HTTP status as soon as the headers arrive, so a caller cancelled
+        while the body is read still knows whether Gorgias accepted the request.
+        """
         basic = base64.b64encode(f"{credentials.email}:{credentials.api_key.reveal()}".encode()).decode()
         headers = {"Accept": "application/json", "Authorization": "Basic " + basic}
         if payload is not None:
@@ -252,6 +257,8 @@ class Client:
                 status=error.status_code or 0,
                 headers=error.headers,
             )
+        if on_response_status is not None:
+            on_response_status(response.status_code)
         body_too_large = False
         try:
             body = await read_bounded_body(response, self.max_response_bytes)

@@ -142,6 +142,42 @@ func TestUpdateTicketBranches(t *testing.T) {
 	}
 }
 
+func TestUpdateTicketFirstReadSelectsABranchOnlyForADefiniteRefusal(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		status  int
+		body    string
+		branch  sdkgo.BranchID
+		isRetry bool
+	}{
+		{name: "missing", status: http.StatusNotFound, body: `{}`, branch: gorgias.UpdateTicketBranchNotFound},
+		{name: "forbidden", status: http.StatusForbidden, body: `{}`, branch: gorgias.UpdateTicketBranchProviderRejected},
+		{name: "invalid ticket", status: http.StatusOK, body: `{"id":"SENTINEL"}`, isRetry: true},
+		{name: "oversized ticket", status: http.StatusOK, body: `{"id":5512,"subject":"` + strings.Repeat("x", 8192) + `"}`, isRetry: true},
+		{name: "oversized refusal", status: http.StatusBadRequest, body: `{"error":{"msg":"` + strings.Repeat("x", 8192) + `"}}`, isRetry: true},
+		{name: "redirect", status: http.StatusMovedPermanently, body: `{}`, isRetry: true},
+		{name: "conflict", status: http.StatusConflict, body: `{}`, isRetry: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingGorgias(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				require.Equal(t, http.MethodGet, request.Method, "nothing is written after an unusable first read")
+				writeJSON(t, response, test.status, test.body)
+			})
+			client, err := gorgias.New(gorgias.Config{Domain: testDomain, MaxResponseBytes: 4096}, testCredentialProvider(), gorgias.WithAPIBaseURL(provider.URL+"/api"))
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newGorgiasDexContext("update-read-"+test.name), client.UpdateTicket(), gorgiasConnection,
+				gorgias.UpdateTicketInput{TicketID: 5512, Status: gorgias.TicketStatusClosed})
+			if test.isRetry {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "an earlier attempt's absolute change may have applied")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.branch, result.Branch)
+		})
+	}
+}
+
 func TestUpdateTicketRejectsInvalidInputBeforeAnyRequest(t *testing.T) {
 	provider := newRecordingGorgias(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	for name, input := range map[string]gorgias.UpdateTicketInput{
@@ -185,5 +221,16 @@ func TestUpdateTicketCredentialFailureRetriesOnlyWhenTransient(t *testing.T) {
 		}
 		require.NoError(t, err, test.name)
 		require.Equal(t, gorgias.UpdateTicketBranchDefect, result.Branch, test.name)
+	}
+}
+
+func TestUpdateTicketTerminalCredentialFailureSelectsDefectOnlyOnTheFirstAttempt(t *testing.T) {
+	for _, test := range credentialFailureCases {
+		provider := newRecordingGorgias(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+		later := newGorgiasDexContext("update-credentials-later").nextAttempt()
+		_, err := sdkgo.RunMutation(later, newGorgiasClientWithCredentials(t, provider.URL, test.credentials).UpdateTicket(),
+			gorgiasConnection, gorgias.UpdateTicketInput{TicketID: 5512, Status: gorgias.TicketStatusOpen})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "%s: an earlier attempt's change may have applied", test.name)
 	}
 }
