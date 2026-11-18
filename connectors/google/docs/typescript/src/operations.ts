@@ -379,24 +379,22 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
   };
   /** Drive created the document, so an unusable 2xx is looked up, or read back by a saved ID, and never resent. */
   const reconcileAccepted = async (kind: FailureKind, body: Uint8Array | undefined): Promise<MutationAttempt<CreateDocumentOutput>> => {
+    const documentId = createdDocumentID(body);
+    // Saved before the lookup, so an attempt that ends during it can never resend.
+    let isAcceptanceSaved = true;
+    try { await fence.recordProviderId(documentId || acceptedCreateWithoutDocumentID); }
+    catch { isAcceptanceSaved = false; }
     const found = await lookup();
     if ('response' in found && !found.incomplete && found.document) {
       try { await fence.recordProviderId(found.document.documentId); }
       catch { /* Confirmation is conclusive even when an extra checkpoint fails. */ }
       return newMutationBranch('created', { document: found.document }, { ...receipt, providerObjectId: found.document.documentId });
     }
-    const documentId = createdDocumentID(body);
-    if (documentId) {
-      try {
-        await fence.recordProviderId(documentId);
-        return newMutationRetry(docsFailure('createDocument', kind, 'provider accepted the create with an unusable response; the next attempt reads the document back'));
-      } catch { /* Without the saved ID, the acceptance marker below still forbids a resend. */ }
-    }
-    try {
-      // The saved acceptance makes later attempts look the document up without sending again, up to the cap.
-      await fence.recordProviderId(acceptedCreateWithoutDocumentID);
+    if (isAcceptanceSaved && documentId)
+      return newMutationRetry(docsFailure('createDocument', kind, 'provider accepted the create with an unusable response; the next attempt reads the document back'));
+    // The saved acceptance makes later attempts look the document up without sending again, up to the cap.
+    if (isAcceptanceSaved)
       return newMutationRetry(docsFailure('createDocument', kind, 'provider accepted the create with an unusable response, and the duplicate lookup does not show it yet; the next attempt looks it up again'));
-    } catch { /* Without a saved acceptance a later attempt could resend, so select uncertain. */ }
     return newMutationUncertain(zeroCreate, docsFailure('createDocument', kind, 'provider accepted the create with an unusable response, the duplicate lookup does not show it, and its acceptance checkpoint failed, so it is not sent again'), receipt);
   };
   if (response && response.status >= 200 && response.status < 300) {
@@ -411,7 +409,10 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
     return reconcileAccepted(sendError.tooLarge ? 'RESPONSE_TOO_LARGE' : 'TRANSPORT', undefined);
   // A document ID contradicts any other status, so the create is read back and never resent.
   if (response && createdDocumentID(response.body)) return reconcileAccepted('PROTOCOL', response.body);
-  if (response && (isRateLimit(response.status, tokens) || response.status === 503)) {
+  // A 429 or 503 whose body broke still proves Google did not process the create.
+  const isBrokenThrottleBody = sendError instanceof DocsRequestError && (sendError.status === 429 || sendError.status === 503);
+  if ((response && (isRateLimit(response.status, tokens) || response.status === 503)) || isBrokenThrottleBody) {
+    const throttled: DocsResponse = response ?? { status: (sendError as DocsRequestError).status, headers: (sendError as DocsRequestError).headers, body: new Uint8Array() };
     const found = await lookup();
     if ('response' in found && !found.incomplete && found.document) {
       try { await fence.recordProviderId(found.document.documentId); }
@@ -420,7 +421,7 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
     }
     try { await fence.recordCanResend(); }
     catch { return newMutationRetry(docsFailure('createDocument', 'AVAILABILITY', 'Dex could not record safe resend after provider rejection')); }
-    return newMutationRetry(docsFailure('createDocument', statusFailureKind(response.status, tokens), 'provider temporarily rejected the create'), retryAfterMs(response, client.now()));
+    return newMutationRetry(docsFailure('createDocument', statusFailureKind(throttled.status, tokens), 'provider temporarily rejected the create'), retryAfterMs(throttled, client.now()));
   }
   if (response?.status === 401 && !response.isErrorBodyTooLarge) {
     try { await client.refreshCredentialsAfterRejection(call); }
