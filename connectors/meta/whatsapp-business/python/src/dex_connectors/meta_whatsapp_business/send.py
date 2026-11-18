@@ -17,6 +17,7 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -146,9 +147,9 @@ class _MessageSend:
     async def local_failure(
         self, is_terminal: bool, kind: FailureKind, message: str
     ) -> MutationAttempt[SentMessage]:
-        """Select defect only when no earlier send may have delivered.
+        """Select defect only for a terminal failure before any possible send.
 
-        After a possible send, a terminal failure selects uncertain and a transient one returns Retry.
+        A transient failure returns Retry; after a possible send, a terminal one selects uncertain.
         """
         if self.has_possible_earlier_send and is_terminal:
             return _uncertain(
@@ -160,8 +161,19 @@ class _MessageSend:
         try:
             await self.fence.record_not_sent()
         except Exception:
-            pass  # The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+            pass  # No claim was made, so a lost notSent checkpoint cannot count a send.
+        if not is_terminal:
+            return _retry(self.operation, FailureKind.AVAILABILITY, message + "; no message was sent")
         return _branch(self.operation, "defect", kind, message)
+
+
+def _is_terminal_credential_error(error: Exception) -> bool:
+    """Report a credential resolution failure that no retry fixes.
+
+    Missing, unselected, rejected, or reauthorization-bound connections are terminal; broker
+    outages, store reads, and other errors are transient.
+    """
+    return isinstance(error, (ValueError, LookupError, AttributeError, ReauthorizationRequiredError))
 
 
 async def _send_message(
@@ -216,9 +228,11 @@ async def _send_message(
     )
     try:
         credentials = await client.credentials.resolve(call)
-    except (ValueError, LookupError, OSError, AttributeError):
+    except Exception as error:
         return await attempt.local_failure(
-            False, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+            _is_terminal_credential_error(error),
+            FailureKind.AUTHENTICATION,
+            "connection credentials are unavailable",
         )
     try:
         token = credentials.access_token.reveal()
