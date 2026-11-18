@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -252,7 +253,13 @@ func TestSendCampaignRetriesATransientCredentialFailureAfterAPossibleSend(t *tes
 		isRetryable bool
 	}{
 		"transient lookup":         {err: errors.New("credential store unavailable"), isRetryable: true},
+		"broker unavailable":       {err: projectconfig.ErrCredentialBrokerUnavailable, isRetryable: true},
+		"not configured":           {err: errors.New("connection is not configured"), isRetryable: true},
 		"reauthorization required": {err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), isRetryable: false},
+		"project reauthorization":  {err: projectconfig.ErrReauthorizationRequired, isRetryable: false},
+		"object not found":         {err: projectconfig.ErrObjectNotFound, isRetryable: false},
+		"not selected":             {err: projectconfig.ErrConnectionNotSelected, isRetryable: false},
+		"broker rejected":          {err: projectconfig.ErrCredentialBrokerRejected, isRetryable: false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			second := first.nextAttempt()

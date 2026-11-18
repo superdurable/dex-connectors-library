@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { MailchimpClient } from '../src/client.js';
 import { SendCampaignDefinition, UpsertMemberDefinition } from '../src/generated/definitions.js';
 import type { SendCampaignOutput } from '../src/generated/models.js';
@@ -88,7 +89,13 @@ describe('Mailchimp sendCampaign bounded resend', () => {
 
   it.each([
     ['a transient lookup retries', new Error('credential store unavailable'), true],
+    ['an unavailable broker retries', new CredentialBrokerUnavailableError(), true],
+    ['an unconfigured connection retries', new Error('connection is not configured'), true],
     ['a reauthorization requirement selects uncertain', new ReauthorizationRequiredError(), false],
+    ['a missing connection selects uncertain', new ObjectNotFoundError(), false],
+    ['an unselected connection selects uncertain', new ConnectionNotSelectedError(), false],
+    ['a broker refusal selects uncertain', new CredentialBrokerRejectedError(), false],
+    ['a fetch TypeError retries', new TypeError('fetch failed'), true],
   ])('after a possible send, %s without recording notSent', async (_name, resolveError, isRetryable) => {
     const script = new CampaignScript('save', [() => serverError]);
     const context = new AttemptContext();

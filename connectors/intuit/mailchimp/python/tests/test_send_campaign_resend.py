@@ -9,6 +9,12 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.singledispatch import Marker
 
 import dex_connectors.intuit_mailchimp as mailchimp
@@ -181,9 +187,22 @@ async def test_unknown_send_outcome_is_resent_after_reading_a_draft() -> None:
     ("error", "is_retryable"),
     [
         (RuntimeError("credential store unavailable"), True),
+        (CredentialBrokerUnavailableError(), True),
+        (ValueError("connection is not configured"), True),
         (sdk.ReauthorizationRequiredError("revoked"), False),
+        (ObjectNotFoundError(), False),
+        (ConnectionNotSelectedError(), False),
+        (CredentialBrokerRejectedError(), False),
     ],
-    ids=["transient lookup", "reauthorization required"],
+    ids=[
+        "transient lookup",
+        "broker unavailable",
+        "not configured",
+        "reauthorization required",
+        "object not found",
+        "not selected",
+        "broker rejected",
+    ],
 )
 async def test_credential_failure_after_a_possible_send(error: Exception, is_retryable: bool) -> None:
     """A transient lookup retries and a terminal one selects uncertain; neither records notSent."""

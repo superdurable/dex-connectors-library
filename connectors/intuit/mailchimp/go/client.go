@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -229,11 +230,11 @@ func (client *Client) resolveConnection(call sdkgo.Call, operation string) (reso
 }
 
 // resolveClassifiedConnection also reports whether a failure may succeed on a later attempt: only a
-// lookup error other than a reauthorization requirement is transient.
+// lookup error outside isTerminalCredentialError is transient.
 func (client *Client) resolveClassifiedConnection(call sdkgo.Call, operation string) (resolvedConnection, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
-		isTransient := !errors.Is(err, sdkgo.ErrReauthorizationRequired)
+		isTransient := !isTerminalCredentialError(err)
 		return resolvedConnection{}, mailchimpFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), isTransient
 	}
 	dataCenter, err := validateResolvedCredentials(credentials)
@@ -427,6 +428,13 @@ func safeRequestID(header http.Header) string {
 		return requestID
 	}
 	return ""
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // validateResolvedCredentials checks the API key and returns the data center its suffix names.
