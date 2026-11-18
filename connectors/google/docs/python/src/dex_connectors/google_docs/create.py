@@ -42,6 +42,9 @@ from .operations import _read_result
 
 # _INVALID_LOOKUP marks a duplicate lookup whose 2xx body could not be decoded.
 _INVALID_LOOKUP = "invalidLookup"
+# The checkpoint provider ID of a create Drive accepted without a usable document ID; it is never a
+# Drive ID, so it only permits lookups, never a resend.
+ACCEPTED_CREATE_WITHOUT_DOCUMENT_ID = "dex:acceptedWithoutDocumentId"
 
 
 @dataclass(frozen=True)
@@ -250,31 +253,44 @@ async def create_document(
                 "createDocument", FailureKind.LOCAL_DEFECT, "single-dispatch fence could not be constructed"
             ),
         )
-    credential = await client.credential(call)
-    if credential is None:
-        if decision.kind == DecisionKind.SEND_ALLOWED and decision.prior_send_upper_bound == 0:
-            try:
-                await fence.record_not_sent()
-            except Exception:
-                pass  # The retry remains safe because no provider request was sent.
-            return MutationAttempt.retry(
-                failure(
-                    "createDocument", FailureKind.AUTHENTICATION, "connection credentials are unavailable"
-                )
-            )
-        return MutationAttempt.retry(
-            failure(
-                "createDocument",
-                FailureKind.AUTHENTICATION,
-                "connection credentials are unavailable for duplicate lookup",
-            )
-        )
     send = _CreateSend(
         fence,
         decision,
         can_resend_unknown_outcome=decision.prior_send_upper_bound + 1 < call.max_sends,
         has_possible_earlier_send=decision.prior_send_upper_bound > 0,
     )
+    credential, is_credential_failure_retryable = await client.write_credential(call)
+    if credential is None:
+        is_first_attempt_send = (
+            decision.kind == DecisionKind.SEND_ALLOWED and decision.prior_send_upper_bound == 0
+        )
+        if is_credential_failure_retryable and is_first_attempt_send:
+            try:
+                await fence.record_not_sent()
+            except Exception:
+                pass  # The retry remains safe because no provider request was sent.
+            return MutationAttempt.retry(
+                failure(
+                    "createDocument",
+                    FailureKind.AUTHENTICATION,
+                    "connection credentials are temporarily unavailable",
+                )
+            )
+        # An unreadable checkpoint may hide an earlier send, so even a terminal failure retries it.
+        if is_credential_failure_retryable or decision.kind == DecisionKind.FAIL_CLOSED:
+            return MutationAttempt.retry(
+                failure(
+                    "createDocument",
+                    FailureKind.AUTHENTICATION,
+                    "connection credentials are unavailable for duplicate lookup",
+                )
+            )
+        return _local_failure(
+            _CreateSend(fence, decision, False, not is_first_attempt_send),
+            FailureKind.AUTHENTICATION,
+            "connection credentials are unavailable; reconnect the connection",
+            Receipt(),
+        )
     if decision.kind == DecisionKind.FAIL_CLOSED:
         # An unreadable checkpoint never permits a send, but the app property can still confirm a create.
         if found := await _find_after_send(client, call, credential, key):
@@ -400,10 +416,18 @@ async def create_document(
         return _local_failure(
             send, FailureKind.LOCAL_DEFECT, "create request could not be encoded", Receipt()
         )
+    observed_statuses: list[int] = []
     try:
         response = await fence.dispatch(
             lambda _deadline: client.exchange(
-                call, credential, "POST", url, body, content_type, single_dispatch=True
+                call,
+                credential,
+                "POST",
+                url,
+                body,
+                content_type,
+                single_dispatch=True,
+                observed_statuses=observed_statuses,
             )
         )
     except (CheckpointError, InsufficientAttemptTimeError):
@@ -415,7 +439,9 @@ async def create_document(
             )
         )
     except Exception:
-        response = Exchange(error="afterSend")
+        # The write window may cut the body after 2xx headers; that status proves the create.
+        accepted_status = next((status for status in observed_statuses if 200 <= status < 300), 0)
+        response = Exchange(status=accepted_status, error="afterSend")
     return await _after_create(client, call, send, credential, key, response)
 
 
@@ -443,6 +469,9 @@ async def _after_create(
             return await _reconcile_accepted(
                 client, call, send, credential, key, response, FailureKind.PROTOCOL
             )
+    if not response.error and _created_document_id(response.body):
+        # A document ID contradicts any other status, so the create is read back and never resent.
+        return await _reconcile_accepted(client, call, send, credential, key, response, FailureKind.PROTOCOL)
     if response.status == 429 or response.status == 403 and retryable(403, tokens) or response.status == 503:
         if found_document := await _find_after_send(client, call, credential, key):
             try:
@@ -472,7 +501,7 @@ async def _after_create(
             ),
             parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC)),
         )
-    if response.status == 401:
+    if response.status == 401 and not response.is_error_body_too_large:
         if not hasattr(client._credentials, "resolve_after_rejection"):
             return await _reject_or_select_uncertain(
                 send, FailureKind.AUTHENTICATION, "provider rejected the create credential", receipt
@@ -541,7 +570,8 @@ async def _after_create(
             FailureKind.TRANSPORT,
             "provider create outcome is unknown",
         )
-    if response.status in DEFINITE_REFUSAL_STATUSES and not _is_accepted_create_body(response.body):
+    # An oversized refusal body might hide a document ID, so its outcome is unknown.
+    if response.status in DEFINITE_REFUSAL_STATUSES and not response.is_error_body_too_large:
         return await _reject_or_select_uncertain(
             send, status_kind(response.status, tokens), "provider rejected the create", receipt
         )
@@ -615,13 +645,7 @@ async def _reconcile_accepted(
         return MutationAttempt.branch_result(
             "created", CreateDocumentOutput(document), client.receipt(call, response, document.document_id)
         )
-    document_id = ""
-    try:
-        value: Any = strict_json_loads(response.body)
-        if isinstance(value, dict) and isinstance(value.get("id"), str) and DRIVE_ID.fullmatch(value["id"]):
-            document_id = value["id"]
-    except (ValueError, TypeError):
-        pass  # A body without a usable ID cannot be read back by ID.
+    document_id = _created_document_id(response.body)
     if document_id:
         try:
             await send.fence.record_provider_id(document_id)
@@ -634,17 +658,41 @@ async def _reconcile_accepted(
                 )
             )
         except Exception:
-            pass  # Without the saved ID a later attempt could resend, so select uncertain.
+            pass  # Without the saved ID, the acceptance marker below still forbids a resend.
+    try:
+        # The saved acceptance makes later attempts look the document up without sending again, up to the cap.
+        await send.fence.record_provider_id(ACCEPTED_CREATE_WITHOUT_DOCUMENT_ID)
+        return MutationAttempt.retry(
+            failure(
+                "createDocument",
+                kind,
+                "provider accepted the create with an unusable response, and the duplicate lookup "
+                "does not show it yet; the next attempt looks it up again",
+            )
+        )
+    except Exception:
+        pass  # Without a saved acceptance a later attempt could resend, so select uncertain.
     return MutationAttempt.uncertain(
         CreateDocumentOutput(),
         failure(
             "createDocument",
             kind,
-            "provider accepted the create with an unusable response, and the duplicate lookup "
-            "does not show it, so it is not sent again",
+            "provider accepted the create with an unusable response, the duplicate lookup "
+            "does not show it, and its acceptance checkpoint failed, so it is not sent again",
         ),
         client.receipt(call, response),
     )
+
+
+def _created_document_id(body: bytes) -> str:
+    """Return the Drive ID a create response names, whatever its other fields hold."""
+    try:
+        value: Any = strict_json_loads(body)
+    except (ValueError, TypeError):
+        return ""
+    if isinstance(value, dict) and isinstance(value.get("id"), str) and DRIVE_ID.fullmatch(value["id"]):
+        return str(value["id"])
+    return ""
 
 
 def _retry_lookup_or_select_uncertain(
@@ -692,12 +740,3 @@ def _local_failure(
     return MutationAttempt.branch_result(
         "defect", CreateDocumentOutput(), receipt, failure("createDocument", kind, message)
     )
-
-
-def _is_accepted_create_body(body: bytes) -> bool:
-    """Report a refusal-status body that still names a created Google Doc."""
-    try:
-        _created(strict_json_loads(body))
-    except (ValueError, TypeError):
-        return False
-    return True

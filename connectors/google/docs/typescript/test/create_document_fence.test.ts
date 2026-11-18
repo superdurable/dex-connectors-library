@@ -3,7 +3,7 @@
 
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { DocsClient } from '../src/client.js';
 import { HeartbeatContext } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
@@ -36,15 +36,61 @@ async function runAttempts(transport: (request: ProviderRequest) => Promise<Prov
   return { results, context };
 }
 
-it('never resends an accepted create whose body is unusable', async () => {
+it('looks an accepted create whose body is unusable up until the cap and never resends it', async () => {
   let creates = 0;
   const { results } = await runAttempts(async request => {
     if (request.method === 'GET') return reply(200, emptyLookup);
     creates++;
     return reply(200, '{"name":"Missing ID"}');
-  }, 1);
-  expect(results[0]!.kind).toBe('uncertain');
+  }, 4);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'retry', 'retry', 'uncertain']);
   expect(creates).toBe(1);
+});
+
+it('finds an accepted create without an ID on a later lookup', async () => {
+  let creates = 0;
+  let lookups = 0;
+  const { results } = await runAttempts(async request => {
+    if (request.method === 'GET') {
+      lookups++;
+      // The first lookup after acceptance fails transiently; the next attempt's lookup finds the document.
+      if (lookups === 2) return reply(503, '{}');
+      return reply(200, lookups >= 3 ? `{"files":[${document}]}` : emptyLookup);
+    }
+    creates++;
+    return reply(200, '{"name":"Missing ID"}');
+  }, 2);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'branch']);
+  expect(results[1]!.kind === 'branch' && results[1]!.branch).toBe('created');
+  expect(creates).toBe(1);
+});
+
+it('reads a refusal carrying a document ID back and never resends it', async () => {
+  let creates = 0;
+  const { results } = await runAttempts(async request => {
+    if (request.method === 'POST') { creates++; return reply(400, '{"id":"newDoc1","mimeType":7}'); }
+    if (request.url.includes('/files/newDoc1')) return reply(200, document);
+    return reply(200, emptyLookup);
+  }, 2);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'branch']);
+  expect(results[1]!.kind === 'branch' && results[1]!.branch).toBe('created');
+  expect(creates).toBe(1);
+});
+
+it('treats a refusal whose body is oversized as an unknown outcome', async () => {
+  const { results } = await runAttempts(async request => {
+    if (request.method === 'GET') return reply(200, emptyLookup);
+    throw new BodyTooLargeError(400, {});
+  }, 1);
+  expect(results[0]!.kind).toBe('retry');
+});
+
+it('selects defect for a terminal credential failure before a send and uncertain after one', async () => {
+  const provider = { resolve: async () => { throw new ReauthorizationRequiredError(); } };
+  const noRequest = async (): Promise<ProviderResponse> => { throw new Error('no request is expected'); };
+  const first = (await runAttempts(noRequest, 1, { provider })).results[0]!;
+  expect(first.kind === 'branch' && first.branch).toBe('defect');
+  expect((await runAttempts(noRequest, 1, { firstAttempt: 2, provider })).results[0]!.kind).toBe('uncertain');
 });
 
 it('reads an accepted create back by the ID its unusable body carries', async () => {
@@ -65,8 +111,8 @@ it('never resends a create whose 2xx body breaks after the headers', async () =>
     if (request.method === 'GET') return reply(200, emptyLookup);
     creates++;
     throw new ProviderTransportError(false, 200, {});
-  }, 1);
-  expect(results[0]!.kind).toBe('uncertain');
+  }, 4);
+  expect(results.map(result => result.kind)).toEqual(['retry', 'retry', 'retry', 'uncertain']);
   expect(creates).toBe(1);
 });
 
@@ -110,10 +156,18 @@ it('retries a refresh failure after a 401 unless reauthorization is required', a
   expect(terminal.results[0]!.kind === 'branch' && terminal.results[0]!.branch).toBe('providerRejected');
 });
 
-it('retries a guarded write whose credentials are missing after a possible write', async () => {
+it('retries a guarded write whose credentials are temporarily unavailable', async () => {
   const provider = { resolve: async () => { throw new Error('credential store unavailable'); } };
   const client = newClient(async () => { throw new Error('no request is expected'); }, provider);
   const context = new HeartbeatContext(undefined, undefined, 'docs-append-credentials', callId);
+  const append = { documentId: 'draftDoc1', requiredRevisionId: 'rev-1', text: 'Published by Dex.' };
+  expect((await client.appendText().invoke(callFor(context), append)).kind).toBe('retry');
+});
+
+it('selects defect for a guarded write that needs reauthorization, and retries after a possible write', async () => {
+  const provider = { resolve: async () => { throw new ReauthorizationRequiredError(); } };
+  const client = newClient(async () => { throw new Error('no request is expected'); }, provider);
+  const context = new HeartbeatContext(undefined, undefined, 'docs-append-reauthorization', callId);
   const append = { documentId: 'draftDoc1', requiredRevisionId: 'rev-1', text: 'Published by Dex.' };
   const first = await client.appendText().invoke(callFor(context), append);
   expect(first.kind === 'branch' && first.branch).toBe('defect');

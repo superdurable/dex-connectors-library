@@ -31,6 +31,9 @@ const (
 	maxTitleBytes             = 1024
 	// createdFileFields selects the Drive file fields that CreatedDocument exposes.
 	createdFileFields = "id,name,mimeType,parents,webViewLink,createdTime,trashed"
+	// acceptedCreateWithoutDocumentID is the checkpoint provider ID of a create Drive accepted without a
+	// usable document ID; it is never a Drive ID, so it only permits lookups, never a resend.
+	acceptedCreateWithoutDocumentID = "dex:acceptedWithoutDocumentId"
 )
 
 // importMediaTypes are the media types Drive converts into a Google Doc for each initial text format.
@@ -160,12 +163,17 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDoc
 		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
 		hasPossibleEarlierSend:  decision.MaximumPriorSends > 0,
 	}
-	credential, failure := client.resolveCredential(call, createDocumentOperationID)
+	credential, failure, isCredentialFailureRetryable := client.resolveWriteCredential(call, createDocumentOperationID)
 	if failure != nil {
-		if decision.Kind == singledispatch.SendAllowed && !send.hasPossibleEarlierSend {
-			return retryCreateBeforeSend(fence, sdkgo.FailureAuthentication, "connection credentials are unavailable")
+		isFirstSend := decision.Kind == singledispatch.SendAllowed && !send.hasPossibleEarlierSend
+		if isCredentialFailureRetryable && isFirstSend {
+			return retryCreateBeforeSend(fence, sdkgo.FailureAuthentication, "connection credentials are temporarily unavailable")
 		}
-		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAuthentication, createDocumentOperationID, "connection credentials are unavailable for duplicate lookup"), 0)
+		// An unreadable checkpoint may hide an earlier send, so even a terminal failure retries it.
+		if isCredentialFailureRetryable || decision.Kind == singledispatch.FailClosed {
+			return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureAuthentication, createDocumentOperationID, "connection credentials are unavailable for duplicate lookup"), 0)
+		}
+		return createLocalFailure(!isFirstSend, sdkgo.FailureAuthentication, failure.Message, sdkgo.Receipt{})
 	}
 	return client.createDocumentWithFence(call, input, format, idempotencyKey, credential, send)
 }
@@ -301,6 +309,9 @@ func (client *Client) createAttemptFromResponse(call sdkgo.Call, send createDocu
 			failureKind = requestErr.kind
 		}
 		return client.reconcileAcceptedCreate(call, send, credential, idempotencyKey, receipt, response.body, failureKind)
+	case sendErr == nil && createdDocumentID(response.body) != "":
+		// A document ID contradicts any other status, so the create is read back and never resent.
+		return client.reconcileAcceptedCreate(call, send, credential, idempotencyKey, receipt, response.body, sdkgo.FailureProtocol)
 	case isRateLimitStatus(response.status, tokens) || response.status == http.StatusServiceUnavailable:
 		if document := client.findCreatedDocumentAfterSend(call, credential, idempotencyKey); document != nil {
 			receipt.ProviderObjectID = document.DocumentID
@@ -313,7 +324,7 @@ func (client *Client) createAttemptFromResponse(call sdkgo.Call, send createDocu
 		}
 		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(statusFailureKind(response.status, tokens), createDocumentOperationID, "provider temporarily rejected the create"), delay)
-	case response.status == http.StatusUnauthorized:
+	case response.status == http.StatusUnauthorized && !response.isErrorBodyOversized:
 		refreshed, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
 		if refreshErr != nil && !sdkgo.IsReauthorizationRequired(refreshErr) {
 			// Google refuses an unauthenticated create before processing it, so a transient refresh failure retries.
@@ -337,7 +348,8 @@ func (client *Client) createAttemptFromResponse(call sdkgo.Call, send createDocu
 			return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(sdkgo.FailureTransport, createDocumentOperationID, "provider connection failed before the create was sent"), 0)
 		}
 		return client.reconcileCreateAfterSend(call, send, credential, idempotencyKey, receipt, sdkgo.FailureTransport, "provider create outcome is unknown")
-	case isDefiniteRefusalStatus(response.status) && !isAcceptedCreateBody(response.body):
+	// An oversized refusal body might hide a document ID, so its outcome is unknown.
+	case isDefiniteRefusalStatus(response.status) && !response.isErrorBodyOversized:
 		return rejectCreateOrSelectUncertain(send, statusFailureKind(response.status, tokens), "provider rejected the create", receipt)
 	default:
 		return client.reconcileCreateAfterSend(call, send, credential, idempotencyKey, receipt, statusFailureKind(response.status, tokens), "provider create outcome is unknown after HTTP "+strconv.Itoa(response.status))
@@ -369,14 +381,27 @@ func (client *Client) reconcileAcceptedCreate(call sdkgo.Call, send createDocume
 		_ = send.fence.RecordProviderID(document.DocumentID)
 		return sdkgo.NewMutationBranch(CreateDocumentBranchCreated, CreateDocumentOutput{Document: *document}, nil, receipt)
 	}
+	if documentID := createdDocumentID(body); documentID != "" && send.fence.RecordProviderID(documentID) == nil {
+		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(failureKind, createDocumentOperationID, "provider accepted the create with an unusable response; the next attempt reads the document back"), 0)
+	}
+	// The saved acceptance makes later attempts look the document up without sending again, up to the cap.
+	if send.fence.RecordProviderID(acceptedCreateWithoutDocumentID) == nil {
+		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(failureKind, createDocumentOperationID,
+			"provider accepted the create with an unusable response, and the duplicate lookup does not show it yet; the next attempt looks it up again"), 0)
+	}
+	return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(failureKind, createDocumentOperationID,
+		"provider accepted the create with an unusable response, the duplicate lookup does not show it, and its acceptance checkpoint failed, so it is not sent again"), receipt)
+}
+
+// createdDocumentID returns the Drive ID a create response names, whatever its other fields hold.
+func createdDocumentID(body []byte) string {
 	var identity struct {
 		ID string `json:"id"`
 	}
-	if json.Unmarshal(body, &identity) == nil && isDriveID(identity.ID) && send.fence.RecordProviderID(identity.ID) == nil {
-		return sdkgo.NewMutationRetry[CreateDocumentOutput](docsFailure(failureKind, createDocumentOperationID, "provider accepted the create with an unusable response; the next attempt reads the document back"), 0)
+	if json.Unmarshal(body, &identity) != nil || !isDriveID(identity.ID) {
+		return ""
 	}
-	return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(failureKind, createDocumentOperationID,
-		"provider accepted the create with an unusable response, and the duplicate lookup does not show it, so it is not sent again"), receipt)
+	return identity.ID
 }
 
 // rejectCreateOrSelectUncertain selects providerRejected only when no earlier send may have created the document.
@@ -395,16 +420,6 @@ func createLocalFailure(hasPossibleEarlierSend bool, failureKind sdkgo.FailureKi
 		return sdkgo.NewMutationUncertain(CreateDocumentOutput{}, docsFailure(failureKind, createDocumentOperationID, message+" after an earlier unconfirmed send"), receipt)
 	}
 	return sdkgo.NewMutationBranch(CreateDocumentBranchDefect, CreateDocumentOutput{}, docsFailurePointer(failureKind, createDocumentOperationID, message), receipt)
-}
-
-// isAcceptedCreateBody reports a refusal-status body that still names a created Google Doc.
-func isAcceptedCreateBody(body []byte) bool {
-	var resource driveFileResource
-	if json.Unmarshal(body, &resource) != nil {
-		return false
-	}
-	_, err := convertCreatedDocument(resource)
-	return err == nil
 }
 
 func (client *Client) findCreatedDocumentAfterSend(call sdkgo.Call, credential *Credentials, idempotencyKey string) *CreatedDocument {

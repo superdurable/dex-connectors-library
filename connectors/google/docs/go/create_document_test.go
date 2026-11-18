@@ -558,11 +558,28 @@ func TestCreateDocumentFenceReadsAcceptedDocumentOnLaterAttempt(t *testing.T) {
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountDuplicateLookups))
 }
 
-func TestCreateDocumentUnusableAcceptedBodyIsNeverResent(t *testing.T) {
+// runCreateDocumentUntilBranch advances attempts while createDocument returns Retry and returns the final result.
+func runCreateDocumentUntilBranch(t *testing.T, ctx *singledispatchtest.Context, client *docs.Client) (sdkgo.MutationResult[docs.CreateDocumentOutput], int) {
+	t.Helper()
+	for attempts := 1; attempts <= 10; attempts++ {
+		result, err := sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
+		var retry *sdkgo.RetryError
+		if !errors.As(err, &retry) {
+			require.NoError(t, err)
+			return result, attempts
+		}
+		ctx.AdvanceAttempt()
+	}
+	require.FailNow(t, "createDocument kept retrying")
+	return sdkgo.MutationResult[docs.CreateDocumentOutput]{}, 0
+}
+
+func TestCreateDocumentUnusableAcceptedBodyIsLookedUpUntilTheCapAndNeverResent(t *testing.T) {
 	lookupCount := 0
 	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
 		if request.method == http.MethodGet {
 			lookupCount++
+			// The first lookup after acceptance fails transiently, so later attempts keep looking.
 			if lookupCount == 2 {
 				writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
 				return
@@ -573,9 +590,68 @@ func TestCreateDocumentUnusableAcceptedBodyIsNeverResent(t *testing.T) {
 		writeJSON(t, response, http.StatusOK, `{"name":"Missing ID"}`)
 	})
 	ctx := singledispatchtest.NewContext("docs-flow", "unusable-accepted")
-	result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
-	require.NoError(t, err)
+	result, attempts := runCreateDocumentUntilBranch(t, ctx, newDocsClient(t, server.URL))
 	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
+	require.Equal(t, 4, attempts, "lookups continue until the send cap of 3 is reached")
+	require.Equal(t, 1, countRecordedCreates(server.recorded()))
+}
+
+func TestCreateDocumentAcceptedWithoutIDIsFoundByALaterLookup(t *testing.T) {
+	isCreated := false
+	lookupCount := 0
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		if request.method == http.MethodGet {
+			lookupCount++
+			if isCreated && lookupCount >= 3 {
+				writeJSON(t, response, http.StatusOK, `{"files":[{"id":"newDoc1","name":"Acme Refund Policy","mimeType":"application/vnd.google-apps.document"}]}`)
+				return
+			}
+			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+			return
+		}
+		isCreated = true
+		writeJSON(t, response, http.StatusOK, `{"name":"Missing ID"}`)
+	})
+	ctx := singledispatchtest.NewContext("docs-flow", "accepted-found-later")
+	result, attempts := runCreateDocumentUntilBranch(t, ctx, newDocsClient(t, server.URL))
+	require.Equal(t, docs.CreateDocumentBranchCreated, result.Branch)
+	require.Equal(t, "newDoc1", result.Value.Document.DocumentID)
+	require.Equal(t, 2, attempts)
+	require.Equal(t, 1, countRecordedCreates(server.recorded()))
+}
+
+func TestCreateDocumentRefusalCarryingADocumentIDIsReadBackAndNeverResent(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		switch {
+		case request.method == http.MethodPost:
+			writeJSON(t, response, http.StatusBadRequest, `{"id":"newDoc1","mimeType":7}`)
+		case request.path == "/drive/v3/files/newDoc1":
+			writeJSON(t, response, http.StatusOK, `{"id":"newDoc1","name":"Acme Refund Policy","mimeType":"application/vnd.google-apps.document"}`)
+		default:
+			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+		}
+	})
+	ctx := singledispatchtest.NewContext("docs-flow", "refusal-with-id")
+	result, attempts := runCreateDocumentUntilBranch(t, ctx, newDocsClient(t, server.URL))
+	require.Equal(t, docs.CreateDocumentBranchCreated, result.Branch)
+	require.Equal(t, 2, attempts)
+	require.Equal(t, 1, countRecordedCreates(server.recorded()))
+}
+
+func TestCreateDocumentOversizedRefusalBodyIsAnUnknownOutcome(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		if request.method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+			return
+		}
+		response.WriteHeader(http.StatusBadRequest)
+		// The client stops reading at its limit, so the rest of this write may fail.
+		_, _ = response.Write([]byte(`{"error":"` + strings.Repeat("x", 2<<20) + `"}`))
+	})
+	ctx := singledispatchtest.NewContext("docs-flow", "oversized-refusal")
+	_, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL, docs.Config{MaxResponseBytes: 1 << 20}).CreateDocument(), docsConnection, policyDraftInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
 	require.Equal(t, 1, countRecordedCreates(server.recorded()))
 }
 
@@ -613,8 +689,7 @@ func TestCreateDocumentBodyThatBreaksAfter2xxHeadersIsNeverResent(t *testing.T) 
 		_, _ = response.Write([]byte(`{"id":"newD`))
 	})
 	ctx := singledispatchtest.NewContext("docs-flow", "broken-accepted-body")
-	result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
-	require.NoError(t, err)
+	result, _ := runCreateDocumentUntilBranch(t, ctx, newDocsClient(t, server.URL))
 	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
 	require.Equal(t, 1, countRecordedCreates(server.recorded()))
 }
@@ -653,6 +728,34 @@ func TestCreateDocumentRetriesAnIncompleteLookupAtTheSendCap(t *testing.T) {
 	ctx.AdvanceAttempt()
 	_, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput(), sdkgo.WithMaxSends(1))
 	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, countRecordedCreates(server.recorded()))
+}
+
+// reauthorizationCredentials always requires the connection to be reauthorized.
+type reauthorizationCredentials struct{}
+
+func (reauthorizationCredentials) Resolve(sdkgo.Call) (docs.Credentials, error) {
+	return docs.Credentials{}, sdkgo.ErrReauthorizationRequired
+}
+
+func (reauthorizationCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[docs.Credentials]) (docs.Credentials, error) {
+	return docs.Credentials{}, sdkgo.ErrReauthorizationRequired
+}
+
+func TestCreateDocumentTerminalCredentialFailureIsDefectBeforeASendAndUncertainAfter(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, _ recordedRequest) {
+		writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+	})
+	client, err := docs.New(docs.Config{DocsEndpoint: server.URL, DriveEndpoint: server.URL}, reauthorizationCredentials{})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("docs-flow", "reauthorize-first"), client.CreateDocument(), docsConnection, policyDraftInput())
+	require.NoError(t, err)
+	require.Equal(t, docs.CreateDocumentBranchDefect, result.Branch)
+	ctx := singledispatchtest.NewContext("docs-flow", "reauthorize-after-send")
+	ctx.AdvanceAttempt()
+	result, err = sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
+	require.NoError(t, err)
+	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
 	require.Zero(t, countRecordedCreates(server.recorded()))
 }
 
@@ -871,8 +974,7 @@ func TestCreateDocumentOversizedAcceptedBodyIsNeverResent(t *testing.T) {
 		writeJSON(t, response, http.StatusOK, `{"id":"`+strings.Repeat("x", 200)+`"}`)
 	})
 	ctx := singledispatchtest.NewContext("docs-flow", "oversized-accepted-create")
-	result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL, docs.Config{MaxResponseBytes: 64}).CreateDocument(), docsConnection, policyDraftInput())
-	require.NoError(t, err)
+	result, _ := runCreateDocumentUntilBranch(t, ctx, newDocsClient(t, server.URL, docs.Config{MaxResponseBytes: 64}))
 	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
 	require.Equal(t, 1, countRecordedCreates(server.recorded()))
 }

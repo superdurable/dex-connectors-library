@@ -9,7 +9,14 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -57,6 +64,8 @@ class Exchange:
     body: bytes = b""
     error: str = ""
     request_id: str = ""
+    # A non-2xx body dropped for its size, which could hide a created object.
+    is_error_body_too_large: bool = False
 
 
 class Client:
@@ -134,6 +143,22 @@ class Client:
         except Exception:
             return None
 
+    async def write_credential(self, call: Call) -> tuple[Credentials | None, bool]:
+        """Resolve a write credential and report whether a failure may clear on a later attempt.
+
+        Only reauthorization or an unusable credential is terminal; any other resolution error is transient.
+        """
+        try:
+            credential = await self._credentials.resolve(call)
+        except ReauthorizationRequiredError:
+            return None, False
+        except Exception:
+            return None, True
+        token = credential.access_token.reveal() if credential.access_token else ""
+        if credential.auth_method_id not in ("", "google-oauth", "workspace-domain-delegation"):
+            return None, False
+        return (credential, False) if is_header_safe_credential(token) else (None, False)
+
     async def exchange(
         self,
         call: Call,
@@ -144,8 +169,13 @@ class Client:
         content_type: str = "",
         *,
         single_dispatch: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one request, refreshing a rejected credential only for ordinary reads and guarded writes."""
+        """Send one request, refreshing a rejected credential only for ordinary reads and guarded writes.
+
+        `observed_statuses` receives each response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Google answered.
+        """
         for attempt in range(2):
             token = credential.access_token.reveal() if credential.access_token else ""
             headers = {"Authorization": "Bearer " + token}
@@ -159,7 +189,10 @@ class Client:
                 response, observation = await send_traced(self._http_client, request)
             except ProviderTransportError as error:
                 return Exchange(error="beforeSend" if error.provably_not_sent else "afterSend")
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             limit = self.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
+            is_error_body_too_large = False
             try:
                 contents = await read_bounded_body(response, limit)
             except BodyTooLargeError:
@@ -170,7 +203,7 @@ class Client:
                         error="tooLarge",
                         request_id=_request_id(response.headers),
                     )
-                contents = b""
+                contents, is_error_body_too_large = b"", True
             except ProviderTransportError:
                 return Exchange(
                     status=response.status_code,
@@ -179,7 +212,11 @@ class Client:
                     request_id=_request_id(response.headers),
                 )
             result = Exchange(
-                response.status_code, response.headers, contents, request_id=_request_id(response.headers)
+                response.status_code,
+                response.headers,
+                contents,
+                request_id=_request_id(response.headers),
+                is_error_body_too_large=is_error_body_too_large,
             )
             if (
                 response.status_code != 401

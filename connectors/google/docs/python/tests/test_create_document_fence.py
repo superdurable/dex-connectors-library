@@ -2,14 +2,17 @@
 # SPDX-License-Identifier: MIT
 """createDocument resend and read-back behavior that the Go-recorded scenarios do not cover."""
 
+import asyncio
 import json
 import sys
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import dex_connectors.sdk as sdk
 import httpx
+from dex_connectors.sdk.providerhttp import MAX_ERROR_BODY_BYTES
 
 import dex_connectors.google_docs as docs
 
@@ -34,6 +37,16 @@ class StaticCredentials:
         if self.is_unavailable:
             raise RuntimeError("credential store unavailable")
         return docs.Credentials(access_token=sdk.SecretString("docs-token"))
+
+
+class FailingCredentials:
+    """Fail every credential resolution with one error."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> docs.Credentials:
+        raise self.error
 
 
 class BrokenBodyStream(httpx.AsyncByteStream):
@@ -74,7 +87,7 @@ def is_lookup(request: httpx.Request) -> bool:
     return request.method == "GET"
 
 
-async def test_unusable_accepted_body_is_never_resent() -> None:
+async def test_unusable_accepted_body_is_looked_up_until_the_cap_and_never_resent() -> None:
     creates = 0
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -84,9 +97,98 @@ async def test_unusable_accepted_body_is_never_resent() -> None:
         creates += 1
         return httpx.Response(200, json={"name": "Missing ID"})
 
-    results, _ = await run_attempts(answer, 1)
-    assert results[0].kind == "uncertain"
+    results, _ = await run_attempts(answer, 4)
+    assert [result.kind for result in results] == ["retry", "retry", "retry", "uncertain"]
     assert creates == 1
+
+
+async def test_accepted_create_without_an_id_is_found_by_a_later_lookup() -> None:
+    """The first lookup after acceptance fails transiently, so the next attempt looks again."""
+    creates = 0
+    lookups = 0
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal creates, lookups
+        if is_lookup(request):
+            lookups += 1
+            if lookups == 2:
+                return httpx.Response(503, json={})
+            return httpx.Response(200, json={"files": [DOCUMENT]} if lookups >= 3 else EMPTY_LOOKUP)
+        creates += 1
+        return httpx.Response(200, json={"name": "Missing ID"})
+
+    results, _ = await run_attempts(answer, 2)
+    assert [result.kind for result in results] == ["retry", "branch"]
+    assert results[1].branch == "created"
+    assert creates == 1
+
+
+async def test_refusal_carrying_a_document_id_is_read_back_and_never_resent() -> None:
+    creates = 0
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal creates
+        if request.method == "POST":
+            creates += 1
+            return httpx.Response(400, json={"id": "newDoc1", "mimeType": 7})
+        if request.url.path.endswith("/files/newDoc1"):
+            return httpx.Response(200, json=DOCUMENT)
+        return httpx.Response(200, json=EMPTY_LOOKUP)
+
+    results, _ = await run_attempts(answer, 2)
+    assert [result.kind for result in results] == ["retry", "branch"]
+    assert results[1].branch == "created"
+    assert creates == 1
+
+
+async def test_oversized_refusal_body_is_an_unknown_outcome() -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        if is_lookup(request):
+            return httpx.Response(200, json=EMPTY_LOOKUP)
+        return httpx.Response(400, content=b"x" * (MAX_ERROR_BODY_BYTES + 1))
+
+    results, _ = await run_attempts(answer, 1)
+    assert results[0].kind == "retry"
+
+
+class StalledBodyStream(httpx.AsyncByteStream):
+    """Stall after 2xx headers until the Fence write window ends."""
+
+    async def __aiter__(self):  # type: ignore[no-untyped-def]
+        await asyncio.sleep(5)
+        yield b"{}"
+
+
+async def test_write_deadline_that_cuts_an_accepted_body_is_never_resent() -> None:
+    """2xx headers arrived, so the Fence write-window timeout proves the create."""
+    creates = 0
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        nonlocal creates
+        if is_lookup(request):
+            return httpx.Response(200, json=EMPTY_LOOKUP)
+        creates += 1
+        return httpx.Response(200, stream=StalledBodyStream())
+
+    context = HeartbeatContext(call_id=CALL_ID)
+    context.deadline = datetime.now(UTC) + timedelta(seconds=1.2)
+    first, _ = await run_attempts(answer, 1, context=context)
+    assert first[0].kind == "retry"
+    context.deadline = datetime.now(UTC) + timedelta(seconds=30)
+    later, _ = await run_attempts(answer, 3, context=context, first_attempt=2)
+    assert [result.kind for result in later] == ["retry", "retry", "uncertain"]
+    assert creates == 1
+
+
+async def test_terminal_credential_failure_is_defect_before_a_send_and_uncertain_after() -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    revoked = FailingCredentials(sdk.ReauthorizationRequiredError())
+    first, _ = await run_attempts(answer, 1, revoked)
+    assert first[0].kind == "branch" and first[0].branch == "defect"
+    later, _ = await run_attempts(answer, 1, revoked, first_attempt=2)
+    assert later[0].kind == "uncertain"
 
 
 async def test_accepted_body_with_an_id_is_read_back_by_id() -> None:
@@ -117,8 +219,8 @@ async def test_body_that_breaks_after_2xx_headers_is_never_resent() -> None:
         creates += 1
         return httpx.Response(200, stream=BrokenBodyStream())
 
-    results, _ = await run_attempts(answer, 1)
-    assert results[0].kind == "uncertain"
+    results, _ = await run_attempts(answer, 4)
+    assert [result.kind for result in results] == ["retry", "retry", "retry", "uncertain"]
     assert creates == 1
 
 
@@ -185,9 +287,23 @@ async def test_refresh_failure_after_401_retries_unless_reauthorization_is_requi
     assert terminal[0].kind == "branch" and terminal[0].branch == "providerRejected"
 
 
-async def test_guarded_write_retries_missing_credentials_after_a_possible_write() -> None:
+async def test_guarded_write_retries_a_transient_credential_failure() -> None:
     credentials = StaticCredentials()
     credentials.is_unavailable = True
+    append = docs.AppendTextInput("draftDoc1", "rev-1", "Published by Dex.")
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request is expected")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        config = docs.Config(docs_endpoint="http://127.0.0.1", drive_endpoint="http://127.0.0.1")
+        client = docs.Client(config, credentials, http_client)  # type: ignore[arg-type]
+        first = await client.append_text().invoke(call_for(HeartbeatContext(call_id=CALL_ID)), append)
+    assert first.kind == "retry"
+
+
+async def test_guarded_write_retries_missing_credentials_after_a_possible_write() -> None:
+    credentials = FailingCredentials(sdk.ReauthorizationRequiredError())
     append = docs.AppendTextInput("draftDoc1", "rev-1", "Published by Dex.")
 
     def answer(request: httpx.Request) -> httpx.Response:
