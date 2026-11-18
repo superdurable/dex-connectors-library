@@ -10,7 +10,7 @@ from typing import Generic, NoReturn, TypeVar, cast
 
 import dex
 
-from ._step_attempt import _next_call_occurrence, _record_issued_call_id
+from ._step_attempt import _next_call_occurrence
 from .configuration_ui import ConnectorConfigurationUI
 from .errors import Failure, RetryError
 from .operations import Mutation, Query, run_mutation, run_query
@@ -388,24 +388,14 @@ def derive_step_call_id(context: dex.AsyncContext, operation: OperationRef) -> C
     when the Step makes its calls in a deterministic order. Step factories
     call it; a Step that builds a `Call` for `run_query` or `run_mutation`
     itself calls it once per call.
-
-    As in Go, a Mutation call that `run_mutation` refuses as concurrent
-    before it ever began gives up its occurrence, and later calls of the
-    operation shift down past it: the operation, Fence, receipt, and
-    progress of such a later call see the shifted occurrence's ID. Without
-    a refusal, every call keeps this ID.
     """
     if not context.flow_id or not context.step_execution_id:
         raise ValueError("connector operations require a Dex Flow and Step execution")
     operation.validate()
     occurrence = _next_call_occurrence(context, operation.connector_id, operation.operation_id)
-    call_id = derive_call_id(
+    return derive_call_id(
         context.flow_id, context.step_execution_id, operation, occurrence=occurrence
     )
-    _record_issued_call_id(
-        context, operation.connector_id, operation.operation_id, str(call_id), occurrence
-    )
-    return call_id
 
 
 def raise_dex_retry(error: RetryError) -> NoReturn:

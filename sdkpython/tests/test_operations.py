@@ -273,8 +273,8 @@ async def test_concurrent_call_of_the_same_mutation_is_refused_before_sending() 
 
 
 @pytest.mark.asyncio
-async def test_refused_concurrent_mutation_consumes_no_occurrence() -> None:
-    """As in Go, the next begun Mutation gets occurrence 2 after refused concurrent calls."""
+async def test_refused_concurrent_mutation_keeps_its_occurrence() -> None:
+    """Refused calls keep their ordinals, so the next call gets occurrence 4 regardless of timing."""
     context = cast(dex.AsyncContext, StepContext())
     unbound_receipt = replace(RECEIPT, call_id=CallID(""))
 
@@ -301,14 +301,15 @@ async def test_refused_concurrent_mutation_consumes_no_occurrence() -> None:
 
     later = ExampleMutation(MutationAttempt.branch_result("success", "ok", unbound_receipt))
     later_call = derived_call()
-    second_occurrence = derive_call_id("flow-1", "step-1", OPERATION, occurrence=2)
-    assert later_call.id != second_occurrence, "construction consumed occurrences 2 to 4"
+    fourth_occurrence = derive_call_id("flow-1", "step-1", OPERATION, occurrence=4)
+    assert later_call.id == fourth_occurrence, "construction consumed occurrences 1 to 3"
     result = await run_mutation(later, later_call, "later")
-    assert later.observed_call is not None and later.observed_call.id == second_occurrence
-    assert result.receipt.call_id == second_occurrence
-    assert str(later.observed_call.idempotency_key) == str(second_occurrence)
+    assert later.observed_call is not None and later.observed_call.id == fourth_occurrence
+    assert result.receipt.call_id == fourth_occurrence
+    assert str(later.observed_call.idempotency_key) == str(fourth_occurrence)
 
-    assert await _run_and_observe_call_id(later_call) == second_occurrence, "a rerun keeps its ID"
+    assert await _run_and_observe_call_id(later_call) == fourth_occurrence, "a rerun keeps its ID"
+    assert await _run_and_observe_call_id(calls[1]) == calls[1].id, "a refused call later runs with its own ID"
 
     application_call = Call(CALL_ID, CONNECTION, OPERATION, context=context)
     assert await _run_and_observe_call_id(application_call) == CALL_ID
@@ -324,8 +325,8 @@ async def _run_and_observe_call_id(call: Call) -> CallID | None:
 
 
 @pytest.mark.asyncio
-async def test_occurrences_shift_only_past_calls_refused_before_they_began() -> None:
-    """Unused calls, reruns, and refusals of a running call keep IDs; a shift never reuses an ID."""
+async def test_occurrences_follow_construction_order_only() -> None:
+    """Unused calls, reruns, and refused calls keep their IDs; overlaps never shift an occurrence."""
     context = cast(dex.AsyncContext, StepContext())
 
     def derived_call() -> Call:
@@ -356,12 +357,8 @@ async def test_occurrences_shift_only_past_calls_refused_before_they_began() -> 
     assert await _run_and_observe_call_id(refused) is None
     blocking.release.set()
     await task
-    assert await _run_and_observe_call_id(derived_call()) == occurrence(5), "shifted past the refused call"
-    collision = ExampleMutation(MutationAttempt.branch_result("success", "ok", RECEIPT))
-    result = await run_mutation(collision, refused, "rerun")
-    assert result.branch == "defect" and result.failure is not None
-    assert "reuse the Call ID" in result.failure.message
-    assert collision.observed_call is None, "a call whose occurrence is held never reaches invoke"
+    assert await _run_and_observe_call_id(derived_call()) == occurrence(6), "the refused call kept occurrence 5"
+    assert await _run_and_observe_call_id(refused) == occurrence(5), "the refused call reruns with its own ID"
 
 
 def test_step_attempt_state_requires_a_weakly_referenceable_context() -> None:
