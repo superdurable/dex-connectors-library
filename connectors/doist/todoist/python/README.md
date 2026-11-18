@@ -24,9 +24,11 @@ refusal branch only for HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422.
 `max_sends=call.max_sends` (3 by default): a failure known not to have sent the
 request, HTTP 429, and HTTP 503 retry, and any other unknown outcome, such as a
 lost response, 409, or 5xx, resends the same `X-Request-ID` below the cap and
-selects `uncertain` at the cap. A returned task ID is saved in the checkpoint
-and never resent; with unusable fields it is read back once within the
-attempt, and a later attempt reads it back instead of sending.
+selects `uncertain` at the cap. Any other 2xx without a valid task ID, including
+a body that breaks after its headers, selects `uncertain` and is never resent.
+A returned task ID is saved in the checkpoint and never resent; with unusable
+fields it is read back within the attempt, a transient read failure retries
+the read-back, and a later attempt reads it back instead of sending.
 `updateTaskContent` reads back a malformed or mismatched success and retries
 the safe absolute replacement on any unknown outcome. Delete retries any
 unknown outcome; a 404 selects `alreadyAbsent`. Optional branches left unwired

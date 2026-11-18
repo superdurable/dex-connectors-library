@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type MutationResult } from '@superdurable/connectors-sdk';
-import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderStalledError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { TodoistClient } from '../src/client.js';
 import { CreateTaskDefinition, DeleteTaskDefinition, UpdateTaskDefinition } from '../src/generated/definitions.js';
 import { AttemptContext } from './attempt-context.js';
@@ -61,9 +61,72 @@ describe('Todoist bounded resend of unconfirmed creates', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('resends a 2xx without a task ID', async () => {
-    const { client } = newClient(status(200, '{"ok":true}'));
-    expect(await run(client, 'createTask', new AttemptContext())).toBe('retry');
+  it('selects uncertain for a 2xx without a task ID and never resends it', async () => {
+    const { client, requests } = newClient(status(200, '{"ok":true}'));
+    expect(await run(client, 'createTask', new AttemptContext())).toBe('uncertain');
+    expect(requests).toHaveLength(1);
+  });
+
+  it('selects uncertain when a 2xx body breaks after its headers and never resends it', async () => {
+    for (const failure of [new ProviderTransportError(false, 200, {}), new ProviderStalledError(201, {})]) {
+      const { client, requests } = newClient(() => { throw failure; });
+      const context = new AttemptContext();
+      expect(await run(client, 'createTask', context)).toBe('uncertain');
+      expect(context.marker).toMatchObject({ state: 'claimed' });
+      expect(requests).toHaveLength(1);
+    }
+  });
+
+  it('passes the Fence write-window signal to the creation request', async () => {
+    const { client, requests } = newClient(status(200, task));
+    const context = new AttemptContext();
+    expect(await run(client, 'createTask', context)).toBe('created');
+    expect(requests[0]!.signal).toBeDefined();
+    expect(requests[0]!.signal).not.toBe(context.cancellationSignal);
+  });
+
+  it.each([429, 500, 503])('retries a %i read-back after acceptance and reads the saved task ID again', async code => {
+    const reads = [code, 200];
+    const { client, requests } = newClient(request => request.method === 'GET' ? status(reads.shift()!, task)(request) : status(200, '{"id":"task-123"}')(request));
+    const context = new AttemptContext();
+    expect(await run(client, 'createTask', context)).toBe('retry');
+    expect(context.marker).toMatchObject({ providerId: 'task-123' });
+    context.attempt = 2;
+    expect(await run(client, 'createTask', context)).toBe('created');
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET', 'GET']);
+  });
+
+  it('selects uncertain for a transient read-back when the task ID could not be saved', async () => {
+    const { client, requests } = newClient(request => request.method === 'GET' ? status(503)(request) : status(200, '{"id":"task-123"}')(request));
+    const context = new AttemptContext();
+    const recordHeartbeat = context.recordHeartbeat.bind(context);
+    context.recordHeartbeat = async (value: unknown) => {
+      if (JSON.stringify(value).includes('task-123')) throw new Error('heartbeat lost');
+      await recordHeartbeat(value);
+    };
+    expect(await run(client, 'createTask', context)).toBe('uncertain');
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+  });
+
+  it('keeps counting toward the cap after a rate-limited resend', async () => {
+    const codes = [502, 429, 502, 502];
+    const { client, requests } = newClient(request => status(codes.shift()!)(request));
+    const context = new AttemptContext();
+    for (; context.attempt <= 3; context.attempt++) expect(await run(client, 'createTask', context)).toBe('retry');
+    expect(await run(client, 'createTask', context)).toBe('uncertain');
+    expect(requests).toHaveLength(4);
+  });
+
+  it('never records notSent for a credential failure after a rate-limited resend', async () => {
+    const codes = [502, 429];
+    const { client } = newClient(request => status(codes.shift()!)(request));
+    const context = new AttemptContext();
+    for (; context.attempt <= 2; context.attempt++) expect(await run(client, 'createTask', context)).toBe('retry');
+    const before = context.marker;
+    const invalid = newClient(status(200, task), 'bad\ntoken');
+    expect(await run(invalid.client, 'createTask', context)).toBe('uncertain');
+    expect(context.marker).toBe(before);
+    expect(invalid.requests).toHaveLength(0);
   });
 
   it('reads back a saved task ID and never resends it', async () => {

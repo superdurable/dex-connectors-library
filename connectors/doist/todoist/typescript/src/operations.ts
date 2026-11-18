@@ -114,7 +114,7 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, Task> {
     if (acceptedTaskID) return this.readAcceptedTask(call, attempt, acceptedTaskID);
     if (attempt.failure) return write.credentialFailure(attempt.failure);
     let answer: TodoistExchange;
-    try { answer = await write.fence.dispatch(() => this.client.request(call, attempt, operation, 'POST', '/tasks', payload, call.idempotencyKey!, true)); }
+    try { answer = await write.fence.dispatch(signal => this.client.request(call, attempt, operation, 'POST', '/tasks', payload, call.idempotencyKey!, true, signal)); }
     catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(todoistFailure(operation, 'AVAILABILITY', 'Todoist dispatch checkpoint or attempt time is unavailable, so the request was not sent'));
       return newMutationRetry(todoistFailure(operation, 'AVAILABILITY', 'Todoist dispatch was not allowed, so nothing was sent'));
@@ -128,10 +128,13 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, Task> {
     let taskID = '';
     try { const parsed: unknown = JSON.parse(Buffer.from(answer.body).toString('utf8')); if (parsed && typeof parsed === 'object' && 'id' in parsed && typeof parsed.id === 'string' && isTaskID(parsed.id)) taskID = parsed.id; }
     catch { /* A malformed 2xx carries no task ID, so its outcome is unknown. */ }
-    if (!taskID) return write.resendOrSelectUncertain(todoistFailure(operation, 'PROTOCOL', 'Todoist answered the creation without a usable task'));
-    await write.recordAcceptedTask(taskID);
+    // A 2xx means Todoist accepted the creation, so a resend could create a second task.
+    if (!taskID) return newMutationUncertain(emptyTask, todoistFailure(operation, 'PROTOCOL', 'Todoist accepted the creation without a usable task, so the task is unconfirmed'), zeroReceipt());
+    const isTaskIDSaved = await write.recordAcceptedTask(taskID);
     const readBack = await this.client.taskRequest(call, attempt, operation, 'GET', taskID);
     if (!readBack.failure) return newMutationBranch('created', readBack.task!, zeroReceipt());
+    // The next attempt reads the saved task ID back instead of resending.
+    if (isTaskIDSaved && !readBack.isLocalDefect && (readBack.isTransient || readBack.status === 429)) return newMutationRetry(readBack.failure, readBack.retryAfterMs);
     return newMutationUncertain(emptyTask, todoistFailure(operation, 'PROTOCOL', `Todoist accepted the creation of task ${taskID} but it could not be read back in this attempt, so the task is unconfirmed`), zeroReceipt());
   }
   /** Read back the task an earlier attempt saved; never resend it. */
@@ -157,7 +160,7 @@ class FencedCreate {
   /** Map a credential failure before the send. */
   async credentialFailure(answer: TodoistExchange): Promise<MutationAttempt<Task>> {
     // notSent after a possible earlier send would hide it, so only a first-send decision records it.
-    if (this.decision.kind === 'sendAllowed') {
+    if (this.decision.kind === 'sendAllowed' && !this.hasPossibleEarlierSend) {
       try { await this.fence.recordNotSent(); } catch { return newMutationRetry(todoistFailure('createTask', 'AVAILABILITY', 'Todoist credentials failed and the not-sent checkpoint could not be recorded')); }
     }
     if (answer.isLocalDefect) return this.defectOrSelectUncertain(answer.failure!);
@@ -166,6 +169,8 @@ class FencedCreate {
   /** Map a sent request without a usable task; an unknown outcome resends below the cap. */
   async attemptForUnacceptedCreate(answer: TodoistExchange): Promise<MutationAttempt<Task>> {
     const cause = answer.failure!;
+    // Todoist accepted the creation, so a resend could create a second task.
+    if (isSuccess(answer.status)) return newMutationUncertain(emptyTask, cause, zeroReceipt());
     if (answer.isLocalDefect) {
       // The request was never built, so nothing was sent; a lost checkpoint only keeps the claim.
       try { await this.fence.recordCanResend(); } catch { /* The claim stays, which never permits more than the cap. */ }
@@ -178,9 +183,9 @@ class FencedCreate {
     if (definiteWriteRefusalStatuses.has(answer.status)) return this.rejectOrSelectUncertain(cause);
     return this.resendOrSelectUncertain(cause, answer.retryAfterMs);
   }
-  /** Save the accepted task ID so a replayed attempt reads it back instead of resending. */
-  async recordAcceptedTask(taskID: string): Promise<void> {
-    try { await this.fence.recordProviderId(taskID); } catch { /* The accepted result stands; a lost checkpoint keeps the claim. */ }
+  /** Save the accepted task ID so a replayed attempt reads it back instead of resending; report whether it was saved. */
+  async recordAcceptedTask(taskID: string): Promise<boolean> {
+    try { await this.fence.recordProviderId(taskID); return true; } catch { /* The accepted result stands; a lost checkpoint keeps the claim. */ return false; }
   }
   /** Retry an unknown outcome while the send cap allows another send. */
   resendOrSelectUncertain(cause: Failure, retryAfterMs = 0): MutationAttempt<Task> {

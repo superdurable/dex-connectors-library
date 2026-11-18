@@ -547,12 +547,17 @@ func TestCreateAndDeleteHTTPOutcomes(t *testing.T) {
 			defer server.Close()
 			client := newTestClient(t, server.URL)
 			created, createErr := createTask(client, CreateTaskInput{Content: "New"})
-			// Below the send cap, every outcome except a definite refusal retries.
-			require.Equal(t, !isDefiniteWriteRefusalStatus(status), createErr != nil)
+			// Below the send cap, every outcome except a definite refusal or an accepted 2xx retries.
+			require.Equal(t, !isDefiniteWriteRefusalStatus(status) && !isSuccessStatus(status), createErr != nil)
 			if createErr != nil {
 				require.NotContains(t, createErr.Error(), testToken)
 			} else {
-				require.Equal(t, CreateTaskBranchProviderRejected, created.Branch)
+				expected := CreateTaskBranchProviderRejected
+				if isSuccessStatus(status) {
+					// An accepted creation without a usable task is never resent.
+					expected = CreateTaskBranchUncertain
+				}
+				require.Equal(t, expected, created.Branch)
 				encoded, err := json.Marshal(created)
 				require.NoError(t, err)
 				require.NotContains(t, string(encoded), testToken)
@@ -809,9 +814,9 @@ func TestOtherSuccessStatusesAreAnswers(t *testing.T) {
 	}{
 		{http.StatusCreated, taskJSON("New"), CreateTaskBranchCreated, GetTaskBranchFound, false},
 		{http.StatusAccepted, taskJSON("New"), CreateTaskBranchCreated, GetTaskBranchFound, false},
-		// An empty createBranch means a 2xx without a usable task resends below the cap.
-		{http.StatusCreated, "{", "", GetTaskBranchInvalidResponse, true},
-		{http.StatusNoContent, "", "", GetTaskBranchInvalidResponse, true},
+		// A 2xx without a usable task accepted the creation, so it is uncertain and never resent.
+		{http.StatusCreated, "{", CreateTaskBranchUncertain, GetTaskBranchInvalidResponse, true},
+		{http.StatusNoContent, "", CreateTaskBranchUncertain, GetTaskBranchInvalidResponse, true},
 	} {
 		t.Run(fmt.Sprintf("%d %s", scenario.status, scenario.body), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
@@ -822,12 +827,8 @@ func TestOtherSuccessStatusesAreAnswers(t *testing.T) {
 			defer server.Close()
 			client := newTestClient(t, server.URL)
 			created, err := createTask(client, CreateTaskInput{Content: "New"})
-			if scenario.createBranch == "" {
-				requireRetry(t, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, scenario.createBranch, created.Branch)
-			}
+			require.NoError(t, err)
+			require.Equal(t, scenario.createBranch, created.Branch)
 			read, err := readTask(client)
 			require.NoError(t, err)
 			require.Equal(t, scenario.readBranch, read.Branch)
@@ -858,12 +859,13 @@ func TestCreateTaskReturnsStoredTaskWhenFieldsDiffer(t *testing.T) {
 	require.Equal(t, Task{ID: "6XGgmFVcrG5RRjVr", ProjectID: "6XGgm6PHrGgMpCFX", Content: "Requested title"}, result.Value)
 }
 
-func TestCreateTaskUnusableAnswerResendsUpToTheSendCap(t *testing.T) {
+func TestCreateTaskUnusableAcceptedAnswerIsUncertainAndNeverResent(t *testing.T) {
 	for name, body := range map[string]string{
 		"malformed":       "{",
 		"missing task ID": `{"project_id":"6XGgm6PHrGgMpCFX","content":"New","description":"","checked":false}`,
 		"invalid task ID": strings.Replace(taskJSON("New"), "6XGgmFVcrG5RRjVr", "bad/id", 1),
 		"reflected token": taskJSON(testToken),
+		"oversized":       strings.Repeat("x", 1<<20+1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			var posts, reads atomic.Int32
@@ -878,18 +880,11 @@ func TestCreateTaskUnusableAnswerResendsUpToTheSendCap(t *testing.T) {
 			}))
 			defer server.Close()
 			client := newTestClient(t, server.URL)
-			attempt := newAttemptContext()
-			for range CreateTaskDefinition.MaxSends - 1 {
-				_, err := createTaskAttempt(client, attempt, CreateTaskInput{Content: "New"})
-				require.Equal(t, sdkgo.FailureProtocol, requireRetry(t, err).Failure.Kind)
-				attempt.nextAttempt()
-			}
-			result, err := createTaskAttempt(client, attempt, CreateTaskInput{Content: "New"})
+			result, err := createTaskAttempt(client, newAttemptContext(), CreateTaskInput{Content: "New"})
 			require.NoError(t, err)
 			require.Equal(t, CreateTaskBranchUncertain, result.Branch)
-			require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 			require.Equal(t, Task{}, result.Value)
-			require.Equal(t, CreateTaskDefinition.MaxSends, posts.Load())
+			require.Equal(t, int32(1), posts.Load())
 			require.Zero(t, reads.Load())
 		})
 	}
@@ -947,13 +942,9 @@ func TestCreateTaskUnconfirmedReadRemainsUncertain(t *testing.T) {
 	}{
 		{"not found", http.StatusNotFound, "", nil},
 		{"forbidden", http.StatusForbidden, "", nil},
-		{"rate limited", http.StatusTooManyRequests, "", nil},
-		{"server error", http.StatusInternalServerError, "", nil},
-		{"unavailable", http.StatusServiceUnavailable, "", nil},
 		{"malformed", http.StatusOK, "{", nil},
 		{"incomplete", http.StatusOK, `{"id":"6XGgmFVcrG5RRjVr"}`, nil},
 		{"mismatched ID", http.StatusOK, strings.Replace(taskJSON("New"), "6XGgmFVcrG5RRjVr", "otherTask", 1), nil},
-		{"lost response", http.StatusOK, taskJSON("New"), dropReadResponseTransport{}},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			var posts, reads atomic.Int32
@@ -985,6 +976,162 @@ func TestCreateTaskUnconfirmedReadRemainsUncertain(t *testing.T) {
 			require.Equal(t, int32(1), reads.Load())
 		})
 	}
+}
+
+func TestCreateTaskTransientReadBackAfterAcceptanceRetriesTheReadBack(t *testing.T) {
+	for _, scenario := range []struct {
+		name      string
+		status    int
+		transport http.RoundTripper
+	}{
+		{"rate limited", http.StatusTooManyRequests, nil},
+		{"server error", http.StatusInternalServerError, nil},
+		{"unavailable", http.StatusServiceUnavailable, nil},
+		{"lost response", http.StatusOK, dropReadResponseTransport{}},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			var posts, reads atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodPost {
+					posts.Add(1)
+					_, err := io.WriteString(w, `{"id":"6XGgmFVcrG5RRjVr"}`)
+					require.NoError(t, err)
+					return
+				}
+				if reads.Add(1) == 1 {
+					w.WriteHeader(scenario.status)
+				}
+				_, err := io.WriteString(w, taskJSON("New"))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			var options []Option
+			if scenario.transport != nil {
+				options = append(options, WithHTTPClient(&http.Client{Transport: scenario.transport}))
+			}
+			attempt := newAttemptContext()
+			_, err := createTaskAttempt(newTestClient(t, server.URL, options...), attempt, CreateTaskInput{Content: "New"})
+			requireRetry(t, err)
+			require.Equal(t, "6XGgmFVcrG5RRjVr", attempt.recordedMarker(t).ProviderID)
+			// The next attempt reads the saved task ID back and never resends the creation.
+			attempt.nextAttempt()
+			result, err := createTaskAttempt(newTestClient(t, server.URL), attempt, CreateTaskInput{Content: "New"})
+			require.NoError(t, err)
+			require.Equal(t, CreateTaskBranchCreated, result.Branch)
+			require.Equal(t, int32(1), posts.Load())
+			require.Equal(t, int32(2), reads.Load())
+		})
+	}
+}
+
+// providerIDLossContext loses every heartbeat that carries a provider ID.
+type providerIDLossContext struct{ *attemptContext }
+
+func (context providerIDLossContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	if strings.Contains(string(encoded), `"providerId"`) {
+		return errors.New("heartbeat lost")
+	}
+	return context.attemptContext.RecordHeartbeat(value)
+}
+
+func TestCreateTaskTransientReadBackWithUnsavedTaskIDIsUncertain(t *testing.T) {
+	var posts, reads atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodPost {
+			posts.Add(1)
+			_, err := io.WriteString(w, `{"id":"6XGgmFVcrG5RRjVr"}`)
+			require.NoError(t, err)
+			return
+		}
+		reads.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+	result, err := sdkgo.RunMutation(providerIDLossContext{newAttemptContext()}, newTestClient(t, server.URL).CreateTask(), testConnection, CreateTaskInput{Content: "New"})
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, int32(1), posts.Load())
+	require.Equal(t, int32(1), reads.Load())
+}
+
+// brokenBodyTransport answers a POST with 2xx headers, then fails while its body is read.
+type brokenBodyTransport struct{}
+
+func (brokenBodyTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(io.MultiReader(strings.NewReader(`{"id":`), errorReader{})), Request: request}, nil
+}
+
+type errorReader struct{}
+
+func (errorReader) Read([]byte) (int, error) { return 0, errors.New("connection reset") }
+
+func TestCreateTaskAcceptedAnswerWhoseBodyBreaksIsUncertainAndNeverResent(t *testing.T) {
+	client := newTestClient(t, "https://api.todoist.com/api/v1", WithHTTPClient(&http.Client{Transport: brokenBodyTransport{}}))
+	attempt := newAttemptContext()
+	result, err := createTaskAttempt(client, attempt, CreateTaskInput{Content: "New"})
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, singledispatch.StateClaimed, attempt.recordedMarker(t).State)
+}
+
+func TestCreateTaskRateLimitAfterUnknownOutcomeKeepsCountingTowardTheCap(t *testing.T) {
+	var posts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if posts.Add(1) == 2 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	attempt := newAttemptContext()
+	// Attempt one is unknown, attempt two is rate limited, and attempt three is unknown again.
+	for range 3 {
+		_, err := createTaskAttempt(client, attempt, CreateTaskInput{Content: "New"})
+		requireRetry(t, err)
+		attempt.nextAttempt()
+	}
+	result, err := createTaskAttempt(client, attempt, CreateTaskInput{Content: "New"})
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, int32(4), posts.Load())
+}
+
+func TestCreateTaskCredentialFailureAfterRateLimitedResendNeverRecordsNotSent(t *testing.T) {
+	var posts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if posts.Add(1) == 2 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	attempt := newAttemptContext()
+	for range 2 {
+		_, err := createTaskAttempt(client, attempt, CreateTaskInput{Content: "New"})
+		requireRetry(t, err)
+		attempt.nextAttempt()
+	}
+	// The canResend marker gives sendAllowed with one possible earlier send.
+	transient, err := New(Config{BaseURL: server.URL}, failingCredentials{errors.New("project object read failed")})
+	require.NoError(t, err)
+	_, err = createTaskAttempt(transient, attempt, CreateTaskInput{Content: "New"})
+	requireRetry(t, err)
+	require.Nil(t, attempt.recordedHeartbeat)
+	invalid, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIToken: sdkgo.NewSecretString("unsafe\ncredential")}})
+	require.NoError(t, err)
+	result, err := createTaskAttempt(invalid, attempt, CreateTaskInput{Content: "New"})
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+	require.Nil(t, attempt.recordedHeartbeat)
+	require.Equal(t, int32(2), posts.Load())
 }
 
 func TestUpdateReadBackOfInactiveTaskSelectsNotFound(t *testing.T) {
@@ -1261,13 +1408,14 @@ func TestCreateTaskStalledRequestsEndAtTheirBudgetDeadline(t *testing.T) {
 				requireRetry(t, err)
 				return
 			}
-			// A loaded host may leave too little time to start the read-back; that also selects uncertain.
+			// A loaded host may leave too little time to start the read-back; that also retries the read-back.
 			for _, read := range reads {
 				requireBudgetDeadline(t, read.deadline, before, after, stepDeadline, 5, 6)
 				require.ErrorIs(t, read.contextError, context.DeadlineExceeded)
 			}
-			require.NoError(t, err)
-			require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+			// The task ID is saved, so the next attempt reads it back instead of resending.
+			requireRetry(t, err)
+			require.Empty(t, result.Branch)
 		})
 	}
 }
@@ -1333,7 +1481,7 @@ func TestExpiredAttemptRetriesWithoutSending(t *testing.T) {
 	}
 }
 
-func TestCreatedTaskReadBackWithoutTimeLeftStaysUncertain(t *testing.T) {
+func TestCreatedTaskReadBackWithoutTimeLeftRetriesOnlyWhenTheTaskIDIsSaved(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests.Add(1)
@@ -1343,7 +1491,10 @@ func TestCreatedTaskReadBackWithoutTimeLeftStaysUncertain(t *testing.T) {
 	defer server.Close()
 	budget := attemptBudget{stepContext: context.Background(), attemptDeadline: time.Now().Add(time.Second), minimumRequestTime: time.Minute}
 	credentials := Credentials{APIToken: sdkgo.NewSecretString(testToken)}
-	attempt := newTestClient(t, server.URL).CreateTask().readCreatedTask(budget, credentials, "6XGgmFVcrG5RRjVr")
+	operation := newTestClient(t, server.URL).CreateTask()
+	saved := operation.readCreatedTask(budget, credentials, "6XGgmFVcrG5RRjVr", true)
+	require.Equal(t, sdkgo.NewMutationRetry[Task](*failure("createTask", sdkgo.FailureAvailability, "too little attempt time remained, so the request was not sent"), 0), saved)
+	attempt := operation.readCreatedTask(budget, credentials, "6XGgmFVcrG5RRjVr", false)
 	require.Equal(t, sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation of task 6XGgmFVcrG5RRjVr but it could not be read back in this attempt, so the task is unconfirmed"), sdkgo.Receipt{}), attempt)
 	require.Zero(t, requests.Load())
 }

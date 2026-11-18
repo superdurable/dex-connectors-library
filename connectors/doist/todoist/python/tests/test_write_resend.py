@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Todoist creates whose outcome is unknown, and retries of safe writes."""
 
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 
 import dex_connectors.sdk as sdk
 import httpx
@@ -91,10 +91,87 @@ async def test_send_cap_of_one_never_resends() -> None:
 
 
 @pytest.mark.asyncio
-async def test_two_xx_without_task_id_resends() -> None:
+async def test_two_xx_without_task_id_is_uncertain_and_never_resent() -> None:
     requests: list[httpx.Request] = []
-    assert await run("createTask", status(200, {"ok": True}), AttemptContext(), requests) == "retry"
+    assert await run("createTask", status(200, {"ok": True}), AttemptContext(), requests) == "uncertain"
     assert len(requests) == 1
+
+
+class _BrokenBody(httpx.AsyncByteStream):
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"id":'
+        raise httpx.ReadError("connection reset")
+
+
+@pytest.mark.asyncio
+async def test_two_xx_whose_body_breaks_is_uncertain_and_never_resent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    broken = await run("createTask", lambda _: httpx.Response(200, stream=_BrokenBody()), context, requests)
+    assert broken == "uncertain"
+    assert context.marker is not None and context.marker.state == "claimed"
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("code", [429, 500, 503])
+async def test_transient_read_back_after_acceptance_retries_the_read_back(code: int) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    reads = iter([status(code), status(200, TASK)])
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        return status(200, {"id": "task-123"})(request) if request.method == "POST" else next(reads)(request)
+
+    assert await run("createTask", respond, context, requests) == "retry"
+    assert context.marker is not None and context.marker.provider_id == "task-123"
+    context.attempt = 2
+    assert await run("createTask", respond, context, requests) == "created"
+    assert [request.method for request in requests] == ["POST", "GET", "GET"]
+
+
+class _ProviderIDLossContext(AttemptContext):
+    async def heartbeat(self, value: object = None) -> None:
+        if "task-123" in repr(value):
+            raise RuntimeError("heartbeat lost")
+        await super().heartbeat(value)
+
+
+@pytest.mark.asyncio
+async def test_transient_read_back_with_an_unsaved_task_id_is_uncertain() -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        return status(200, {"id": "task-123"})(request) if request.method == "POST" else status(503)(request)
+
+    assert await run("createTask", respond, _ProviderIDLossContext(), requests) == "uncertain"
+    assert [request.method for request in requests] == ["POST", "GET"]
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_after_an_unknown_outcome_keeps_counting_toward_the_cap() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    for attempt, code in enumerate([502, 429, 502], start=1):
+        context.attempt = attempt
+        assert await run("createTask", status(code), context, requests) == "retry"
+    context.attempt = 4
+    assert await run("createTask", status(502), context, requests) == "uncertain"
+    assert len(requests) == 4
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_after_a_rate_limited_resend_never_records_not_sent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    for attempt, code in enumerate([502, 429], start=1):
+        context.attempt = attempt
+        assert await run("createTask", status(code), context, requests) == "retry"
+    before = context.heartbeat_value
+    context.attempt = 3
+    assert await run("createTask", status(200, TASK), context, requests, token="bad\ntoken") == "uncertain"
+    assert context.heartbeat_value is before
+    assert len(requests) == 2
 
 
 @pytest.mark.asyncio

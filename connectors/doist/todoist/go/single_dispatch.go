@@ -51,7 +51,7 @@ func (write *fencedCreate) acceptedTaskID() string { return write.decision.Marke
 // credentialFailureAttempt maps a credential failure before the send.
 func (write *fencedCreate) credentialFailureAttempt(result exchangeResult) sdkgo.MutationAttempt[Task] {
 	// notSent after a possible earlier send would hide it, so only a first-send decision records it.
-	if write.decision.Kind == singledispatch.SendAllowed {
+	if write.decision.Kind == singledispatch.SendAllowed && !write.hasPossibleEarlierSend {
 		if err := write.fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[Task](*failure("createTask", sdkgo.FailureAvailability, "Todoist credentials failed and the not-sent checkpoint could not be recorded"), 0)
 		}
@@ -82,6 +82,9 @@ func (write *fencedCreate) dispatch(send func(context.Context) exchangeResult) (
 // attemptForUnacceptedCreate maps a sent create without a usable task; unknown outcomes resend below the cap.
 func (write *fencedCreate) attemptForUnacceptedCreate(result exchangeResult) sdkgo.MutationAttempt[Task] {
 	switch {
+	case isSuccessStatus(result.status):
+		// Todoist accepted the creation, so a resend could create a second task.
+		return sdkgo.NewMutationUncertain(Task{}, *result.failure, sdkgo.Receipt{})
 	case result.isLocalDefect:
 		// The request was never built, so nothing was sent; a lost checkpoint only keeps the claim.
 		_ = write.fence.RecordCanResend()
@@ -99,9 +102,9 @@ func (write *fencedCreate) attemptForUnacceptedCreate(result exchangeResult) sdk
 }
 
 // recordAcceptedTask saves the accepted task ID so a replayed attempt reads it back instead of resending.
-func (write *fencedCreate) recordAcceptedTask(taskID string) {
-	// The accepted result stands; a lost identity checkpoint only keeps the claim.
-	_ = write.fence.RecordProviderID(taskID)
+// It reports whether the ID was saved; a lost identity checkpoint only keeps the claim.
+func (write *fencedCreate) recordAcceptedTask(taskID string) bool {
+	return write.fence.RecordProviderID(taskID) == nil
 }
 
 // resendOrSelectUncertain retries an unknown outcome while the send cap allows another send.
