@@ -610,8 +610,14 @@ class ChangeMessageVisibilityOperation:
         )
         request_id = result.request_id if isinstance(result, _Classified) else result
         receipt = client.receipt(call, request_id, _message_object_id(queue, input.message_id))
-        if isinstance(result, _Classified):
+        is_repeated_release = (
+            input.visibility_timeout_seconds == 0 and call.context is not None and call.context.attempt > 1
+        )
+        if isinstance(result, _Classified) and not (
+            is_repeated_release and result.outcome is _Outcome.RECEIPT_HANDLE_INVALID
+        ):
             return _mutation_for_failure(result, receipt, RECEIPT_HANDLE_INVALID, changed)
+        # An earlier release may have taken effect, and a released message is no longer in flight.
         observed_at = receipt.observed_at
         assert isinstance(observed_at, datetime)
         changed = replace(
@@ -688,6 +694,10 @@ def _classify_error_response(operation: str, subject: str, response: _ErrorRespo
         return classified(
             _Outcome.REJECTED, FailureKind.AUTHORIZATION, status_message("SQS denied the " + subject)
         )
+    if status not in (400, 401, 403, 404, 411, 413, 414, 415, 422, 501):
+        # Every SQS operation is safe to repeat, so a status that does not prove a refusal retries.
+        message = status_message("SQS answered the " + subject + " ambiguously")
+        return classified(_Outcome.RETRY, FailureKind.AVAILABILITY, message)
     message = status_message("SQS rejected the " + subject)
     return classified(_Outcome.REJECTED, FailureKind.PROVIDER_REJECTION, message)
 
@@ -905,7 +915,10 @@ def _transport_failure(operation: str, subject: str) -> Failure:
 
 def _is_terminal_credential_error(error: Exception) -> bool:
     """Report a credential failure that no later attempt resolves without a person."""
-    return isinstance(
+    # The generated connection module imports this module, so its predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
         error,
         (
             ReauthorizationRequiredError,

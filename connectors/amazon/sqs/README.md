@@ -1,6 +1,6 @@
 # Amazon SQS Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go@v0.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go@v0.3.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/sqs`.
 
@@ -10,7 +10,7 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/sqs
 
 ## TypeScript package
 
-The independent `@superdurable/connector-amazon-sqs@0.1.1` package implements all three operations and no Trigger. Its [package README](typescript/README.md) documents the TypeScript connection, signing, operation behavior, tests, and [runnable queue consumer](typescript/examples/queue-consumer/README.md). The TypeScript port passes Go-recorded provider conformance and a real Dex Worker and Client integration check with scripted SQS responses; live Amazon SQS behavior remains unverified for the TypeScript package.
+The independent `@superdurable/connector-amazon-sqs@0.1.2` package implements all three operations and no Trigger. Its [package README](typescript/README.md) documents the TypeScript connection, signing, operation behavior, tests, and [runnable queue consumer](typescript/examples/queue-consumer/README.md). The TypeScript port passes Go-recorded provider conformance and a real Dex Worker and Client integration check with scripted SQS responses; live Amazon SQS behavior remains unverified for the TypeScript package.
 
 The Amazon SQS Connector consumes messages from Amazon SQS standard and FIFO
 queues, and from SQS-compatible servers such as ElasticMQ, through the SQS JSON
@@ -130,8 +130,12 @@ Every operation sends one request, bounded by 25 seconds, below the 30-second
 Execute timeout. Transport failures, 408, 429, `RequestThrottled`,
 `ThrottlingException`, `KmsThrottled`, and 5xx except 501 return Retry,
 honoring `Retry-After`. `QueueDoesNotExist`, credential and signature errors,
-`AccessDenied`, KMS key errors, `OverLimit`, and other 4xx select
-`providerRejected`. Failures name the HTTP status and the SQS error code, such
+`AccessDenied`, KMS key errors, `OverLimit`, and other 400, 401, 403, 404,
+411, 413, 414, 415, 422, or 501 answers select `providerRejected`. All three
+operations declare `repeatOnUnknown: safe`, so any other status returns Retry.
+A repeated `changeMessageVisibility` release with a zero timeout that finds
+the message no longer in flight selects `changed`, because an earlier attempt
+may have released it. Failures name the HTTP status and the SQS error code, such
 as `HTTP 400 QueueDoesNotExist`, never the error message text. Before sending,
 a connection credential failure selects `defect` only when reauthorization is
 required, the connection is missing or not selected, the credential broker
