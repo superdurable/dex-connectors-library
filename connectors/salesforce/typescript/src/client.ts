@@ -7,6 +7,7 @@ import {
   type ReceiptDraft, type TriggerLogger,
 } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter,
   sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse,
@@ -201,6 +202,9 @@ export class SalesforceClient {
       if (error instanceof ReauthorizationRequiredError) return this.outcome(
         'providerRejected', operation, 'AUTHENTICATION',
         'Salesforce authorization is revoked or expired; reauthorize the connection',
+      );
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) return this.outcome(
+        'defect', operation, 'AUTHENTICATION', 'Salesforce connection credentials are missing or invalid',
       );
       return this.outcome('retry', operation, 'AUTHENTICATION', 'Salesforce credentials are temporarily unavailable');
     }

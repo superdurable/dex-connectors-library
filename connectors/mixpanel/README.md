@@ -29,7 +29,8 @@ Sign in at [Mixpanel Organization Settings](https://mixpanel.com/settings/org/),
 | Strict import confirms one event or export returns valid JSONL | `imported` or `exported` |
 | Definite provider rejection | `providerRejected` |
 | Malformed or oversized response | `invalidResponse` |
-| Invalid input or missing credentials | `defect` |
+| Invalid input, unusable credentials, reauthorization, or an absent, unselected, or broker-refused connection | `defect` |
+| Any other credential read failure, such as a broker outage | Retry |
 | Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
 
 Only the happy branch is wired in the [event track example](go/examples/event-track). Optional branches fail its Flow. There is no `uncertain` branch because Mixpanel deduplicates the stable event tuple in queries.

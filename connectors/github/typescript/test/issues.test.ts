@@ -3,7 +3,7 @@
 
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { GitHubClient, PublicAuthMethodID, RepositoryAuthMethodID } from '../src/client.js';
 import { CreateIssueCommentDefinition, CreateIssueDefinition, ReplaceIssueLabelsDefinition, SetIssueStateDefinition } from '../src/generated/definitions.js';
@@ -144,8 +144,27 @@ it('retries a transient credential failure after a possible send and selects unc
   expect((await client([502], requests).createIssue().invoke(call(), input)).kind).toBe('retry');
   context.attempt++;
   const failing = (error: Error) => new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } }, { send: async () => { throw new Error('no request may be sent'); } });
-  expect((await failing(new CredentialBrokerUnavailableError()).createIssue().invoke(call(), input)).kind).toBe('retry');
-  expect((await failing(new ReauthorizationRequiredError()).createIssue().invoke(call(), input)).kind).toBe('uncertain');
+  for (const transient of [new CredentialBrokerUnavailableError(), new Error('connection is not configured'), new TypeError('fetch failed')]) {
+    expect((await failing(transient).createIssue().invoke(call(), input)).kind).toBe('retry');
+  }
+  for (const terminal of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+    expect((await failing(terminal).createIssue().invoke(call(), input)).kind).toBe('uncertain');
+  }
+});
+
+it('classifies credential failures before any send', async () => {
+  const input = { owner: 'octocat', repository: 'hello-world', title: 'Crash' };
+  const failing = (error: Error) => new GitHubClient({ baseUrl: 'http://127.0.0.1:12345' }, { resolve: async () => { throw error; }, resolveWithRefresh: async () => { throw error; } }, { send: async () => { throw new Error('no request may be sent'); } });
+  for (const transient of [new CredentialBrokerUnavailableError(), new Error('connection is not configured'), new TypeError('fetch failed')]) {
+    const context = new FenceContext();
+    const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context } as unknown as Call;
+    expect((await failing(transient).createIssue().invoke(call, input)).kind).toBe('retry');
+  }
+  for (const terminal of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+    const context = new FenceContext();
+    const call = { id: callId, connection, operation: { connectorId: 'github', operationId: 'createIssue' }, context } as unknown as Call;
+    expect(await failing(terminal).createIssue().invoke(call, input)).toMatchObject({ kind: 'branch', branch: 'defect' });
+  }
 });
 
 it('retries a repeat-safe write whose answer is oversized or unusable', async () => {

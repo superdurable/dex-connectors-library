@@ -7,6 +7,7 @@ import {
   type Call, type CredentialProvider, type CredentialRefreshDriver,
 } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter,
   sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse,
@@ -108,14 +109,15 @@ export class BoxClient {
   }
 
   private async resolveToken(call: Call): Promise<string | BoxExchange> {
-    let token: string;
+    let credentials: Credentials;
     try {
-      const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      if (!(credentials.accessToken instanceof SecretString)) return emptyExchange('credential');
-      token = credentials.accessToken.reveal();
+      credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
     } catch (error) {
-      return emptyExchange(error instanceof ReauthorizationRequiredError ? 'credential' : 'refresh');
+      const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+        || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+      return emptyExchange(isTerminal ? 'credential' : 'refresh');
     }
+    const token = credentials.accessToken instanceof SecretString ? credentials.accessToken.reveal() : '';
     return token && isHeaderSafeCredential(token) ? token : emptyExchange('credential');
   }
 

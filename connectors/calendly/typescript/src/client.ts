@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -66,16 +67,19 @@ export class CalendlyClient {
 
   /** Resolve private or shared credentials through the manifest refresh driver. */
   async resolveCredentials(call: Call): Promise<CalendlyCredentialResult> {
+    let credentials: Credentials;
     try {
-      const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      if (!isHeaderSafeCredential(credentials.accessToken.reveal())) return { kind: 'terminal', message: 'the Calendly access token is blank or contains characters a header cannot carry' };
-      return { kind: 'resolved', credentials };
+      credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
     } catch (error) {
-      const terminal = error instanceof ReauthorizationRequiredError;
-      return terminal
-        ? { kind: 'terminal', message: 'the Calendly connection needs reauthorization; authorize it again in Dex Web Connectors' }
-        : { kind: 'transient', message: 'the Calendly access token could not be loaded or refreshed yet' };
+      if (error instanceof ReauthorizationRequiredError) return { kind: 'terminal', message: 'the Calendly connection needs reauthorization; authorize it again in Dex Web Connectors' };
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) {
+        return { kind: 'terminal', message: 'the Calendly connection is missing, not selected, or refused by the credential broker; check it in Dex Web Connections' };
+      }
+      return { kind: 'transient', message: 'the Calendly access token could not be loaded or refreshed yet' };
     }
+    const accessToken = credentials.accessToken instanceof SecretString ? credentials.accessToken.reveal() : '';
+    if (!isHeaderSafeCredential(accessToken)) return { kind: 'terminal', message: 'the Calendly access token is blank or contains characters a header cannot carry' };
+    return { kind: 'resolved', credentials };
   }
 
   /** Send a Calendly request and retry a rejected OAuth token once. */

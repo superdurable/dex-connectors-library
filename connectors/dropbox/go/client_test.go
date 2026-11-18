@@ -6,6 +6,7 @@ package dropbox
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -181,4 +183,43 @@ func TestUploadFileOverwritesSamePathAndReturnsIdentity(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, UploadFileBranchUploaded, result.Branch)
 	require.Equal(t, UploadedFile{File: EntryMetadata{ID: "id:example", Name: "example.txt", PathDisplay: "/Projects/example.txt", Kind: "file"}}, result.Value)
+}
+
+type failingCredentialSource struct{ resolveErr error }
+
+func (source failingCredentialSource) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, source.resolveErr
+}
+
+func (source failingCredentialSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestUploadFileClassifiesCredentialFailures(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		resolveErr error
+		isTerminal bool
+	}{
+		"broker unavailable":            {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"static not configured":         {errors.New("connection is not configured"), false},
+		"unlisted error":                {errors.New("credential store hiccup"), false},
+		"sdk reauthorization":           {sdkgo.NewReauthorizationRequiredError(nil), true},
+		"projectconfig reauthorization": {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":              {projectconfig.ErrObjectNotFound, true},
+		"connection not selected":       {projectconfig.ErrConnectionNotSelected, true},
+		"broker rejected":               {projectconfig.ErrCredentialBrokerRejected, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := New(Config{BaseURL: "http://127.0.0.1:1", ContentBaseURL: "http://127.0.0.1:1"}, failingCredentialSource{resolveErr: testCase.resolveErr})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(queryContext{}, client.UploadFile(), testConnection, UploadFileInput{Path: "/Projects/example.txt", ContentBase64: "SGVsbG8="})
+			if testCase.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, UploadFileBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
 }

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -89,7 +90,7 @@ type fileResponse struct {
 
 func (client *Client) resolveAccessToken(call sdkgo.Call) (string, error) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if sdkgo.IsReauthorizationRequired(err) {
+	if isTerminalCredentialError(err) {
 		return "", errCredential
 	}
 	if err != nil {
@@ -99,6 +100,13 @@ func (client *Client) resolveAccessToken(call sdkgo.Call) (string, error) {
 		return "", errCredential
 	}
 	return credentials.AccessToken.Reveal(), nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) download(call sdkgo.Call, fileID string) fileResponse {

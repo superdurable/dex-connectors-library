@@ -15,13 +15,19 @@ from dex_connectors.sdk import (
     ConnectionRef,
     FailureKind,
     IdempotencyKey,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 
 from dex_connectors.airtable import (
     DEFECT,
@@ -286,26 +292,69 @@ async def test_inconsistent_upsert_answer_retries(body: object) -> None:
     assert raised.value.failure.kind == FailureKind.PROTOCOL
 
 
-@pytest.mark.asyncio
-async def test_write_retries_temporarily_unavailable_credentials() -> None:
-    """An earlier attempt may have applied the write, so a broker outage must not select defect."""
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
 
-    class BrokerOutage:
-        async def resolve(self, call: Call) -> Credentials:
-            raise CredentialBrokerUnavailableError("credential broker is unavailable")
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
 
-    client = Client(
+
+def _client_with_failing_credentials(error: Exception, requests: list[httpx.Request]) -> Client:
+    def record(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500)
+
+    return Client(
         Config("http://localhost:8848"),
-        BrokerOutage(),
-        httpx.AsyncClient(transport=httpx.MockTransport(fixed(httpx.Response(500)))),
+        _FailingCredentials(error),
+        httpx.AsyncClient(transport=httpx.MockTransport(record)),
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError("credential broker is unavailable"),
+        ValueError("connection is not configured"),
+        RuntimeError("credential store hiccup"),
+    ],
+)
+async def test_write_retries_temporarily_unavailable_credentials(error: Exception) -> None:
+    """An earlier attempt may have applied the write, so a broker outage must not select defect."""
+    requests: list[httpx.Request] = []
     with pytest.raises(RetryError) as raised:
         await run_mutation(
-            client.update_records(),
+            _client_with_failing_credentials(error, requests).update_records(),
             call_for(UPDATE_RECORDS_DEFINITION),
             UpdateRecordsInput(BASE, "Policies", (RecordUpdate(RECORD_ID, {"a": 1}),)),
         )
     assert raised.value.failure.kind == FailureKind.AVAILABILITY
+    assert requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "branch"),
+    [
+        (ReauthorizationRequiredError(), PROVIDER_REJECTED),
+        (ObjectNotFoundError(), DEFECT),
+        (ConnectionNotSelectedError(), DEFECT),
+        (CredentialBrokerRejectedError(), DEFECT),
+    ],
+)
+async def test_write_selects_a_terminal_branch_for_terminal_credentials(
+    error: Exception, branch: str
+) -> None:
+    requests: list[httpx.Request] = []
+    result = await run_mutation(
+        _client_with_failing_credentials(error, requests).update_records(),
+        call_for(UPDATE_RECORDS_DEFINITION),
+        UpdateRecordsInput(BASE, "Policies", (RecordUpdate(RECORD_ID, {"a": 1}),)),
+    )
+    assert result.branch == branch
+    assert requests == []
 
 
 @pytest.mark.asyncio

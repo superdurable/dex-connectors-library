@@ -301,17 +301,26 @@ func (client *Client) send(ctx context.Context, credentials Credentials, request
 func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, *providerOutcome) {
 	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, client.outcome(outcomeRejected, operation, sdkgo.FailureAuthentication, "HubSpot authorization must be renewed", sdkgo.Receipt{})
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "HubSpot OAuth token refresh is temporarily unavailable", sdkgo.Receipt{})
-	case errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled):
+	case isTerminalCredentialError(err):
+		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "HubSpot connection credentials are unavailable", sdkgo.Receipt{})
+	case err != nil:
 		// A write may have applied in an earlier attempt, so a passing outage must not select defect.
 		return Credentials{}, client.outcome(outcomeRetry, operation, sdkgo.FailureAvailability, "HubSpot connection credentials are temporarily unavailable", sdkgo.Receipt{})
-	case err != nil || validateResolvedCredentials(credentials) != nil:
+	case validateResolvedCredentials(credentials) != nil:
 		return Credentials{}, client.outcome(outcomeDefect, operation, sdkgo.FailureAuthentication, "HubSpot connection credentials are unavailable", sdkgo.Receipt{})
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) canRefreshAfterRejection(credentials Credentials) bool {

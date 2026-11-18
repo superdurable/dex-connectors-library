@@ -19,8 +19,14 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -137,8 +143,20 @@ class CaptureEventOperation:
             return _capture_failure(DEFECT, FailureKind.VALIDATION, "timestamp must be an RFC3339 instant")
         try:
             credentials = await self.client.credentials.resolve(call)
-            token = credentials.project_token.reveal()
-        except (ValueError, LookupError, OSError, AttributeError):
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            credentials = None
+        except Exception:
+            return _capture_retry(
+                FailureKind.AVAILABILITY, "PostHog project token is temporarily unavailable"
+            )
+        try:
+            token = "" if credentials is None else credentials.project_token.reveal()
+        except AttributeError:
             token = ""
         if not token or not is_header_safe_credential(token):
             return _capture_failure(

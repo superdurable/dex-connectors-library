@@ -5,6 +5,7 @@ package hubspot_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -327,24 +328,55 @@ func TestWritesRetryABare409WithoutADocumentedConflictCategory(t *testing.T) {
 	require.ErrorAs(t, err, &retry, "a bare 409 does not prove a refusal, and the update is repeat-safe")
 }
 
-type brokerOutageCredentials struct{}
+type failingCredentials struct{ resolveErr error }
 
-func (brokerOutageCredentials) Resolve(sdkgo.Call) (hubspot.Credentials, error) {
-	return hubspot.Credentials{}, projectconfig.ErrCredentialBrokerUnavailable
+func (source failingCredentials) Resolve(sdkgo.Call) (hubspot.Credentials, error) {
+	return hubspot.Credentials{}, source.resolveErr
 }
 
-func (source brokerOutageCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[hubspot.Credentials]) (hubspot.Credentials, error) {
+func (source failingCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[hubspot.Credentials]) (hubspot.Credentials, error) {
 	return source.Resolve(call)
 }
 
 func TestUpdateObjectRetriesATransientCredentialFailure(t *testing.T) {
-	client, err := hubspot.New(hubspot.Config{Endpoint: "http://127.0.0.1:1"}, brokerOutageCredentials{})
-	require.NoError(t, err)
-	_, err = sdkgo.RunMutation(newStepDexContext("update-broker-outage"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
-		ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501", Properties: map[string]string{"email": "ada@example.com"},
-	})
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "an earlier attempt may have applied the write, so defect would be wrong")
+	for name, resolveErr := range map[string]error{
+		"broker unavailable":    projectconfig.ErrCredentialBrokerUnavailable,
+		"static not configured": errors.New("connection is not configured"),
+		"unlisted error":        errors.New("credential store hiccup"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := hubspot.New(hubspot.Config{Endpoint: "http://127.0.0.1:1"}, failingCredentials{resolveErr: resolveErr})
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newStepDexContext("update-broker-outage"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
+				ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501", Properties: map[string]string{"email": "ada@example.com"},
+			})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an earlier attempt may have applied the write, so defect would be wrong")
+		})
+	}
+}
+
+func TestUpdateObjectSelectsATerminalBranchForATerminalCredentialFailure(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		resolveErr error
+		branch     sdkgo.BranchID
+	}{
+		"sdk reauthorization":           {sdkgo.NewReauthorizationRequiredError(nil), hubspot.UpdateObjectBranchProviderRejected},
+		"projectconfig reauthorization": {projectconfig.ErrReauthorizationRequired, hubspot.UpdateObjectBranchProviderRejected},
+		"object not found":              {projectconfig.ErrObjectNotFound, hubspot.UpdateObjectBranchDefect},
+		"connection not selected":       {projectconfig.ErrConnectionNotSelected, hubspot.UpdateObjectBranchDefect},
+		"broker rejected":               {projectconfig.ErrCredentialBrokerRejected, hubspot.UpdateObjectBranchDefect},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := hubspot.New(hubspot.Config{Endpoint: "http://127.0.0.1:1"}, failingCredentials{resolveErr: testCase.resolveErr})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(newStepDexContext("update-terminal-credential"), client.UpdateObject(), hubspotConnection, hubspot.UpdateObjectInput{
+				ObjectType: hubspot.ObjectTypeContacts, ObjectID: "501", Properties: map[string]string{"email": "ada@example.com"},
+			})
+			require.NoError(t, err)
+			require.Equal(t, testCase.branch, result.Branch)
+		})
+	}
 }
 
 func TestUpsertObjectClassifiesBatchErrorsAndMalformedResults(t *testing.T) {

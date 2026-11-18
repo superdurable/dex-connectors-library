@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -260,12 +261,18 @@ func (client *Client) UpdateRecord() UpdateRecordOperation {
 	return UpdateRecordOperation{client: client}
 }
 
-// resolveCredential selects providerRejected for a terminal refresh failure and retries any other failure.
+// resolveCredential selects providerRejected for a terminal refresh failure, defect for an absent,
+// unselected, or broker-refused connection, and retries any other failure.
 func (client *Client) resolveCredential(call sdkgo.Call, branches operationBranches) (Credentials, *providerOutcome) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if sdkgo.IsReauthorizationRequired(err) {
+	if sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) {
 		return Credentials{}, &providerOutcome{route: routeProviderRejected, failure: salesforceFailure(
 			sdkgo.FailureAuthentication, branches.operationID, "Salesforce authorization is revoked or expired; reauthorize the connection")}
+	}
+	if errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected) {
+		return Credentials{}, &providerOutcome{route: routeDefect, failure: salesforceFailure(
+			sdkgo.FailureAuthentication, branches.operationID, "Salesforce connection credentials are missing or invalid")}
 	}
 	if err != nil {
 		return Credentials{}, &providerOutcome{route: routeRetry, failure: salesforceFailure(

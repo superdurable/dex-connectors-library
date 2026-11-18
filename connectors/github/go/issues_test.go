@@ -466,7 +466,13 @@ func TestCreateIssueRetriesATransientCredentialFailureAfterAPossibleSend(t *test
 		isUncertain bool
 	}{
 		{err: projectconfig.ErrCredentialBrokerUnavailable},
+		{err: errors.New("connection is not configured")},
+		{err: errors.New("credential store hiccup")},
 		{err: sdkgo.ErrReauthorizationRequired, isUncertain: true},
+		{err: projectconfig.ErrReauthorizationRequired, isUncertain: true},
+		{err: projectconfig.ErrObjectNotFound, isUncertain: true},
+		{err: projectconfig.ErrConnectionNotSelected, isUncertain: true},
+		{err: projectconfig.ErrCredentialBrokerRejected, isUncertain: true},
 	} {
 		failing, err := github.New(github.Config{BaseURL: provider.URL}, credentialErrorSource{test.err})
 		require.NoError(t, err)

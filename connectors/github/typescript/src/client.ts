@@ -3,7 +3,7 @@
 
 import { isIP } from 'node:net';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -114,18 +114,20 @@ export class GitHubClient {
   async resolveAccess(call: Call, operation: string): Promise<GitHubAccess | Extract<GitHubExchange, { failure: Failure }>> {
     const cached = this.accesses.get(call);
     if (cached) return cached;
+    const unavailable = (isTerminal: boolean): Extract<GitHubExchange, { failure: Failure }> =>
+      ({ branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked'), receipt: {}, ...(isTerminal ? {} : { isTransientCredentialFailure: true }) });
+    let credential: Credentials;
     try {
-      const credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      const token = credential.accessToken?.reveal() ?? '';
-      if (!token) throw new TypeError('missing access token');
-      const access = { token, authMethodId: credential.authMethodId || PublicAuthMethodID };
-      this.accesses.set(call, access);
-      return access;
+      credential = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
     } catch (error) {
       // Only a revoked, missing, unselected, broker-refused, or malformed credential needs reconnection.
-      const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof TypeError;
-      return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked'), receipt: {}, ...(isTerminal ? {} : { isTransientCredentialFailure: true }) };
+      return unavailable(error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError);
     }
+    const token = credential.accessToken instanceof SecretString ? credential.accessToken.reveal() : '';
+    if (!token) return unavailable(true);
+    const access = { token, authMethodId: credential.authMethodId || PublicAuthMethodID };
+    this.accesses.set(call, access);
+    return access;
   }
 
   /** Resolve credentials, send a single GitHub GET, and classify the result. */

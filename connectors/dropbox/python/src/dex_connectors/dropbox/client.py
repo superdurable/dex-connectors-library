@@ -11,6 +11,11 @@ from typing import TYPE_CHECKING
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -149,9 +154,14 @@ class Client:
     ) -> Exchange:
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
             return Exchange(error="credential")
-        except (ValueError, LookupError, OSError):
+        except Exception:
             return Exchange(error="refresh")
         token = credentials.access_token.reveal()
         if not token or not is_header_safe_credential(token):

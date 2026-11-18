@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/calendly/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -320,6 +321,64 @@ func TestCreateSchedulingLinkFenceRecordsCredentialFailureBeforeSending(t *testi
 	require.NoError(t, err)
 	require.Equal(t, calendly.CreateSchedulingLinkBranchCreated, result.Branch)
 	require.Len(t, fake.requestsTo(http.MethodPost, "/scheduling_links"), 1)
+}
+
+type failingCredentialSource struct{ resolveErr error }
+
+func (source failingCredentialSource) Resolve(sdkgo.Call) (calendly.Credentials, error) {
+	return calendly.Credentials{}, source.resolveErr
+}
+
+func (source failingCredentialSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[calendly.Credentials]) (calendly.Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestCreateSchedulingLinkClassifiesCredentialFailures(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		resolveErr error
+		isTerminal bool
+	}{
+		"sdk reauthorization":           {sdkgo.NewReauthorizationRequiredError(nil), true},
+		"projectconfig reauthorization": {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":              {projectconfig.ErrObjectNotFound, true},
+		"connection not selected":       {projectconfig.ErrConnectionNotSelected, true},
+		"broker rejected":               {projectconfig.ErrCredentialBrokerRejected, true},
+		"broker unavailable":            {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"static not configured":         {errors.New("connection is not configured"), false},
+		"unlisted error":                {errors.New("credential store hiccup"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := newFakeCalendly(t, map[string]http.HandlerFunc{"POST /scheduling_links": respondJSON(http.StatusBadGateway, providerError("Bad Gateway", "retry"))})
+			input := calendly.CreateSchedulingLinkInput{EventTypeURI: testEventTypeURI}
+			failing := newTestClient(t, fake.redirectingClient(), failingCredentialSource{resolveErr: testCase.resolveErr}, calendly.Config{})
+
+			firstSend := singledispatchtest.NewContext("credential-first", "create-link")
+			result, err := sdkgo.RunMutation(firstSend, failing.CreateSchedulingLink(), testConnection, input)
+			if testCase.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, calendly.CreateSchedulingLinkBranchDefect, result.Branch)
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			}
+
+			afterSend := singledispatchtest.NewContext("credential-after-send", "create-link")
+			working := newTestClient(t, fake.redirectingClient(), personalAccessTokenCredentials(""), calendly.Config{})
+			_, err = sdkgo.RunMutation(afterSend, working.CreateSchedulingLink(), testConnection, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "a 502 is an unknown outcome below the cap")
+			afterSend.AdvanceAttempt()
+			result, err = sdkgo.RunMutation(afterSend, failing.CreateSchedulingLink(), testConnection, input)
+			if testCase.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, calendly.CreateSchedulingLinkBranchUncertain, result.Branch)
+			} else {
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Len(t, fake.requestsTo(http.MethodPost, "/scheduling_links"), 1)
+		})
+	}
 }
 
 func TestCreateSchedulingLinkReauthorizationSelectsDefectBeforeSending(t *testing.T) {

@@ -11,7 +11,11 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt, TriggerLogger
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
-from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -164,14 +168,14 @@ class Client:
         body: dict[str, Any] | None = None,
     ) -> Exchange:
         """Resolve credentials, send a request, and classify non-success statuses."""
+        unavailable = Exchange(
+            disposition="defect",
+            failure=failure(
+                operation, FailureKind.AUTHENTICATION, "HubSpot connection credentials are unavailable"
+            ),
+        )
         try:
             credentials = await self.credentials.resolve(call)
-            if (
-                not isinstance(credentials, Credentials)
-                or credentials.access_token is None
-                or not is_header_safe_credential(credentials.access_token.reveal())
-            ):
-                raise ValueError("invalid access token")
         except ReauthorizationRequiredError:
             return Exchange(
                 disposition="rejected",
@@ -188,7 +192,9 @@ class Client:
                     "HubSpot OAuth token refresh is temporarily unavailable",
                 ),
             )
-        except (CredentialBrokerUnavailableError, TimeoutError):
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
+            return unavailable
+        except Exception:
             # A write may have applied in an earlier attempt, so a passing outage must not select defect.
             return Exchange(
                 disposition="retry",
@@ -198,13 +204,12 @@ class Client:
                     "HubSpot connection credentials are temporarily unavailable",
                 ),
             )
-        except Exception:
-            return Exchange(
-                disposition="defect",
-                failure=failure(
-                    operation, FailureKind.AUTHENTICATION, "HubSpot connection credentials are unavailable"
-                ),
-            )
+        if (
+            not isinstance(credentials, Credentials)
+            or credentials.access_token is None
+            or not is_header_safe_credential(credentials.access_token.reveal())
+        ):
+            return unavailable
         target = f"{self.endpoint}/{path}" + (f"?{query}" if query else "")
         for attempt in range(2):
             try:

@@ -192,7 +192,9 @@ func TestFencedCreatesSelectDefectForInvalidCredentialsBeforeSending(t *testing.
 	provider := newRecordingPipedrive(t, func(response http.ResponseWriter, _ recordedRequest) {
 		writeError(t, response, http.StatusUnauthorized)
 	})
-	client, err := pipedrive.New(pipedrive.Config{Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[pipedrive.Credentials]{})
+	client, err := pipedrive.New(pipedrive.Config{Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[pipedrive.Credentials]{
+		pipedriveConnection: {AuthMethodID: pipedrive.APITokenAuthMethodID},
+	})
 	require.NoError(t, err)
 	for _, operation := range []string{"create", "upsert"} {
 		ctx := singledispatchtest.NewContext("deal-intake", "invalid-credential-"+operation)

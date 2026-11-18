@@ -8,6 +8,12 @@ from pathlib import Path
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 
 import dex_connectors.salesforce as salesforce
 
@@ -51,6 +57,49 @@ async def test_writes_retry_a_status_that_does_not_prove_a_refusal(status: int) 
         )
         upsert = await client.upsert_record_by_external_id().invoke(call, upsert_input)
         assert upsert.kind == "retry"
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> salesforce.Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "kind", "branch"),
+    [
+        (CredentialBrokerUnavailableError("broker down"), "retry", None),
+        (ValueError("connection is not configured"), "retry", None),
+        (RuntimeError("credential store hiccup"), "retry", None),
+        (sdk.ReauthorizationRequiredError(), "branch", "providerRejected"),
+        (ObjectNotFoundError(), "branch", "defect"),
+        (ConnectionNotSelectedError(), "branch", "defect"),
+        (CredentialBrokerRejectedError(), "branch", "defect"),
+    ],
+)
+async def test_update_classifies_credential_failures(
+    error: Exception, kind: str, branch: str | None
+) -> None:
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http_client:
+        client = salesforce.Client(salesforce.Config(), _FailingCredentials(error), http_client)
+        call = sdk.Call(
+            sdk.CallID("c0a3b2d4-5e6f-5a7b-8c9d-0e1f2a3b4c5d"),
+            CONNECTION,
+            sdk.OperationRef("salesforce", "updateRecord"),
+        )
+        update = await client.update_record().invoke(
+            call,
+            salesforce.UpdateRecordInput("Opportunity", "006RM000001AbcdYAC", {"StageName": "Closed Won"}),
+        )
+        assert update.kind == kind
+        if branch is not None:
+            assert update.branch == branch
 
 
 @pytest.mark.asyncio

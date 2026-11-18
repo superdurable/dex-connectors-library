@@ -9,6 +9,12 @@ from datetime import UTC, datetime, timedelta
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.singledispatch import Marker, State
 
 import dex_connectors.calendly as calendly
@@ -215,6 +221,75 @@ async def test_refusal_with_incomplete_body_resends_until_the_send_cap(body: str
     result = await run_link(respond, context)
     assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
     assert len(requests) == MAX_SENDS
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: sdk.Call) -> calendly.Credentials:
+        raise self.error
+
+
+async def create_link_with_failing_credentials(
+    error: Exception, context: AttemptContext
+) -> sdk.MutationResult[calendly.SchedulingLink] | sdk.RetryError:
+    """Run one Execute attempt whose credential read raises error."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as transport:
+        client = calendly.Client(calendly.Config(), _FailingCredentials(error), transport)
+        call = sdk.Call(
+            CALL_ID,
+            CONNECTION,
+            sdk.OperationRef("calendly", "createSchedulingLink"),
+            context=context,
+            max_sends=MAX_SENDS,
+        )
+        try:
+            return await sdk.run_mutation(
+                client.create_scheduling_link(), call, calendly.CreateSchedulingLinkInput(EVENT_TYPE)
+            )
+        except sdk.RetryError as error:
+            return error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (sdk.ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError("credential broker is unavailable"), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("credential store hiccup"), False),
+    ],
+)
+async def test_credential_failures_are_classified_before_and_after_a_possible_send(
+    error: Exception, is_terminal: bool
+) -> None:
+    first_send = AttemptContext()
+    result = await create_link_with_failing_credentials(error, first_send)
+    if is_terminal:
+        assert isinstance(result, sdk.MutationResult) and result.branch == "defect"
+    else:
+        assert isinstance(result, sdk.RetryError)
+    assert first_send.marker is not None and first_send.marker.state == "notSent"
+
+    requests: list[httpx.Request] = []
+    after_send = AttemptContext()
+    assert isinstance(await create_link(502, {}, after_send, requests), sdk.RetryError)
+    after_send.attempt = 2
+    result = await create_link_with_failing_credentials(error, after_send)
+    if is_terminal:
+        assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    else:
+        assert isinstance(result, sdk.RetryError)
+    assert len(requests) == 1
 
 
 @pytest.mark.asyncio

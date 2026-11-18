@@ -3,10 +3,11 @@
 
 import { createHash } from 'node:crypto';
 import {
-  newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry,
+  ReauthorizationRequiredError, SecretString, newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry,
   type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
   type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
   BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
@@ -61,11 +62,22 @@ export class PostHogClient {
 
   /** Resolve a project token for an individual provider attempt. */
   async projectToken(call: Call): Promise<string | undefined> {
+    const resolution = await this.resolveProjectToken(call);
+    return 'token' in resolution ? resolution.token : undefined;
+  }
+
+  /** Resolve a project token, reporting whether a failure may clear on a later attempt. */
+  async resolveProjectToken(call: Call): Promise<{ token: string } | { isTransient: boolean }> {
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      const token = credentials.projectToken.reveal();
-      return token && isHeaderSafeCredential(token) ? token : undefined;
-    } catch { return undefined; }
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+        || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+      return { isTransient: !isTerminal };
+    }
+    const token = credentials.projectToken instanceof SecretString ? credentials.projectToken.reveal() : '';
+    return token && isHeaderSafeCredential(token) ? { token } : { isTransient: false };
   }
 
   /** Resolve a scoped personal API key for an individual provider attempt. */
@@ -116,8 +128,12 @@ export class CaptureEventOperation implements Mutation<CaptureEventInput, Captur
       return eventFailure('defect', 'VALIDATION', 'event, distinct ID, or stable call identity is invalid');
     const timestamp = canonicalTimestamp(input.timestamp);
     if (!timestamp) return eventFailure('defect', 'VALIDATION', 'timestamp must be an RFC3339 instant');
-    const token = await this.client.projectToken(call);
-    if (!token) return eventFailure('defect', 'AUTHENTICATION', 'PostHog project token is unavailable or invalid');
+    const resolution = await this.client.resolveProjectToken(call);
+    if (!('token' in resolution)) {
+      if (resolution.isTransient) return eventRetry('AVAILABILITY', 'PostHog project token is temporarily unavailable');
+      return eventFailure('defect', 'AUTHENTICATION', 'PostHog project token is unavailable or invalid');
+    }
+    const token = resolution.token;
     let body: Uint8Array;
     try {
       body = Buffer.from(JSON.stringify({ token, event: input.event, distinct_id: input.distinctId,

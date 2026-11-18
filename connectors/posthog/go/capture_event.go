@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -72,6 +73,9 @@ func (operation CaptureEventOperation) Invoke(call sdkgo.Call, input CaptureEven
 		properties[key] = value
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return captureRetry(sdkgo.FailureAvailability, "PostHog project token is temporarily unavailable", 0)
+	}
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.ProjectToken.Reveal()) {
 		return captureFailure(CaptureEventBranchDefect, sdkgo.FailureAuthentication, "PostHog project token is unavailable or invalid")
 	}
@@ -126,6 +130,13 @@ func (operation CaptureEventOperation) Invoke(call sdkgo.Call, input CaptureEven
 		return captureFailure(CaptureEventBranchQuotaLimited, sdkgo.FailureProviderRejection, "PostHog reported an event quota limit")
 	}
 	return sdkgo.NewMutationBranch(CaptureEventBranchAccepted, CapturedEvent{EventID: string(call.IdempotencyKey), Accepted: true}, nil, sdkgo.Receipt{})
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func captureFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CapturedEvent] {

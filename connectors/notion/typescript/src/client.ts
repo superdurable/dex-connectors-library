@@ -3,7 +3,7 @@
 
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { CreatePageOperation, GetPageOperation, QueryDatabaseOperation, SearchOperation, UpdatePagePropertiesOperation } from './operations.js';
 
@@ -89,16 +89,19 @@ export class NotionClient {
   /** Resolve a credential before a single-dispatch write is claimed. */
   async resolveToken(call: Call, operation: string, signal?: AbortSignal): Promise<{ token: string } | { outcome: NotionExchangeFailure }> {
     const emptyReceipt = this.receipt(call);
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, signal ?? call.context.cancellationSignal);
-      const token = credentials.apiToken instanceof SecretString ? credentials.apiToken.reveal() : '';
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid Notion token');
-      return { token };
+      credentials = await this.credentials.resolve(call, signal ?? call.context.cancellationSignal);
     } catch (error) {
       if (error instanceof ReauthorizationRequiredError) return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection must be authorized again'), receipt: emptyReceipt, isProvablyNotSent: true } };
-      if (error instanceof CredentialBrokerUnavailableError || error instanceof DOMException && error.name === 'AbortError') return { outcome: { disposition: 'retry', failure: failure(operation, 'AUTHENTICATION', 'Notion credential broker is temporarily unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
-      return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError) {
+        return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
+      }
+      return { outcome: { disposition: 'retry', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are temporarily unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
     }
+    const token = credentials.apiToken instanceof SecretString ? credentials.apiToken.reveal() : '';
+    if (!isHeaderSafeCredential(token)) return { outcome: { disposition: 'defect', failure: failure(operation, 'AUTHENTICATION', 'Notion connection credentials are unavailable'), receipt: emptyReceipt, isProvablyNotSent: true } };
+    return { token };
   }
 
   /** Send one bounded API request and classify its transport and HTTP outcome. */

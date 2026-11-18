@@ -3,7 +3,7 @@
 
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext, scenarioCall } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { NotionClient } from '../src/client.js';
 
@@ -20,10 +20,18 @@ it('keeps terminal credential errors distinct from transient broker errors', asy
   const rejected = await terminal.search().invoke(call('search'), {});
   expect(rejected.kind).toBe('branch');
   if (rejected.kind === 'branch') { expect(rejected.branch).toBe('defect'); expect(rejected.failure?.kind).toBe('AUTHENTICATION'); }
-  const transient = new NotionClient({}, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } }, { send: sender });
-  const retry = await transient.search().invoke(call('search'), {});
-  expect(retry.kind).toBe('retry');
-  if (retry.kind === 'retry') expect(retry.failure.kind).toBe('AUTHENTICATION');
+  const update = { pageId: '1f3c9a2e-5b7d-4e8a-9c01-23456789abcd', properties: { Email: { type: 'email' as const, email: 'ada@example.com' } } };
+  for (const error of [new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+    const unusable = new NotionClient({}, { resolve: async () => { throw error; } }, { send: sender });
+    expect(await unusable.updatePageProperties().invoke(call('updatePageProperties'), update)).toMatchObject({ kind: 'branch', branch: 'defect' });
+  }
+  for (const error of [new CredentialBrokerUnavailableError(), new Error('connection is not configured'), new RangeError('credential store hiccup')]) {
+    const transient = new NotionClient({}, { resolve: async () => { throw error; } }, { send: sender });
+    const retry = await transient.search().invoke(call('search'), {});
+    expect(retry.kind).toBe('retry');
+    if (retry.kind === 'retry') expect(retry.failure.kind).toBe('AUTHENTICATION');
+    expect((await transient.updatePageProperties().invoke(call('updatePageProperties'), update)).kind).toBe('retry');
+  }
   expect(requests).toBe(0);
 });
 

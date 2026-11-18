@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
@@ -63,6 +64,7 @@ var (
 	errCalendlyResponseMalformed = errors.New("Calendly returned a malformed response")
 
 	errCalendlyReauthorizationRequired = errors.New("the Calendly connection needs reauthorization; authorize it again in Dex Web Connectors")
+	errCalendlyConnectionUnusable      = errors.New("the Calendly connection is missing, not selected, or refused by the credential broker; check it in Dex Web Connections")
 	errCalendlyCredentialsUnavailable  = errors.New("the Calendly access token could not be loaded or refreshed yet")
 	errCalendlyAccessTokenUnusable     = errors.New("the Calendly access token is blank or contains characters a header cannot carry")
 )
@@ -231,8 +233,11 @@ func (client *Client) CreateWebhookSubscription() CreateWebhookSubscriptionOpera
 func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, errCalendlyReauthorizationRequired
+	case errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected):
+		return Credentials{}, errCalendlyConnectionUnusable
 	case err != nil:
 		return Credentials{}, errCalendlyCredentialsUnavailable
 	case !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()):

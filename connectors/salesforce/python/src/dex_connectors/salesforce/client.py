@@ -26,6 +26,11 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -219,6 +224,15 @@ class Client:
                     operation,
                     FailureKind.AUTHENTICATION,
                     "Salesforce authorization is revoked or expired; reauthorize the connection",
+                ),
+            )
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
+            return None, Outcome(
+                "defect",
+                failure(
+                    operation,
+                    FailureKind.AUTHENTICATION,
+                    "Salesforce connection credentials are missing or invalid",
                 ),
             )
         except Exception:
