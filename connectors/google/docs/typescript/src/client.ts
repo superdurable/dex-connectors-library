@@ -6,7 +6,7 @@ import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHead
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials, CredentialSource } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type CredentialSource } from './generated/models.js';
 import { GetDocumentTextOperation, CreateDocumentOperation, ReplaceDocumentTextOperation, AppendTextOperation } from './operations.js';
 
 /** Replaceable bounded transport for an in-process provider stand-in. */
@@ -164,7 +164,7 @@ export class DocsClient {
 /** Report a resolve failure that only reconnection repairs; any other one is transient. */
 function isTerminalCredentialError(error: unknown): boolean {
   return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
-    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 export function header(headers: ProviderResponse['headers'], name: string): string {

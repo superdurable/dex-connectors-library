@@ -22,6 +22,7 @@ from dex_connectors.sdk.projectconfig import (
 from dex_connectors.sdk.providerhttp import MAX_ERROR_BODY_BYTES
 
 import dex_connectors.google_docs as docs
+from dex_connectors.google_docs._generated.connection import CredentialMaterialError, decode_credentials
 
 ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
@@ -198,9 +199,22 @@ async def test_terminal_credential_failure_is_defect_before_a_send_and_uncertain
     assert later[0].kind == "uncertain"
 
 
+def sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
+
 @pytest.mark.parametrize(
     ("error", "is_terminal"),
     [
+        (sdk_wrapped_material_error(), True),
         (sdk.ReauthorizationRequiredError(), True),
         (ObjectNotFoundError(), True),
         (ConnectionNotSelectedError(), True),

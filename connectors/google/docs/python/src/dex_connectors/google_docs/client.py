@@ -53,7 +53,17 @@ TERMINAL_CREDENTIAL_ERRORS = (
     ConnectionNotSelectedError,
     CredentialBrokerRejectedError,
 )
-DRIVE_ID = re.compile(r"[A-Za-z0-9_-]{1,256}\Z")
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure that only reconnection repairs, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
+
+
+DRIVE_ID =re.compile(r"[A-Za-z0-9_-]{1,256}\Z")
 # Only these statuses prove Google refused a write; every other status is an unknown outcome.
 DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 TAB_ID = re.compile(r"[A-Za-z0-9_.-]{1,256}\Z")
@@ -163,10 +173,8 @@ class Client:
         """
         try:
             credential = await self._credentials.resolve(call)
-        except TERMINAL_CREDENTIAL_ERRORS:
-            return None, False
-        except Exception:
-            return None, True
+        except Exception as error:
+            return None, not is_terminal_credential_error(error)
         token = credential.access_token.reveal() if credential.access_token else ""
         if credential.auth_method_id not in ("", "google-oauth", "workspace-domain-delegation"):
             return None, False

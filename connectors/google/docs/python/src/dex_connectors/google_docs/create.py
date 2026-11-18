@@ -26,13 +26,13 @@ from .client import (
     DRIVE_ID,
     GO_PATH_SAFE,
     GOOGLE_DOCUMENT_MIME,
-    TERMINAL_CREDENTIAL_ERRORS,
     Client,
     Credentials,
     Exchange,
     failure,
     go_query,
     google_error_tokens,
+    is_terminal_credential_error,
     retryable,
     status_kind,
 )
@@ -509,11 +509,11 @@ async def _after_create(
             )
         try:
             await client._credentials.resolve_after_rejection(call)
-        except TERMINAL_CREDENTIAL_ERRORS:
-            return await _reject_or_select_uncertain(
-                send, FailureKind.AUTHENTICATION, "provider rejected the create credential", receipt
-            )
-        except Exception:
+        except Exception as error:
+            if is_terminal_credential_error(error):
+                return await _reject_or_select_uncertain(
+                    send, FailureKind.AUTHENTICATION, "provider rejected the create credential", receipt
+                )
             # Google refuses an unauthenticated create unprocessed, so a transient refresh failure retries.
             try:
                 await fence.record_can_resend()
