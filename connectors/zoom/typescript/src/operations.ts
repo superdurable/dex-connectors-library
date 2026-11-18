@@ -256,8 +256,10 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
     const createdId = createdMeetingID(exchange.response.body);
     if (createdId > 0) {
       // An error status naming a created meeting is contradictory, so it is read back, never resent.
-      try { await fence.recordProviderId(String(createdId)); } catch { /* Read-back still runs; a lost checkpoint leaves the claim, which counts this send. */ }
-      return this.readBack(call, built.requested, String(createdId));
+      // Read-back still runs, but a transient failure cannot retry without the saved ID.
+      let isProviderIdSaved = true;
+      try { await fence.recordProviderId(String(createdId)); } catch { isProviderIdSaved = false; }
+      return this.readBack(call, built.requested, String(createdId), isProviderIdSaved);
     }
     const result = classify(this.client, 'createMeeting', exchange), receipt = this.client.receipt(call, '', result.errorCode), status = exchange.response.status;
     const isBodyUnreadable = exchange.isTooLarge || exchange.hasBodyReadFailed === true;
@@ -284,7 +286,15 @@ export class CreateMeetingOperation implements Mutation<CreateMeetingInput, Meet
     return resendOrUncertain(unknownFailure, result.retryAfter, result.errorCode);
   }
 
-  private async readBack(call: Call, requested: Meeting, providerId: string): Promise<MutationAttempt<Meeting>> {
+  /** Confirm an accepted ID; a transient failure retries only when the ID is saved. */
+  private async readBack(call: Call, requested: Meeting, providerId: string, isProviderIdSaved = true): Promise<MutationAttempt<Meeting>> {
+    const attempt = await this.confirmCreatedMeeting(call, requested, providerId);
+    if (attempt.kind !== 'retry' || isProviderIdSaved) return attempt;
+    return newMutationUncertain(requested, zoomFailure('createMeeting', attempt.failure.kind, `${attempt.failure.message}; Zoom created the meeting, but its ID could not be saved for a later read-back`), this.client.receipt(call, providerId));
+  }
+
+  /** Confirm a prior accepted ID without another create request. */
+  private async confirmCreatedMeeting(call: Call, requested: Meeting, providerId: string): Promise<MutationAttempt<Meeting>> {
     const id = Number(providerId);
     if (!Number.isSafeInteger(id) || id < 1) return newMutationUncertain(requested, zoomFailure('createMeeting', 'PROTOCOL', 'the accepted Zoom meeting ID could not be read back'), this.client.receipt(call, providerId));
     const resolved = await this.client.resolveCredentials(call, 'createMeeting');

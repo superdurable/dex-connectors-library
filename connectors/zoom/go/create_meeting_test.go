@@ -448,6 +448,47 @@ func TestCreateMeetingClientErrorWithACreatedIDIsReadBackNotResent(t *testing.T)
 	require.Equal(t, http.MethodGet, provider.request(t, 1).method)
 }
 
+func TestCreateMeetingClientErrorWithAnUnsavedCreatedIDSelectsUncertainWhenItsReadBackFails(t *testing.T) {
+	context := singledispatchtest.NewContext("zoom-flow", "client-error-with-unsaved-id")
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			// The claim is already saved; the provider ID checkpoint that follows fails.
+			context.SetWriteError(errors.New("heartbeat unavailable"))
+			writeJSON(t, response, http.StatusTooEarly, `{"id":92674392836}`)
+			return
+		}
+		writeJSON(t, response, http.StatusServiceUnavailable, `{"code":503}`)
+	})
+	result, err := sdkgo.RunMutation(context, newZoomClient(t, provider.URL).CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err, "a Retry without the saved ID could resend below the cap")
+	require.Equal(t, zoom.CreateMeetingBranchUncertain, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestCreateMeetingClientErrorWithASavedCreatedIDRetriesItsReadBackWithoutResending(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		switch {
+		case request.Method == http.MethodPost:
+			writeJSON(t, response, http.StatusTooEarly, `{"id":92674392836}`)
+		case index == 1:
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"code":503}`)
+		default:
+			writeJSON(t, response, http.StatusOK, meetingJSON(92674392836, "Consultation with Priya", "2036-02-24T17:00:00Z"))
+		}
+	})
+	context := singledispatchtest.NewContext("zoom-flow", "client-error-with-saved-id")
+	client := newZoomClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	context.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(context, client.CreateMeeting(), zoomConnection, validCreateMeetingInput())
+	require.NoError(t, err)
+	require.Equal(t, zoom.CreateMeetingBranchCreated, result.Branch)
+	require.Equal(t, 3, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(t, 2).method, "the saved ID is read back, never resent")
+}
+
 func TestCreateMeetingInvalidCredentialsAfterAPossibleSendSelectUncertain(t *testing.T) {
 	provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusInternalServerError, `{"code":500}`)

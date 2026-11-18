@@ -151,6 +151,27 @@ describe('Zoom bounded resend of unconfirmed meeting creates', () => {
     expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
   });
 
+  it('selects uncertain when the named meeting ID cannot be saved and its read-back is unavailable', async () => {
+    const { client, requests } = newClient(request => request.method === 'POST' ? { status: 425, body: '{"id":92674392836}' } : { status: 503, body: '{}' });
+    const context = new AttemptContext();
+    const recordHeartbeat = context.recordHeartbeat.bind(context);
+    context.recordHeartbeat = async (value: unknown) => {
+      if (JSON.stringify(value).includes('92674392836')) throw new Error('heartbeat refused');
+      await recordHeartbeat(value);
+    };
+    expect(await create(client, context)).toMatchObject({ branch: 'uncertain' });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET']);
+  });
+
+  it('retries a read-back of the saved named meeting ID without resending', async () => {
+    const { client, requests } = newClient(request => request.method === 'POST' ? { status: 425, body: '{"id":92674392836}' } : requests.length < 3 ? { status: 503, body: '{}' } : { status: 200, body: meetingBody });
+    const context = new AttemptContext();
+    expect(await create(client, context)).toBeInstanceOf(RetryError);
+    context.attempt = 2;
+    expect(await create(client, context)).toMatchObject({ branch: 'created' });
+    expect(requests.map(request => request.method)).toEqual(['POST', 'GET', 'GET']);
+  });
+
   it('retries an unlisted client error with an unknown-outcome failure kind', async () => {
     const { client } = newClient([{ status: 425, body: '{"code":425}' }]);
     const result = await create(client, new AttemptContext());

@@ -102,11 +102,11 @@ func (operation CreateMeetingOperation) Invoke(call sdkgo.Call, input CreateMeet
 		if decision.Marker.CallID != call.ID || decision.Marker.ProviderID == "" {
 			return sdkgo.NewMutationUncertain(requested, newFailure(createMeetingOperationID, sdkgo.FailureTransport, "an earlier Zoom create may have succeeded without a confirmed meeting ID, and the send cap is reached"), client.receipt(call, "", ""))
 		}
-		return client.readBackCreatedMeeting(call, requested, decision.Marker.ProviderID)
+		return client.readBackCreatedMeeting(call, requested, decision.Marker.ProviderID, true)
 	case singledispatch.ReadBackThenResendAllowed:
 		// A saved meeting ID proves Zoom created the meeting, so it is read back and never resent.
 		if decision.Marker.ProviderID != "" {
-			return client.readBackCreatedMeeting(call, requested, decision.Marker.ProviderID)
+			return client.readBackCreatedMeeting(call, requested, decision.Marker.ProviderID, true)
 		}
 	}
 	// This attempt's send would be the last one the cap allows when no further send remains.
@@ -171,8 +171,8 @@ func (operation CreateMeetingOperation) Invoke(call sdkgo.Call, input CreateMeet
 	if createdMeetingID := readCreatedMeetingID(response.body); createdMeetingID > 0 {
 		// An error status whose body names a created meeting is contradictory, so the meeting is read back, never resent.
 		providerID := strconv.FormatInt(createdMeetingID, 10)
-		_ = fence.RecordProviderID(providerID)
-		return client.readBackCreatedMeeting(call, requested, providerID)
+		isProviderIDSaved := fence.RecordProviderID(providerID) == nil
+		return client.readBackCreatedMeeting(call, requested, providerID, isProviderIDSaved)
 	}
 	classification := client.classifyErrorStatus(createMeetingOperationID, response)
 	isBodyUnreadable := response.isBodyTooLarge || response.hasBodyReadFailed
@@ -284,22 +284,25 @@ func (client *Client) rejectOrSelectUncertain(call sdkgo.Call, fence *singledisp
 	return sdkgo.NewMutationBranch(CreateMeetingBranchProviderRejected, requested, &failure, client.receipt(call, "", errorCode))
 }
 
-func (client *Client) readBackCreatedMeeting(call sdkgo.Call, requested Meeting, providerID string) sdkgo.MutationAttempt[Meeting] {
+// readBackCreatedMeeting confirms a created meeting by ID. A transient failure retries only when the ID
+// is saved, because without it the next attempt could resend instead of reading back.
+func (client *Client) readBackCreatedMeeting(call sdkgo.Call, requested Meeting, providerID string, isProviderIDSaved bool) sdkgo.MutationAttempt[Meeting] {
 	meetingID, err := strconv.ParseInt(providerID, 10, 64)
 	if err != nil || meetingID < 1 {
 		return sdkgo.NewMutationUncertain(requested, newFailure(createMeetingOperationID, sdkgo.FailureProtocol, "the accepted Zoom meeting ID could not be read back"), client.receipt(call, providerID, ""))
 	}
+	readBack := createdMeetingReadBack{call: call, requested: requested, providerID: providerID, isProviderIDSaved: isProviderIDSaved}
 	credentials, failure, isRetryable := client.resolveCredentials(call, createMeetingOperationID)
 	if failure != nil {
 		if isRetryable {
-			return sdkgo.NewMutationRetry[Meeting](*failure, 0)
+			return client.retryReadBackOrSelectUncertain(readBack, *failure, 0)
 		}
 		return sdkgo.NewMutationUncertain(requested, *failure, client.receipt(call, providerID, ""))
 	}
 	var readBackContext context.Context = call.Context
 	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
 		if time.Until(deadline) <= time.Second {
-			return sdkgo.NewMutationRetry[Meeting](newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom meeting read-back has insufficient time"), 0)
+			return client.retryReadBackOrSelectUncertain(readBack, newFailure(createMeetingOperationID, sdkgo.FailureAvailability, "Zoom meeting read-back has insufficient time"), 0)
 		}
 		boundedContext, cancel := context.WithDeadline(call.Context, deadline.Add(-time.Second))
 		defer cancel()
@@ -307,11 +310,11 @@ func (client *Client) readBackCreatedMeeting(call sdkgo.Call, requested Meeting,
 	}
 	response, _, err := client.exchangeWithContext(call, readBackContext, &credentials, providerRequest{method: http.MethodGet, path: meetingPath(meetingID)}, false)
 	if err != nil {
-		return sdkgo.NewMutationRetry[Meeting](newFailure(createMeetingOperationID, sdkgo.FailureTransport, "Zoom meeting read-back could not be reached"), 0)
+		return client.retryReadBackOrSelectUncertain(readBack, newFailure(createMeetingOperationID, sdkgo.FailureTransport, "Zoom meeting read-back could not be reached"), 0)
 	}
 	classification := client.classifyReadResponse(createMeetingOperationID, response)
 	if classification.outcome == statusOutcomeRetry {
-		return sdkgo.NewMutationRetry[Meeting](classification.failure, classification.retryAfter)
+		return client.retryReadBackOrSelectUncertain(readBack, classification.failure, classification.retryAfter)
 	}
 	if classification.outcome == statusOutcomeUsable {
 		meeting, decodeErr := decodeMeeting(response.body)
@@ -320,6 +323,23 @@ func (client *Client) readBackCreatedMeeting(call sdkgo.Call, requested Meeting,
 		}
 	}
 	return sdkgo.NewMutationUncertain(requested, newFailure(createMeetingOperationID, sdkgo.FailureProtocol, "Zoom could not confirm the accepted meeting"), client.receipt(call, providerID, ""))
+}
+
+// createdMeetingReadBack identifies one read-back of a created meeting.
+type createdMeetingReadBack struct {
+	call              sdkgo.Call
+	requested         Meeting
+	providerID        string
+	isProviderIDSaved bool
+}
+
+// retryReadBackOrSelectUncertain retries a transient read-back only when the meeting ID is saved.
+func (client *Client) retryReadBackOrSelectUncertain(readBack createdMeetingReadBack, failure sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[Meeting] {
+	if !readBack.isProviderIDSaved {
+		failure.Message += "; Zoom created the meeting, but its ID could not be saved for a later read-back"
+		return sdkgo.NewMutationUncertain(readBack.requested, failure, client.receipt(readBack.call, readBack.providerID, ""))
+	}
+	return sdkgo.NewMutationRetry[Meeting](failure, retryAfter)
 }
 
 // buildCreateMeetingRequest validates input and returns the wire request and the requested meeting echo.

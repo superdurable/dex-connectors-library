@@ -257,6 +257,43 @@ async def test_client_error_with_created_id_is_read_back_not_resent() -> None:
     assert [request.method for request in requests] == ["POST", "GET"]
 
 
+class ProviderIDRefusingContext(AttemptContext):
+    """Refuse the heartbeat that saves the meeting ID."""
+
+    async def heartbeat(self, value: object = None) -> None:
+        """Fail the provider ID checkpoint and keep every other heartbeat."""
+        if "92674392836" in repr(value):
+            raise RuntimeError("heartbeat refused")
+        await super().heartbeat(value)
+
+
+async def test_unsaved_created_id_with_unavailable_read_back_selects_uncertain() -> None:
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> tuple[int, object]:
+        return (425, {"id": 92674392836}) if request.method == "POST" else (503, {"code": 503})
+
+    result = await create(answer, ProviderIDRefusingContext(), requests)
+    assert isinstance(result, MutationResult) and result.branch == "uncertain"
+    assert [request.method for request in requests] == ["POST", "GET"]
+
+
+async def test_saved_created_id_read_back_retries_without_resending() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+
+    def answer(request: httpx.Request) -> tuple[int, object]:
+        if request.method == "POST":
+            return (425, {"id": 92674392836})
+        return (503, {"code": 503}) if len(requests) < 3 else (200, CREATED[1])
+
+    assert isinstance(await create(answer, context, requests), RetryError)
+    context.attempt = 2
+    result = await create(answer, context, requests)
+    assert isinstance(result, MutationResult) and result.branch == "created"
+    assert [request.method for request in requests] == ["POST", "GET", "GET"]
+
+
 async def test_unlisted_client_error_retries_with_an_unknown_outcome_kind() -> None:
     requests: list[httpx.Request] = []
     result = await create(lambda _: (425, {"code": 425}), AttemptContext(), requests)

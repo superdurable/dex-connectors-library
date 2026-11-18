@@ -5,6 +5,7 @@
 import json
 import re
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 from dex_connectors.sdk import (
     Call,
@@ -640,11 +641,13 @@ class CreateMeetingOperation:
         created_meeting_id = _created_meeting_id(exchange.body)
         if created_meeting_id > 0:
             # An error status naming a created meeting is contradictory, so it is read back, never resent.
+            is_provider_id_saved = True
             try:
                 await fence.record_provider_id(str(created_meeting_id))
             except Exception:
-                pass  # Read-back still runs; a lost checkpoint leaves the claim, which counts this send.
-            return await self._read_back(call, requested, str(created_meeting_id))
+                # Read-back still runs, but a transient failure cannot retry without the saved ID.
+                is_provider_id_saved = False
+            return await self._read_back(call, requested, str(created_meeting_id), is_provider_id_saved)
         route, problem, delay, code = classify(self.client, operation, exchange)
         assert problem is not None
         receipt = self.client.receipt(call, error_code=code)
@@ -746,7 +749,28 @@ class CreateMeetingOperation:
             return MutationAttempt.retry(problem, delay)
         return MutationAttempt.uncertain(requested, problem, self.client.receipt(call, error_code=error_code))
 
-    async def _read_back(self, call: Call, requested: Meeting, provider_id: str) -> MutationAttempt[Meeting]:
+    async def _read_back(
+        self, call: Call, requested: Meeting, provider_id: str, is_provider_id_saved: bool = True
+    ) -> MutationAttempt[Meeting]:
+        """Confirm an accepted ID; a transient failure retries only when the ID is saved."""
+        attempt = await self._confirm_created_meeting(call, requested, provider_id)
+        if attempt.kind != "retry" or is_provider_id_saved:
+            return attempt
+        problem = cast(Failure, attempt.failure)
+        return MutationAttempt.uncertain(
+            requested,
+            failure(
+                "createMeeting",
+                problem.kind,
+                problem.message
+                + "; Zoom created the meeting, but its ID could not be saved for a later read-back",
+            ),
+            self.client.receipt(call, provider_id),
+        )
+
+    async def _confirm_created_meeting(
+        self, call: Call, requested: Meeting, provider_id: str
+    ) -> MutationAttempt[Meeting]:
         """Confirm a prior accepted ID without another create request."""
         operation = "createMeeting"
         try:
