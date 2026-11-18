@@ -4,10 +4,13 @@
 package contacts
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -196,4 +199,175 @@ func TestCreateContactRejectsInvalidNameBeforeDispatch(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, CreateContactBranchDefect, result.Branch)
 	require.Zero(t, requests)
+}
+
+func TestCreateContactNeverResendsAnAcceptedCreateWithoutAResourceName(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "unparsable body", status: http.StatusOK, body: `{"resourceName":`},
+		{name: "missing resource name", status: http.StatusOK, body: `{"names":[]}`},
+		{name: "accepted without body", status: http.StatusAccepted},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			posts := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				posts++
+				w.WriteHeader(test.status)
+				_, _ = w.Write([]byte(test.body))
+			}))
+			defer server.Close()
+			ctx := singledispatchtest.NewContext("accepted-contact-flow", "create-contact-step")
+			result, err := sdkgo.RunMutation(ctx, newTestClient(t, server.URL).CreateContact(), testConnection, CreateContactInput{GivenName: "Ada"})
+			require.NoError(t, err)
+			require.Equal(t, CreateContactBranchUncertain, result.Branch)
+			require.Equal(t, 1, posts)
+		})
+	}
+}
+
+type contactRoundTripper func(*http.Request) (*http.Response, error)
+
+func (roundTrip contactRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	return roundTrip(request)
+}
+
+type brokenContactBody struct{}
+
+func (brokenContactBody) Read([]byte) (int, error) { return 0, errors.New("interrupted response") }
+func (brokenContactBody) Close() error             { return nil }
+
+func TestCreateContactNeverResendsASuccessWhoseBodyBreaks(t *testing.T) {
+	posts := 0
+	credentials := Credentials{OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"), AccessToken: sdkgo.NewSecretString(testAccessToken), RefreshToken: sdkgo.NewSecretString("refresh-token")}
+	client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials},
+		WithHTTPClient(&http.Client{Transport: contactRoundTripper(func(request *http.Request) (*http.Response, error) {
+			posts++
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: brokenContactBody{}, Request: request}, nil
+		})}))
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("broken-body-contact-flow", "create-contact-step")
+	result, err := sdkgo.RunMutation(ctx, client.CreateContact(), testConnection, CreateContactInput{GivenName: "Ada"})
+	require.NoError(t, err)
+	require.Equal(t, CreateContactBranchUncertain, result.Branch)
+	require.Equal(t, 1, posts)
+}
+
+func TestCreateContactReadsBackAResourceNameReturnedWithAnUnknownStatus(t *testing.T) {
+	posts, reads := 0, 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			reads++
+			_, _ = w.Write([]byte(`{"resourceName":"people/c125","names":[{"displayName":"Ada"}]}`))
+			return
+		}
+		posts++
+		w.WriteHeader(http.StatusConflict)
+		_, _ = w.Write([]byte(`{"resourceName":"people/c125"}`))
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	ctx := singledispatchtest.NewContext("resource-name-contact-flow", "create-contact-step")
+	input := CreateContactInput{GivenName: "Ada"}
+	_, err := sdkgo.RunMutation(ctx, client.CreateContact(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateContact(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, CreateContactBranchCreated, result.Branch)
+	require.Equal(t, "people/c125", result.Value.ResourceName)
+	require.Equal(t, 1, posts)
+	require.Equal(t, 1, reads)
+}
+
+func TestCreateContactRetriesAReadBackWhoseBodyBreaks(t *testing.T) {
+	posts, reads := 0, 0
+	credentials := Credentials{OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"), AccessToken: sdkgo.NewSecretString(testAccessToken), RefreshToken: sdkgo.NewSecretString("refresh-token")}
+	client, err := New(Config{BaseURL: "http://127.0.0.1:1"}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials},
+		WithHTTPClient(&http.Client{Transport: contactRoundTripper(func(request *http.Request) (*http.Response, error) {
+			if request.Method == http.MethodPost {
+				posts++
+				return &http.Response{StatusCode: http.StatusConflict, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"resourceName":"people/c126"}`)), Request: request}, nil
+			}
+			reads++
+			if reads == 1 {
+				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: brokenContactBody{}, Request: request}, nil
+			}
+			return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"resourceName":"people/c126","names":[{"displayName":"Ada"}]}`)), Request: request}, nil
+		})}))
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("broken-read-back-contact-flow", "create-contact-step")
+	input := CreateContactInput{GivenName: "Ada"}
+	var retry *sdkgo.RetryError
+	for range 2 {
+		_, err := sdkgo.RunMutation(ctx, client.CreateContact(), testConnection, input)
+		require.ErrorAs(t, err, &retry)
+		ctx.AdvanceAttempt()
+	}
+	result, err := sdkgo.RunMutation(ctx, client.CreateContact(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, CreateContactBranchCreated, result.Branch)
+	require.Equal(t, 1, posts)
+	require.Equal(t, 2, reads)
+}
+
+func TestCreateContactTreatsAnUnreadableRefusalAsUnknown(t *testing.T) {
+	posts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		posts++
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"` + testAccessToken + `"}`))
+	}))
+	defer server.Close()
+	ctx := singledispatchtest.NewContext("unreadable-refusal-contact-flow", "create-contact-step")
+	_, err := sdkgo.RunMutation(ctx, newTestClient(t, server.URL).CreateContact(), testConnection, CreateContactInput{GivenName: "Ada"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, 1, posts)
+}
+
+// failingResolutionCredentials fails one numbered credential resolution transiently.
+type failingResolutionCredentials struct {
+	resolutions      int
+	failedResolution int
+}
+
+func (source *failingResolutionCredentials) Resolve(sdkgo.Call) (Credentials, error) {
+	source.resolutions++
+	if source.resolutions == source.failedResolution {
+		return Credentials{}, errors.New("credential refresh unavailable")
+	}
+	return Credentials{OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"), AccessToken: sdkgo.NewSecretString(testAccessToken), RefreshToken: sdkgo.NewSecretString("refresh-token")}, nil
+}
+
+func (source *failingResolutionCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
+	return source.Resolve(call)
+}
+
+// Attempt 1 is unknown and attempt 2 gets 429, so attempt 3's credential failure follows a possible send.
+func TestCreateContactPreSendRetryAfterAPossibleSendKeepsTheSendCount(t *testing.T) {
+	posts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		posts++
+		w.WriteHeader([]int{http.StatusInternalServerError, http.StatusTooManyRequests, http.StatusInternalServerError}[min(posts-1, 2)])
+	}))
+	defer server.Close()
+	client, err := New(Config{BaseURL: server.URL}, &failingResolutionCredentials{failedResolution: 3})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("pre-send-retry-contact-flow", "create-contact-step")
+	input := CreateContactInput{GivenName: "Ada"}
+	var retry *sdkgo.RetryError
+	for range 3 {
+		_, err := sdkgo.RunMutation(ctx, client.CreateContact(), testConnection, input)
+		require.ErrorAs(t, err, &retry)
+		ctx.AdvanceAttempt()
+	}
+	// Attempts 1 and 3 count as possible sends, so attempt 4's unknown outcome is at the cap of 3.
+	result, err := sdkgo.RunMutation(ctx, client.CreateContact(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, CreateContactBranchUncertain, result.Branch)
+	require.Equal(t, 3, posts)
 }

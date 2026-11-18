@@ -296,6 +296,9 @@ so each operation takes one of these positions:
      `providerRejected` and leaves the unsent draft in Drafts; after an
      earlier possible send it reads the draft back instead. An unreadable
      checkpoint retries without contacting Graph.
+  5. Any 2xx to the send, including one whose body is oversized or breaks
+     after the headers arrive, selects `sent` and is never resent, because
+     Exchange may not yet have moved the accepted draft to Sent Items.
 
 Sync durability persists the result before the Flow advances; async durability
 can replay a result lost before its batched commit. Both modes use the same
@@ -339,7 +342,7 @@ carries Graph's `request-id`.
 | other 404, such as an unknown mailbox | `providerRejected`, `NOT_FOUND` | same | same |
 | 507 | `providerRejected`, `QUOTA_EXHAUSTED` | Retry | `providerRejected` before the send; after it, read the draft back |
 | other 4xx, 501, 3xx | `providerRejected` | 400, 411, 413, 414, 415, 422: `providerRejected`; others Retry | before the send, `providerRejected`; after it, 400, 411, 413, 414, 415, 422 refuse a first send, others read the draft back |
-| Oversized, malformed, or token-reflecting 2xx | `invalidResponse` | Retry | Retry before the send; a reply draft answer is `providerRejected` |
+| Oversized, malformed, interrupted, or token-reflecting 2xx | `invalidResponse` (interrupted: Retry) | Retry | Retry before the send; a reply draft answer is `providerRejected`; to the send itself, `sent` |
 | Revoked grant (`invalid_grant`, `invalid_client`, `interaction_required`, ...) | `providerRejected`, `AUTHENTICATION` | same | same |
 | Token endpoint outage | Retry | Retry | Retry |
 | Invalid input or connection | `defect`, no request | same | same |

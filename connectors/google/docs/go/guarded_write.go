@@ -129,6 +129,10 @@ type replaceAllTextReply struct {
 func runGuardedWrite[OUT any](client *Client, call sdkgo.Call, target guardedWriteTarget, change guardedChange[OUT]) sdkgo.MutationAttempt[OUT] {
 	credential, failure := client.resolveCredential(call, target.operationID)
 	if failure != nil {
+		if call.Context.Attempt() > 1 {
+			// An earlier attempt may have written, so defect could hide an applied change.
+			return sdkgo.NewMutationRetry[OUT](*failure, 0)
+		}
 		return sdkgo.NewMutationBranch(target.defect, *new(OUT), failure, sdkgo.Receipt{})
 	}
 	document, bodyText, receipt, attempt := readDocumentForWrite[OUT](client, call, &credential, target)

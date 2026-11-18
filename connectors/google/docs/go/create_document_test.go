@@ -219,7 +219,9 @@ func TestCreateDocumentRetriesAnUnreadableCheckpointAfterLookingUp(t *testing.T)
 		{"missing", `{"files":[]}`, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			server := newRecordingServer(t, func(response http.ResponseWriter, _ recordedRequest) { writeJSON(t, response, http.StatusOK, test.lookup) })
+			server := newRecordingServer(t, func(response http.ResponseWriter, _ recordedRequest) {
+				writeJSON(t, response, http.StatusOK, test.lookup)
+			})
 			ctx := singledispatchtest.NewContext("docs-flow", "create-fail-closed-"+test.name)
 			ctx.SetReadError(errors.New("heartbeat store unavailable"))
 			result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
@@ -391,32 +393,40 @@ func TestCreateDocumentRetries503WhenReadBackIsUnavailable(t *testing.T) {
 
 func TestCreateDocumentPriorClaimLookupErrorsNeverResend(t *testing.T) {
 	for _, test := range []struct {
-		name      string
-		status    int
-		body      string
-		wantRetry bool
+		name string
+		body string
+		// status answers the lookup; the cap-one variant reaches the send cap on attempt 2.
+		status int
+		kind   sdkgo.FailureKind
 	}{
-		{"rejected", http.StatusForbidden, `{"error":{"errors":[{"reason":"insufficientPermissions"}]}}`, false},
+		{"rejected", `{"error":{"errors":[{"reason":"insufficientPermissions"}]}}`, http.StatusForbidden, sdkgo.FailureAuthorization},
 		// An invalid read is repeated by a later attempt, which counts toward the send cap.
-		{"invalid", http.StatusOK, `{"files":[{"id":"sheet1","mimeType":"application/vnd.google-apps.spreadsheet"}]}`, true},
+		{"invalid", `{"files":[{"id":"sheet1","mimeType":"application/vnd.google-apps.spreadsheet"}]}`, http.StatusOK, sdkgo.FailureProtocol},
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		newServer := func(t *testing.T) *recordingServer {
+			return newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
 				if request.path == "/drive/v3/files" {
 					writeJSON(t, response, test.status, test.body)
 					return
 				}
 				writeJSON(t, response, http.StatusNotFound, `{}`)
 			})
+		}
+		t.Run(test.name+" below the cap retries", func(t *testing.T) {
+			server := newServer(t)
 			ctx := singledispatchtest.NewContext("docs-flow", "prior-claim-"+test.name)
 			ctx.AdvanceAttempt()
-			result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
-			if test.wantRetry {
-				requireRetry(t, err, sdkgo.FailureProtocol)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
-			}
+			_, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
+			requireRetry(t, err, test.kind)
+			require.Zero(t, countRecordedCreates(server.recorded()))
+		})
+		t.Run(test.name+" at the cap is uncertain", func(t *testing.T) {
+			server := newServer(t)
+			ctx := singledispatchtest.NewContext("docs-flow", "prior-claim-cap-"+test.name)
+			ctx.AdvanceAttempt()
+			result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput(), sdkgo.WithMaxSends(1))
+			require.NoError(t, err)
+			require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
 			require.Zero(t, countRecordedCreates(server.recorded()))
 		})
 	}
@@ -548,7 +558,7 @@ func TestCreateDocumentFenceReadsAcceptedDocumentOnLaterAttempt(t *testing.T) {
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountDuplicateLookups))
 }
 
-func TestCreateDocumentUnusableAcceptedBodyRequiresReadBack(t *testing.T) {
+func TestCreateDocumentUnusableAcceptedBodyIsNeverResent(t *testing.T) {
 	lookupCount := 0
 	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
 		if request.method == http.MethodGet {
@@ -563,9 +573,135 @@ func TestCreateDocumentUnusableAcceptedBodyRequiresReadBack(t *testing.T) {
 		writeJSON(t, response, http.StatusOK, `{"name":"Missing ID"}`)
 	})
 	ctx := singledispatchtest.NewContext("docs-flow", "unusable-accepted")
-	_, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
-	requireRetry(t, err, sdkgo.FailureProtocol)
+	result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
+	require.NoError(t, err)
+	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
 	require.Equal(t, 1, countRecordedCreates(server.recorded()))
+}
+
+func TestCreateDocumentAcceptedBodyWithAnIDIsReadBackByID(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		switch {
+		case request.method == http.MethodPost:
+			writeJSON(t, response, http.StatusOK, `{"id":"newDoc1","mimeType":7}`)
+		case request.path == "/drive/v3/files/newDoc1":
+			writeJSON(t, response, http.StatusOK, `{"id":"newDoc1","name":"Acme Refund Policy","mimeType":"application/vnd.google-apps.document"}`)
+		default:
+			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+		}
+	})
+	client := newDocsClient(t, server.URL)
+	ctx := singledispatchtest.NewContext("docs-flow", "accepted-with-id")
+	_, err := sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
+	requireRetry(t, err, sdkgo.FailureProtocol)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
+	require.NoError(t, err)
+	require.Equal(t, docs.CreateDocumentBranchCreated, result.Branch)
+	require.Equal(t, "newDoc1", result.Value.Document.DocumentID)
+	require.Equal(t, 1, countRecordedCreates(server.recorded()))
+}
+
+func TestCreateDocumentBodyThatBreaksAfter2xxHeadersIsNeverResent(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		if request.method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+			return
+		}
+		response.Header().Set("Content-Length", "500")
+		response.WriteHeader(http.StatusOK)
+		_, _ = response.Write([]byte(`{"id":"newD`))
+	})
+	ctx := singledispatchtest.NewContext("docs-flow", "broken-accepted-body")
+	result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput())
+	require.NoError(t, err)
+	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
+	require.Equal(t, 1, countRecordedCreates(server.recorded()))
+}
+
+func TestCreateDocumentLooksUpAfterARateLimitedResend(t *testing.T) {
+	creates := 0
+	var methods []string
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		methods = append(methods, request.method)
+		if request.method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+			return
+		}
+		creates++
+		writeJSON(t, response, []int{http.StatusInternalServerError, http.StatusTooManyRequests, http.StatusInternalServerError}[min(creates-1, 2)], `{}`)
+	})
+	client := newDocsClient(t, server.URL)
+	ctx := singledispatchtest.NewContext("docs-flow", "rate-limited-resend")
+	for attempt := 1; attempt <= 3; attempt++ {
+		if attempt > 1 {
+			ctx.AdvanceAttempt()
+		}
+		_, err := sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+	}
+	// Each send is preceded by the lookup, and every unknown or refused send is followed by one.
+	require.Equal(t, []string{"GET", "POST", "GET", "GET", "POST", "GET", "GET", "POST", "GET"}, methods)
+}
+
+func TestCreateDocumentRetriesAnIncompleteLookupAtTheSendCap(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		writeJSON(t, response, http.StatusOK, `{"incompleteSearch":true,"files":[]}`)
+	})
+	ctx := singledispatchtest.NewContext("docs-flow", "incomplete-at-cap")
+	ctx.AdvanceAttempt()
+	_, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL).CreateDocument(), docsConnection, policyDraftInput(), sdkgo.WithMaxSends(1))
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, countRecordedCreates(server.recorded()))
+}
+
+func TestCreateDocumentRetriesTransientCredentialsAfterAPossibleSend(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, _ recordedRequest) {
+		writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+	})
+	client, err := docs.New(docs.Config{DocsEndpoint: server.URL, DriveEndpoint: server.URL}, sdkgo.StaticCredentialProvider[docs.Credentials]{})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("docs-flow", "credentials-after-send")
+	ctx.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	// A possible earlier send keeps its count: no notSent marker is written.
+	for _, frame := range ctx.Heartbeats() {
+		require.NotContains(t, string(frame), `"state":"notSent"`)
+	}
+}
+
+func TestCreateDocumentRetriesATransientRefreshFailureAfter401(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		if request.method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusUnauthorized, `{}`)
+	})
+	client, err := docs.New(docs.Config{DocsEndpoint: server.URL, DriveEndpoint: server.URL}, &unavailableRefreshCredentials{})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("docs-flow", "refresh-unavailable")
+	_, err = sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	frames := ctx.Heartbeats()
+	require.Contains(t, string(frames[len(frames)-1]), `"state":"canResend"`)
+}
+
+// unavailableRefreshCredentials returns a token Google rejects, and its refresh fails transiently.
+type unavailableRefreshCredentials struct{}
+
+func (*unavailableRefreshCredentials) Resolve(sdkgo.Call) (docs.Credentials, error) {
+	return docs.Credentials{AccessToken: sdkgo.NewSecretString("token-a")}, nil
+}
+
+func (credentials *unavailableRefreshCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[docs.Credentials]) (docs.Credentials, error) {
+	return credentials.Resolve(call)
+}
+
+func (*unavailableRefreshCredentials) ResolveAfterRejection(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[docs.Credentials]) (docs.Credentials, error) {
+	return docs.Credentials{}, errors.New("token endpoint unavailable")
 }
 
 func TestCreateDocumentMidRequestDeadlineRetriesBelowTheSendCap(t *testing.T) {
@@ -703,20 +839,21 @@ func TestCreateDocumentMalformedAcceptedBodyReadsBackBeforeReturning(t *testing.
 	require.Equal(t, 1, countRecordedCreates(server.recorded()))
 }
 
-func TestCreateDocumentLostClaimStillCountsTheSendAfterUnusableAcceptedBody(t *testing.T) {
+func TestCreateDocumentLostClaimStillCountsTheSendAfterAnUnknownOutcome(t *testing.T) {
 	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
 		if request.method == http.MethodGet {
 			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
 			return
 		}
-		writeJSON(t, response, http.StatusOK, `{"name":"Missing ID"}`)
+		writeJSON(t, response, http.StatusBadGateway, `{}`)
 	})
 	client := newDocsClient(t, server.URL)
 	ctx := singledispatchtest.NewContext("docs-flow", "lost-claim-create")
 	ctx.LoseNextHeartbeat()
 	for range 2 {
 		_, err := sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
-		requireRetry(t, err, sdkgo.FailureProtocol)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
 		ctx.AdvanceAttempt()
 	}
 	result, err := sdkgo.RunMutation(ctx, client.CreateDocument(), docsConnection, policyDraftInput())
@@ -725,7 +862,7 @@ func TestCreateDocumentLostClaimStillCountsTheSendAfterUnusableAcceptedBody(t *t
 	require.Equal(t, 3, countRecordedCreates(server.recorded()))
 }
 
-func TestCreateDocumentOversizedAcceptedBodyRetriesBelowTheSendCap(t *testing.T) {
+func TestCreateDocumentOversizedAcceptedBodyIsNeverResent(t *testing.T) {
 	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
 		if request.method == http.MethodGet {
 			writeJSON(t, response, http.StatusOK, `{"files":[]}`)
@@ -734,7 +871,8 @@ func TestCreateDocumentOversizedAcceptedBodyRetriesBelowTheSendCap(t *testing.T)
 		writeJSON(t, response, http.StatusOK, `{"id":"`+strings.Repeat("x", 200)+`"}`)
 	})
 	ctx := singledispatchtest.NewContext("docs-flow", "oversized-accepted-create")
-	_, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL, docs.Config{MaxResponseBytes: 64}).CreateDocument(), docsConnection, policyDraftInput())
-	requireRetry(t, err, sdkgo.FailureProtocol)
+	result, err := sdkgo.RunMutation(ctx, newDocsClient(t, server.URL, docs.Config{MaxResponseBytes: 64}).CreateDocument(), docsConnection, policyDraftInput())
+	require.NoError(t, err)
+	require.Equal(t, docs.CreateDocumentBranchUncertain, result.Branch)
 	require.Equal(t, 1, countRecordedCreates(server.recorded()))
 }

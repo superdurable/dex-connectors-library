@@ -108,7 +108,7 @@ ADD_PLAYLIST_ITEM_DEFINITION = MutationDefinition(
         BranchDefinition(QUOTA_EXHAUSTED, "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", True),
         BranchDefinition(PROVIDER_REJECTED, "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", True),
         BranchDefinition(INVALID_RESPONSE, "YouTube returned an invalid or oversized response to the check before any insert.", True),
-        BranchDefinition(UNCERTAIN, "An earlier insert may have added the video, and the playlist listing does not show it at the send cap; check the playlist before adding it again.", True),
+        BranchDefinition(UNCERTAIN, "An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap or after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or credentials are invalid.", True),
     ),
     StepDefaults(

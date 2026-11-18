@@ -7,7 +7,7 @@ import {
   type Call, type Failure, type FailureKind, type Mutation, type MutationAttempt,
   type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition,
 } from '@superdurable/connectors-sdk';
-import { CheckpointError, Fence, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, Fence, InsufficientTimeError } from '@superdurable/connectors-sdk/singledispatch';
 import {
   ListThreadRepliesDefinition, PostChannelMessageDefinition, PostChatMessageDefinition,
   PostThreadReplyDefinition,
@@ -69,9 +69,10 @@ function classifyWrite(client: TeamsClient, operation: string, subject: string, 
   if (result.error) return { kind: 'ambiguous', failure: client.failure(operation, 'TRANSPORT', `Microsoft Graph ${subject} outcome is unknown`), retryAfterMs: 0 };
   const status = result.status;
   if (status >= 200 && status < 300) {
-    if (result.bodyReadFailed) return { kind: 'ambiguous', failure: client.failure(operation, 'TRANSPORT', `Microsoft Graph accepted the ${subject} but its response was interrupted`), retryAfterMs: 0 };
-    if (result.bodyTooLarge) return { kind: 'ambiguous', failure: client.failure(operation, 'RESPONSE_TOO_LARGE', `Microsoft Graph accepted the ${subject} but its response exceeds the configured size limit`), retryAfterMs: 0 };
-    if (result.reflectsSecret) return { kind: 'ambiguous', failure: client.failure(operation, 'PROTOCOL', `Microsoft Graph accepted the ${subject} but its response contains credential material`), retryAfterMs: 0 };
+    // Graph stored the message even when its response is unusable.
+    if (result.bodyReadFailed) return { kind: 'acceptedUnreadable', failure: client.failure(operation, 'TRANSPORT', `Microsoft Graph accepted the ${subject} but its response was interrupted`), retryAfterMs: 0 };
+    if (result.bodyTooLarge) return { kind: 'acceptedUnreadable', failure: client.failure(operation, 'RESPONSE_TOO_LARGE', `Microsoft Graph accepted the ${subject} but its response exceeds the configured size limit`), retryAfterMs: 0 };
+    if (result.reflectsSecret) return { kind: 'acceptedUnreadable', failure: client.failure(operation, 'PROTOCOL', `Microsoft Graph accepted the ${subject} but its response contains credential material`), retryAfterMs: 0 };
     return { kind: 'accepted', retryAfterMs: 0 };
   }
   if (status === 429) return { kind: 'notApplied', failure: client.failure(operation, 'RATE_LIMIT', `Microsoft Graph throttled the ${subject} before storing it`), retryAfterMs: client.retryAfter(result) };
@@ -180,7 +181,8 @@ abstract class PostOperation<Input> implements Mutation<Input, PostMessageOutput
       let failure = client.failure(post.operation, 'AUTHENTICATION', reauthorization ?
         'Microsoft Teams connection credentials are unavailable; reconnect the connection' :
         'Microsoft Teams connection credentials are temporarily unavailable');
-      if (decision.kind === 'sendAllowed') {
+      // notSent after a possible earlier send would let the next attempt skip read-back.
+      if (decision.kind === 'sendAllowed' && !hasPossibleEarlierSend) {
         try { await fence.recordNotSent(); }
         catch { failure = { ...failure, message: failure.message + '; the not-sent checkpoint also failed' }; }
       }
@@ -190,8 +192,9 @@ abstract class PostOperation<Input> implements Mutation<Input, PostMessageOutput
     }
     const savedMessageID = decision.marker?.providerId ?? '';
     if (decision.kind === 'readBackRequired') return (await this.reconcile(call, credentials, post, savedMessageID, false)).reconciled;
+    // sendAllowed after a canResend marker can follow an earlier unknown send, so it reads back too.
     // A saved message ID proves Graph stored an earlier post, so it is read back and never resent.
-    if (decision.kind === 'readBackThenResendAllowed' && (post.readBackPath || savedMessageID)) {
+    if ((hasPossibleEarlierSend || savedMessageID) && (post.readBackPath || savedMessageID)) {
       const { reconciled, shouldResend } = await this.reconcile(call, credentials, post, savedMessageID, true);
       if (!shouldResend) return reconciled;
     }
@@ -202,7 +205,7 @@ abstract class PostOperation<Input> implements Mutation<Input, PostMessageOutput
       ({ exchange, credentials } = await fence.dispatch(signal => client.exchange(call, credentials, 'POST', post.path,
         { payload: body, retryRejected: false, signal })));
     } catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(client.failure(post.operation, 'AVAILABILITY', `the ${post.subject} was not sent before the dispatch deadline`));
+      if (isUndispatchedFenceError(error)) return newMutationRetry(client.failure(post.operation, 'AVAILABILITY', `the ${post.subject} was not sent before the dispatch deadline`));
       return resendOrSelectUncertain(post, canResendUnknownOutcome, client.failure(post.operation, 'TRANSPORT', 'Microsoft Teams message dispatch outcome is unknown'), 0, zeroReceipt());
     }
     if (exchange.status === 401 && 'resolveAfterRejection' in client.credentials) {
@@ -219,28 +222,33 @@ abstract class PostOperation<Input> implements Mutation<Input, PostMessageOutput
     const classification = classifyWrite(client, post.operation, post.subject, exchange);
     const receipt = client.receipt(call, exchange);
     if (classification.kind === 'accepted') {
+      const acceptedID = acceptedMessageID(exchange.body);
       let isMessageIDSaved = false;
-      try {
-        const resource = decodeJSON(exchange.body);
-        if (resource && typeof resource === 'object' && 'id' in resource && typeof resource.id === 'string' && messageID.test(resource.id)) {
-          try { await fence.recordProviderId(resource.id); isMessageIDSaved = true; }
-          catch { /* A lost read-back checkpoint still counts this send against the cap. */ }
-        }
-        const message = decodeMessage(resource);
-        return newMutationBranch('sent', postedOutput(post.requested, message, false), client.receipt(call, exchange, message.id));
-      } catch {
-        // Graph stored this message, and a resend would duplicate it; it cannot be read back.
-        if (isMessageIDSaved && !post.readBackPath) return newMutationUncertain(post.requested, client.failure(post.operation, 'PROTOCOL', `Microsoft Graph stored the ${post.subject} but returned an unusable message, and the connection cannot read it back`), receipt);
-        classification.failure = client.failure(post.operation, 'PROTOCOL', `Microsoft Graph accepted the ${post.subject} but returned an unusable message`);
+      if (acceptedID) {
+        try { await fence.recordProviderId(acceptedID); isMessageIDSaved = true; }
+        catch { /* Without a saved ID the post cannot be read back, so uncertain is selected below. */ }
+        try {
+          const message = decodeMessage(decodeJSON(exchange.body));
+          return newMutationBranch('sent', postedOutput(post.requested, message, false), client.receipt(call, exchange, message.id));
+        } catch { /* An unusable accepted message is read back by ID or selects uncertain. */ }
       }
+      return retryReadBackOrSelectUncertain(post, isMessageIDSaved, client.failure(post.operation, 'PROTOCOL', `Microsoft Graph accepted the ${post.subject} but returned an unusable message`), receipt);
+    } else if (classification.kind === 'acceptedUnreadable') {
+      return retryReadBackOrSelectUncertain(post, false, classification.failure!, receipt);
     } else if (classification.kind === 'notApplied') {
       let failure = classification.failure!;
       try { await fence.recordCanResend(); }
       catch { failure = { ...failure, message: failure.message + '; the safe-resend checkpoint failed' }; }
       return newMutationRetry(failure, classification.retryAfterMs);
     } else if (classification.kind === 'rejected') {
-      // A message ID in a refusal contradicts it, so the outcome is unknown.
-      if (carriesMessageID(exchange.body)) return resendOrSelectUncertain(post, canResendUnknownOutcome, client.failure(post.operation, 'PROTOCOL', `Microsoft Graph refused the ${post.subject} but returned a message ID`), classification.retryAfterMs, receipt);
+      const rejectedID = acceptedMessageID(exchange.body);
+      if (rejectedID) {
+        // A message ID in a refusal shows Graph stored the post, so it is never resent.
+        let isMessageIDSaved = false;
+        try { await fence.recordProviderId(rejectedID); isMessageIDSaved = true; }
+        catch { /* Without a saved ID the post cannot be read back, so uncertain is selected. */ }
+        return retryReadBackOrSelectUncertain(post, isMessageIDSaved, client.failure(post.operation, 'PROTOCOL', `Microsoft Graph refused the ${post.subject} but returned a message ID`), receipt);
+      }
       if (hasPossibleEarlierSend) return newMutationUncertain(post.requested, { ...classification.failure!, message: `${classification.failure!.message}; an earlier attempt of this Step may have sent the ${post.subject}` }, receipt);
       try { await fence.recordCanResend(); }
       catch { /* The refusal ends the Step, so a lost checkpoint cannot cause a resend. */ }
@@ -314,11 +322,23 @@ function resendOrSelectUncertain(post: Post, canResendUnknownOutcome: boolean, f
 function effectiveMaxSends(call: Call, operationMaxSends: number): number {
   return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
 }
-function carriesMessageID(body: Uint8Array): boolean {
+/** Never resend a post Graph stored; retry only to read a saved message ID back. */
+function retryReadBackOrSelectUncertain(post: Post, isMessageIDSaved: boolean, failure: Failure, receipt: ReturnType<TeamsClient['receipt']>): MutationAttempt<PostMessageOutput> {
+  if (isMessageIDSaved && post.readBackPath) return newMutationRetry({ ...failure, message: `${failure.message}; the next attempt reads the stored message back by its ID` });
+  return newMutationUncertain(post.requested, { ...failure, message: `${failure.message}; Graph stored the ${post.subject}, so it is not sent again` }, receipt);
+}
+/** Report a Fence error raised before the request could leave the process. */
+function isUndispatchedFenceError(error: unknown): boolean {
+  if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError) return true;
+  return error instanceof AggregateError && error.errors.some(inner => inner instanceof InsufficientTimeError);
+}
+/** Return the body's message ID when it matches Graph's format, whatever the other fields hold. */
+function acceptedMessageID(body: Uint8Array): string {
   try {
     const resource = decodeJSON(body);
-    return !!resource && typeof resource === 'object' && !Array.isArray(resource) && 'id' in resource && typeof resource.id === 'string' && messageID.test(resource.id);
-  } catch { return false; }
+    if (!resource || typeof resource !== 'object' || Array.isArray(resource) || !('id' in resource)) return '';
+    return typeof resource.id === 'string' && messageID.test(resource.id) ? resource.id : '';
+  } catch { return ''; }
 }
 /** Post one top-level Teams channel message. */
 export class PostChannelMessageOperation extends PostOperation<PostChannelMessageInput> {

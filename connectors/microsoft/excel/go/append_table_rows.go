@@ -97,7 +97,11 @@ func (operation AppendTableRowsOperation) Invoke(call sdkgo.Call, input AppendTa
 	if attemptFailure != nil {
 		return *attemptFailure
 	}
-	credential, failure := client.resolveCredential(call, appendTableRowsOperationID)
+	credential, failure, isCredentialFailureRetryable := client.resolveWriteCredential(call, appendTableRowsOperationID)
+	if isCredentialFailureRetryable {
+		attempt.recordNotSent()
+		return sdkgo.NewMutationRetry[AppendTableRowsOutput](*failure, 0)
+	}
 	if failure != nil {
 		return attempt.localFailure(AppendTableRowsBranchDefect, *failure, sdkgo.Receipt{})
 	}
@@ -196,8 +200,9 @@ func (attempt appendAttempt) readFailure(outcome *readOutcome) sdkgo.MutationAtt
 }
 
 // recordNotSent keeps the send count of a first-send attempt that retries before sending.
+// After a possible earlier send it records nothing, so the next attempt keeps counting that send.
 func (attempt appendAttempt) recordNotSent() {
-	if attempt.fence != nil && attempt.decision.Kind == singledispatch.SendAllowed {
+	if attempt.fence != nil && attempt.decision.Kind == singledispatch.SendAllowed && !attempt.hasPossibleEarlierSend {
 		// A lost notSent only overcounts sends, so the cap still holds.
 		_ = attempt.fence.RecordNotSent()
 	}
@@ -262,14 +267,15 @@ func (client *Client) appendAttemptFromResponse(
 		attempt.recordCanResend()
 		return attempt.localFailure(AppendTableRowsBranchDefect, excelFailure(sdkgo.FailureLocalDefect, appendTableRowsOperationID, sendErr.Error()), receipt)
 	}
-	if sendErr != nil {
-		return sdkgo.NewMutationRetry[AppendTableRowsOutput](excelFailure(sdkgo.FailureTransport, appendTableRowsOperationID,
-			"append outcome is unknown; the next attempt checks the key column before any resend"), unknownAppendOutcomeRetryDelay)
-	}
+	// A 2xx status proves the append, even when its body then breaks, so it is never resent.
 	if isSuccessStatus(response.status) {
 		return sdkgo.NewMutationBranch(AppendTableRowsBranchAppended, AppendTableRowsOutput{
 			AppendedKeys: presence.missingKeys, AlreadyPresentKeys: presence.presentKeys,
 		}, nil, receipt)
+	}
+	if sendErr != nil {
+		return sdkgo.NewMutationRetry[AppendTableRowsOutput](excelFailure(sdkgo.FailureTransport, appendTableRowsOperationID,
+			"append outcome is unknown; the next attempt checks the key column before any resend"), unknownAppendOutcomeRetryDelay)
 	}
 	tokens := providerhttp.ReadErrorTokens(response.body, graphErrorTokenPointers)
 	kind := statusFailureKind(response.status, tokens)

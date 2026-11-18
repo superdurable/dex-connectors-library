@@ -60,7 +60,7 @@ export const CreateDocumentBranchCreated = CreateDocumentBranch.Created;
 export const CreateDocumentBranchProviderRejected = CreateDocumentBranch.ProviderRejected;
 /** Google returned an invalid or oversized duplicate-lookup response before the creation was sent. */
 export const CreateDocumentBranchInvalidResponse = CreateDocumentBranch.InvalidResponse;
-/** A creation may have been sent, and the duplicate lookup still could not confirm it when the send cap was reached, so the document may exist; the connector sends nothing after selecting this branch. */
+/** A creation may have been sent and cannot be confirmed: the duplicate lookup found nothing when the send cap was reached, Google accepted it with an unusable response that carries no file ID, or Google refused a resend; the document may exist, and the connector sends nothing after selecting this branch. */
 export const CreateDocumentBranchUncertain = CreateDocumentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateDocumentBranchDefect = CreateDocumentBranch.Defect;
@@ -71,7 +71,7 @@ export const CreateDocumentDefinition: MutationDefinition = {
     { id: "created", description: "Google created the document or returned the one an earlier attempt of the same Step execution created." },
     { id: "providerRejected", description: "Google conclusively rejected the creation or the duplicate lookup, such as a missing parent folder; no document was created.", optional: true },
     { id: "invalidResponse", description: "Google returned an invalid or oversized duplicate-lookup response before the creation was sent.", optional: true },
-    { id: "uncertain", description: "A creation may have been sent, and the duplicate lookup still could not confirm it when the send cap was reached, so the document may exist; the connector sends nothing after selecting this branch.", optional: true },
+    { id: "uncertain", description: "A creation may have been sent and cannot be confirmed: the duplicate lookup found nothing when the send cap was reached, Google accepted it with an unusable response that carries no file ID, or Google refused a resend; the document may exist, and the connector sends nothing after selecting this branch.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

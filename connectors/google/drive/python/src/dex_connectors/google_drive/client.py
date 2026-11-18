@@ -8,7 +8,14 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
 from dex_connectors.sdk.pollingtrigger import MAXIMUM_CHANGES_PER_PAGE
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
@@ -143,20 +150,33 @@ class Client:
         self, call: Call, operation: str
     ) -> tuple[Credentials | None, Failure | None]:
         """Resolve a valid bearer token without persisting it in Flow state."""
+        credentials, problem, _ = await self.resolve_write_credentials(call, operation)
+        return credentials, problem
+
+    async def resolve_write_credentials(
+        self, call: Call, operation: str
+    ) -> tuple[Credentials | None, Failure | None, bool]:
+        """Resolve credentials and report whether a failure can clear without reauthorization."""
         try:
             credentials = await self._credentials.resolve(call)
-            if (
-                not isinstance(credentials, Credentials)
-                or credentials.access_token is None
-                or not is_header_safe_credential(credentials.access_token.reveal())
-                or credentials.auth_method_id not in ("", "google-oauth", "workspace-domain-delegation")
-            ):
-                raise ValueError("Drive access token is unavailable")
-            return credentials, None
-        except Exception:
+        except (ReauthorizationRequiredError, ValueError):
             return None, failure(
                 operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
-            )
+            ), False
+        except Exception:
+            return None, failure(
+                operation, FailureKind.AUTHENTICATION, "connection credentials are temporarily unavailable"
+            ), True
+        if (
+            not isinstance(credentials, Credentials)
+            or credentials.access_token is None
+            or not is_header_safe_credential(credentials.access_token.reveal())
+            or credentials.auth_method_id not in ("", "google-oauth", "workspace-domain-delegation")
+        ):
+            return None, failure(
+                operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+            ), False
+        return credentials, None, False
 
     async def exchange(
         self,

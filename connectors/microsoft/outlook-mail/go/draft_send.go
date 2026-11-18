@@ -249,8 +249,8 @@ func (sender draftSender) dispatchSend(draft graphMessageWire) sdkgo.MutationAtt
 	result := sender.session.exchange(graphRequest{method: http.MethodPost, path: "/messages/" + url.PathEscape(draft.ID) + "/send"})
 	receipt := sender.session.receipt(result, draft.ID)
 	switch {
-	case result.outcome == graphSucceeded || result.outcome == graphInvalid:
-		// Any 2xx means Graph accepted the send; the send action returns no body to validate.
+	case result.statusCode >= 200 && result.statusCode < 300:
+		// Any 2xx means Graph accepted the send, even when its body broke; a resend would duplicate it.
 		return sdkgo.NewMutationBranch(sender.branches.sent, message, nil, receipt)
 	case isUnprocessedSendAnswer(result):
 		sender.releaseDispatch(draft.ID)

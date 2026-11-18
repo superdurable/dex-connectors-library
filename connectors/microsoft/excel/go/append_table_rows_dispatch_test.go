@@ -4,7 +4,9 @@
 package excel_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -179,6 +181,102 @@ func TestAppendTableRowsReadsBackButNeverResendsAfterAnOlderReleaseMarker(t *tes
 	require.NoError(t, err)
 	require.Equal(t, excel.AppendTableRowsBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived))
+}
+
+func TestAppendTableRowsReadsTheKeyColumnBeforeEveryResendAfterAThrottledResend(t *testing.T) {
+	provider := newDecisionsProvider(t)
+	provider.QueueAppendBehaviors(
+		fakeexcel.AppendBehavior{StatusWithoutApplying: http.StatusBadGateway},
+		fakeexcel.AppendBehavior{StatusWithoutApplying: http.StatusTooManyRequests},
+		fakeexcel.AppendBehavior{StatusAfterApplying: http.StatusGatewayTimeout},
+	)
+	client := newExcelClient(t, provider.URL)
+	input := appendDecisionsInput(decisionRow("REQ-15", "approved", 150))
+
+	attempt := newDexContext("throttled-resend")
+	for send := 1; send <= 3; send++ {
+		_, err := sdkgo.RunMutation(attempt, client.AppendTableRows(), excelConnection, input)
+		require.Error(t, err)
+		require.Equal(t, send, provider.Count(fakeexcel.CountAppendsReceived))
+		attempt = attempt.nextAttempt()
+	}
+	// The third send applied the row; the attempt after it finds it instead of sending again.
+	result, err := sdkgo.RunMutation(attempt, client.AppendTableRows(), excelConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, excel.AppendTableRowsBranchAppended, result.Branch)
+	require.True(t, result.Value.IsFromEarlierAttempt)
+	require.Equal(t, 3, provider.Count(fakeexcel.CountAppendsReceived))
+	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsApplied))
+}
+
+func TestAppendTableRowsSelectsAppendedWhenASuccessBodyBreaksAndNeverResends(t *testing.T) {
+	server := newRecordingServer(t, func(response http.ResponseWriter, request recordedRequest) {
+		switch {
+		case request.method == http.MethodPost:
+			// The declared length exceeds the bytes written, so the body read fails after a 200 status.
+			response.Header().Set("Content-Length", "4096")
+			response.WriteHeader(http.StatusOK)
+			_, _ = response.Write([]byte(`{"index":0`))
+		case strings.HasSuffix(request.path, "/columns"):
+			writeJSON(t, response, http.StatusOK, `{"value":[{"id":"1","index":0,"name":"RequestId"}]}`)
+		default:
+			writeJSON(t, response, http.StatusOK, `{"rowCount":1,"columnCount":1,"values":[[""]]}`)
+		}
+	})
+	client := newExcelClient(t, server.URL)
+	input := appendDecisionsInput(map[string]excel.CellValue{"RequestId": excel.TextCellValue("REQ-16")})
+	result, err := sdkgo.RunMutation(newDexContext("broken-success-body"), client.AppendTableRows(), excelConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, excel.AppendTableRowsBranchAppended, result.Branch)
+	require.Equal(t, []excel.CellValue{excel.TextCellValue("REQ-16")}, result.Value.AppendedKeys)
+	require.Len(t, server.recorded(), 3, "two reads and one append")
+}
+
+// failingCredentialProvider returns one credential error for every call.
+type failingCredentialProvider struct{ err error }
+
+func (provider failingCredentialProvider) Resolve(sdkgo.Call) (excel.Credentials, error) {
+	return excel.Credentials{}, provider.err
+}
+
+func (provider failingCredentialProvider) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[excel.Credentials]) (excel.Credentials, error) {
+	return excel.Credentials{}, provider.err
+}
+
+func TestAppendTableRowsRetriesATransientCredentialFailureEvenAfterAPossibleSend(t *testing.T) {
+	server := newRecordingServer(t, func(http.ResponseWriter, recordedRequest) { t.Fatal("no request is expected") })
+	client, err := excel.New(excel.Config{}, failingCredentialProvider{err: errors.New("credential store offline")}, excel.WithLocalProviderURL(server.URL))
+	require.NoError(t, err)
+	input := appendDecisionsInput(decisionRow("REQ-17", "approved", 170))
+
+	first := newDexContext("credential-outage")
+	_, err = sdkgo.RunMutation(first, client.AppendTableRows(), excelConnection, input)
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	requireMarkerState(t, first.recordedHeartbeat, "notSent")
+
+	afterPossibleSend := newDexContext("credential-outage-after-send")
+	afterPossibleSend.attempt = 2
+	_, err = sdkgo.RunMutation(afterPossibleSend, client.AppendTableRows(), excelConnection, input)
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	require.Nil(t, afterPossibleSend.recordedHeartbeat, "notSent is never recorded after a possible earlier send")
+	require.Empty(t, server.recorded())
+}
+
+func TestAppendTableRowsSelectsUncertainForATerminalCredentialFailureAfterAPossibleSend(t *testing.T) {
+	server := newRecordingServer(t, func(http.ResponseWriter, recordedRequest) { t.Fatal("no request is expected") })
+	client, err := excel.New(excel.Config{}, failingCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))}, excel.WithLocalProviderURL(server.URL))
+	require.NoError(t, err)
+	input := appendDecisionsInput(decisionRow("REQ-18", "approved", 180))
+
+	result, err := sdkgo.RunMutation(newDexContext("revoked"), client.AppendTableRows(), excelConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, excel.AppendTableRowsBranchDefect, result.Branch)
+
+	afterPossibleSend := newDexContext("revoked-after-send")
+	afterPossibleSend.attempt = 2
+	result, err = sdkgo.RunMutation(afterPossibleSend, client.AppendTableRows(), excelConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, excel.AppendTableRowsBranchUncertain, result.Branch)
 }
 
 func requireMarkerState(t *testing.T, heartbeat json.RawMessage, state string) {

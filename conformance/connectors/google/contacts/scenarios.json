@@ -1662,6 +1662,146 @@
         "sendCount": 3,
         "state": "claimed"
       }
+    },
+    {
+      "callId": "25f5716f-33bb-5a4b-ac99-755ea13c060d",
+      "exchanges": [
+        {
+          "body": "{\"resourceName\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/people:createContact",
+          "query": {
+            "personFields": [
+              "names,emailAddresses"
+            ]
+          },
+          "requestBody": {
+            "emailAddresses": [
+              {
+                "value": "ada@example.com"
+              }
+            ],
+            "names": [
+              {
+                "familyName": "Lovelace",
+                "givenName": "Ada"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-contacts-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25f5716f-33bb-5a4b-ac99-755ea13c060d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "displayName": "",
+          "emailAddress": "",
+          "resourceName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "25f5716f-33bb-5a4b-ac99-755ea13c060d",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "createContact-accepted-unparsable-body-uncertain",
+      "operation": "createContact"
+    },
+    {
+      "callId": "25f5716f-33bb-5a4b-ac99-755ea13c060d",
+      "exchanges": [
+        {
+          "body": "{\"resourceName\": \"people/c458\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/people:createContact",
+          "query": {
+            "personFields": [
+              "names,emailAddresses"
+            ]
+          },
+          "requestBody": {
+            "emailAddresses": [
+              {
+                "value": "ada@example.com"
+              }
+            ],
+            "names": [
+              {
+                "familyName": "Lovelace",
+                "givenName": "Ada"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-contacts-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25f5716f-33bb-5a4b-ac99-755ea13c060d",
+          "providerId": "people/c458",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25f5716f-33bb-5a4b-ac99-755ea13c060d",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "createContact-resource-name-with-unknown-status-retries-read-back",
+      "operation": "createContact"
     }
   ],
   "schemaVersion": 1

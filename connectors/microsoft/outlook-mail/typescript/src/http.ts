@@ -113,7 +113,8 @@ export class GraphSession {
         if (status >= 200 && status < 300) return { outcome: 'invalid', status, body: emptyBody, requestId: header(responseHeaders, 'request-id'), errorCode: '', retryAfterMs: 0, failure: graphFailure(this.operation, 'RESPONSE_TOO_LARGE', 'the Microsoft Graph response exceeds the configured maxResponseBytes limit') };
         if (status) return classifyStatus(this.operation, status, '', parseRetryAfter(header(responseHeaders, 'retry-after'), this.#now()), header(responseHeaders, 'request-id'));
       }
-      if (observedStatus >= 200 && observedStatus < 300) return zeroExchange('ambiguous', graphFailure(this.operation, 'TRANSPORT', 'the Microsoft Graph response was interrupted'));
+      // The status stays, so a send whose 2xx body broke is still known as accepted.
+      if (observedStatus >= 200 && observedStatus < 300) return { ...zeroExchange('ambiguous', graphFailure(this.operation, 'TRANSPORT', 'the Microsoft Graph response was interrupted')), status: observedStatus, requestId: header(observedHeaders, 'request-id') };
       if (observedStatus && (observedStatus < 200 || observedStatus >= 300)) return classifyStatus(this.operation, observedStatus, '', parseRetryAfter(header(observedHeaders, 'retry-after'), this.#now()), header(observedHeaders, 'request-id'));
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return zeroExchange('retry', graphFailure(this.operation, 'TRANSPORT', 'Microsoft Graph could not be reached; no request was sent'));
       return zeroExchange('ambiguous', graphFailure(this.operation, 'TRANSPORT', 'the Microsoft Graph request failed before an answer arrived'));

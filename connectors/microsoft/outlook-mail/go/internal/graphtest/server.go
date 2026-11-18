@@ -96,6 +96,8 @@ type Fault struct {
 	ShouldApplyFirst bool
 	// ShouldDropConnection closes the connection instead of answering.
 	ShouldDropConnection bool
+	// ShouldBreakAcceptedBody answers 202 Accepted, then closes the connection before the promised body ends.
+	ShouldBreakAcceptedBody bool
 }
 
 // RecordedRequest is one request the fake received, without its Authorization header.
@@ -351,6 +353,9 @@ func answerFault(writer http.ResponseWriter, fault *Fault) bool {
 	case fault.ShouldDropConnection:
 		dropConnection(writer)
 		return true
+	case fault.ShouldBreakAcceptedBody:
+		breakAcceptedBody(writer)
+		return true
 	case fault.Status != 0:
 		if fault.RetryAfter != "" {
 			writer.Header().Set("Retry-After", fault.RetryAfter)
@@ -386,6 +391,22 @@ func dropConnection(writer http.ResponseWriter) {
 	}
 	// Closing is the fault; its error cannot change the dropped answer.
 	_ = connection.(*net.TCPConn).SetLinger(0)
+	_ = connection.Close()
+}
+
+// breakAcceptedBody sends 202 headers that promise a body, then closes the connection mid-body.
+func breakAcceptedBody(writer http.ResponseWriter) {
+	hijacker, ok := writer.(http.Hijacker)
+	if !ok {
+		panic("graphtest: the response writer cannot break its body")
+	}
+	connection, buffered, err := hijacker.Hijack()
+	if err != nil {
+		panic(err)
+	}
+	// The broken body is the fault; write and close errors cannot change it.
+	_, _ = buffered.WriteString("HTTP/1.1 202 Accepted\r\nContent-Type: application/json\r\nContent-Length: 64\r\n\r\n{\"partial\":")
+	_ = buffered.Flush()
 	_ = connection.Close()
 }
 

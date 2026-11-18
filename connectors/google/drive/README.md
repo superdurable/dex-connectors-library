@@ -179,15 +179,22 @@ durability to async. The operation:
    attempt while possible sends stay below the send cap (`maxSends`, default 3).
 
 An accepted 2xx response with a valid file ID completes and checkpoints that
-ID; a later attempt reads that ID back and never resends. An unusable 2xx body,
-dropped response, 5xx, 409, or any status other than a definite refusal is an
-unknown outcome that triggers read-back. A confirmed file completes without
-resending and checkpoints its ID. A transient read-back failure retries the
-Step; a read-back that cannot confirm the upload retries so the next attempt
-reads back and resends, and selects `uncertain` only at the send cap. A 400,
-401, 403, 404, 411, 413, 414, 415, or 422 refusal selects `providerRejected`
-on a first send and is never resent; after an earlier unconfirmed upload it
-selects `uncertain`. A 429, 503, or documented 403 rate-limit response records a
+ID; a later attempt reads that ID back and never resends. A 2xx status is never
+resent, even when its body breaks, is oversized, or names no usable file: the
+connector checkpoints the acceptance, looks the file up by its app property on
+later attempts, and selects `uncertain` once those attempts reach the send cap.
+Any other response that carries a file ID is read back by that ID and never
+resent. A dropped response, 5xx, 409, or any status other than a definite
+refusal is an unknown outcome that triggers read-back. A confirmed file
+completes without resending and checkpoints its ID. A transient read-back
+failure retries the Step; a read-back that cannot confirm an unknown outcome
+retries so the next attempt reads back and resends, and selects `uncertain`
+only at the send cap. A 400, 401, 403, 404, 411, 413, 414, 415, or 422 refusal
+selects `providerRejected` on a first send and is never resent; after an earlier
+unconfirmed upload it selects `uncertain`. A credential outage that needs no
+reauthorization retries before any request; a connection that must be
+reauthorized selects `defect` on a first send and `uncertain` after an earlier
+unconfirmed upload. A 429, 503, or documented 403 rate-limit response records a
 resend checkpoint and retries with the same key. An unreadable checkpoint
 retries without sending. Read requests reserve up to one second before the observed Step
 deadline; the fenced upload uses its shorter write window. These response

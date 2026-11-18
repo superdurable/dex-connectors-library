@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type CredentialRefreshDriver, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, ReauthorizationRequiredError, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type CredentialRefreshDriver, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type DecisionKind, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { AppendTableRowsBranch, AppendTableRowsDefinition, GetTableRowsBranch, GetTableRowsDefinition, GetValuesBranch, GetValuesDefinition, UpdateValuesBranch, UpdateValuesDefinition } from './generated/definitions.js';
 import type { AppendTableRowsInput, AppendTableRowsOutput, Config, CredentialSource, Credentials, GetTableRowsInput, GetTableRowsOutput, GetValuesInput, GetValuesOutput, UpdateValuesInput, UpdateValuesOutput } from './generated/models.js';
@@ -110,7 +110,10 @@ export class UpdateValuesOperation implements Mutation<UpdateValuesInput, Update
     catch (error) { return newMutationBranch(UpdateValuesBranch.Defect, emptyUpdate(), zeroReceipt(), excelFailure('updateValues', 'VALIDATION', message(error))); }
     let credentials: Credentials;
     try { credentials = await this.graph.credentials(call); }
-    catch { return newMutationBranch(UpdateValuesBranch.Defect, emptyUpdate(), zeroReceipt(), excelFailure('updateValues', 'AUTHENTICATION', 'connection credentials are unavailable')); }
+    catch (error) {
+      if (!(error instanceof ReauthorizationRequiredError)) return newMutationRetry(excelFailure('updateValues', 'AUTHENTICATION', 'connection credentials are temporarily unavailable'));
+      return newMutationBranch(UpdateValuesBranch.Defect, emptyUpdate(), zeroReceipt(), excelFailure('updateValues', 'AUTHENTICATION', 'connection credentials are unavailable'));
+    }
     const response = await this.graph.request(call, credentials, 'PATCH', rangePath(input.driveId, input.workbookId, input.worksheet, validated.range.address), { values: validated.values });
     const receipt = this.graph.receipt(call, response);
     if (response.transportFailure) return newMutationRetry(excelFailure('updateValues', 'TRANSPORT', 'provider is unavailable; the same values are written again'));
@@ -147,7 +150,13 @@ export class AppendTableRowsOperation implements Mutation<AppendTableRowsInput, 
     if (!(attempt instanceof AppendAttempt)) return attempt;
     let credentials: Credentials;
     try { credentials = await this.graph.credentials(call); }
-    catch { return attempt.localFailure(AppendTableRowsBranch.Defect, excelFailure('appendTableRows', 'AUTHENTICATION', 'connection credentials are unavailable'), zeroReceipt()); }
+    catch (error) {
+      if (!(error instanceof ReauthorizationRequiredError)) {
+        await attempt.recordNotSent();
+        return newMutationRetry(excelFailure('appendTableRows', 'AUTHENTICATION', 'connection credentials are temporarily unavailable'));
+      }
+      return attempt.localFailure(AppendTableRowsBranch.Defect, excelFailure('appendTableRows', 'AUTHENTICATION', 'connection credentials are unavailable'), zeroReceipt());
+    }
     const table = tablePath(input.driveId, input.workbookId, input.table);
     const columnsResponse = await this.graph.request(call, credentials, 'GET', `${table}/columns?$select=id,index,name`);
     credentials = columnsResponse.credentials;
@@ -190,8 +199,9 @@ export class AppendTableRowsOperation implements Mutation<AppendTableRowsInput, 
 
   private async appendResponse(call: Call, attempt: AppendAttempt, response: GraphResult, missingKeys: Array<string | number | boolean>, presentKeys: Array<string | number | boolean>): Promise<MutationAttempt<AppendTableRowsOutput>> {
     const receipt = this.graph.receipt(call, response);
-    if (response.transportFailure) return newMutationRetry(excelFailure('appendTableRows', 'TRANSPORT', 'append outcome is unknown; the next attempt checks the key column before any resend'), unknownAppendRetryDelayMs);
+    // A 2xx status proves the append, even when its body then breaks, so it is never resent.
     if (response.status >= 200 && response.status < 300) return newMutationBranch(AppendTableRowsBranch.Appended, { appendedKeys: missingKeys, alreadyPresentKeys: presentKeys }, receipt);
+    if (response.transportFailure) return newMutationRetry(excelFailure('appendTableRows', 'TRANSPORT', 'append outcome is unknown; the next attempt checks the key column before any resend'), unknownAppendRetryDelayMs);
     const tokens = errorTokens(response.body); const kind = statusFailureKind(response.status, tokens);
     if (response.status === 429 || response.status === 503) {
       await attempt.recordCanResend();
@@ -231,10 +241,14 @@ class AppendAttempt {
   /** Keep a pre-send read Retry countable and guard a terminal read after a possible send. */
   async readFailure(failure: ReadFailure): Promise<MutationAttempt<AppendTableRowsOutput>> {
     if (failure.branch) return this.localFailure(failure.branch, failure.failure, failure.receipt);
-    if (this.fence && this.decisionKind === 'sendAllowed') {
-      try { await this.fence.recordNotSent(); } catch { /* A lost notSent only overcounts sends, so the cap still holds. */ }
-    }
+    await this.recordNotSent();
     return newMutationRetry(failure.failure, failure.retryAfterMs);
+  }
+
+  /** Keep the send count of a first-send attempt; after a possible earlier send, record nothing. */
+  async recordNotSent(): Promise<void> {
+    if (!this.fence || this.decisionKind !== 'sendAllowed' || this.hasPossibleEarlierSend) return;
+    try { await this.fence.recordNotSent(); } catch { /* A lost notSent only overcounts sends, so the cap still holds. */ }
   }
 
   /** Record that Microsoft did not apply this attempt's append. */

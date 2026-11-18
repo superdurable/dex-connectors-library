@@ -309,12 +309,13 @@ class _GuardedWrite:
             )
         credential = await self.client.credential(call)
         if credential is None:
-            return MutationAttempt.branch_result(
-                "defect",
-                zero,
-                Receipt(),
-                failure(self.operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"),
+            problem = failure(
+                self.operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
             )
+            if call.context is not None and call.context.attempt > 1:
+                # An earlier attempt may have written, so defect could hide an applied change.
+                return MutationAttempt.retry(problem)
+            return MutationAttempt.branch_result("defect", zero, Receipt(), problem)
         return await self._read_and_write(call, input, credential)
 
     async def _read_and_write(self, call: Call, input: Any, credential: Any) -> MutationAttempt[Any]:

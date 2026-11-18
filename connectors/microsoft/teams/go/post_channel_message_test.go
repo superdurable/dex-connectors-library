@@ -311,16 +311,36 @@ func TestUnconfirmedPostWithoutAMatchIsResentUntilTheCapThenUncertain(t *testing
 	}
 }
 
-func TestUnusableAcceptedResponseIsReconciledInsteadOfResent(t *testing.T) {
+func TestAcceptedResponseWithoutAMessageIDIsUncertainAndNeverResent(t *testing.T) {
 	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPost {
 			writeJSON(t, response, http.StatusCreated, `{"id":"not-a-message-id"}`)
 			return
 		}
-		writeJSON(t, response, http.StatusOK, collectionJSON("", chatMessageJSON(t, "1616990032035", "", testIncidentSubject, "html", testIncidentHTML, time.Now())))
+		writeJSON(t, response, http.StatusOK, collectionJSON(""))
 	})
 	client := newTeamsClient(t, provider.endpoint())
 	dexContext := newTestDexContext("unusable")
+
+	result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Contains(t, result.Failure.Message, "not sent again")
+	require.Equal(t, 1, provider.countRequests(http.MethodPost))
+	require.Zero(t, provider.countRequests(http.MethodGet))
+}
+
+func TestAcceptedResponseWithAMessageIDButUnusableBodyIsReadBackByIDAndNeverResent(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodPost {
+			writeJSON(t, response, http.StatusCreated, `{"id":"1616990032035","createdDateTime":42}`)
+			return
+		}
+		require.Equal(t, testChannelPath+"/1616990032035", request.URL.Path)
+		writeJSON(t, response, http.StatusOK, chatMessageJSON(t, "1616990032035", "", testIncidentSubject, "html", testIncidentHTML, time.Now()))
+	})
+	client := newTeamsClient(t, provider.endpoint())
+	dexContext := newTestDexContext("unusable-with-id")
 
 	_, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 	requireRetry(t, err, sdkgo.FailureProtocol)
@@ -356,14 +376,10 @@ func TestPostResponseReflectingTheAccessTokenIsNotTrusted(t *testing.T) {
 	client := newTeamsClient(t, provider.endpoint())
 	dexContext := newTestDexContext("reflected")
 
-	_, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-	retry := requireRetry(t, err, sdkgo.FailureProtocol)
-	require.Contains(t, retry.Failure.Message, "credential material")
-	dexContext.advanceAttempt()
-	result := runPostUntilTerminal(t, func() (sdkgo.MutationResult[teams.PostMessageOutput], error) {
-		return sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-	}, dexContext.advanceAttempt)
+	result, err := sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	require.NoError(t, err)
 	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
-	require.Equal(t, 3, provider.countRequests(http.MethodPost))
+	require.Contains(t, result.Failure.Message, "credential material")
+	require.Equal(t, 1, provider.countRequests(http.MethodPost), "an accepted post is never resent")
 	requireNoSentinel(t, result)
 }

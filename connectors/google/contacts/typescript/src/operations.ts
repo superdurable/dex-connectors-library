@@ -104,7 +104,8 @@ export class CreateContactOperation implements Mutation<CreateContactInput, Cont
     if (credential.error === 'credential')
       return localFailure(hasPossibleEarlierSend, 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
     if (credential.error) {
-      if (decision.kind === 'sendAllowed') {
+      // After a possible earlier send, notSent would let the next attempt drop that send from the count.
+      if (decision.kind === 'sendAllowed' && !hasPossibleEarlierSend) {
         try { await fence.recordNotSent(); }
         catch { return mutationRetry('TRANSPORT', 'credential refresh checkpoint is unavailable'); }
       }
@@ -118,7 +119,8 @@ export class CreateContactOperation implements Mutation<CreateContactInput, Cont
         return mutationRetry('TRANSPORT', 'contact dispatch was not started');
       return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'contact creation outcome is unknown');
     }
-    if (exchange.error === 'request') {
+    const isSuccessStatus = exchange.status >= 200 && exchange.status < 300;
+    if (exchange.error === 'request' && !isSuccessStatus) {
       if (exchange.isProvablyNotSent) {
         try { await fence.recordCanResend(); }
         catch { return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'contact creation outcome is unknown'); }
@@ -132,16 +134,23 @@ export class CreateContactOperation implements Mutation<CreateContactInput, Cont
       return mutationRetry(exchange.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', 'Google did not create the contact', exchange.retryAfterMs);
     }
     const contact = exchange.error ? undefined : projectContact(parseJSON(exchange.body));
+    let isResourceNameSaved = false;
     if (contact) {
-      try { await fence.recordProviderId(contact.resourceName); }
+      try { await fence.recordProviderId(contact.resourceName); isResourceNameSaved = true; }
       catch { /* A lost provider ID heartbeat counts this send, so the cap still holds. */ }
     }
-    if (definiteRefusalStatuses.has(exchange.status) && !contact) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, exchange.status);
-    if (exchange.status !== 200 && exchange.status !== 201)
-      return resendOrSelectUncertain(canResendUnknownOutcome, 'AVAILABILITY', `contact creation outcome is unknown after HTTP ${exchange.status}`, exchange.retryAfterMs);
-    if (exchange.error) return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'Google contact response could not be read safely');
-    if (!contact) return resendOrSelectUncertain(canResendUnknownOutcome, 'PROTOCOL', 'Google returned no usable contact resource name');
-    return newMutationBranch('created', contact);
+    if (isSuccessStatus && contact) return newMutationBranch('created', contact);
+    // A 2xx proves Google created the contact; without its resource name it cannot be read back.
+    if (isSuccessStatus) return mutationUncertain('PROTOCOL', 'Google accepted the contact but returned no usable resource name; inspect Contacts before creating another');
+    if (contact) {
+      // A resource name proves the create despite the status, so it is read back and never resent.
+      const message = `Google returned a contact resource name with HTTP ${exchange.status}`;
+      if (isResourceNameSaved) return mutationRetry('PROTOCOL', `${message}; the next attempt reads it back`, exchange.retryAfterMs);
+      return mutationUncertain('PROTOCOL', `${message}, and its checkpoint failed; inspect Contacts before creating another`);
+    }
+    // A refusal whose body cannot be read safely might hide a resource name, so its outcome is unknown.
+    if (definiteRefusalStatuses.has(exchange.status) && !exchange.error) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, exchange.status);
+    return resendOrSelectUncertain(canResendUnknownOutcome, 'AVAILABILITY', `contact creation outcome is unknown after HTTP ${exchange.status}`, exchange.retryAfterMs);
   }
 
   /** Confirm a contact whose resource name an earlier attempt saved. */

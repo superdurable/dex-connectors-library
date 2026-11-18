@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { MaxChangesPerPage } from '@superdurable/connectors-sdk/pollingtrigger';
@@ -134,6 +134,11 @@ export class SpreadsheetClient {
           const headers = error.headers ?? {};
           exchange = { status: error.status ?? 0, headers, body: new Uint8Array(), requestId: header(headers, 'x-goog-request-id') || header(headers, 'x-request-id'), isTooLarge: true, isProvablyNotSent: false, error };
         } else {
+          // A failure after the response headers keeps their status, so a 2xx write is known accepted.
+          if (!observedStatus && (error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status) {
+            observedStatus = error.status;
+            observedHeaders = error.headers ?? {};
+          }
           exchange = { status: observedStatus, headers: observedHeaders, body: new Uint8Array(), requestId: header(observedHeaders, 'x-goog-request-id') || header(observedHeaders, 'x-request-id'), isTooLarge: false, isProvablyNotSent: error instanceof ProviderTransportError && error.isProvablyNotSent, error };
         }
       }

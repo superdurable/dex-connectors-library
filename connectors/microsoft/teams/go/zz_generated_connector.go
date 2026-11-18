@@ -366,7 +366,7 @@ var PostChannelMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: PostChannelMessageBranchSent, Description: "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found."},
 		{ID: PostChannelMessageBranchProviderRejected, Description: "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", Optional: true},
-		{ID: PostChannelMessageBranchUncertain, Description: "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found.", Optional: true},
+		{ID: PostChannelMessageBranchUncertain, Description: "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found; a 2xx whose unusable response gave no savable message ID also selects it.", Optional: true},
 		{ID: PostChannelMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -444,7 +444,7 @@ var PostThreadReplyDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: PostThreadReplyBranchSent, Description: "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found."},
 		{ID: PostThreadReplyBranchProviderRejected, Description: "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", Optional: true},
-		{ID: PostThreadReplyBranchUncertain, Description: "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found.", Optional: true},
+		{ID: PostThreadReplyBranchUncertain, Description: "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found; a 2xx whose unusable response gave no savable message ID also selects it.", Optional: true},
 		{ID: PostThreadReplyBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -522,7 +522,7 @@ var PostChatMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: PostChatMessageBranchSent, Description: "Teams stored the message in the chat."},
 		{ID: PostChatMessageBranchProviderRejected, Description: "Microsoft Graph conclusively rejected the message, such as an unknown chat, an account that left it, or invalid HTML; nothing was sent.", Optional: true},
-		{ID: PostChatMessageBranchUncertain, Description: "The message may have been sent, and no response confirmed it before the send cap was reached; the connection cannot read chats to check.", Optional: true},
+		{ID: PostChatMessageBranchUncertain, Description: "The message may have been sent, and no response confirmed it before the send cap was reached, or Graph accepted it with an unusable response; the connection cannot read chats to check.", Optional: true},
 		{ID: PostChatMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

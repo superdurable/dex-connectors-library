@@ -641,7 +641,7 @@ var AddPlaylistItemDefinition = sdkgo.MutationDefinition{
 		{ID: AddPlaylistItemBranchQuotaExhausted, Description: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time.", Optional: true},
 		{ID: AddPlaylistItemBranchProviderRejected, Description: "YouTube conclusively rejected the insert, such as a playlist of another account, a full playlist, or a revoked grant.", Optional: true},
 		{ID: AddPlaylistItemBranchInvalidResponse, Description: "YouTube returned an invalid or oversized response to the check before any insert.", Optional: true},
-		{ID: AddPlaylistItemBranchUncertain, Description: "An earlier insert may have added the video, and the playlist listing does not show it at the send cap; check the playlist before adding it again.", Optional: true},
+		{ID: AddPlaylistItemBranchUncertain, Description: "An insert may have added the video and cannot be confirmed: the listing does not show it at the send cap or after an accepted insert with an unusable response, or YouTube refused a resend; check the playlist before adding it again.", Optional: true},
 		{ID: AddPlaylistItemBranchDefect, Description: "Local input, connection configuration, or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
