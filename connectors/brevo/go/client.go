@@ -147,13 +147,17 @@ func (operation CreateOrUpdateContactOperation) Invoke(call sdkgo.Call, input Cr
 		return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureAvailability, "Brevo contact request is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
 	if response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusNoContent {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			// A repeated upsert by email converges, so an ambiguous answer retries.
+			return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureAvailability, "Brevo answered the contact request with HTTP "+strconv.Itoa(response.StatusCode)), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchProviderRejected, ContactWriteResult{}, brevoFailure(name, failureKind(response.StatusCode), "Brevo rejected contact request with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
 	}
 	result := ContactWriteResult{Email: input.Email, Created: response.StatusCode == http.StatusCreated}
 	if result.Created {
 		body, readError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 		if errors.Is(readError, providerhttp.ErrBodyTooLarge) {
-			return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchInvalidResponse, ContactWriteResult{}, brevoFailure(name, sdkgo.FailureResponseTooLarge, "Brevo contact response exceeded the limit"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureResponseTooLarge, "Brevo contact response exceeded the limit"), 0)
 		}
 		if readError != nil {
 			return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureAvailability, "Brevo contact response could not be read"), 0)
@@ -162,7 +166,7 @@ func (operation CreateOrUpdateContactOperation) Invoke(call sdkgo.Call, input Cr
 			ID int64 `json:"id"`
 		}
 		if json.Unmarshal(body, &created) != nil || created.ID <= 0 {
-			return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchInvalidResponse, ContactWriteResult{}, brevoFailure(name, sdkgo.FailureProtocol, "Brevo returned an invalid contact ID"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureProtocol, "Brevo returned an invalid contact ID"), 0)
 		}
 		result.ID = created.ID
 	}
@@ -239,6 +243,16 @@ func isTerminalCredentialError(err error) bool {
 func validEmail(value string) bool {
 	address, err := mail.ParseAddress(value)
 	return err == nil && address.Address == value && strings.Contains(value, "@")
+}
+
+// isDefiniteRefusalStatus reports a status that proves Brevo refused the write; any other status is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func isRetryable(status int) bool {

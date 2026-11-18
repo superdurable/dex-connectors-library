@@ -60,6 +60,23 @@ func (credentials failingResolveCredentials) Resolve(sdkgo.Call) (Credentials, e
 	return Credentials{}, credentials.resolveErr
 }
 
+func TestCreateOrUpdateContactRetriesUnknownOutcomesBecauseAnUpsertConverges(t *testing.T) {
+	for _, answer := range []struct {
+		status int
+		body   string
+	}{{http.StatusOK, ``}, {http.StatusMethodNotAllowed, `{}`}, {http.StatusCreated, `{"id":0}`}, {http.StatusCreated, `not json`}} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(answer.status)
+			_, err := fmt.Fprint(w, answer.body)
+			require.NoError(t, err)
+		}))
+		_, err := sdkgo.RunMutation(providerContext{}, newProviderClient(t, server.URL).CreateOrUpdateContact(), testConnection, CreateOrUpdateContactInput{Email: "member@meridian.example"})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "HTTP %d %s retries", answer.status, answer.body)
+		server.Close()
+	}
+}
+
 func TestCreateOrUpdateContactClassifiesCredentialResolveFailures(t *testing.T) {
 	input := CreateOrUpdateContactInput{Email: "member@meridian.example"}
 	for name, test := range map[string]struct {

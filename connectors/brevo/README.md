@@ -1,6 +1,6 @@
 # Brevo connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/brevo/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/brevo/go@v0.2.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/brevo`.
 
@@ -30,12 +30,12 @@ Sign in at [Brevo API keys](https://app.brevo.com/settings/keys/api), open **Set
 | --- | --- |
 | Valid create or update, or valid contact lookup | `saved` or `found` |
 | Missing contact | `notFound` |
-| Definite provider rejection, including invalid credentials | `providerRejected` |
-| Malformed or oversized response | `invalidResponse` |
-| Invalid local input or credentials, or a connection that needs reauthorization, is missing or no longer selected, or that the credential broker refused | `defect` |
-| Transport failure, 408, 409, 429, 5xx, or any other credential lookup failure, such as an unavailable broker | Retry with Dex's default one-hour budget |
+| Definite provider rejection, including invalid credentials; for `createOrUpdateContact` only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 | `providerRejected` |
+| Malformed or oversized `getContact` response | `invalidResponse` |
+| Invalid local input or credentials, malformed stored credentials, or a connection that needs reauthorization, is missing or no longer selected, or that the credential broker refused | `defect` |
+| Transport failure, 408, 409, 429, 5xx, any other `createOrUpdateContact` status or a malformed or oversized confirmation, or any other credential lookup failure, such as an unavailable broker | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [contact sync example](go/examples/contact-sync); selecting an optional branch fails its Flow. No `uncertain` branch is needed because contact creation or update is repeatable by email.
+Only the happy branch is wired in the [contact sync example](go/examples/contact-sync); selecting an optional branch fails its Flow. No `uncertain` branch is needed because contact creation or update is repeatable by email, so `createOrUpdateContact` declares `repeatOnUnknown: safe`.
 
 ## Mocks
 

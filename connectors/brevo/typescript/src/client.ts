@@ -6,7 +6,7 @@ import { ReauthorizationRequiredError, SecretString, type Call, type CredentialP
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import emailAddresses from 'email-addresses';
 import { z } from 'zod';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { CreateOrUpdateContactOperation, GetContactOperation } from './operations.js';
 
 const publicEndpoint = 'https://api.brevo.com/v3';
@@ -99,7 +99,7 @@ export class BrevoClient {
 
 /** Report a resolve failure no later attempt clears; a ZodError is stored material the decoder rejected. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
     || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof z.ZodError;
 }
 
