@@ -26,6 +26,7 @@ from dex_connectors.sdk.projectconfig.provider import ExchangePendingError, Refr
 from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.superdurable_webhook import Client, Config, Credentials, SendEventInput
+from dex_connectors.superdurable_webhook._generated.connection import CredentialMaterialError
 
 
 def _config(delivery_url: str) -> Config:
@@ -86,6 +87,7 @@ def _call() -> Call:
         ObjectNotFoundError(),
         ConnectionNotSelectedError(),
         CredentialBrokerRejectedError(),
+        CredentialMaterialError("Webhook credential signing_secret is required"),
     ],
 )
 async def test_terminal_credential_error_is_authentication_defect(terminal: Exception) -> None:
