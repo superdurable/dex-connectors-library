@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 """Bounded resend of Mailchimp campaign sends whose outcome is unknown."""
 
-import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
@@ -31,28 +30,40 @@ class AttemptContext:
         self.run_id = "run"
         self.deadline = datetime.now(UTC) + timedelta(seconds=60)
         self.value: object | None = None
+        self.read_error: Exception | None = None
         self.heartbeats = 0
 
     def has_last_heartbeat_value(self) -> bool:
         """Report whether an earlier attempt recorded a heartbeat."""
-        return self.value is not None
+        return self.value is not None or self.read_error is not None
 
     def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        """Decode the last value only as its own type, as a strict codec would."""
-        if not isinstance(self.value, value_type):
-            raise TypeError("heartbeat has another shape")
+        """Decode the last value as the requested type, whatever checkpoint format the SDK wrote."""
+        if self.read_error is not None:
+            raise self.read_error
+        if value_type is Marker:
+            return self.marker
+        if value_type is _LegacySendDispatchMarker:
+            if not isinstance(self.value, _LegacySendDispatchMarker):
+                raise TypeError("heartbeat has another shape")
+            return self.value
+        if isinstance(self.value, Marker):
+            return {"singleDispatchMarkers": {str(self.value.call_id): self.value.to_wire()}}
         return self.value
 
     async def heartbeat(self, value: object = None) -> None:
-        """Record the attempt's heartbeat."""
+        """Record the attempt's heartbeat exactly as written."""
         self.heartbeats += 1
         self.value = value
 
     @property
     def marker(self) -> Marker:
-        """Return the recorded single-dispatch marker."""
-        assert isinstance(self.value, Marker)
-        return self.value
+        """Decode this call's marker from a single marker or the checkpoint map."""
+        if isinstance(self.value, Marker):
+            return self.value
+        if not isinstance(self.value, dict):
+            raise TypeError("heartbeat has another shape")
+        return Marker.from_wire(self.value["singleDispatchMarkers"][str(CALL_ID)])
 
 
 def campaign(status: str) -> httpx.Response:
@@ -222,7 +233,7 @@ async def test_unknown_statuses_after_a_send_are_retried() -> None:
 
 @pytest.mark.asyncio
 async def test_unreadable_checkpoint_is_retried_without_a_request() -> None:
-    """A fail-closed decision returns Retry, never a terminal branch."""
+    """A heartbeat read error fails closed and returns Retry, never a terminal branch."""
     requests: list[httpx.Request] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -230,7 +241,7 @@ async def test_unreadable_checkpoint_is_retried_without_a_request() -> None:
         return campaign("save")
 
     context = AttemptContext()
-    context.value = json.loads('"not a checkpoint"')
+    context.read_error = RuntimeError("heartbeat store unavailable")
     context.attempt = 2
     result = await send(answer, context)
     assert isinstance(result, sdk.RetryError)
