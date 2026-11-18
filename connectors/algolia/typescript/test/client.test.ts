@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import { Client } from '../src/index.js';
+import { Client, CredentialMaterialError } from '../src/index.js';
 
 const call = { id: 'algolia-test-call', context: { cancellationSignal: new AbortController().signal } } as Call;
 
@@ -36,6 +36,8 @@ describe('Algolia client configuration and credential safety', () => {
     ['connection object not found', new ObjectNotFoundError(), true],
     ['connection not selected', new ConnectionNotSelectedError(), true],
     ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed credential material', new CredentialMaterialError('credential api_key is required'), true],
+    ['SDK provider decoding failure', new TypeError('project credential decoding failed'), true],
     ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
     ['static connection not configured', new Error('connection is not configured'), false],
     ['unlisted error', new TypeError('unlisted'), false],
@@ -58,5 +60,13 @@ describe('Algolia client configuration and credential safety', () => {
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.branch).toBe('defect');
     expect(wasSent).toBe(false);
+  });
+
+  it.each([
+    [405, '{}'], [425, '{}'], [451, '{}'], [200, '{"objectID":"other","taskID":1}'], [200, 'not json'],
+  ])('retries a saveObject answered with HTTP %i body %s', async (status, body) => {
+    const client = new Client({}, { resolve: async () => ({ applicationId: 'TESTAPP', apiKey: new SecretString('safe-key') }) },
+      async () => ({ status, headers: {}, body: Buffer.from(body) }));
+    expect(await client.saveObject().invoke(call, { indexName: 'products', objectID: 'product-1', attributes: { name: 'Meridian' } })).toMatchObject({ kind: 'retry' });
   });
 });

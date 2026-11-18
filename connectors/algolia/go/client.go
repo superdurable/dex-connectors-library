@@ -186,17 +186,18 @@ func (operation SaveObjectOperation) Invoke(call sdkgo.Call, input SaveObjectInp
 		if status == 0 {
 			return sdkgo.NewMutationBranch(SaveObjectBranchDefect, SavedObject{}, failure, sdkgo.Receipt{})
 		}
-		if status < 0 {
-			return sdkgo.NewMutationRetry[SavedObject](*failure, retryAfter)
-		}
-		return sdkgo.NewMutationBranch(SaveObjectBranchInvalidResponse, SavedObject{}, failure, sdkgo.Receipt{})
+		// A repeated replacement of the same objectID converges, so an oversized answer retries.
+		return sdkgo.NewMutationRetry[SavedObject](*failure, retryAfter)
 	}
 	if status != http.StatusOK {
+		if !isDefiniteRefusalStatus(status) {
+			return sdkgo.NewMutationRetry[SavedObject](*algoliaFailure(name, sdkgo.FailureAvailability, "Algolia answered record replacement with HTTP "+strconv.Itoa(status)+"; outcome unknown"), 0)
+		}
 		return sdkgo.NewMutationBranch(SaveObjectBranchProviderRejected, SavedObject{}, algoliaFailure(name, rejectionKind(status), "Algolia rejected record replacement with HTTP "+strconv.Itoa(status)), sdkgo.Receipt{})
 	}
 	var result SavedObject
 	if json.Unmarshal(body, &result) != nil || result.ObjectID != input.ObjectID || result.TaskID <= 0 {
-		return sdkgo.NewMutationBranch(SaveObjectBranchInvalidResponse, SavedObject{}, algoliaFailure(name, sdkgo.FailureProtocol, "Algolia returned an invalid indexing task"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[SavedObject](*algoliaFailure(name, sdkgo.FailureProtocol, "Algolia returned an invalid indexing task"), 0)
 	}
 	return sdkgo.NewMutationBranch(SaveObjectBranchSaved, result, nil, sdkgo.Receipt{})
 }
@@ -247,6 +248,16 @@ func (client *Client) send(call sdkgo.Call, method, path string, payload []byte,
 		return nil, -1, algoliaFailure(operation, sdkgo.FailureAvailability, "Algolia response was interrupted"), 0
 	}
 	return body, response.StatusCode, nil, 0
+}
+
+// isDefiniteRefusalStatus reports a status that proves Algolia refused the write; any other status is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func validPathPart(value string) bool {
