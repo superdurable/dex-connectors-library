@@ -345,26 +345,22 @@ def _query_failure(
     )
 
 
-def _mutation_failure(
-    client: Client, call: Call, exchange: Exchange, empty: Any, object_id: str
+def _pre_write_read_failure(
+    client: Client, call: Call, exchange: Exchange, empty: Any, object_id: str, operation: str
 ) -> MutationAttempt[Any] | None:
+    """Map the read before a safe write: only a readable listed refusal selects a branch."""
+    exchange = exchange.with_untrusted_refusal_as_unknown(operation)
     if exchange.outcome == "succeeded":
         return None
-    if _retryable(exchange):
-        assert exchange.failure is not None
-        return MutationAttempt.retry(exchange.failure, exchange.retry_after.total_seconds())
-    branch = (
-        "notFound"
-        if exchange.outcome == "notFound"
-        else "invalidResponse"
-        if exchange.outcome == "invalid"
-        else "defect"
-        if exchange.outcome == "defect"
-        else "providerRejected"
-    )
-    return MutationAttempt.branch_result(
-        branch, empty, client.receipt(call, object_id, exchange.request_id), exchange.failure
-    )
+    assert exchange.failure is not None
+    receipt = client.receipt(call, object_id, exchange.request_id)
+    if exchange.outcome == "defect":
+        return MutationAttempt.branch_result("defect", empty, receipt, exchange.failure)
+    if exchange.outcome == "notFound" and exchange.status == 404:
+        return MutationAttempt.branch_result("notFound", empty, receipt, exchange.failure)
+    if exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+        return MutationAttempt.branch_result("providerRejected", empty, receipt, exchange.failure)
+    return MutationAttempt.retry(exchange.failure, exchange.retry_after.total_seconds())
 
 
 def _bare_email(value: str) -> bool:
@@ -915,7 +911,7 @@ class ReplyToConversationOperation:
                     operation, FailureKind.TRANSPORT, "Intercom request failed before a response arrived"
                 )
             )
-        exchange = exchange.with_oversized_refusal_as_unknown(operation)
+        exchange = exchange.with_untrusted_refusal_as_unknown(operation)
         receipt = self.client.receipt(call, input.conversation_id, exchange.request_id)
         if exchange.outcome != "succeeded" and exchange.has_success_status():
             # An oversized, credential-reflecting, or unreadable 2xx still means Intercom accepted the reply.
@@ -1232,22 +1228,19 @@ class UpdateConversationStateOperation:
             return MutationAttempt.branch_result("defect", empty, Receipt(), credential_problem.failure)
         assert credentials is not None
         first = await self.client.read_conversation(call, credentials, operation, input.conversation_id)
-        bad = _mutation_failure(self.client, call, first, empty, input.conversation_id)
+        bad = _pre_write_read_failure(self.client, call, first, empty, input.conversation_id, operation)
         if bad:
             return bad
-        first_receipt = self.client.receipt(call, input.conversation_id, first.request_id)
         try:
             current = _conversation(_envelope(first, input.conversation_id))
         except (ValueError, TypeError, OverflowError) as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                first_receipt,
+            # An unusable 2xx read before the change proves nothing, so the attempt repeats.
+            return MutationAttempt.retry(
                 self.client.failure(
                     operation,
                     FailureKind.PROTOCOL,
                     "Intercom returned an invalid conversation: " + str(error),
-                ),
+                )
             )
         if _state_matches(current, input.state, snoozed_until):
             return MutationAttempt.branch_result(
@@ -1275,7 +1268,7 @@ class UpdateConversationStateOperation:
             "/conversations/" + quote(input.conversation_id, safe="-._~$&+=:@") + "/parts",
             payload,
         )
-        write = write.with_oversized_refusal_as_unknown(operation)
+        write = write.with_untrusted_refusal_as_unknown(operation)
         write_receipt = self.client.receipt(call, input.conversation_id, write.request_id)
         if write.outcome == "rejected" and write.status in _DEFINITE_REFUSAL_STATUSES:
             reread = await self.client.read_conversation(call, credentials, operation, input.conversation_id)

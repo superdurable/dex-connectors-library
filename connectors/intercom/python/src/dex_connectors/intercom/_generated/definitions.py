@@ -71,7 +71,7 @@ REPLY_TO_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(REPLIED, "The reply or note is in the conversation; a retried attempt that found its own earlier reply reports it instead of sending again.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist or is not visible to the connection's token; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The reply may exist but could not be confirmed: the send cap is reached and the conversation shows no part by the admin with the reply's type and text; or, after a possible send, the conversation could not be read back, is missing, or shows the reply with an invalid part; or Intercom accepted the reply with an unusable answer that a read-back could not confirm. Do not send it again without checking the conversation. Below the cap, a read-back that shows no matching part resends.", True),
+        BranchDefinition(UNCERTAIN, "The reply may exist but could not be confirmed: the send cap is reached and the conversation shows no part by the admin with the reply's type and text; or, after a possible send, the conversation could not be read back, is missing, or shows the reply with an invalid part; or Intercom accepted the reply with an unusable answer that a read-back could not confirm. A refusal whose body is oversized or reflects the access token is unconfirmed like a lost answer. Do not send it again without checking the conversation. Below the cap, a read-back that shows no matching part resends.", True),
         BranchDefinition(INVALID_RESPONSE, "No longer selected. A reply whose part is invalid may exist, so the connector selects uncertain instead; the branch stays declared for compatibility.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
@@ -90,7 +90,7 @@ UPDATE_CONVERSATION_STATE_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The conversation is in the requested state; a repeated attempt that finds it there writes nothing.", False),
         BranchDefinition(NOT_FOUND, "The conversation does not exist or is not visible to the connection's token.", True),
         BranchDefinition(PROVIDER_REJECTED, "Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state.", True),
-        BranchDefinition(INVALID_RESPONSE, "Intercom returned an invalid or oversized conversation on the read before the change, so this attempt changed nothing.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid, oversized, or credential-reflecting conversation read before the change returns Retry, because the change is safe to repeat.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
