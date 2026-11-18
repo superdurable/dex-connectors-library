@@ -6,6 +6,7 @@ import { ReauthorizationRequiredError, SecretString, type Call } from '@superdur
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { buildSendRequest, parseSender, twilioFailure, twilioTime, TwilioClient, zeroMessage } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const accountSid = 'AC00000000000000000000000000000000';
 const messageSid = 'SMfedcba9876543210fedcba9876543210';
@@ -73,6 +74,8 @@ describe('Twilio message validation', () => {
     { error: new CredentialBrokerUnavailableError(), terminal: false },
     { error: new Error('connection is not configured'), terminal: false },
     { error: new TypeError('fetch failed'), terminal: false },
+    { error: new CredentialMaterialError('credential auth_token is required'), terminal: true },
+    { error: new TypeError('project credential decoding failed'), terminal: true },
   ])('classifies a credential lookup failure: $error.name', async ({ error, terminal }) => {
     const failing = new TwilioClient({ accountSid }, { resolve: async () => { throw error; } });
     const call = { context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
