@@ -63,8 +63,7 @@ UPDATE_TASK_CONTENT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 LIST_TASKS_DEFINITION = QueryDefinition(
@@ -87,7 +86,7 @@ CREATE_TASK_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Todoist confirmed creation and returned the task ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Todoist conclusively rejected creation.", True),
-        BranchDefinition(UNCERTAIN, "The send cap is reached, or Todoist accepted a task ID that could not be read back, so the task may exist; the connector does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Todoist accepted the creation with an unreadable answer or a task ID that could not be read back, so the task may exist; the connector does not send it again.", True),
         BranchDefinition(DEFECT, "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", True),
     ),
     StepDefaults(
@@ -112,6 +111,5 @@ DELETE_TASK_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )

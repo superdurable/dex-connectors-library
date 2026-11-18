@@ -52,11 +52,14 @@ export interface UpdateTaskStepConfig<StepInput, OperationInput = UpdateTaskInpu
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateTaskContent Step from a named connection. */
 export function newUpdateTaskStep<StepInput, OperationInput = UpdateTaskInput, OperationOutput = Task>(configuration: UpdateTaskStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateTaskContent(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -104,7 +107,7 @@ export interface CreateTaskStepConfig<StepInput, OperationInput = CreateTaskInpu
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Todoist conclusively rejected creation. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send cap is reached, or Todoist accepted a task ID that could not be read back, so the task may exist; the connector does not send it again. */
+  /** The send cap is reached, or Todoist accepted the creation with an unreadable answer or a task ID that could not be read back, so the task may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -136,11 +139,14 @@ export interface DeleteTaskStepConfig<StepInput, OperationInput = DeleteTaskInpu
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the deleteTask Step from a named connection. */
 export function newDeleteTaskStep<StepInput, OperationInput = DeleteTaskInput, OperationOutput = DeleteTaskOutcome>(configuration: DeleteTaskStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, deleted, alreadyAbsent, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, deleted, alreadyAbsent, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.deleteTask(), connection: connection.reference, branches: [
     goToBranch("deleted", deleted),

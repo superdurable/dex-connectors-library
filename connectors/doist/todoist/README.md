@@ -88,7 +88,7 @@ that mismatches the requested fields, also reads GET `/tasks/{task_id}`, as does
 a create response with a task ID but unusable fields. Other calls use GET/POST
 `/tasks` for list/create, or GET/POST/DELETE `/tasks/{task_id}` for
 read/update/delete. Steps use
-async durability and a 30-second Execute timeout. `createTask` keeps five attempts within two minutes, of which at most its send cap send the POST; reads, update, and delete use the one-hour default retry budget. The update and delete Step factories also expose `MaxSends`, which has no effect because those operations repeat safely without a Fence.
+async durability and a 30-second Execute timeout. `createTask` keeps five attempts within two minutes, of which at most its send cap send the POST; reads, update, and delete use the one-hour default retry budget. Update and delete declare `repeatOnUnknown: safe`, because they set absolute field values or delete an immutable task ID. Their Step factories also expose `MaxSends`, which has no effect because those operations repeat safely without a Fence.
 An unwired optional branch fails the Flow.
 
 The connector ends its requests inside the attempt deadline it observes on the
@@ -100,8 +100,8 @@ the connector reserves part of that budget for recording the result. A create or
 that time, and every request, including a read-back, within five sixths; the
 rest covers recording the result. These limits also cut a longer `Timeout` or
 caller-supplied `http.Client.Timeout`. A request with less than a tenth of the
-attempt time left is not sent: the attempt retries, except that a skipped
-create read-back selects `uncertain`. A create POST cut off by its limit has
+attempt time left is not sent: the attempt retries, and a skipped create
+read-back retries only that read-back, as described below. A create POST cut off by its limit has
 an unknown outcome, so it resends up to the send cap described below, and an
 update cut off by its limit retries.
 Credentials are resolved once per attempt, before its first request, and a
@@ -180,11 +180,16 @@ refusals: the first send selects `providerRejected` and is never resent. Any
 other answer is unknown: a lost response or a custom transport that reports no
 connection trace, HTTP 408, 409 (failure kind `CONFLICT`; Todoist does not
 document whether it means the request ID was already processed), another
-status, any other 5xx, and a 2xx without a valid task ID. An unknown outcome
+status, and any other 5xx. An unknown outcome
 resends the POST with the same `X-Request-ID` while fewer than the cap's sends
-may have taken effect, and selects `uncertain` at the cap. A refusal or
+may have taken effect, and selects `uncertain` at the cap. A 429 or 503 after
+an earlier unknown outcome keeps that send counted. A refusal or
 credential defect after a possible earlier send also selects `uncertain`,
-because the earlier send may have created the task. Todoist offers no lookup
+because the earlier send may have created the task, and a credential failure
+then never records that nothing was sent. Any 2xx means Todoist accepted the
+creation, so a 2xx without a valid task ID, whether its body is malformed,
+oversized, or broken after its headers arrived, selects `uncertain` and is
+never resent. Todoist offers no lookup
 by request ID, so without a task ID no read-back can confirm the creation. No
 exactly-once guarantee is made; up to the cap's number of duplicate tasks is
 the accepted risk of an unknown outcome.
@@ -193,9 +198,10 @@ A 2xx with a valid task ID is different: the task was accepted and its ID is
 known, so the connector saves the ID in the checkpoint and never resends the
 creation. When other fields are missing or malformed, it confirms the task by
 GET `/tasks/{task_id}` in the same attempt. A valid task with that ID selects
-`created`. Any other read answer, including 404, 403, 429, 5xx, a transport
-failure, an unusable body, or no time left in the attempt, selects
-`uncertain`. A later attempt that finds a saved task ID reads that task
+`created`. A 408, 429, 5xx, transport failure, or no time left in the attempt
+retries, and the next attempt reads the saved ID again; when the ID could not
+be saved, it selects `uncertain` instead. Any other read answer, including
+404, 403, or an unusable body, selects `uncertain`. A later attempt that finds a saved task ID reads that task
 instead of sending: a valid task selects `created`, a 408, 429, 5xx, or
 transport failure retries the read, and any other answer selects `uncertain`.
 The `uncertain` result carries no `Task`; the task ID appears only in its safe

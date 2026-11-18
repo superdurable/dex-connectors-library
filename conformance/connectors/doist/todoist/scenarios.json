@@ -2519,6 +2519,169 @@
       "operation": "createTask"
     },
     {
+      "attempts": 2,
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"task-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes",
+            "project_id": "project-456"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Request-Id": [
+              "53b7e463-2da1-5941-bd4e-a3072d592898"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\":\"task-123\",\"project_id\":\"project-456\",\"content\":\"Title\",\"description\":\"Notes\",\"checked\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/tasks/task-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "content": "Title",
+          "description": "Notes",
+          "id": "task-123",
+          "isCompleted": false,
+          "projectId": "project-456"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+            "providerId": "task-123",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-readback-503-then-read-again",
+      "operation": "createTask"
+    },
+    {
+      "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks",
+          "requestBody": {
+            "content": "Title",
+            "description": "Notes",
+            "project_id": "project-456"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Request-Id": [
+              "53b7e463-2da1-5941-bd4e-a3072d592898"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": "",
+          "description": "",
+          "id": "",
+          "isCompleted": false,
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
+      "input": {
+        "content": "Title",
+        "description": "Notes",
+        "projectId": "project-456"
+      },
+      "name": "createTask-accepted-malformed-uncertain",
+      "operation": "createTask"
+    },
+    {
       "callId": "50758af0-9fe0-5817-af0d-0602c5d207b7",
       "exchanges": [
         {
@@ -3141,8 +3304,8 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "PROTOCOL",
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
         "heartbeat": {
           "attempt": 1,
           "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
@@ -3150,17 +3313,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "content": "",
-          "description": "",
-          "id": "",
-          "isCompleted": false,
-          "projectId": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
       "input": {
@@ -3219,8 +3375,8 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "PROTOCOL",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
@@ -3228,17 +3384,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "content": "",
-          "description": "",
-          "id": "",
-          "isCompleted": false,
-          "projectId": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
       "input": {
@@ -3297,8 +3446,8 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "PROTOCOL",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
@@ -3306,17 +3455,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "content": "",
-          "description": "",
-          "id": "",
-          "isCompleted": false,
-          "projectId": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
       "input": {
@@ -3373,8 +3515,8 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "PROTOCOL",
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
@@ -3382,17 +3524,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "content": "",
-          "description": "",
-          "id": "",
-          "isCompleted": false,
-          "projectId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
       "input": {
@@ -3449,8 +3584,8 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "PROTOCOL",
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
@@ -3458,17 +3593,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "content": "",
-          "description": "",
-          "id": "",
-          "isCompleted": false,
-          "projectId": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
       "input": {
@@ -3527,8 +3655,8 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "PROTOCOL",
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
         "heartbeat": {
           "attempt": 2,
           "callId": "51afb24a-372a-5f2f-927c-a0493cb99a0b",
@@ -3536,17 +3664,10 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "content": "",
-          "description": "",
-          "id": "",
-          "isCompleted": false,
-          "projectId": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "53b7e463-2da1-5941-bd4e-a3072d592898",
       "input": {

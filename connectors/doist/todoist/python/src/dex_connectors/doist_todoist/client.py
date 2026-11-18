@@ -83,6 +83,8 @@ class _RequestDispatchTrace(RequestTrace):
     def __init__(self) -> None:
         super().__init__()
         self.connection_started = False
+        # A timeout after response headers keeps their status, so an accepted write is never resent.
+        self.response_status = 0
 
     async def observe(self, event: str, info: dict[str, Any]) -> None:
         if event.endswith("connect_tcp.started") or event.endswith("connect_unix_socket.started"):
@@ -292,6 +294,7 @@ class Client:
             )
         except TimeoutError:
             return _Exchange(
+                status=trace.response_status,
                 failure=_failure(
                     operation,
                     FailureKind.TRANSPORT,
@@ -351,6 +354,7 @@ class Client:
                 undispatched=was_undispatched,
             )
         status = response.status_code
+        request_trace.response_status = status
         if method == "DELETE" and 200 <= status < 300:
             await response.aclose()
             return _Exchange(status=status)
@@ -731,7 +735,7 @@ class _FencedCreate:
         """Map a credential failure before the send."""
         assert rejected.failure is not None
         # notSent after a possible earlier send would hide it, so only a first-send decision records it.
-        if self.decision.kind == DecisionKind.SEND_ALLOWED:
+        if self.decision.kind == DecisionKind.SEND_ALLOWED and not self.has_possible_earlier_send:
             try:
                 await self.fence.record_not_sent()
             except Exception:
@@ -779,6 +783,9 @@ class _FencedCreate:
     async def attempt_for_unaccepted_create(self, answer: _Exchange) -> MutationAttempt[Task]:
         """Map a sent request without a usable task; an unknown outcome resends below the cap."""
         assert answer.failure is not None
+        if 200 <= answer.status < 300:
+            # Todoist accepted the creation, so a resend could create a second task.
+            return MutationAttempt.uncertain(Task(), answer.failure, Receipt())
         if answer.local_defect:
             # The request was never built, so nothing was sent; a lost checkpoint only keeps the claim.
             try:
@@ -803,12 +810,16 @@ class _FencedCreate:
             return await self.reject_or_select_uncertain(answer.failure)
         return self.resend_or_select_uncertain(answer.failure, answer.retry_after)
 
-    async def record_accepted_task(self, task_id: str) -> None:
-        """Save the accepted task ID so a replayed attempt reads it back instead of resending."""
+    async def record_accepted_task(self, task_id: str) -> bool:
+        """Save the accepted task ID so a replayed attempt reads it back instead of resending.
+
+        Returns whether the ID was saved; a lost identity checkpoint only keeps the claim.
+        """
         try:
             await self.fence.record_provider_id(task_id)
         except Exception:
-            pass  # The accepted result stands; a lost identity checkpoint only keeps the claim.
+            return False
+        return True
 
     def resend_or_select_uncertain(self, cause: Failure, retry_after: float = 0) -> MutationAttempt[Task]:
         """Retry an unknown outcome while the send cap allows another send."""
@@ -932,15 +943,23 @@ class CreateTaskOperation:
         except (ValueError, AttributeError):
             task_id = None
         if not _valid_task_id(task_id):
-            return write.resend_or_select_uncertain(
+            # A 2xx means Todoist accepted the creation, so a resend could create a second task.
+            return MutationAttempt.uncertain(
+                Task(),
                 _failure(
-                    operation, FailureKind.PROTOCOL, "Todoist answered the creation without a usable task"
-                )
+                    operation,
+                    FailureKind.PROTOCOL,
+                    "Todoist accepted the creation without a usable task, so the task is unconfirmed",
+                ),
+                Receipt(),
             )
-        await write.record_accepted_task(task_id)
+        is_task_id_saved = await write.record_accepted_task(task_id)
         read, read_task = await self.client._task_request(operation, token, "GET", task_id, budget=budget)
         if read.failure is None:
             return MutationAttempt.branch_result("created", read_task or Task(), Receipt())
+        if is_task_id_saved and not read.local_defect and (read.transient or read.status == 429):
+            # The next attempt reads the saved task ID back instead of resending.
+            return MutationAttempt.retry(read.failure, read.retry_after)
         return MutationAttempt.uncertain(
             Task(),
             _failure(
