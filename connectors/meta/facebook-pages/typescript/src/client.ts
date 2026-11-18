@@ -6,7 +6,7 @@ import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFou
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { GetPostDefinition, ListPostsDefinition, PublishTextPostDefinition } from './generated/definitions.js';
-import type { Config, Credentials, GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage, PublishedPost, PublishTextPostInput } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type GetPostInput, type ListPostsInput, type PagePostMetadata, type PagePostsPage, type PublishedPost, type PublishTextPostInput } from './generated/models.js';
 
 const emptyPage = (): PagePostsPage => ({ posts: [], nextCursor: '' });
 const emptyPost = (): PagePostMetadata => ({ id: '', message: '', createdTime: '', permalinkUrl: '' });
@@ -149,7 +149,10 @@ export class FacebookPagesClient {
     try {
       const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
       accessToken = resolved.pageAccessToken instanceof SecretString ? resolved.pageAccessToken.reveal() : '';
-    } catch { return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid') }; }
+    } catch (error) {
+      if (!isTerminalCredentialError(error)) return { retry: true, failure: failure(operation, 'AVAILABILITY', 'connection credentials are temporarily unavailable') };
+      return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid') };
+    }
     if (!accessToken || !isHeaderSafeCredential(accessToken)) return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid') };
     const request: ProviderRequest = {
       url: `${this.baseUrl}${path}`, method: 'GET',
@@ -286,7 +289,8 @@ async function localPublishFailure(fence: ReturnType<typeof newFence>, hasPossib
 }
 /** Report a credential resolution failure that no retry fixes; broker outages and store reads are transient. */
 function isTerminalCredentialError(error: unknown): boolean {
-  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError;
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError
+    || isCredentialMaterialError(error);
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function parseJSON(body: Uint8Array): unknown { try { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; } }

@@ -59,6 +59,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 }
 
 var errCredential = errors.New("Facebook Pages credential unavailable")
+
+// errCredentialUnavailable reports a transient credential failure before the request was sent.
+var errCredentialUnavailable = errors.New("Facebook Pages credential temporarily unavailable")
 var errRequest = errors.New("Facebook Pages request failed")
 
 type graphResponse struct {
@@ -70,6 +73,9 @@ type graphResponse struct {
 
 func (client *Client) get(call sdkgo.Call, path string) graphResponse {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return graphResponse{err: errCredentialUnavailable}
+	}
 	if err != nil || credentials.Validate() != nil {
 		return graphResponse{err: errCredential}
 	}
