@@ -330,17 +330,24 @@ class _AttemptContext:
 class _ScriptedDocuSign:
     """Answer each POST from a script and every listing with no tagged envelope."""
 
-    def __init__(self, posts: list[object]) -> None:
+    def __init__(self, posts: list[object], envelopes: dict[str, bytes] | None = None) -> None:
         self.posts = posts
+        self.envelopes = envelopes or {}
         self.methods: list[str] = []
+        self.paths: list[str] = []
 
     async def open_session(self, _call: object, _operation: str) -> object:
         return object()
 
     async def request(
-        self, _call: object, _session: object, method: str, _path: str, *_args: object, **_kwargs: object
+        self, _call: object, _session: object, method: str, path: str, *_args: object, **_kwargs: object
     ) -> ProviderResponse:
         self.methods.append(method)
+        self.paths.append(method + " " + path)
+        if method == "GET" and path in self.envelopes:
+            return ProviderResponse(200, {}, self.envelopes[path])
+        if method == "GET" and path != "/envelopes":
+            return _docusign_error(404, "ENVELOPE_DOES_NOT_EXIST")
         if method == "GET":
             return ProviderResponse(200, {}, b'{"envelopes":[]}')
         answer = self.posts.pop(0)
@@ -461,17 +468,8 @@ async def test_accepted_create_whose_marker_is_lost_selects_uncertain() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "answer",
-    [
-        ProviderResponse(400, {}, b"", True),
-        ProviderResponse(
-            422, {}, json.dumps({"errorCode": "UNSPECIFIED_ERROR", "envelopeId": _ENVELOPE_ID}).encode()
-        ),
-    ],
-    ids=["incomplete refusal body", "refusal naming an envelope"],
-)
-async def test_refusal_that_proves_nothing_resends_below_the_cap(answer: ProviderResponse) -> None:
+async def test_refusal_that_proves_nothing_resends_below_the_cap() -> None:
+    answer = ProviderResponse(400, {}, b"", True)
     provider = _ScriptedDocuSign([answer, answer, answer])
     result, heartbeat = await _run_create_attempt(provider, 1, None)
     assert result.kind == "retry" and provider.methods == ["POST", "GET"]
@@ -480,6 +478,102 @@ async def test_refusal_that_proves_nothing_resends_below_the_cap(answer: Provide
     result, _ = await _run_create_attempt(provider, 3, heartbeat)
     assert result.kind == "uncertain", "the third send reached the cap"
     assert provider.methods.count("POST") == 3
+
+
+def _envelope_naming_answer(status: int) -> ProviderResponse:
+    body = {"errorCode": "UNSPECIFIED_ERROR", "message": "inert", "envelopeId": _ENVELOPE_ID.upper()}
+    return ProviderResponse(status, {}, json.dumps(body).encode())
+
+
+def _stored_envelope(marker_value: str) -> bytes:
+    return json.dumps(
+        {
+            "envelopeId": _ENVELOPE_ID,
+            "status": "sent",
+            "statusChangedDateTime": "2026-10-04T11:00:00.0000000Z",
+            "customFields": {"textCustomFields": [{"name": "dexIdempotencyKey", "value": marker_value}]},
+        }
+    ).encode()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 422, 500])
+async def test_refusal_naming_an_envelope_is_accepted_and_read_back_by_id(status: int) -> None:
+    provider = _ScriptedDocuSign(
+        [_envelope_naming_answer(status)], {"/envelopes/" + _ENVELOPE_ID: _stored_envelope("call-1")}
+    )
+    result, heartbeat = await _run_create_attempt(provider, 1, None)
+    assert result.branch == "created"
+    assert result.value.envelope_id == _ENVELOPE_ID and result.value.was_recovered  # type: ignore[attr-defined]
+    assert provider.paths == ["POST /envelopes", "GET /envelopes/" + _ENVELOPE_ID]
+    assert heartbeat is not None and heartbeat.is_accepted
+
+
+@pytest.mark.asyncio
+async def test_refusal_naming_an_envelope_is_never_sent_again() -> None:
+    provider = _ScriptedDocuSign([_envelope_naming_answer(422)])
+    result, heartbeat = await _run_create_attempt(provider, 1, None)
+    assert result.kind == "retry" and heartbeat is not None and heartbeat.is_accepted
+    result, heartbeat = await _run_create_attempt(provider, 2, heartbeat)
+    assert result.kind == "retry", "a later attempt only reads back"
+    result, _ = await _run_create_attempt(provider, 3, heartbeat)
+    assert result.kind == "uncertain"
+    assert provider.methods.count("POST") == 1
+
+
+class _RefreshingCredentials:
+    """Resolve one token and count forced refreshes after a 401."""
+
+    def __init__(self) -> None:
+        self.refreshes = 0
+
+    async def resolve(self, _call: object) -> Credentials:
+        return Credentials(access_token=sdk.SecretString("token"))
+
+    async def resolve_after_rejection(self, _call: object) -> Credentials:
+        self.refreshes += 1
+        return Credentials(access_token=sdk.SecretString("new-token"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [json.dumps({"errorCode": "USER_AUTHENTICATION_FAILED", "envelopeId": _ENVELOPE_ID}).encode(), None],
+    ids=["naming an envelope", "cut off"],
+)
+async def test_client_does_not_refresh_and_resend_after_an_unprovable_401(body: bytes | None) -> None:
+    posts: list[httpx.Request] = []
+
+    async def stream() -> Any:
+        yield b'{"errorCode":"USER_AUTHENTICATION_FAILED"'
+        raise httpx.ReadError("connection lost")
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        posts.append(request)
+        if body is None:
+            return httpx.Response(401, content=stream())
+        return httpx.Response(401, content=body)
+
+    credentials = _RefreshingCredentials()
+    client = Client(
+        Config(),
+        credentials,  # type: ignore[arg-type]
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    try:
+        token = Credentials(access_token=sdk.SecretString("token"))
+        session = Session(_ENVELOPE_ID, "https://na3.docusign.net", token)
+        response = await client.request(
+            SimpleNamespace(),  # type: ignore[arg-type]
+            session,
+            "POST",
+            "/envelopes",
+            body={},
+        )
+    finally:
+        await client.aclose()
+    assert response.status == 401
+    assert len(posts) == 1 and credentials.refreshes == 0, "no second POST with a refreshed token"
 
 
 class _SessionFailingDocuSign(_ScriptedDocuSign):

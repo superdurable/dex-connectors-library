@@ -631,12 +631,10 @@ func TestCreateEnvelopeAcceptedCreateWhoseMarkerIsLostSelectsUncertain(t *testin
 	require.Len(t, fake.requestsTo(http.MethodGet, envelopesPath), 1)
 }
 
-func TestCreateEnvelopeRefusalWithAnIncompleteOrEnvelopeBearingBodyIsAnUnknownOutcome(t *testing.T) {
+func TestCreateEnvelopeRefusalWithAnIncompleteBodyIsAnUnknownOutcome(t *testing.T) {
 	for name, answer := range map[string]http.HandlerFunc{
 		"oversized refusal body": respondJSON(http.StatusBadRequest, docusignError("TEMPLATE_ID_INVALID")+strings.Repeat(" ", providerhttp.MaxErrorBodyBytes)),
 		"refusal body cut off":   cutOffBody(http.StatusBadRequest, docusignError("TEMPLATE_ID_INVALID")),
-		"refusal naming an envelope": respondJSON(http.StatusUnprocessableEntity,
-			`{"errorCode":"UNSPECIFIED_ERROR","envelopeId":"`+otherEnvelopeID+`"}`),
 	} {
 		t.Run(name, func(t *testing.T) {
 			fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
@@ -669,5 +667,82 @@ func TestCreateEnvelopeIncompleteUnauthorizedBodyIsNotSentAgainAfterARefresh(t *
 	_, _, err := runCreateAttempt(t, client, nil, 1)
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry, "an incomplete 401 body proves no refusal")
+	require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1, "the create is not sent again with a refreshed token")
+}
+
+// envelopeNamingRefusal stores the create, then answers status with a body that names the new envelope.
+func envelopeNamingRefusal(store *fakeEnvelopeStore, status int) http.HandlerFunc {
+	return func(response http.ResponseWriter, request *http.Request) {
+		envelopeID := store.create(request)
+		writeJSON(response, status, `{"errorCode":"UNSPECIFIED_ERROR","message":"`+sentinelMessage+`","envelopeId":"`+envelopeID+`"}`)
+	}
+}
+
+// readStoredEnvelope answers GET /envelopes/{id} from store.
+func readStoredEnvelope(store *fakeEnvelopeStore, envelopeID string) http.HandlerFunc {
+	return func(response http.ResponseWriter, _ *http.Request) {
+		store.mu.Lock()
+		marker, isFound := store.envelopes[envelopeID]
+		store.mu.Unlock()
+		if !isFound {
+			writeJSON(response, http.StatusNotFound, docusignError("ENVELOPE_DOES_NOT_EXIST"))
+			return
+		}
+		writeJSON(response, http.StatusOK, envelopeJSON(envelopeID, "sent", marker))
+	}
+}
+
+func TestCreateEnvelopeRefusalNamingAnEnvelopeIsAcceptedAndReadBackByID(t *testing.T) {
+	for name, status := range map[string]int{"422": http.StatusUnprocessableEntity, "400": http.StatusBadRequest, "500": http.StatusInternalServerError} {
+		t.Run(name, func(t *testing.T) {
+			store := &fakeEnvelopeStore{}
+			fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+				"POST " + envelopesPath:                       envelopeNamingRefusal(store, status),
+				"GET " + envelopesPath + "/" + testEnvelopeID: readStoredEnvelope(store, testEnvelopeID),
+				"GET " + envelopesPath:                        (&fakeEnvelopeStore{}).list,
+			})
+			client := newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{})
+			result, _, err := runCreateAttempt(t, client, nil, 1)
+			require.NoError(t, err)
+			require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchCreated, result.Branch)
+			require.Equal(t, testEnvelopeID, result.Value.EnvelopeID)
+			require.True(t, result.Value.WasRecovered)
+			require.Len(t, fake.requestsTo(http.MethodGet, envelopesPath+"/"+testEnvelopeID), 1, "the named envelope is read by its ID")
+			require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1)
+		})
+	}
+}
+
+func TestCreateEnvelopeRefusalNamingAnEnvelopeIsNeverSentAgain(t *testing.T) {
+	store := &fakeEnvelopeStore{}
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"POST " + envelopesPath: envelopeNamingRefusal(store, http.StatusUnprocessableEntity),
+		"GET " + envelopesPath:  (&fakeEnvelopeStore{}).list,
+	})
+	client := newTestClient(t, fake, staticCredentials(productionCredentials()), docusign.Config{})
+	_, heartbeat, err := runCreateAttempt(t, client, nil, 1)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the read-backs missed, so a later attempt reads back again")
+	require.Contains(t, string(heartbeat), `"isAccepted":true`)
+	_, heartbeat, err = runCreateAttempt(t, client, heartbeat, 2)
+	require.ErrorAs(t, err, &retry)
+	result, _, err := runCreateAttempt(t, client, heartbeat, 3)
+	require.NoError(t, err)
+	require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchUncertain, result.Branch)
+	require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1, "an envelope-naming answer is never sent again")
+}
+
+func TestCreateEnvelopeUnauthorizedBodyNamingAnEnvelopeIsNotSentAgainAfterARefresh(t *testing.T) {
+	store := &fakeEnvelopeStore{}
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"POST " + envelopesPath:                       envelopeNamingRefusal(store, http.StatusUnauthorized),
+		"GET " + envelopesPath + "/" + testEnvelopeID: readStoredEnvelope(store, testEnvelopeID),
+		"GET " + envelopesPath:                        (&fakeEnvelopeStore{}).list,
+		"POST /oauth/token":                           respondJSON(http.StatusOK, `{"access_token":"new-access","token_type":"Bearer","expires_in":28800}`),
+	})
+	client := newTestClient(t, fake, testsupport.NewRefreshingCredentialSource(productionCredentials(), nil), docusign.Config{})
+	result, _, err := runCreateAttempt(t, client, nil, 1)
+	require.NoError(t, err)
+	require.Equal(t, docusign.CreateEnvelopeFromTemplateBranchCreated, result.Branch)
 	require.Len(t, fake.requestsTo(http.MethodPost, envelopesPath), 1, "the create is not sent again with a refreshed token")
 }

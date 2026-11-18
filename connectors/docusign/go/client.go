@@ -377,8 +377,8 @@ func (client *Client) sendWithRejectionRefresh(
 		if err != nil {
 			return rejected, err
 		}
-		if rejected.isErrorBodyIncomplete && isDispatched != nil {
-			// An incomplete 401 body proves no refusal, so the create is not sent again.
+		if isDispatched != nil && (rejected.isErrorBodyIncomplete || hasEnvelopeID(rejected.body)) {
+			// An incomplete or envelope-naming 401 body proves no refusal, so the create is not sent again.
 			return rejected, nil
 		}
 		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(requestContext, client.credentials, call, client.refreshDriver)
