@@ -118,12 +118,13 @@ export class PostNonIdempotentOperation implements Mutation<PostNonIdempotentInp
     const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(operationBudgetMs)]);
     const resolved = await resolveToken(client, call, signal, postNonIdempotentOperation);
     if ('attempt' in resolved) {
+      // notSent would hide the earlier possible POST, and the cap forbids another one.
+      if (outcome.hasPossibleEarlierSend) return outcome.uncertain(zeroOutput, 'AUTHENTICATION', "an earlier attempt may have sent the POST, and the connection's credentials cannot send it now");
       const isTerminal = resolved.attempt.kind !== 'retry';
       try { await fence.recordNotSent(); }
       catch {
         if (!isTerminal) return newMutationRetry(failure(postNonIdempotentOperation, 'AVAILABILITY', 'the OAuth access token and the no-send checkpoint are unavailable now'));
       }
-      if (isTerminal && outcome.hasPossibleEarlierSend) return outcome.uncertain(zeroOutput, 'AUTHENTICATION', "an earlier attempt may have sent the POST, and the connection's credentials cannot send it now");
       return resolved.attempt;
     }
     const token = resolved.token;

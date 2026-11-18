@@ -33,8 +33,8 @@ class ExpiredAttemptContext extends AttemptContext {
   override async recordHeartbeat(): Promise<void> { throw new Error('heartbeat unavailable'); }
 }
 
-async function post(context: AttemptContext, answer: (request: ProviderRequest) => Promise<ProviderResponse>, requests: ProviderRequest[]) {
-  const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, credentials]]), {
+async function post(context: AttemptContext, answer: (request: ProviderRequest) => Promise<ProviderResponse>, requests: ProviderRequest[], connectionCredentials = credentials) {
+  const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, connectionCredentials]]), {
     send: async request => { requests.push(request); return answer(request); },
   });
   const call = { id: callId, idempotencyKey: callId, connection, context } as unknown as Call;
@@ -107,6 +107,19 @@ describe('postNonIdempotent single dispatch', () => {
   it('never reports a driver AggregateError after the POST left the process as not sent', async () => {
     const attempt = await post(new AttemptContext(), async () => { throw new AggregateError([new Error('reset')], 'driver failure'); }, []);
     expect(attempt.kind).toBe('uncertain');
+  });
+
+  it('never records notSent for a credential failure after a possible earlier send', async () => {
+    const requests: ProviderRequest[] = [];
+    const context = new AttemptContext();
+    // A canResend marker that still counts one possibly effective send keeps a send allowed.
+    const seeded = { callId, attempt: 2, state: 'canResend', sendCount: 1 };
+    context.marker = seeded;
+    context.attempt = 3;
+    const attempt = await post(context, respond(201), requests, { ...credentials, accessToken: new SecretString('') });
+    expect(attempt.kind).toBe('uncertain');
+    expect(context.marker).toBe(seeded);
+    expect(requests).toHaveLength(0);
   });
 
   it('selects uncertain without sending when a later attempt finds no checkpoint', async () => {

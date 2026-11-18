@@ -4,6 +4,7 @@
 package oauth2http_test
 
 import (
+	goContext "context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -228,6 +229,41 @@ func TestPostNonIdempotentSelectsUncertainWithoutSendingAfterAnEarlierPossibleSe
 	require.NoError(t, err)
 	require.Equal(t, oauth2http.PostNonIdempotentBranchUncertain, result.Branch)
 	require.Empty(t, session.server.requests())
+}
+
+// unavailableCredentials fails every credential lookup with a transient error.
+type unavailableCredentials struct{}
+
+func (unavailableCredentials) Resolve(sdkgo.Call) (oauth2http.Credentials, error) {
+	return oauth2http.Credentials{}, errors.New("credential store unavailable")
+}
+
+func (unavailableCredentials) ResolveWithRefresh(goContext.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[oauth2http.Credentials]) (oauth2http.Credentials, error) {
+	return oauth2http.Credentials{}, errors.New("credential store unavailable")
+}
+
+func TestPostNonIdempotentNeverRecordsNotSentAfterAPossibleEarlierSend(t *testing.T) {
+	session := newTestSession(t, nil, time.Hour)
+	session.server.api = func(response http.ResponseWriter, _ *http.Request) { response.WriteHeader(http.StatusTooManyRequests) }
+	context := singledispatchtest.NewContext("oauth2-http-flow", "credentials-after-send")
+	_, err := postNonIdempotent(t, session, context, oauth2http.PostNonIdempotentInput{Path: "/orders"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	marker := lastMarker(t, context)
+	// A canResend marker that still counts one possibly effective send keeps SendAllowed.
+	context.AdvanceAttempt()
+	require.NoError(t, context.SetPersistedCheckpoint(singledispatch.Marker{CallID: marker.CallID, Attempt: 2, State: singledispatch.StateCanResend, SendCount: 1}))
+	context.AdvanceAttempt()
+	heartbeatCount := len(context.Heartbeats())
+	client, err := oauth2http.New(session.server.config(), unavailableCredentials{}, oauth2http.WithHTTPClient(session.server.Client()))
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunMutation(context, client.PostNonIdempotent(), testConnection, oauth2http.PostNonIdempotentInput{Path: "/orders"})
+
+	require.NoError(t, err)
+	require.Equal(t, oauth2http.PostNonIdempotentBranchUncertain, result.Branch, "the earlier attempt counts as a possible POST")
+	require.Len(t, context.Heartbeats(), heartbeatCount, "notSent would hide the earlier possible POST")
+	require.Len(t, session.server.requests(), 1)
 }
 
 func TestPostNonIdempotentSelectsDefectWithoutSendingInvalidInput(t *testing.T) {

@@ -90,13 +90,14 @@ func (operation PostNonIdempotentOperation) Invoke(call sdkgo.Call, input PostNo
 	defer cancel()
 	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	if problem := classifyCredentialResolution(ctx, err, credentials); problem.isFailed() {
+		if outcome.hasPossibleEarlierSend {
+			// notSent would hide the earlier possible POST, and the cap forbids another one.
+			return outcome.uncertain(SendRequestOutput{}, sdkgo.FailureAuthentication,
+				"an earlier attempt may have sent the POST, and the connection's credentials cannot send it now", httpExchange{})
+		}
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil && !problem.isTerminal() {
 			return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureAvailability,
 				"the OAuth access token and the no-send checkpoint are unavailable now"), 0)
-		}
-		if problem.isTerminal() && outcome.hasPossibleEarlierSend {
-			return outcome.uncertain(SendRequestOutput{}, sdkgo.FailureAuthentication,
-				"an earlier attempt may have sent the POST, and the connection's credentials cannot send it now", httpExchange{})
 		}
 		return problem.attempt(operationName, PostNonIdempotentBranchRejected, PostNonIdempotentBranchDefect)
 	}

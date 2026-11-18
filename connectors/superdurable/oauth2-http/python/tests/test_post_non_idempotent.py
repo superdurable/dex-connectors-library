@@ -43,7 +43,10 @@ class AttemptContext:
 
 
 async def post(
-    answer: Callable[[httpx.Request], httpx.Response], context: AttemptContext, requests: list[httpx.Request]
+    answer: Callable[[httpx.Request], httpx.Response],
+    context: AttemptContext,
+    requests: list[httpx.Request],
+    access_token: str = "access-token",
 ) -> sdk.MutationResult[oauth2_http.SendRequestOutput] | sdk.RetryError:
     """Run one Execute attempt of postNonIdempotent."""
 
@@ -64,7 +67,7 @@ async def post(
                     CONNECTION: oauth2_http.Credentials(
                         "client",
                         sdk.SecretString("client-secret"),
-                        sdk.SecretString("access-token"),
+                        sdk.SecretString(access_token),
                         sdk.SecretString(""),
                     )
                 }
@@ -160,6 +163,20 @@ async def test_unreadable_checkpoint_returns_retry_without_sending() -> None:
     context = AttemptContext()
     context.is_unreadable = True
     assert isinstance(await post(lambda _: httpx.Response(201), context, requests), sdk.RetryError)
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_credential_failure_after_a_possible_send_never_records_not_sent() -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    # A canResend marker that still counts one possibly effective send keeps a send allowed.
+    seeded = Marker(CALL_ID, 2, "canResend", send_count=1)
+    context.marker = seeded
+    context.attempt = 3
+    result = await post(lambda _: httpx.Response(201), context, requests, access_token="")
+    assert isinstance(result, sdk.MutationResult) and result.branch == "uncertain"
+    assert context.marker is seeded, "notSent would hide the earlier possible POST"
     assert requests == []
 
 

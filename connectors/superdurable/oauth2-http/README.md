@@ -246,8 +246,9 @@ before the POST and sends at most once per Step execution.
 Dex retries a 429 or 503, after `Retry-After` when the API sends it, a POST that
 never left the Worker, and a 401 after which the token was renewed; those
 answers prove the API did not process the POST, so the next attempt sends it
-again. A checkpoint that cannot be read also returns Retry without sending. The
-connector cannot read a POST back, so a Flow that selects `uncertain` checks
+again. A checkpoint that cannot be read also returns Retry without sending.
+After a possible earlier send, a credential failure selects `uncertain` and
+records no not-sent checkpoint. The connector cannot read a POST back, so a Flow that selects `uncertain` checks
 the API's state before it acts.
 
 ## Mocks

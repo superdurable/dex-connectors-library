@@ -638,6 +638,15 @@ class PostNonIdempotentOperation:
         credentials, failed = await client._resolve_credentials(call, deadline, _POST_NON_IDEMPOTENT)
         if credentials is None:
             assert failed is not None
+            if outcome.has_possible_earlier_send:
+                # notSent would hide the earlier possible POST, and the cap forbids another one.
+                return outcome.uncertain(
+                    SendRequestOutput(),
+                    FailureKind.AUTHENTICATION,
+                    "an earlier attempt may have sent the POST, "
+                    "and the connection's credentials cannot send it now",
+                    _Exchange(),
+                )
             is_terminal = failed.kind != "retry"
             try:
                 await fence.record_not_sent()
@@ -650,14 +659,6 @@ class PostNonIdempotentOperation:
                             "the OAuth access token and the no-send checkpoint are unavailable now",
                         )
                     )
-            if is_terminal and outcome.has_possible_earlier_send:
-                return outcome.uncertain(
-                    SendRequestOutput(),
-                    FailureKind.AUTHENTICATION,
-                    "an earlier attempt may have sent the POST, "
-                    "and the connection's credentials cannot send it now",
-                    _Exchange(),
-                )
             return failed
         token = credentials.access_token.reveal()
         is_send_started = False
