@@ -560,9 +560,9 @@ var UpdateTicketDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateTicketBranchUpdated, Description: "The ticket holds the requested values, written now or by an earlier attempt."},
 		{ID: UpdateTicketBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's user.", Optional: true},
-		{ID: UpdateTicketBranchProviderRejected, Description: "Gorgias conclusively rejected the change, such as an unknown user or team, or a merged ticket; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.", Optional: true},
-		{ID: UpdateTicketBranchInvalidResponse, Description: "Gorgias returned an invalid or oversized ticket on the read before the change, so this attempt changed nothing.", Optional: true},
-		{ID: UpdateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: UpdateTicketBranchProviderRejected, Description: "Gorgias conclusively rejected the ticket read or the change with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as for an unknown user or team; a tag change made before the rejection stays applied, and the Ticket shows it when it can be read again.", Optional: true},
+		{ID: UpdateTicketBranchInvalidResponse, Description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on any read is retried.", Optional: true},
+		{ID: UpdateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid; revoked or unusable credentials select it only on the first attempt, because a later attempt retries a change an earlier attempt may have sent.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),

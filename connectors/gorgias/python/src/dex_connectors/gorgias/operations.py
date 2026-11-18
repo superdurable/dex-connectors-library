@@ -444,7 +444,9 @@ class UpdateTicketOperation:
             )
         resolved = await self.client.resolve_write_credentials(call, operation)
         credentials, credential_failure, is_terminal = resolved
-        if credential_failure and not is_terminal:
+        is_later_attempt = call.context is not None and call.context.attempt > 1
+        if credential_failure and (not is_terminal or is_later_attempt):
+            # defect would hide a change an earlier attempt may have sent; repeating it is safe.
             return MutationAttempt.retry(credential_failure)
         if credential_failure:
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
@@ -452,17 +454,15 @@ class UpdateTicketOperation:
         path = f"/tickets/{input.ticket_id}"
         read = await self.client.exchange(call, credentials, operation, "GET", path)
         receipt = self.client.receipt(call, read, input.ticket_id)
-        terminal = _mutation_exchange(read, receipt, zero, True)
+        # An earlier attempt's write may have applied, so only a definite refusal selects a branch.
+        terminal = _after_write_exchange(read, receipt, zero)
         if terminal:
             return terminal
         try:
             ticket = decode_ticket(json.loads(read.body), input.ticket_id)
         except (ValueError, TypeError, KeyError, AttributeError) as error:
-            return MutationAttempt.branch_result(
-                defs.INVALID_RESPONSE,
-                zero,
-                receipt,
-                failure(FailureKind.PROTOCOL, operation, "Gorgias returned an invalid ticket: " + str(error)),
+            return MutationAttempt.retry(
+                failure(FailureKind.PROTOCOL, operation, "Gorgias returned an invalid ticket: " + str(error))
             )
         fields: dict[str, Any] = {}
         if input.status and input.status != ticket.status:
@@ -779,10 +779,22 @@ async def _send_write(
     path: str,
     payload: dict[str, Any],
 ) -> tuple[Exchange | None, MutationAttempt[Any] | None]:
-    """Dispatch one POST under the fence; a refused dispatch returns its Retry attempt."""
+    """Dispatch one POST under the fence; a refused dispatch returns its Retry attempt.
+
+    A 2xx whose body the write window cut off returns an unreadable accepted exchange, which is read back.
+    """
+    observed_statuses: list[int] = []
     try:
         exchange = await permit.fence.dispatch(
-            lambda _: client.exchange(call, credentials, operation, "POST", path, payload=payload)
+            lambda _: client.exchange(
+                call,
+                credentials,
+                operation,
+                "POST",
+                path,
+                payload=payload,
+                on_response_status=observed_statuses.append,
+            )
         )
     except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
         # Dispatch refused before sending, so nothing reached Gorgias in this attempt.
@@ -795,6 +807,14 @@ async def _send_write(
             )
         )
     except TimeoutError:
+        if observed_statuses and 200 <= observed_statuses[0] < 300:
+            # Gorgias accepted the write, so the caller reads it back and never resends it.
+            accepted = failure(
+                FailureKind.TRANSPORT,
+                operation,
+                "Gorgias accepted the request, but its answer did not arrive within the write window",
+            )
+            return Exchange("unavailable", accepted, status=observed_statuses[0]), None
         # The claim stays, so the next attempt counts this send and reads back first.
         return None, MutationAttempt.retry(
             failure(FailureKind.TRANSPORT, operation, "Gorgias request failed before a response arrived"), 2

@@ -185,6 +185,41 @@ describe('Gorgias retry and routing parity', () => {
     expect(attempt.kind).toBe('uncertain');
   });
 
+  it.each([true, false])('reads back a write whose 2xx body the write window cuts off and never resends it (found: %s)', async isFound => {
+    const methods: string[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => {
+      methods.push(request.method);
+      if (request.method !== 'POST') return response(200, { data: isFound ? [{ id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z', external_id: `dex-${mutationCallID}` }] : [] });
+      // The headers arrived; the SDK sender reports the cut body with the status it saw.
+      await new Promise(resolve => request.signal?.addEventListener('abort', resolve, { once: true }));
+      throw new ProviderTransportError(false, 201, {});
+    } });
+    const shortCall = mutationCall(1);
+    const attempt = await client.createTicket().invoke({ ...shortCall, context: { ...shortCall.context, deadline: new Date(Date.now() + 600) } } as Call, createInput);
+    expect(methods).toEqual(['POST', 'GET']);
+    expect(attempt.kind).toBe(isFound ? 'branch' : 'uncertain');
+  });
+
+  it.each([
+    ['an invalid ticket', async () => response(200, { id: 'SENTINEL' })],
+    ['an oversized refusal', async () => { throw new BodyTooLargeError(400, {}); }],
+    ['a redirect', async () => response(301)],
+    ['a conflict', async () => response(409)],
+  ] as const)('retries an updateTicket whose first read returns %s', async (_name, send) => {
+    const methods: string[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => { methods.push(request.method); return send(); } });
+    const attempt = await client.updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
+    expect(methods).toEqual(['GET']);
+    expect(attempt.kind).toBe('retry');
+  });
+
+  it.each([[404, 'notFound'], [403, 'providerRejected']] as const)('selects a branch when the updateTicket first read gets a definite %s', async (status, branch) => {
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => response(status) });
+    const attempt = await client.updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
+    expect(attempt.kind).toBe('branch');
+    if (attempt.kind === 'branch') expect(attempt.branch).toBe(branch);
+  });
+
   it('treats a write refusal with an oversized body as an unknown outcome', async () => {
     const heartbeats: unknown[] = [];
     const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => { throw new BodyTooLargeError(400, {}); } });
@@ -199,6 +234,11 @@ describe('Gorgias retry and routing parity', () => {
       throw new BodyTooLargeError(400, {});
     } });
     const attempt = await client.updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
+    expect(attempt.kind).toBe('retry');
+  });
+
+  it.each(credentialFailures)('retries an updateTicket %s on a later attempt, when an earlier change may have applied', async (_name, resolve) => {
+    const attempt = await new GorgiasClient({ domain: 'acme' }, { resolve }).updateTicket().invoke(mutationCall(2), { ticketId: 7001, status: 'closed' });
     expect(attempt.kind).toBe('retry');
   });
 

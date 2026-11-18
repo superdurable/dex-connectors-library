@@ -1342,18 +1342,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "ticket": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": 0,
-            "status": "",
-            "updatedAt": "0001-01-01T00:00:00Z"
-          }
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1371,7 +1363,7 @@
         "status": "closed",
         "ticketId": 7001
       },
-      "name": "updateTicket-invalid-response",
+      "name": "updateTicket-invalid-first-read-retries",
       "operation": "updateTicket"
     },
     {

@@ -345,14 +345,16 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
       if (!input.status && !input.priority && !input.assigneeUserId && !input.assigneeTeamId && !input.addTags?.length && !input.removeTags?.length) throw new TypeError('at least one change is required');
     } catch (error) { return defect('updateTicket', emptyUpdateTicketOutput, error, true); }
     const resolved = await this.client.resolveWriteCredentials(call, 'updateTicket');
-    if (!resolved.credentials && resolved.isTerminal === false) return newMutationRetry(resolved.failure!);
+    // defect would hide a change an earlier attempt may have sent; repeating it is safe.
+    if (!resolved.credentials && (resolved.isTerminal === false || call.context.attempt > 1)) return newMutationRetry(resolved.failure!);
     if (!resolved.credentials) return newMutationBranch('defect', emptyUpdateTicketOutput, {} as Receipt, resolved.failure);
     const ticketID = input.ticketId;
     const read = await this.client.exchange(call, resolved.credentials, 'updateTicket', 'GET', `/tickets/${ticketID}`);
-    if (read.outcome !== 'succeeded') return mutationFailure(this.client, call, read, emptyUpdateTicketOutput, 'notFound', ticketID);
+    // An earlier attempt's write may have applied, so only a definite refusal selects a branch.
+    if (read.outcome !== 'succeeded') return isConclusiveWriteFailure(read) ? mutationFailure(this.client, call, read, emptyUpdateTicketOutput, 'notFound', ticketID) : newMutationRetry(read.failure!, read.retryAfterMs);
     let current: Ticket;
     try { current = decodeTicket(objectBody(read.response!.body)); if (current.id !== ticketID) throw new TypeError('ticket response is for another ticket'); }
-    catch (error) { return protocol(this.client, call, 'updateTicket', emptyUpdateTicketOutput, read, 'Gorgias returned an invalid ticket', error, true); }
+    catch (error) { return newMutationRetry(gorgiasFailure('PROTOCOL', 'updateTicket', `Gorgias returned an invalid ticket: ${error instanceof Error ? error.message : 'invalid response'}`)); }
     const fields: Record<string, unknown> = {};
     if (input.status && input.status !== current.status) fields.status = input.status;
     if (input.priority && input.priority !== current.priority) fields.priority = input.priority;
