@@ -649,7 +649,7 @@
               "application/json"
             ]
           },
-          "status": 503
+          "status": 500
         },
         {
           "body": "{\"results\":[],\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"}}",
@@ -934,7 +934,7 @@
               "application/json"
             ]
           },
-          "status": 503
+          "status": 500
         },
         {
           "body": "{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003ePrevious\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\",\"base\":\"https://ops.atlassian.net/wiki\"}}",
@@ -1206,12 +1206,11 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "16847211-0fef-5a2d-9a47-b392c4c3f176",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 5000,
+        "retryAfterMs": 0,
         "uncertain": false
       },
       "idempotencyKey": "16847211-0fef-5a2d-9a47-b392c4c3f176",
@@ -2278,7 +2277,7 @@
               "application/json"
             ]
           },
-          "status": 503
+          "status": 500
         },
         {
           "body": "{\"results\":[]}",
@@ -2532,6 +2531,226 @@
       "priorHeartbeat": {
         "attempt": 1,
         "callId": "9a94169e-c193-5974-b142-e8e5583feaab",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "37f514bb-da1c-56e3-a52e-bea7dd584f1b",
+      "exchanges": [
+        {
+          "body": "{\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002/footer-comments",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "25"
+            ],
+            "sort": [
+              "-created-date"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/footer-comments",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eApproved\u003c/p\u003e"
+            },
+            "pageId": "600002"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002/footer-comments",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "25"
+            ],
+            "sort": [
+              "-created-date"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"700002\",\"pageId\":\"600002\",\"version\":{\"number\":1,\"createdAt\":\"2026-10-25T09:02:00Z\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eApproved\u003c/p\u003e\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/footer-comments",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eApproved\u003c/p\u003e"
+            },
+            "pageId": "600002"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "37f514bb-da1c-56e3-a52e-bea7dd584f1b",
+          "providerId": "700002",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "commentId": "700002",
+          "createdAt": "2026-10-25T09:02:00Z",
+          "pageId": "600002"
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37f514bb-da1c-56e3-a52e-bea7dd584f1b",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "37f514bb-da1c-56e3-a52e-bea7dd584f1b",
+            "sendCount": 1,
+            "state": "canResend"
+          },
+          "retryAfterMs": 2000
+        }
+      ],
+      "name": "addComment-prior-send-rate-limit",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "37f514bb-da1c-56e3-a52e-bea7dd584f1b",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 1,
+      "callId": "88c78c8d-ce7c-5b8f-b6c6-b4ea8d1b7033",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"page not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002/footer-comments",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "25"
+            ],
+            "sort": [
+              "-created-date"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "pageId": "600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "88c78c8d-ce7c-5b8f-b6c6-b4ea8d1b7033",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "name": "addComment-read-back-page-missing",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "88c78c8d-ce7c-5b8f-b6c6-b4ea8d1b7033",
         "sendCount": 1,
         "state": "claimed"
       }

@@ -997,8 +997,8 @@ class AddCommentOperation:
         try:
             session = await self.client.start_session(call, operation)
         except SessionError as error:
-            # notSent after a possible earlier send would hide it, so only a first-send decision records it.
-            if decision.kind == DecisionKind.SEND_ALLOWED:
+            # notSent after a possible earlier send would hide it, so only a first send records it.
+            if decision.kind == DecisionKind.SEND_ALLOWED and not has_possible_earlier_send:
                 try:
                     await fence.record_not_sent()
                 except Exception:
@@ -1017,9 +1017,11 @@ class AddCommentOperation:
             )
         first_send_at = _first_send_at(call, self.client.now())
         has_saved_identity = decision.marker is not None and bool(decision.marker.provider_id)
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED or (
-            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
-        ):
+        # A canResend marker yields SEND_ALLOWED while earlier sends may still have taken effect.
+        needs_read_back = (
+            decision.kind != DecisionKind.SEND_ALLOWED or has_possible_earlier_send or has_saved_identity
+        )
+        if needs_read_back:
             found, read_receipt = await self._read_back(
                 session, requested, page_id, comparison, first_send_at
             )
@@ -1045,6 +1047,11 @@ class AddCommentOperation:
                     "/footer-comments",
                     payload={"pageId": page_id, "body": {"representation": "storage", "value": storage}},
                 )
+            )
+        except TimeoutError:
+            # The write window closed after dispatch, so the claim stays and the next attempt reads back.
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.TRANSPORT, "Confluence comment outcome is unknown"), 5
             )
         except (CheckpointError, InsufficientAttemptTimeError):
             return MutationAttempt.retry(
@@ -1073,24 +1080,31 @@ class AddCommentOperation:
                     raise ValueError("invalid comment ID")
                 output = _comment_output(requested, resource)
             except (ValueError, TypeError):
-                classified = Classification(
-                    "ambiguous",
+                return await self._confirm_accepted(
+                    session,
+                    requested,
+                    page_id,
+                    comparison,
+                    first_send_at,
                     failure(
                         operation,
                         FailureKind.PROTOCOL,
                         "Confluence accepted the comment but returned an unusable comment",
                     ),
                 )
-            else:
-                try:
-                    await fence.record_provider_id(comment_id)
-                except Exception:
-                    pass  # The accepted comment stands; a lost identity checkpoint keeps the claim.
-                return MutationAttempt.branch_result(
-                    "added", output, self.client.receipt(session, response, comment_id)
-                )
+            try:
+                await fence.record_provider_id(comment_id)
+            except Exception:
+                pass  # The accepted comment stands; a lost identity checkpoint keeps the claim.
+            return MutationAttempt.branch_result(
+                "added", output, self.client.receipt(session, response, comment_id)
+            )
+        if classified.outcome == "acceptedUnreadable":
+            return await self._confirm_accepted(
+                session, requested, page_id, comparison, first_send_at, cast(Failure, classified.failure)
+            )
         if classified.outcome in ("notApplied", "notFound", "rejected", "defect"):
-            if classified.outcome == "defect" or not has_possible_earlier_send:
+            if classified.outcome in ("notApplied", "defect") or not has_possible_earlier_send:
                 try:
                     await fence.record_can_resend()
                 except Exception:
@@ -1111,6 +1125,28 @@ class AddCommentOperation:
             )
         # The claim stays, so the next attempt reads the page's comments, then resends within the cap.
         return MutationAttempt.retry(cast(Failure, classified.failure), max(classified.retry_after, 5))
+
+    async def _confirm_accepted(
+        self,
+        session: Any,
+        requested: AddCommentOutput,
+        page_id: str,
+        comparison: str,
+        first_send_at: datetime,
+        cause: Failure,
+    ) -> MutationAttempt[AddCommentOutput]:
+        """Read back a comment Confluence accepted without a usable answer; never resend it."""
+        found, read_receipt = await self._read_back(session, requested, page_id, comparison, first_send_at)
+        if found is not None and found.branch == "added":
+            return found
+        return MutationAttempt.uncertain(
+            requested,
+            replace(
+                cause,
+                message=cause.message + "; the page's comments do not confirm it, so it is not sent again",
+            ),
+            read_receipt,
+        )
 
     async def _read_back(
         self,
@@ -1133,7 +1169,8 @@ class AddCommentOperation:
         if classified.outcome == "retry":
             return MutationAttempt.retry(cast(Failure, classified.failure), classified.retry_after), receipt
         if classified.outcome == "notFound":
-            return MutationAttempt.branch_result("notFound", requested, receipt, classified.failure), receipt
+            # Read-back follows a possible send, so a missing page cannot prove nothing was added.
+            return MutationAttempt.uncertain(requested, cast(Failure, classified.failure), receipt), receipt
         if classified.outcome != "accepted":
             return None, receipt
         try:

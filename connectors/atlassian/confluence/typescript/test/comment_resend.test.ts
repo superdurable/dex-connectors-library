@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConfluenceClient } from '../src/client.js';
 import { AddCommentDefinition } from '../src/generated/definitions.js';
 
@@ -35,6 +35,19 @@ function newClient(postStatus: number) {
     },
   });
   return { client, requests };
+}
+
+function newCustomClient(respond: (request: ProviderRequest) => ProviderResponse) {
+  const requests: ProviderRequest[] = [];
+  const credentials = new StaticCredentialProvider([[connection, { oauthClientId: 'client', oauthClientSecret: new SecretString('secret'), accessToken: new SecretString('token'), refreshToken: new SecretString('') }]]);
+  const client = new ConfluenceClient({ endpoint: 'http://127.0.0.1:12345', cloudId: '11223344-a1b2-4b33-8c44-def123456789' }, credentials, {
+    send: async (request: ProviderRequest) => { requests.push(request); return respond(request); },
+  });
+  return { client, requests };
+}
+
+function matchingComment(id: string): Record<string, unknown> {
+  return { id, pageId: '600002', version: { number: 1, createdAt: new Date().toISOString() }, body: { storage: { representation: 'storage', value: '<p>Approved</p>' } } };
 }
 
 async function run(client: ConfluenceClient, context: AttemptContext, maxSendsOverride?: number): Promise<string> {
@@ -80,6 +93,55 @@ describe('Confluence bounded resend of unconfirmed comments', () => {
     expect(await run(newClient(502).client, context)).toBe('retry');
     context.attempt = 2;
     expect(await run(newClient(400).client, context)).toBe('uncertain');
+  });
+
+  it('records canResend for a 503', async () => {
+    const context = new AttemptContext();
+    expect(await run(newClient(503).client, context)).toBe('retry');
+    expect(context.marker).toMatchObject({ state: 'canResend' });
+  });
+
+  it('reads back before sending again after a rate-limited resend', async () => {
+    const statuses = [500, 429];
+    let reads = 0;
+    const { client, requests } = newCustomClient(request => {
+      if (request.method === 'POST') return { status: statuses.shift()!, headers: {}, body: Buffer.from('{}') };
+      reads++;
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ results: reads === 1 ? [] : [matchingComment('700009')] })) };
+    });
+    const context = new AttemptContext();
+    expect(await run(client, context)).toBe('retry');
+    context.attempt = 2;
+    expect(await run(client, context)).toBe('retry');
+    context.attempt = 3;
+    expect(await run(client, context)).toBe('added');
+    expect(posts(requests)).toBe(2);
+  });
+
+  it('selects uncertain when read-back after a possible send finds no page', async () => {
+    const { client, requests } = newCustomClient(() => ({ status: 404, headers: {}, body: Buffer.from('{}') }));
+    expect(await run(client, new AttemptContext(2))).toBe('uncertain');
+    expect(posts(requests)).toBe(0);
+  });
+
+  for (const [isVisible, branch] of [[true, 'added'], [false, 'uncertain']] as const) {
+    it(`never resends an accepted comment whose body broke (${branch})`, async () => {
+      const { client, requests } = newCustomClient(request => {
+        if (request.method === 'POST') throw new ProviderTransportError(false, 201, {});
+        return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ results: isVisible ? [matchingComment('700010')] : [] })) };
+      });
+      expect(await run(client, new AttemptContext())).toBe(branch);
+      expect(posts(requests)).toBe(1);
+    });
+  }
+
+  it('passes the fence write-window signal to the comment POST', async () => {
+    const { client, requests } = newClient(201);
+    const context = new AttemptContext();
+    expect(await run(client, context)).toBe('added');
+    const post = requests.find(request => request.method === 'POST')!;
+    expect(post.signal).toBeDefined();
+    expect(post.signal).not.toBe(context.cancellationSignal);
   });
 
   it('retries an untrusted checkpoint without sending', async () => {

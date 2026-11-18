@@ -181,12 +181,14 @@ type writeOutcome uint8
 const (
 	// writeAccepted is a 2xx whose body was read in full.
 	writeAccepted writeOutcome = iota + 1
-	// writeNotApplied is a 429 or an undispatched request: Confluence cannot have written.
+	// writeNotApplied is a 429, a 503, or an undispatched request: Confluence cannot have written.
 	writeNotApplied
 	writeNotFound
 	writeRejected
-	// writeAmbiguous may have been applied: a lost response, 3xx, 408, 5xx, or an unusable 2xx body.
+	// writeAmbiguous may have been applied: a lost response, 3xx, 408, or a 5xx other than 503.
 	writeAmbiguous
+	// writeAcceptedUnreadable is a 2xx whose body broke, overflowed, or reflected the credential.
+	writeAcceptedUnreadable
 	writeDefect
 )
 
@@ -474,15 +476,17 @@ func (client *Client) classifyWrite(operationID string, subject string, result e
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureTransport, "Confluence accepted the "+subject+" but its response was interrupted")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureTransport, "Confluence accepted the "+subject+" but its response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Confluence accepted the "+subject+" but its response exceeds the configured size limit")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Confluence accepted the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureProtocol, "Confluence accepted the "+subject+" but its response contains credential material")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureProtocol, "Confluence accepted the "+subject+" but its response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeNotApplied, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Confluence rate limited the "+subject+" before writing it")}
+	case response.statusCode == http.StatusServiceUnavailable:
+		return writeClassification{outcome: writeNotApplied, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Confluence was unavailable, so no "+subject+" was written")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	case isDefiniteWriteRefusalStatus(response.statusCode):

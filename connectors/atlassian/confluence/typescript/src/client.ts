@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -31,6 +31,8 @@ export interface ConfluenceExchange {
   isTooLarge: boolean;
   reflectsSecret?: boolean;
   isDispatched: boolean;
+  /** True when the status line arrived but reading the body failed. */
+  hasBodyReadFailed?: boolean;
   error?: 'transport' | 'request';
 }
 
@@ -45,7 +47,7 @@ export type ConfluenceSessionResult = { session: ConfluenceSession } | { error: 
 
 /** Transport and status classification shared by the five operations. */
 export interface ConfluenceClassification {
-  outcome: 'accepted' | 'notApplied' | 'notFound' | 'rejected' | 'ambiguous' | 'invalid' | 'defect' | 'retry';
+  outcome: 'accepted' | 'acceptedUnreadable' | 'notApplied' | 'notFound' | 'rejected' | 'ambiguous' | 'invalid' | 'defect' | 'retry';
   failure?: Failure;
   retryAfterMs: number;
 }
@@ -127,7 +129,7 @@ export class ConfluenceClient {
   }
 
   /** Exchange one request and refresh a rejected credential once. */
-  async exchange(session: ConfluenceSession, method: string, api: 'content' | 'search' | 'gateway', path: string, query?: Record<string, string>, payload?: unknown): Promise<ConfluenceExchange> {
+  async exchange(session: ConfluenceSession, method: string, api: 'content' | 'search' | 'gateway', path: string, query?: Record<string, string>, payload?: unknown, signal?: AbortSignal): Promise<ConfluenceExchange> {
     const prefix = api === 'gateway' ? '' : `/ex/confluence/${session.cloudId}/wiki/${api === 'content' ? 'api/v2' : 'rest/api'}`;
     const search = query ? '?' + encodeGoQuery(query) : '';
     const url = this.endpoint + prefix + path + search;
@@ -139,7 +141,7 @@ export class ConfluenceClient {
       const request: ProviderRequest = {
         url, method, headers: { Authorization: `Bearer ${session.token}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
         ...(body ? { body } : {}), maxResponseBytes: this.maxResponseBytes, timeoutMs: 20_000,
-        addressPolicy: this.endpoint === defaultEndpoint ? 'publicHTTPS' : 'privateNetworkHTTP', signal: session.call.context.cancellationSignal,
+        addressPolicy: this.endpoint === defaultEndpoint ? 'publicHTTPS' : 'privateNetworkHTTP', signal: signal ? AbortSignal.any([session.call.context.cancellationSignal, signal]) : session.call.context.cancellationSignal,
       };
       try {
         const received = await this.send(request);
@@ -147,6 +149,8 @@ export class ConfluenceClient {
           reflectsSecret: Buffer.from(received.body).includes(Buffer.from(session.token)) };
       } catch (error) {
         if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined) response = { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: true, isDispatched: true };
+        // Keep the status, so a write Confluence accepted is never resent.
+        else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.headers !== undefined) response = { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: false, isDispatched: true, hasBodyReadFailed: true };
         else return { status: 0, headers: {}, body: new Uint8Array(), isTooLarge: false, isDispatched: !(error instanceof ProviderTransportError && error.isProvablyNotSent), error: 'transport' };
       }
       if (response.status !== 401 || attempt === 1 || !('resolveAfterRejection' in this.credentials)) return response;
@@ -168,6 +172,7 @@ export class ConfluenceClient {
     if (response.status === 408 || response.status >= 500) return classified('retry', confluenceFailure(operation, 'AVAILABILITY', `Confluence ${subject} is temporarily unavailable`), this.retryAfter(response));
     if (response.status >= 400 && response.status < 500) return classified('rejected', confluenceFailure(operation, statusFailureKind(response.status), `Confluence rejected the ${subject} with HTTP ${response.status}`));
     if (response.status < 200 || response.status >= 300) return classified('invalid', confluenceFailure(operation, 'PROTOCOL', `Confluence returned unexpected HTTP ${response.status} for the ${subject}`));
+    if (response.hasBodyReadFailed) return classified('retry', confluenceFailure(operation, 'TRANSPORT', `Confluence ${subject} response was interrupted`));
     if (response.isTooLarge) return classified('invalid', confluenceFailure(operation, 'RESPONSE_TOO_LARGE', `Confluence ${subject} response exceeds the configured size limit`));
     if (response.reflectsSecret) return classified('invalid', confluenceFailure(operation, 'PROTOCOL', `Confluence ${subject} response contains credential material`));
     return classified('accepted');
@@ -179,11 +184,13 @@ export class ConfluenceClient {
     if (response.error && !response.isDispatched) return classified('notApplied', confluenceFailure(operation, 'TRANSPORT', `Confluence could not be reached, so no ${subject} was written`));
     if (response.error) return classified('ambiguous', confluenceFailure(operation, 'TRANSPORT', `Confluence ${subject} outcome is unknown`));
     if (response.status >= 200 && response.status < 300) {
-      if (response.isTooLarge) return classified('ambiguous', confluenceFailure(operation, 'RESPONSE_TOO_LARGE', `Confluence accepted the ${subject} but its response exceeds the configured size limit`));
-      if (response.reflectsSecret) return classified('ambiguous', confluenceFailure(operation, 'PROTOCOL', `Confluence accepted the ${subject} but its response contains credential material`));
+      if (response.hasBodyReadFailed) return classified('acceptedUnreadable', confluenceFailure(operation, 'TRANSPORT', `Confluence accepted the ${subject} but its response was interrupted`));
+      if (response.isTooLarge) return classified('acceptedUnreadable', confluenceFailure(operation, 'RESPONSE_TOO_LARGE', `Confluence accepted the ${subject} but its response exceeds the configured size limit`));
+      if (response.reflectsSecret) return classified('acceptedUnreadable', confluenceFailure(operation, 'PROTOCOL', `Confluence accepted the ${subject} but its response contains credential material`));
       return classified('accepted');
     }
     if (response.status === 429) return classified('notApplied', confluenceFailure(operation, 'RATE_LIMIT', `Confluence rate limited the ${subject} before writing it`), this.retryAfter(response));
+    if (response.status === 503) return classified('notApplied', confluenceFailure(operation, 'AVAILABILITY', `Confluence was unavailable, so no ${subject} was written`), this.retryAfter(response));
     if (response.status === 404) return classified('notFound', confluenceFailure(operation, 'NOT_FOUND', `Confluence rejected the ${subject} with HTTP 404`));
     if (definiteWriteRefusalStatuses.has(response.status)) return classified('rejected', confluenceFailure(operation, statusFailureKind(response.status), `Confluence rejected the ${subject} with HTTP ${response.status}`));
     return classified('ambiguous', confluenceFailure(operation, 'AVAILABILITY', `Confluence ${subject} outcome is unknown after HTTP ${response.status}`), this.retryAfter(response));
