@@ -11,6 +11,12 @@ from typing import Any
 import dex_connectors.sdk as sdk
 import httpx
 import pytest
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.doist_todoist import (
     Client,
@@ -30,9 +36,12 @@ class _UnavailableCredentials:
         raise OSError("inert credential store outage")
 
 
-class _MissingCredentials:
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
     async def resolve(self, call: sdk.Call) -> Credentials:
-        raise LookupError("inert missing connection")
+        raise self.error
 
 
 def _call(operation: str, context: AttemptContext | None = None) -> sdk.Call:
@@ -59,14 +68,61 @@ async def test_credential_store_outage_retries_before_dispatch() -> None:
 
 
 @pytest.mark.asyncio
-async def test_missing_credential_is_terminal() -> None:
-    """A missing connection cannot be repaired by retrying the same call."""
-    client = Client(Config(), _MissingCredentials())
+@pytest.mark.parametrize(
+    "error",
+    [
+        sdk.ReauthorizationRequiredError("reauthorize"),
+        ConnectionNotSelectedError(),
+        CredentialBrokerRejectedError(),
+        ObjectNotFoundError("absent"),
+    ],
+    ids=["reauthorization", "not selected", "broker rejected", "object not found"],
+)
+async def test_terminal_credential_failure_selects_defect(error: Exception) -> None:
+    """Only the listed credential failures cannot be repaired by retrying the same call."""
+    client = Client(Config(), _FailingCredentials(error))
     try:
         answer = await client.get_task().invoke(_call("getTask"), GetTaskInput("task-123"))
         assert answer.kind == "branch" and answer.branch == "defect"
         assert answer.failure is not None
         assert answer.failure.kind == sdk.FailureKind.AUTHENTICATION
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        CredentialBrokerUnavailableError(),
+        ValueError("connection is not configured"),
+        LookupError("unlisted"),
+        RuntimeError("unlisted"),
+    ],
+    ids=["broker unavailable", "not configured", "unlisted lookup", "unlisted runtime"],
+)
+async def test_unlisted_credential_failure_retries_creation(error: Exception) -> None:
+    """Every credential failure outside the terminal set retries without a provider request."""
+    client = Client(Config(), _FailingCredentials(error))
+    try:
+        operation, task = client.create_task(), CreateTaskInput("Disposable task")
+        call = _call("createTask")
+        call = replace(call, idempotency_key=operation.idempotency_key(call.id, task))
+        answer = await operation.invoke(call, task)
+        assert answer.kind == "retry"
+        assert answer.failure is not None
+        assert answer.failure.kind == sdk.FailureKind.AVAILABILITY
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_unconfigured_static_connection_retries() -> None:
+    """The static provider's missing connection is not a terminal credential failure."""
+    client = Client(Config(), sdk.StaticCredentialProvider({}))
+    try:
+        answer = await client.get_task().invoke(_call("getTask"), GetTaskInput("task-123"))
+        assert answer.kind == "retry"
     finally:
         await client.aclose()
 
