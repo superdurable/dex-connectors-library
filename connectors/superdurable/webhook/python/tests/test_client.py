@@ -16,6 +16,8 @@ from dex_connectors.sdk import (
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig.broker import CredentialBrokerUnavailableError
+from dex_connectors.sdk.projectconfig.provider import ExchangePendingError, RefreshFailedError
 
 from dex_connectors.superdurable_webhook import Client, Config, Credentials, SendEventInput
 
@@ -81,6 +83,23 @@ async def test_unexpected_credential_error_is_authentication_defect() -> None:
     attempt = await client.send_event().invoke(_call(), SendEventInput(b"null"))
     assert attempt.branch == "defect"
     assert attempt.failure is not None and attempt.failure.kind == FailureKind.AUTHENTICATION
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "transient", [CredentialBrokerUnavailableError(), ExchangePendingError(), RefreshFailedError()]
+)
+async def test_transient_credential_error_retries_without_sending(transient: Exception) -> None:
+    """A credential source that is unavailable now returns Retry and never selects defect."""
+    class UnavailableCredentials:
+        async def resolve(self, call: Call) -> None:
+            raise transient
+
+    client = Client(_config("https://receiver.example.test/hook"), UnavailableCredentials())  # type: ignore[arg-type]
+    attempt = await client.send_event().invoke(_call(), SendEventInput(b"null"))
+    assert attempt.kind == "retry"
+    assert attempt.failure is not None and attempt.failure.kind == FailureKind.AVAILABILITY
     await client.aclose()
 
 

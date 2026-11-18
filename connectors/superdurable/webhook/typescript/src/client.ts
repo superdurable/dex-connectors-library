@@ -3,7 +3,7 @@
 
 import { createHmac } from 'node:crypto';
 import { SecretString, newMutationBranch, newMutationRetry, type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ConflictError, CredentialBrokerUnavailableError, ExchangePendingError, OutcomeUnknownError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, parseRetryAfter, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectorID, SendEventDefinition } from './generated/definitions.js';
 import type { Config, Credentials, SendEventInput, SendEventOutput } from './generated/models.js';
@@ -65,7 +65,7 @@ export class SendEventOperation implements Mutation<SendEventInput, SendEventOut
       if (!(credentials.signingSecret instanceof SecretString) || !credentials.signingSecret.reveal()) throw new TypeError('missing signing secret');
       signingSecret = credentials.signingSecret.reveal();
     } catch (error) {
-      if (error instanceof CredentialBrokerUnavailableError) return newMutationRetry(failure('AVAILABILITY', 'the credential broker is temporarily unavailable, so nothing was sent'));
+      if (isTransientCredentialError(error)) return newMutationRetry(failure('AVAILABILITY', 'the credential broker or store is temporarily unavailable, so nothing was sent'));
       return this.defect(call, emptyOutput, 'AUTHENTICATION', 'the webhook signing secret is unavailable');
     }
     let key: Uint8Array;
@@ -118,6 +118,12 @@ export class SendEventOperation implements Mutation<SendEventInput, SendEventOut
 const DEFINITE_REFUSAL_STATUSES = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 
 function hasPossibleEarlierSend(call: Call): boolean { return call.context.attempt > 1; }
+
+/** A credential broker, store, refresh, or exchange that is unavailable now may answer on a later attempt. */
+function isTransientCredentialError(error: unknown): boolean {
+  return error instanceof CredentialBrokerUnavailableError || error instanceof RefreshFailedError || error instanceof ExchangePendingError
+    || error instanceof OutcomeUnknownError || error instanceof ConflictError;
+}
 
 function failure(kind: Failure['kind'], message: string): Failure { return { kind, provider: ConnectorID, operation: 'sendEvent', message }; }
 function receipt(call: Call, webhookId: string, now: Date): ReceiptDraft {
