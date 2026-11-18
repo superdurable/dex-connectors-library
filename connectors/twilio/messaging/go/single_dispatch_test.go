@@ -260,6 +260,12 @@ func TestSendMessageFenceClassifiesCredentialLookupBeforeSend(t *testing.T) {
 		isTerminal  bool
 	}{
 		{"reauthorization", sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), messaging.Credentials{}, true},
+		{"project reauthorization", projectconfig.ErrReauthorizationRequired, messaging.Credentials{}, true},
+		{"object not found", projectconfig.ErrObjectNotFound, messaging.Credentials{}, true},
+		{"connection not selected", projectconfig.ErrConnectionNotSelected, messaging.Credentials{}, true},
+		{"broker rejected", projectconfig.ErrCredentialBrokerRejected, messaging.Credentials{}, true},
+		{"broker unavailable", projectconfig.ErrCredentialBrokerUnavailable, messaging.Credentials{}, false},
+		{"static not configured", errors.New("connection is not configured"), messaging.Credentials{}, false},
 		{"store unavailable", errors.New("project connection store returned HTTP 503"), messaging.Credentials{}, false},
 		{"connection refused", errors.New("connect: connection refused"), messaging.Credentials{}, false},
 		{"invalid credentials", nil, messaging.Credentials{AuthMethodID: messaging.AuthTokenAuthMethodID}, true},
@@ -295,6 +301,10 @@ func TestSendMessageFenceClassifiesCredentialLookupDuringReadBack(t *testing.T) 
 		isTerminal         bool
 	}{
 		{"reauthorization", sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), false, true},
+		{"broker rejected", projectconfig.ErrCredentialBrokerRejected, false, true},
+		{"connection not selected", projectconfig.ErrConnectionNotSelected, false, true},
+		{"broker unavailable", projectconfig.ErrCredentialBrokerUnavailable, false, false},
+		{"static not configured", errors.New("connection is not configured"), false, false},
 		{"store unavailable", errors.New("project connection store returned HTTP 503"), false, false},
 		{"invalid credentials", nil, true, true},
 	} {

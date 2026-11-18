@@ -139,10 +139,15 @@ without a message SID is an unknown outcome. The fence bounds the POST to
 leaving time to classify its result. It disables Go's transparent HTTP replay.
 A transport without positive DNS, connect, or TLS failure evidence is treated
 as possibly dispatched.
-An unavailable credential service retries before the POST with a `notSent`
-checkpoint. An invalid or reauthorization-required credential selects `defect`
+A credential lookup failure is terminal only when reauthorization is required,
+the connection or its credential object is not found, the connection is not
+selected, or the credential broker rejected the read; invalid credential
+material is terminal too. Every other lookup failure, such as an unavailable
+credential broker or a static provider without the connection, retries before
+the POST with a `notSent` checkpoint. A terminal credential selects `defect`
 without sending and asks for the connection to be updated or reconnected; after
-an earlier possible send it retries instead, so the earlier send stays counted. On
+an earlier possible send it selects `uncertain`, and a transient failure there
+retries without recording `notSent`, so the earlier send stays counted. On
 401, the connector requests a forced credential refresh;
 it records a safe retry only if that returns a different valid credential.
 Static Twilio credentials cannot refresh automatically, so a 401 selects

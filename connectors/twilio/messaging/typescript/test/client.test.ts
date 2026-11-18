@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it, vi } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { HeartbeatContext } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { buildSendRequest, parseSender, twilioFailure, twilioTime, TwilioClient, zeroMessage } from '../src/client.js';
 
@@ -63,6 +64,20 @@ describe('Twilio message validation', () => {
     expect(await sender.sendMessage().invoke(call, { to: '+14155550123', body: 'hello' })).toMatchObject({
       branch: 'providerRejected', failure: { kind: 'AUTHENTICATION', message: 'Twilio credential refresh is temporarily unavailable' },
     });
+  });
+  it.each([
+    { error: new ReauthorizationRequiredError(), terminal: true },
+    { error: new ObjectNotFoundError(), terminal: true },
+    { error: new ConnectionNotSelectedError(), terminal: true },
+    { error: new CredentialBrokerRejectedError(), terminal: true },
+    { error: new CredentialBrokerUnavailableError(), terminal: false },
+    { error: new Error('connection is not configured'), terminal: false },
+    { error: new TypeError('fetch failed'), terminal: false },
+  ])('classifies a credential lookup failure: $error.name', async ({ error, terminal }) => {
+    const failing = new TwilioClient({ accountSid }, { resolve: async () => { throw error; } });
+    const call = { context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
+    const result = await failing.authorization(call, 'sendMessage');
+    expect(result).toMatchObject({ isTransient: !terminal, failure: { kind: terminal ? 'AUTHENTICATION' : 'AVAILABILITY' } });
   });
   it('rejects impossible Twilio dates and preserves a valid offset', () => {
     expect(twilioTime('Mon, 30 Feb 2026 17:04:05 +0000')).toBe('0001-01-01T00:00:00Z');

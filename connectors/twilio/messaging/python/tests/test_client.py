@@ -12,8 +12,15 @@ from dex_connectors.sdk import (
     FailureKind,
     IdempotencyKey,
     OperationRef,
+    ReauthorizationRequiredError,
     SecretString,
     StaticCredentialProvider,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+    ObjectNotFoundError,
 )
 
 from dex_connectors.twilio_messaging import Client, Config, Credentials
@@ -69,3 +76,33 @@ async def test_invalid_credentials_are_terminal_and_lookup_failure_retries() -> 
     authorization, problem, is_transient = await client.authorization(call, "getMessage")
     assert authorization is None and problem and problem.kind == FailureKind.AVAILABILITY
     assert is_transient
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_credential_lookup_classification(error: Exception, is_terminal: bool) -> None:
+    """Only the listed credential failures are terminal; every other one retries."""
+    call = Call(
+        CallID("call-1"), CONNECTION, OperationRef("twilio-messaging", "sendMessage"), IdempotencyKey("")
+    )
+
+    class FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    client = Client(Config(account_sid=ACCOUNT), FailingCredentials())
+    authorization, problem, is_transient = await client.authorization(call, "sendMessage")
+    assert authorization is None and problem is not None
+    assert is_transient is not is_terminal
+    assert problem.kind == (FailureKind.AUTHENTICATION if is_terminal else FailureKind.AVAILABILITY)

@@ -665,8 +665,8 @@ func (client *Client) buildSendRequest(input SendMessageInput) (sendRequest, err
 func (client *Client) resolveAuthorization(call sdkgo.Call, operationID string) (basicAuthorization, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
-		if errors.Is(err, sdkgo.ErrReauthorizationRequired) {
-			return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAuthentication, "Twilio connection credentials require reauthorization; reconnect the connection"), false
+		if isTerminalCredentialError(err) {
+			return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAuthentication, "Twilio connection credentials are unavailable or require reauthorization; reconnect the connection"), false
 		}
 		return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAvailability, "Twilio credential lookup is temporarily unavailable"), true
 	}
@@ -685,8 +685,8 @@ func (client *Client) resolveAuthorizationAfterRejection(call sdkgo.Call) (basic
 		if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRefresh {
 			return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAuthentication, "Twilio credential cannot be refreshed after rejection"), false
 		}
-		if errors.Is(err, sdkgo.ErrReauthorizationRequired) {
-			return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAuthentication, "Twilio connection credentials require reauthorization; reconnect the connection"), false
+		if isTerminalCredentialError(err) {
+			return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAuthentication, "Twilio connection credentials are unavailable or require reauthorization; reconnect the connection"), false
 		}
 		// The non-shared resolver exposes rejected credentials without verified expiry only through this error text.
 		if errors.Is(err, projectconfig.ErrRejectedCredentialNotRefreshed) || strings.Contains(err.Error(), "authentication rejection does not prove credential expiry") {
@@ -695,6 +695,13 @@ func (client *Client) resolveAuthorizationAfterRejection(call sdkgo.Call) (basic
 		return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAvailability, "Twilio credential refresh is temporarily unavailable"), true
 	}
 	return client.validateAuthorization(credentials, "sendMessage")
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 type twilioCredentialRefreshDriver struct{}

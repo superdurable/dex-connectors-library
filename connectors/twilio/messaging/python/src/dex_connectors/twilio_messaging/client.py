@@ -21,6 +21,11 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -40,6 +45,13 @@ from .models import Message
 if TYPE_CHECKING:
     from .operations import GetMessageOperation, SendMessageOperation
 
+# Credential failures that no later attempt resolves without a person; every other one is transient.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 _ACCOUNT = re.compile(r"AC[0-9a-f]{32}\Z")
 _API_KEY = re.compile(r"SK[0-9a-f]{32}\Z")
 _MESSAGE = re.compile(r"(?:SM|MM)[0-9a-f]{32}\Z")
@@ -138,13 +150,14 @@ class Client:
         """Resolve current credentials, separating transient lookup errors from invalid material."""
         try:
             credentials = await self._credentials.resolve(call)
-        except ReauthorizationRequiredError:
+        except _TERMINAL_CREDENTIAL_ERRORS:
             return (
                 None,
                 failure(
                     operation,
                     FailureKind.AUTHENTICATION,
-                    "Twilio connection credentials require reauthorization; reconnect the connection",
+                    "Twilio connection credentials are unavailable or require reauthorization; "
+                    "reconnect the connection",
                 ),
                 False,
             )
