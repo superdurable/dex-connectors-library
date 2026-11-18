@@ -251,6 +251,9 @@ async def test_two_xx_headers_then_the_write_deadline_cuts_the_body_is_uncertain
     ("error", "is_transient"),
     [
         (projectconfig.CredentialBrokerUnavailableError("broker down"), True),
+        (ValueError("connection is not configured"), True),
+        (LookupError("unlisted"), True),
+        (RuntimeError("unlisted"), True),
         (projectconfig.ObjectNotFoundError("absent"), False),
         (projectconfig.ConnectionNotSelectedError("not selected"), False),
         (projectconfig.CredentialBrokerRejectedError("rejected"), False),
@@ -311,7 +314,12 @@ async def test_credential_failure_after_a_rate_limited_resend_never_records_not_
         assert await run("addUpdate", status, "{}", context, requests) == "retry"
     before = context.heartbeat_value
     context.attempt = 3
-    assert await run("addUpdate", 200, ADDED_UPDATE, context, requests, has_credentials=False) == "uncertain"
+    # The static provider's missing connection is transient, so it retries without recording notSent.
+    assert await run("addUpdate", 200, ADDED_UPDATE, context, requests, has_credentials=False) == "retry"
+    assert context.heartbeat_value is before
+    terminal = projectconfig.ObjectNotFoundError("absent")
+    branch = await run("addUpdate", 200, ADDED_UPDATE, context, requests, credential_error=terminal)
+    assert branch == "uncertain"
     assert context.heartbeat_value is before
     assert len(requests) == 2
 

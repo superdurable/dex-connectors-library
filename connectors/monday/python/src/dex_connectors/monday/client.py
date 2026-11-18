@@ -19,7 +19,9 @@ from dex_connectors.sdk import (
     Receipt,
     RetryError,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -91,6 +93,19 @@ _VALIDATION_CODES = {
     "RecordInvalidException",
     "ItemsLimitationException",
 }
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    return isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -215,7 +230,17 @@ class Client:
                 ),
                 proven_not_processed=True,
             )
-        except OSError:
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return None, Exchange(
+                    "defect",
+                    problem=failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "monday.com connection credentials are unavailable",
+                    ),
+                    definite_refusal=True,
+                )
             # A broker or store outage is transient; only a missing or refused connection is terminal.
             return None, Exchange(
                 "retry",
@@ -225,14 +250,6 @@ class Client:
                     "monday.com connection credentials could not be read, so nothing was sent",
                 ),
                 proven_not_processed=True,
-            )
-        except (ValueError, LookupError):
-            return None, Exchange(
-                "defect",
-                problem=failure(
-                    operation, FailureKind.AUTHENTICATION, "monday.com connection credentials are unavailable"
-                ),
-                definite_refusal=True,
             )
         method = credentials.auth_method_id
         token = credentials.access_token if method == "monday-oauth" else credentials.api_token
