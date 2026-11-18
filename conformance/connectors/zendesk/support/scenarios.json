@@ -4873,19 +4873,82 @@
             ]
           },
           "status": 200
+        },
+        {
+          "body": "{\"ticket\": {\"id\": 35436, \"subject\": \"Double charge\", \"description\": \"Charged twice\", \"status\": \"open\", \"priority\": \"normal\", \"type\": \"problem\", \"requester_id\": 7701, \"submitter_id\": 7701, \"assignee_id\": 235324, \"group_id\": 98739, \"organization_id\": 509974, \"brand_id\": 1234, \"tags\": [\"repeat-contact\"], \"external_id\": \"ERP-88213\", \"via\": {\"channel\": \"email\"}, \"created_at\": \"2026-01-26T14:02:00Z\", \"updated_at\": \"2026-01-28T09:00:00Z\", \"custom_status_id\": 123}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"audits\":[{\"id\":10,\"metadata\":{\"custom\":{\"dex_idempotency_key\":\"e5c729ba-c03b-5b80-b496-4d7bdb4f23e2\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436/audits",
+          "query": {
+            "sort_order": [
+              "desc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "PROTOCOL",
+        "branch": "updated",
+        "failureKind": "",
         "heartbeat": {
           "attempt": 1,
           "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+          "providerId": "35436",
           "sendCount": 1,
           "state": "claimed"
         },
-        "requestCount": 3,
-        "retry": true,
+        "output": {
+          "ticket": {
+            "agentUrl": "https://acme.zendesk.com/agent/tickets/35436",
+            "assigneeId": 235324,
+            "brandId": 1234,
+            "channel": "email",
+            "createdAt": "2026-01-26T14:02:00Z",
+            "customStatusId": 123,
+            "description": "Charged twice",
+            "externalId": "ERP-88213",
+            "groupId": 98739,
+            "id": 35436,
+            "organizationId": 509974,
+            "priority": "normal",
+            "requesterId": 7701,
+            "status": "open",
+            "subject": "Double charge",
+            "submitterId": 7701,
+            "tags": [
+              "repeat-contact"
+            ],
+            "type": "problem",
+            "updatedAt": "2026-01-28T09:00:00Z"
+          }
+        },
+        "requestCount": 5,
+        "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4908,7 +4971,7 @@
         "status": "open",
         "ticketId": 35436
       },
-      "name": "updateTicket-write-invalid-response-retry",
+      "name": "updateTicket-write-invalid-response-read-back-updated",
       "operation": "updateTicket"
     },
     {
@@ -5499,6 +5562,722 @@
         "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
         "state": "claimed"
       }
+    },
+    {
+      "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "exchanges": [
+        {
+          "body": "{\"ticket\": {\"id\": 35436, \"subject\": \"Double charge\", \"description\": \"Charged twice\", \"status\": \"pending\", \"priority\": \"high\", \"type\": \"problem\", \"requester_id\": 7701, \"submitter_id\": 7701, \"assignee_id\": 235323, \"group_id\": 98738, \"organization_id\": 509974, \"brand_id\": 1234, \"tags\": [\"billing\"], \"external_id\": \"ERP-88213\", \"via\": {\"channel\": \"email\"}, \"created_at\": \"2026-01-26T14:02:00Z\", \"updated_at\": \"2026-01-28T08:45:00Z\", \"custom_status_id\": 123}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"audits\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436/audits",
+          "query": {
+            "sort_order": [
+              "desc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"wrong\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tickets/35436",
+          "requestBody": {
+            "ticket": {
+              "assignee_id": 235324,
+              "comment": {
+                "body": "Following up",
+                "public": false
+              },
+              "group_id": 98739,
+              "metadata": {
+                "dex_idempotency_key": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2"
+              },
+              "priority": "normal",
+              "safe_update": true,
+              "status": "open",
+              "tags": [
+                "repeat-contact"
+              ],
+              "updated_stamp": "2026-01-28T08:45:00Z"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ticket\": {\"id\": 35436, \"subject\": \"Double charge\", \"description\": \"Charged twice\", \"status\": \"pending\", \"priority\": \"high\", \"type\": \"problem\", \"requester_id\": 7701, \"submitter_id\": 7701, \"assignee_id\": 235323, \"group_id\": 98738, \"organization_id\": 509974, \"brand_id\": 1234, \"tags\": [\"billing\"], \"external_id\": \"ERP-88213\", \"via\": {\"channel\": \"email\"}, \"created_at\": \"2026-01-26T14:02:00Z\", \"updated_at\": \"2026-01-28T08:45:00Z\", \"custom_status_id\": 123}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"audits\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436/audits",
+          "query": {
+            "sort_order": [
+              "desc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+          "providerId": "35436",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "ticket": {
+            "agentUrl": "https://acme.zendesk.com/agent/tickets/35436",
+            "assigneeId": 235323,
+            "brandId": 1234,
+            "channel": "email",
+            "createdAt": "2026-01-26T14:02:00Z",
+            "customStatusId": 123,
+            "description": "Charged twice",
+            "externalId": "ERP-88213",
+            "groupId": 98738,
+            "id": 35436,
+            "organizationId": 509974,
+            "priority": "high",
+            "requesterId": 7701,
+            "status": "pending",
+            "subject": "Double charge",
+            "submitterId": 7701,
+            "tags": [
+              "billing"
+            ],
+            "type": "problem",
+            "updatedAt": "2026-01-28T08:45:00Z"
+          }
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "input": {
+        "addTags": [
+          "repeat-contact"
+        ],
+        "assigneeId": 235324,
+        "comment": {
+          "body": "Following up",
+          "isInternalNote": true
+        },
+        "expectedUpdatedAt": "2026-01-28T08:45:00Z",
+        "groupId": 98739,
+        "priority": "normal",
+        "removeTags": [
+          "billing"
+        ],
+        "status": "open",
+        "ticketId": 35436
+      },
+      "name": "updateTicket-write-invalid-response-read-back-uncertain",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "exchanges": [
+        {
+          "body": "{\"ticket\": {\"id\": 35436, \"subject\": \"Double charge\", \"description\": \"Charged twice\", \"status\": \"pending\", \"priority\": \"high\", \"type\": \"problem\", \"requester_id\": 7701, \"submitter_id\": 7701, \"assignee_id\": 235323, \"group_id\": 98738, \"organization_id\": 509974, \"brand_id\": 1234, \"tags\": [\"billing\"], \"external_id\": \"ERP-88213\", \"via\": {\"channel\": \"email\"}, \"created_at\": \"2026-01-26T14:02:00Z\", \"updated_at\": \"2026-01-28T08:45:00Z\", \"custom_status_id\": 123}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"audits\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436/audits",
+          "query": {
+            "sort_order": [
+              "desc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"wrong\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tickets/35436",
+          "requestBody": {
+            "ticket": {
+              "assignee_id": 235324,
+              "comment": {
+                "body": "Following up",
+                "public": false
+              },
+              "group_id": 98739,
+              "metadata": {
+                "dex_idempotency_key": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2"
+              },
+              "priority": "normal",
+              "safe_update": true,
+              "status": "open",
+              "tags": [
+                "repeat-contact"
+              ],
+              "updated_stamp": "2026-01-28T08:45:00Z"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":\"ServiceUnavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+          "providerId": "35436",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 4,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "input": {
+        "addTags": [
+          "repeat-contact"
+        ],
+        "assigneeId": 235324,
+        "comment": {
+          "body": "Following up",
+          "isInternalNote": true
+        },
+        "expectedUpdatedAt": "2026-01-28T08:45:00Z",
+        "groupId": 98739,
+        "priority": "normal",
+        "removeTags": [
+          "billing"
+        ],
+        "status": "open",
+        "ticketId": 35436
+      },
+      "name": "updateTicket-write-invalid-response-read-back-retry",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "exchanges": [
+        {
+          "body": "{\"ticket\": {\"id\": 35436, \"subject\": \"Double charge\", \"description\": \"Charged twice\", \"status\": \"open\", \"priority\": \"normal\", \"type\": \"problem\", \"requester_id\": 7701, \"submitter_id\": 7701, \"assignee_id\": 235324, \"group_id\": 98739, \"organization_id\": 509974, \"brand_id\": 1234, \"tags\": [\"repeat-contact\"], \"external_id\": \"ERP-88213\", \"via\": {\"channel\": \"email\"}, \"created_at\": \"2026-01-26T14:02:00Z\", \"updated_at\": \"2026-01-28T09:00:00Z\", \"custom_status_id\": 123}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"audits\":[{\"id\":10,\"metadata\":{\"custom\":{\"dex_idempotency_key\":\"e5c729ba-c03b-5b80-b496-4d7bdb4f23e2\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436/audits",
+          "query": {
+            "sort_order": [
+              "desc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "ticket": {
+            "agentUrl": "https://acme.zendesk.com/agent/tickets/35436",
+            "assigneeId": 235324,
+            "brandId": 1234,
+            "channel": "email",
+            "createdAt": "2026-01-26T14:02:00Z",
+            "customStatusId": 123,
+            "description": "Charged twice",
+            "externalId": "ERP-88213",
+            "groupId": 98739,
+            "id": 35436,
+            "organizationId": 509974,
+            "priority": "normal",
+            "requesterId": 7701,
+            "status": "open",
+            "subject": "Double charge",
+            "submitterId": 7701,
+            "tags": [
+              "repeat-contact"
+            ],
+            "type": "problem",
+            "updatedAt": "2026-01-28T09:00:00Z"
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "input": {
+        "addTags": [
+          "repeat-contact"
+        ],
+        "assigneeId": 235324,
+        "comment": {
+          "body": "Following up",
+          "isInternalNote": true
+        },
+        "expectedUpdatedAt": "2026-01-28T08:45:00Z",
+        "groupId": 98739,
+        "priority": "normal",
+        "removeTags": [
+          "billing"
+        ],
+        "status": "open",
+        "ticketId": 35436
+      },
+      "name": "updateTicket-saved-ticket-id-read-back-updated",
+      "operation": "updateTicket",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+        "providerId": "35436",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "exchanges": [
+        {
+          "body": "{\"ticket\": {\"id\": 35436, \"subject\": \"Double charge\", \"description\": \"Charged twice\", \"status\": \"pending\", \"priority\": \"high\", \"type\": \"problem\", \"requester_id\": 7701, \"submitter_id\": 7701, \"assignee_id\": 235323, \"group_id\": 98738, \"organization_id\": 509974, \"brand_id\": 1234, \"tags\": [\"billing\"], \"external_id\": \"ERP-88213\", \"via\": {\"channel\": \"email\"}, \"created_at\": \"2026-01-26T14:02:00Z\", \"updated_at\": \"2026-01-28T08:45:00Z\", \"custom_status_id\": 123}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"audits\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436/audits",
+          "query": {
+            "sort_order": [
+              "desc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "ticket": {
+            "agentUrl": "https://acme.zendesk.com/agent/tickets/35436",
+            "assigneeId": 235323,
+            "brandId": 1234,
+            "channel": "email",
+            "createdAt": "2026-01-26T14:02:00Z",
+            "customStatusId": 123,
+            "description": "Charged twice",
+            "externalId": "ERP-88213",
+            "groupId": 98738,
+            "id": 35436,
+            "organizationId": 509974,
+            "priority": "high",
+            "requesterId": 7701,
+            "status": "pending",
+            "subject": "Double charge",
+            "submitterId": 7701,
+            "tags": [
+              "billing"
+            ],
+            "type": "problem",
+            "updatedAt": "2026-01-28T08:45:00Z"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "input": {
+        "addTags": [
+          "repeat-contact"
+        ],
+        "assigneeId": 235324,
+        "comment": {
+          "body": "Following up",
+          "isInternalNote": true
+        },
+        "expectedUpdatedAt": "2026-01-28T08:45:00Z",
+        "groupId": 98739,
+        "priority": "normal",
+        "removeTags": [
+          "billing"
+        ],
+        "status": "open",
+        "ticketId": 35436
+      },
+      "name": "updateTicket-saved-ticket-id-unconfirmed-uncertain",
+      "operation": "updateTicket",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+        "providerId": "35436",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "exchanges": [
+        {
+          "body": "{\"ticket\": {\"id\": 35436, \"subject\": \"Double charge\", \"description\": \"Charged twice\", \"status\": \"pending\", \"priority\": \"high\", \"type\": \"problem\", \"requester_id\": 7701, \"submitter_id\": 7701, \"assignee_id\": 235323, \"group_id\": 98738, \"organization_id\": 509974, \"brand_id\": 1234, \"tags\": [\"billing\"], \"external_id\": \"ERP-88213\", \"via\": {\"channel\": \"email\"}, \"created_at\": \"2026-01-26T14:02:00Z\", \"updated_at\": \"2026-01-28T08:45:00Z\", \"custom_status_id\": 123}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"audits\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/35436/audits",
+          "query": {
+            "sort_order": [
+              "desc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":\"RecordInvalid\",\"ticket\":{\"id\":35436}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tickets/35436",
+          "requestBody": {
+            "ticket": {
+              "assignee_id": 235324,
+              "comment": {
+                "body": "Following up",
+                "public": false
+              },
+              "group_id": 98739,
+              "metadata": {
+                "dex_idempotency_key": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2"
+              },
+              "priority": "normal",
+              "safe_update": true,
+              "status": "open",
+              "tags": [
+                "repeat-contact"
+              ],
+              "updated_stamp": "2026-01-28T08:45:00Z"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e5c729ba-c03b-5b80-b496-4d7bdb4f23e2",
+      "input": {
+        "addTags": [
+          "repeat-contact"
+        ],
+        "assigneeId": 235324,
+        "comment": {
+          "body": "Following up",
+          "isInternalNote": true
+        },
+        "expectedUpdatedAt": "2026-01-28T08:45:00Z",
+        "groupId": 98739,
+        "priority": "normal",
+        "removeTags": [
+          "billing"
+        ],
+        "status": "open",
+        "ticketId": 35436
+      },
+      "name": "updateTicket-write-refusal-carrying-ticket-retry",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "358ebde3-cdbb-53a3-a1cf-b3b667542108",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"RecordInvalid\",\"ticket\":{\"id\":35437}}",
+          "derivedKey": "358ebde3-cdbb-53a3-a1cf-b3b667542108",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/tickets",
+          "requestBody": {
+            "ticket": {
+              "assignee_id": 235323,
+              "brand_id": 1234,
+              "comment": {
+                "body": "Charged twice",
+                "public": false
+              },
+              "external_id": "ERP-88213",
+              "group_id": 98738,
+              "metadata": {
+                "dex_idempotency_key": "358ebde3-cdbb-53a3-a1cf-b3b667542108"
+              },
+              "priority": "high",
+              "requester": {
+                "email": "jane@acme.example.com",
+                "name": "Jane Smith"
+              },
+              "subject": "Double charge",
+              "tags": [
+                "billing"
+              ],
+              "type": "problem"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "VALIDATION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "358ebde3-cdbb-53a3-a1cf-b3b667542108",
+      "input": {
+        "assigneeId": 235323,
+        "brandId": 1234,
+        "comment": {
+          "body": "Charged twice",
+          "isInternalNote": true
+        },
+        "externalId": "ERP-88213",
+        "groupId": 98738,
+        "priority": "high",
+        "requester": {
+          "email": "jane@acme.example.com",
+          "name": "Jane Smith"
+        },
+        "subject": "Double charge",
+        "tags": [
+          "billing"
+        ],
+        "type": "problem"
+      },
+      "name": "createTicket-refusal-carrying-ticket-retry",
+      "operation": "createTicket"
     }
   ],
   "schemaVersion": 1

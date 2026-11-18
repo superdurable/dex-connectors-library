@@ -189,7 +189,7 @@ func CreateTicketCreated(value support.CreateTicketOutput, failure *sdkgo.Failur
 	return connectormock.Branch(support.CreateTicketBranchCreated, value, failure)
 }
 
-// CreateTicketProviderRejected selects the providerRejected branch: Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.
+// CreateTicketProviderRejected selects the providerRejected branch: Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 and a readable body that carries no ticket, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.
 func CreateTicketProviderRejected(value support.CreateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.CreateTicketOutput] {
 	return connectormock.Branch(support.CreateTicketBranchProviderRejected, value, failure)
 }
@@ -241,7 +241,7 @@ func UpdateTicketConflict(value support.UpdateTicketOutput, failure *sdkgo.Failu
 	return connectormock.Branch(support.UpdateTicketBranchConflict, value, failure)
 }
 
-// UpdateTicketProviderRejected selects the providerRejected branch: Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as updating a closed ticket or assigning an unknown agent; nothing was written.
+// UpdateTicketProviderRejected selects the providerRejected branch: Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and a readable body that carries no ticket, such as updating a closed ticket or assigning an unknown agent; nothing was written.
 func UpdateTicketProviderRejected(value support.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[support.UpdateTicketOutput] {
 	return connectormock.Branch(support.UpdateTicketBranchProviderRejected, value, failure)
 }

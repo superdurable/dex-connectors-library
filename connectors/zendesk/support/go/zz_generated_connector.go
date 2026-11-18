@@ -397,7 +397,7 @@ var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTicket"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTicketBranchCreated, Description: "The ticket exists; a repeated attempt returns the ticket the first attempt created."},
-		{ID: CreateTicketBranchProviderRejected, Description: "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", Optional: true},
+		{ID: CreateTicketBranchProviderRejected, Description: "Zendesk conclusively rejected the ticket with HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 and a readable body that carries no ticket, such as an invalid requester, group, or assignee, or a reused Idempotency-Key with another body; no ticket was created.", Optional: true},
 		{ID: CreateTicketBranchInvalidResponse, Description: "Kept for compatibility and never selected: an invalid or oversized answer is an unknown outcome that repeats the identical keyed request.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
@@ -476,9 +476,9 @@ var UpdateTicketDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTicketBranchUpdated, Description: "The ticket holds the requested change; a repeated attempt finds its own earlier change instead of adding a second comment."},
 		{ID: UpdateTicketBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's agent, and no earlier attempt of this Step may have written it.", Optional: true},
 		{ID: UpdateTicketBranchConflict, Description: "The ticket read before the first write changed after expectedUpdatedAt, so nothing was written.", Optional: true},
-		{ID: UpdateTicketBranchProviderRejected, Description: "Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as updating a closed ticket or assigning an unknown agent; nothing was written.", Optional: true},
+		{ID: UpdateTicketBranchProviderRejected, Description: "Zendesk conclusively rejected the reads or the first write with HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and a readable body that carries no ticket, such as updating a closed ticket or assigning an unknown agent; nothing was written.", Optional: true},
 		{ID: UpdateTicketBranchInvalidResponse, Description: "Zendesk returned an invalid or oversized ticket or audit page on the read before the first write, so nothing was written.", Optional: true},
-		{ID: UpdateTicketBranchUncertain, Description: "The send cap is reached, or Zendesk refused or contradicted the request after an earlier send whose outcome could not be confirmed, and the latest audit page shows no change by this Step, so the change and its comment may still appear. Below the cap, an unconfirmed write is read back and then resent.", Optional: true},
+		{ID: UpdateTicketBranchUncertain, Description: "The ticket and its latest audit page show no change by this Step, yet the change and its comment may still appear: the send cap is reached, Zendesk refused or contradicted the request after an earlier send whose outcome could not be confirmed, Zendesk accepted a write that the read-back cannot confirm, or the credentials became unusable after a possible send. Below the cap, an unconfirmed write that Zendesk did not accept is read back and then resent.", Optional: true},
 		{ID: UpdateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

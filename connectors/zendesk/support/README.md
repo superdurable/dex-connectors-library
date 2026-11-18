@@ -173,11 +173,12 @@ every attempt of one Step execution, including a retry after a Worker failure,
 sends the same key and the same body. The key
 is also stored as `dex_idempotency_key` audit metadata. As a result:
 
-- only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 selects
-  `providerRejected`;
+- only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a readable
+  body that carries no ticket selects `providerRejected`;
 - every other outcome is unknown and is retried with the identical request:
   a lost connection, a timeout, a redirect, a 408, 409, 410, 429, or 5xx, any
-  other status, and a 2xx response that is oversized, cannot be decoded, or
+  other status, a refusal whose body is oversized or carries a ticket, and a
+  2xx response whose body breaks, is oversized, cannot be decoded, or
   reflects the credential. The operation therefore has no `uncertain` branch
   and never selects its compatibility `invalidResponse` branch, and the retry
   budget fails the Flow if Zendesk keeps answering that way;
@@ -185,8 +186,10 @@ is also stored as `dex_idempotency_key` audit metadata. As a result:
   cached response, and the Receipt carries `idempotencyLookup`;
 - `IdempotentRequestError` selects `providerRejected` with a `CONFLICT`
   failure;
-- a credential failure on a later attempt retries instead of selecting
-  `defect`, because an earlier attempt may have created the ticket;
+- a credential failure selects `defect` only on the first attempt and only
+  when it is terminal, such as a revoked authorization or a deselected
+  connection; a transient failure, and any failure on a later attempt, retries,
+  because an earlier attempt may have created the ticket;
 - a new Step execution is a new logical ticket. Set `externalId` to correlate
   tickets with an application record; Zendesk does not enforce its uniqueness.
 
@@ -220,21 +223,36 @@ checkpoint before the request and counts every possibly effective send of the
 Step's Call ID against `execution.maxSends` (3 by default; override it per Step
 with `MaxSends`):
 
-- An unknown write outcome, such as a lost answer, a redirect, a 408, a
-  `409 UpdateConflict` from a concurrent change, a 410, a 5xx other than 503,
-  any other status, or an oversized, malformed, or credential-reflecting 2xx,
-  returns Retry while the cap allows another send. The next attempt starts
-  again at step 1, so a found audit or already-held values select `updated`,
-  and only an absent read-back resends.
+- An unknown write outcome, such as a lost answer, the end of the write
+  window, a redirect, a 408, a `409 UpdateConflict` from a concurrent change,
+  a 410, a 5xx other than 503, any other status, or a refusal whose body is
+  oversized or carries a ticket, returns Retry while the cap allows another
+  send. The next attempt starts again at step 1, so a found audit or
+  already-held values select `updated`, and only an absent read-back resends.
+  Every attempt after a possible send reads back first, including one that
+  follows a rate-limited resend.
+- A 2xx means Zendesk accepted the write, so it is never resent. When its body
+  breaks, stalls, is oversized, cannot be decoded, is for another ticket, or
+  reflects the credential, the attempt saves the ticket ID in the checkpoint
+  and reads the ticket and its audits back at once: a found audit, or, without
+  a comment, already-held values select `updated`; a transient read failure
+  retries, and every later attempt only reads back; anything else, including a
+  missing ticket, selects `uncertain`. If the ticket ID could not be saved, a
+  transient read failure also selects `uncertain`, because a later attempt
+  could otherwise resend.
 - At the cap, an attempt only reads back, and an unconfirmed write selects
   `uncertain`: the change and its comment may still appear.
 - A 429, a 503, or a request that provably never left the process records
   that nothing was processed and retries without counting the send.
 - A definite refusal of the first send (400, 401, 403, 404, 411, 413, 414,
-  415, or 422) records that nothing was processed and selects
-  `providerRejected` or `notFound`, such as for a closed ticket. After a
-  possible earlier send the same answer selects `uncertain`, and so does a
-  missing ticket or a rejected read.
+  415, or 422 with a readable body that carries no ticket) records that
+  nothing was processed and selects `providerRejected` or `notFound`, such as
+  for a closed ticket. After a possible earlier send the same answer selects
+  `uncertain`, and so does a missing ticket or a rejected read.
+- A credential failure before the first send records that nothing was sent,
+  then selects `defect` when it is terminal and retries when it is transient.
+  After a possible earlier send nothing is recorded: a transient failure
+  retries, and a terminal one selects `uncertain`.
 - `invalidResponse` and `conflict` describe only a read before any possible
   send; after one, an invalid read retries and selects `uncertain` at the cap.
 - An unreadable or untrusted checkpoint sends nothing and retries.
@@ -348,8 +366,9 @@ A token that contains the API token is dropped.
 | 3xx | `providerRejected`, `PROTOCOL` for a read; an unknown outcome for a write; redirects are never followed |
 | 408, 409, 5xx, transport failure | Retry, after `Retry-After` when present |
 | 429 | Retry after `Retry-After` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; an unknown outcome for a write |
-| invalid input or connection credentials | `defect`, with no request |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; a keyed retry for `createTicket`; an accepted write that `updateTicket` reads back |
+| 4xx refusal with an oversized body or a ticket in the body | the status above for a read; an unknown outcome for a write |
+| invalid input or connection credentials | `defect`, with no request; a transient credential failure retries for a write |
 
 This table describes reads and the first send of a write. `createTicket`
 retries every unknown outcome under its Idempotency-Key. `updateTicket`

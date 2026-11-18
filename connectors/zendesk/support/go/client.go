@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -142,6 +143,10 @@ type zendeskResponse struct {
 	header     http.Header
 	body       []byte
 	requestID  string
+	// hasOversizedBody means a non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal.
+	hasOversizedBody bool
+	// hasTicketIdentity means a non-2xx body carries a ticket ID, which contradicts a refusal.
+	hasTicketIdentity bool
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Zendesk request that each operation maps to a branch.
@@ -248,6 +253,25 @@ func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Cre
 	return credentials, nil
 }
 
+// resolveWriteCredentials is resolveCredentials for a Mutation. isTerminal reports credentials that only
+// reconnecting the connection can fix; any other failure is transient and may resolve on a later attempt.
+func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string) (credentials Credentials, failure *sdkgo.Failure, isTerminal bool) {
+	credentials, err := client.credentials.Resolve(call)
+	if err == nil && validateResolvedCredentials(credentials) == nil {
+		return credentials, nil, false
+	}
+	if err == nil || isTerminalCredentialError(err) {
+		return Credentials{}, zendeskFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), true
+	}
+	return Credentials{}, zendeskFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials could not be read"), false
+}
+
+// isTerminalCredentialError reports a credential failure that a later attempt cannot recover from.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrObjectNotFound) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 // exchange sends one authenticated request and classifies its response without choosing a branch.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request zendeskRequest) zendeskExchange {
 	requestContext := context.Context(call.Context)
@@ -287,9 +311,11 @@ func (client *Client) exchangeWithContext(ctx context.Context, credentials Crede
 	case errors.Is(readErr, providerhttp.ErrBodyTooLarge) && isSuccess:
 		return zendeskExchange{outcome: exchangeInvalid, response: response, failure: zendeskFailure(sdkgo.FailureResponseTooLarge, operation, "Zendesk response exceeds the configured maxResponseBytes limit")}
 	case readErr != nil && !errors.Is(readErr, providerhttp.ErrBodyTooLarge), closeErr != nil:
+		// The status is kept: a write answered 2xx was accepted even when its body breaks.
 		return zendeskExchange{outcome: exchangeRetryable, response: response, failure: zendeskFailure(sdkgo.FailureTransport, operation, "Zendesk response could not be read")}
 	}
 	response.body = body
+	response.hasOversizedBody = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
 	if isSuccess {
 		if bytes.Contains(body, []byte(credentials.APIToken.Reveal())) {
 			response.body = nil
@@ -337,6 +363,7 @@ func (client *Client) buildRequest(ctx context.Context, credentials Credentials,
 // classifyFailureStatus maps a non-2xx response; Zendesk documents retrying a 409 collision after a fresh read.
 func (client *Client) classifyFailureStatus(response zendeskResponse, credentials Credentials, operation string) zendeskExchange {
 	summary := describeZendeskError(response.body, credentials)
+	response.hasTicketIdentity = hasTicketIdentity(response.body)
 	response.body = nil
 	retryAfter := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 	switch status := response.statusCode; {
@@ -406,6 +433,16 @@ func describeZendeskError(body []byte, credentials Credentials) zendeskErrorSumm
 		summary.details = append(summary.details, detail)
 	}
 	return summary
+}
+
+// hasTicketIdentity reports a body whose ticket object carries a positive integer ID.
+func hasTicketIdentity(body []byte) bool {
+	var envelope struct {
+		Ticket struct {
+			ID int64 `json:"id"`
+		} `json:"ticket"`
+	}
+	return json.Unmarshal(body, &envelope) == nil && envelope.Ticket.ID > 0
 }
 
 // isCredentialFreeToken rejects an error token that echoes the API token back.
