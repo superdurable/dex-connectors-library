@@ -27,24 +27,41 @@ Responder = Callable[[httpx.Request], httpx.Response]
 class AttemptContext:
     """Keep the last heartbeat across Execute attempts like Dex does."""
 
-    def __init__(self, attempt: int = 1, marker: object = None) -> None:
+    def __init__(self, attempt: int = 1, heartbeat_value: object = None) -> None:
         self.attempt = attempt
         self.run_id = "run"
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
         self.first_attempt_at = FIRST_ATTEMPT_AT
-        self.marker = marker
+        self.heartbeat_value = heartbeat_value
+        self.heartbeat_read_error: Exception | None = None
+
+    @property
+    def marker(self) -> Marker | None:
+        """Decode this call's checkpoint from either SDK heartbeat format."""
+        if isinstance(self.heartbeat_value, Marker) or self.heartbeat_value is None:
+            return self.heartbeat_value
+        assert isinstance(self.heartbeat_value, dict)
+        entry = self.heartbeat_value["singleDispatchMarkers"].get(str(CALL_ID))
+        return None if entry is None else Marker.from_wire(entry)
 
     def has_last_heartbeat_value(self) -> bool:
         """Report whether an earlier attempt recorded a heartbeat."""
-        return self.marker is not None
+        return self.heartbeat_value is not None or self.heartbeat_read_error is not None
 
     def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        """Return the last marker."""
-        return self.marker
+        """Return the last heartbeat as the reading SDK expects it."""
+        if self.heartbeat_read_error is not None:
+            raise self.heartbeat_read_error
+        seeded = self.heartbeat_value
+        if isinstance(seeded, Marker) and value_type is not Marker:
+            return {"singleDispatchMarkers": {str(seeded.call_id): seeded.to_wire()}}
+        if isinstance(seeded, dict) and value_type is Marker:
+            return self.marker
+        return seeded
 
     async def heartbeat(self, value: object = None) -> None:
-        """Record the attempt's marker."""
-        self.marker = value
+        """Record the heartbeat exactly as the SDK wrote it."""
+        self.heartbeat_value = value
 
 
 def task_body(
@@ -105,8 +122,9 @@ def branch_of(result: sdk.MutationResult[object] | str) -> str:
 
 def marker_of(context: AttemptContext) -> Marker:
     """Return the attempt's single-dispatch marker."""
-    assert isinstance(context.marker, Marker)
-    return context.marker
+    marker = context.marker
+    assert marker is not None
+    return marker
 
 
 def methods(requests: list[httpx.Request]) -> list[str]:
@@ -198,9 +216,10 @@ async def test_status_proving_nothing_applied_resends_without_read_back(status: 
 
 
 @pytest.mark.asyncio
-async def test_untrusted_checkpoint_retries_without_sending() -> None:
+async def test_unreadable_checkpoint_retries_without_sending() -> None:
     requests: list[httpx.Request] = []
-    context = AttemptContext(2, {"clickupDispatchedCallId": str(CALL_ID), "clickupDispatchedAt": 1})
+    context = AttemptContext(2)
+    context.heartbeat_read_error = RuntimeError("heartbeat store unavailable")
     assert await run("createTask", lambda _: pytest.fail("request sent"), context, requests) == "retry"
     assert requests == []
 
