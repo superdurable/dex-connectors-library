@@ -554,14 +554,13 @@ async def test_credential_failure_before_the_first_create(credentials: Any, expe
     [
         lambda: httpx.Response(400, content=b'{"error":{"code":"x"}}' + b" " * (64 << 10)),
         lambda: httpx.Response(400, content=_broken_error_body()),
-        lambda: httpx.Response(400, json={"id": RESPONSE_ID, "error": {"code": "x"}}),
     ],
-    ids=["oversized", "cut off", "names a response"],
+    ids=["oversized", "cut off"],
 )
 async def test_refusal_that_proves_nothing_resends_below_the_cap(
     answer: Callable[[], httpx.Response],
 ) -> None:
-    """A refusal status whose body is incomplete or names a response is an unknown outcome."""
+    """A refusal status whose body is incomplete is an unknown outcome."""
     requests: list[httpx.Request] = []
     client = make_client(lambda request: answer(), requests)
     with pytest.raises(RetryError):
@@ -569,6 +568,47 @@ async def test_refusal_that_proves_nothing_resends_below_the_cap(
     result = await create(client, make_call(FakeContext(attempt=3), max_sends=3))
     assert result.branch == UNCERTAIN, "the third send reached the cap"
     assert len(requests) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 429, 500])
+async def test_error_answer_naming_a_response_is_read_back_and_never_resent(status: int) -> None:
+    """An error body that names a response means OpenAI created it."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(status, json={"id": RESPONSE_ID, "error": {"code": "x"}})
+        return httpx.Response(200, json=wire())
+
+    context = FakeContext()
+    result = await create(make_client(respond, requests), make_call(context, max_sends=3))
+    assert result.branch == COMPLETED and result.value.id == RESPONSE_ID
+    assert [request.method for request in requests] == ["POST", "GET"]
+    assert context.heartbeats[-1].response_id == RESPONSE_ID
+
+
+@pytest.mark.asyncio
+async def test_error_answer_naming_a_response_keeps_its_id_for_later_attempts() -> None:
+    """A read-back miss selects uncertain, and the checkpointed ID makes a later attempt read, not send."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(400, json={"id": RESPONSE_ID, "error": {"code": "x"}})
+        is_first_read = [sent.method for sent in requests].count("GET") == 1
+        return httpx.Response(404) if is_first_read else httpx.Response(200, json=wire())
+
+    client = make_client(respond, requests)
+    context = FakeContext()
+    call = make_call(context, max_sends=3)
+    assert (await create(client, call)).branch == UNCERTAIN
+    checkpoint = context.heartbeats[-1]
+    assert checkpoint.response_id == RESPONSE_ID
+    later = FakeContext(attempt=2, previous=checkpoint)
+    later_call = Call(call.id, CONNECTION, CREATE_RESPONSE_DEFINITION.operation, context=later, max_sends=3)  # type: ignore[arg-type]
+    assert (await create(client, later_call)).branch == COMPLETED
+    assert [request.method for request in requests] == ["POST", "GET", "GET"], "the create is never resent"
 
 
 async def _broken_error_body() -> Any:

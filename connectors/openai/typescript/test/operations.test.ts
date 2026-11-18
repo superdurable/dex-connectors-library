@@ -252,13 +252,42 @@ describe('createResponse checkpoint recovery', () => {
   it.each([
     ['oversized', async () => ({ status: 400, headers: {}, body: Buffer.alloc((64 << 10) + 1, 32) })],
     ['cut off', async () => { throw new ProviderTransportError(false, 400, {}); }],
-    ['names a response', async () => ({ status: 400, headers: {}, body: Buffer.from('{"id":"resp_123","error":{"code":"x"}}') })],
   ] as const)('resends a refusal whose body is %s below the cap', async (_name, answer) => {
     let posts = 0;
     const provider = client(async () => { posts++; return answer(); });
     expect((await provider.createResponse().invoke(call(1).invocation, input)).kind).toBe('retry');
     expect((await provider.createResponse().invoke(call(3).invocation, input)).kind).toBe('uncertain');
     expect(posts).toBe(2);
+  });
+
+  it.each([400, 429, 500])('reads back a response a %i error answer names and never resends it', async status => {
+    const methods: string[] = [];
+    const provider = client(async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') return { status, headers: {}, body: Buffer.from('{"id":"resp_123","error":{"code":"x"}}') };
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) };
+    });
+    const { invocation, heartbeats } = call(1);
+    const result = await provider.createResponse().invoke(invocation, input);
+    expect(result).toMatchObject({ kind: 'branch', branch: 'completed', value: { id: 'resp_123' } });
+    expect(methods).toEqual(['POST', 'GET']);
+    expect(heartbeats.at(-1)).toMatchObject({ responseId: 'resp_123' });
+  });
+
+  it('keeps the ID an error answer names, so a later attempt reads it back instead of sending', async () => {
+    const methods: string[] = [];
+    const provider = client(async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') return { status: 400, headers: {}, body: Buffer.from('{"id":"resp_123","error":{"code":"x"}}') };
+      if (methods.filter(method => method === 'GET').length === 1) return { status: 404, headers: {}, body: new Uint8Array() };
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) };
+    });
+    const first = call(1);
+    expect((await provider.createResponse().invoke(first.invocation, input)).kind).toBe('uncertain');
+    expect(first.heartbeats.at(-1)).toMatchObject({ responseId: 'resp_123' });
+    const result = await provider.createResponse().invoke(call(2, first.heartbeats.at(-1)).invocation, input);
+    expect(result).toMatchObject({ kind: 'branch', branch: 'completed' });
+    expect(methods).toEqual(['POST', 'GET', 'GET']);
   });
 
   it('retries a 429 whose body broke without counting a send', async () => {

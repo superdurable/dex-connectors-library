@@ -300,7 +300,14 @@ func (operation CreateResponseOperation) sendCreateRequest(call sdkgo.Call, hear
 	defer response.Body.Close()
 	requestID := response.Header.Get("X-Request-Id")
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		isDefiniteRefusal := isDefiniteOpenAIRefusal(response.StatusCode) && isDefiniteRefusalBody(response.Body)
+		namedResponseID, isComplete := readCreateErrorBody(response.Body)
+		if namedResponseID != "" {
+			// An error answer that names a response means OpenAI created it: read it back, never send again.
+			// A lost checkpoint leaves the claim, so a later attempt counts this send before any resend.
+			_ = heartbeat.recordResponseID(namedResponseID)
+			return operation.readBackResponse(call, heartbeat, namedResponseID, response.Header, requestID)
+		}
+		isDefiniteRefusal := isDefiniteOpenAIRefusal(response.StatusCode) && isComplete
 		return createStatusAttempt(call, heartbeat, sends, response.StatusCode, isDefiniteRefusal, response.Header, requestID)
 	}
 	if streaming {
@@ -584,20 +591,24 @@ func isTerminalCredentialError(err error) bool {
 		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
-// isDefiniteRefusalBody reports an error body read in full that names no response, so it proves a refusal.
-func isDefiniteRefusalBody(body io.Reader) bool {
+// readCreateErrorBody reads a non-2xx create body. isComplete reports a full read within the error
+// limit; responseID is the response a complete body names, which means OpenAI created it.
+func readCreateErrorBody(body io.Reader) (responseID string, isComplete bool) {
 	data, err := io.ReadAll(io.LimitReader(body, providerhttp.MaxErrorBodyBytes+1))
 	if err != nil || int64(len(data)) > providerhttp.MaxErrorBodyBytes {
-		return false
+		return "", false
 	}
 	var decoded struct {
 		ID any `json:"id"`
 	}
 	if json.Unmarshal(data, &decoded) != nil {
-		return true
+		return "", true
 	}
-	responseID, isString := decoded.ID.(string)
-	return !isString || !isSafeResponseID(responseID)
+	namedID, isString := decoded.ID.(string)
+	if !isString || !isSafeResponseID(namedID) {
+		return "", true
+	}
+	return namedID, true
 }
 
 func (client *Client) readResponse(body io.Reader, operation string) (wireResponse, *sdkgo.Failure) {
@@ -635,8 +646,8 @@ func createStatusAttempt(call sdkgo.Call, heartbeat *createResponseHeartbeat, se
 		return resendOrSelectUncertain(sends, openAIFailure(sdkgo.FailureConflict, "createResponse",
 			"provider returned HTTP 409 without a response ID, so a response may exist"), receipt)
 	case !isDefiniteRefusal:
-		// A 5xx other than 503, a 3xx, an unlisted 4xx, or a refusal with an incomplete or
-		// response-naming body can follow a stored response.
+		// A 5xx other than 503, a 3xx, an unlisted 4xx, or a refusal with an incomplete body can
+		// follow a stored response.
 		return resendOrSelectUncertain(sends, failure, receipt)
 	}
 	// The refusal proves this send created nothing; a later Agent run may start fresh.

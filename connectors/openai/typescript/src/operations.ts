@@ -133,11 +133,17 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
       }
     }
     if (response.status < 200 || response.status >= 300) {
-      isErrorBodyIncomplete ||= response.body.length > MaxErrorBodyBytes || hasResponseID(response.body);
+      isErrorBodyIncomplete ||= response.body.length > MaxErrorBodyBytes;
+      const namedResponseId = isErrorBodyIncomplete ? '' : namedResponseID(response.body);
+      if (namedResponseId) {
+        // An error answer that names a response means OpenAI created it: read it back, never send again.
+        try { await heartbeat.responseId(namedResponseId); } catch { /* A lost checkpoint leaves the claim, which a later attempt counts. */ }
+        return this.readBack(call, heartbeat, namedResponseId, response);
+      }
       const classified = classifyStatus('createResponse', response, this.client);
       if (classified.retry) return this.retry(heartbeat, sends.priorSendUpperBound, classified.kind, classified.message, classified.retryAfter);
       if (response.status === 408 || response.status === 409) return resendOrSelectUncertain(sends, openAIFailure(response.status === 408 ? 'TRANSPORT' : 'CONFLICT', 'createResponse', `provider returned HTTP ${response.status} without a response ID, so a response may exist`), this.client.receipt(call, response));
-      // A 5xx other than 503, a 3xx, an unlisted 4xx, or a refusal with an incomplete or response-naming body can follow a stored response.
+      // A 5xx other than 503, a 3xx, an unlisted 4xx, or a refusal with an incomplete body can follow a stored response.
       if (!definiteRefusalStatuses.has(response.status) || isErrorBodyIncomplete) return resendOrSelectUncertain(sends, openAIFailure(classified.kind, 'createResponse', classified.message), this.client.receipt(call, response));
       try { await heartbeat.canResend(sends.priorSendUpperBound); } catch { /* A lost record leaves the claim, which only overcounts. */ }
       // A refused resend cannot prove that an earlier attempt created nothing.
@@ -232,13 +238,13 @@ export class RetrieveResponseOperation implements Query<RetrieveRequest, Respons
   }
 }
 
-/** Report an error body naming a response ID, which means OpenAI may have stored the response. */
-function hasResponseID(body: Uint8Array): boolean {
+/** Return the response ID an error body names, which means OpenAI created that response, or ''. */
+function namedResponseID(body: Uint8Array): string {
   let decoded: unknown;
   try { decoded = JSON.parse(Buffer.from(body).toString('utf8')); }
-  catch { return false; }
+  catch { return ''; }
   const responseId = typeof decoded === 'object' && decoded !== null ? (decoded as Record<string, unknown>).id : undefined;
-  return typeof responseId === 'string' && isSafeResponseID(responseId);
+  return typeof responseId === 'string' && isSafeResponseID(responseId) ? responseId : '';
 }
 
 /** A later attempt may resolve these credentials; every other request-building failure repeats. */
