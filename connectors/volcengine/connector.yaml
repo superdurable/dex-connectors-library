@@ -60,6 +60,11 @@ spec:
         - In the selected user's 密钥 tab, choose 新建密钥 and copy the Access Key ID and paired Secret Access Key into the two secret credential fields. Use Access Key, not an AI product API Key.
         - Leave baseUrl, timeout, maxResponseBytes, region, and service blank for displayed defaults. Dex generates UTC X-Date and HMAC-SHA256 Authorization per request; rotate or disable a compromised key in IAM.
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-volcengine"
+      operations: [describeRegions]
+      triggers: []
     python: {version: v0.1.0, operations: [describeRegions], triggers: []}
   operations:
     - name: describeRegions
