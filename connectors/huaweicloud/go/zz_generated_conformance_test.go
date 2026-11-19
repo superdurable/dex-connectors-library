@@ -670,7 +670,7 @@ func TestConformanceMatcher(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.Name, func(t *testing.T) {
 			recorder := &conformanceRecorder{scenario: conformanceScenario{CallID: "call", Exchanges: []conformanceExchange{test.Exchange}, RandomRequestFields: test.RandomRequestFields}}
-			request, err := http.NewRequest(test.Exchange.Method, "http://localhost"+conformanceFixturePathPrefix+test.RequestPath, strings.NewReader(test.RequestBody))
+			request, err := http.NewRequest(test.Exchange.Method, "http://localhost"+conformanceFixtureRequestPath(conformanceFixturePathPrefix, test.RequestPath), strings.NewReader(test.RequestBody))
 			require.NoError(t, err)
 			for name, values := range test.RequestHeaders {
 				request.Header[name] = values
@@ -680,6 +680,9 @@ func TestConformanceMatcher(t *testing.T) {
 			require.Len(t, recorder.mismatches, len(test.ExpectedMismatches), "%v", recorder.mismatches)
 			for _, field := range test.ExpectedMismatches {
 				require.Contains(t, strings.Join(recorder.mismatches, "\n"), field)
+			}
+			if test.Name == "root-request-path" {
+				require.Equal(t, "/", recorder.observed[0]["path"])
 			}
 			if conformanceIsMultipart(conformanceHeaderValue(request.Header, "Content-Type")) && len(test.ExpectedMismatches) == 0 {
 				observed, err := recorder.observeRequest(request)
@@ -692,6 +695,46 @@ func TestConformanceMatcher(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConformanceRootRequestPath(t *testing.T) {
+	for _, test := range []struct{ prefix, path, requestPath string }{
+		{"", "/", "/"},
+		{"/", "/", "/"},
+		{"/", "/resource", "/resource"},
+		{"/v1", "/", "/v1/"},
+		{"/v1", "/resource", "/v1/resource"},
+	} {
+		require.Equal(t, test.requestPath, conformanceFixtureRequestPath(test.prefix, test.path))
+		require.Equal(t, test.path, conformanceRecordedRequestPath(test.prefix, test.requestPath))
+	}
+	request, err := http.NewRequest(http.MethodGet, "http://localhost", nil)
+	require.NoError(t, err)
+	require.Empty(t, request.URL.Path)
+	require.Equal(t, "/", conformanceHTTPPath(request.URL))
+	if conformanceFixturePathPrefix == "" {
+		exchange := conformanceExchange{Method: http.MethodGet, Path: "/", KeyMode: "absent", Status: new(int), Headers: map[string]string{}, Body: new(string)}
+		recorder := &conformanceRecorder{scenario: conformanceScenario{Exchanges: []conformanceExchange{exchange}}}
+		_, err = recorder.RoundTrip(request)
+		require.NoError(t, err)
+		require.Empty(t, recorder.mismatches)
+		require.Equal(t, "/", recorder.observed[0]["path"])
+	}
+}
+
+func conformanceFixtureRequestPath(prefix, path string) string {
+	return strings.TrimSuffix(prefix, "/") + path
+}
+
+func conformanceRecordedRequestPath(prefix, path string) string {
+	return strings.TrimPrefix(path, strings.TrimSuffix(prefix, "/"))
+}
+
+func conformanceHTTPPath(requestURL *url.URL) string {
+	if requestURL.Path == "" {
+		return "/"
+	}
+	return requestURL.Path
 }
 
 func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Response, error) {
@@ -713,7 +756,7 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 	}
 	recorder.observed = append(recorder.observed, observed)
 	recorder.match(index, "method", request.Method, exchange.Method)
-	recorder.match(index, "path", request.URL.Path, conformanceFixturePathPrefix+exchange.Path)
+	recorder.match(index, "path", conformanceHTTPPath(request.URL), conformanceFixtureRequestPath(conformanceFixturePathPrefix, exchange.Path))
 	query := request.URL.Query()
 	for name, value := range exchange.Query {
 		recorder.matchValues(index, "query "+name, query[name], conformanceExpectedValues(value))
@@ -724,11 +767,10 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 		}
 	}
 	if strings.HasPrefix(conformanceHeaderValue(request.Header, "Content-Type"), "application/x-www-form-urlencoded") || len(exchange.Form) != 0 {
-		body, readErr := io.ReadAll(request.Body)
+		body, readErr := conformanceReadRequestBody(request)
 		if readErr != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr))
 		}
-		request.Body = io.NopCloser(bytes.NewReader(body))
 		form, parseErr := url.ParseQuery(string(body))
 		if parseErr != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: parse form: %v", index, parseErr))
@@ -743,11 +785,10 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 		}
 	}
 	if len(exchange.RequestBody) != 0 {
-		body, readErr := io.ReadAll(request.Body)
+		body, readErr := conformanceReadRequestBody(request)
 		if readErr != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr))
 		}
-		request.Body = io.NopCloser(bytes.NewReader(body))
 		var observed, expected any
 		if err := json.Unmarshal(exchange.RequestBody, &expected); err != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: invalid expected body", index))
@@ -818,11 +859,10 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 		}
 	}
 	if len(exchange.RequestBody) == 0 && len(exchange.Form) == 0 && request.Body != nil {
-		body, readErr := io.ReadAll(request.Body)
+		body, readErr := conformanceReadRequestBody(request)
 		if readErr != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr))
 		}
-		request.Body = io.NopCloser(bytes.NewReader(body))
 		if len(body) != 0 {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: unasserted body", index))
 		}
@@ -888,7 +928,7 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 }
 
 func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[string]any, error) {
-	observed := map[string]any{"method": request.Method, "path": strings.TrimPrefix(request.URL.Path, conformanceFixturePathPrefix), "keyMode": "absent"}
+	observed := map[string]any{"method": request.Method, "path": conformanceRecordedRequestPath(conformanceFixturePathPrefix, conformanceHTTPPath(request.URL)), "keyMode": "absent"}
 	if query := request.URL.Query(); len(query) > 0 {
 		observed["query"] = query
 	}
@@ -1077,6 +1117,16 @@ func conformanceHeaderValues(headers http.Header, name string) []string {
 		}
 	}
 	return values
+}
+
+// conformanceReadRequestBody reads and restores the body; a nil body, as a GET sends, reads as empty.
+func conformanceReadRequestBody(request *http.Request) ([]byte, error) {
+	if request.Body == nil {
+		return nil, nil
+	}
+	body, err := io.ReadAll(request.Body)
+	request.Body = io.NopCloser(bytes.NewReader(body))
+	return body, err
 }
 
 func conformanceHeaderValue(headers http.Header, name string) string {
