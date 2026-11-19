@@ -1,0 +1,515 @@
+{
+  "connector": "rongcloud",
+  "scenarios": [
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"status\":\"1\"}",
+          "form": {
+            "userId": [
+              "user123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/user/checkOnline.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "REDACTED_APP_KEY"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Nonce": [
+              "64add0959ed579514d"
+            ],
+            "Signature": [
+              "39a074b9f09c14cabc737d83465421e2fb5b5083"
+            ],
+            "Timestamp": [
+              "1795089600000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "checked",
+        "failureKind": "",
+        "output": {
+          "isOnline": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": "user123"
+      },
+      "name": "checkUserOnline-online",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    },
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"status\":\"0\"}",
+          "form": {
+            "userId": [
+              "user123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/user/checkOnline.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "REDACTED_APP_KEY"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Nonce": [
+              "64add0959ed579514d"
+            ],
+            "Signature": [
+              "39a074b9f09c14cabc737d83465421e2fb5b5083"
+            ],
+            "Timestamp": [
+              "1795089600000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "checked",
+        "failureKind": "",
+        "output": {
+          "isOnline": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": "user123"
+      },
+      "name": "checkUserOnline-offline",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    },
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [
+        {
+          "body": "{\"code\":1001}",
+          "form": {
+            "userId": [
+              "user123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/user/checkOnline.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "REDACTED_APP_KEY"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Nonce": [
+              "64add0959ed579514d"
+            ],
+            "Signature": [
+              "39a074b9f09c14cabc737d83465421e2fb5b5083"
+            ],
+            "Timestamp": [
+              "1795089600000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "isOnline": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": "user123"
+      },
+      "name": "checkUserOnline-providerRejected",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    },
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"status\":\"2\"}",
+          "form": {
+            "userId": [
+              "user123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/user/checkOnline.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "REDACTED_APP_KEY"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Nonce": [
+              "64add0959ed579514d"
+            ],
+            "Signature": [
+              "39a074b9f09c14cabc737d83465421e2fb5b5083"
+            ],
+            "Timestamp": [
+              "1795089600000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isOnline": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": "user123"
+      },
+      "name": "checkUserOnline-invalidResponse",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    },
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "isOnline": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": ""
+      },
+      "name": "checkUserOnline-defect",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    },
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "userId": [
+              "user123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/user/checkOnline.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "REDACTED_APP_KEY"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Nonce": [
+              "64add0959ed579514d"
+            ],
+            "Signature": [
+              "39a074b9f09c14cabc737d83465421e2fb5b5083"
+            ],
+            "Timestamp": [
+              "1795089600000"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": "user123"
+      },
+      "name": "checkUserOnline-retry-429",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    },
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "userId": [
+              "user123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/user/checkOnline.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "REDACTED_APP_KEY"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Nonce": [
+              "64add0959ed579514d"
+            ],
+            "Signature": [
+              "39a074b9f09c14cabc737d83465421e2fb5b5083"
+            ],
+            "Timestamp": [
+              "1795089600000"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": "user123"
+      },
+      "name": "checkUserOnline-retry-500",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    },
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [
+        {
+          "form": {
+            "userId": [
+              "user123"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/user/checkOnline.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "REDACTED_APP_KEY"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Nonce": [
+              "64add0959ed579514d"
+            ],
+            "Signature": [
+              "39a074b9f09c14cabc737d83465421e2fb5b5083"
+            ],
+            "Timestamp": [
+              "1795089600000"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": "user123"
+      },
+      "name": "checkUserOnline-retry-transport",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    },
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [
+        {
+          "body": "{\"code\":1008}",
+          "form": {
+            "userId": [
+              "user123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/user/checkOnline.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "REDACTED_APP_KEY"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Nonce": [
+              "64add0959ed579514d"
+            ],
+            "Signature": [
+              "39a074b9f09c14cabc737d83465421e2fb5b5083"
+            ],
+            "Timestamp": [
+              "1795089600000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": "user123"
+      },
+      "name": "checkUserOnline-retry-provider",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    },
+    {
+      "callId": "4901c083-8663-5a17-9777-48046c36f6a3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "userId": [
+              "user123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/user/checkOnline.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "App-Key": [
+              "REDACTED_APP_KEY"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Nonce": [
+              "64add0959ed579514d"
+            ],
+            "Signature": [
+              "39a074b9f09c14cabc737d83465421e2fb5b5083"
+            ],
+            "Timestamp": [
+              "1795089600000"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-19T12:00:00Z",
+      "input": {
+        "userId": "user123"
+      },
+      "name": "checkUserOnline-retry-503",
+      "operation": "checkUserOnline",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RONGCLOUD"
+    }
+  ],
+  "schemaVersion": 1
+}
