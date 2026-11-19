@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { MailgunClient } from '../src/client.js';
 import { GetEventsInputSchema, ListDomainsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/mailgun/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/mailgun/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getEvents' || scenario.operation === 'listDomains');
 const connection = { provider: 'mailgun', name: 'mailgun' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeMailgun));

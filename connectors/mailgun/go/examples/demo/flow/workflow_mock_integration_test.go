@@ -24,7 +24,8 @@ import (
 func TestDemoUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := mailgunmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	sendFlow := NewSendFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, sendFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestDemoUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Len(t, output.Events, 1)
 	require.Len(t, mock.GetEvents().Calls(), 1)
+	sendFlowID := "mailgun-send-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, sendFlow, sendFlowID, mailgun.SendMessageInput{DomainName: "example.test", From: "sender@example.test", To: []string{"to@example.test"}, Subject: "Example subject", Text: "Example body"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	sendResult, err := client.WaitForFlow(ctx, sendFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, sendResult.Status, sendResult.ErrorMessage)
+	var sent mailgun.SentMessage
+	require.NoError(t, sendResult.DecodeSingleOutput(&sent))
+	require.Equal(t, "<20261116.example@example.test>", sent.ID)
+	require.Len(t, mock.SendMessage().Calls(), 1)
 }

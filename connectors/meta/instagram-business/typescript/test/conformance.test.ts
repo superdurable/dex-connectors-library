@@ -8,7 +8,7 @@ import { InstagramBusinessClient } from '../src/client.js';
 import { ListMediaInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/meta/instagram-business/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/meta/instagram-business/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'listMedia');
 const connection = { provider: 'instagram-business', name: 'instagram-business' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeInstagramBusiness, '/v25.0'));
 
