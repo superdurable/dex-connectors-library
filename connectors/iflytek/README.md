@@ -9,3 +9,5 @@ Sign in to the [iFLYTEK console](https://console.xfyun.cn), open **My Services >
 The operation accepts a `prompt` and returns assistant `content`, the selected model ID, and provider token usage. HTTP 429/5xx and provider rate codes 10007/11202/11203 retry; definite provider rejection selects optional `providerRejected`; malformed or oversized responses select optional `invalidResponse`. The retry budget is three attempts over five minutes because a repeated generation can be charged again. Execute uses sync durability because model generation may exceed seven seconds. Optional branches are unwired in the example and fail the Flow.
 
 Run the [Spark Chat example](go/examples/spark-chat) with its static `iflytek` connection. Provider tests use a local HTTP server. A real Spark generation with user credentials, authorization for Lite/Pro/Ultra, and actual token billing remain unverified.
+
+The [Python package](python/) implements `createChatCompletion` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.
