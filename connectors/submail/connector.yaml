@@ -8,6 +8,11 @@ metadata:
   categories: [communication]
   version: v0.1.0
 spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [getSMSBalance]
+      triggers: []
   provider: submail
   codegen:
     go:
