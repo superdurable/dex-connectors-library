@@ -1,0 +1,339 @@
+{
+  "connector": "pgyer",
+  "scenarios": [
+    {
+      "callId": "f49e5dfe-08bf-5846-b4de-ceac70bb0b5e",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"message\":\"\",\"data\":[{\"appKey\":\"x1y2z3\",\"buildKey\":\"a1b2c3d4e5f6\",\"buildName\":\"Example App\",\"buildType\":2,\"buildVersion\":\"1.1\",\"buildCreated\":\"2025-01-01 10:00:00\",\"buildIdentifier\":\"com.example.app\"}]}",
+          "form": {
+            "_api_key": [
+              "secretKey"
+            ],
+            "page": [
+              "2"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/app/listMy",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "apps": [
+            {
+              "appKey": "x1y2z3",
+              "buildKey": "a1b2c3d4e5f6",
+              "buildType": 2,
+              "createdAt": "2025-01-01 10:00:00",
+              "name": "Example App",
+              "version": "1.1"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2
+      },
+      "name": "listUploadedApps-listed",
+      "operation": "listUploadedApps"
+    },
+    {
+      "callId": "ab7c6735-fb5a-5c1f-af55-e2d86638b9c3",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":[]}",
+          "form": {
+            "_api_key": [
+              "secretKey"
+            ],
+            "page": [
+              "2"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/app/listMy",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "apps": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2
+      },
+      "name": "listUploadedApps-empty",
+      "operation": "listUploadedApps"
+    },
+    {
+      "callId": "20fe8eb1-0225-5789-86d3-9da880d287ce",
+      "exchanges": [
+        {
+          "body": "{\"code\":1002,\"message\":\"bad\"}",
+          "form": {
+            "_api_key": [
+              "secretKey"
+            ],
+            "page": [
+              "2"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/app/listMy",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "apps": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2
+      },
+      "name": "listUploadedApps-providerRejected",
+      "operation": "listUploadedApps"
+    },
+    {
+      "callId": "53d1ca67-d185-52d8-af13-3bff2eb2ddab",
+      "exchanges": [
+        {
+          "body": "{\"code\":0}",
+          "form": {
+            "_api_key": [
+              "secretKey"
+            ],
+            "page": [
+              "2"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/app/listMy",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "apps": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2
+      },
+      "name": "listUploadedApps-invalidResponse",
+      "operation": "listUploadedApps"
+    },
+    {
+      "callId": "81d219a2-d122-5685-94ee-615aff59f474",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "_api_key": [
+              "secretKey"
+            ],
+            "page": [
+              "2"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/app/listMy",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2
+      },
+      "name": "listUploadedApps-rateLimit",
+      "operation": "listUploadedApps"
+    },
+    {
+      "callId": "02a52c77-fa1d-5511-ae70-25329f70981b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "_api_key": [
+              "secretKey"
+            ],
+            "page": [
+              "2"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/app/listMy",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2
+      },
+      "name": "listUploadedApps-serverError",
+      "operation": "listUploadedApps"
+    },
+    {
+      "callId": "432ca0d2-f102-5edd-9d44-19eaac4968e5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "apps": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "listUploadedApps-defect",
+      "operation": "listUploadedApps"
+    },
+    {
+      "callId": "b23cec2a-c9f2-5d35-bbf5-76aa061446f2",
+      "exchanges": [
+        {
+          "form": {
+            "_api_key": [
+              "secretKey"
+            ],
+            "page": [
+              "2"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/apiv2/app/listMy",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2
+      },
+      "name": "listUploadedApps-transport",
+      "operation": "listUploadedApps"
+    }
+  ],
+  "schemaVersion": 1
+}
