@@ -7,3 +7,7 @@ Create a scoped public/private API key pair under **Organization Settings > API 
 The Query retries HTTP 408, 429, 5xx, and transport failures under Dex's default retry budget. Terminal authentication, permission, and request errors select `providerRejected`; malformed or oversized project responses select `invalidResponse`; invalid input or credentials select `defect`.
 
 Install `github.com/superdurable/dex-connectors-library/connectors/pingcap/go@v0.1.0` after release. Provider tests use an HTTP test server. The mock-backed example integration test uses a real Dex Worker and Client. Live API-key authorization and actual organization project visibility remain unverified without a user-configured account.
+
+## Python
+
+The `dex-connector-pingcap` Python package implements `listProjects` with the same Digest request and provider decisions as Go. See [its runnable Flow](python/examples/project_list/). Live provider authorization has not been verified.

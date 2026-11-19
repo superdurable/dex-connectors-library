@@ -1,0 +1,65 @@
+{
+  "connectorId": "netease",
+  "releaseTag": "connectors/netease/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-netease",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_user_profile_step",
+      "kind": "query",
+      "operationId": "getUserProfile",
+      "inputType": "GetUserProfileInput",
+      "description": "Get an IM account ID and nickname, without private contact fields.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserProfileInput selects one IM account for a read-only profile lookup.",
+        "properties": {
+          "accountId": {
+            "description": "AccountID is the account ID assigned when the IM user was registered.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

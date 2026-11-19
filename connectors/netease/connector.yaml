@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: netease
+  languages:
+    python: {version: v0.1.0, operations: [getUserProfile], triggers: []}
   codegen:
     go:
       package: netease

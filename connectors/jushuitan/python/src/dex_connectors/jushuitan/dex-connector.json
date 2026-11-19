@@ -1,0 +1,65 @@
+{
+  "connectorId": "jushuitan",
+  "releaseTag": "connectors/jushuitan/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-jushuitan",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_shops_step",
+      "kind": "query",
+      "operationId": "listShops",
+      "inputType": "ListShopsInput",
+      "description": "List one page of enabled ERP shops.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListShopsInput selects one page of enabled shops.",
+        "properties": {
+          "pageIndex": {
+            "description": "PageIndex starts at one.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of shops to request, from one through one hundred.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageIndex",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
