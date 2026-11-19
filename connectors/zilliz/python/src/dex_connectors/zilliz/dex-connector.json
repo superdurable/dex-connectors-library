@@ -12,7 +12,7 @@
       "kind": "query",
       "operationId": "listClusters",
       "inputType": "ListClustersInput",
-      "description": "List up to 50 model IDs enabled for the API Key.",
+      "description": "List the first 25 clusters visible to the API Key.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +43,7 @@
       ],
       "inputSchema": {
         "additionalProperties": false,
-        "description": "ListClustersInput requests models visible to the Zilliz API Key.",
+        "description": "ListClustersInput requests the first page of clusters visible to the API Key.",
         "properties": {},
         "type": "object"
       }
