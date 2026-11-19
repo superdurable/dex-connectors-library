@@ -13,3 +13,5 @@ See the runnable [`go/examples/user-read`](go/examples/user-read). Tests use a l
 ## Python
 
 The [Python package](python/README.md) implements `getUserDetail` and includes a [runnable Dex Flow](python/examples/user_read/README.md). Its 16 Go-recorded scenarios cover App Token acquisition, 401 refresh, provider branches, Retry, and private push token removal. No live Easemob account has been authorized for this port.
+
+The [TypeScript user-detail Flow](typescript/examples/basic/) uses the same static connection. Its package replays 16 Go-recorded token and user scenarios and verifies retry and persistence through a real Dex Worker and Client.

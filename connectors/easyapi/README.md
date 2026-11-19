@@ -9,3 +9,7 @@ The [runnable Dex Flow](go/examples/shop/README.md) demonstrates a static connec
 ## Python
 
 The [Python package](python/README.md) implements `queryShop` and includes a [runnable Dex Flow](python/examples/shop/README.md). Its 15 Go-recorded scenarios cover private-safe outputs, Retry, provider branches, redirect refusal, and local validation. No live EasyAPI account has been authorized for this port.
+
+## TypeScript
+
+The [TypeScript package](typescript/README.md) implements `queryShop` with a [runnable Dex Flow](typescript/examples/basic/README.md). Its 15 Go-recorded scenarios cover filtered output, Retry, rejection, redirect refusal, and local validation; its integration test verifies retry and persistence through a real Worker and Client.
