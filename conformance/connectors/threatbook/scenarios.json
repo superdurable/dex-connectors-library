@@ -52,6 +52,54 @@
       "operation": "checkIPReputation"
     },
     {
+      "callId": "7a7a1ce8-2bdc-49a1-bf3b-ff424707a4ee",
+      "exchanges": [
+        {
+          "body": "{\"response_code\":2,\"verbose_msg\":\"No intelligence\",\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/scene/ip_reputation",
+          "query": {
+            "apikey": [
+              "test-secret"
+            ],
+            "lang": [
+              "en"
+            ],
+            "resource": [
+              "159.203.93.255"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "noData",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "confidenceLevel": "",
+          "isMalicious": false,
+          "judgments": [],
+          "severity": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "159.203.93.255"
+      },
+      "name": "checkIPReputation-noData",
+      "operation": "checkIPReputation"
+    },
+    {
       "callId": "6985b9b8-bf28-45ff-8b78-3786441f74e9",
       "exchanges": [
         {
