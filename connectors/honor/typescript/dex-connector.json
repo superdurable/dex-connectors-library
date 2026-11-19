@@ -1,0 +1,65 @@
+{
+  "connectorId": "honor",
+  "releaseTag": "connectors/honor/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-honor",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newLookupAppIDStep",
+      "kind": "query",
+      "operationId": "lookupAppID",
+      "inputType": "LookupAppIDInput",
+      "description": "Look up an owned app ID by Android package name.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "LookupAppIDInput identifies one Android package owned by the Honor developer account.",
+        "properties": {
+          "packageName": {
+            "description": "PackageName is the exact Java package name bound in Honor App Management.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "packageName"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
