@@ -1,0 +1,564 @@
+{
+  "connector": "suxin",
+  "scenarios": [
+    {
+      "callId": "f5ffe4a4-01a8-40c7-b64c-660cf023c983",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"accessToken\":\"synthetic-token\",\"userId\":\"123456\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":[{\"orgId\":\"1001\",\"name\":\"Example Organization\",\"entityType\":\"COMPANY\",\"certifyStatus\":\"VERIFIED\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/org/list",
+          "query": {
+            "userId": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer synthetic-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "organizations": [
+            {
+              "certifyStatus": "VERIFIED",
+              "entityType": "COMPANY",
+              "id": "1001",
+              "name": "Example Organization"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-success",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "74fda6ec-f2ab-4586-9f84-ed904b0d9e7f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-providerRejected",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "2c4675b7-e126-4a52-875c-f4724c7e446f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-invalidResponse",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "de813331-61b2-4b85-835e-d5b0f93baf9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-retry429",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "11013447-9590-473c-aae9-44e29a7b2b2f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-retry503",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "290758f2-7afc-4e57-aa56-a12fae11bdcd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-transportFailure",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "d5a6644d-8953-4576-9ee4-883808a27a16",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "organizations": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-defect",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "6a629443-f062-4683-8e92-0ac3f484cc84",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"accessToken\":\"synthetic-token\",\"userId\":\"123456\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/org/list",
+          "query": {
+            "userId": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer synthetic-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "organizations": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-listRejected",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "340dd43d-5378-4777-9dd3-e7ad382e098b",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"accessToken\":\"synthetic-token\",\"userId\":\"123456\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/org/list",
+          "query": {
+            "userId": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer synthetic-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "organizations": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-listInvalidResponse",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "49975408-0d2b-4038-89fe-6c40f9238b52",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"accessToken\":\"synthetic-token\",\"userId\":\"123456\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/org/list",
+          "query": {
+            "userId": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer synthetic-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-listRetry429",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "23b3e533-96a3-4f90-9d38-e3a422bc1b32",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"accessToken\":\"synthetic-token\",\"userId\":\"123456\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/org/list",
+          "query": {
+            "userId": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer synthetic-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-listRetry503",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "71edb0b9-608f-4ace-be5d-515912458e46",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"accessToken\":\"synthetic-token\",\"userId\":\"123456\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/auth/token",
+          "requestBody": {
+            "apiKey": "sk_test_123",
+            "appId": "app_test_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/org/list",
+          "query": {
+            "userId": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer synthetic-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listOrganizations-listTransportFailure",
+      "operation": "listOrganizations"
+    }
+  ],
+  "schemaVersion": 1
+}

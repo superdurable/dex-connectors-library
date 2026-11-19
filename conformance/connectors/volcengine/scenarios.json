@@ -1,0 +1,389 @@
+{
+  "connector": "volcengine",
+  "scenarios": [
+    {
+      "callId": "02c90302-bfac-4abb-b67f-beeafb23e9c6",
+      "exchanges": [
+        {
+          "body": "{\"ResponseMetadata\":{\"RequestId\":\"request-1\",\"Action\":\"DescribeRegions\",\"Version\":\"2020-04-01\",\"Service\":\"ecs\",\"Region\":\"cn-beijing\"},\"Result\":{\"NextToken\":\"another-page=\",\"Regions\":[{\"RegionId\":\"cn-beijing\"},{\"RegionId\":\"cn-shanghai\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DescribeRegions"
+            ],
+            "MaxResults": [
+              "20"
+            ],
+            "NextToken": [
+              "next-page="
+            ],
+            "Version": [
+              "2020-04-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "HMAC-SHA256 Credential=AKLTtest-access-key/20250329/cn-beijing/ecs/request, SignedHeaders=host;x-date, Signature=0f6cc4ea44c957e23a578f0d7fd2061da0dbba33201713b9f87764665af660ac"
+            ],
+            "Region": [
+              "cn-beijing"
+            ],
+            "Service": [
+              "ecs"
+            ],
+            "X-Date": [
+              "20250329T180937Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextToken": "another-page=",
+          "regionIds": [
+            "cn-beijing",
+            "cn-shanghai"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 20,
+        "nextToken": "next-page="
+      },
+      "name": "describeRegions-success",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "38fea463-1cc8-4cd6-8187-c07844ff1437",
+      "exchanges": [
+        {
+          "body": "{\"ResponseMetadata\":{\"Error\":{\"Code\":\"PermissionDenied\",\"Message\":\"synthetic denial\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DescribeRegions"
+            ],
+            "MaxResults": [
+              "20"
+            ],
+            "NextToken": [
+              "next-page="
+            ],
+            "Version": [
+              "2020-04-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "HMAC-SHA256 Credential=AKLTtest-access-key/20250329/cn-beijing/ecs/request, SignedHeaders=host;x-date, Signature=0f6cc4ea44c957e23a578f0d7fd2061da0dbba33201713b9f87764665af660ac"
+            ],
+            "Region": [
+              "cn-beijing"
+            ],
+            "Service": [
+              "ecs"
+            ],
+            "X-Date": [
+              "20250329T180937Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "nextToken": "",
+          "regionIds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 20,
+        "nextToken": "next-page="
+      },
+      "name": "describeRegions-providerRejected",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "b8debb12-0be2-464f-a153-910f1e28ca6f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DescribeRegions"
+            ],
+            "MaxResults": [
+              "20"
+            ],
+            "NextToken": [
+              "next-page="
+            ],
+            "Version": [
+              "2020-04-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "HMAC-SHA256 Credential=AKLTtest-access-key/20250329/cn-beijing/ecs/request, SignedHeaders=host;x-date, Signature=0f6cc4ea44c957e23a578f0d7fd2061da0dbba33201713b9f87764665af660ac"
+            ],
+            "Region": [
+              "cn-beijing"
+            ],
+            "Service": [
+              "ecs"
+            ],
+            "X-Date": [
+              "20250329T180937Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextToken": "",
+          "regionIds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 20,
+        "nextToken": "next-page="
+      },
+      "name": "describeRegions-invalidResponse",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "51aed2bd-acce-467c-8652-0dfccafd4ba4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DescribeRegions"
+            ],
+            "MaxResults": [
+              "20"
+            ],
+            "NextToken": [
+              "next-page="
+            ],
+            "Version": [
+              "2020-04-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "HMAC-SHA256 Credential=AKLTtest-access-key/20250329/cn-beijing/ecs/request, SignedHeaders=host;x-date, Signature=0f6cc4ea44c957e23a578f0d7fd2061da0dbba33201713b9f87764665af660ac"
+            ],
+            "Region": [
+              "cn-beijing"
+            ],
+            "Service": [
+              "ecs"
+            ],
+            "X-Date": [
+              "20250329T180937Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 20,
+        "nextToken": "next-page="
+      },
+      "name": "describeRegions-retry429",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "e203a0bc-0a46-4d3a-b766-4eda7aa0ee36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DescribeRegions"
+            ],
+            "MaxResults": [
+              "20"
+            ],
+            "NextToken": [
+              "next-page="
+            ],
+            "Version": [
+              "2020-04-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "HMAC-SHA256 Credential=AKLTtest-access-key/20250329/cn-beijing/ecs/request, SignedHeaders=host;x-date, Signature=0f6cc4ea44c957e23a578f0d7fd2061da0dbba33201713b9f87764665af660ac"
+            ],
+            "Region": [
+              "cn-beijing"
+            ],
+            "Service": [
+              "ecs"
+            ],
+            "X-Date": [
+              "20250329T180937Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 20,
+        "nextToken": "next-page="
+      },
+      "name": "describeRegions-retry503",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "76e68eab-1a95-4cc0-a544-01d0a2a53425",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DescribeRegions"
+            ],
+            "MaxResults": [
+              "20"
+            ],
+            "NextToken": [
+              "next-page="
+            ],
+            "Version": [
+              "2020-04-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "HMAC-SHA256 Credential=AKLTtest-access-key/20250329/cn-beijing/ecs/request, SignedHeaders=host;x-date, Signature=0f6cc4ea44c957e23a578f0d7fd2061da0dbba33201713b9f87764665af660ac"
+            ],
+            "Region": [
+              "cn-beijing"
+            ],
+            "Service": [
+              "ecs"
+            ],
+            "X-Date": [
+              "20250329T180937Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 20,
+        "nextToken": "next-page="
+      },
+      "name": "describeRegions-transportFailure",
+      "operation": "describeRegions"
+    },
+    {
+      "callId": "097e1ed0-fb2f-4a0e-8cc0-052efd03244b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextToken": "",
+          "regionIds": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 20,
+        "nextToken": "next-page="
+      },
+      "name": "describeRegions-defect",
+      "operation": "describeRegions"
+    }
+  ],
+  "schemaVersion": 1
+}
