@@ -1,0 +1,440 @@
+{
+  "connector": "fit2cloud",
+  "scenarios": [
+    {
+      "callId": "76223243-f477-5b1e-910a-5654bf9e74be",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"metadata\":{\"name\":\"example-post\"},\"spec\":{\"title\":\"Example Post\",\"slug\":\"example-post\",\"publish\":true,\"visible\":\"PUBLIC\",\"owner\":\"private\"}}],\"hasNext\":true,\"page\":2,\"size\":10,\"total\":11}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/content.halo.run/v1alpha1/posts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat_private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPage": 3,
+          "posts": [
+            {
+              "name": "example-post",
+              "published": true,
+              "slug": "example-post",
+              "title": "Example Post",
+              "visibility": "PUBLIC"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listPosts-listed",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "e7fe642f-2fc6-5044-942b-7044f4ca6d33",
+      "exchanges": [
+        {
+          "body": "{\"items\":[],\"hasNext\":false,\"page\":1,\"size\":20,\"total\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/content.halo.run/v1alpha1/posts",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat_private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPage": 0,
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listPosts-empty",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "4c986b3d-b42c-5126-85ba-28540061d6f5",
+      "exchanges": [
+        {
+          "body": "{\"secret\":\"not exposed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/content.halo.run/v1alpha1/posts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat_private-test-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextPage": 0,
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listPosts-providerRejected",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "31f46abf-deba-5e8e-9d1b-c5b66fb50e4b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/content.halo.run/v1alpha1/posts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat_private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPage": 0,
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listPosts-invalidResponse",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "dbb6d240-5697-5e61-883c-f9220568d0c5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextPage": 0,
+          "posts": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listPosts-defect",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "262f0387-899b-5906-9d13-8ca2a2db67a8",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"metadata\":{\"name\":\"example-post\"},\"spec\":{\"title\":\"Example Post\",\"slug\":\"example-post\",\"publish\":true,\"visible\":\"PUBLIC\",\"owner\":\"private\"}}],\"hasNext\":true,\"page\":2,\"size\":10,\"total\":11}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/content.halo.run/v1alpha1/posts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat_private-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "nextPage": 0,
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listPosts-oversized",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "97697973-42c3-5fa7-969c-fbbaa8932eb4",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/content.halo.run/v1alpha1/posts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat_private-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listPosts-retry429",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "24c7fd72-f498-53e2-bd27-b5ad988d78eb",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/content.halo.run/v1alpha1/posts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat_private-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listPosts-retry503",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "71bfbd3f-6a69-5494-a8d5-62ff6d85f0e1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/content.halo.run/v1alpha1/posts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat_private-test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listPosts-transportBefore",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "ae350705-acd8-54e5-b579-b7d1c9aba3ee",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/content.halo.run/v1alpha1/posts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat_private-test-key"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listPosts-transportAfter",
+      "operation": "listPosts"
+    }
+  ],
+  "schemaVersion": 1
+}
