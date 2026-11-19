@@ -5,3 +5,7 @@ This connector implements the read-only [model list API](https://platform.stepfu
 Create a personal API key from [Interface Keys](https://platform.stepfun.com/interface-key), or follow the [organization project key guide](https://platform.stepfun.com/docs/zh/guides/organization/api-keys). Enter the full key in Dex Web Connections. Rate limits and temporary service errors retry; invalid keys select `providerRejected`.
 
 The runnable [list-models example](go/examples/list-models/README.md) demonstrates the generated operation-specific Step and static `stepfun` connection. Real StepFun authorization remains to be tested with a user-controlled Dex Web Connection.
+
+## Python
+
+The first Python package release is `v0.1.0`. See the [Python README](python/README.md) and its runnable Flow for the operation contract and local Dex verification.
