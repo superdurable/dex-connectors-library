@@ -1,0 +1,52 @@
+{
+  "connectorId": "minimax",
+  "releaseTag": "connectors/minimax/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-minimax",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetTokenPlanRemainsStep",
+      "kind": "query",
+      "operationId": "getTokenPlanRemains",
+      "inputType": "GetTokenPlanRemainsInput",
+      "description": "Read remaining percentages and reset times for MiniMax China Token Plan model groups.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTokenPlanRemainsInput requests the current Token Plan usage for the connection's key.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
