@@ -1,0 +1,480 @@
+{
+  "connector": "qihoo360",
+  "scenarios": [
+    {
+      "callId": "cb895c43-2e15-5a91-9162-6b321d54212f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"chat-1\",\"model\":\"360zhinao/360zhinao-pro\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"A durable checkpoint.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":4,\"total_tokens\":9}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 256,
+            "messages": [
+              {
+                "content": "Explain a deployment checkpoint.",
+                "role": "user"
+              }
+            ],
+            "model": "360zhinao/360zhinao-pro",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_QIHOO_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "generated",
+        "failureKind": "",
+        "output": {
+          "finishReason": "stop",
+          "model": "360zhinao/360zhinao-pro",
+          "responseId": "chat-1",
+          "text": "A durable checkpoint.",
+          "usage": {
+            "completionTokens": 4,
+            "promptTokens": 5,
+            "totalTokens": 9
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 256,
+        "prompt": "Explain a deployment checkpoint."
+      },
+      "name": "generateText-generated",
+      "operation": "generateText"
+    },
+    {
+      "callId": "cb895c43-2e15-5a91-9162-6b321d54212f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"chat-2\",\"model\":\"360zhinao/360zhinao-pro\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Partial answer\"},\"finish_reason\":\"length\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":2,\"total_tokens\":7}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 256,
+            "messages": [
+              {
+                "content": "Explain a deployment checkpoint.",
+                "role": "user"
+              }
+            ],
+            "model": "360zhinao/360zhinao-pro",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_QIHOO_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "truncated",
+        "failureKind": "",
+        "output": {
+          "finishReason": "length",
+          "model": "360zhinao/360zhinao-pro",
+          "responseId": "chat-2",
+          "text": "Partial answer",
+          "usage": {
+            "completionTokens": 2,
+            "promptTokens": 5,
+            "totalTokens": 7
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 256,
+        "prompt": "Explain a deployment checkpoint."
+      },
+      "name": "generateText-truncated",
+      "operation": "generateText"
+    },
+    {
+      "callId": "cb895c43-2e15-5a91-9162-6b321d54212f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"chat-3\",\"model\":\"360zhinao/360zhinao-pro\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null},\"finish_reason\":\"sensitive\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 256,
+            "messages": [
+              {
+                "content": "Explain a deployment checkpoint.",
+                "role": "user"
+              }
+            ],
+            "model": "360zhinao/360zhinao-pro",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_QIHOO_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "blocked",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "finishReason": "sensitive",
+          "model": "360zhinao/360zhinao-pro",
+          "responseId": "chat-3",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 256,
+        "prompt": "Explain a deployment checkpoint."
+      },
+      "name": "generateText-blocked",
+      "operation": "generateText"
+    },
+    {
+      "callId": "cb895c43-2e15-5a91-9162-6b321d54212f",
+      "exchanges": [
+        {
+          "body": "{\"code\":1002,\"message\":\"invalid key\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 256,
+            "messages": [
+              {
+                "content": "Explain a deployment checkpoint.",
+                "role": "user"
+              }
+            ],
+            "model": "360zhinao/360zhinao-pro",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_QIHOO_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "finishReason": "",
+          "model": "",
+          "responseId": "",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 256,
+        "prompt": "Explain a deployment checkpoint."
+      },
+      "name": "generateText-providerRejected",
+      "operation": "generateText"
+    },
+    {
+      "callId": "cb895c43-2e15-5a91-9162-6b321d54212f",
+      "exchanges": [
+        {
+          "body": "{\"choices\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 256,
+            "messages": [
+              {
+                "content": "Explain a deployment checkpoint.",
+                "role": "user"
+              }
+            ],
+            "model": "360zhinao/360zhinao-pro",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_QIHOO_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "finishReason": "",
+          "model": "",
+          "responseId": "",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 256,
+        "prompt": "Explain a deployment checkpoint."
+      },
+      "name": "generateText-invalidResponse",
+      "operation": "generateText"
+    },
+    {
+      "callId": "cb895c43-2e15-5a91-9162-6b321d54212f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "finishReason": "",
+          "model": "",
+          "responseId": "",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": -1,
+        "prompt": ""
+      },
+      "name": "generateText-defect",
+      "operation": "generateText"
+    },
+    {
+      "callId": "cb895c43-2e15-5a91-9162-6b321d54212f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 256,
+            "messages": [
+              {
+                "content": "Explain a deployment checkpoint.",
+                "role": "user"
+              }
+            ],
+            "model": "360zhinao/360zhinao-pro",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_QIHOO_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 256,
+        "prompt": "Explain a deployment checkpoint."
+      },
+      "name": "generateText-retry-429",
+      "operation": "generateText"
+    },
+    {
+      "callId": "cb895c43-2e15-5a91-9162-6b321d54212f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 256,
+            "messages": [
+              {
+                "content": "Explain a deployment checkpoint.",
+                "role": "user"
+              }
+            ],
+            "model": "360zhinao/360zhinao-pro",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_QIHOO_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 256,
+        "prompt": "Explain a deployment checkpoint."
+      },
+      "name": "generateText-retry-500",
+      "operation": "generateText"
+    },
+    {
+      "callId": "cb895c43-2e15-5a91-9162-6b321d54212f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 256,
+            "messages": [
+              {
+                "content": "Explain a deployment checkpoint.",
+                "role": "user"
+              }
+            ],
+            "model": "360zhinao/360zhinao-pro",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_QIHOO_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 256,
+        "prompt": "Explain a deployment checkpoint."
+      },
+      "name": "generateText-retry-transport",
+      "operation": "generateText"
+    }
+  ],
+  "schemaVersion": 1
+}
