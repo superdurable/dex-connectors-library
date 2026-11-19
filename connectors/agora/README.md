@@ -10,4 +10,11 @@ A missing or invalid local credential selects optional `defect`. Definite HTTP 4
 
 The runnable example is in [`go/examples/agent-list`](go/examples/agent-list). Tests exercise a local HTTP provider and a real Dex stack with the generated mock. Live Agora authorization and current agent discovery remain unverified without a user-controlled project.
 
+## Python
+
+The [Python package](python/README.md) implements `listRunningAgents` with a
+runnable Dex Flow and Go-recorded provider conformance scenarios.
+
+## TypeScript
+
 The [TypeScript package](typescript/README.md) implements the same `listRunningAgents` Query with Go-recorded conformance scenarios and a runnable Dex Flow.

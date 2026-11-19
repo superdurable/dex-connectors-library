@@ -6,4 +6,9 @@ Sign in at [API Key](https://apizero.cn/account/keys), create or copy a secret `
 
 Run the [example Flow](go/examples/get-account-info/) with the generated mock or a user-controlled connection. The live provider response is unverified without a user-controlled Key.
 
+## Python
+
+The [Python package](python/README.md) implements `getAccountInfo` and includes
+a runnable Dex Flow plus Go-recorded provider conformance scenarios.
+
 The [TypeScript package and runnable Flow](typescript/README.md) replay the Go-recorded provider contract and exercise the Flow against a real local Dex Server.
