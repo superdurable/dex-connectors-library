@@ -63,6 +63,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.dada.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Dada Express credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,24 +88,24 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Dada Express stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Dada Express stored credential does not match the connector credential fields")
         if set(material) - set(('appKey', 'appSecret', 'sourceID')):
-            raise ValueError("Dada Express stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Dada Express stored credential does not match the connector credential fields")
         app_key = material.get("appKey")
         if app_key is not None and not (isinstance(app_key, str)):
-            raise ValueError("Dada Express credential appKey has an invalid type")
+            raise CredentialMaterialError("Dada Express credential appKey has an invalid type")
         app_secret = material.get("appSecret")
         if app_secret is not None and not (isinstance(app_secret, str)):
-            raise ValueError("Dada Express credential appSecret has an invalid type")
+            raise CredentialMaterialError("Dada Express credential appSecret has an invalid type")
         source_id = material.get("sourceID")
         if source_id is not None and not (isinstance(source_id, str)):
-            raise ValueError("Dada Express credential sourceID has an invalid type")
+            raise CredentialMaterialError("Dada Express credential sourceID has an invalid type")
         if not app_key:
-            raise ValueError("Dada Express credential appKey is required")
+            raise CredentialMaterialError("Dada Express credential appKey is required")
         if not app_secret:
-            raise ValueError("Dada Express credential appSecret is required")
+            raise CredentialMaterialError("Dada Express credential appSecret is required")
         if not source_id:
-            raise ValueError("Dada Express credential sourceID is required")
+            raise CredentialMaterialError("Dada Express credential sourceID is required")
         return Credentials(app_key, SecretString(app_secret), source_id)
 
 

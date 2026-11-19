@@ -3,7 +3,7 @@
 `dex-connector-github` implements the six GitHub Query operations declared in
 [`connector.yaml`](../connector.yaml): `getAuthenticatedProfile`,
 `listPublicRepositories`, `listMergedPullRequests`, `listPullRequestFiles`,
-`listReleases`, and `listCommits`. Its Python release is `v0.1.1`; the Go release
+`listReleases`, and `listCommits`. Its Python release is `v0.2.0`; the Go release
 version remains independent. The Go-only `listIssues` and `createIssue`
 operations and their `github-oauth-repository` authorization method are not
 implemented here, and the conformance test replays only the six Queries.

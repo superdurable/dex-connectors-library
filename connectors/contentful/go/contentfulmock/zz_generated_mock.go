@@ -17,9 +17,15 @@ import (
 
 // Mock is a scripted contentful connection. Script each operation through its accessor.
 type Mock struct {
-	connection  contentful.Connection
-	getEntry    *connectormock.Query[contentful.GetEntryInput, contentful.GetEntryOutput]
-	listEntries *connectormock.Query[contentful.ListEntriesInput, contentful.ListEntriesOutput]
+	connection       contentful.Connection
+	getEntry         *connectormock.Query[contentful.GetEntryInput, contentful.GetEntryOutput]
+	listEntries      *connectormock.Query[contentful.ListEntriesInput, contentful.ListEntriesOutput]
+	getAsset         *connectormock.Query[contentful.GetAssetInput, contentful.ContentfulReadOutput]
+	listAssets       *connectormock.Query[contentful.ContentfulPageInput, contentful.ContentfulReadOutput]
+	getContentType   *connectormock.Query[contentful.GetContentTypeInput, contentful.ContentfulReadOutput]
+	listContentTypes *connectormock.Query[contentful.ContentfulPageInput, contentful.ContentfulReadOutput]
+	getSpace         *connectormock.Query[contentful.GetSpaceInput, contentful.ContentfulReadOutput]
+	listLocales      *connectormock.Query[contentful.ContentfulPageInput, contentful.ContentfulReadOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +33,23 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getEntry:    connectormock.NewQuery[contentful.GetEntryInput, contentful.GetEntryOutput](t, contentful.GetEntryDefinition),
-		listEntries: connectormock.NewQuery[contentful.ListEntriesInput, contentful.ListEntriesOutput](t, contentful.ListEntriesDefinition),
+		getEntry:         connectormock.NewQuery[contentful.GetEntryInput, contentful.GetEntryOutput](t, contentful.GetEntryDefinition),
+		listEntries:      connectormock.NewQuery[contentful.ListEntriesInput, contentful.ListEntriesOutput](t, contentful.ListEntriesDefinition),
+		getAsset:         connectormock.NewQuery[contentful.GetAssetInput, contentful.ContentfulReadOutput](t, contentful.GetAssetDefinition),
+		listAssets:       connectormock.NewQuery[contentful.ContentfulPageInput, contentful.ContentfulReadOutput](t, contentful.ListAssetsDefinition),
+		getContentType:   connectormock.NewQuery[contentful.GetContentTypeInput, contentful.ContentfulReadOutput](t, contentful.GetContentTypeDefinition),
+		listContentTypes: connectormock.NewQuery[contentful.ContentfulPageInput, contentful.ContentfulReadOutput](t, contentful.ListContentTypesDefinition),
+		getSpace:         connectormock.NewQuery[contentful.GetSpaceInput, contentful.ContentfulReadOutput](t, contentful.GetSpaceDefinition),
+		listLocales:      connectormock.NewQuery[contentful.ContentfulPageInput, contentful.ContentfulReadOutput](t, contentful.ListLocalesDefinition),
 	}
 	mock.getEntry.Default(GetEntryDefault())
 	mock.listEntries.Default(ListEntriesDefault())
+	mock.getAsset.Default(GetAssetDefault())
+	mock.listAssets.Default(ListAssetsDefault())
+	mock.getContentType.Default(GetContentTypeDefault())
+	mock.listContentTypes.Default(ListContentTypesDefault())
+	mock.getSpace.Default(GetSpaceDefault())
+	mock.listLocales.Default(ListLocalesDefault())
 	connection, err := contentful.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "contentful", Name: connectionName})
 	if err != nil {
 		t.Fatalf("contentful mock connection: %v", err)
@@ -53,6 +71,36 @@ func (mock *Mock) ListEntries() *connectormock.Query[contentful.ListEntriesInput
 	return mock.listEntries
 }
 
+// GetAsset returns the getAsset script.
+func (mock *Mock) GetAsset() *connectormock.Query[contentful.GetAssetInput, contentful.ContentfulReadOutput] {
+	return mock.getAsset
+}
+
+// ListAssets returns the listAssets script.
+func (mock *Mock) ListAssets() *connectormock.Query[contentful.ContentfulPageInput, contentful.ContentfulReadOutput] {
+	return mock.listAssets
+}
+
+// GetContentType returns the getContentType script.
+func (mock *Mock) GetContentType() *connectormock.Query[contentful.GetContentTypeInput, contentful.ContentfulReadOutput] {
+	return mock.getContentType
+}
+
+// ListContentTypes returns the listContentTypes script.
+func (mock *Mock) ListContentTypes() *connectormock.Query[contentful.ContentfulPageInput, contentful.ContentfulReadOutput] {
+	return mock.listContentTypes
+}
+
+// GetSpace returns the getSpace script.
+func (mock *Mock) GetSpace() *connectormock.Query[contentful.GetSpaceInput, contentful.ContentfulReadOutput] {
+	return mock.getSpace
+}
+
+// ListLocales returns the listLocales script.
+func (mock *Mock) ListLocales() *connectormock.Query[contentful.ContentfulPageInput, contentful.ContentfulReadOutput] {
+	return mock.listLocales
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetEntry() sdkgo.Query[contentful.GetEntryInput, contentful.GetEntryOutput] {
@@ -60,6 +108,24 @@ func (operations mockOperations) GetEntry() sdkgo.Query[contentful.GetEntryInput
 }
 func (operations mockOperations) ListEntries() sdkgo.Query[contentful.ListEntriesInput, contentful.ListEntriesOutput] {
 	return operations.mock.listEntries
+}
+func (operations mockOperations) GetAsset() sdkgo.Query[contentful.GetAssetInput, contentful.ContentfulReadOutput] {
+	return operations.mock.getAsset
+}
+func (operations mockOperations) ListAssets() sdkgo.Query[contentful.ContentfulPageInput, contentful.ContentfulReadOutput] {
+	return operations.mock.listAssets
+}
+func (operations mockOperations) GetContentType() sdkgo.Query[contentful.GetContentTypeInput, contentful.ContentfulReadOutput] {
+	return operations.mock.getContentType
+}
+func (operations mockOperations) ListContentTypes() sdkgo.Query[contentful.ContentfulPageInput, contentful.ContentfulReadOutput] {
+	return operations.mock.listContentTypes
+}
+func (operations mockOperations) GetSpace() sdkgo.Query[contentful.GetSpaceInput, contentful.ContentfulReadOutput] {
+	return operations.mock.getSpace
+}
+func (operations mockOperations) ListLocales() sdkgo.Query[contentful.ContentfulPageInput, contentful.ContentfulReadOutput] {
+	return operations.mock.listLocales
 }
 
 // GetEntryFound selects the found branch: Get one published Contentful entry.
@@ -137,4 +203,235 @@ func ListEntriesDefaultListEntries() connectormock.Case[contentful.ListEntriesOu
 // ListEntriesDefault is the manifest default, defaultListEntries, which New installs.
 func ListEntriesDefault() connectormock.Case[contentful.ListEntriesOutput] {
 	return ListEntriesDefaultListEntries()
+}
+
+// GetAssetFound selects the found branch: Contentful returned one published asset.
+func GetAssetFound(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetAssetBranchFound, value, failure)
+}
+
+// GetAssetNotFound selects the notFound branch: The resource does not exist or is not published.
+func GetAssetNotFound(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetAssetBranchNotFound, value, failure)
+}
+
+// GetAssetProviderRejected selects the providerRejected branch: Contentful rejected the request.
+func GetAssetProviderRejected(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetAssetBranchProviderRejected, value, failure)
+}
+
+// GetAssetInvalidResponse selects the invalidResponse branch: Contentful returned malformed or oversized JSON.
+func GetAssetInvalidResponse(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetAssetBranchInvalidResponse, value, failure)
+}
+
+// GetAssetDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func GetAssetDefect(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetAssetBranchDefect, value, failure)
+}
+
+// GetAssetRetry asks Dex to retry the getAsset Step, after the delay when it is positive.
+func GetAssetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Retry[contentful.ContentfulReadOutput](failure, after)
+}
+
+// GetAssetDefaultGetAsset is the manifest mock defaultGetAsset: A representative getAsset response.
+func GetAssetDefaultGetAsset() connectormock.Case[contentful.ContentfulReadOutput] {
+	value := connectormock.MustDecodeOutput[contentful.ContentfulReadOutput](`{"data":{"sys":{"id":"asset-meridian","type":"Asset"},"fields":{"title":"Meridian logo"}}}`)
+	return connectormock.Branch(contentful.GetAssetBranchFound, value, nil)
+}
+
+// GetAssetDefault is the manifest default, defaultGetAsset, which New installs.
+func GetAssetDefault() connectormock.Case[contentful.ContentfulReadOutput] {
+	return GetAssetDefaultGetAsset()
+}
+
+// ListAssetsListed selects the listed branch: Contentful returned a page of published assets.
+func ListAssetsListed(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListAssetsBranchListed, value, failure)
+}
+
+// ListAssetsProviderRejected selects the providerRejected branch: Contentful rejected the request.
+func ListAssetsProviderRejected(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListAssetsBranchProviderRejected, value, failure)
+}
+
+// ListAssetsInvalidResponse selects the invalidResponse branch: Contentful returned malformed or oversized JSON.
+func ListAssetsInvalidResponse(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListAssetsBranchInvalidResponse, value, failure)
+}
+
+// ListAssetsDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func ListAssetsDefect(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListAssetsBranchDefect, value, failure)
+}
+
+// ListAssetsRetry asks Dex to retry the listAssets Step, after the delay when it is positive.
+func ListAssetsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Retry[contentful.ContentfulReadOutput](failure, after)
+}
+
+// ListAssetsDefaultListAssets is the manifest mock defaultListAssets: A representative listAssets response.
+func ListAssetsDefaultListAssets() connectormock.Case[contentful.ContentfulReadOutput] {
+	value := connectormock.MustDecodeOutput[contentful.ContentfulReadOutput](`{"data":{"items":[{"sys":{"id":"asset-meridian","type":"Asset"}}],"total":1,"skip":0,"limit":100}}`)
+	return connectormock.Branch(contentful.ListAssetsBranchListed, value, nil)
+}
+
+// ListAssetsDefault is the manifest default, defaultListAssets, which New installs.
+func ListAssetsDefault() connectormock.Case[contentful.ContentfulReadOutput] {
+	return ListAssetsDefaultListAssets()
+}
+
+// GetContentTypeFound selects the found branch: Contentful returned one published content type.
+func GetContentTypeFound(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetContentTypeBranchFound, value, failure)
+}
+
+// GetContentTypeNotFound selects the notFound branch: The resource does not exist or is not published.
+func GetContentTypeNotFound(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetContentTypeBranchNotFound, value, failure)
+}
+
+// GetContentTypeProviderRejected selects the providerRejected branch: Contentful rejected the request.
+func GetContentTypeProviderRejected(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetContentTypeBranchProviderRejected, value, failure)
+}
+
+// GetContentTypeInvalidResponse selects the invalidResponse branch: Contentful returned malformed or oversized JSON.
+func GetContentTypeInvalidResponse(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetContentTypeBranchInvalidResponse, value, failure)
+}
+
+// GetContentTypeDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func GetContentTypeDefect(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetContentTypeBranchDefect, value, failure)
+}
+
+// GetContentTypeRetry asks Dex to retry the getContentType Step, after the delay when it is positive.
+func GetContentTypeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Retry[contentful.ContentfulReadOutput](failure, after)
+}
+
+// GetContentTypeDefaultGetContentType is the manifest mock defaultGetContentType: A representative getContentType response.
+func GetContentTypeDefaultGetContentType() connectormock.Case[contentful.ContentfulReadOutput] {
+	value := connectormock.MustDecodeOutput[contentful.ContentfulReadOutput](`{"data":{"sys":{"id":"article","type":"ContentType"},"name":"Article","fields":[]}}`)
+	return connectormock.Branch(contentful.GetContentTypeBranchFound, value, nil)
+}
+
+// GetContentTypeDefault is the manifest default, defaultGetContentType, which New installs.
+func GetContentTypeDefault() connectormock.Case[contentful.ContentfulReadOutput] {
+	return GetContentTypeDefaultGetContentType()
+}
+
+// ListContentTypesListed selects the listed branch: Contentful returned a page of published content types.
+func ListContentTypesListed(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListContentTypesBranchListed, value, failure)
+}
+
+// ListContentTypesProviderRejected selects the providerRejected branch: Contentful rejected the request.
+func ListContentTypesProviderRejected(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListContentTypesBranchProviderRejected, value, failure)
+}
+
+// ListContentTypesInvalidResponse selects the invalidResponse branch: Contentful returned malformed or oversized JSON.
+func ListContentTypesInvalidResponse(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListContentTypesBranchInvalidResponse, value, failure)
+}
+
+// ListContentTypesDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func ListContentTypesDefect(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListContentTypesBranchDefect, value, failure)
+}
+
+// ListContentTypesRetry asks Dex to retry the listContentTypes Step, after the delay when it is positive.
+func ListContentTypesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Retry[contentful.ContentfulReadOutput](failure, after)
+}
+
+// ListContentTypesDefaultListContentTypes is the manifest mock defaultListContentTypes: A representative listContentTypes response.
+func ListContentTypesDefaultListContentTypes() connectormock.Case[contentful.ContentfulReadOutput] {
+	value := connectormock.MustDecodeOutput[contentful.ContentfulReadOutput](`{"data":{"items":[{"sys":{"id":"article","type":"ContentType"}}],"total":1,"skip":0,"limit":100}}`)
+	return connectormock.Branch(contentful.ListContentTypesBranchListed, value, nil)
+}
+
+// ListContentTypesDefault is the manifest default, defaultListContentTypes, which New installs.
+func ListContentTypesDefault() connectormock.Case[contentful.ContentfulReadOutput] {
+	return ListContentTypesDefaultListContentTypes()
+}
+
+// GetSpaceFound selects the found branch: Contentful returned one space and its locales.
+func GetSpaceFound(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetSpaceBranchFound, value, failure)
+}
+
+// GetSpaceNotFound selects the notFound branch: The resource does not exist or is not published.
+func GetSpaceNotFound(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetSpaceBranchNotFound, value, failure)
+}
+
+// GetSpaceProviderRejected selects the providerRejected branch: Contentful rejected the request.
+func GetSpaceProviderRejected(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetSpaceBranchProviderRejected, value, failure)
+}
+
+// GetSpaceInvalidResponse selects the invalidResponse branch: Contentful returned malformed or oversized JSON.
+func GetSpaceInvalidResponse(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetSpaceBranchInvalidResponse, value, failure)
+}
+
+// GetSpaceDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func GetSpaceDefect(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.GetSpaceBranchDefect, value, failure)
+}
+
+// GetSpaceRetry asks Dex to retry the getSpace Step, after the delay when it is positive.
+func GetSpaceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Retry[contentful.ContentfulReadOutput](failure, after)
+}
+
+// GetSpaceDefaultGetSpace is the manifest mock defaultGetSpace: A representative getSpace response.
+func GetSpaceDefaultGetSpace() connectormock.Case[contentful.ContentfulReadOutput] {
+	value := connectormock.MustDecodeOutput[contentful.ContentfulReadOutput](`{"data":{"sys":{"id":"space-meridian","type":"Space"},"name":"Meridian","locales":[{"code":"en-US","default":true,"name":"English"}]}}`)
+	return connectormock.Branch(contentful.GetSpaceBranchFound, value, nil)
+}
+
+// GetSpaceDefault is the manifest default, defaultGetSpace, which New installs.
+func GetSpaceDefault() connectormock.Case[contentful.ContentfulReadOutput] {
+	return GetSpaceDefaultGetSpace()
+}
+
+// ListLocalesListed selects the listed branch: Contentful returned the locales of one environment.
+func ListLocalesListed(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListLocalesBranchListed, value, failure)
+}
+
+// ListLocalesProviderRejected selects the providerRejected branch: Contentful rejected the request.
+func ListLocalesProviderRejected(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListLocalesBranchProviderRejected, value, failure)
+}
+
+// ListLocalesInvalidResponse selects the invalidResponse branch: Contentful returned malformed or oversized JSON.
+func ListLocalesInvalidResponse(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListLocalesBranchInvalidResponse, value, failure)
+}
+
+// ListLocalesDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func ListLocalesDefect(value contentful.ContentfulReadOutput, failure *sdkgo.Failure) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Branch(contentful.ListLocalesBranchDefect, value, failure)
+}
+
+// ListLocalesRetry asks Dex to retry the listLocales Step, after the delay when it is positive.
+func ListLocalesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[contentful.ContentfulReadOutput] {
+	return connectormock.Retry[contentful.ContentfulReadOutput](failure, after)
+}
+
+// ListLocalesDefaultListLocales is the manifest mock defaultListLocales: A representative listLocales response.
+func ListLocalesDefaultListLocales() connectormock.Case[contentful.ContentfulReadOutput] {
+	value := connectormock.MustDecodeOutput[contentful.ContentfulReadOutput](`{"data":{"items":[{"code":"en-US","default":true,"name":"English"}],"total":1,"skip":0,"limit":100}}`)
+	return connectormock.Branch(contentful.ListLocalesBranchListed, value, nil)
+}
+
+// ListLocalesDefault is the manifest default, defaultListLocales, which New installs.
+func ListLocalesDefault() connectormock.Case[contentful.ContentfulReadOutput] {
+	return ListLocalesDefaultListLocales()
 }
