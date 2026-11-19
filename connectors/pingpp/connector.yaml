@@ -8,6 +8,8 @@ metadata:
   categories: [finance-payments]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-pingpp", operations: [getChargeStatus], triggers: []}
   provider: pingpp
   codegen:
     go:
