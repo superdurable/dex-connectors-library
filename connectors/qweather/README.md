@@ -5,3 +5,5 @@ This connector implements the read-only [current weather API](https://dev.qweath
 Create a project and API KEY credential in the [QWeather Console](https://console.qweather.com/), then copy your account's API Host from Settings. QWeather requires its dedicated API Host; legacy shared hosts are being retired. Invalid coordinates fail locally, while provider errors select `providerRejected`. Transient failures and every HTTP 429, including the monthly request limit, retry up to three times and honor `Retry-After`. QWeather states that API KEY authentication will have a daily call-volume limit from 2027-02-01; this connector currently uses the documented API KEY method.
 
 The runnable [current-weather example](go/examples/current-weather/README.md) demonstrates the generated operation-specific Step and static `qweather` connection. Real QWeather authorization remains to be tested with a user-controlled Dex Web Connection.
+
+The [Python package](python/) implements `getCurrentWeather` and its [runnable Flow](python/examples/current_query/) verifies retry and persistence with a real local Dex Worker and Client.
