@@ -5,3 +5,5 @@
 Open the [IP定位 API documentation](https://lbs.navinfo.com/docs/webapi/ipcity.html), click 申请 beside the AK parameter, sign in, and obtain a REST API AK with IP定位 access. Copy this secret into Dex Web Connections. The AK is sent in the HTTPS query string; redirects are disabled and errors omit the request URL and AK. Leave timeout and maxResponseBytes blank for displayed defaults.
 
 Start the [runnable Flow](go/examples/lookup-ip-location/) with `{"ipAddress":"8.8.8.8"}`. Its default mock returns a Beijing example. Live AK authorization and location results have not been verified with a provider account.
+
+The [Python package](python/README.md) implements the same Query with a checked-in Dex Worker and Client example. Its Go-recorded provider scenarios and local Dex retry path are verified; live provider authorization remains unverified.
