@@ -60,7 +60,7 @@ func (operation SearchProductsOperation) Invoke(call sdkgo.Call, input SearchPro
 	}
 	parameters := map[string]string{
 		"app_key": credentials.AppKey.Reveal(), "c": "new_wiki", "offset": "0", "request_from": operation.client.requestFrom,
-		"s": input.Keyword, "size": "20", "timestamp": strconv.FormatInt(time.Now().Unix(), 10),
+		"s": input.Keyword, "size": "20", "timestamp": strconv.FormatInt(operation.client.clock().Unix(), 10),
 	}
 	query := url.Values{}
 	for key, value := range parameters {

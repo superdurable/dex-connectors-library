@@ -1,0 +1,384 @@
+{
+  "connector": "smzdm",
+  "scenarios": [
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"status\":true,\"data\":{\"total_num\":1,\"offset\":0,\"page_size\":20,\"rows\":[{\"title\":\"Example Laptop\",\"pro_price\":99.9}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/searchapi/search/list",
+          "query": {
+            "app_key": [
+              "123456789"
+            ],
+            "c": [
+              "new_wiki"
+            ],
+            "offset": [
+              "0"
+            ],
+            "request_from": [
+              "dex"
+            ],
+            "s": [
+              "Laptop"
+            ],
+            "sign": [
+              "D504C1B72188E346CE127B775D8D624E"
+            ],
+            "size": [
+              "20"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "products": [
+            {
+              "priceYuan": 99.9,
+              "title": "Example Laptop"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Laptop"
+      },
+      "name": "searchProducts-found",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"status\":false,\"msg\":\"invalid sign\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/searchapi/search/list",
+          "query": {
+            "app_key": [
+              "123456789"
+            ],
+            "c": [
+              "new_wiki"
+            ],
+            "offset": [
+              "0"
+            ],
+            "request_from": [
+              "dex"
+            ],
+            "s": [
+              "Laptop"
+            ],
+            "sign": [
+              "D504C1B72188E346CE127B775D8D624E"
+            ],
+            "size": [
+              "20"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Laptop"
+      },
+      "name": "searchProducts-providerRejected",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"status\":true,\"data\":{\"total_num\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/searchapi/search/list",
+          "query": {
+            "app_key": [
+              "123456789"
+            ],
+            "c": [
+              "new_wiki"
+            ],
+            "offset": [
+              "0"
+            ],
+            "request_from": [
+              "dex"
+            ],
+            "s": [
+              "Laptop"
+            ],
+            "sign": [
+              "D504C1B72188E346CE127B775D8D624E"
+            ],
+            "size": [
+              "20"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Laptop"
+      },
+      "name": "searchProducts-invalidResponse",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Laptop"
+      },
+      "name": "searchProducts-defect",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/searchapi/search/list",
+          "query": {
+            "app_key": [
+              "123456789"
+            ],
+            "c": [
+              "new_wiki"
+            ],
+            "offset": [
+              "0"
+            ],
+            "request_from": [
+              "dex"
+            ],
+            "s": [
+              "Laptop"
+            ],
+            "sign": [
+              "D504C1B72188E346CE127B775D8D624E"
+            ],
+            "size": [
+              "20"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Laptop"
+      },
+      "name": "searchProducts-retry429",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/searchapi/search/list",
+          "query": {
+            "app_key": [
+              "123456789"
+            ],
+            "c": [
+              "new_wiki"
+            ],
+            "offset": [
+              "0"
+            ],
+            "request_from": [
+              "dex"
+            ],
+            "s": [
+              "Laptop"
+            ],
+            "sign": [
+              "D504C1B72188E346CE127B775D8D624E"
+            ],
+            "size": [
+              "20"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Laptop"
+      },
+      "name": "searchProducts-retry503",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/searchapi/search/list",
+          "query": {
+            "app_key": [
+              "123456789"
+            ],
+            "c": [
+              "new_wiki"
+            ],
+            "offset": [
+              "0"
+            ],
+            "request_from": [
+              "dex"
+            ],
+            "s": [
+              "Laptop"
+            ],
+            "sign": [
+              "D504C1B72188E346CE127B775D8D624E"
+            ],
+            "size": [
+              "20"
+            ],
+            "timestamp": [
+              "1731510000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Laptop"
+      },
+      "name": "searchProducts-transport",
+      "operation": "searchProducts"
+    }
+  ],
+  "schemaVersion": 1
+}
