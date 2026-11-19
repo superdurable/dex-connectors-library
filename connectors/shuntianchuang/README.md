@@ -7,3 +7,7 @@ Open [Shuntianchuang](https://api-model.shuntianchuang.cn), sign in, then create
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "shuntianchuang"`. Run the worker with `go run .` from its directory, then start `ShuntianchuangModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [official developer documentation](https://docs.shuntianchuang.cn/tokenhub/api/base.html). Real provider authorization is unverified without a customer-controlled Key.
+
+## Python
+
+The `python/` package provides the `listModels` Query. Run its checked-in example from `python/examples/`.
