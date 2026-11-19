@@ -1,0 +1,61 @@
+{
+  "connectorId": "kingsoftcloud",
+  "releaseTag": "connectors/kingsoftcloud/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-kingsoftcloud",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_users_step",
+      "kind": "query",
+      "operationId": "listUsers",
+      "inputType": "ListUsersInput",
+      "description": "List one bounded page of IAM user IDs and names, with an optional Marker for the next page.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListUsersInput selects one IAM user page. MaxItems zero uses the provider default of 100.",
+        "properties": {
+          "marker": {
+            "description": "Marker is the opaque next-page token from a previous response; empty starts at the first page.",
+            "type": "string"
+          },
+          "maxItems": {
+            "description": "MaxItems is the requested page size from 1 to 100; zero uses 100.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}
