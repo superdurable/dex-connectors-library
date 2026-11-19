@@ -1,0 +1,60 @@
+{
+  "connectorId": "jdlogistics",
+  "releaseTag": "connectors/jdlogistics/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-jdlogistics",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newQueryWaybillTraceStep",
+      "kind": "query",
+      "operationId": "queryWaybillTrace",
+      "inputType": "QueryWaybillTraceInput",
+      "description": "Read tracking scans for one authorized JD Logistics B2C merchant waybill.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryWaybillTraceInput identifies one JD Logistics B2C merchant waybill.",
+        "properties": {
+          "waybillNo": {
+            "description": "WaybillNo is the authorized JD Logistics waybill number.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "waybillNo"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
