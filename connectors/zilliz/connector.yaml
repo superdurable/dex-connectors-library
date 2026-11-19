@@ -8,6 +8,8 @@ metadata:
   categories: [databases-storage, ai]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-zilliz", operations: [listClusters], triggers: []}
   provider: zilliz
   codegen:
     go:
