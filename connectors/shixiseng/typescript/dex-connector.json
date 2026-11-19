@@ -43,7 +43,7 @@
       ],
       "inputSchema": {
         "additionalProperties": false,
-        "description": "ListIndustriesInput has no user-supplied query parameters.",
+        "description": "ListIndustriesInput needs no operation-specific values.",
         "properties": {},
         "type": "object"
       }
