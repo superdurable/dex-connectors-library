@@ -381,6 +381,15 @@ class CoverageValidationTest(unittest.TestCase):
                      self.scenario("transport", [None], True), self.scenario("read", [200], False)]
         self.validate_fixture(scenarios, "separate 429 and 5xx")
 
+    def test_final_attempt_may_issue_zero_provider_requests(self) -> None:
+        terminal = self.scenario("terminal", [200], False)
+        terminal["attempts"] = 2
+        terminal["intermediate"] = [{"failureKind": "AVAILABILITY", "retryAfterMs": 0,
+                                     "exchangeCount": 1}]
+        scenarios = [self.scenario("rate", [429], True), self.scenario("server", [503], True),
+                     self.scenario("transport", [None], True), terminal]
+        self.validate_fixture(scenarios, "no Go reference test")
+
     def test_transport_failure_required_for_read(self) -> None:
         scenarios = [self.scenario("rate", [429], True), self.scenario("server", [503], True),
                      self.scenario("read", [200], False)]
