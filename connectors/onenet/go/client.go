@@ -25,8 +25,10 @@ import (
 // Option configures the HTTP transport without changing a connection.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ client *http.Client }
+type clockOption struct{ now func() time.Time }
 
 func (option httpClientOption) applyClientOption(client *Client) { client.httpClient = option.client }
+func (option clockOption) applyClientOption(client *Client)      { client.now = option.now }
 
 // WithHTTPClient supplies a transport for production or provider tests.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -37,6 +39,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 // New validates OneNET configuration without contacting the provider.
@@ -56,7 +59,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsedURL.Path != "" {
 		return nil, errors.New("OneNET API URL must be a host root without a path")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("OneNET client option is required")
@@ -89,7 +92,7 @@ func (client *Client) queryDevice(call sdkgo.Call, input QueryDeviceDetailInput)
 	if err != nil || len(key) == 0 {
 		return providerResponse{err: errCredential}
 	}
-	authorization := signedAuthorization(credentials.UserID, key, time.Now().Add(time.Hour).Unix())
+	authorization := signedAuthorization(credentials.UserID, key, client.now().Add(time.Hour).Unix())
 	query := url.Values{"product_id": {credentials.ProductID}, "device_name": {input.DeviceName}}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+"/device/detail?"+query.Encode(), nil)
 	if err != nil {
