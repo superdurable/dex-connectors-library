@@ -84,6 +84,13 @@ func (operation CopyFileOperation) Invoke(call sdkgo.Call, input CopyFileInput) 
 		return sdkgo.NewMutationBranch(CopyFileBranchDefect, CopyFileOutput{}, failure, sdkgo.Receipt{})
 	}
 	if input.DestinationDriveID == "" && credential.AuthMethodID == MicrosoftAppOnlyAuthMethodID {
+		if decision.MaximumPriorSends > 0 {
+			if decision.Kind == singledispatch.ReadBackRequired {
+				return sdkgo.NewMutationUncertain(CopyFileOutput{DestinationFolderID: input.DestinationFolderID, Name: input.Name},
+					graphFailure(sdkgo.FailureTransport, copyFileOperationID, "copy destination cannot be read after authorization changed"), sdkgo.Receipt{})
+			}
+			return sdkgo.NewMutationRetry[CopyFileOutput](graphFailure(sdkgo.FailureValidation, copyFileOperationID, "copy destination cannot be read with app-only authorization"), 0)
+		}
 		return sdkgo.NewMutationBranch(CopyFileBranchDefect, CopyFileOutput{}, graphFailurePointer(sdkgo.FailureValidation, copyFileOperationID, "destinationDriveId is required with app-only authorization"), sdkgo.Receipt{})
 	}
 	_, isFound, outcome := operation.client.readCopyDestination(call, &credential, input)
