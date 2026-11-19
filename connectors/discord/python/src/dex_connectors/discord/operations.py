@@ -54,6 +54,8 @@ from .models import (
 _Output = TypeVar("_Output")
 
 _SNOWFLAKE = re.compile(r"[0-9]{17,20}\Z")
+# An ISO 8601 timestamp without an offset, which Discord means as UTC.
+_ZONELESS_TIMESTAMP = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?\Z")
 _CUSTOM_EMOJI = re.compile(r"[A-Za-z0-9_]{2,32}:[0-9]{17,20}\Z")
 _DOCUMENTED_CODES = frozenset(
     {
@@ -137,18 +139,9 @@ def _message(item: object, channel_id: str) -> Message:
     if not isinstance(item.get("content"), str) or type(item.get("type")) is not int:
         raise ValueError("Discord returned a message without content or type")
     try:
-        timestamp = datetime.fromisoformat(item["timestamp"].replace("Z", "+00:00"))
-        if timestamp.tzinfo is None:
-            raise ValueError("timestamp timezone required")
-        timestamp = timestamp.astimezone(UTC)
+        timestamp = _message_timestamp(item["timestamp"])
         edited = item.get("edited_timestamp")
-        edited_timestamp = (
-            datetime.fromisoformat(edited.replace("Z", "+00:00")) if edited is not None else None
-        )
-        if edited_timestamp is not None:
-            if edited_timestamp.tzinfo is None:
-                raise ValueError("edited timestamp timezone required")
-            edited_timestamp = edited_timestamp.astimezone(UTC)
+        edited_timestamp = _message_timestamp(edited) if edited is not None else None
     except (ValueError, TypeError, AttributeError) as error:
         raise ValueError("Discord returned a message without a valid timestamp") from error
     if not isinstance(author.get("username", ""), str) or type(author.get("bot", False)) is not bool:
@@ -162,6 +155,16 @@ def _message(item: object, channel_id: str) -> Message:
         edited_timestamp,
         item["type"],
     )
+
+
+def _message_timestamp(value: str) -> datetime:
+    """Parse an RFC 3339 timestamp in UTC, reading one without an offset as UTC like the Go connector."""
+    if _ZONELESS_TIMESTAMP.fullmatch(value) is not None:
+        return datetime.fromisoformat(value).replace(tzinfo=UTC)
+    timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if timestamp.tzinfo is None:
+        raise ValueError("timestamp timezone required")
+    return timestamp.astimezone(UTC)
 
 
 def _page(body: bytes, channel_id: str, limit: int) -> MessagePage:
@@ -551,12 +554,10 @@ class CreateMessageOperation:
             exchange = await fence.dispatch(send)
         except (CheckpointError, InsufficientAttemptTimeError):
             return _create_message_retry(FailureKind.AVAILABILITY, "Discord dispatch was not started")
-        except TimeoutError:
-            # The write window cut the exchange; a status seen at headers still classifies it.
+        except Exception:
+            # The write window or any failure cut the exchange; a status seen at headers still counts.
             status = observed_statuses[-1] if observed_statuses else 0
             exchange = FencedExchange(status, read_error="read" if status else "request")
-        except Exception:
-            exchange = FencedExchange(read_error="request")
         return await _classify_create_message(
             self.client,
             call,
@@ -683,8 +684,9 @@ async def _read_back_message(
 ) -> MutationAttempt[Message]:
     """Read an accepted message by ID and select created when Discord returns it.
 
-    An unknown result retries only when the ID is checkpointed for the next attempt; a definite
-    refusal, such as 404 or a missing Read Message History permission, selects uncertain.
+    Only a transport or read failure, an oversized body, 408, 429, or 5xx retries, and only when
+    the ID is checkpointed for the next attempt. Every other answer, such as a complete but
+    unusable 2xx, 404, or a missing Read Message History permission, selects uncertain.
     """
     receipt = client.receipt(call, message_id)
     failure = _failure(
@@ -716,10 +718,9 @@ async def _read_back_message(
             message = None
         if message is not None and message.id == message_id:
             return MutationAttempt.branch_result(CREATED, message, receipt)
-        failure = _failure(
-            "createMessage",
-            FailureKind.PROTOCOL,
-            "Discord accepted the message, but its read-back answer is invalid",
+        # A complete unusable answer will not change on a retry, and a failed Flow invites a duplicate.
+        return _create_message_uncertain(
+            FailureKind.PROTOCOL, "Discord accepted the message, but its read-back answer is invalid", receipt
         )
     elif exchange.status_code and not 200 <= exchange.status_code < 300:
         response = ProviderResponse(exchange.status_code, exchange.headers, exchange.body)
@@ -729,7 +730,8 @@ async def _read_back_message(
             classified.kind,
             "Discord accepted the message, but reading it back failed: " + classified.message,
         )
-        if not exchange.read_error and exchange.status_code in _REFUSAL_STATUSES:
+        is_transient_status = exchange.status_code in (408, 429) or exchange.status_code >= 500
+        if not exchange.read_error and not is_transient_status:
             return MutationAttempt.uncertain(Message(), failure, receipt)
     if is_message_id_saved:
         return MutationAttempt.retry(failure, delay)

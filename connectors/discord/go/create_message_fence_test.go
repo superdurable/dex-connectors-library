@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/discord/go"
@@ -302,23 +303,49 @@ func TestCreateMessageUnknownReadBackRetriesWithTheSavedMessageIDAndNeverResends
 	}
 }
 
-func TestCreateMessageDefiniteReadBackRefusalSelectsUncertain(t *testing.T) {
+func TestCreateMessageTransientReadBackAnswersRetryWithTheSavedMessageID(t *testing.T) {
+	for name, readBack := range map[string]scriptedResponse{
+		"timeout status": {http.StatusRequestTimeout, `{}`},
+		"rate limit":     {http.StatusTooManyRequests, `{"retry_after":0.5}`},
+		"oversized 2xx":  {http.StatusOK, messageJSON(testMessageID, strings.Repeat("x", 2000))},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newReadBackDiscord(t, nil, readBack)
+			client := newTestClient(t, provider.URL, discord.Config{MaxResponseBytes: 512})
+			ctx := singledispatchtest.NewContext("announcement-flow", "post")
+			_, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput)
+			requireRetry(t, err)
+			require.Equal(t, testMessageID, lastCreateMessageMarker(t, ctx).ProviderID)
+			requireOnePostThenReadBacks(t, provider.recordedRequests(), 1)
+		})
+	}
+}
+
+func TestCreateMessageZonelessTimestampIsReadAsUTC(t *testing.T) {
+	body := strings.Replace(messageJSON(testMessageID, "Release @everyone"), "2026-10-13T20:00:00.123000+00:00", "2026-10-13T20:00:00.123000", 1)
+	provider := newScriptedDiscord(t, scriptedResponse{http.StatusOK, body})
+	client := newTestClient(t, provider.URL, discord.Config{})
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("announcement-flow", "post"), client.CreateMessage(), discordConnection, fencedCreateMessageInput)
+	require.NoError(t, err)
+	require.Equal(t, discord.CreateMessageBranchCreated, result.Branch)
+	require.Equal(t, "2026-10-13T20:00:00.123Z", result.Value.Timestamp.Format(time.RFC3339Nano))
+	require.Len(t, provider.recordedRequests(), 1)
+}
+
+func TestCreateMessageFinalReadBackAnswerSelectsUncertain(t *testing.T) {
 	for name, readBack := range map[string]scriptedResponse{
 		"unknown message":         {http.StatusNotFound, `{"code":10008}`},
 		"missing message history": {http.StatusForbidden, `{"code":50001}`},
-		"contradicting message":   {http.StatusOK, messageJSON("998877665544332212", "Release @everyone")},
+		"unlisted status":         {http.StatusConflict, `{"code":0}`},
+		// A complete 2xx does not change on a retry, so an unusable one is final.
+		"contradicting message": {http.StatusOK, messageJSON("998877665544332212", "Release @everyone")},
+		"incomplete message":    {http.StatusOK, incompleteAcceptedMessageJSON},
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newReadBackDiscord(t, nil, readBack)
 			client := newTestClient(t, provider.URL, discord.Config{})
 			ctx := singledispatchtest.NewContext("announcement-flow", "post")
 			result, err := sdkgo.RunMutation(ctx, client.CreateMessage(), discordConnection, fencedCreateMessageInput)
-			if readBack.status == http.StatusOK {
-				// A contradicting answer is unknown, and the saved ID keeps the next attempt reading back.
-				requireRetry(t, err)
-				requireOnePostThenReadBacks(t, provider.recordedRequests(), 1)
-				return
-			}
 			require.NoError(t, err)
 			require.Equal(t, discord.CreateMessageBranchUncertain, result.Branch)
 			require.Equal(t, testMessageID, result.Receipt.ProviderObjectID)

@@ -271,17 +271,33 @@ describe('Discord read-back of an accepted message', () => {
 
   it.each([
     { name: 'unknown message', answer: { status: 404, body: '{"code":10008}' } },
-    { name: 'missing message history', answer: { status: 403, body: '{"code":50001}' } },
-  ])('selects uncertain for a definite read-back refusal ($name)', async ({ answer }) => {
+    { name: 'missing message history 403', answer: { status: 403, body: '{"code":50001}' } },
+    { name: 'unlisted status', answer: { status: 409, body: '{"code":0}' } },
+    // A complete 2xx does not change on a retry, so an unusable one is final.
+    { name: 'contradicting message', answer: { status: 200, body: created.body.replace(`"id":"${messageId}"`, '"id":"998877665544332212"') } },
+    { name: 'incomplete message', answer: incompleteAccepted },
+  ])('selects uncertain for a final read-back answer ($name)', async ({ answer }) => {
     const { client, requests } = newReadBackClient([answer]);
     expect(await create(client, new AttemptContext())).toMatchObject({ branch: 'uncertain', receipt: { providerObjectId: messageId } });
     expectOnePostThenReadBacks(requests, 1);
   });
 
-  it('retries a contradicting read-back with the saved ID', async () => {
-    const contradicting = { status: 200, body: created.body.replace(`"id":"${messageId}"`, '"id":"998877665544332212"') };
-    const { client, requests } = newReadBackClient([contradicting]);
-    expect(await create(client, new AttemptContext())).toBeInstanceOf(RetryError);
+  it.each([
+    { name: 'timeout status', answer: { status: 408, body: '{}' } },
+    { name: 'rate limit', answer: { status: 429, body: '{"retry_after":0.5}' } },
+    { name: 'oversized error body', answer: { status: 404, body: JSON.stringify({ code: 10008, message: 'x'.repeat(65_536) }) } },
+  ])('retries a transient read-back answer ($name) with the saved ID', async ({ answer }) => {
+    const { client, requests } = newReadBackClient([answer]);
+    const context = new AttemptContext();
+    expect(await create(client, context)).toBeInstanceOf(RetryError);
+    expect(JSON.stringify(context.marker)).toContain(`"providerId":"${messageId}"`);
+    expectOnePostThenReadBacks(requests, 1);
+  });
+
+  it('reads a read-back timestamp without an offset as UTC and selects created', async () => {
+    const zoneless = { status: 200, body: created.body.replace('2026-10-13T20:00:00.123000+00:00', '2026-10-13T20:00:00.123') };
+    const { client, requests } = newReadBackClient([zoneless]);
+    expect(await create(client, new AttemptContext())).toMatchObject({ branch: 'created', value: { id: messageId, timestamp: '2026-10-13T20:00:00.123Z' } });
     expectOnePostThenReadBacks(requests, 1);
   });
 

@@ -85,10 +85,17 @@ selects `uncertain`. A 2xx whose body parses but is not a valid message selects
 `uncertain` unless it carries a valid snowflake `id`. With such an ID, the
 operation checkpoints it and reads the message back with
 `GET /channels/{channel}/messages/{id}`. A matching message selects `created`.
-An unknown read-back result retries, and the next attempt reads back the saved ID
-again without sending. If the ID could not be checkpointed, that result selects
-`uncertain` instead. A read-back refusal, such as 404 Unknown Message or a
-missing Read Message History permission, selects `uncertain`. A 429, a 503, or a request that never left the process retries and never
+A transient read-back failure (a lost connection, a broken or oversized body,
+408, 429, or 5xx) retries, and the next attempt reads back the saved ID again
+without sending; if the retry budget runs out first, the Flow fails. If the ID
+could not be checkpointed, that failure selects `uncertain` instead. Every other
+read-back answer selects `uncertain`: a complete 2xx that is not the matching
+message, 404 Unknown Message, a missing Read Message History permission, or any
+other status. This differs from Gmail, whose Sent Mail search selects
+`uncertain` at the send cap instead of retrying. A timestamp without an offset
+is read as UTC. One residual risk remains: a Worker lost between the 2xx and the
+message ID checkpoint leaves only the claim, so the next attempt resends with
+the same nonce, still within the send cap, because nothing proves the first POST. A 429, a 503, or a request that never left the process retries and never
 selects `uncertain` on its own. A definite refusal of the first send selects `notFound` or
 `providerRejected` and is never resent; the same refusal after an earlier
 possible send selects `uncertain`. An application sets the cap, from 1 to 10,

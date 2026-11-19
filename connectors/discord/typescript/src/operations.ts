@@ -179,9 +179,10 @@ export class CreateMessageOperation implements Mutation<CreateMessageInput, Mess
   }
 
   /**
-   * Read an accepted message by ID and select created when Discord returns it. An unknown result retries
-   * only when the ID is checkpointed for the next attempt; a definite refusal, such as 404 or a missing
-   * Read Message History permission, selects uncertain.
+   * Read an accepted message by ID and select created when Discord returns it. Only a transport or read
+   * failure, an oversized body, 408, 429, or 5xx retries, and only when the ID is checkpointed for the next
+   * attempt. Every other answer, such as a complete but unusable 2xx, 404, or a missing Read Message History
+   * permission, selects uncertain.
    */
   private async readBackMessage(call: Call, token: string, channelId: string, messageId: string, isMessageIdSaved: boolean): Promise<MutationAttempt<Message>> {
     const receipt = this.client.receipt(call, messageId);
@@ -195,12 +196,14 @@ export class CreateMessageOperation implements Mutation<CreateMessageInput, Mess
       let message: Message | undefined;
       try { message = decodeMessage(decodeObject(exchange.body), channelId); } catch { message = undefined; }
       if (message?.id === messageId) return newMutationBranch('created', message, receipt);
-      failure = { ...failure, kind: 'PROTOCOL', message: 'Discord accepted the message, but its read-back answer is invalid' };
+      // A complete answer that is unusable will not change on a retry, and a failed Flow invites a duplicate.
+      return createMessageUncertain('PROTOCOL', 'Discord accepted the message, but its read-back answer is invalid', receipt);
     } else if (exchange.status !== 0 && !isSuccess) {
       const classified = this.client.classifyErrorResponse('createMessage', { status: exchange.status, headers: exchange.headers, body: exchange.body }, receipt);
       failure = { ...classified.failure, message: `Discord accepted the message, but reading it back failed: ${classified.failure.message}` };
       retryAfterMs = classified.retryAfterMs;
-      if (!exchange.error && refusalStatuses.has(exchange.status)) return newMutationUncertain(zeroMessage, failure, receipt);
+      const isTransientStatus = exchange.status === 408 || exchange.status === 429 || exchange.status >= 500;
+      if (!exchange.error && !isTransientStatus) return newMutationUncertain(zeroMessage, failure, receipt);
     }
     if (isMessageIdSaved) return newMutationRetry(failure, retryAfterMs);
     return newMutationUncertain(zeroMessage, failure, receipt);
@@ -325,6 +328,8 @@ function decodeMessage(value: unknown, channelId: string): Message {
     content: body.content, timestamp, type: body.type as number, ...(editedTimestamp ? { editedTimestamp } : {}) };
 }
 function decodeTime(value: unknown): string {
+  // Discord means a timestamp without an offset as UTC, as the Go connector reads it.
+  if (typeof value === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?$/.test(value)) value = `${value}Z`;
   if (typeof value !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value)) throw new Error('invalid timestamp');
   const parts = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(?:\.(\d+))?(Z|[+-](\d\d):(\d\d))$/.exec(value);
   if (!parts) throw new Error('invalid timestamp');

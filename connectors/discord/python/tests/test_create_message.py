@@ -344,8 +344,18 @@ async def test_unknown_read_back_retries_with_the_saved_message_id_and_never_res
     assert_one_post_then_read_backs(requests, 3)
 
 
-@pytest.mark.parametrize("answer", [(404, {"code": 10008}), (403, {"code": 50001})])
-async def test_definite_read_back_refusal_selects_uncertain(answer: tuple[int, object]) -> None:
+@pytest.mark.parametrize(
+    "answer",
+    [
+        (404, {"code": 10008}),
+        (403, {"code": 50001}),
+        (409, {"code": 0}),
+        # A complete 2xx does not change on a retry, so an unusable one is final.
+        (200, CREATED_BODY | {"id": "998877665544332212"}),
+        (200, INCOMPLETE_ACCEPTED_BODY),
+    ],
+)
+async def test_final_read_back_answer_selects_uncertain(answer: tuple[int, object]) -> None:
     requests: list[httpx.Request] = []
     result = await create(read_back(answer), AttemptContext(), requests)
     assert is_branch(result, "uncertain")
@@ -353,10 +363,18 @@ async def test_definite_read_back_refusal_selects_uncertain(answer: tuple[int, o
     assert_one_post_then_read_backs(requests, 1)
 
 
-async def test_contradicting_read_back_retries_with_the_saved_message_id() -> None:
+@pytest.mark.parametrize(
+    ("answer", "max_response_bytes"),
+    [((408, {}), 0), ((429, {"retry_after": 0.5}), 0), ((200, CREATED_BODY | {"content": "x" * 2000}), 512)],
+)
+async def test_transient_read_back_answer_retries_with_the_saved_message_id(
+    answer: tuple[int, object], max_response_bytes: int
+) -> None:
     requests: list[httpx.Request] = []
-    answer = read_back((200, CREATED_BODY | {"id": "998877665544332212"}))
-    assert isinstance(await create(answer, AttemptContext(), requests), RetryError)
+    context = AttemptContext()
+    result = await create(read_back(answer), context, requests, max_response_bytes=max_response_bytes)
+    assert isinstance(result, RetryError)
+    assert context.marker is not None and context.marker.provider_id == MESSAGE_ID
     assert_one_post_then_read_backs(requests, 1)
 
 
@@ -410,10 +428,45 @@ async def test_transient_credential_failure_retries_without_sending() -> None:
     assert requests == []
 
 
-async def test_message_timestamp_without_timezone_reads_the_message_back() -> None:
-    """Reject a provider timestamp that Go's RFC3339 decoder rejects, then read the message back by its ID."""
+async def test_message_timestamp_without_timezone_reads_as_utc() -> None:
+    """Read a provider timestamp without an offset as UTC, as the Go connector does."""
     requests: list[httpx.Request] = []
-    body = CREATED_BODY | {"timestamp": "2026-10-13T20:00:00"}
-    answer: Answer = lambda request: (200, body if request.method == "POST" else CREATED_BODY)  # noqa: E731
-    assert is_branch(await create(answer, AttemptContext(), requests), "created")
-    assert [request.method for request in requests] == ["POST", "GET"]
+    body = CREATED_BODY | {"timestamp": "2026-10-13T20:00:00.123"}
+    result = await create(lambda _: (200, body), AttemptContext(), requests)
+    assert is_branch(result, "created")
+    assert isinstance(result, MutationResult)
+    assert result.value.timestamp == datetime(2026, 10, 13, 20, 0, 0, 123000, tzinfo=UTC)
+    assert len(requests) == 1
+
+
+async def test_read_back_timestamp_without_timezone_selects_created() -> None:
+    """A read-back whose timestamp has no offset converts as UTC, so the matching message is created."""
+    requests: list[httpx.Request] = []
+    read_back_body = CREATED_BODY | {"timestamp": "2026-10-13T20:00:00"}
+    result = await create(read_back((200, read_back_body)), AttemptContext(), requests)
+    assert is_branch(result, "created")
+    assert isinstance(result, MutationResult) and result.value.id == MESSAGE_ID
+    assert_one_post_then_read_backs(requests, 1)
+
+
+class FailingCloseStream(httpx.AsyncByteStream):
+    """Send a complete body, then fail while the response closes."""
+
+    def __init__(self, content: bytes) -> None:
+        self.content = content
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield self.content
+
+    async def aclose(self) -> None:
+        raise RuntimeError("connection reset while closing")
+
+
+async def test_unrelated_failure_after_an_observed_2xx_is_accepted_and_never_resent() -> None:
+    """An exception after the 2xx status arrived keeps that status, so the message is not posted again."""
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    answer: Answer = lambda _: (200, FailingCloseStream(json.dumps(CREATED_BODY).encode()))  # noqa: E731
+    result = await create(answer, context, requests)
+    assert is_branch(result, "uncertain")
+    assert len(requests) == 1

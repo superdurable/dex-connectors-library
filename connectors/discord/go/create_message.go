@@ -195,8 +195,9 @@ func (operation CreateMessageOperation) readBackSavedMessage(call sdkgo.Call, ch
 }
 
 // readBackMessage reads an accepted message by ID and selects created when Discord returns it.
-// An unknown result retries only when the ID is checkpointed for the next attempt; a definite
-// refusal, such as 404 or a missing Read Message History permission, selects uncertain.
+// Only a transport or read failure, an oversized body, 408, 429, or 5xx retries, and only when the
+// ID is checkpointed for the next attempt. Every other answer, such as a complete but unusable 2xx,
+// 404, or a missing Read Message History permission, selects uncertain.
 func (operation CreateMessageOperation) readBackMessage(call sdkgo.Call, credentials Credentials, channelID string, messageID string, isMessageIDSaved bool) sdkgo.MutationAttempt[Message] {
 	receipt := operation.client.receipt(call, messageID)
 	response, err := operation.client.send(call, credentials, providerRequest{method: http.MethodGet, path: "/channels/" + channelID + "/messages/" + messageID})
@@ -214,12 +215,13 @@ func (operation CreateMessageOperation) readBackMessage(call sdkgo.Call, credent
 		if convertErr == nil && message.ID == messageID {
 			return sdkgo.NewMutationBranch(CreateMessageBranchCreated, message, nil, receipt)
 		}
-		failure = providerFailure("createMessage", sdkgo.FailureProtocol, "Discord accepted the message, but its read-back answer is invalid")
+		// A complete answer that is unusable will not change on a retry, and a failed Flow invites a duplicate.
+		return uncertainCreateMessage(sdkgo.FailureProtocol, "Discord accepted the message, but its read-back answer is invalid", receipt)
 	case response.statusCode != 0 && (response.statusCode < 200 || response.statusCode >= 300):
 		classified := classifyErrorResponse("createMessage", response, operation.client.now())
 		failure, retryAfter = classified.failure, classified.retryAfter
 		failure.Message = "Discord accepted the message, but reading it back failed: " + failure.Message
-		if err == nil && !response.isErrorBodyOversized && isRefusalStatus(response.statusCode) {
+		if err == nil && !response.isErrorBodyOversized && !isTransientReadBackStatus(response.statusCode) {
 			return sdkgo.NewMutationUncertain(Message{}, failure, receipt)
 		}
 	}
@@ -281,6 +283,11 @@ func resendOrSelectUncertain(canResendUnknownOutcome bool, kind sdkgo.FailureKin
 		return retryCreateMessage(kind, message, retryAfter)
 	}
 	return uncertainCreateMessage(kind, message, receipt)
+}
+
+// isTransientReadBackStatus reports a read-back status that a later attempt may answer differently.
+func isTransientReadBackStatus(statusCode int) bool {
+	return statusCode == http.StatusRequestTimeout || statusCode == http.StatusTooManyRequests || statusCode >= 500
 }
 
 // isRefusalStatus allowlists request refusals; 408, 409, 429, and unlisted 4xx keep the claim.
