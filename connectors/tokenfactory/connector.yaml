@@ -8,11 +8,10 @@ metadata:
   categories: [ai]
   version: v0.1.0
 spec:
-  languages:
-    typescript: {version: v0.1.0, operations: [getBalance], triggers: []}
   provider: tokenfactory
   languages:
     python: {version: v0.1.0, operations: [getBalance], triggers: []}
+    typescript: {version: v0.1.0, operations: [getBalance], triggers: []}
   codegen:
     go:
       package: tokenfactory
