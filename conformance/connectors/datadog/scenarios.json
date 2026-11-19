@@ -2,6 +2,1643 @@
   "connector": "datadog",
   "scenarios": [
     {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{\"id\":12345,\"name\":\"Dex latency alert\",\"type\":\"metric alert\",\"overall_state\":\"OK\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "providerId": "12345",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 12345,
+          "name": "Dex latency alert",
+          "overall_state": "OK",
+          "type": "metric alert"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-success",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[\"bad query\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-provider-rejected",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-defect",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-rate-limit",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-unavailable",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-server-error",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-transport",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{\"id\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "name": "createMonitor-invalid-response",
+      "operation": "createMonitor"
+    },
+    {
+      "attempts": 2,
+      "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/monitor",
+          "requestBody": {
+            "message": "Investigate CPU usage",
+            "name": "Dex latency alert",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9",
+            "type": "metric alert"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+      "input": {
+        "message": "Investigate CPU usage",
+        "name": "Dex latency alert",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.9"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2c256fd5-f1bd-5915-9efd-c2fd8480ce06",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createMonitor-uncertain-after-cap",
+      "operation": "createMonitor"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "getMonitor-notFound",
+      "operation": "getMonitor"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "getMonitor-rejected",
+      "operation": "getMonitor"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":12346}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "getMonitor-invalidResponse",
+      "operation": "getMonitor"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "monitorId": 0
+      },
+      "name": "getMonitor-defect",
+      "operation": "getMonitor"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "getMonitor-rateLimit",
+      "operation": "getMonitor"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "getMonitor-serverError",
+      "operation": "getMonitor"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "getMonitor-serverUnavailable",
+      "operation": "getMonitor"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "getMonitor-transportFailure",
+      "operation": "getMonitor"
+    },
+    {
+      "callId": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/monitor/12345",
+          "requestBody": {
+            "message": "Please investigate",
+            "name": "Meridian API latency",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "input": {
+        "message": "Please investigate",
+        "monitorId": 12345,
+        "name": "Meridian API latency",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+      },
+      "name": "updateMonitor-notFound",
+      "operation": "updateMonitor"
+    },
+    {
+      "callId": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/monitor/12345",
+          "requestBody": {
+            "message": "Please investigate",
+            "name": "Meridian API latency",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "input": {
+        "message": "Please investigate",
+        "monitorId": 12345,
+        "name": "Meridian API latency",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+      },
+      "name": "updateMonitor-rejected",
+      "operation": "updateMonitor"
+    },
+    {
+      "callId": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "exchanges": [
+        {
+          "body": "{\"id\":12346}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/monitor/12345",
+          "requestBody": {
+            "message": "Please investigate",
+            "name": "Meridian API latency",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "input": {
+        "message": "Please investigate",
+        "monitorId": 12345,
+        "name": "Meridian API latency",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+      },
+      "name": "updateMonitor-invalidResponse",
+      "operation": "updateMonitor"
+    },
+    {
+      "callId": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "overall_state": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "input": {
+        "monitorId": 0
+      },
+      "name": "updateMonitor-defect",
+      "operation": "updateMonitor"
+    },
+    {
+      "callId": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/monitor/12345",
+          "requestBody": {
+            "message": "Please investigate",
+            "name": "Meridian API latency",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "input": {
+        "message": "Please investigate",
+        "monitorId": 12345,
+        "name": "Meridian API latency",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+      },
+      "name": "updateMonitor-rateLimit",
+      "operation": "updateMonitor"
+    },
+    {
+      "callId": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/monitor/12345",
+          "requestBody": {
+            "message": "Please investigate",
+            "name": "Meridian API latency",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "input": {
+        "message": "Please investigate",
+        "monitorId": 12345,
+        "name": "Meridian API latency",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+      },
+      "name": "updateMonitor-serverError",
+      "operation": "updateMonitor"
+    },
+    {
+      "callId": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/monitor/12345",
+          "requestBody": {
+            "message": "Please investigate",
+            "name": "Meridian API latency",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "input": {
+        "message": "Please investigate",
+        "monitorId": 12345,
+        "name": "Meridian API latency",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+      },
+      "name": "updateMonitor-serverUnavailable",
+      "operation": "updateMonitor"
+    },
+    {
+      "callId": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/monitor/12345",
+          "requestBody": {
+            "message": "Please investigate",
+            "name": "Meridian API latency",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "input": {
+        "message": "Please investigate",
+        "monitorId": 12345,
+        "name": "Meridian API latency",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+      },
+      "name": "updateMonitor-transportFailure",
+      "operation": "updateMonitor"
+    },
+    {
+      "callId": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "monitorId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "deleteMonitor-notFound",
+      "operation": "deleteMonitor"
+    },
+    {
+      "callId": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "monitorId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "deleteMonitor-rejected",
+      "operation": "deleteMonitor"
+    },
+    {
+      "callId": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "exchanges": [
+        {
+          "body": "{\"deleted_monitor_id\":12346}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "monitorId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "deleteMonitor-invalidResponse",
+      "operation": "deleteMonitor"
+    },
+    {
+      "callId": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "monitorId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "input": {
+        "monitorId": 0
+      },
+      "name": "deleteMonitor-defect",
+      "operation": "deleteMonitor"
+    },
+    {
+      "callId": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "deleteMonitor-rateLimit",
+      "operation": "deleteMonitor"
+    },
+    {
+      "callId": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "deleteMonitor-serverError",
+      "operation": "deleteMonitor"
+    },
+    {
+      "callId": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "deleteMonitor-serverUnavailable",
+      "operation": "deleteMonitor"
+    },
+    {
+      "callId": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "deleteMonitor-transportFailure",
+      "operation": "deleteMonitor"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":12345,\"name\":\"Meridian API latency\",\"type\":\"metric alert\",\"overall_state\":\"OK\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 12345,
+          "name": "Meridian API latency",
+          "overall_state": "OK",
+          "type": "metric alert"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "getMonitor-found",
+      "operation": "getMonitor"
+    },
+    {
+      "callId": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "exchanges": [
+        {
+          "body": "{\"id\":12345,\"name\":\"Meridian API latency\",\"type\":\"metric alert\",\"overall_state\":\"OK\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/monitor/12345",
+          "requestBody": {
+            "message": "Please investigate",
+            "name": "Meridian API latency",
+            "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 12345,
+          "name": "Meridian API latency",
+          "overall_state": "OK",
+          "type": "metric alert"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fa6ca704-495a-59bb-8ad8-dd0027b893e7",
+      "input": {
+        "message": "Please investigate",
+        "monitorId": 12345,
+        "name": "Meridian API latency",
+        "query": "avg(last_5m):avg:system.cpu.user{*} \u003e 0.8"
+      },
+      "name": "updateMonitor-updated",
+      "operation": "updateMonitor"
+    },
+    {
+      "callId": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "exchanges": [
+        {
+          "body": "{\"deleted_monitor_id\":12345}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/monitor/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "monitorId": 12345
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0ce29c4c-a5a8-5f5f-9cc8-4c8182c56e68",
+      "input": {
+        "monitorId": 12345
+      },
+      "name": "deleteMonitor-deleted",
+      "operation": "deleteMonitor"
+    },
+    {
       "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {

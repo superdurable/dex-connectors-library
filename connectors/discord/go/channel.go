@@ -79,6 +79,17 @@ func decodeChannel(body []byte, channelID string) (Channel, error) {
 	if err := decodeResponse(body, &decoded); err != nil {
 		return Channel{}, err
 	}
+	return decodeChannelItemWithID(decoded, channelID)
+}
+
+func decodeChannelItem(item providerChannel) (Channel, error) {
+	return decodeChannelItemWithID(item, item.ID)
+}
+
+func decodeChannelItemWithID(decoded providerChannel, channelID string) (Channel, error) {
+	if err := validateSnowflake("channelId", decoded.ID); err != nil {
+		return Channel{}, err
+	}
 	if decoded.ID != channelID {
 		return Channel{}, errors.New("Discord returned a different channel than requested")
 	}

@@ -8,7 +8,8 @@ import { DeelClient } from '../src/client.js';
 import { GetContractInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/deel/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/deel/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getContract');
 const connection = { provider: 'deel', name: 'deel' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeDeel, '/api'));
 

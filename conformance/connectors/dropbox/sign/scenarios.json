@@ -288,6 +288,3527 @@
       },
       "name": "getSignatureRequest-transportFailure",
       "operation": "getSignatureRequest"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000701",
+      "exchanges": [
+        {
+          "body": "{\"signature_requests\":[{\"signature_request_id\":\"fa5c8a0b0f492d768749333ad6fcc214c111e967\",\"title\":\"Agreement\",\"is_complete\":false,\"is_declined\":false,\"has_error\":false,\"signatures\":[{\"signer_email_address\":\"private@example.com\"}]}],\"list_info\":{\"page\":2,\"num_pages\":3,\"page_size\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/list",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "1"
+            ],
+            "query": [
+              "title:Agreement"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 2,
+          "requests": [
+            {
+              "hasError": false,
+              "id": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+              "isComplete": false,
+              "isDeclined": false,
+              "title": "Agreement"
+            }
+          ],
+          "totalPages": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 1,
+        "query": "title:Agreement"
+      },
+      "name": "listSignatureRequests-success",
+      "operation": "listSignatureRequests"
+    },
+    {
+      "callId": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "exchanges": [
+        {
+          "body": "{\"signature_request\":{\"signature_request_id\":\"fa5c8a0b0f492d768749333ad6fcc214c111e967\",\"signatures\":[{\"signer_email_address\":\"private@example.com\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/update/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2lnbmF0dXJlLTE=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"signature_id\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QWRhIExvdmVsYWNl",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "updated": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "input": {
+        "name": "Ada Lovelace",
+        "signatureId": "signature-1",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "updateSignerName-success",
+      "operation": "updateSignerName"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000702",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "requests": [],
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSignatureRequests-providerRejected",
+      "operation": "listSignatureRequests"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000703",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "requests": [],
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSignatureRequests-invalidResponse",
+      "operation": "listSignatureRequests"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000704",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "requests": [],
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "listSignatureRequests-defect",
+      "operation": "listSignatureRequests"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000705",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSignatureRequests-rateLimit",
+      "operation": "listSignatureRequests"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000706",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSignatureRequests-serverUnavailable",
+      "operation": "listSignatureRequests"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000707",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSignatureRequests-transportFailure",
+      "operation": "listSignatureRequests"
+    },
+    {
+      "callId": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/update/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2lnbmF0dXJlLTE=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"signature_id\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QWRhIExvdmVsYWNl",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "signatureRequestId": "",
+          "updated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "input": {
+        "name": "Ada Lovelace",
+        "signatureId": "signature-1",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "updateSignerName-notFound",
+      "operation": "updateSignerName"
+    },
+    {
+      "callId": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/update/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2lnbmF0dXJlLTE=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"signature_id\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QWRhIExvdmVsYWNl",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "signatureRequestId": "",
+          "updated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "input": {
+        "name": "Ada Lovelace",
+        "signatureId": "signature-1",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "updateSignerName-providerRejected",
+      "operation": "updateSignerName"
+    },
+    {
+      "callId": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/update/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2lnbmF0dXJlLTE=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"signature_id\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QWRhIExvdmVsYWNl",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "signatureRequestId": "",
+          "updated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "input": {
+        "name": "Ada Lovelace",
+        "signatureId": "signature-1",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "updateSignerName-invalidResponse",
+      "operation": "updateSignerName"
+    },
+    {
+      "callId": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "signatureRequestId": "",
+          "updated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "input": {
+        "name": "Ada Lovelace",
+        "signatureId": "signature-1",
+        "signatureRequestId": ""
+      },
+      "name": "updateSignerName-defect",
+      "operation": "updateSignerName"
+    },
+    {
+      "callId": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/update/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2lnbmF0dXJlLTE=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"signature_id\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QWRhIExvdmVsYWNl",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "input": {
+        "name": "Ada Lovelace",
+        "signatureId": "signature-1",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "updateSignerName-rateLimit",
+      "operation": "updateSignerName"
+    },
+    {
+      "callId": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/update/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2lnbmF0dXJlLTE=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"signature_id\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QWRhIExvdmVsYWNl",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "input": {
+        "name": "Ada Lovelace",
+        "signatureId": "signature-1",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "updateSignerName-serverUnavailable",
+      "operation": "updateSignerName"
+    },
+    {
+      "callId": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/update/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "c2lnbmF0dXJlLTE=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"signature_id\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "QWRhIExvdmVsYWNl",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"name\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0f5e9756-1228-5b91-bc49-28f1e0ea096f",
+      "input": {
+        "name": "Ada Lovelace",
+        "signatureId": "signature-1",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "updateSignerName-transportFailure",
+      "operation": "updateSignerName"
+    },
+    {
+      "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "exchanges": [
+        {
+          "body": "{\"signature_request\":{\"signature_request_id\":\"fa5c8a0b0f492d768749333ad6fcc214c111e967\",\"title\":\"Example agreement\",\"is_complete\":false,\"is_declined\":false,\"has_error\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send",
+          "requestBody": {
+            "file_urls": [
+              "https://example.com/agreement.pdf"
+            ],
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace"
+              }
+            ],
+            "subject": "Please sign",
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+          "providerId": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hasError": false,
+          "id": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": "Example agreement"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "input": {
+        "fileUrls": [
+          "https://example.com/agreement.pdf"
+        ],
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace"
+          }
+        ],
+        "subject": "Please sign",
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequest-success",
+      "operation": "sendSignatureRequest"
+    },
+    {
+      "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send",
+          "requestBody": {
+            "file_urls": [
+              "https://example.com/agreement.pdf"
+            ],
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace"
+              }
+            ],
+            "subject": "Please sign",
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "input": {
+        "fileUrls": [
+          "https://example.com/agreement.pdf"
+        ],
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace"
+          }
+        ],
+        "subject": "Please sign",
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequest-rejected",
+      "operation": "sendSignatureRequest"
+    },
+    {
+      "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "input": {
+        "fileUrls": [
+          "http://example.com/agreement.pdf"
+        ],
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace"
+          }
+        ],
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequest-defect",
+      "operation": "sendSignatureRequest"
+    },
+    {
+      "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send",
+          "requestBody": {
+            "file_urls": [
+              "https://example.com/agreement.pdf"
+            ],
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace"
+              }
+            ],
+            "subject": "Please sign",
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "input": {
+        "fileUrls": [
+          "https://example.com/agreement.pdf"
+        ],
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace"
+          }
+        ],
+        "subject": "Please sign",
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequest-429",
+      "operation": "sendSignatureRequest"
+    },
+    {
+      "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send",
+          "requestBody": {
+            "file_urls": [
+              "https://example.com/agreement.pdf"
+            ],
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace"
+              }
+            ],
+            "subject": "Please sign",
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "input": {
+        "fileUrls": [
+          "https://example.com/agreement.pdf"
+        ],
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace"
+          }
+        ],
+        "subject": "Please sign",
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequest-503",
+      "operation": "sendSignatureRequest"
+    },
+    {
+      "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send",
+          "requestBody": {
+            "file_urls": [
+              "https://example.com/agreement.pdf"
+            ],
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace"
+              }
+            ],
+            "subject": "Please sign",
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "input": {
+        "fileUrls": [
+          "https://example.com/agreement.pdf"
+        ],
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace"
+          }
+        ],
+        "subject": "Please sign",
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequest-500",
+      "operation": "sendSignatureRequest"
+    },
+    {
+      "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send",
+          "requestBody": {
+            "file_urls": [
+              "https://example.com/agreement.pdf"
+            ],
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace"
+              }
+            ],
+            "subject": "Please sign",
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "input": {
+        "fileUrls": [
+          "https://example.com/agreement.pdf"
+        ],
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace"
+          }
+        ],
+        "subject": "Please sign",
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequest-transport",
+      "operation": "sendSignatureRequest"
+    },
+    {
+      "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "exchanges": [
+        {
+          "body": "{\"signature_request\":{\"signature_request_id\":\"fa5c8a0b0f492d768749333ad6fcc214c111e967\",\"title\":\"Example agreement\",\"is_complete\":false,\"is_declined\":false,\"has_error\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send_with_template",
+          "requestBody": {
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace",
+                "role": "Client"
+              }
+            ],
+            "subject": "Please sign",
+            "template_ids": [
+              "template-1"
+            ],
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+          "providerId": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hasError": false,
+          "id": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": "Example agreement"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "input": {
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace",
+            "role": "Client"
+          }
+        ],
+        "subject": "Please sign",
+        "templateIds": [
+          "template-1"
+        ],
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequestWithTemplate-success",
+      "operation": "sendSignatureRequestWithTemplate"
+    },
+    {
+      "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send_with_template",
+          "requestBody": {
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace",
+                "role": "Client"
+              }
+            ],
+            "subject": "Please sign",
+            "template_ids": [
+              "template-1"
+            ],
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "input": {
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace",
+            "role": "Client"
+          }
+        ],
+        "subject": "Please sign",
+        "templateIds": [
+          "template-1"
+        ],
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequestWithTemplate-rejected",
+      "operation": "sendSignatureRequestWithTemplate"
+    },
+    {
+      "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "input": {
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace",
+            "role": "Client"
+          }
+        ],
+        "templateIds": []
+      },
+      "name": "sendSignatureRequestWithTemplate-defect",
+      "operation": "sendSignatureRequestWithTemplate"
+    },
+    {
+      "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send_with_template",
+          "requestBody": {
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace",
+                "role": "Client"
+              }
+            ],
+            "subject": "Please sign",
+            "template_ids": [
+              "template-1"
+            ],
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "input": {
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace",
+            "role": "Client"
+          }
+        ],
+        "subject": "Please sign",
+        "templateIds": [
+          "template-1"
+        ],
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequestWithTemplate-429",
+      "operation": "sendSignatureRequestWithTemplate"
+    },
+    {
+      "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send_with_template",
+          "requestBody": {
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace",
+                "role": "Client"
+              }
+            ],
+            "subject": "Please sign",
+            "template_ids": [
+              "template-1"
+            ],
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "input": {
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace",
+            "role": "Client"
+          }
+        ],
+        "subject": "Please sign",
+        "templateIds": [
+          "template-1"
+        ],
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequestWithTemplate-503",
+      "operation": "sendSignatureRequestWithTemplate"
+    },
+    {
+      "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send_with_template",
+          "requestBody": {
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace",
+                "role": "Client"
+              }
+            ],
+            "subject": "Please sign",
+            "template_ids": [
+              "template-1"
+            ],
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "input": {
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace",
+            "role": "Client"
+          }
+        ],
+        "subject": "Please sign",
+        "templateIds": [
+          "template-1"
+        ],
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequestWithTemplate-500",
+      "operation": "sendSignatureRequestWithTemplate"
+    },
+    {
+      "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/send_with_template",
+          "requestBody": {
+            "message": "Please review",
+            "signers": [
+              {
+                "email_address": "ada@example.com",
+                "name": "Ada Lovelace",
+                "role": "Client"
+              }
+            ],
+            "subject": "Please sign",
+            "template_ids": [
+              "template-1"
+            ],
+            "test_mode": true,
+            "title": "Example agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "input": {
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace",
+            "role": "Client"
+          }
+        ],
+        "subject": "Please sign",
+        "templateIds": [
+          "template-1"
+        ],
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequestWithTemplate-transport",
+      "operation": "sendSignatureRequestWithTemplate"
+    },
+    {
+      "callId": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/cancel/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queued",
+        "failureKind": "",
+        "output": {
+          "queued": true,
+          "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "cancelIncompleteSignatureRequest-success",
+      "operation": "cancelIncompleteSignatureRequest"
+    },
+    {
+      "callId": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/cancel/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "queued": false,
+          "signatureRequestId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "cancelIncompleteSignatureRequest-notFound",
+      "operation": "cancelIncompleteSignatureRequest"
+    },
+    {
+      "callId": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/cancel/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "queued": false,
+          "signatureRequestId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "cancelIncompleteSignatureRequest-rejected",
+      "operation": "cancelIncompleteSignatureRequest"
+    },
+    {
+      "callId": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "queued": false,
+          "signatureRequestId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "input": {
+        "signatureRequestId": ""
+      },
+      "name": "cancelIncompleteSignatureRequest-defect",
+      "operation": "cancelIncompleteSignatureRequest"
+    },
+    {
+      "callId": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/cancel/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "cancelIncompleteSignatureRequest-429",
+      "operation": "cancelIncompleteSignatureRequest"
+    },
+    {
+      "callId": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/cancel/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "cancelIncompleteSignatureRequest-503",
+      "operation": "cancelIncompleteSignatureRequest"
+    },
+    {
+      "callId": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/cancel/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "cancelIncompleteSignatureRequest-500",
+      "operation": "cancelIncompleteSignatureRequest"
+    },
+    {
+      "callId": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/cancel/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "506329fe-c6b9-5796-8d79-d3e4c13676b3",
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "cancelIncompleteSignatureRequest-transport",
+      "operation": "cancelIncompleteSignatureRequest"
+    },
+    {
+      "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "exchanges": [
+        {
+          "body": "{\"signature_request\":{\"signature_request_id\":\"fa5c8a0b0f492d768749333ad6fcc214c111e967\",\"title\":\"Example agreement\",\"is_complete\":false,\"is_declined\":false,\"has_error\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/remind/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "email_address": "ada@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "reminded",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hasError": false,
+          "id": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": "Example agreement"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "remindSignatureRequest-success",
+      "operation": "remindSignatureRequest"
+    },
+    {
+      "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/remind/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "email_address": "ada@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "remindSignatureRequest-rejected",
+      "operation": "remindSignatureRequest"
+    },
+    {
+      "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "input": {
+        "emailAddress": "bad",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "remindSignatureRequest-defect",
+      "operation": "remindSignatureRequest"
+    },
+    {
+      "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/remind/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "email_address": "ada@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "remindSignatureRequest-429",
+      "operation": "remindSignatureRequest"
+    },
+    {
+      "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/remind/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "email_address": "ada@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "remindSignatureRequest-503",
+      "operation": "remindSignatureRequest"
+    },
+    {
+      "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/remind/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "email_address": "ada@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "remindSignatureRequest-500",
+      "operation": "remindSignatureRequest"
+    },
+    {
+      "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/signature_request/remind/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestBody": {
+            "email_address": "ada@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "remindSignatureRequest-transport",
+      "operation": "remindSignatureRequest"
+    },
+    {
+      "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "input": {
+        "fileUrls": [
+          "https://example.com/agreement.pdf"
+        ],
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace"
+          }
+        ],
+        "subject": "Please sign",
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequest-uncertain-cap",
+      "operation": "sendSignatureRequest",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "exchanges": [
+        {
+          "body": "{\"signature_request\":{\"signature_request_id\":\"fa5c8a0b0f492d768749333ad6fcc214c111e967\",\"title\":\"Example agreement\",\"is_complete\":false,\"is_declined\":false,\"has_error\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "hasError": false,
+          "id": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": "Example agreement"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+      "input": {
+        "fileUrls": [
+          "https://example.com/agreement.pdf"
+        ],
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace"
+          }
+        ],
+        "subject": "Please sign",
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequest-read-back",
+      "operation": "sendSignatureRequest",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
+          "providerId": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "input": {
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace",
+            "role": "Client"
+          }
+        ],
+        "subject": "Please sign",
+        "templateIds": [
+          "template-1"
+        ],
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequestWithTemplate-uncertain-cap",
+      "operation": "sendSignatureRequestWithTemplate",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "exchanges": [
+        {
+          "body": "{\"signature_request\":{\"signature_request_id\":\"fa5c8a0b0f492d768749333ad6fcc214c111e967\",\"title\":\"Example agreement\",\"is_complete\":false,\"is_declined\":false,\"has_error\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "hasError": false,
+          "id": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": "Example agreement"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+      "input": {
+        "message": "Please review",
+        "signers": [
+          {
+            "emailAddress": "ada@example.com",
+            "name": "Ada Lovelace",
+            "role": "Client"
+          }
+        ],
+        "subject": "Please sign",
+        "templateIds": [
+          "template-1"
+        ],
+        "testMode": true,
+        "title": "Example agreement"
+      },
+      "name": "sendSignatureRequestWithTemplate-read-back",
+      "operation": "sendSignatureRequestWithTemplate",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
+          "providerId": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "remindSignatureRequest-uncertain-cap",
+      "operation": "remindSignatureRequest",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{\"templates\":[{\"template_id\":\"template-1\",\"title\":\"Example agreement\",\"signer_roles\":[{\"name\":\"Client\"}]}],\"list_info\":{\"page\":1,\"num_pages\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "query": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "templates": [
+            {
+              "id": "template-1",
+              "signerRoles": [
+                "Client"
+              ],
+              "title": "Example agreement"
+            }
+          ],
+          "totalPages": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20,
+        "query": "Example"
+      },
+      "name": "listTemplates-success",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "query": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "templates": [],
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20,
+        "query": "Example"
+      },
+      "name": "listTemplates-rejected",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "query": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "templates": [],
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20,
+        "query": "Example"
+      },
+      "name": "listTemplates-invalidResponse",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "templates": [],
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "listTemplates-defect",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "query": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20,
+        "query": "Example"
+      },
+      "name": "listTemplates-429",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "query": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20,
+        "query": "Example"
+      },
+      "name": "listTemplates-503",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "query": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20,
+        "query": "Example"
+      },
+      "name": "listTemplates-500",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/list",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "page_size": [
+              "20"
+            ],
+            "query": [
+              "Example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "pageSize": 20,
+        "query": "Example"
+      },
+      "name": "listTemplates-transport",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{\"template\":{\"template_id\":\"template-1\",\"title\":\"Example agreement\",\"signer_roles\":[{\"name\":\"Client\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "template-1",
+          "signerRoles": [
+            "Client"
+          ],
+          "title": "Example agreement"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "getTemplate-success",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "signerRoles": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "getTemplate-notFound",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "signerRoles": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "getTemplate-rejected",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "signerRoles": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "getTemplate-invalidResponse",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "signerRoles": [],
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateId": ""
+      },
+      "name": "getTemplate-defect",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "getTemplate-429",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "getTemplate-503",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "getTemplate-500",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/template/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "getTemplate-transport",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/template/delete/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "templateId": "template-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "deleteTemplate-success",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/template/delete/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "templateId": "template-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "deleteTemplate-notFound",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/template/delete/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "templateId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "deleteTemplate-rejected",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "templateId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "input": {
+        "templateId": ""
+      },
+      "name": "deleteTemplate-defect",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/template/delete/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "deleteTemplate-429",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/template/delete/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "deleteTemplate-503",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/template/delete/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "deleteTemplate-500",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/template/delete/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9064ae3a-565e-5ce6-a47a-1b49c5f5bf80",
+      "input": {
+        "templateId": "template-1"
+      },
+      "name": "deleteTemplate-transport",
+      "operation": "deleteTemplate"
     }
   ],
   "schemaVersion": 1
