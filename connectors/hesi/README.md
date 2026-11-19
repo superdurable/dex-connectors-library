@@ -11,3 +11,5 @@ Ask your Hesi implementation consultant to enable **开放接口(新)**. In Hesi
 ## Example
 
 The [department directory Flow](go/examples/department-directory/) is a runnable Worker with static Dex connection name `hesi`. Its mock is synthetic and verified with a real Dex Worker and Client. Live Hesi authorization, tenant origin selection, and department pagination remain unverified without an approved enterprise account.
+
+The [Python department directory Flow](python/examples/department_directory/) uses the same static `hesi` connection and `listDepartments` contract. Its Go-recorded replay and real Dex retry test use synthetic credentials and provider responses. Live Hesi enterprise authorization and department data remain unverified.
