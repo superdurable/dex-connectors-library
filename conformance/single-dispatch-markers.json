@@ -239,7 +239,7 @@
       ]
     },
     {
-      "name": "legacy own marker is ignored",
+      "name": "legacy own marker is read",
       "attempt": 2,
       "previousHeartbeat": {
         "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
@@ -251,14 +251,25 @@
           "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
           "maxSends": 1,
           "dispatch": true,
-          "decision": "readBackRequired",
-          "maximumPriorSends": 1
+          "decision": "sendAllowed",
+          "maximumPriorSends": 0
         }
       ],
-      "heartbeats": []
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 2,
+              "state": "claimed",
+              "sendCount": 1
+            }
+          }
+        }
+      ]
     },
     {
-      "name": "legacy own marker is ignored under bounded resend",
+      "name": "legacy own marker with a provider ID is read under bounded resend",
       "attempt": 2,
       "previousHeartbeat": {
         "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
@@ -271,9 +282,29 @@
         {
           "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
           "maxSends": 3,
+          "dispatch": false,
+          "decision": "readBackThenResendAllowed",
+          "maximumPriorSends": 1,
+          "decisionProviderId": "object-42"
+        }
+      ],
+      "heartbeats": []
+    },
+    {
+      "name": "legacy own claim without a count is read conservatively",
+      "attempt": 3,
+      "previousHeartbeat": {
+        "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+        "attempt": 2,
+        "state": "claimed"
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
           "dispatch": true,
           "decision": "readBackThenResendAllowed",
-          "maximumPriorSends": 1
+          "maximumPriorSends": 2
         }
       ],
       "heartbeats": [
@@ -281,9 +312,56 @@
           "singleDispatchMarkers": {
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 3,
+              "state": "claimed",
+              "sendCount": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "legacy own marker survives another call's heartbeat",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+        "attempt": 1,
+        "state": "claimed",
+        "providerId": "object-42",
+        "sendCount": 1
+      },
+      "calls": [
+        {
+          "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+          "maxSends": 3,
+          "dispatch": true,
+          "decision": "readBackThenResendAllowed",
+          "maximumPriorSends": 1
+        },
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
+          "dispatch": false,
+          "decision": "readBackThenResendAllowed",
+          "maximumPriorSends": 1,
+          "decisionProviderId": "object-42"
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+              "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
               "attempt": 2,
               "state": "claimed",
               "sendCount": 2
+            },
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 1,
+              "state": "claimed",
+              "providerId": "object-42",
+              "sendCount": 1
             }
           }
         }
@@ -309,6 +387,12 @@
       "heartbeats": [
         {
           "singleDispatchMarkers": {
+            "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+              "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+              "attempt": 1,
+              "state": "notSent",
+              "sendCount": 0
+            },
             "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
               "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
               "attempt": 2,

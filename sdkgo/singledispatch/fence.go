@@ -11,8 +11,10 @@
 // heartbeat a Fence records holds one Marker per Call ID the Step attempt knows: the
 // previous attempt's entries plus the entries recorded so far in this attempt. Decide reads
 // only its own Call ID's entry and treats an unreadable heartbeat or a missing entry as no
-// marker. This checkpoint format is internal to the connector SDKs and may change; hosts
-// must not parse it.
+// marker. A single Marker that an earlier release recorded as the whole heartbeat is read as
+// its Call ID's entry, keeping its state, provider ID, and send count, and later heartbeats
+// carry it forward in the map format. This checkpoint format is internal to the connector
+// SDKs and may change; hosts must not parse it.
 package singledispatch
 
 import (
@@ -200,9 +202,10 @@ func NewFence(call sdkgo.Call, executeTimeout time.Duration, options ...FenceOpt
 }
 
 // Decide reads this Call ID's entry in the last heartbeat before any credential or provider lookup.
-// A missing entry and an unreadable heartbeat, including a single Marker from an earlier
-// release, count as no marker: attempt one may send, and a later attempt assumes each
-// earlier attempt sent once. On a later attempt, a missing, stale, or claimed checkpoint forbids a send,
+// A single Marker from an earlier release counts as this call's entry when its Call ID matches;
+// a missing send count is read as Attempt for claimed and Attempt-1 otherwise. A missing entry,
+// a legacy Marker of another Call ID, and an unreadable heartbeat count as no marker: attempt
+// one may send, and a later attempt assumes each earlier attempt sent once. On a later attempt, a missing, stale, or claimed checkpoint forbids a send,
 // except that a WithMaxSends cap of 2 or more permits a read-back and resend while the
 // upper bound of earlier sends stays below the cap. A heartbeat read error and an own entry
 // with an impossible send count fail closed.

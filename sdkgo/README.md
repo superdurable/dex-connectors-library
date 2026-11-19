@@ -600,10 +600,10 @@ heartbeat that any Fence of the Step attempt records carries the Markers of
 all its calls: the previous attempt's entries plus those recorded so far in
 this attempt, so Fences never lose each other's entries. `Decide` reads only
 its own Call ID's entry. A missing entry, or a heartbeat it cannot read,
-including the single Marker that releases before v0.39.0 recorded, counts as
-no marker: attempt one may send, and a later attempt assumes that each earlier
-attempt sent once, which can only overcount. Only a heartbeat read error from
-Dex, and an own entry with an impossible send count, fail closed.
+counts as no marker: attempt one may send, and a later attempt assumes that
+each earlier attempt sent once, which can only overcount. Only a heartbeat
+read error from Dex, and an own entry with an impossible send count, fail
+closed.
 
 Each call has its own Call ID even when one Step calls the same operation
 twice. `RunQuery`, `RunMutation`, and agent tools count the calls of each
@@ -649,10 +649,16 @@ replay. Under HTTP/1.1, a prepared bodyless POST, PUT, or PATCH uses
 migrating that endpoint.
 An HTTP request used by the fence is single-use.
 
-An in-flight call whose previous attempt recorded a marker from before v0.39.0
-is decided as if no marker exists, so after attempt one it reads back or, with
-bounded resend, may resend while the attempt-count bound stays below the cap.
-Releases before v0.39.0 fail closed on the new checkpoint format.
+Releases before v0.39.0 recorded one Marker as the whole heartbeat. When that
+Marker's Call ID equals the call's ID, `Decide` reads it as the call's entry
+and keeps its state and provider ID, so a redeployed Worker never resends a
+write that the earlier release recorded as accepted. A missing send count is
+read as the Marker's attempt for `claimed` and the attempt minus one
+otherwise. Later heartbeats carry that entry forward in the map format, even
+when another Call ID's Fence records first. A legacy Marker of another Call ID,
+and any other unreadable value, still counts as no marker. Fences always write
+the map format. Releases before v0.39.0 fail closed on the new checkpoint
+format.
 
 ### Bounded resend for `repeatOnUnknown: limited`
 

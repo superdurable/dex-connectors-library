@@ -39,6 +39,8 @@ type checkpointScenarioCall struct {
 	ProviderID        string       `json:"providerId,omitempty"`
 	Decision          string       `json:"decision"`
 	MaximumPriorSends int32        `json:"maximumPriorSends"`
+	// DecisionProviderID is the provider ID of the prior marker the decision read.
+	DecisionProviderID string `json:"decisionProviderId,omitempty"`
 }
 
 const (
@@ -100,14 +102,24 @@ func recordCheckpointScenarios(t *testing.T) []checkpointScenario {
 			calls:    []checkpointScenarioCall{call(conformanceCallB, 1, true), call(conformanceCallA, 1, true)},
 		},
 		{
-			name: "legacy own marker is ignored", attempt: 2,
+			name: "legacy own marker is read", attempt: 2,
 			previous: Marker{CallID: conformanceCallA, Attempt: 1, State: StateNotSent},
 			calls:    []checkpointScenarioCall{call(conformanceCallA, 1, true)},
 		},
 		{
-			name: "legacy own marker is ignored under bounded resend", attempt: 2,
+			name: "legacy own marker with a provider ID is read under bounded resend", attempt: 2,
 			previous: Marker{CallID: conformanceCallA, Attempt: 1, State: StateClaimed, ProviderID: "object-42", SendCount: 1},
+			calls:    []checkpointScenarioCall{call(conformanceCallA, 3, false)},
+		},
+		{
+			name: "legacy own claim without a count is read conservatively", attempt: 3,
+			previous: Marker{CallID: conformanceCallA, Attempt: 2, State: StateClaimed},
 			calls:    []checkpointScenarioCall{call(conformanceCallA, 3, true)},
+		},
+		{
+			name: "legacy own marker survives another call's heartbeat", attempt: 2,
+			previous: Marker{CallID: conformanceCallA, Attempt: 1, State: StateClaimed, ProviderID: "object-42", SendCount: 1},
+			calls:    []checkpointScenarioCall{call(conformanceCallB, 3, true), call(conformanceCallA, 3, false)},
 		},
 		{
 			name: "legacy foreign marker is ignored", attempt: 2,
@@ -172,6 +184,7 @@ func recordCheckpointScenarios(t *testing.T) []checkpointScenario {
 			decision := fence.Decide()
 			scenarioCall.Decision = conformanceDecisionName(t, decision.Kind)
 			scenarioCall.MaximumPriorSends = decision.MaximumPriorSends
+			scenarioCall.DecisionProviderID = decision.Marker.ProviderID
 			if scenarioCall.Dispatch && isSendDecision(decision.Kind) {
 				require.NoError(t, fence.Dispatch(func(context.Context) error { return nil }), scenario.name)
 				if scenarioCall.ProviderID != "" {

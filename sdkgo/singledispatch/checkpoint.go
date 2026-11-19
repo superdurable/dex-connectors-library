@@ -92,10 +92,16 @@ func previousAttemptMarkers(ctx dex.Context) map[sdkgo.CallID]Marker {
 	return markersFromHeartbeat(heartbeat)
 }
 
-// markersFromHeartbeat drops unreadable or mis-keyed entries; any non-map value, legacy Markers included, yields none.
+// markersFromHeartbeat drops unreadable or mis-keyed entries; a legacy single Marker becomes, and carries forward as, its Call ID's entry.
 func markersFromHeartbeat(heartbeat any) map[sdkgo.CallID]Marker {
 	markers := map[sdkgo.CallID]Marker{}
 	fields, _ := heartbeat.(map[string]any)
+	if _, hasMap := fields[checkpointMarkersField]; !hasMap {
+		if legacyMarker, isMarker := markerFromValue(heartbeat); isMarker {
+			markers[legacyMarker.CallID] = legacyMarker
+		}
+		return markers
+	}
 	entries, _ := fields[checkpointMarkersField].(map[string]any)
 	for callID, entry := range entries {
 		if marker, isMarker := markerFromValue(entry); isMarker && string(marker.CallID) == callID {

@@ -92,7 +92,6 @@ func TestBoundedResendReadsBackProviderIDBeforeResending(t *testing.T) {
 func TestBoundedResendIgnoresForeignOrUnreadableMarkers(t *testing.T) {
 	for name, checkpoint := range map[string]any{
 		"foreign":                 singledispatch.Marker{CallID: "call-2", Attempt: 1, State: singledispatch.StateNotSent},
-		"legacy own marker":       singledispatch.Marker{CallID: "call-1", Attempt: 2, State: singledispatch.StateNotSent},
 		"unknown state":           map[string]any{"callId": "call-1", "attempt": 1, "state": "unknown"},
 		"negative count":          map[string]any{"callId": "call-1", "attempt": 2, "state": "claimed", "sendCount": -1},
 		"count of the wrong type": map[string]any{"callId": "call-1", "attempt": 1, "state": "claimed", "sendCount": "1"},
@@ -114,6 +113,69 @@ func TestBoundedResendIgnoresForeignOrUnreadableMarkers(t *testing.T) {
 			require.Equal(t, int32(2), decision.MaximumPriorSends, "no marker assumes each earlier attempt sent")
 		})
 	}
+}
+
+func TestDecideReadsLegacyOwnMarker(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		checkpoint          any
+		maxSends            int32
+		wantKind            singledispatch.DecisionKind
+		wantPriorSends      int32
+		wantProviderID      string
+		wantMarkerSendCount int32
+	}{
+		"immediate notSent permits the send": {
+			checkpoint: singledispatch.Marker{CallID: "call-1", Attempt: 2, State: singledispatch.StateNotSent, SendCount: 1},
+			maxSends:   1, wantKind: singledispatch.SendAllowed, wantPriorSends: 1, wantMarkerSendCount: 1,
+		},
+		"accepted claim keeps its provider ID": {
+			checkpoint: singledispatch.Marker{CallID: "call-1", Attempt: 2, State: singledispatch.StateClaimed, ProviderID: "object-1", SendCount: 1},
+			maxSends:   3, wantKind: singledispatch.ReadBackThenResendAllowed, wantPriorSends: 1, wantProviderID: "object-1", wantMarkerSendCount: 1,
+		},
+		"accepted claim at cap one requires read-back": {
+			checkpoint: singledispatch.Marker{CallID: "call-1", Attempt: 2, State: singledispatch.StateClaimed, ProviderID: "object-1", SendCount: 1},
+			maxSends:   1, wantKind: singledispatch.ReadBackRequired, wantPriorSends: 1, wantProviderID: "object-1", wantMarkerSendCount: 1,
+		},
+		"claim without a count counts its attempt": {
+			checkpoint: map[string]any{"callId": "call-1", "attempt": 2, "state": "claimed"},
+			maxSends:   3, wantKind: singledispatch.ReadBackThenResendAllowed, wantPriorSends: 2, wantMarkerSendCount: 2,
+		},
+		"stale canResend without a count excludes its own send": {
+			checkpoint: map[string]any{"callId": "call-1", "attempt": 1, "state": "canResend"},
+			maxSends:   2, wantKind: singledispatch.ReadBackThenResendAllowed, wantPriorSends: 1, wantMarkerSendCount: 0,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := contextAtAttempt(t, 3, nil)
+			require.NoError(t, ctx.SetPersistedCheckpoint(testCase.checkpoint))
+			decision := newCappedFence(t, ctx, testCase.maxSends).Decide()
+			require.Equal(t, testCase.wantKind, decision.Kind)
+			require.NoError(t, decision.Err)
+			require.Equal(t, sdkgo.CallID("call-1"), decision.Marker.CallID)
+			require.Equal(t, testCase.wantPriorSends, decision.MaximumPriorSends)
+			require.Equal(t, testCase.wantProviderID, decision.Marker.ProviderID)
+			require.Equal(t, testCase.wantMarkerSendCount, decision.Marker.SendCount)
+		})
+	}
+}
+
+func TestLegacyOwnMarkerSurvivesAnotherCallsHeartbeat(t *testing.T) {
+	ctx := contextAtAttempt(t, 2, nil)
+	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{
+		CallID: "call-1", Attempt: 1, State: singledispatch.StateClaimed, ProviderID: "object-1", SendCount: 1,
+	}))
+	other, err := singledispatch.NewFence(sdkgo.Call{Context: ctx, ID: "call-2"}, time.Second, singledispatch.WithMaxSends(3))
+	require.NoError(t, err)
+	require.Equal(t, singledispatch.ReadBackThenResendAllowed, other.Decide().Kind)
+	require.NoError(t, other.Dispatch(func(context.Context) error { return nil }))
+	// call-1 reads back and records nothing in attempt two.
+	require.Equal(t, "object-1", newCappedFence(t, ctx, 3).Decide().Marker.ProviderID)
+
+	ctx.AdvanceAttempt()
+	decision := newCappedFence(t, ctx, 3).Decide()
+	require.Equal(t, singledispatch.ReadBackThenResendAllowed, decision.Kind)
+	require.Equal(t, "object-1", decision.Marker.ProviderID)
+	require.Equal(t, int32(2), decision.MaximumPriorSends)
 }
 
 func TestBoundedResendFailsClosedOnImpossibleOwnMarkers(t *testing.T) {
