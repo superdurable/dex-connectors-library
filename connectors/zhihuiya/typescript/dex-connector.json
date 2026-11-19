@@ -1,0 +1,65 @@
+{
+  "connectorId": "zhihuiya",
+  "releaseTag": "connectors/zhihuiya/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-zhihuiya",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetPatentValuationStep",
+      "kind": "query",
+      "operationId": "getPatentValuation",
+      "inputType": "GetPatentValuationInput",
+      "description": "Read provider valuation metrics for one patent publication number.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "noData",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPatentValuationInput identifies one patent by its publication number.",
+        "properties": {
+          "publicationNumber": {
+            "description": "PublicationNumber is the patent publication number, for example JP6012277B2.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publicationNumber"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

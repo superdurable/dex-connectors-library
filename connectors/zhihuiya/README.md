@@ -9,3 +9,5 @@ The [runnable Dex example](go/examples/get-patent-valuation/) uses a synthetic m
 ## Python
 
 The `python/` package provides the `getPatentValuation` Query. Run its checked-in example from `python/examples/`.
+
+The [TypeScript package](typescript/README.md) implements `getPatentValuation` with a [runnable Dex Flow](typescript/examples/patent-valuation/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.
