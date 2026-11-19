@@ -1,0 +1,312 @@
+{
+  "connector": "lixinger",
+  "scenarios": [
+    {
+      "callId": "ba11e02d-d542-5a26-9f5c-4838065aaa94",
+      "exchanges": [
+        {
+          "body": "{\"code\":1,\"message\":\"success\",\"data\":[{\"stockCode\":\"300750\",\"name\":\"宁德时代\",\"exchange\":\"sz\",\"listingStatus\":\"normally_listed\",\"ipoDate\":\"2018-06-11\",\"finance\":\"private\"},{\"stockCode\":\"600519\",\"name\":\"贵州茅台\",\"exchange\":\"sh\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/cn/company",
+          "requestBody": {
+            "stockCodes": [
+              "300750",
+              "600519"
+            ],
+            "token": "private-test-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "companies": [
+            {
+              "exchange": "sz",
+              "listingStatus": "normally_listed",
+              "name": "宁德时代",
+              "stockCode": "300750"
+            },
+            {
+              "exchange": "sh",
+              "listingStatus": "",
+              "name": "贵州茅台",
+              "stockCode": "600519"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "stockCodes": [
+          "300750",
+          "600519"
+        ]
+      },
+      "name": "listStockCompanies-listed",
+      "operation": "listStockCompanies"
+    },
+    {
+      "callId": "db6d5294-b9b7-564b-95fc-e542a3352ea3",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"message\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/cn/company",
+          "requestBody": {
+            "stockCodes": [
+              "300750",
+              "600519"
+            ],
+            "token": "private-test-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "companies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "stockCodes": [
+          "300750",
+          "600519"
+        ]
+      },
+      "name": "listStockCompanies-providerRejected",
+      "operation": "listStockCompanies"
+    },
+    {
+      "callId": "ad0f1287-707f-5cbe-8111-55676e5d0591",
+      "exchanges": [
+        {
+          "body": "{\"code\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/cn/company",
+          "requestBody": {
+            "stockCodes": [
+              "300750",
+              "600519"
+            ],
+            "token": "private-test-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "companies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "stockCodes": [
+          "300750",
+          "600519"
+        ]
+      },
+      "name": "listStockCompanies-invalidResponse",
+      "operation": "listStockCompanies"
+    },
+    {
+      "callId": "a61d55eb-f595-52ac-b166-bd872a02ce04",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/cn/company",
+          "requestBody": {
+            "stockCodes": [
+              "300750",
+              "600519"
+            ],
+            "token": "private-test-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "stockCodes": [
+          "300750",
+          "600519"
+        ]
+      },
+      "name": "listStockCompanies-rateLimit",
+      "operation": "listStockCompanies"
+    },
+    {
+      "callId": "25ef60c8-972f-5425-9d34-aa57fb2b7a07",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/cn/company",
+          "requestBody": {
+            "stockCodes": [
+              "300750",
+              "600519"
+            ],
+            "token": "private-test-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "stockCodes": [
+          "300750",
+          "600519"
+        ]
+      },
+      "name": "listStockCompanies-serverError",
+      "operation": "listStockCompanies"
+    },
+    {
+      "callId": "7c77e233-fedd-5616-b638-3241559e6550",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "companies": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "stockCodes": [
+          "ABCDEF"
+        ]
+      },
+      "name": "listStockCompanies-defect",
+      "operation": "listStockCompanies"
+    },
+    {
+      "callId": "534c4f12-e2f8-5cc8-853f-624a1c66f42d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/cn/company",
+          "requestBody": {
+            "stockCodes": [
+              "300750",
+              "600519"
+            ],
+            "token": "private-test-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "stockCodes": [
+          "300750",
+          "600519"
+        ]
+      },
+      "name": "listStockCompanies-transport",
+      "operation": "listStockCompanies"
+    }
+  ],
+  "schemaVersion": 1
+}
