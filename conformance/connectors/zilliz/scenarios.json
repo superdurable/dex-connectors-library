@@ -1,0 +1,371 @@
+{
+  "connector": "zilliz",
+  "scenarios": [
+    {
+      "callId": "0cdf56c8-945c-5ad7-a987-ca0978a442d0",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"count\":2,\"clusters\":[{\"clusterId\":\"inxx-example\",\"clusterName\":\"example-cluster\",\"regionId\":\"aws-us-west-2\",\"plan\":\"Enterprise\",\"status\":\"RUNNING\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "clusters": [
+            {
+              "clusterID": "inxx-example",
+              "name": "example-cluster",
+              "plan": "Enterprise",
+              "regionID": "aws-us-west-2",
+              "status": "RUNNING"
+            }
+          ],
+          "total": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-found",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "98003b26-c942-53b6-855d-30776641de77",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"count\":0,\"clusters\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-empty",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "a6902be6-2cf5-516c-ba07-6c56fc56dbcd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-providerRejected",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "89654ed4-8bf6-5160-8b65-0fa765953cda",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-invalidResponse",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "983187da-93e6-517b-9ac6-e7affbd6fa71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-retry429",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "b89366f5-6761-5059-8bf2-bc9d8ca961ca",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-retry503",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "8942c098-7709-5e26-b92c-8a832edaa2cc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-transport",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "b7e62ecf-417a-5a9f-a482-bdc21c8a7850",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/clusters",
+          "query": {
+            "currentPage": [
+              "1"
+            ],
+            "pageSize": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-oversized",
+      "operation": "listClusters"
+    },
+    {
+      "callId": "f7f480cf-c9f6-5adb-afb2-055ea03961c4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "clusters": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClusters-defect",
+      "operation": "listClusters"
+    }
+  ],
+  "schemaVersion": 1
+}
