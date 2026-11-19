@@ -5,3 +5,5 @@ This Go connector lists warehouse codes, names, and countries authorized for a Y
 `ListWarehouses` sends a JSON `POST` to `/hwc_api/hwc_storage_list.php` at the tenant's assigned HTTPS production origin, with the secret token in the request body. The [official warehouse contract](https://szy.kjwlxt.com/hwc_openapi_docs/?page=storage_list) defines the request and response; the [onboarding guide](https://szy.kjwlxt.com/hwc_openapi_docs/?page=overview) says customer service supplies the production domain and token. The documentation host serves a sandbox and is not a production default. HTTP 429, 5xx, and transport failures retry; definite provider rejection fails the Flow.
 
 The [runnable Dex Flow](go/examples/warehouse-list/README.md) shows setup and typed output. The logo embeds the [official Yijingtong site logo](https://www.kjwlxt.com/themes/default/images/logo.png) unchanged. Live authorization and production warehouse responses remain unverified.
+
+The TypeScript package under [`typescript/`](typescript/) implements `listWarehouses` with a runnable Dex Flow, Go-recorded conformance replay, and a real Dex integration test.
