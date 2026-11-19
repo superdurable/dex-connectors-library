@@ -8,6 +8,8 @@ metadata:
   categories: [developer-tools]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-oppo", operations: [getPushQuota], triggers: []}
   provider: oppo
   codegen:
     go:
