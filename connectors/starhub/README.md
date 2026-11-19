@@ -7,3 +7,7 @@ Register at [StarHub Ai](https://www.starhubc.com), open the console's **API Key
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "starhub"`. Run the worker with `go run .` from its directory, then start `StarHubModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [developer docs](https://www.starhubc.com/docs), [service terms](https://www.starhubc.com/terms). Real provider authorization is not verified without a customer-controlled Key.
+
+## Python
+
+The first Python package release is `v0.1.0`. See the [Python README](python/README.md) and its runnable Flow for the operation contract and local Dex verification.
