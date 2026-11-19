@@ -411,8 +411,7 @@ export interface TransitionTicketInput {
    * compared without case. */
   "transitionName"?: string | undefined;
   /** DestinationStatusName is the status the transition leads to, such as In Progress, compared without
-   * case. When the issue is already in it, no transition is performed. Set it whenever the destination
-   * is known: a retried Step then recognizes a transition Jira already made. */
+   * case. When the issue is already in it, no transition is performed. */
   "destinationStatusName"?: string | undefined;
   /** ResolutionName sets the resolution, such as Done, for a transition whose screen requires one;
    * blank sends no fields. Jira rejects it for a transition without a resolution field. */
@@ -439,7 +438,8 @@ export interface TransitionTicketOutput {
   "status": TicketStatus;
   /** Transition is the matched transition, or nil when none matched. */
   "transition"?: TransitionReference | undefined;
-  /** IsAlreadyInDestinationStatus reports that the issue was already in the destination, so nothing was sent. */
+  /** IsAlreadyInDestinationStatus reports that the issue was already in the destination, so this attempt
+   * sent nothing; on a retried Step an earlier attempt may have made the transition. */
   "isAlreadyInDestinationStatus"?: boolean | undefined;
   /** AvailableTransitions lists up to 50 transitions available from Status, set on transitionUnavailable. */
   "availableTransitions"?: Array<TransitionReference> | undefined;

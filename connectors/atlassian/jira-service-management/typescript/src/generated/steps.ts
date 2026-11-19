@@ -169,7 +169,7 @@ export interface TransitionTicketStepConfig<StepInput, OperationInput = Transiti
   transitioned: StepTarget<MutationResult<OperationOutput>>;
   /** The issue does not exist or the connection cannot browse it. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** No available transition from the request's current status matches, or several do; the Value lists the current status and the available transitions. */
+  /** No available transition from the request's current status matches, or several do, or on a retry the request is in neither the recorded source nor destination status; the Value lists the current status and the available transitions. */
   transitionUnavailable?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the transition, such as a required transition screen field or missing permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;

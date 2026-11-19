@@ -21,10 +21,13 @@ import (
 // workflowProvider fakes one request on a service desk workflow; postReply may replace a transition's reply.
 type workflowProvider struct {
 	*recordingProvider
-	mutex           sync.Mutex
-	statusID        string
-	transitionPosts int
-	postReply       func(http.ResponseWriter) bool
+	mutex               sync.Mutex
+	statusID            string
+	transitionPosts     int
+	postedTransitionIDs []string
+	postReply           func(http.ResponseWriter) bool
+	readReply           func(http.ResponseWriter) bool
+	extraTransitions    [][3]string
 }
 
 var workflowStatuses = map[string][2]string{
@@ -49,9 +52,13 @@ func (provider *workflowProvider) serveHTTP(response http.ResponseWriter, reques
 	require.True(t, strings.HasPrefix(request.URL.Path, testPlatformPrefix+"/issue/ITH-42"))
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
+	available := append(append([][3]string(nil), workflowTransitions[provider.statusID]...), provider.extraTransitions...)
 	if request.Method == http.MethodGet {
+		if provider.readReply != nil && provider.readReply(response) {
+			return
+		}
 		var transitions []string
-		for _, transition := range workflowTransitions[provider.statusID] {
+		for _, transition := range available {
 			destination := workflowStatuses[transition[2]]
 			transitions = append(transitions, fmt.Sprintf(`{"id":%q,"name":%q,"to":{"id":%q,"name":%q,"statusCategory":{"key":%q}}}`,
 				transition[0], transition[1], transition[2], destination[0], destination[1]))
@@ -68,7 +75,8 @@ func (provider *workflowProvider) serveHTTP(response http.ResponseWriter, reques
 		} `json:"transition"`
 	}
 	require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
-	for _, transition := range workflowTransitions[provider.statusID] {
+	provider.postedTransitionIDs = append(provider.postedTransitionIDs, body.Transition.ID)
+	for _, transition := range available {
 		if transition[0] == body.Transition.ID {
 			provider.statusID = transition[2]
 		}
@@ -108,17 +116,22 @@ func TestTransitionTicketListsTheAvailableTransitionsWhenNoneMatches(t *testing.
 	require.Zero(t, provider.transitionPosts)
 }
 
-func TestTransitionTicketReadsBackAnAmbiguousResponse(t *testing.T) {
+func TestTransitionTicketRetriesAnAmbiguousResponseAndRereadsFirst(t *testing.T) {
 	applied := newWorkflowProvider(t, "1")
 	applied.postReply = func(response http.ResponseWriter) bool {
 		writeJSON(t, response, http.StatusInternalServerError, `{"errorMessages":["SENTINEL internal"]}`)
 		return true
 	}
-	result, err := sdkgo.RunMutation(newTestDexContext("transition-ambiguous"), newTestClient(t, applied.URL).TransitionTicket(), jsmConnection,
-		jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionName: "start work"})
+	ctx := newTestDexContext("transition-ambiguous")
+	input := jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionName: "start work"}
+	_, err := runTransitionTicket(t, ctx, applied, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 2, applied.requestCount(), "read and transition, without a read back")
+	result, err := runTransitionTicket(t, ctx.nextAttempt(), applied, input)
 	require.NoError(t, err)
-	require.Equal(t, jiraservicemanagement.TransitionTicketBranchTransitioned, result.Branch, "the read-back found the move applied")
-	require.Equal(t, 3, applied.requestCount())
+	require.Equal(t, jiraservicemanagement.TransitionTicketBranchTransitioned, result.Branch, "the next attempt found the move applied")
+	require.True(t, result.Value.IsAlreadyInDestinationStatus)
+	require.Equal(t, 1, applied.transitionPosts)
 
 	rejected := newWorkflowProvider(t, "1")
 	rejected.postReply = func(response http.ResponseWriter) bool {
@@ -149,19 +162,60 @@ func unappliedReply(provider *workflowProvider, status int) func(http.ResponseWr
 	}
 }
 
-func TestTransitionTicketAfterAnUnknownOutcomeIsNeverSentAgain(t *testing.T) {
+func TestTransitionTicketRecordsItsCheckpointBeforeSending(t *testing.T) {
+	provider := newWorkflowProvider(t, "1")
+	provider.postReply = unappliedReply(provider, http.StatusBadGateway)
+	ctx := newTestDexContext("transition-checkpoint")
+	_, err := runTransitionTicket(t, ctx, provider, jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionName: "Start work"})
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	var checkpoint map[string]any
+	require.NoError(t, json.Unmarshal(ctx.recordedHeartbeat, &checkpoint))
+	require.NotEmpty(t, checkpoint["callId"])
+	delete(checkpoint, "callId")
+	require.Equal(t, map[string]any{
+		"attempt": float64(1), "transitionId": "11", "transitionName": "Start work", "sourceStatusId": "1", "destinationStatusId": "3",
+	}, checkpoint)
+
+	unwritten := newWorkflowProvider(t, "1")
+	rejecting := newTestDexContext("transition-checkpoint-unwritable")
+	rejecting.rejectsHeartbeat = true
+	_, err = runTransitionTicket(t, rejecting, unwritten, jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"})
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, unwritten.transitionPosts, "nothing is sent without a checkpoint")
+}
+
+func TestRetriedTransitionTicketStillInTheSourceResendsTheRecordedTransition(t *testing.T) {
 	provider := newWorkflowProvider(t, "1")
 	provider.postReply = unappliedReply(provider, http.StatusBadGateway)
 	input := jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionName: "Start work"}
-	ctx := newTestDexContext("transition-unknown")
+	ctx := newTestDexContext("transition-resend")
 	_, err := runTransitionTicket(t, ctx, provider, input)
 	requireRetry(t, err, sdkgo.FailureAvailability)
-	for range 2 {
-		ctx = ctx.nextAttempt()
-		_, err = runTransitionTicket(t, ctx, provider, input)
-		requireRetry(t, err, sdkgo.FailureAvailability)
-	}
-	require.Equal(t, 1, provider.transitionPosts, "a possible earlier transition is never sent again")
+	// A second transition with the same name would make selecting by name again ambiguous.
+	provider.extraTransitions = [][3]string{{"12", "Start work", "5"}}
+	provider.postReply = nil
+	result, err := runTransitionTicket(t, ctx.nextAttempt(), provider, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.TransitionTicketBranchTransitioned, result.Branch)
+	require.Equal(t, "In progress", result.Value.Status.Name)
+	require.Equal(t, []string{"11", "11"}, provider.postedTransitionIDs, "the retry sends the recorded transition ID")
+}
+
+func TestRetriedTransitionTicketMovedElsewhereIsUnavailableWithoutSending(t *testing.T) {
+	provider := newWorkflowProvider(t, "1")
+	provider.postReply = unappliedReply(provider, http.StatusBadGateway)
+	input := jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"}
+	ctx := newTestDexContext("transition-moved-elsewhere")
+	_, err := runTransitionTicket(t, ctx, provider, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	// An agent resolved the request meanwhile.
+	provider.statusID = "5"
+	result, err := runTransitionTicket(t, ctx.nextAttempt(), provider, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.TransitionTicketBranchTransitionUnavailable, result.Branch)
+	require.Equal(t, sdkgo.FailureConflict, result.Failure.Kind)
+	require.Equal(t, "Resolved", result.Value.Status.Name)
+	require.Equal(t, 1, provider.transitionPosts)
 }
 
 func TestRepeatedTransitionTicketRecognizesTheDestinationStatus(t *testing.T) {
@@ -179,16 +233,32 @@ func TestRepeatedTransitionTicketRecognizesTheDestinationStatus(t *testing.T) {
 	require.Equal(t, 1, provider.transitionPosts)
 }
 
-func TestRepeatedTransitionTicketNeverSelectsAFailureBranchAfterAPossibleSend(t *testing.T) {
-	for _, status := range []int{http.StatusNotFound, http.StatusForbidden} {
-		provider := newRecordingProvider(t, func(response http.ResponseWriter, _ *http.Request, _ int) { writeJSON(t, response, status, `{}`) })
-		// A later attempt without a checkpoint assumes the earlier one sent.
-		ctx := newTestDexContext("transition-repeat").nextAttempt()
-		_, err := sdkgo.RunMutation(ctx, newTestClient(t, provider.URL).TransitionTicket(), jsmConnection,
-			jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"})
-		var retry *sdkgo.RetryError
-		require.ErrorAs(t, err, &retry, "HTTP %d", status)
-		require.Equal(t, 1, provider.requestCount())
+func TestRetriedTransitionTicketReadFailures(t *testing.T) {
+	for _, test := range []struct {
+		status int
+		branch sdkgo.BranchID
+	}{
+		{status: http.StatusInternalServerError},
+		{status: http.StatusNotFound, branch: jiraservicemanagement.TransitionTicketBranchNotFound},
+	} {
+		provider := newWorkflowProvider(t, "1")
+		provider.postReply = unappliedReply(provider, http.StatusBadGateway)
+		input := jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"}
+		ctx := newTestDexContext("transition-retried-read")
+		_, err := runTransitionTicket(t, ctx, provider, input)
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		provider.readReply = func(response http.ResponseWriter) bool {
+			writeJSON(t, response, test.status, `{"errorMessages":["SENTINEL"]}`)
+			return true
+		}
+		result, err := runTransitionTicket(t, ctx.nextAttempt(), provider, input)
+		if test.branch == "" {
+			requireRetry(t, err, sdkgo.FailureAvailability)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, test.branch, result.Branch, "a definite read outcome stays definite")
+		}
+		require.Equal(t, 1, provider.transitionPosts, "HTTP %d sends nothing", test.status)
 	}
 }
 
@@ -210,9 +280,11 @@ func TestTransitionTicketRefusalWithAnUnreadableBodyIsUnknown(t *testing.T) {
 	ctx := newTestDexContext("transition-cut-refusal")
 	_, err := runTransitionTicket(t, ctx, provider, input)
 	requireRetry(t, err, sdkgo.FailureAvailability)
-	_, err = runTransitionTicket(t, ctx.nextAttempt(), provider, input)
-	requireRetry(t, err, sdkgo.FailureAvailability)
-	require.Equal(t, 1, provider.transitionPosts, "a cut refusal body cannot prove that nothing moved")
+	provider.postReply = nil
+	result, err := runTransitionTicket(t, ctx.nextAttempt(), provider, input)
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.TransitionTicketBranchTransitioned, result.Branch)
+	require.Equal(t, 2, provider.transitionPosts, "the request was still in its source status, so the transition was sent again")
 }
 
 func TestTransitionTicketRateLimitAllowsTheNextAttemptToSend(t *testing.T) {
@@ -287,12 +359,53 @@ func TestTransitionTicketCredentialFailuresFollowTheSendHistory(t *testing.T) {
 	result, err := sdkgo.RunMutation(newTestDexContext("credential-first"), newClient(true).TransitionTicket(), jsmConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, jiraservicemanagement.TransitionTicketBranchDefect, result.Branch, "a terminal failure before any send is a defect")
-	later, err := sdkgo.RunMutation(newTestDexContext("credential-later").nextAttempt(), newClient(true).TransitionTicket(), jsmConnection, input)
+	provider := newWorkflowProvider(t, "1")
+	provider.postReply = unappliedReply(provider, http.StatusBadGateway)
+	sent := newTestDexContext("credential-later")
+	_, err = runTransitionTicket(t, sent, provider, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	later, err := sdkgo.RunMutation(sent.nextAttempt(), newClient(true).TransitionTicket(), jsmConnection, input)
 	require.Empty(t, later.Branch, "a terminal failure after a possible send never selects a branch")
 	requireRetry(t, err, sdkgo.FailureAuthentication)
 	transient := newTestDexContext("credential-transient")
 	retried, err := sdkgo.RunMutation(transient, newClient(false).TransitionTicket(), jsmConnection, input)
 	require.Empty(t, retried.Branch, retried.Failure)
 	requireRetry(t, err, sdkgo.FailureAvailability)
-	require.Contains(t, string(transient.recordedHeartbeat), `"notSent"`, "a transient failure before any send records notSent")
+	require.Contains(t, string(transient.recordedHeartbeat), `"state":"notSent"`, "a transient failure before any send records notSent")
+}
+
+func TestRetriedTransitionTicketAfterALostCheckpointNeverSelectsAgain(t *testing.T) {
+	// Pending and Start work toggle, so selecting by name again would undo the move.
+	provider := newWorkflowProvider(t, "3")
+	provider.postReply = func(response http.ResponseWriter) bool {
+		writeJSON(provider.t, response, http.StatusBadGateway, `{}`)
+		return true
+	}
+	input := jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionName: "Pending"}
+	ctx := newTestDexContext("transition-lost-checkpoint")
+	_, err := runTransitionTicket(t, ctx, provider, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	// Jira applied the transition, and Dex lost the checkpoint.
+	provider.extraTransitions = [][3]string{{"22", "Pending", "3"}}
+	later := newTestDexContext("transition-lost-checkpoint")
+	later.attempt = 2
+	_, err = runTransitionTicket(t, later, provider, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 1, provider.transitionPosts, "a possible send without a checkpoint is never followed by another")
+
+	legacy := newTestDexContext("transition-legacy-not-sent")
+	legacy.attempt = 2
+	notSent := newWorkflowProvider(t, "1")
+	probe := newTestDexContext("transition-legacy-not-sent")
+	_, err = runTransitionTicket(t, probe, newWorkflowProvider(t, "5"), jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "51"})
+	require.NoError(t, err)
+	var probeCheckpoint struct {
+		CallID string `json:"callId"`
+	}
+	require.NoError(t, json.Unmarshal(probe.recordedHeartbeat, &probeCheckpoint))
+	legacy.previousHeartbeat = json.RawMessage(fmt.Sprintf(`{"singleDispatchMarkers":{%q:{"callId":%q,"attempt":1,"state":"canResend","sendCount":0}}}`, probeCheckpoint.CallID, probeCheckpoint.CallID))
+	result, err := runTransitionTicket(t, legacy, notSent, jiraservicemanagement.TransitionTicketInput{IssueIDOrKey: "ITH-42", TransitionID: "11"})
+	require.NoError(t, err)
+	require.Equal(t, jiraservicemanagement.TransitionTicketBranchTransitioned, result.Branch, "an earlier release's canResend marker allows a send")
+	require.Equal(t, 1, notSent.transitionPosts)
 }

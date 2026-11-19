@@ -342,22 +342,21 @@ spec:
       inputType: TransitionTicketInput
       outputType: TransitionTicketOutput
       kind: mutation
-      description: Move one request through its Jira workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the request has already made. A single-dispatch fence sends the transition at most once; after a possible earlier transition, a repeated attempt only rereads the request and succeeds when it is in the destination status.
+      description: Move one request through its Jira workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the request has already made. Before sending, the Step checkpoints the chosen transition ID and its source and destination statuses. A retried attempt never selects again; it rereads the request, succeeds when it is in the recorded destination, sends the recorded transition again only while the request is still in the recorded source, and selects transitionUnavailable without sending when someone else moved the request.
       idempotency: required
       authorization: required
       branches:
         - {id: transitioned, goName: Transitioned, description: "The request is in the transition's destination status, including when it already was."}
         - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it., optional: true}
-        - {id: transitionUnavailable, goName: TransitionUnavailable, description: "No available transition from the request's current status matches, or several do; the Value lists the current status and the available transitions.", optional: true}
+        - {id: transitionUnavailable, goName: TransitionUnavailable, description: "No available transition from the request's current status matches, or several do, or on a retry the request is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue or transition list., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      # The fence needs durable sync heartbeats to know whether an earlier attempt may have transitioned.
+      # The transition checkpoint needs durable sync heartbeats so a retry sees what an earlier attempt chose.
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        dispatchFence: true
-        # A repeated attempt rereads the status and never sends the transition again after a possible send.
+        # A transition has a fixed destination: a retry resends the recorded transition only from its source status.
         repeatOnUnknown: safe
       mocks:
         - name: transitionedDefaultAnswer
