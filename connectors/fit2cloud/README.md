@@ -11,3 +11,5 @@ On your organization's Halo site, enable HTTPS first. In the Halo user menu open
 ## Example
 
 The [post catalog Flow](go/examples/post-catalog/) is a runnable Worker with static Dex connection name `fit2cloud`. Its local mock uses synthetic article metadata and is verified with a real Dex Worker and Client. Live Halo token authorization, deployment version compatibility, and provider pagination remain unverified until connected to an approved site.
+
+The [TypeScript package](typescript/README.md) includes a [runnable Dex Flow](typescript/examples/basic/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.

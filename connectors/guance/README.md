@@ -5,3 +5,5 @@ This connector reads one page of [Guance dashboard metadata](https://docs.guance
 Create a secret API Key in the target workspace at **管理 > API Key 管理 > 新建 Key**, selecting a role with dashboard read permission. The [official API Key guide](https://docs.guance.com/management/api-key/) says only an administrator or Owner can create a key, and the key determines its workspace. Copy the Key (密钥), not Key ID, into Dex Web Connections. The connector sends it in `DF-API-KEY` and never places it in a URL or Flow result. The fixed endpoint is Guance's Alibaba Cloud SaaS node; other nodes require a future configuration design.
 
 The [runnable Flow](go/examples/list-dashboards-page/README.md) uses the static `guance` connection. Real API Key authorization and Dex Web form interaction remain unverified.
+
+The [TypeScript package](typescript/README.md) includes a [runnable Dex Flow](typescript/examples/basic/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.
