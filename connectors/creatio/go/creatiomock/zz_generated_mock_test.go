@@ -16,8 +16,104 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getLead/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Lead"}`)
+			return err
+		}},
+		{name: "listLeads/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadsPage](`{"leads":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Lead"}]}`)
+			return err
+		}},
+		{name: "createLead/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Lead"}`)
+			return err
+		}},
+		{name: "updateLead/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "deleteLead/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.LeadWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "getAccount/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}`)
+			return err
+		}},
+		{name: "listAccounts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountsPage](`{"accounts":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}]}`)
+			return err
+		}},
+		{name: "createAccount/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}`)
+			return err
+		}},
+		{name: "updateAccount/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "deleteAccount/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "getOpportunity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Opportunity"}`)
+			return err
+		}},
+		{name: "listOpportunities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunitiesPage](`{"opportunities":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Opportunity"}]}`)
+			return err
+		}},
+		{name: "createOpportunity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Opportunity"}`)
+			return err
+		}},
+		{name: "updateOpportunity/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "deleteOpportunity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.OpportunityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "getActivity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}`)
+			return err
+		}},
+		{name: "listActivities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivitiesPage](`{"activities":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}]}`)
+			return err
+		}},
+		{name: "createActivity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivitySummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","title":"Example activity"}`)
+			return err
+		}},
+		{name: "updateActivity/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "deleteActivity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ActivityWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
 		{name: "getContact/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[creatio.ContactSummary](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ContactsPage](`{"contacts":[{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}]}`)
+			return err
+		}},
+		{name: "createContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ContactSummary](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ContactWriteOutput](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ContactWriteOutput](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600"}`)
 			return err
 		}},
 	}
@@ -30,7 +126,79 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetLead().Definition().Operation.OperationID != "getLead" {
+		t.Errorf("getLead mock has another definition")
+	}
+	if mock.ListLeads().Definition().Operation.OperationID != "listLeads" {
+		t.Errorf("listLeads mock has another definition")
+	}
+	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
+		t.Errorf("createLead mock has another definition")
+	}
+	if mock.UpdateLead().Definition().Operation.OperationID != "updateLead" {
+		t.Errorf("updateLead mock has another definition")
+	}
+	if mock.DeleteLead().Definition().Operation.OperationID != "deleteLead" {
+		t.Errorf("deleteLead mock has another definition")
+	}
+	if mock.GetAccount().Definition().Operation.OperationID != "getAccount" {
+		t.Errorf("getAccount mock has another definition")
+	}
+	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
+		t.Errorf("listAccounts mock has another definition")
+	}
+	if mock.CreateAccount().Definition().Operation.OperationID != "createAccount" {
+		t.Errorf("createAccount mock has another definition")
+	}
+	if mock.UpdateAccount().Definition().Operation.OperationID != "updateAccount" {
+		t.Errorf("updateAccount mock has another definition")
+	}
+	if mock.DeleteAccount().Definition().Operation.OperationID != "deleteAccount" {
+		t.Errorf("deleteAccount mock has another definition")
+	}
+	if mock.GetOpportunity().Definition().Operation.OperationID != "getOpportunity" {
+		t.Errorf("getOpportunity mock has another definition")
+	}
+	if mock.ListOpportunities().Definition().Operation.OperationID != "listOpportunities" {
+		t.Errorf("listOpportunities mock has another definition")
+	}
+	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
+		t.Errorf("createOpportunity mock has another definition")
+	}
+	if mock.UpdateOpportunity().Definition().Operation.OperationID != "updateOpportunity" {
+		t.Errorf("updateOpportunity mock has another definition")
+	}
+	if mock.DeleteOpportunity().Definition().Operation.OperationID != "deleteOpportunity" {
+		t.Errorf("deleteOpportunity mock has another definition")
+	}
+	if mock.GetActivity().Definition().Operation.OperationID != "getActivity" {
+		t.Errorf("getActivity mock has another definition")
+	}
+	if mock.ListActivities().Definition().Operation.OperationID != "listActivities" {
+		t.Errorf("listActivities mock has another definition")
+	}
+	if mock.CreateActivity().Definition().Operation.OperationID != "createActivity" {
+		t.Errorf("createActivity mock has another definition")
+	}
+	if mock.UpdateActivity().Definition().Operation.OperationID != "updateActivity" {
+		t.Errorf("updateActivity mock has another definition")
+	}
+	if mock.DeleteActivity().Definition().Operation.OperationID != "deleteActivity" {
+		t.Errorf("deleteActivity mock has another definition")
+	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
 	}
 }

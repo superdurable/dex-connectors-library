@@ -5,6 +5,7 @@ package todoist
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -12,6 +13,18 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
+
+func isDefiniteTodoistWriteRefusal(result exchangeResult) bool {
+	if !isDefiniteWriteRefusalStatus(result.status) {
+		return false
+	}
+	var answer struct {
+		Error string `json:"error"`
+		Code  string `json:"error_code"`
+		ID    string `json:"id"`
+	}
+	return json.Unmarshal(result.body, &answer) == nil && (answer.Error != "" || answer.Code != "") && answer.ID == ""
+}
 
 // fencedCreate is one createTask attempt behind the single-dispatch Fence; unknown outcomes resend until the cap.
 type fencedCreate struct {

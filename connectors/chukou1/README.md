@@ -9,3 +9,7 @@ The [runnable Dex Flow](go/examples/warehouse-list/README.md) shows setup and ty
 ## Python package
 
 The [Python package](python/README.md) provides `listWarehouses` v0.1.0 with the same branches and retry decisions as Go. Its [runnable Flow](python/examples/warehouse_list/README.md) verifies a retry and persisted output through a real Dex Worker using a local stand-in; live Chukou1 authorization was not used.
+
+## TypeScript package
+
+The `@superdurable/connector-chukou1` package implements `listWarehouses` with the same request and outcomes as Go. Its [runnable warehouse list Flow](typescript/examples/warehouse-list/README.md) passed a real local Dex Worker, Client, retry, and persistence test against a provider stand-in. Twelve Go-recorded scenarios verify exact provider requests and outcomes. Live Chukou1 account access remains unverified.
