@@ -1,0 +1,432 @@
+{
+  "connector": "zhihuiya",
+  "scenarios": [
+    {
+      "callId": "e1297a7d-7358-5333-859a-cf72bddbe8ae",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"pn\":\"JP6012277B2\",\"patent_id\":\"patent-1\",\"patsnap_patent_valuation\":{\"patent_value\":43000,\"patsnap_legal\":71,\"patsnap_market\":18,\"patsnap_economy\":23,\"patsnap_strategic\":71,\"patsnap_technology\":28}}],\"status\":true,\"error_code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/patent-valuation-data/patent_valuation",
+          "query": {
+            "patent_number": [
+              "JP6012277B2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-private"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "economyScore": 23,
+          "legalScore": 71,
+          "marketScore": 18,
+          "patentID": "patent-1",
+          "patentValueUSD": 43000,
+          "publicationNumber": "JP6012277B2",
+          "strategicScore": 71,
+          "technologyScore": 28
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "JP6012277B2"
+      },
+      "name": "getPatentValuation-found",
+      "operation": "getPatentValuation"
+    },
+    {
+      "callId": "e5b10e97-1c94-5b5f-9c00-5f1e5b8bd4b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/patent-valuation-data/patent_valuation",
+          "query": {
+            "patent_number": [
+              "JP6012277B2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-private"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "noData",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "economyScore": 0,
+          "legalScore": 0,
+          "marketScore": 0,
+          "patentID": "",
+          "patentValueUSD": 0,
+          "publicationNumber": "",
+          "strategicScore": 0,
+          "technologyScore": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "JP6012277B2"
+      },
+      "name": "getPatentValuation-noData",
+      "operation": "getPatentValuation"
+    },
+    {
+      "callId": "01a99d95-612c-5d67-b0ff-a7b443cd8a46",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/patent-valuation-data/patent_valuation",
+          "query": {
+            "patent_number": [
+              "JP6012277B2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-private"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "economyScore": 0,
+          "legalScore": 0,
+          "marketScore": 0,
+          "patentID": "",
+          "patentValueUSD": 0,
+          "publicationNumber": "",
+          "strategicScore": 0,
+          "technologyScore": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "JP6012277B2"
+      },
+      "name": "getPatentValuation-providerRejected",
+      "operation": "getPatentValuation"
+    },
+    {
+      "callId": "d5075c21-d678-5ac3-98c6-537effc149be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/patent-valuation-data/patent_valuation",
+          "query": {
+            "patent_number": [
+              "JP6012277B2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-private"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "economyScore": 0,
+          "legalScore": 0,
+          "marketScore": 0,
+          "patentID": "",
+          "patentValueUSD": 0,
+          "publicationNumber": "",
+          "strategicScore": 0,
+          "technologyScore": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "JP6012277B2"
+      },
+      "name": "getPatentValuation-invalidResponse",
+      "operation": "getPatentValuation"
+    },
+    {
+      "callId": "f40bc477-07c1-57e9-a2fb-28db1bdcfb78",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/patent-valuation-data/patent_valuation",
+          "query": {
+            "patent_number": [
+              "JP6012277B2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-private"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "JP6012277B2"
+      },
+      "name": "getPatentValuation-retry429",
+      "operation": "getPatentValuation"
+    },
+    {
+      "callId": "a839b96b-a67a-51a5-a4be-0ae198a99ea3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/patent-valuation-data/patent_valuation",
+          "query": {
+            "patent_number": [
+              "JP6012277B2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-private"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "JP6012277B2"
+      },
+      "name": "getPatentValuation-retry503",
+      "operation": "getPatentValuation"
+    },
+    {
+      "callId": "0a3d1d65-7e7b-50e5-b5cc-ceafa8baddb1",
+      "exchanges": [
+        {
+          "body": "{\"status\":false,\"error_code\":67200002}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/patent-valuation-data/patent_valuation",
+          "query": {
+            "patent_number": [
+              "JP6012277B2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-private"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "JP6012277B2"
+      },
+      "name": "getPatentValuation-providerRate",
+      "operation": "getPatentValuation"
+    },
+    {
+      "callId": "852f9bac-5a9e-5923-9193-7deb46974421",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/patent-valuation-data/patent_valuation",
+          "query": {
+            "patent_number": [
+              "JP6012277B2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-private"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "JP6012277B2"
+      },
+      "name": "getPatentValuation-transport",
+      "operation": "getPatentValuation"
+    },
+    {
+      "callId": "7e577eb4-158e-5d84-839e-f11e3087324c",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/patent-valuation-data/patent_valuation",
+          "query": {
+            "patent_number": [
+              "JP6012277B2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sk-private"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "economyScore": 0,
+          "legalScore": 0,
+          "marketScore": 0,
+          "patentID": "",
+          "patentValueUSD": 0,
+          "publicationNumber": "",
+          "strategicScore": 0,
+          "technologyScore": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "JP6012277B2"
+      },
+      "name": "getPatentValuation-oversized",
+      "operation": "getPatentValuation"
+    },
+    {
+      "callId": "2a6077c1-d5c6-5943-9e61-2c8f145016ff",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "economyScore": 0,
+          "legalScore": 0,
+          "marketScore": 0,
+          "patentID": "",
+          "patentValueUSD": 0,
+          "publicationNumber": "",
+          "strategicScore": 0,
+          "technologyScore": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "publicationNumber": "../bad"
+      },
+      "name": "getPatentValuation-defect",
+      "operation": "getPatentValuation"
+    }
+  ],
+  "schemaVersion": 1
+}
