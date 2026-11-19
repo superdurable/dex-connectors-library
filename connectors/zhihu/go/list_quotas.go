@@ -56,13 +56,13 @@ func (operation ListQuotasOperation) Invoke(call sdkgo.Call, _ ListQuotasInput) 
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer "+credentials.AccessSecret.Reveal())
-	request.Header.Set("X-Request-Timestamp", strconv.FormatInt(time.Now().Unix(), 10))
+	request.Header.Set("X-Request-Timestamp", strconv.FormatInt(operation.client.now().Unix(), 10))
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
 		return quotaRetry(sdkgo.FailureAvailability, "Zhihu request failed", 0)
 	}
 	defer func() { _ = response.Body.Close() }()
-	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), operation.client.now())
 	if response.StatusCode == http.StatusTooManyRequests {
 		return quotaRetry(sdkgo.FailureRateLimit, "Zhihu rate limited the request", retryAfter)
 	}
