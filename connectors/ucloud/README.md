@@ -9,3 +9,5 @@ The Query retries HTTP 408, 429, 5xx, transport failures, and UCloud RetCode 110
 Install `github.com/superdurable/dex-connectors-library/connectors/ucloud/go@v0.1.0` after release. Provider tests use an HTTP test server. The mock-backed example integration test uses a real Dex Worker and Client. Live key-pair authorization and actual region visibility remain unverified without a user-configured account.
 
 The [Python region Flow](python/examples/get_region/) also runs against a real Dex Worker and Client with a synthetic provider response.
+
+The [TypeScript package](typescript/) implements the signed `getRegion` Query and replays Go provider scenarios. Its [runnable Dex Flow](typescript/examples/basic/) persists region data through a Worker and Client. Live UCloud authorization remains unverified.
