@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newGetOnlineVersionStep, type Connection, type GetOnlineVersionInput, type GetOnlineVersionOutput } from '@superdurable/connector-vivo';
+import { newGetOnlineVersionStep, type Connection, type GetOnlineVersionInput, type GetOnlineVersionOutput } from '../../src/index.js';
 
 /** Static Dex Web connection for this example. */
 export const ConnectionName = 'vivo';
