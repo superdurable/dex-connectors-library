@@ -9,3 +9,5 @@ The [runnable Dex example](go/examples/get-company-profile/) uses the static `yu
 ## Python
 
 The `python/` package provides the `getCompanyProfile` Query. Run its checked-in example from `python/examples/`.
+
+The [TypeScript package](typescript/README.md) implements `getCompanyProfile` with a [runnable Dex Flow](typescript/examples/basic/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.
