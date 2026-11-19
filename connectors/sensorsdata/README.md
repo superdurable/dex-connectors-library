@@ -11,3 +11,7 @@ Sign in to your organization's Sensors Data Analytics site over HTTPS. Copy the 
 ## Example
 
 The [campaign catalog Flow](go/examples/campaign-catalog/) is a runnable Worker with static Dex connection name `sensorsdata`. Its mock uses synthetic campaign metadata and is verified against a real Dex Worker and Client. Live cluster authorization, product-version compatibility, and campaign data remain unverified until a user connects an approved HTTPS deployment.
+
+## TypeScript
+
+The [`typescript/`](typescript/) package implements `listCampaigns` with the same Go conformance scenarios. Its [runnable Flow](typescript/examples/basic) uses the static `sensorsdata` connection and persists the provider result in Dex. Live provider authorization remains unverified.
