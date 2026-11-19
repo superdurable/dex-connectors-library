@@ -9,3 +9,5 @@ At the [Kuaishou Open Platform](https://open.kuaishou.com), open **控制台 →
 Kuaishou documents `app_id` and `access_token` as HTTPS query parameters. The connector never places the token in a Flow input, output, error, or log; its HTTP client does not follow redirects. HTTP 429, HTTP 5xx, and transport failures retry. Definite provider errors select optional `providerRejected`; malformed or oversized responses select optional `invalidResponse`. The example leaves optional branches unwired, so those outcomes fail the Flow. The official list-endpoint documentation does not publish a fixed quota; check current limits in the portal.
 
 The runnable Flow is in [`go/examples/user-videos`](go/examples/user-videos). Provider tests verify request shape and outcome classification. Live `user_video_info` approval, OAuth2 authorization, and production videos remain unverified without user-controlled credentials.
+
+The [Python package](python/) implements the same `ListUserVideos` Query with Go-recorded replay and a real Dex Worker/Client mock example. Live provider authorization remains unverified.
