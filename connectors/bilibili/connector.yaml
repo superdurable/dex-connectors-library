@@ -8,9 +8,14 @@ metadata:
   categories: [social-media]
   version: v0.1.0
 spec:
+  provider: bilibili
   languages:
     python: {version: v0.1.0, operations: [getAuthorizedUser], triggers: []}
-  provider: bilibili
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-bilibili"
+      operations: [getAuthorizedUser]
+      triggers: []
   codegen:
     go:
       package: bilibili

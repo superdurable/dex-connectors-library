@@ -11,3 +11,5 @@ The [signature contract](https://open.bilibili.com/doc/4/8673959e-f7bb-56e6-6e68
 The runnable Flow is in [`go/examples/authorized-user`](go/examples/authorized-user). Provider tests cover signing and response classifications. Live USER_INFO approval, OAuth2 authorization, and production account data remain unverified without user-controlled credentials.
 
 The [Python package](python/README.md) implements the same Query with Go-recorded conformance and a [runnable Flow](python/examples/authorized_user/README.md).
+
+The [TypeScript package](typescript/README.md) includes a [runnable Flow](typescript/examples/authorized-user/README.md) and Go-recorded conformance replay.

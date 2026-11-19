@@ -1,0 +1,52 @@
+{
+  "connectorId": "bilibili",
+  "releaseTag": "connectors/bilibili/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-bilibili",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetAuthorizedUserStep",
+      "kind": "query",
+      "operationId": "getAuthorizedUser",
+      "inputType": "GetAuthorizedUserInput",
+      "description": "Read the nickname and application-scoped open ID of the authorized user.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAuthorizedUserInput has no fields because the access token identifies the user.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -11,3 +11,5 @@ TOP's [signature rules](https://developer.alibaba.com/docs/doc.htm?articleId=101
 The runnable Flow is in [`go/examples/waybill-trace`](go/examples/waybill-trace). Provider tests cover signing and response classifications. Live merchant authorization, application permission, and production trace data remain unverified without user-controlled credentials and a qualifying waybill.
 
 The [Python package](python/) includes a runnable waybill-trace Flow and Go-recorded conformance replay.
+
+The [TypeScript package](typescript/README.md) includes a [runnable Flow](typescript/examples/waybill-trace/README.md) and Go-recorded conformance replay.

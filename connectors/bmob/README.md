@@ -7,3 +7,5 @@ An application-specific HTTPS API domain is required. The [domain guide](https:/
 See the [runnable Dex Flow](go/examples/class-object-count/README.md). Mock tests do not verify a live application's domain, credentials, class permissions, or count response.
 
 The [Python package](python/README.md) implements the same class count Query and replays the Go-recorded provider scenarios. Its runnable Dex Flow uses the same static `bmob` connection.
+
+The [TypeScript package](typescript/README.md) includes a [runnable Flow](typescript/examples/class-count/README.md) and Go-recorded conformance replay.
