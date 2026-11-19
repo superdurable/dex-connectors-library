@@ -1,0 +1,66 @@
+{
+  "connectorId": "lixinger",
+  "releaseTag": "connectors/lixinger/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-lixinger",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListStockCompaniesStep",
+      "kind": "query",
+      "operationId": "listStockCompanies",
+      "inputType": "ListStockCompaniesInput",
+      "description": "Retrieve basic metadata for 1 to 100 A-share stock codes.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListStockCompaniesInput selects one to one hundred A-share stock codes.",
+        "properties": {
+          "stockCodes": {
+            "description": "StockCodes are six-digit A-share identifiers to look up, without exchange prefixes.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "stockCodes"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

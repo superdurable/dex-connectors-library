@@ -11,6 +11,7 @@ spec:
   provider: kuaidi100
   languages:
     python: {version: v0.1.0, operations: [queryTracking], triggers: []}
+    typescript: {version: v0.1.0, operations: [queryTracking], triggers: []}
   codegen:
     go:
       package: kuaidi100

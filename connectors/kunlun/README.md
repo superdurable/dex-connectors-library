@@ -9,3 +9,5 @@ Sign in at the [Mureka platform](https://platform.mureka.cn/) and open **API Key
 The [official quickstart](https://platform.mureka.cn/docs/cn/quickstart.html) documents API keys and Bearer authentication; the [error guide](https://platform.mureka.cn/docs/cn/error-codes.html) documents HTTP status handling.
 
 The [Python package](python/) implements the same `GetTaskStatus` Query with Go-recorded replay and a real Dex Worker/Client mock example. Live provider authorization remains unverified.
+
+The [TypeScript package](typescript/README.md) implements the same `getTaskStatus` Query, including Go-recorded conformance replay and a real Dex Worker and Client integration test.

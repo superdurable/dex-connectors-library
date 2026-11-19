@@ -11,6 +11,7 @@ spec:
   provider: lixinger
   languages:
     python: {version: v0.1.0, operations: [listStockCompanies], triggers: []}
+    typescript: {version: v0.1.0, operations: [listStockCompanies], triggers: []}
   codegen:
     go:
       package: lixinger

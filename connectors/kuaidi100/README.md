@@ -25,3 +25,5 @@ _ = connection
 For application code, use `NewProjectConnection` and the operation-specific `NewQueryTrackingStep` shown in the runnable Flow.
 
 The [Python package](python/) implements the same `QueryTracking` Query with Go-recorded replay and a real Dex Worker/Client mock example. Live provider authorization remains unverified.
+
+The [TypeScript package](typescript/README.md) implements the same `queryTracking` Query, including Go-recorded conformance replay and a real Dex Worker and Client integration test.

@@ -9,3 +9,5 @@ A failed query returns the optional `providerRejected` branch; HTTP rate limits 
 For a complete Go application example, see the runnable Flow's `NewProjectConnection` wiring and `NewQueryTrackingStep` usage.
 
 The [Python package](python/) implements the same `QueryTracking` Query with Go-recorded replay and a real Dex Worker/Client mock example. Live provider authorization remains unverified.
+
+The [TypeScript package](typescript/README.md) implements the same `queryTracking` Query, including Go-recorded conformance replay and a real Dex Worker and Client integration test.
