@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: cainiao
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-cainiao
+      operations: [queryWaybillTrace]
+      triggers: []
   codegen:
     go:
       package: cainiao
