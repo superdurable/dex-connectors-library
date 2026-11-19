@@ -8,6 +8,8 @@ metadata:
   categories: [databases-storage, developer-tools]
   version: v0.1.0
 spec:
+  languages:
+    python: {version: v0.1.0, operations: [getServiceUsage], triggers: []}
   provider: upyun
   codegen:
     go:

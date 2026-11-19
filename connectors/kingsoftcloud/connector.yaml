@@ -8,6 +8,8 @@ metadata:
   categories: [security-identity]
   version: v0.1.0
 spec:
+  languages:
+    python: {version: v0.1.0, operations: [listUsers], triggers: []}
   provider: kingsoftcloud
   codegen:
     go:
