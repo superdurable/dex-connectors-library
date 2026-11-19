@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -28,6 +29,7 @@ INVALID_RESPONSE = "invalidResponse"
 LISTED = "listed"
 NOT_FOUND = "notFound"
 PROVIDER_REJECTED = "providerRejected"
+UNCERTAIN = "uncertain"
 
 GET_CHANNEL_DEFINITION = QueryDefinition(
     OperationRef(CONNECTOR_ID, GET_CHANNEL_OPERATION_ID),
@@ -67,14 +69,17 @@ CREATE_MESSAGE_DEFINITION = MutationDefinition(
         BranchDefinition(CREATED, "Discord created the message, or returned the message an earlier attempt created with the same nonce.", False),
         BranchDefinition(NOT_FOUND, "Discord knows no channel with the ID.", True),
         BranchDefinition(PROVIDER_REJECTED, "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", True),
-        BranchDefinition(INVALID_RESPONSE, "Discord applied or rejected the message but returned an invalid or oversized response.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an invalid or oversized 2xx answer proves Discord created the message, so createMessage reads it back by its message ID or selects uncertain.", True),
+        BranchDefinition(UNCERTAIN, "Discord may have created the message, or accepted it but could not confirm it by read-back, and no further send is allowed; check the channel before sending again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or credentials are invalid.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
-        2,
+        1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 ADD_REACTION_DEFINITION = MutationDefinition(
@@ -90,4 +95,5 @@ ADD_REACTION_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )

@@ -375,7 +375,7 @@ func CreateInvoiceUncertain(value xero.CreateInvoiceOutput, failure sdkgo.Failur
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateInvoiceDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// CreateInvoiceDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid on the Step's first attempt.
 func CreateInvoiceDefect(value xero.CreateInvoiceOutput, failure *sdkgo.Failure) connectormock.Case[xero.CreateInvoiceOutput] {
 	return connectormock.Branch(xero.CreateInvoiceBranchDefect, value, failure)
 }
@@ -428,7 +428,7 @@ func RecordPaymentUncertain(value xero.RecordPaymentOutput, failure sdkgo.Failur
 	return connectormock.Uncertain(value, failure)
 }
 
-// RecordPaymentDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// RecordPaymentDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid on the Step's first attempt.
 func RecordPaymentDefect(value xero.RecordPaymentOutput, failure *sdkgo.Failure) connectormock.Case[xero.RecordPaymentOutput] {
 	return connectormock.Branch(xero.RecordPaymentBranchDefect, value, failure)
 }

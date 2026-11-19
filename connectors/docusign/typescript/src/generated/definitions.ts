@@ -20,7 +20,7 @@ export const CreateEnvelopeFromTemplateBranch = {
 export const CreateEnvelopeFromTemplateBranchCreated = CreateEnvelopeFromTemplateBranch.Created;
 /** DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created. */
 export const CreateEnvelopeFromTemplateBranchProviderRejected = CreateEnvelopeFromTemplateBranch.ProviderRejected;
-/** The create request was sent but DocuSign's answer was lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, so an envelope may exist that this Result does not name; do not create another automatically. */
+/** The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, or DocuSign refused a resend after an earlier attempt may have sent, or a terminal credential failure followed a possible send, or an accepted create, including an error answer that named an envelope, could not be found within the attempts or recorded as accepted, so an envelope may exist that this Result does not name; do not create another automatically. */
 export const CreateEnvelopeFromTemplateBranchUncertain = CreateEnvelopeFromTemplateBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateEnvelopeFromTemplateBranchDefect = CreateEnvelopeFromTemplateBranch.Defect;
@@ -30,7 +30,7 @@ export const CreateEnvelopeFromTemplateDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "DocuSign holds the envelope this Step execution created; wasRecovered tells whether a later attempt found it by its custom field after an interrupted one." },
     { id: "providerRejected", description: "DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created.", optional: true },
-    { id: "uncertain", description: "The create request was sent but DocuSign's answer was lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, so an envelope may exist that this Result does not name; do not create another automatically.", optional: true },
+    { id: "uncertain", description: "The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, or DocuSign refused a resend after an earlier attempt may have sent, or a terminal credential failure followed a possible send, or an accepted create, including an error answer that named an envelope, could not be found within the attempts or recorded as accepted, so an envelope may exist that this Result does not name; do not create another automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 60000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 3900000 } },
@@ -123,7 +123,7 @@ export const VoidEnvelopeBranchNotVoidable = VoidEnvelopeBranch.NotVoidable;
 export const VoidEnvelopeBranchNotFound = VoidEnvelopeBranch.NotFound;
 /** DocuSign conclusively rejected the void, such as a user who is not the sender or lacks permission. */
 export const VoidEnvelopeBranchProviderRejected = VoidEnvelopeBranch.ProviderRejected;
-/** DocuSign returned a malformed or oversized response. */
+/** DocuSign returned malformed or oversized account information before the void was sent; an unreadable answer after the void retries, since voiding again is safe. */
 export const VoidEnvelopeBranchInvalidResponse = VoidEnvelopeBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const VoidEnvelopeBranchDefect = VoidEnvelopeBranch.Defect;
@@ -135,12 +135,11 @@ export const VoidEnvelopeDefinition: MutationDefinition = {
     { id: "notVoidable", description: "The envelope is completed, declined, or still a draft, which DocuSign does not void; status names which.", optional: true },
     { id: "notFound", description: "The envelope does not exist in the connection's account or the user may not see it.", optional: true },
     { id: "providerRejected", description: "DocuSign conclusively rejected the void, such as a user who is not the sender or lacks permission.", optional: true },
-    { id: "invalidResponse", description: "DocuSign returned a malformed or oversized response.", optional: true },
+    { id: "invalidResponse", description: "DocuSign returned malformed or oversized account information before the void was sent; an unreadable answer after the void retries, since voiding again is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 0, totalDurationMs: 3900000 } },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for voidEnvelope. */
 export const VoidEnvelopeMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

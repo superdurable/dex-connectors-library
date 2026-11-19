@@ -437,6 +437,10 @@ type OperationBranch struct {
 	GoName      string `yaml:"goName" json:"goName"`
 	Description string `yaml:"description" json:"description"`
 	Optional    bool   `yaml:"optional,omitempty" json:"optional,omitempty"`
+	// Retired marks a released branch the connector no longer selects; removing it would break applications.
+	Retired bool `yaml:"retired,omitempty" json:"retired,omitempty"`
+	// RetiredReason says why a retired branch is no longer selected and what is selected instead.
+	RetiredReason string `yaml:"retiredReason,omitempty" json:"retiredReason,omitempty"`
 }
 
 type Execution struct {
@@ -937,12 +941,30 @@ func (manifest Manifest) Validate() error {
 			if branch.ID == "defect" && !branch.Optional {
 				problems = append(problems, operation.Name+": the defect branch must be optional")
 			}
+			if branch.Retired && (!branch.Optional || branch.ID == "defect" || strings.TrimSpace(branch.RetiredReason) == "") {
+				problems = append(problems, operation.Name+": retired branch "+branch.ID+" must be optional, not defect, and state a retiredReason")
+			}
+			if !branch.Retired && branch.RetiredReason != "" {
+				problems = append(problems, operation.Name+": branch "+branch.ID+" has a retiredReason but is not retired")
+			}
+			// Retiring uncertain would hide the at-cap path that limited and unsafe Mutations must select.
+			if branch.Retired && branch.ID == "uncertain" && operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() != RepeatOnUnknownSafe {
+				problems = append(problems, operation.Name+": the uncertain branch of a limited or unsafe mutation cannot be retired")
+			}
+			// Only the happy path is required; an unwired uncertain branch fails the Flow when selected.
+			if !branch.Optional && branch.ID == "uncertain" && operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() != RepeatOnUnknownSafe {
+				problems = append(problems, operation.Name+": the uncertain branch of a limited or unsafe mutation must be optional")
+			}
 		}
 		if len(branches) == 0 || !branches["defect"] {
 			problems = append(problems, operation.Name+": branches must declare defect")
 		}
 		if operation.Kind == "query" && branches["uncertain"] {
 			problems = append(problems, operation.Name+": query cannot declare uncertain")
+		}
+		// The at-cap path of a limited or unsafe write needs a branch to select.
+		if operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() != RepeatOnUnknownSafe && !branches["uncertain"] {
+			problems = append(problems, operation.Name+": a limited or unsafe mutation must declare an uncertain branch")
 		}
 		if operation.MockChecks != nil {
 			if len(operation.Mocks) == 0 {

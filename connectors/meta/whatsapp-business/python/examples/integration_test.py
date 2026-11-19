@@ -123,7 +123,8 @@ async def test_whatsapp_flows_retry_and_uncertainty(tmp_path: Path) -> None:
                 )
                 assert template_result.status == dex.FlowStatus.FAILED
                 assert "uncertain" in (template_result.error_message or "")
-                assert template_requests == 1
+                # Each unknown outcome resends until the send cap of 3, then selects uncertain.
+                assert template_requests == 3
         finally:
             await worker.stop()
             await worker_task

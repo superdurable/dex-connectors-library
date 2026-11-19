@@ -79,15 +79,18 @@ export interface UpsertMemberStepConfig<StepInput, OperationInput = UpsertMember
   upserted: StepTarget<MutationResult<OperationOutput>>;
   /** Mailchimp conclusively rejected the contact, such as an invalid merge field, a permanently deleted address, or a contact in a compliance state; nothing was written. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Mailchimp returned an invalid or oversized contact, so the change may have been applied. */
+  /** Kept for compatibility and never selected: an invalid or oversized contact repeats the absolute upsert. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the upsertMember Step from a named connection. */
 export function newUpsertMemberStep<StepInput, OperationInput = UpsertMemberInput, OperationOutput = UpsertMemberOutput>(configuration: UpsertMemberStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, upserted, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, upserted, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.upsertMember(), connection: connection.reference, branches: [
     goToBranch("upserted", upserted),
@@ -109,15 +112,18 @@ export interface UpdateMemberTagsStepConfig<StepInput, OperationInput = UpdateMe
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Mailchimp conclusively rejected the tag changes, such as an invalid API key or a role without access. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Mailchimp accepted the request but returned an oversized or credential-reflecting body, so the tags may have changed. */
+  /** Kept for compatibility and never selected: an oversized or credential-reflecting body repeats the tag declaration. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateMemberTags Step from a named connection. */
 export function newUpdateMemberTagsStep<StepInput, OperationInput = UpdateMemberTagsInput, OperationOutput = UpdateMemberTagsOutput>(configuration: UpdateMemberTagsStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateMemberTags(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -136,7 +142,7 @@ export interface SendCampaignStepConfig<StepInput, OperationInput = SendCampaign
   connectionName: string;
   /** Mailchimp accepted the send of the draft campaign this Step read. */
   sent: StepTarget<MutationResult<OperationOutput>>;
-  /** Mailchimp reports the campaign as sending or sent, so this attempt sent nothing. */
+  /** Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing. */
   alreadySent?: StepTarget<MutationResult<OperationOutput>>;
   /** The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent. */
   notSendable?: StepTarget<MutationResult<OperationOutput>>;
@@ -144,11 +150,11 @@ export interface SendCampaignStepConfig<StepInput, OperationInput = SendCampaign
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Mailchimp returned an invalid or oversized campaign before the send; nothing was sent. */
+  /** Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again. */
+  /** A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid, and no send was attempted. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 

@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted microsoft-sql-server connection. Script each operation through its accessor.
 type Mock struct {
-	connection       sqlserver.Connection
-	queryRows        *connectormock.Query[sqlserver.QueryRowsInput, sqlserver.RowSet]
-	executeStatement *connectormock.Mutation[sqlserver.ExecuteStatementInput, sqlserver.StatementExecution]
+	connection                    sqlserver.Connection
+	queryRows                     *connectormock.Query[sqlserver.QueryRowsInput, sqlserver.RowSet]
+	executeStatement              *connectormock.Mutation[sqlserver.ExecuteStatementInput, sqlserver.StatementExecution]
+	executeStatementNonIdempotent *connectormock.Mutation[sqlserver.ExecuteStatementInput, sqlserver.StatementExecution]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		queryRows:        connectormock.NewQuery[sqlserver.QueryRowsInput, sqlserver.RowSet](t, sqlserver.QueryRowsDefinition),
-		executeStatement: connectormock.NewMutation[sqlserver.ExecuteStatementInput, sqlserver.StatementExecution](t, sqlserver.ExecuteStatementDefinition),
+		queryRows:                     connectormock.NewQuery[sqlserver.QueryRowsInput, sqlserver.RowSet](t, sqlserver.QueryRowsDefinition),
+		executeStatement:              connectormock.NewMutation[sqlserver.ExecuteStatementInput, sqlserver.StatementExecution](t, sqlserver.ExecuteStatementDefinition),
+		executeStatementNonIdempotent: connectormock.NewMutation[sqlserver.ExecuteStatementInput, sqlserver.StatementExecution](t, sqlserver.ExecuteStatementNonIdempotentDefinition),
 	}
 	mock.queryRows.Default(QueryRowsDefault())
 	mock.executeStatement.Default(ExecuteStatementDefault())
+	mock.executeStatementNonIdempotent.Default(ExecuteStatementNonIdempotentDefault())
 	connection, err := sqlserver.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "microsoft-sql-server", Name: connectionName})
 	if err != nil {
 		t.Fatalf("microsoft-sql-server mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) ExecuteStatement() *connectormock.Mutation[sqlserver.ExecuteSt
 	return mock.executeStatement
 }
 
+// ExecuteStatementNonIdempotent returns the executeNonIdempotent script.
+func (mock *Mock) ExecuteStatementNonIdempotent() *connectormock.Mutation[sqlserver.ExecuteStatementInput, sqlserver.StatementExecution] {
+	return mock.executeStatementNonIdempotent
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) QueryRows() sdkgo.Query[sqlserver.QueryRowsInput, sqlserver.RowSet] {
@@ -60,6 +68,9 @@ func (operations mockOperations) QueryRows() sdkgo.Query[sqlserver.QueryRowsInpu
 }
 func (operations mockOperations) ExecuteStatement() sdkgo.Mutation[sqlserver.ExecuteStatementInput, sqlserver.StatementExecution] {
 	return operations.mock.executeStatement
+}
+func (operations mockOperations) ExecuteStatementNonIdempotent() sdkgo.Mutation[sqlserver.ExecuteStatementInput, sqlserver.StatementExecution] {
+	return operations.mock.executeStatementNonIdempotent
 }
 
 // QueryRowsCompleted selects the completed branch: The server ran the statement and returned every row, possibly none, within maxRows and maxResponseBytes.
@@ -177,4 +188,56 @@ func ExecuteStatementDuplicateKey() connectormock.Case[sqlserver.StatementExecut
 // ExecuteStatementDefault is the manifest default, completedDefaultAnswer, which New installs.
 func ExecuteStatementDefault() connectormock.Case[sqlserver.StatementExecution] {
 	return ExecuteStatementCompletedDefaultAnswer()
+}
+
+// ExecuteStatementNonIdempotentCompleted selects the completed branch: The server committed the statement's transaction; the Result holds the rows affected and any OUTPUT rows.
+func ExecuteStatementNonIdempotentCompleted(value sqlserver.StatementExecution, failure *sdkgo.Failure) connectormock.Case[sqlserver.StatementExecution] {
+	return connectormock.Branch(sqlserver.ExecuteStatementNonIdempotentBranchCompleted, value, failure)
+}
+
+// ExecuteStatementNonIdempotentLimitExceeded selects the limitExceeded branch: The statement affected more rows than maxRowsAffected, or its OUTPUT rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.
+func ExecuteStatementNonIdempotentLimitExceeded(value sqlserver.StatementExecution, failure *sdkgo.Failure) connectormock.Case[sqlserver.StatementExecution] {
+	return connectormock.Branch(sqlserver.ExecuteStatementNonIdempotentBranchLimitExceeded, value, failure)
+}
+
+// ExecuteStatementNonIdempotentProviderRejected selects the providerRejected branch: The server conclusively refused the connection, statement, or commit, such as a duplicate key, a syntax error, or a permission error; nothing was written.
+func ExecuteStatementNonIdempotentProviderRejected(value sqlserver.StatementExecution, failure *sdkgo.Failure) connectormock.Case[sqlserver.StatementExecution] {
+	return connectormock.Branch(sqlserver.ExecuteStatementNonIdempotentBranchProviderRejected, value, failure)
+}
+
+// ExecuteStatementNonIdempotentUncertain returns an uncertain executeNonIdempotent outcome.
+func ExecuteStatementNonIdempotentUncertain(value sqlserver.StatementExecution, failure sdkgo.Failure) connectormock.Case[sqlserver.StatementExecution] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// ExecuteStatementNonIdempotentInvalidResponse selects the invalidResponse branch: The server returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.
+func ExecuteStatementNonIdempotentInvalidResponse(value sqlserver.StatementExecution, failure *sdkgo.Failure) connectormock.Case[sqlserver.StatementExecution] {
+	return connectormock.Branch(sqlserver.ExecuteStatementNonIdempotentBranchInvalidResponse, value, failure)
+}
+
+// ExecuteStatementNonIdempotentDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+func ExecuteStatementNonIdempotentDefect(value sqlserver.StatementExecution, failure *sdkgo.Failure) connectormock.Case[sqlserver.StatementExecution] {
+	return connectormock.Branch(sqlserver.ExecuteStatementNonIdempotentBranchDefect, value, failure)
+}
+
+// ExecuteStatementNonIdempotentRetry asks Dex to retry the executeNonIdempotent Step, after the delay when it is positive.
+func ExecuteStatementNonIdempotentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sqlserver.StatementExecution] {
+	return connectormock.Retry[sqlserver.StatementExecution](failure, after)
+}
+
+// ExecuteStatementNonIdempotentAddedToDailyTotal is the manifest mock addedToDailyTotal: Adding the $250.00 order 88213 refund to the daily total commits once.
+func ExecuteStatementNonIdempotentAddedToDailyTotal() connectormock.Case[sqlserver.StatementExecution] {
+	value := connectormock.MustDecodeOutput[sqlserver.StatementExecution](`{"rowsAffected":1,"columns":[],"rows":[]}`)
+	return connectormock.Branch(sqlserver.ExecuteStatementNonIdempotentBranchCompleted, value, nil)
+}
+
+// ExecuteStatementNonIdempotentMissingDailyTotalTable is the manifest mock missingDailyTotalTable: Adding to a missing refund_daily_totals table is rejected before commit.
+func ExecuteStatementNonIdempotentMissingDailyTotalTable() connectormock.Case[sqlserver.StatementExecution] {
+	var value sqlserver.StatementExecution
+	return connectormock.Branch(sqlserver.ExecuteStatementNonIdempotentBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Adding to a missing refund_daily_totals table is rejected before commit."})
+}
+
+// ExecuteStatementNonIdempotentDefault is the manifest default, addedToDailyTotal, which New installs.
+func ExecuteStatementNonIdempotentDefault() connectormock.Case[sqlserver.StatementExecution] {
+	return ExecuteStatementNonIdempotentAddedToDailyTotal()
 }

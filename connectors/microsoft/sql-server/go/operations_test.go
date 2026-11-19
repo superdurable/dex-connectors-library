@@ -20,6 +20,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go/internal/testcertificates"
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -64,6 +65,37 @@ func startScriptedDatabase(t *testing.T, database *scriptedDatabase, options scr
 		mutate(&config)
 	}
 	return server, newScriptedClient(t, config)
+}
+
+// unavailableBrokerCredentials fails every Resolve as a temporarily unavailable credential broker.
+type unavailableBrokerCredentials struct{}
+
+func (unavailableBrokerCredentials) Resolve(sdkgo.Call) (sqlserver.Credentials, error) {
+	return sqlserver.Credentials{}, fmt.Errorf("read password: %w", projectconfig.ErrCredentialBrokerUnavailable)
+}
+
+func newClientWithCredentials(t *testing.T, server *scriptedtds.Server, credentials sdkgo.CredentialProvider[sqlserver.Credentials]) *sqlserver.Client {
+	t.Helper()
+	config := sqlserver.Config{
+		Host: "127.0.0.1", Port: int64(server.Port()), Database: "app", User: "dex_app", Encrypt: sqlserver.EncryptDisable,
+	}
+	client, err := sqlserver.New(config, credentials)
+	require.NoError(t, err)
+	return client
+}
+
+func TestQueryAndExecuteRetryAnUnavailableCredentialBroker(t *testing.T) {
+	database := &scriptedDatabase{execution: scriptedtds.Execution{RowsAffected: 1}}
+	server, _ := startScriptedDatabase(t, database, scriptedtds.Options{}, nil)
+	client := newClientWithCredentials(t, server, unavailableBrokerCredentials{})
+	var retry *sdkgo.RetryError
+	_, err := query(t, client, sqlserver.QueryRowsInput{Statement: "SELECT 1 AS one"})
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	_, err = execute(t, client, newStep(), addToBalanceInput)
+	require.ErrorAs(t, err, &retry, "an unavailable broker is transient and nothing was sent")
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Empty(t, server.EventsOfKind(scriptedtds.EventLogin))
 }
 
 func newScriptedClient(t *testing.T, config sqlserver.Config) *sqlserver.Client {
@@ -651,13 +683,13 @@ func TestExecuteStatementRollsBackWhenALimitIsExceeded(t *testing.T) {
 
 func TestExecuteStatementClassifiesEveryCommitFault(t *testing.T) {
 	for name, testCase := range map[string]struct {
-		commit scriptedtds.CommitAction
-		branch sdkgo.BranchID
+		commit      scriptedtds.CommitAction
+		isUncertain bool
 	}{
-		"a COMMIT whose reply was lost after it applied": {scriptedtds.CommitThenDropConnection, sqlserver.ExecuteStatementBranchUncertain},
-		"a connection lost after COMMIT was sent":        {scriptedtds.DropConnectionWithoutCommitting, sqlserver.ExecuteStatementBranchUncertain},
-		"a server error while committing":                {scriptedtds.RejectCommitWithServerError, sqlserver.ExecuteStatementBranchUncertain},
-		"a COMMIT the server reports it never started":   {scriptedtds.RejectCommitWithNoTransaction, sqlserver.ExecuteStatementBranchProviderRejected},
+		"a COMMIT whose reply was lost after it applied": {scriptedtds.CommitThenDropConnection, true},
+		"a connection lost after COMMIT was sent":        {scriptedtds.DropConnectionWithoutCommitting, true},
+		"a server error while committing":                {scriptedtds.RejectCommitWithServerError, true},
+		"a COMMIT the server reports it never started":   {scriptedtds.RejectCommitWithNoTransaction, false},
 	} {
 		t.Run(name, func(t *testing.T) {
 			database := &scriptedDatabase{execution: scriptedtds.Execution{RowsAffected: 1}, commit: testCase.commit}
@@ -665,9 +697,14 @@ func TestExecuteStatementClassifiesEveryCommitFault(t *testing.T) {
 			result, err := execute(t, client, newStep(), sqlserver.ExecuteStatementInput{
 				Statement: "UPDATE dbo.accounts SET plan = @p1 WHERE id = @p2", Parameters: []any{"team", 7},
 			})
-			require.NoError(t, err, "an ambiguous COMMIT is never retried")
-			require.Equal(t, testCase.branch, result.Branch, result.Failure)
-			require.NotEmpty(t, result.Receipt.IdempotencyKey, "the uncertain Result names the write to look for")
+			if testCase.isUncertain {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "execute is repeat-safe, so an unknown COMMIT runs again instead of selecting uncertain")
+				require.Contains(t, retry.Failure.Message, "whether the transaction committed is unknown")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, sqlserver.ExecuteStatementBranchProviderRejected, result.Branch, result.Failure)
 		})
 	}
 }

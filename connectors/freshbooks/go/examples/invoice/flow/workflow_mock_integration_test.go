@@ -56,5 +56,6 @@ func TestInvoiceUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, int64(2201278), output.InvoiceID)
 	require.Equal(t, "0000003", output.InvoiceNumber)
+	require.Len(t, mock.ListInvoices().Calls(), 1)
 	require.Len(t, mock.GetInvoice().Calls(), 1)
 }

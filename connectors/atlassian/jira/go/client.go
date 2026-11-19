@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -181,6 +182,8 @@ const (
 	writeRejected
 	writeNotFound
 	writeUncertain
+	// writeAcceptedUnreadable is a 2xx whose body cannot be used; the write happened and is never resent.
+	writeAcceptedUnreadable
 	writeDefect
 )
 
@@ -283,7 +286,7 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 	}
 	if err != nil {
 		cancel()
-		if errors.Is(err, sdkgo.ErrReauthorizationRequired) {
+		if isTerminalCredentialError(err) {
 			return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Jira connection credentials are unavailable; reconnect the connection")}
 		}
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira credential lookup is temporarily unavailable"), isRetryable: true}
@@ -514,20 +517,23 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, "Jira accepted the "+subject+" but its response was interrupted")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureTransport, "Jira accepted the "+subject+" but its response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Jira accepted the "+subject+" but its response exceeds the configured size limit")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Jira accepted the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureProtocol, "Jira accepted the "+subject+" but its response contains credential material")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureProtocol, "Jira accepted the "+subject+" but its response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Jira rate limited the "+subject+" before writing it")}
 	case response.statusCode == http.StatusServiceUnavailable:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira "+subject+" is temporarily unavailable")}
+	case !isCompleteResponse(response):
+		// A refusal status proves nothing when its body could not be read in full.
+		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Jira %s outcome is unknown after HTTP %d with an unreadable body", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode, nil)}
-	case isConclusiveRejectionStatus(response.statusCode):
+	case isDefiniteWriteRefusalStatus(response.statusCode):
 		rejectedFieldIDs := readJiraRejectedFieldIDs(response.body)
 		return writeClassification{outcome: writeRejected, rejectedFieldIDs: rejectedFieldIDs, failure: rejectionFailure(operationID, subject, response.statusCode, rejectedFieldIDs)}
 	default:
@@ -658,27 +664,43 @@ func (client *Client) hasMatchingJiraCallProperty(session *operationSession, pat
 	return writeReadbackMissing
 }
 
-func (client *Client) reconcileCreatedIssue(session *operationSession, requested CreateIssueOutput, marker jiraCallProperty, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreateIssueOutput] {
+// reconcileCreatedIssue reads back a possibly created issue. A missing issue resends while the
+// policy allows, except that an issue Jira already accepted or identified is never sent again.
+func (client *Client) reconcileCreatedIssue(session *operationSession, requested CreateIssueOutput, marker jiraCallProperty, providerID string, policy sendCapPolicy, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreateIssueOutput] {
 	created, status := client.findCreatedIssue(session, requested, marker, providerID)
 	switch status {
 	case writeReadbackFound:
 		return createdIssueBranch(requested, created, receipt)
 	case writeReadbackRetry:
+		if policy.hasUncheckpointedAcceptance {
+			return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		}
 		return sdkgo.NewMutationRetry[CreateIssueOutput](newFailure(createIssueOperationID, sdkgo.FailureAvailability, "Jira issue read-back is temporarily unavailable"), 0)
 	default:
-		return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		if providerID != "" {
+			return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		}
+		return resendOrSelectUncertain(policy, requested, failure, 0, receipt)
 	}
 }
 
-func (client *Client) reconcileAddedComment(session *operationSession, requested AddCommentOutput, issueIDOrKey string, marker jiraCallProperty, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {
+// reconcileAddedComment reads back a possibly added comment. A missing comment resends while the
+// policy allows, except that a comment Jira already accepted or identified is never sent again.
+func (client *Client) reconcileAddedComment(session *operationSession, requested AddCommentOutput, issueIDOrKey string, marker jiraCallProperty, providerID string, policy sendCapPolicy, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {
 	comment, status := client.findAddedComment(session, issueIDOrKey, marker, providerID)
 	switch status {
 	case writeReadbackFound:
 		return addedCommentBranch(requested, comment, receipt)
 	case writeReadbackRetry:
+		if policy.hasUncheckpointedAcceptance {
+			return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		}
 		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira comment read-back is temporarily unavailable"), 0)
 	default:
-		return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		if providerID != "" {
+			return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		}
+		return resendOrSelectUncertain(policy, requested, failure, 0, receipt)
 	}
 }
 
@@ -753,9 +775,16 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408 and 429: Jira refused before changing anything.
-func isConclusiveRejectionStatus(statusCode int) bool {
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout && statusCode != http.StatusTooManyRequests
+// isDefiniteWriteRefusalStatus reports a status proving Jira refused a write; other statuses leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 func isRetryableReadStatus(statusCode int) bool {
@@ -788,6 +817,13 @@ func isSafeProviderToken(value string) bool {
 
 func newFailure(operationID string, kind sdkgo.FailureKind, message string) sdkgo.Failure {
 	return sdkgo.Failure{Kind: kind, Provider: providerName, Operation: operationID, Message: message}
+}
+
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; every other error is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func failurePointer(operationID string, kind sdkgo.FailureKind, message string) *sdkgo.Failure {

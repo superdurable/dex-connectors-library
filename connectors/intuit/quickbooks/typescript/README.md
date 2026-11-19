@@ -40,8 +40,13 @@ an explicitly configured `realmId`.
 
 All other declared branches are optional; an unwired optional branch fails
 the Flow. Mutations use the Dex Call ID as QuickBooks `requestid` across
-attempts. An accepted write with an unusable response is read back by
-provider ID when possible; otherwise it selects `uncertain`.
+attempts and send under the SDK single-dispatch fence with the manifest's
+`maxSends` (3 unless the application overrides it). An unknown outcome is
+resent below the cap and selects `uncertain` at it; 429, 503, and a request
+that never left the process are retried without counting the send. An
+accepted write with an unusable response is read back by provider ID, and
+later attempts read that ID back instead of resending. See
+[Duplicate safety](../README.md#duplicate-safety).
 
 ## invoiceChanged Trigger
 

@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{medialist.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{medialist.NewFlow(connection), medialist.NewAccountLookupFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Instagram Business Instagram media listing Flow: %w", err)
 	}

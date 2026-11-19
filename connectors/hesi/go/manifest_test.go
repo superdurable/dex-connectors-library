@@ -56,10 +56,15 @@ func TestConnectionGuidanceCoversEveryVisibleField(t *testing.T) {
 		}
 	}
 	require.Equal(t, []string{"baseUrl", "timeout", "maxResponseBytes", "app_key", "app_security"}, names)
-	for _, field := range fields[3:] { require.Equal(t, "secretString", field.Type); require.Contains(t, field.Description, "https://ekuaibao.github.io/open-platform-docs/") }
+	for _, field := range fields[3:] {
+		require.Equal(t, "secretString", field.Type)
+		require.Contains(t, field.Description, "https://ekuaibao.github.io/open-platform-docs/")
+	}
 	require.Equal(t, "https://app.ekuaibao.com", manifest.Spec.Auth.Guide.StartURL)
 	guide := strings.Join(manifest.Spec.Auth.Guide.Steps, " ")
-	for _, text := range []string{"AppKey", "AppSecurity", "企业信息"} { require.Contains(t, guide, text) }
+	for _, text := range []string{"AppKey", "AppSecurity", "企业信息"} {
+		require.Contains(t, guide, text)
+	}
 	require.Len(t, manifest.Spec.Operations, 1)
 	require.Equal(t, "listDepartments", manifest.Spec.Operations[0].Name)
 	require.Nil(t, manifest.Spec.Operations[0].ConfigurationUI)

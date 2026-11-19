@@ -24,3 +24,15 @@ func TestCustomersFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestCampaignFlowIdentityAndMapping(t *testing.T) {
+	input := ads.ListCampaignsInput{CustomerID: "1234567890"}
+	require.Equal(t, CampaignFlowType, dex.GetFinalFlowType(NewCampaignFlow(ads.Connection{})))
+	require.Equal(t, "StartListCampaigns", dex.GetFinalStepType[ads.ListCampaignsInput](startCampaignList{}))
+	wait, err := startCampaignList{}.WaitFor(nil, input)
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+	mock := adsmock.New(t, ConnectionName)
+	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection()), NewCampaignFlow(mock.Connection())})
+	require.NoError(t, err)
+}

@@ -585,20 +585,59 @@ Call `Decide` before credential resolution or provider lookups. Only
 provider ID, and otherwise selects uncertainty when no reliable read-back is
 available. Record `notSent` before a pre-send Retry and `canResend` before a
 Retry after a definite 429, 503, or proven undispatched request. A lost marker
-never authorizes a second write. The fence owns all heartbeats for this Step;
-do not record a nil heartbeat or allow another writer to replace its marker.
-Record a send-permitting marker only when the attempt has decided to return
-Retry; `RecordNotSent` ends the send path for that attempt.
+never authorizes a second write. The Fences own all heartbeats for this Step;
+do not record a nil heartbeat or allow another writer to replace their
+checkpoint. Record a send-permitting marker only when the attempt has decided
+to return Retry; `RecordNotSent` ends the send path for that attempt.
 Construct exactly one Fence per Step call per attempt. The Fence methods are
 safe for concurrent callers, and a five-second ticker re-records the claim
 while a send is running; a blocked heartbeat can delay `Dispatch` returning.
+
+From v0.39.0, one Step may make several fenced writes, such as an agent tool
+that sends a Gmail message and then posts a Slack thread reply, also from
+concurrent goroutines. Each Fence keeps the Marker of its own Call ID. Every
+heartbeat that any Fence of the Step attempt records carries the Markers of
+all its calls: the previous attempt's entries plus those recorded so far in
+this attempt, so Fences never lose each other's entries. `Decide` reads only
+its own Call ID's entry. A missing entry, or a heartbeat it cannot read,
+counts as no marker: attempt one may send, and a later attempt assumes that
+each earlier attempt sent once, which can only overcount. Only a heartbeat
+read error from Dex, and an own entry with an impossible send count, fail
+closed.
+
+Each call has its own Call ID even when one Step calls the same operation
+twice. `RunQuery`, `RunMutation`, and agent tools count the calls of each
+operation in a Step attempt: the first keeps the Call ID derived from the Flow
+ID, Step execution ID, connector ID, and operation ID, and the n-th call mixes
+n into that derivation, so idempotency keys of single calls never change. The
+count restarts each attempt, so a Step must make its connector calls in a
+deterministic order, for example sequentially in input order. Calls of the same
+operation started concurrently in a varying order could swap Call IDs between
+attempts, so concurrent Mutation calls of one operation in a Step are
+unsupported: `RunMutation`, and an agent tool, selects `defect` without
+invoking the operation when an earlier call of the same operation in the Step
+attempt is still running. The refused call still consumes its place in the
+count, so the Call IDs of later calls depend only on call order, never on
+which calls happened to overlap. Mutations of different operations may run
+concurrently, and Queries are not restricted.
+
+When `RecordProviderID`'s heartbeat fails, the Fence returns the error but
+keeps the provider ID in the Step attempt's checkpoint, so a later heartbeat of
+any Fence in the Step carries it, and refuses `RecordCanResend`. A
+`dex.Context` test fake that embeds a nil `context.Context` still works with
+`RunQuery`, `RunMutation`, and Fences.
+
+The heartbeat format is internal to the connector SDKs and may change between
+releases. Hosts, including agent hosts, must not parse it; classify a result
+by the connector's selected branch. Connector tests seed a prior attempt's
+checkpoint with `singledispatchtest.Context.SetPersistedMarkers`.
 The initial budget is the smaller of Execute timeout and remaining Step time.
 The request context ends after 7/12 of that budget by default, or at the
 fraction selected with `WithWriteWindow` (at most 5/6). A send is refused when
 less than budget/10 remains before that request deadline. Keep the default
 when read-back needs time; choose the window deliberately for long operations
 such as OpenAI `createResponse` (150-second Execute timeout, 87.5-second default
-request window). A foreign call's marker fails closed with an empty marker.
+request window).
 For an HTTP write, call `singledispatch.PrepareHTTPWrite(request)` after
 constructing the request and before `http.Client.Do` inside `Dispatch`'s send
 callback. Go's HTTP transport may otherwise transparently replay a request
@@ -610,8 +649,16 @@ replay. Under HTTP/1.1, a prepared bodyless POST, PUT, or PATCH uses
 migrating that endpoint.
 An HTTP request used by the fence is single-use.
 
-Legacy per-connector markers fail closed on first deploy of the shared fence.
-Plan reconciliation for in-flight calls before replacing their markers.
+Releases before v0.39.0 recorded one Marker as the whole heartbeat. When that
+Marker's Call ID equals the call's ID, `Decide` reads it as the call's entry
+and keeps its state and provider ID, so a redeployed Worker never resends a
+write that the earlier release recorded as accepted. A missing send count is
+read as the Marker's attempt for `claimed` and the attempt minus one
+otherwise. Later heartbeats carry that entry forward in the map format, even
+when another Call ID's Fence records first. A legacy Marker of another Call ID,
+and any other unreadable value, still counts as no marker. Fences always write
+the map format. Releases before v0.39.0 fail closed on the new checkpoint
+format.
 
 ### Bounded resend for `repeatOnUnknown: limited`
 
@@ -632,8 +679,10 @@ saved `Marker.ProviderID` is read back before any resend. A connector without
 read-back may call `Dispatch` directly. A pre-send Retry under this decision
 records nothing, because `notSent` would let the next attempt skip read-back.
 At the cap, the decision is `ReadBackRequired` and an unconfirmed write selects
-`uncertain`. A capped Fence's markers record `sendCount`; an uncapped Fence's
-markers are unchanged, and a marker without the count is counted
+`uncertain`. Every Fence, capped or not, records the exact `sendCount` in its
+checkpoint entry, zero included, and `Decide` reads it exactly, so two sends
+refused with 429 leave `MaximumPriorSends` at zero. An entry without the
+count, such as one seeded from a `Marker` whose JSON omits zero, is counted
 conservatively.
 
 An application raises or lowers the cap of one Step with

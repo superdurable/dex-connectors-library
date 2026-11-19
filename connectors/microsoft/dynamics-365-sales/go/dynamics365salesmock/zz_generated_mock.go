@@ -17,8 +17,13 @@ import (
 
 // Mock is a scripted microsoft-dynamics-365-sales connection. Script each operation through its accessor.
 type Mock struct {
-	connection  dynamics365sales.Connection
-	findContact *connectormock.Query[dynamics365sales.FindContactInput, dynamics365sales.Contact]
+	connection    dynamics365sales.Connection
+	listAccounts  *connectormock.Query[dynamics365sales.ListAccountsInput, dynamics365sales.Accounts]
+	getAccount    *connectormock.Query[dynamics365sales.GetAccountInput, dynamics365sales.Account]
+	createAccount *connectormock.Mutation[dynamics365sales.CreateAccountInput, dynamics365sales.Account]
+	updateAccount *connectormock.Mutation[dynamics365sales.UpdateAccountInput, dynamics365sales.Account]
+	deleteAccount *connectormock.Mutation[dynamics365sales.DeleteAccountInput, dynamics365sales.AccountDeletion]
+	findContact   *connectormock.Query[dynamics365sales.FindContactInput, dynamics365sales.Contact]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +31,18 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		findContact: connectormock.NewQuery[dynamics365sales.FindContactInput, dynamics365sales.Contact](t, dynamics365sales.FindContactDefinition),
+		listAccounts:  connectormock.NewQuery[dynamics365sales.ListAccountsInput, dynamics365sales.Accounts](t, dynamics365sales.ListAccountsDefinition),
+		getAccount:    connectormock.NewQuery[dynamics365sales.GetAccountInput, dynamics365sales.Account](t, dynamics365sales.GetAccountDefinition),
+		createAccount: connectormock.NewMutation[dynamics365sales.CreateAccountInput, dynamics365sales.Account](t, dynamics365sales.CreateAccountDefinition),
+		updateAccount: connectormock.NewMutation[dynamics365sales.UpdateAccountInput, dynamics365sales.Account](t, dynamics365sales.UpdateAccountDefinition),
+		deleteAccount: connectormock.NewMutation[dynamics365sales.DeleteAccountInput, dynamics365sales.AccountDeletion](t, dynamics365sales.DeleteAccountDefinition),
+		findContact:   connectormock.NewQuery[dynamics365sales.FindContactInput, dynamics365sales.Contact](t, dynamics365sales.FindContactDefinition),
 	}
+	mock.listAccounts.Default(ListAccountsDefault())
+	mock.getAccount.Default(GetAccountDefault())
+	mock.createAccount.Default(CreateAccountDefault())
+	mock.updateAccount.Default(UpdateAccountDefault())
+	mock.deleteAccount.Default(DeleteAccountDefault())
 	mock.findContact.Default(FindContactDefault())
 	connection, err := dynamics365sales.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "microsoft-dynamics-365-sales", Name: connectionName})
 	if err != nil {
@@ -40,6 +55,31 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() dynamics365sales.Connection { return mock.connection }
 
+// ListAccounts returns the listAccounts script.
+func (mock *Mock) ListAccounts() *connectormock.Query[dynamics365sales.ListAccountsInput, dynamics365sales.Accounts] {
+	return mock.listAccounts
+}
+
+// GetAccount returns the getAccount script.
+func (mock *Mock) GetAccount() *connectormock.Query[dynamics365sales.GetAccountInput, dynamics365sales.Account] {
+	return mock.getAccount
+}
+
+// CreateAccount returns the createAccount script.
+func (mock *Mock) CreateAccount() *connectormock.Mutation[dynamics365sales.CreateAccountInput, dynamics365sales.Account] {
+	return mock.createAccount
+}
+
+// UpdateAccount returns the updateAccount script.
+func (mock *Mock) UpdateAccount() *connectormock.Mutation[dynamics365sales.UpdateAccountInput, dynamics365sales.Account] {
+	return mock.updateAccount
+}
+
+// DeleteAccount returns the deleteAccount script.
+func (mock *Mock) DeleteAccount() *connectormock.Mutation[dynamics365sales.DeleteAccountInput, dynamics365sales.AccountDeletion] {
+	return mock.deleteAccount
+}
+
 // FindContact returns the findContact script.
 func (mock *Mock) FindContact() *connectormock.Query[dynamics365sales.FindContactInput, dynamics365sales.Contact] {
 	return mock.findContact
@@ -47,8 +87,203 @@ func (mock *Mock) FindContact() *connectormock.Query[dynamics365sales.FindContac
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListAccounts() sdkgo.Query[dynamics365sales.ListAccountsInput, dynamics365sales.Accounts] {
+	return operations.mock.listAccounts
+}
+func (operations mockOperations) GetAccount() sdkgo.Query[dynamics365sales.GetAccountInput, dynamics365sales.Account] {
+	return operations.mock.getAccount
+}
+func (operations mockOperations) CreateAccount() sdkgo.Mutation[dynamics365sales.CreateAccountInput, dynamics365sales.Account] {
+	return operations.mock.createAccount
+}
+func (operations mockOperations) UpdateAccount() sdkgo.Mutation[dynamics365sales.UpdateAccountInput, dynamics365sales.Account] {
+	return operations.mock.updateAccount
+}
+func (operations mockOperations) DeleteAccount() sdkgo.Mutation[dynamics365sales.DeleteAccountInput, dynamics365sales.AccountDeletion] {
+	return operations.mock.deleteAccount
+}
 func (operations mockOperations) FindContact() sdkgo.Query[dynamics365sales.FindContactInput, dynamics365sales.Contact] {
 	return operations.mock.findContact
+}
+
+// ListAccountsListed selects the listed branch: Dataverse returned account identities.
+func ListAccountsListed(value dynamics365sales.Accounts, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Accounts] {
+	return connectormock.Branch(dynamics365sales.ListAccountsBranchListed, value, failure)
+}
+
+// ListAccountsProviderRejected selects the providerRejected branch: Microsoft rejected the request.
+func ListAccountsProviderRejected(value dynamics365sales.Accounts, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Accounts] {
+	return connectormock.Branch(dynamics365sales.ListAccountsBranchProviderRejected, value, failure)
+}
+
+// ListAccountsInvalidResponse selects the invalidResponse branch: Microsoft returned malformed or oversized JSON.
+func ListAccountsInvalidResponse(value dynamics365sales.Accounts, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Accounts] {
+	return connectormock.Branch(dynamics365sales.ListAccountsBranchInvalidResponse, value, failure)
+}
+
+// ListAccountsDefect selects the defect branch: The page size or connection is invalid.
+func ListAccountsDefect(value dynamics365sales.Accounts, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Accounts] {
+	return connectormock.Branch(dynamics365sales.ListAccountsBranchDefect, value, failure)
+}
+
+// ListAccountsRetry asks Dex to retry the listAccounts Step, after the delay when it is positive.
+func ListAccountsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dynamics365sales.Accounts] {
+	return connectormock.Retry[dynamics365sales.Accounts](failure, after)
+}
+
+// ListAccountsListedDefault is the manifest mock listedDefault: One example account is listed.
+func ListAccountsListedDefault() connectormock.Case[dynamics365sales.Accounts] {
+	value := connectormock.MustDecodeOutput[dynamics365sales.Accounts](`{"accounts":[{"accountId":"00000000-0000-0000-0000-000000000001","name":"Example"}]}`)
+	return connectormock.Branch(dynamics365sales.ListAccountsBranchListed, value, nil)
+}
+
+// ListAccountsDefault is the manifest default, listedDefault, which New installs.
+func ListAccountsDefault() connectormock.Case[dynamics365sales.Accounts] {
+	return ListAccountsListedDefault()
+}
+
+// GetAccountFound selects the found branch: Dataverse returned the account.
+func GetAccountFound(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.GetAccountBranchFound, value, failure)
+}
+
+// GetAccountMissing selects the missing branch: The account ID does not exist.
+func GetAccountMissing(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.GetAccountBranchMissing, value, failure)
+}
+
+// GetAccountProviderRejected selects the providerRejected branch: Microsoft rejected the request.
+func GetAccountProviderRejected(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.GetAccountBranchProviderRejected, value, failure)
+}
+
+// GetAccountInvalidResponse selects the invalidResponse branch: Microsoft returned malformed or oversized JSON.
+func GetAccountInvalidResponse(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.GetAccountBranchInvalidResponse, value, failure)
+}
+
+// GetAccountDefect selects the defect branch: The account ID or connection is invalid.
+func GetAccountDefect(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.GetAccountBranchDefect, value, failure)
+}
+
+// GetAccountRetry asks Dex to retry the getAccount Step, after the delay when it is positive.
+func GetAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Retry[dynamics365sales.Account](failure, after)
+}
+
+// GetAccountFoundDefault is the manifest mock foundDefault: One example account was found.
+func GetAccountFoundDefault() connectormock.Case[dynamics365sales.Account] {
+	value := connectormock.MustDecodeOutput[dynamics365sales.Account](`{"accountId":"00000000-0000-0000-0000-000000000001","name":"Example"}`)
+	return connectormock.Branch(dynamics365sales.GetAccountBranchFound, value, nil)
+}
+
+// GetAccountDefault is the manifest default, foundDefault, which New installs.
+func GetAccountDefault() connectormock.Case[dynamics365sales.Account] {
+	return GetAccountFoundDefault()
+}
+
+// CreateAccountCreated selects the created branch: Dataverse created the account.
+func CreateAccountCreated(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.CreateAccountBranchCreated, value, failure)
+}
+
+// CreateAccountProviderRejected selects the providerRejected branch: Microsoft rejected account creation.
+func CreateAccountProviderRejected(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.CreateAccountBranchProviderRejected, value, failure)
+}
+
+// CreateAccountInvalidResponse selects the invalidResponse branch: Microsoft returned malformed or oversized JSON.
+func CreateAccountInvalidResponse(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.CreateAccountBranchInvalidResponse, value, failure)
+}
+
+// CreateAccountDefect selects the defect branch: The name or connection is invalid.
+func CreateAccountDefect(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.CreateAccountBranchDefect, value, failure)
+}
+
+// CreateAccountRetry asks Dex to retry the createAccount Step, after the delay when it is positive.
+func CreateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Retry[dynamics365sales.Account](failure, after)
+}
+
+// CreateAccountCreatedDefault is the manifest mock createdDefault: One example account was created.
+func CreateAccountCreatedDefault() connectormock.Case[dynamics365sales.Account] {
+	value := connectormock.MustDecodeOutput[dynamics365sales.Account](`{"accountId":"00000000-0000-0000-0000-000000000001","name":"Example"}`)
+	return connectormock.Branch(dynamics365sales.CreateAccountBranchCreated, value, nil)
+}
+
+// CreateAccountDefault is the manifest default, createdDefault, which New installs.
+func CreateAccountDefault() connectormock.Case[dynamics365sales.Account] {
+	return CreateAccountCreatedDefault()
+}
+
+// UpdateAccountUpdated selects the updated branch: Dataverse updated the account name.
+func UpdateAccountUpdated(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.UpdateAccountBranchUpdated, value, failure)
+}
+
+// UpdateAccountMissing selects the missing branch: The account ID does not exist.
+func UpdateAccountMissing(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.UpdateAccountBranchMissing, value, failure)
+}
+
+// UpdateAccountProviderRejected selects the providerRejected branch: Microsoft rejected the update.
+func UpdateAccountProviderRejected(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.UpdateAccountBranchProviderRejected, value, failure)
+}
+
+// UpdateAccountDefect selects the defect branch: The account ID, name, or connection is invalid.
+func UpdateAccountDefect(value dynamics365sales.Account, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Branch(dynamics365sales.UpdateAccountBranchDefect, value, failure)
+}
+
+// UpdateAccountRetry asks Dex to retry the updateAccount Step, after the delay when it is positive.
+func UpdateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dynamics365sales.Account] {
+	return connectormock.Retry[dynamics365sales.Account](failure, after)
+}
+
+// UpdateAccountUpdatedDefault is the manifest mock updatedDefault: One example account was updated.
+func UpdateAccountUpdatedDefault() connectormock.Case[dynamics365sales.Account] {
+	value := connectormock.MustDecodeOutput[dynamics365sales.Account](`{"accountId":"00000000-0000-0000-0000-000000000001","name":"Example"}`)
+	return connectormock.Branch(dynamics365sales.UpdateAccountBranchUpdated, value, nil)
+}
+
+// UpdateAccountDefault is the manifest default, updatedDefault, which New installs.
+func UpdateAccountDefault() connectormock.Case[dynamics365sales.Account] {
+	return UpdateAccountUpdatedDefault()
+}
+
+// DeleteAccountDeleted selects the deleted branch: Dataverse deleted the account or it was already absent.
+func DeleteAccountDeleted(value dynamics365sales.AccountDeletion, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.AccountDeletion] {
+	return connectormock.Branch(dynamics365sales.DeleteAccountBranchDeleted, value, failure)
+}
+
+// DeleteAccountProviderRejected selects the providerRejected branch: Microsoft rejected the deletion.
+func DeleteAccountProviderRejected(value dynamics365sales.AccountDeletion, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.AccountDeletion] {
+	return connectormock.Branch(dynamics365sales.DeleteAccountBranchProviderRejected, value, failure)
+}
+
+// DeleteAccountDefect selects the defect branch: The account ID or connection is invalid.
+func DeleteAccountDefect(value dynamics365sales.AccountDeletion, failure *sdkgo.Failure) connectormock.Case[dynamics365sales.AccountDeletion] {
+	return connectormock.Branch(dynamics365sales.DeleteAccountBranchDefect, value, failure)
+}
+
+// DeleteAccountRetry asks Dex to retry the deleteAccount Step, after the delay when it is positive.
+func DeleteAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dynamics365sales.AccountDeletion] {
+	return connectormock.Retry[dynamics365sales.AccountDeletion](failure, after)
+}
+
+// DeleteAccountDeletedDefault is the manifest mock deletedDefault: One example account was deleted.
+func DeleteAccountDeletedDefault() connectormock.Case[dynamics365sales.AccountDeletion] {
+	value := connectormock.MustDecodeOutput[dynamics365sales.AccountDeletion](`{"deleted":true}`)
+	return connectormock.Branch(dynamics365sales.DeleteAccountBranchDeleted, value, nil)
+}
+
+// DeleteAccountDefault is the manifest default, deletedDefault, which New installs.
+func DeleteAccountDefault() connectormock.Case[dynamics365sales.AccountDeletion] {
+	return DeleteAccountDeletedDefault()
 }
 
 // FindContactFound selects the found branch: Exactly one contact matched the email.

@@ -46,7 +46,7 @@ type SendEventOutput struct {
 
 // SendEventOperation implements the sendEvent Mutation. Build it with Client.SendEvent.
 //
-// Delivery is at least once. After a 408, 409, 425, 429, or 5xx answer, a timeout, or a lost response the
+// Delivery is at least once. After a redirect, an unknown answer such as 408, 409, 425, 429, or 5xx, a timeout, or a lost response the
 // Step retries with the same webhook-id, so the receiver may see one event more than once, even while an earlier attempt is still
 // in flight. The receiver must record the webhook-id in the same transaction that applies the event, or
 // answer an id still in flight with a retryable status such as 409 or 503, and answer 2xx for an id it
@@ -64,42 +64,44 @@ func (SendEventOperation) IdempotencyKey(callID sdkgo.CallID, _ SendEventInput) 
 }
 
 // Invoke POSTs the payload once with webhook-id, webhook-timestamp, and webhook-signature headers. A 2xx
-// selects delivered, and a redirect or a 4xx other than 408, 409, 425, and 429 selects rejected. A 408, 409,
-// 425, 429, 5xx, timeout, or transport error returns Retry with the same webhook-id and a new timestamp and signature,
-// after the receiver's Retry-After capped at one hour, and so does a credential broker that is temporarily
-// unavailable, before anything is sent. A receiver commonly answers 409 for a webhook-id still in flight, and
-// the connector cannot read back whether an earlier attempt applied the event, so a 409 is retried until the
-// Step's retry budget runs out.
+// selects delivered. On the Step's first attempt a 400, 401, 403, 404, 411, 413, 414, 415, or 422 selects
+// rejected and an invalid connection or payload selects defect. Every other answer, such as a redirect, 408,
+// 409, 410, 425, 429, or 5xx, a timeout, or a transport error, returns Retry with the same webhook-id and a
+// new timestamp and signature, after the receiver's Retry-After capped at one hour, and so does a credential
+// broker that is temporarily unavailable, before anything is sent. A later attempt may follow a delivered
+// event, so there a refusal or a local failure returns Retry too, until the Step's retry budget runs out. A
+// receiver commonly answers 409 for a webhook-id still in flight, and the connector cannot read back whether
+// an earlier attempt applied the event.
 func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput) sdkgo.MutationAttempt[SendEventOutput] {
 	client := operation.client
 	output := SendEventOutput{WebhookID: string(call.IdempotencyKey)}
 	if client.deliveryURL == "" {
-		return sendEventDefect(output, sdkgo.FailureValidation,
+		return sendEventDefect(call, output, sdkgo.FailureValidation,
 			"the connection has no deliveryUrl; set it in Dex Web Connectors to the receiver's HTTPS webhook URL")
 	}
 	if len(input.Payload) == 0 || !json.Valid(input.Payload) {
-		return sendEventDefect(output, sdkgo.FailureValidation, "sendEvent payload must be one valid JSON value")
+		return sendEventDefect(call, output, sdkgo.FailureValidation, "sendEvent payload must be one valid JSON value")
 	}
 	if int64(len(input.Payload)) > client.maxBodyBytes {
-		return sendEventDefect(output, sdkgo.FailureValidation, "sendEvent payload exceeds the connection's maxBodyBytes")
+		return sendEventDefect(call, output, sdkgo.FailureValidation, "sendEvent payload exceeds the connection's maxBodyBytes")
 	}
 	credentials, err := client.credentials.Resolve(call)
-	if errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) {
+	if err != nil && !isTerminalCredentialError(err) {
 		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability,
-			"the credential broker is temporarily unavailable, so nothing was sent"), 0)
+			"the credential broker or store is temporarily unavailable, so nothing was sent"), 0)
 	}
 	if err != nil || credentials.SigningSecret.Reveal() == "" {
-		return sendEventDefect(output, sdkgo.FailureAuthentication, "the webhook signing secret is unavailable")
+		return sendEventDefect(call, output, sdkgo.FailureAuthentication, "the webhook signing secret is unavailable")
 	}
 	key, err := standardWebhooksSigningKey(credentials.SigningSecret.Reveal())
 	if err != nil {
-		return sendEventDefect(output, sdkgo.FailureValidation, err.Error())
+		return sendEventDefect(call, output, sdkgo.FailureValidation, err.Error())
 	}
 	var isDispatched atomic.Bool
 	response, err := operation.postSignedEvent(call.Context, &isDispatched, key, output.WebhookID, input.Payload)
 	if err != nil {
 		if errors.Is(err, errSendEventRequestInvalid) {
-			return sendEventDefect(output, sdkgo.FailureLocalDefect, "the sendEvent request could not be built")
+			return sendEventDefect(call, output, sdkgo.FailureLocalDefect, "the sendEvent request could not be built")
 		}
 		if !isDispatched.Load() {
 			return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability, "the delivery URL could not be reached"), 0)
@@ -122,9 +124,13 @@ func (operation SendEventOperation) Invoke(call sdkgo.Call, input SendEventInput
 	case status == http.StatusTooEarly || status >= 500:
 		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureAvailability,
 			fmt.Sprintf("the receiver answered HTTP %d", status)), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()))
-	default:
+	case isDefiniteRefusalStatus(status) && !hasPossibleEarlierSend(call):
 		failure := sendEventFailure(rejectionFailureKind(status), fmt.Sprintf("the receiver answered HTTP %d", status))
 		return sdkgo.NewMutationBranch(SendEventBranchRejected, output, &failure, operation.sendEventReceipt(output))
+	default:
+		return sdkgo.NewMutationRetry[SendEventOutput](sendEventFailure(sdkgo.FailureProtocol,
+			fmt.Sprintf("the receiver answered HTTP %d, which does not prove it refused the event; retrying with the same webhook-id", status)),
+			providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()))
 	}
 }
 
@@ -183,16 +189,44 @@ func rejectionFailureKind(status int) sdkgo.FailureKind {
 		return sdkgo.FailureAuthentication
 	case http.StatusForbidden:
 		return sdkgo.FailureAuthorization
-	case http.StatusNotFound, http.StatusGone:
+	case http.StatusNotFound:
 		return sdkgo.FailureNotFound
 	default:
 		return sdkgo.FailureProviderRejection
 	}
 }
 
-func sendEventDefect(output SendEventOutput, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SendEventOutput] {
+// sendEventDefect selects defect on the first attempt only; a later attempt may follow a delivered event.
+func sendEventDefect(call sdkgo.Call, output SendEventOutput, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SendEventOutput] {
 	failure := sendEventFailure(kind, message)
+	if hasPossibleEarlierSend(call) {
+		return sdkgo.NewMutationRetry[SendEventOutput](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(SendEventBranchDefect, output, &failure, sdkgo.Receipt{})
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+// hasPossibleEarlierSend reports whether an earlier attempt of this Step may have delivered the event.
+func hasPossibleEarlierSend(call sdkgo.Call) bool {
+	return call.Context != nil && call.Context.Attempt() > 1
+}
+
+// isDefiniteRefusalStatus reports whether status definitely refused the event; other statuses are unknown outcomes.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 func sendEventFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {

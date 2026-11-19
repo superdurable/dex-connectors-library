@@ -71,7 +71,10 @@ func (operation GetObjectTextOperation) Invoke(call sdkgo.Call, input GetObjectT
 	if err != nil {
 		return sdkgo.NewQueryBranch(GetObjectTextBranchDefect, ObjectText{}, defectFailure(getObjectTextOperationID, err), sdkgo.Receipt{})
 	}
-	session, cancel, failure := client.startSession(call, getObjectTextOperationID)
+	session, cancel, failure, shouldRetry := client.startSession(call, getObjectTextOperationID)
+	if shouldRetry {
+		return sdkgo.NewQueryRetry[ObjectText](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetObjectTextBranchDefect, ObjectText{}, failure, sdkgo.Receipt{})
 	}

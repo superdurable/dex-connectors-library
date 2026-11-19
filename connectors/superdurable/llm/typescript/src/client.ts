@@ -5,12 +5,14 @@ import { isIP } from 'node:net';
 import { lookup } from 'node:dns/promises';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { AddressRefusal, sendProviderRequest, validateBaseURL, type ProviderHTTPClient } from '@superdurable/connectors-sdk/providerhttp';
-import { newTextGenerationQuery, type TextGenerationQuery } from '@superdurable/connectors-sdk/textgen';
+import {
+  newTextGenerationQuery, validateModelID, type ModelIDRule, type TextGenerationQuery,
+} from '@superdurable/connectors-sdk/textgen';
 import type { Config, CredentialSource } from './generated/models.js';
 import { GenerateTextDefinition } from './generated/definitions.js';
 import { newChatWireFormat } from './chat-profiles.js';
 import { newResponsesWireFormat } from './responses-wire-format.js';
-import { newClaudeWireFormat } from './claude-wire-format.js';
+import { newAnthropicCompatibleWireFormat, newClaudeWireFormat } from './claude-wire-format.js';
 import { newGeminiWireFormat } from './gemini-wire-format.js';
 import { isAllowedOpenAICompatibleAddress, isLoopbackAddress } from './address-policy.js';
 
@@ -18,6 +20,7 @@ const providerSettings = {
   openai: { model: 'gpt-6-sol', urls: { global: 'https://api.openai.com/v1' } },
   'openai-compatible': { model: '', urls: { global: '' } },
   anthropic: { model: 'claude-sonnet-5', urls: { global: 'https://api.anthropic.com' } },
+  'anthropic-compatible': { model: '', urls: { global: '' } },
   gemini: { model: 'gemini-3.5-flash-lite', urls: { global: 'https://generativelanguage.googleapis.com/v1beta' } },
   qwen: { model: 'qwen3.7-plus', urls: {
     global: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
@@ -32,6 +35,68 @@ const providerSettings = {
   kimi: { model: 'kimi-k2.6', urls: { global: 'https://api.moonshot.ai/v1', china: 'https://api.moonshot.cn/v1' } },
   xai: { model: 'grok-4.3', urls: { global: 'https://api.x.ai/v1', us: 'https://us.api.x.ai/v1' } },
 } as const;
+const customEndpointProviders: readonly string[] = ['openai-compatible', 'anthropic-compatible'];
+const openAICompatibleAPIs: readonly string[] = ['chat-completions', 'responses'];
+const maxConnectionModels = 100;
+const maxContextWindowTokens = 100_000_000;
+
+/** Check a gateway root without repeating it; an Anthropic root precedes /v1/messages. */
+function validateCustomEndpointBaseURL(provider: string, value: string): string {
+  if (!value) throw new TypeError(`llm ${provider} baseUrl is required`);
+  const validated = validateBaseURL(value);
+  const path = new URL(validated).pathname;
+  if (provider === 'openai-compatible' && !path.endsWith('/v1')) throw new TypeError('llm openai-compatible baseUrl must end in /v1');
+  if (provider === 'anthropic-compatible' && (path.endsWith('/v1') || path.endsWith('/messages'))) {
+    throw new TypeError('llm anthropic-compatible baseUrl must not end in /v1 or /messages');
+  }
+  const host = new URL(validated).hostname.replace(/^\[|\]$/g, '');
+  if (isIP(host) && !isAllowedOpenAICompatibleAddress(host, isLoopbackAddress(host))) {
+    throw new TypeError(`llm ${provider} baseUrl host must be public or loopback`);
+  }
+  return validated;
+}
+
+/** Mirror Go's models and modelContextWindowTokens rules; errors name positions, never values. */
+function validateConnectionModelList(config: Config, modelIDRule: ModelIDRule, connectionModel: string): void {
+  const models = config.models ?? [];
+  if (models.length > maxConnectionModels) throw new TypeError(`llm configuration models holds more than ${maxConnectionModels} entries`);
+  const listed = new Set<string>();
+  models.forEach((entry, index) => {
+    const model = validateListedModelID(modelIDRule, entry, `llm configuration models entry ${index + 1}`);
+    if (listed.has(model)) throw new TypeError(`llm configuration models entry ${index + 1} repeats an earlier entry`);
+    listed.add(model);
+  });
+  if (listed.size > 0) {
+    let isListed = false;
+    try { isListed = listed.has(validateModelID(modelIDRule, connectionModel)); } catch { isListed = false; }
+    if (!isListed) {
+      throw new TypeError("llm configuration model, or the provider's default model when it is blank, must be one of the models entries");
+    }
+  }
+  const windows = new Set<string>();
+  (config.modelContextWindowTokens ?? []).forEach((entry, index) => {
+    const prefix = `llm configuration modelContextWindowTokens entry ${index + 1}`;
+    const separator = entry.lastIndexOf('=');
+    if (separator < 0) throw new TypeError(`${prefix}: entry must be written as <model ID>=<tokens>`);
+    const model = validateListedModelID(modelIDRule, entry.slice(0, separator), prefix);
+    const tokens = entry.slice(separator + 1).trim();
+    if (!/^[0-9]{1,9}$/.test(tokens) || Number(tokens) < 1 || Number(tokens) > maxContextWindowTokens) {
+      throw new TypeError(`${prefix}: tokens must be a whole number from 1 to ${maxContextWindowTokens}`);
+    }
+    if (!listed.has(model)) throw new TypeError(`${prefix} names a model that models does not list`);
+    if (windows.has(model)) throw new TypeError(`${prefix} repeats an earlier model`);
+    windows.add(model);
+  });
+}
+
+function validateListedModelID(modelIDRule: ModelIDRule, value: string, prefix: string): string {
+  try {
+    return validateModelID(modelIDRule, value);
+  } catch (error) {
+    throw new TypeError(`${prefix}: ${error instanceof Error ? error.message : 'model ID is invalid'}`);
+  }
+}
+
 function isLoopbackHost(hostname: string): boolean {
   const address = hostname.replace(/^\[|\]$/g, '');
   return address === 'localhost' || isLoopbackAddress(address);
@@ -72,20 +137,20 @@ export class Client {
     }
     const model = (config.model ?? '').trim();
     const baseURLValue = (config.baseUrl ?? '').trim();
-    if (provider === 'openai-compatible') {
-      if (!model) throw new TypeError('llm openai-compatible model is required');
-      if (!baseURLValue) throw new TypeError('llm openai-compatible baseUrl is required');
-      const validated = validateBaseURL(baseURLValue);
-      if (!new URL(validated).pathname.endsWith('/v1')) throw new TypeError('llm openai-compatible baseUrl must end in /v1');
-      const host = new URL(validated).hostname.replace(/^\[|\]$/g, '');
-      if (isIP(host) && !isAllowedOpenAICompatibleAddress(host, isLoopbackAddress(host))) {
-        throw new TypeError('llm openai-compatible baseUrl host must be public or loopback');
-      }
-    } else if (config.baseUrl) throw new TypeError('llm baseUrl applies only to openai-compatible');
+    const openAICompatibleAPI = config.openaiCompatibleApi || 'chat-completions';
+    if (!openAICompatibleAPIs.includes(openAICompatibleAPI)) throw new TypeError('llm openaiCompatibleApi is invalid');
+    if (openAICompatibleAPI !== 'chat-completions' && provider !== 'openai-compatible') {
+      throw new TypeError('llm openaiCompatibleApi applies only to openai-compatible');
+    }
+    const isCustomEndpoint = customEndpointProviders.includes(provider);
+    if (isCustomEndpoint) {
+      if (!model) throw new TypeError(`llm ${provider} model is required`);
+      validateCustomEndpointBaseURL(provider, baseURLValue);
+    } else if (config.baseUrl) throw new TypeError('llm baseUrl applies only to openai-compatible or anthropic-compatible');
     const workspace = (config.anthropicWorkspaceId ?? '').trim();
     if (workspace && provider !== 'anthropic') throw new TypeError('llm anthropicWorkspaceId applies only to anthropic');
     if (workspace && !/^wrkspc_[A-Za-z0-9]{1,128}$/.test(workspace)) throw new TypeError('llm anthropicWorkspaceId must be a workspace ID');
-    let baseURL = provider === 'openai-compatible'
+    let baseURL = isCustomEndpoint
       ? baseURLValue
       : settings.urls[region as keyof typeof settings.urls];
     if (options.baseURLForTest) {
@@ -97,16 +162,18 @@ export class Client {
     }
     const addressPolicyClient: ProviderHTTPClient = {
       send: async request => {
-        const isCustomLoopback = provider === 'openai-compatible' && isLoopbackHost(new URL(baseURL).hostname);
+        const isCustomLoopback = isCustomEndpoint && isLoopbackHost(new URL(baseURL).hostname);
         if (isCustomLoopback || options.baseURLForTest) await checkLoopbackAddress(request.url);
         return sendProviderRequest({ ...request,
           addressPolicy: isCustomLoopback || options.baseURLForTest ? 'unrestricted' : 'publicHTTPS' });
       },
     };
-    const wireFormat = provider === 'openai' ? newResponsesWireFormat()
+    const wireFormat = provider === 'openai' || openAICompatibleAPI === 'responses' ? newResponsesWireFormat(provider)
       : provider === 'anthropic' ? newClaudeWireFormat(workspace)
+      : provider === 'anthropic-compatible' ? newAnthropicCompatibleWireFormat()
       : provider === 'gemini' ? newGeminiWireFormat()
       : newChatWireFormat(provider);
+    validateConnectionModelList(config, wireFormat.modelIDRule, model || settings.model);
     this.#generateText = newTextGenerationQuery({
       definition: GenerateTextDefinition, wireFormat, baseURL,
       connectionModel: model || settings.model,

@@ -1,10 +1,10 @@
 {
   "connectorId": "google-youtube",
-  "releaseTag": "connectors/google/youtube/go/v0.4.0",
+  "releaseTag": "connectors/google/youtube/go/v0.4.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-youtube",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -326,12 +326,14 @@
         "approval": "recommended",
         "branches": {
           "defect": "rejected",
-          "invalidResponse": "unknown",
+          "invalidResponse": "rejected",
           "notFound": "rejected",
           "providerRejected": "rejected",
           "quotaExhausted": "rejected",
           "uncertain": "unknown"
-        }
+        },
+        "repeatOnUnknown": "limited",
+        "maxSends": 3
       },
       "fields": {
         "stepType": "step_type",

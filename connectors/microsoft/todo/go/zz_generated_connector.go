@@ -40,12 +40,28 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetTaskList() sdkgo.Query[GetTaskListInput, TaskList]
+	GetTask() sdkgo.Query[GetTaskInput, Task]
+	ListLinkedResources() sdkgo.Query[ListLinkedResourcesInput, LinkedResourcesPage]
+	GetLinkedResource() sdkgo.Query[GetLinkedResourceInput, LinkedResource]
 	ListTaskLists() sdkgo.Query[ListTaskListsInput, TaskListsPage]
 	ListTasks() sdkgo.Query[ListTasksInput, TasksPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetTaskList() sdkgo.Query[GetTaskListInput, TaskList] {
+	return operations.client.GetTaskList()
+}
+func (operations clientOperations) GetTask() sdkgo.Query[GetTaskInput, Task] {
+	return operations.client.GetTask()
+}
+func (operations clientOperations) ListLinkedResources() sdkgo.Query[ListLinkedResourcesInput, LinkedResourcesPage] {
+	return operations.client.ListLinkedResources()
+}
+func (operations clientOperations) GetLinkedResource() sdkgo.Query[GetLinkedResourceInput, LinkedResource] {
+	return operations.client.GetLinkedResource()
+}
 func (operations clientOperations) ListTaskLists() sdkgo.Query[ListTaskListsInput, TaskListsPage] {
 	return operations.client.ListTaskLists()
 }
@@ -234,6 +250,314 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetTaskListBranchRetrieved sdkgo.BranchID = "retrieved"
+const GetTaskListBranchNotFound sdkgo.BranchID = "notFound"
+const GetTaskListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTaskListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTaskListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTaskListDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTaskList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTaskListBranchRetrieved, Description: "Graph returned the task list."},
+		{ID: GetTaskListBranchNotFound, Description: "The task list was absent or inaccessible.", Optional: true},
+		{ID: GetTaskListBranchProviderRejected, Description: "Graph conclusively rejected the request.", Optional: true},
+		{ID: GetTaskListBranchInvalidResponse, Description: "Graph returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTaskListBranchDefect, Description: "Local input or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTaskListResult = sdkgo.QueryResult[TaskList]
+
+type GetTaskListStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=microsoft-todo"`
+	operationID                    struct{}                                    `connector:"operationId=getTaskList"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTaskListInput                   `connector:"mapToOperationInput"`
+	Retrieved                      sdkgo.Target[GetTaskListResult]             `connector:"branch=retrieved"`
+	NotFound                       sdkgo.Target[GetTaskListResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTaskListResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTaskListResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTaskListResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TaskList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetTaskListStep[IN any](config GetTaskListStepConfig[IN]) sdkgo.QueryStep[IN, GetTaskListInput, TaskList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-todo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTaskListInput, TaskList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTaskList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTaskListResult] {
+			branches := make([]sdkgo.BranchTarget[GetTaskListResult], 0, 5)
+			if config.Retrieved.HasStep() {
+				branches = append(branches, config.Retrieved.BranchTarget(GetTaskListBranchRetrieved))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTaskListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTaskListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTaskListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTaskListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTaskBranchRetrieved sdkgo.BranchID = "retrieved"
+const GetTaskBranchNotFound sdkgo.BranchID = "notFound"
+const GetTaskBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTaskBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTaskBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTaskDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTask"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTaskBranchRetrieved, Description: "Graph returned the task."},
+		{ID: GetTaskBranchNotFound, Description: "The task was absent or inaccessible.", Optional: true},
+		{ID: GetTaskBranchProviderRejected, Description: "Graph conclusively rejected the request.", Optional: true},
+		{ID: GetTaskBranchInvalidResponse, Description: "Graph returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTaskBranchDefect, Description: "Local input or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTaskResult = sdkgo.QueryResult[Task]
+
+type GetTaskStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                `connector:"connectorId=microsoft-todo"`
+	operationID                    struct{}                                `connector:"operationId=getTask"`
+	StepType                       string                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                   `connector:"annotations"`
+	Connection                     Connection                              `connector:"connection"`
+	ConnectionName                 string                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTaskInput                   `connector:"mapToOperationInput"`
+	Retrieved                      sdkgo.Target[GetTaskResult]             `connector:"branch=retrieved"`
+	NotFound                       sdkgo.Target[GetTaskResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTaskResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTaskResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTaskResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Task]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetTaskStep[IN any](config GetTaskStepConfig[IN]) sdkgo.QueryStep[IN, GetTaskInput, Task] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-todo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTaskInput, Task]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTask(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTaskResult] {
+			branches := make([]sdkgo.BranchTarget[GetTaskResult], 0, 5)
+			if config.Retrieved.HasStep() {
+				branches = append(branches, config.Retrieved.BranchTarget(GetTaskBranchRetrieved))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTaskBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTaskBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTaskBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTaskBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListLinkedResourcesBranchListed sdkgo.BranchID = "listed"
+const ListLinkedResourcesBranchNotFound sdkgo.BranchID = "notFound"
+const ListLinkedResourcesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListLinkedResourcesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListLinkedResourcesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListLinkedResourcesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listLinkedResources"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListLinkedResourcesBranchListed, Description: "Graph returned linked resources."},
+		{ID: ListLinkedResourcesBranchNotFound, Description: "The task was absent or inaccessible.", Optional: true},
+		{ID: ListLinkedResourcesBranchProviderRejected, Description: "Graph conclusively rejected the request.", Optional: true},
+		{ID: ListLinkedResourcesBranchInvalidResponse, Description: "Graph returned malformed or oversized JSON.", Optional: true},
+		{ID: ListLinkedResourcesBranchDefect, Description: "Local input or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListLinkedResourcesResult = sdkgo.QueryResult[LinkedResourcesPage]
+
+type ListLinkedResourcesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=microsoft-todo"`
+	operationID                    struct{}                                               `connector:"operationId=listLinkedResources"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListLinkedResourcesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListLinkedResourcesResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListLinkedResourcesResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListLinkedResourcesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListLinkedResourcesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListLinkedResourcesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[LinkedResourcesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListLinkedResourcesStep[IN any](config ListLinkedResourcesStepConfig[IN]) sdkgo.QueryStep[IN, ListLinkedResourcesInput, LinkedResourcesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-todo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListLinkedResourcesInput, LinkedResourcesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListLinkedResources(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListLinkedResourcesResult] {
+			branches := make([]sdkgo.BranchTarget[ListLinkedResourcesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListLinkedResourcesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListLinkedResourcesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListLinkedResourcesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListLinkedResourcesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListLinkedResourcesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetLinkedResourceBranchRetrieved sdkgo.BranchID = "retrieved"
+const GetLinkedResourceBranchNotFound sdkgo.BranchID = "notFound"
+const GetLinkedResourceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetLinkedResourceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetLinkedResourceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetLinkedResourceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getLinkedResource"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetLinkedResourceBranchRetrieved, Description: "Graph returned the linked resource."},
+		{ID: GetLinkedResourceBranchNotFound, Description: "The linked resource was absent or inaccessible.", Optional: true},
+		{ID: GetLinkedResourceBranchProviderRejected, Description: "Graph conclusively rejected the request.", Optional: true},
+		{ID: GetLinkedResourceBranchInvalidResponse, Description: "Graph returned malformed or oversized JSON.", Optional: true},
+		{ID: GetLinkedResourceBranchDefect, Description: "Local input or connection configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetLinkedResourceResult = sdkgo.QueryResult[LinkedResource]
+
+type GetLinkedResourceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=microsoft-todo"`
+	operationID                    struct{}                                          `connector:"operationId=getLinkedResource"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetLinkedResourceInput                   `connector:"mapToOperationInput"`
+	Retrieved                      sdkgo.Target[GetLinkedResourceResult]             `connector:"branch=retrieved"`
+	NotFound                       sdkgo.Target[GetLinkedResourceResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetLinkedResourceResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetLinkedResourceResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetLinkedResourceResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[LinkedResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetLinkedResourceStep[IN any](config GetLinkedResourceStepConfig[IN]) sdkgo.QueryStep[IN, GetLinkedResourceInput, LinkedResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-todo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetLinkedResourceInput, LinkedResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetLinkedResource(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetLinkedResourceResult] {
+			branches := make([]sdkgo.BranchTarget[GetLinkedResourceResult], 0, 5)
+			if config.Retrieved.HasStep() {
+				branches = append(branches, config.Retrieved.BranchTarget(GetLinkedResourceBranchRetrieved))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetLinkedResourceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetLinkedResourceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetLinkedResourceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetLinkedResourceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListTaskListsBranchListed sdkgo.BranchID = "listed"

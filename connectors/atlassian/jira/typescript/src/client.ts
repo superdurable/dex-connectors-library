@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ReauthorizationRequiredError, SecretString, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { AddCommentOperation, CreateIssueOperation, GetIssueOperation, SearchIssuesOperation, TransitionIssueOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.atlassian.com';
@@ -24,7 +25,9 @@ export interface JiraClientOptions {
   /** Receives the issueChanged runner's seed, reseed, failed-poll, and rate-limit records and its durable inbox records; never payloads or credentials. Omitted uses the SDK default logger. */ triggerLogger?: TriggerLogger;
 }
 /** One response or sanitized request error. */
-export type JiraExchange = { response: ProviderResponse; isTooLarge?: boolean; reflectsSecret?: boolean } | { error: Error; isProvablyNotSent: boolean };
+/** A failed exchange keeps `acceptedStatus` when 2xx headers arrived before its body broke. */
+/** `isBodyIncomplete` marks a non-2xx whose body exceeded its limit, so it cannot prove a refusal. */
+export type JiraExchange = { response: ProviderResponse; isTooLarge?: boolean; reflectsSecret?: boolean; isBodyIncomplete?: boolean } | { error: Error; isProvablyNotSent: boolean; acceptedStatus?: number };
 /** Resolved credential and Jira Cloud site for one operation. */
 export interface JiraSession { token: string; cloudId: string; call: Call; signal: AbortSignal; }
 /** Session failure is a terminal defect or a safe retry. */
@@ -83,7 +86,7 @@ export class JiraClient {
       credentials = await resolveCredential(this.credentials, call, this.refreshDriver, signal);
     } catch (error) {
       if (signal.aborted) throw new JiraSessionFailure(jiraFailure(operation, 'AVAILABILITY', 'Jira credential lookup did not finish within the Execute budget'), true);
-      if (error instanceof ReauthorizationRequiredError) throw new JiraSessionFailure(jiraFailure(operation, 'AUTHENTICATION', 'Jira connection credentials are unavailable; reconnect the connection'), false);
+      if (isTerminalCredentialError(error)) throw new JiraSessionFailure(jiraFailure(operation, 'AUTHENTICATION', 'Jira connection credentials are unavailable; reconnect the connection'), false);
       throw new JiraSessionFailure(jiraFailure(operation, 'AVAILABILITY', 'Jira credential lookup is temporarily unavailable'), true);
     }
     const token = credentials.accessToken instanceof SecretString ? credentials.accessToken.reveal() : '';
@@ -168,8 +171,12 @@ export class JiraClient {
       const reflectsSecret = !!session.token && Buffer.from(response.body).includes(Buffer.from(session.token));
       return { response: { ...response, body: isTooLarge || reflectsSecret ? new Uint8Array() : response.body }, isTooLarge, reflectsSecret };
     } catch (error) {
-      if (error instanceof BodyTooLargeError && error.status !== undefined) return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isTooLarge: error.status >= 200 && error.status < 300 };
-      return { error: error instanceof Error ? error : new Error('Jira request failed'), isProvablyNotSent: error instanceof AddressRefusal || (error instanceof ProviderTransportError && error.isProvablyNotSent) };
+      if (error instanceof BodyTooLargeError && error.status !== undefined) {
+        const isSuccess = error.status >= 200 && error.status < 300;
+        return { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isTooLarge: isSuccess, isBodyIncomplete: !isSuccess };
+      }
+      const status = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+      return { error: error instanceof Error ? error : new Error('Jira request failed'), isProvablyNotSent: error instanceof AddressRefusal || (error instanceof ProviderTransportError && error.isProvablyNotSent), ...(status !== undefined && status >= 200 && status < 300 ? { acceptedStatus: status } : {}) };
     }
   }
 }
@@ -187,4 +194,10 @@ export function statusFailureKind(status: number): Failure['kind'] { return stat
 export function retryAfter(response: ProviderResponse): number { return parseRetryAfter(firstHeader(response.headers, 'retry-after')); }
 /** Return the first value of a response header, matched case-insensitively, or an empty string. */
 export function firstHeader(headers: ProviderResponse['headers'] | undefined, name: string): string { const key = Object.keys(headers ?? {}).find(candidate => candidate.toLowerCase() === name); const value = key ? headers?.[key] : undefined; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
+/** Report a credential resolution failure that no retry fixes; every other error is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError
+    || isCredentialMaterialError(error);
+}
+
 function isObject(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }

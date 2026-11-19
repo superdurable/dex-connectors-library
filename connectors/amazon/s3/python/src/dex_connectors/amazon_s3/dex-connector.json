@@ -1,10 +1,10 @@
 {
   "connectorId": "amazon-s3",
-  "releaseTag": "connectors/amazon/s3/go/v0.23.0",
+  "releaseTag": "connectors/amazon/s3/go/v0.23.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-amazon-s3",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {

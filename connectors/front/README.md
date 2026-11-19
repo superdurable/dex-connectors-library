@@ -1,15 +1,15 @@
 # Front Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/front/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/front/go@v0.24.0` after that release is published.
 
-The Python package `dex-connector-front==0.1.0` implements all five operations.
+The Python package `dex-connector-front==0.1.1` implements all five operations.
 See the [Python package guide](python/README.md) and its runnable
 [contact lookup Flow](python/examples/contact_lookup/README.md). The Python
 package has no Trigger. Its provider behavior has been replayed against the
 Go conformance recording; live Front authorization remains unverified.
 
 The [TypeScript package](typescript/README.md) implements all five operations
-at v0.1.0. Its [find-contact example](typescript/examples/find-contact/) runs
+at v0.1.1. Its [find-contact example](typescript/examples/find-contact/) runs
 through a real Dex Worker and Client against a local provider fixture; live
 Front behavior remains unverified.
 
@@ -29,6 +29,20 @@ The Front connector connects a Dex application to the
 | `replyToConversation` | Mutation | One reply that Front delivers to the recipients, or one internal comment, protected by the shared single-dispatch fence | `replied` |
 | `updateConversation` | Mutation | Sets the status or ticket status and the assignee and adds or removes tags; safe to repeat | `updated` |
 | `findContactByEmail` | Query | The contact whose email handle equals one address | `found` |
+| `getContact` | Query | One contact by Front ID | `found` |
+| `listContacts` | Query | One bounded page of company contacts | `listed` |
+| `listInboxes` | Query | Accessible inbox IDs and names | `listed` |
+| `listTags` | Query | One bounded page of accessible tags | `listed` |
+| `listTeammates` | Query | Accessible teammate IDs and names | `listed` |
+| `getMessage` | Query | One message by Front ID | `found` |
+| `listConversationMessages` | Query | One bounded page of conversation messages with a continuation token | `listed` |
+| `listConversationComments` | Query | Internal comments on one conversation | `listed` |
+| `sendNewMessage` | Mutation | Send a new message from a channel address and create a conversation | `sent` |
+
+The new contact reads need `contacts:read`, which the existing authorization guide already grants. Contact creation and updates require `contacts:write`, and deletion requires `contacts:delete`; these scopes are outside the existing token guide.
+The directory reads need `inboxes:read`, `tags:read`, and `teammates:read`, which the existing guide already grants. Tag creation requires `tags:write`, and channel listing requires `channels:read`; those scopes are outside the existing guide.
+The standalone message and comment reads use the existing `messages:read` and `comments:read` grants. The `FrontMessageHistory` runnable Flow reads a message by ID and then its conversation's message page and comments. Front's message import requires `messages:write`, which is outside the existing guide.
+`sendNewMessage` uses the existing `messages:send` grant. Supply `ChannelAddress` from <https://app.frontapp.com/> under **Settings > Channels** (for example, `support@example.com`), at least one recipient handle in `To`, and plain `Text`; `Subject` is useful for email and blank lets Front choose its default. The runnable `FrontNewMessage` Flow exercises the accepted-send path. Front returns a message UID rather than the final message ID; use the UID alias for read-back. An unknown or unreadable rejection can repeat until the three-send cap, and the `uncertain` outcome requires a manual check before any further send.
 
 Every other branch is optional: `notFound`, `providerRejected`,
 `invalidResponse`, and `defect`. `getConversation` adds `merged`;
@@ -219,21 +233,32 @@ Front's [reply](https://dev.frontapp.com/reference/create-message-reply) and
 no documented idempotency key or client-supplied lookup value. A lost answer
 therefore cannot be matched to one write by listing the conversation's messages
 or comments. The shared `singledispatch.Fence` records an attempt-scoped claim
-under sync durability before one POST. A missing, stale, or unreadable claim
-fails closed. A `429`, `503`, or traced DNS/connect/TLS failure before a
-connection was obtained records `canResend` and permits only the next attempt
-to retry; Front's non-application of a `503` remains **unverified against a live
-Front account**. Other ambiguous sent failures, including `408`, other `5xx`,
-and transport loss, select `uncertain`. A `409` also selects `uncertain` because
-no key or unique value can confirm the conflicting write. A `404` or
-merged-conversation `301` selects `notFound`; other definite `4xx` rejections
-select `providerRejected`.
+under sync durability before each POST and counts every possible send of the
+Call ID against the manifest send cap (`maxSends`, 3 by default). A missing or
+stale claim counts as a possible send; an unreadable or foreign checkpoint
+returns Retry without sending. A `429`, `503`, or traced DNS/connect/TLS
+failure before a connection was obtained records `canResend` and retries;
+Front's non-application of a `503` remains **unverified against a live
+Front account**. Other unknown outcomes, including `408`, `409`, other `5xx`,
+an unlisted status, transport loss, a refusal status whose error body is
+oversized or unreadable, a merged-conversation `301` or any other `3xx`, and
+a request cut off by the fence's write window,
+return Retry so the next attempt resends while fewer sends than the cap may
+have taken effect, which can deliver a duplicate reply; the send that reaches
+the cap selects `uncertain`. A later attempt counts every earlier possible
+send, also after a `429` or `503` recorded `canResend`. A `404` selects
+`notFound`, and a `400`, `401`, `403`,
+`411`, `413`, `414`, `415`, or `422` selects `providerRejected`; each records
+`canResend` first. After a possible earlier send, any of these refusals, and
+a local request or credential failure that requires reconnection, selects
+`uncertain` instead; a transient credential failure then Retries without
+recording anything.
 
 The fence bounds each request to 7/12 of the smaller of the 30-second Execute
 timeout and the remaining Step deadline, and refuses a send without one tenth
-of the initial budget remaining before its request deadline. Any 2xx answer
-is accepted and never resent. An unreadable body or missing provider ID
-selects `uncertain`; a returned ID can be read back. An accepted reply's
+of the initial budget remaining before its request deadline. A 2xx answer
+with a provider ID is accepted and never resent; a returned ID can be read
+back. An accepted reply's
 `message_uid` can be read at
 `GET /messages/alt:uid:{uid}` as [Front documents](https://dev.frontapp.com/reference/messages),
 and an accepted comment's ID can be read at
@@ -250,23 +275,26 @@ A reply `message_uid` read-back `404` retries the GET without another POST:
 Front may not have created the accepted message yet, although this timing
 remains unverified with a live Front account. If that `404` persists, the
 five-attempt/five-minute retry budget expires and the Flow fails without
-another POST. A lost answer without an ID remains
-`uncertain` because content and author are not unique identifiers.
+another POST. A lost answer without an ID cannot be read back, because content
+and author are not unique identifiers, so it is resent within the send cap.
+A 2xx answer means Front accepted the write, so it is never resent: when its
+body is malformed, oversized, reflects the token, breaks while being read, is
+cut off by the fence's write window after the 2xx status arrived, or carries
+no usable provider ID, the reply selects `uncertain` at once.
 
-Every in-flight reply retry from v0.21.x fails closed to `uncertain` at
-attempt 2 or later and never resends, including retries whose old
-`isFrontReplyDispatched` checkpoint was cleared after a `429` or unsent
-failure. Reconcile those Flows manually after this upgrade.
+Every in-flight reply retry from v0.21.x has an untrusted checkpoint, so it
+returns Retry without sending until its retry budget expires. Reconcile those
+Flows manually after this upgrade.
 
 The real-Dex tests in
 [`examples/conversation-triage`](go/examples/conversation-triage/main_integration_test.go)
 cover a delayed fake Front response, a `503` then acceptance
 with two comment POSTs, and a Worker lost while Front holds the comment: the
-new Worker selects `uncertain` without a second POST.
+new Worker counts the lost send and resends the comment below the cap.
 
 ## Mocks
 
-`frontmock` supplies one consistent default world for all five operations:
+`frontmock` supplies one consistent default world for the conversation triage operations and the new contact reads:
 Jane's `cnv_100` conversation has an inbound message, `crd_100` is her
 contact, search includes `cnv_200` as another open conversation, the triage
 comment becomes `com_100`, and routing assigns `tea_leela` and adds
@@ -378,16 +406,19 @@ Failure names only the HTTP status.
 | 400, 413, 422 | `providerRejected`, `VALIDATION` |
 | 401 | `providerRejected`, `AUTHENTICATION`; `replyToConversation` attempts forced credential refresh when the credential source supports refresh after rejection and permits one fenced Retry with a changed valid token |
 | 403 | `providerRejected`, `AUTHORIZATION`, such as a token without the namespace or permission |
-| 404, 410 | `notFound` where declared, otherwise `providerRejected`; `providerRejected` on an `updateConversation` write after its read found the conversation |
-| 409 | `uncertain`, `CONFLICT` for `replyToConversation`; `providerRejected`, `CONFLICT` for other operations |
-| 301 | `merged` for `getConversation`, `notFound` for the Mutations, naming the absorbing conversation |
-| other 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |
+| 404 | `notFound` where declared, otherwise `providerRejected`; `providerRejected` on an `updateConversation` write after its read found the conversation |
+| 410 | `notFound` for reads; Retry for every `updateConversation` request; resend within the send cap for `replyToConversation` |
+| 409, other unlisted 4xx | `providerRejected`, `CONFLICT` for reads; Retry for every `updateConversation` request; resend within the send cap, then `uncertain`, for `replyToConversation` |
+| 301 | `merged` for `getConversation` and `notFound` for `updateConversation`, naming the absorbing conversation; `replyToConversation` treats it as an unknown outcome, resending within the send cap, then selecting `uncertain` |
+| other 3xx | `providerRejected`, `PROTOCOL`, for reads; Retry for every `updateConversation` request; resend within the send cap for `replyToConversation`; redirects are never followed |
 | 429 | Retry after `Retry-After` seconds, capped at an hour; without it, at the `X-Ratelimit-Reset` second, one second to a minute later |
-| 408, 5xx, transport failure | Retry for reads and repeat-safe writes; `replyToConversation` Retries a 503 or provably unsent failure and selects `uncertain` for other ambiguous sends |
-| oversized, malformed, or credential-reflecting 2xx | `uncertain` for `replyToConversation`; `invalidResponse` for other operations |
+| 408, 5xx, transport failure | Retry for reads and repeat-safe writes; `replyToConversation` Retries a 503 or provably unsent failure and resends other unknown outcomes within the send cap, then selects `uncertain` |
+| oversized, malformed, unreadable, or credential-reflecting 2xx | `replyToConversation` selects `uncertain` without resending when no provider ID decodes; `updateConversation` Retries on every read and write, because an earlier attempt's change may have applied, so its declared `invalidResponse` is no longer selected; reads select `invalidResponse` |
+| refusal status with an oversized, unreadable, or token-reflecting error body | Reads use the status; `updateConversation` Retries its first read and every write; `replyToConversation` resends within the send cap, then selects `uncertain` |
+| unreadable or foreign fence checkpoint | Retry without sending for `replyToConversation` |
 | invalid input | `defect`, with no request |
-| transient credential resolution failure | Before sending, `replyToConversation` records not-sent and Retries; during accepted-write read-back, it Retries without another POST. Other operations select `defect` |
-| reauthorization required or unusable resolved token | Before sending, `replyToConversation` records not-sent and selects `defect`; during accepted-write read-back, it selects `uncertain` with the saved provider ID and reconnect guidance. Other operations select `defect` |
+| transient credential resolution failure: any resolve error other than the five below, such as a credential broker outage, a timeout, or a connection the static provider does not configure | Before a first send, `replyToConversation` records not-sent and Retries; after a possible earlier send or during accepted-write read-back, it Retries without recording or sending. `updateConversation` Retries; queries select `defect` |
+| reauthorization required, a missing or unselected connection, a credential broker refusal, or an unusable resolved token | Before a first send, `replyToConversation` records not-sent and selects `defect`; after a possible earlier send, it selects `uncertain`; during accepted-write read-back, it selects `uncertain` with the saved provider ID and reconnect guidance. `updateConversation` selects `defect` on its first attempt and Retries on later ones, which may follow earlier writes; queries select `defect` |
 
 Front's rate limit is per company: 50, 100, or 200 requests a minute on the
 Starter, Professional, and Enterprise plans, plus a burst allowance. Per
@@ -402,8 +433,8 @@ second, and so do the tag writes. `getConversation` sends three requests and
 - The connector sends the token only to `https://api2.frontapp.com`, never
   follows a redirect or a next-page link, and reads at most
   `maxResponseBytes`; an answer that reflects the token selects
-  `invalidResponse` for reads and repeat-safe writes, or `uncertain` for
-  `replyToConversation` after Front accepted the write.
+  `invalidResponse` for reads, Retries a repeat-safe write, or counts as an
+  unknown outcome for `replyToConversation`.
 - Failure messages are written by the connector from status codes; Front's
   message text is never read.
 

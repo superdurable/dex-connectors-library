@@ -18,9 +18,11 @@ const (
 	// ConnectionName is the static Dex Web connection used by this example.
 	ConnectionName    = "lever"
 	operationStepType = "CallGetOpportunity"
+	listStepType      = "CallListOpportunities"
 )
 
 var opportunityAttribute = dex.DefineAttribute[lever.OpportunityStage]("lever-opportunity")
+var opportunitiesPageAttribute = dex.DefineAttribute[lever.OpportunitiesPage]("lever-opportunities-page")
 
 // Flow runs GetOpportunity once and completes with its typed output.
 type Flow struct {
@@ -34,7 +36,7 @@ func NewFlow(connection lever.Connection) *Flow { return &Flow{connection: conne
 func (*Flow) GetFlowType() string { return FlowType }
 
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{opportunityAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{opportunityAttribute, opportunitiesPageAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
@@ -45,7 +47,15 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Lever", Explanation: "Read a opportunity from Lever."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Found:               sdkgo.GoTo(completeResult{}),
+			Found:               sdkgo.GoTo(listRelatedOpportunities{}),
+		})),
+		dex.DefineStep(listRelatedOpportunities{}),
+		dex.DefineStep(lever.NewListOpportunitiesStep(lever.ListOpportunitiesStepConfig[lever.ListOpportunitiesInput]{
+			StepType: listStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Lever", Explanation: "List opportunities in the selected stage."},
+			Connection:          flow.connection,
+			MapToOperationInput: func(input lever.ListOpportunitiesInput) lever.ListOpportunitiesInput { return input },
+			Listed:              sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
 	}
@@ -57,23 +67,33 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 }
 
 // dex:field attribute-key:lever-opportunity value-type:json editable:false description:"Provider result"
+// dex:field attribute-key:lever-opportunities-page value-type:json editable:false description:"Related opportunities"
 // GetDexSummary shows the last provider result in Dex Web.
 func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
 	outcome, err := readOpportunity(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"lever-opportunity": outcome}}, nil
+	page, err := readOpportunitiesPage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"lever-opportunity": outcome, "lever-opportunities-page": page}}, nil
 }
 
 // dex:field attribute-key:lever-opportunity value-type:json editable:false description:"Provider result"
+// dex:field attribute-key:lever-opportunities-page value-type:json editable:false description:"Related opportunities"
 // GetDexDisplay shows the last provider result in Dex Web.
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
 	outcome, err := readOpportunity(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"lever-opportunity": outcome}}, nil
+	page, err := readOpportunitiesPage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"lever-opportunity": outcome, "lever-opportunities-page": page}}, nil
 }
 
 func readOpportunity(ctx dex.Context) (lever.OpportunityStage, error) {
@@ -83,6 +103,15 @@ func readOpportunity(ctx dex.Context) (lever.OpportunityStage, error) {
 		return lever.OpportunityStage{}, nil
 	}
 	return outcome, err
+}
+
+func readOpportunitiesPage(ctx dex.Context) (lever.OpportunitiesPage, error) {
+	page, err := opportunitiesPageAttribute.Get(ctx)
+	var missing *dex.AttributeNotFoundError
+	if errors.As(err, &missing) {
+		return lever.OpportunitiesPage{}, nil
+	}
+	return page, err
 }
 
 // MapToOperationInput preserves the validated typed start input for the provider call.
@@ -102,18 +131,35 @@ func (startRequest) Execute(_ dex.Context, input lever.GetOpportunityInput) (*de
 	return dex.GoTo(sdkgo.StepRef[lever.GetOpportunityInput](operationStepType), input), nil
 }
 
-// dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow with the provider's typed result."
-type completeResult struct {
+// dex:group group-id:provider group-label:"Lever"
+// dex:explanation text:"Persist the opportunity and list others in its stage."
+type listRelatedOpportunities struct {
 	dex.StepDefaultsNoWaitFor[lever.GetOpportunityResult]
 }
 
-func (completeResult) GetStepType() string { return "CompleteGetOpportunity" }
-func (completeResult) Execute(ctx dex.Context, result lever.GetOpportunityResult) (*dex.StepDecision, error) {
+func (listRelatedOpportunities) Execute(ctx dex.Context, result lever.GetOpportunityResult) (*dex.StepDecision, error) {
 	if err := opportunityAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(result.Value), nil
+	return dex.GoTo(sdkgo.StepRef[lever.ListOpportunitiesInput](listStepType), lever.ListOpportunitiesInput{StageID: result.Value.Stage}), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete the Flow with the provider's typed result."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[lever.ListOpportunitiesResult]
+}
+
+func (completeResult) GetStepType() string { return "CompleteGetOpportunity" }
+func (completeResult) Execute(ctx dex.Context, result lever.ListOpportunitiesResult) (*dex.StepDecision, error) {
+	if err := opportunitiesPageAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
+	opportunity, err := readOpportunity(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(opportunity), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

@@ -1,10 +1,10 @@
 {
   "connectorId": "xero",
-  "releaseTag": "connectors/xero/go/v0.25.0",
+  "releaseTag": "connectors/xero/go/v0.25.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-xero",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {

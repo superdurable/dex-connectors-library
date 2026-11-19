@@ -249,19 +249,16 @@ func TestLostCreateResponseWithRevokedCredentialsDoesNotResendWithRealDex(t *tes
 	require.Equal(t, 1, provider.conversationCount())
 }
 
-func TestUnappliedCreateWithAnUnknownOutcomeFailsWithRealDex(t *testing.T) {
+func TestUnappliedCreateWithAnUnknownOutcomeIsReadBackAndResentWithRealDex(t *testing.T) {
 	provider := newFakeReamaze(t)
 	provider.failsFirstCreateWithoutApplying = true
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	result := harness.waitForFlow(t, harness.startTriage(t, "unknown-create", integrationIssueInput()))
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.count("create"), "a 502 is never resent, because Re:amaze may still apply it")
-	require.Equal(t, 1, provider.count("reconcile"))
-	require.Zero(t, provider.conversationCount())
-	require.Zero(t, provider.count("note"))
+	outcome := harness.runTriage(t, "unknown-create", integrationIssueInput())
+	require.Equal(t, TriageConversationOpened, outcome.Action)
+	require.Equal(t, 1, provider.count("reconcile"), "the next attempt reads back before it resends")
+	require.Equal(t, 2, provider.count("create"), "an absent read-back permits a resend below the send cap")
+	require.Equal(t, 1, provider.conversationCount())
 }
 
 func TestLostNoteResponseIsReconciledByOriginIDWithRealDex(t *testing.T) {
@@ -320,7 +317,7 @@ func TestRateLimitedCreateWaitsAndCreatesOneConversationWithRealDex(t *testing.T
 }
 
 // The replacement Worker's attempt finds the stored dispatch marker, reads back, and sends nothing.
-func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *testing.T) {
+func TestLostWorkerDuringCreateReadsBackAndResendsWithinTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeReamaze(t)
 	provider.holdsFirstCreate = make(chan struct{})
 	harness := newTriageHarness(t, provider, slowRequestTimeout)
@@ -331,12 +328,10 @@ func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *te
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstCreate)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, dex.FlowCompleted, result.Status, "the read-back finds nothing yet, so the new Worker resends below the cap: %s", result.ErrorMessage)
 	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("create"), "the attempt on the new Worker did not resend the create")
-	require.Equal(t, 1, provider.conversationCount(), "the held create still landed, which a person must now find")
+	require.Equal(t, 2, provider.count("create"), "the attempt on the new Worker resent the create")
+	require.Equal(t, 2, provider.conversationCount(), "limited accepts a duplicate conversation instead of an uncertain Flow")
 }
 
 func TestRejectedConversationFailsTheFlowWithoutReamazeTextWithRealDex(t *testing.T) {

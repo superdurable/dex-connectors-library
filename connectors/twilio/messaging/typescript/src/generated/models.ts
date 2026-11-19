@@ -75,29 +75,48 @@ export interface Credentials {
   authToken?: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the selected authorization method. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["auth_method", "api_key_sid", "api_key_secret", "auth_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["api_key_sid"] != null && !(typeof fields["api_key_sid"] === 'string')) throw new TypeError("credential api_key_sid has an invalid type");
-  if (fields["api_key_secret"] != null && !(typeof fields["api_key_secret"] === 'string')) throw new TypeError("credential api_key_secret has an invalid type");
-  if (fields["auth_token"] != null && !(typeof fields["auth_token"] === 'string')) throw new TypeError("credential auth_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["api_key_sid"] != null && !(typeof fields["api_key_sid"] === 'string')) throw new CredentialMaterialError("credential api_key_sid has an invalid type");
+  if (fields["api_key_secret"] != null && !(typeof fields["api_key_secret"] === 'string')) throw new CredentialMaterialError("credential api_key_secret has an invalid type");
+  if (fields["auth_token"] != null && !(typeof fields["auth_token"] === 'string')) throw new CredentialMaterialError("credential auth_token has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
-  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  if (typeof selectedMethod !== 'string') throw new CredentialMaterialError('credential auth_method is invalid');
   const method = selectedMethod || "auth-token";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "auth-token") {
-    if (!fields["auth_token"]) throw new TypeError("credential auth_token is required");
+    if (!fields["auth_token"]) throw new CredentialMaterialError("credential auth_token is required");
     if (fields["auth_token"]) credentials.authToken = new SecretString(fields["auth_token"] as string);
   } else if (method === "api-key") {
-    if (!fields["api_key_sid"]) throw new TypeError("credential api_key_sid is required");
+    if (!fields["api_key_sid"]) throw new CredentialMaterialError("credential api_key_sid is required");
     if (fields["api_key_sid"]) credentials.apiKeySid = fields["api_key_sid"] as string;
-    if (!fields["api_key_secret"]) throw new TypeError("credential api_key_secret is required");
+    if (!fields["api_key_secret"]) throw new CredentialMaterialError("credential api_key_secret is required");
     if (fields["api_key_secret"]) credentials.apiKeySecret = new SecretString(fields["api_key_secret"] as string);
   } else {
-    throw new TypeError('credential auth_method is invalid');
+    throw new CredentialMaterialError('credential auth_method is invalid');
   }
   return credentials;
 }

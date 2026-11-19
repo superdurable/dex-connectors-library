@@ -19,11 +19,16 @@ Graph v1.0. Its operations mirror the Google Drive connector's names:
   an explicit `fail` or `replace` conflict behavior.
 - `onedrive.NewCreateFolderStep` ensures one folder with a name exists in a
   parent folder.
+- `onedrive.NewDeleteItemStep` moves a file or folder to the recycle bin; an
+  already absent item is a completed deletion.
+- `onedrive.NewRenameItemStep` replaces a file or folder name by item ID.
+- `onedrive.NewMoveItemStep` moves a file or folder to another parent in its drive.
+- `onedrive.NewCopyFileStep` queues an asynchronous file copy after checking the
+  destination path; `isQueued` means Graph accepted the job, not that it finished.
 
 Every operation takes a `driveId`. Blank means the signed-in user's OneDrive
 (`/me/drive`); a SharePoint document library is chosen with the drive picker.
-The connector does not move, rename, share, or delete items, and this release
-has no Triggers (see [Triggers](#triggers)).
+This release has no Triggers (see [Triggers](#triggers)).
 
 ## Authorization
 
@@ -197,6 +202,17 @@ because the create-folder page shows the body and the driveItem page says the
 URL. A `409 nameAlreadyExists` reads the item at the path back: a folder
 selects `created` with `isExistingFolder`; a file selects `nameConflict`.
 
+Both writes declare `repeatOnUnknown: safe`. They select `providerRejected`
+only for `400`, `401`, `403`, `404`, `411`, `413`, `414`, `415`, `422`, or
+`507` (Graph's documented full quota, kind `QUOTA_EXHAUSTED`) with a fully
+read body that describes no item, and never repeat such a refusal. Any other
+status, including `501`, `412`, and a `409` that is not `nameAlreadyExists` for `createFolder`,
+an oversized error body, and an invalid read-back return Retry, so
+`invalidResponse` is no longer selected for them. A read-back refusal selects
+a branch only on a first attempt; a later attempt, or a credential failure on a
+later attempt, retries, because an earlier attempt may have written. Malformed
+stored credential material is terminal like a reauthorization.
+
 The example's real-Dex tests stop the Worker after the first PUT or POST
 applies. The replacement repeats the Step; with `fail` the second PUT gets
 `409`, reads back the identical file, and selects `uploaded`. With `replace`,
@@ -220,10 +236,13 @@ Limits of this design:
 ## Branches
 
 Every operation uses `defect` for invalid input, connection configuration, a
-credential that cannot be resolved, or a contract violation, before any
-request. `providerRejected` is a conclusive Graph refusal, such as `403`, a
-missing parent folder, a blocked file type, or `507` (a full quota, kind
-`QUOTA_EXHAUSTED`). `invalidResponse` is a malformed or oversized response.
+terminal credential failure (reauthorization required, a missing or unselected
+connection, a broker refusal, or a token that fails local checks), or a
+contract violation, before any request. Every other credential failure, such
+as a broker outage, returns Retry before any request. `providerRejected` is a conclusive Graph refusal, such as `403`, a
+missing parent folder, or a blocked file type; it also covers `507` (a full
+quota, kind `QUOTA_EXHAUSTED`).
+`invalidResponse` is a malformed or oversized response to a read operation.
 `408`, `429`, `5xx` other than `501` and `507`, and the codes
 `activityLimitReached`, `throttledRequest`, and `serviceNotAvailable` return
 Retry, honoring `Retry-After` up to one hour. After a 401 the connector asks
@@ -303,8 +322,9 @@ for push delivery.
 ## Not in this release
 
 - Personal Microsoft accounts (see [Authorization](#authorization)).
-- Large uploads through upload sessions, moves, renames, copies, sharing
-  links, permissions, deletes, versions, and check-in or check-out.
+- Large uploads through upload sessions, sharing links, permissions, versions,
+  and check-in or check-out. Graph sharing links grant bearer access, so the
+  connector cannot return them in Flow Results without exposing a secret.
 - Office conversions such as `?format=pdf` and reading Word or Excel content;
   the Excel connector owns workbook data.
 - National clouds (`graph.microsoft.us`, `microsoftgraph.chinacloudapi.cn`),
@@ -322,8 +342,8 @@ authorization has not been verified for the Python port.
 [`examples/text-copy`](go/examples/text-copy) is a runnable Dex Web
 **Start Flow** example that looks up a text file by name in a source folder,
 ensures a copy folder in a destination folder, copies the text into it with
-`fail` or `replace`, and reads the copy back. Both locations come from the site,
-drive, and folder pickers.
+`fail` or `replace`, reads the copy back, and optionally renames it with
+`finalName`. Both locations come from the site, drive, and folder pickers.
 
 ## TypeScript
 
@@ -362,4 +382,4 @@ mock := onedrivemock.New(t, ConnectionName)
 harness := newTextCopyHarnessWithConnection(t, mock.Connection(), "source-folder", "destination-folder")
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go@v0.24.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go@v0.25.0`.

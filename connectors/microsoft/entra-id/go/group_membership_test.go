@@ -71,6 +71,11 @@ func TestAddUserToGroupRetriesReplicationLagThenSelectsNotFoundOrRejected(t *tes
 	require.NoError(t, err)
 	require.Equal(t, entraid.AddUserToGroupBranchProviderRejected, rejected.Branch)
 	requireSafeFailure(t, rejected.Failure)
+
+	laterAttempt := newLateTestDexContext("add-later")
+	laterAttempt.attempt = 2
+	_, err = sdkgo.RunMutation(laterAttempt, client.AddUserToGroup(), testConnection, unsupported)
+	require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind, "after an earlier attempt the unlisted membership may be this Step's")
 }
 
 func TestAddUserToGroupSelectsProviderRejectedForAGroupGraphCannotManage(t *testing.T) {

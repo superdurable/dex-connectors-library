@@ -56,6 +56,7 @@ func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, "AnnouncementChannelFound", dex.GetFinalStepType[discord.GetChannelResult](announcementChannelFound{}))
 	require.Equal(t, "AnnouncementPosted", dex.GetFinalStepType[discord.CreateMessageResult](announcementPosted{}))
 	require.Equal(t, "AnnouncementReacted", dex.GetFinalStepType[discord.AddReactionResult](announcementReacted{}))
+	require.Equal(t, "AnnouncementMessageRead", dex.GetFinalStepType[discord.GetMessageResult](announcementMessageRead{}))
 	require.Equal(t, "CompleteAnnouncement", dex.GetFinalStepType[discord.ListChannelMessagesResult](completeAnnouncement{}))
 	wait, err := recordAnnouncementRequest{}.WaitFor(nil, AnnouncementRequest{})
 	require.NoError(t, err)

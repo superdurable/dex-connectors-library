@@ -6,7 +6,7 @@ import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
 import { MySQLClient } from './client.js';
 import { newProjectConnection as newGeneratedProjectConnection } from './generated/connection.js';
-import type { Config, Credentials } from './generated/models.js';
+import { CredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 
 const projectSettingsSchema = z.strictObject({
   host: z.string(), port: z.number().int().optional(), database: z.string(), user: z.string(),
@@ -34,8 +34,9 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
       async resolve(call: Call, signal?: AbortSignal): Promise<Credentials> {
         void call;
         const fields = await loadedProject.resolveCredential('mysql', name, signal);
-        const decoded = z.object({ password: z.string().min(1) }).parse(fields);
-        return { password: new SecretString(decoded.password) };
+        const decoded = z.object({ password: z.string().min(1) }).safeParse(fields);
+        if (!decoded.success) throw new CredentialMaterialError('MySQL password is unavailable');
+        return { password: new SecretString(decoded.data.password) };
       },
     };
     return new MySQLClient(config, credentials);

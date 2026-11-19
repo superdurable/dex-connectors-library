@@ -53,8 +53,14 @@ func TestRecordRefundExampleWithRealDex(t *testing.T) {
 		require.Equal(t, []string{"88213", "250.00", "tkt_5488", outcome.Refund.IdempotencyKey}, parameters)
 		require.Len(t, outcome.Refund.IdempotencyKey, 36, "the key is the Step's UUID Call ID")
 		require.Equal(t, 1, ledger.committedRowCount())
-		require.Len(t, server.EventsOfKind(scriptedtds.EventBeginTransaction), 2, "the check and the insert each run in a transaction")
-		require.Len(t, server.EventsOfKind(scriptedtds.EventCommit), 1, "only the write commits")
+		require.Len(t, server.EventsOfKind(scriptedtds.EventBeginTransaction), 3, "the check, the insert, and the daily total each run in a transaction")
+		require.Len(t, server.EventsOfKind(scriptedtds.EventCommit), 2, "only the two writes commit")
+		require.True(t, outcome.IsAddedToDailyTotal)
+		require.Equal(t, int64(25000), ledger.committedDailyTotalCents())
+		dailyTotals := executionsOf(server, AddRefundToDailyTotalStatement)
+		require.Len(t, dailyTotals, 1)
+		require.Len(t, dailyTotals[0].Parameters, 1, "executeNonIdempotent binds no idempotency key")
+		require.Equal(t, "250.00", dailyTotals[0].Parameters[0].Text)
 	})
 
 	t.Run("completes without writing when the order already has a refund", func(t *testing.T) {
@@ -78,7 +84,7 @@ func TestRecordRefundExampleWithRealDex(t *testing.T) {
 		require.Equal(t, committedBefore+1, ledger.committedRowCount(), "only the racing Flow's row exists")
 	})
 
-	t.Run("reconciles a COMMIT whose reply was lost after it applied", func(t *testing.T) {
+	t.Run("retries a COMMIT whose reply was lost after it applied and reads the row back", func(t *testing.T) {
 		ledger.mu.Lock()
 		ledger.commitActions = []scriptedtds.CommitAction{scriptedtds.CommitThenDropConnection}
 		ledger.mu.Unlock()
@@ -86,20 +92,33 @@ func TestRecordRefundExampleWithRealDex(t *testing.T) {
 		flowID, result := harness.runRefundFlow(t, Input{OrderID: "90001", AmountUSD: "41000.00"})
 		outcome := harness.requireCompletedOutcome(t, flowID, result)
 		require.Equal(t, StatusRecorded, outcome.Status)
-		require.True(t, outcome.WasReconciled, "the uncertain branch read the row back by its key")
-		require.Len(t, insertExecutions(server), before+1, "an uncertain write is never retried")
+		require.True(t, outcome.WasReconciled, "the replayed INSERT returned no row, so the read-back confirmed it")
+		require.Len(t, insertExecutions(server), before+2, "execute repeats an unknown COMMIT with the same key")
 		require.Equal(t, committedBefore+1, ledger.committedRowCount())
 	})
 
-	t.Run("fails for review when an uncertain COMMIT left no row", func(t *testing.T) {
+	t.Run("retries a COMMIT lost before it applied and records the refund", func(t *testing.T) {
 		ledger.mu.Lock()
 		ledger.commitActions = []scriptedtds.CommitAction{scriptedtds.DropConnectionWithoutCommitting}
 		ledger.mu.Unlock()
 		before, committedBefore := len(insertExecutions(server)), ledger.committedRowCount()
-		_, result := harness.runRefundFlow(t, Input{OrderID: "90002", AmountUSD: "10.00"})
-		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "no refund_ledger row carries this Flow's idempotency key")
-		require.Len(t, insertExecutions(server), before+1)
-		require.Equal(t, committedBefore, ledger.committedRowCount())
+		flowID, result := harness.runRefundFlow(t, Input{OrderID: "90002", AmountUSD: "10.00"})
+		outcome := harness.requireCompletedOutcome(t, flowID, result)
+		require.Equal(t, StatusRecorded, outcome.Status)
+		require.False(t, outcome.WasReconciled, "the retry inserted the row")
+		require.Len(t, insertExecutions(server), before+2)
+		require.Equal(t, committedBefore+1, ledger.committedRowCount())
+	})
+
+	t.Run("stops for review when the daily total COMMIT reply was lost", func(t *testing.T) {
+		ledger.mu.Lock()
+		ledger.commitActions = []scriptedtds.CommitAction{scriptedtds.CommitAndReply, scriptedtds.CommitThenDropConnection}
+		ledger.mu.Unlock()
+		before, totalBefore := len(executionsOf(server, AddRefundToDailyTotalStatement)), ledger.committedDailyTotalCents()
+		_, result := harness.runRefundFlow(t, Input{OrderID: "90007", AmountUSD: "3.00"})
+		require.Equal(t, dex.FlowFailed, result.Status, "the unwired uncertain branch fails the Flow")
+		require.Contains(t, result.ErrorMessage, "uncertain")
+		require.Len(t, executionsOf(server, AddRefundToDailyTotalStatement), before+1, "executeNonIdempotent never runs the statement again")
+		require.Equal(t, totalBefore+300, ledger.committedDailyTotalCents(), "the refund was counted exactly once")
 	})
 }

@@ -142,6 +142,8 @@ def new_create_event_step(
     defect: dex.StepTarget[MutationResult[CreateEventOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CreateEventOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateEventInput, CreateEventOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Google Calendar Step connection name must match its connection reference")
@@ -195,6 +197,8 @@ def new_update_event_step(
     defect: dex.StepTarget[MutationResult[UpdateEventOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateEventOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateEventInput, UpdateEventOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Google Calendar Step connection name must match its connection reference")

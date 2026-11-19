@@ -778,10 +778,21 @@
         "id": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
         "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
         "description": { "type": "string", "minLength": 1 },
-        "optional": { "type": "boolean" }
+        "optional": { "type": "boolean" },
+        "retired": { "type": "boolean", "description": "Marks a released branch the connector no longer selects but keeps for compatibility. A retired branch is optional, is not defect, states retiredReason, and needs no conformance replay coverage." },
+        "retiredReason": { "type": "string", "minLength": 1, "pattern": "\\S", "description": "Why the retired branch is no longer selected and what the connector selects instead." }
       },
-      "if": { "properties": { "id": { "const": "defect" } }, "required": ["id"] },
-      "then": { "required": ["optional"], "properties": { "optional": { "const": true } } }
+      "allOf": [
+        {
+          "if": { "properties": { "id": { "const": "defect" } }, "required": ["id"] },
+          "then": { "required": ["optional"], "properties": { "optional": { "const": true }, "retired": { "const": false } } }
+        },
+        {
+          "if": { "properties": { "retired": { "const": true } }, "required": ["retired"] },
+          "then": { "required": ["optional", "retiredReason"], "properties": { "optional": { "const": true } } },
+          "else": { "not": { "required": ["retiredReason"] } }
+        }
+      ]
     },
     "execution": {
       "type": "object",
@@ -955,6 +966,35 @@
         {
           "if": { "properties": { "kind": { "const": "query" } } },
           "then": { "properties": { "idempotency": { "const": "none" } } }
+        },
+        {
+          "$comment": "A limited or unsafe mutation must declare an optional uncertain branch and keep it selectable at the send cap.",
+          "if": {
+            "required": ["kind"],
+            "properties": { "kind": { "const": "mutation" } },
+            "not": {
+              "anyOf": [
+                { "required": ["execution"], "properties": { "execution": { "required": ["repeatOnUnknown"], "properties": { "repeatOnUnknown": { "const": "safe" } } } } },
+                {
+                  "required": ["agent"],
+                  "properties": {
+                    "execution": { "not": { "required": ["repeatOnUnknown"] } },
+                    "agent": { "required": ["retry"], "properties": { "retry": { "const": "safe" } } }
+                  }
+                }
+              ]
+            }
+          },
+          "then": {
+            "properties": {
+              "branches": {
+                "contains": { "required": ["id", "optional"], "properties": { "id": { "const": "uncertain" }, "optional": { "const": true } } },
+                "not": {
+                  "contains": { "required": ["id", "retired"], "properties": { "id": { "const": "uncertain" }, "retired": { "const": true } } }
+                }
+              }
+            }
+          }
         }
       ]
     }

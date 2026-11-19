@@ -3,20 +3,20 @@ kind: Connector
 metadata:
   name: microsoft-onedrive
   displayName: Microsoft OneDrive and SharePoint
-  description: Find, read, and write files in OneDrive and SharePoint document libraries through Microsoft Graph, with uploads and folders that stay single under retries.
+  description: Find, read, write, copy, move, rename, and delete files and folders in OneDrive and SharePoint document libraries through Microsoft Graph.
   company: Microsoft
   categories: [files-documents]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: microsoft
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-microsoft-onedrive"
       operations: [searchFiles, getFile, readFileText, uploadFile, createFolder]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-microsoft-onedrive
       operations: [searchFiles, getFile, readFileText, uploadFile, createFolder]
       triggers: []
@@ -263,6 +263,67 @@ spec:
           - {name: folderId, goName: FolderID, type: string}
           - {name: folderName, goName: FolderName, type: string}
   operations:
+    - name: deleteItem
+      goName: DeleteItem
+      inputType: DeleteItemInput
+      outputType: DeleteItemOutput
+      kind: mutation
+      description: Move one file or folder to the drive recycle bin; an already absent item is considered deleted.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The item is absent from the drive.}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected deletion of the item., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: removedCopy, branch: deleted, description: The copied file was moved to the recycle bin., default: true, output: {itemId: copy-file-1}}
+    - name: renameItem
+      goName: RenameItem
+      inputType: RenameItemInput
+      outputType: RenameItemOutput
+      kind: mutation
+      description: Set the name of a file or folder to an absolute value, so retries converge on the same name.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: renamed, goName: Renamed, description: The item has the requested name.}
+        - {id: notFound, goName: NotFound, description: The item was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the rename., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: renamedCopy, branch: renamed, description: The copied text file has its final name., default: true, output: {item: {id: copy-file-1, name: Ops-Policy-Final.txt, driveId: "b!financeLibrary-2", parentFolderId: copy-folder-1, mimeType: text/plain, sizeBytes: 44}}}
+    - name: moveItem
+      goName: MoveItem
+      inputType: MoveItemInput
+      outputType: MoveItemOutput
+      kind: mutation
+      description: Move a file or folder to one parent folder by absolute parent ID.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: moved, goName: Moved, description: The item is in the requested parent folder.}
+        - {id: notFound, goName: NotFound, description: The item or parent folder was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the move., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: movedCopy, branch: moved, description: The copied text file is in the archive folder., default: true, output: {item: {id: copy-file-1, name: Ops-Policy-Final.txt, driveId: "b!financeLibrary-2", parentFolderId: archive-folder-1, mimeType: text/plain, sizeBytes: 44}}}
+    - name: copyFile
+      goName: CopyFile
+      inputType: CopyFileInput
+      outputType: CopyFileOutput
+      kind: mutation
+      description: Queue an asynchronous copy to a destination path and inspect that path before resending an unknown outcome.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
+      branches:
+        - {id: queued, goName: Queued, description: Graph accepted the copy job.}
+        - {id: nameConflict, goName: NameConflict, description: The destination path existed before the first send., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the copy., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid destination metadata., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached and the copy cannot be uniquely confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The input or connection is invalid., optional: true}
+      mocks:
+        - {name: queuedPolicyCopy, branch: queued, description: Graph accepted the policy copy to the destination folder., default: true, output: {destinationDriveId: "b!financeLibrary-2", destinationFolderId: copy-folder-1, name: Ops-Policy-Copy.txt, isQueued: true}}
     - name: searchFiles
       goName: SearchFiles
       inputType: SearchFilesInput
@@ -377,11 +438,13 @@ spec:
         - {id: uploaded, goName: Uploaded, description: "Microsoft Graph stored the file, or the file at that path already has exactly this content, such as from an earlier attempt of the Step."}
         - {id: alreadyExists, goName: AlreadyExists, description: "With the fail conflict behavior, a different file or a folder already has the name, so nothing was written.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the upload, such as a missing or read-only parent folder, a blocked file type, or a full quota.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized response while reading back a conflicting item., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retained for compatibility and no longer selected: an invalid or oversized read-back of a conflicting item now retries.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A PUT by parent folder and name never creates a second file, and a repeat converges on one file.
+        repeatOnUnknown: safe
       mocks:
         - name: uploadedDefaultAnswer
           branch: uploaded
@@ -407,12 +470,14 @@ spec:
       branches:
         - {id: created, goName: Created, description: Microsoft Graph created the folder or a folder with that name already existed.}
         - {id: nameConflict, goName: NameConflict, description: "A file, not a folder, already has the name in the parent folder, so nothing was created.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Graph returned an invalid or oversized response to the creation or its read-back., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The fail conflict behavior never creates a second folder with one name; a repeat reads it back.
+        repeatOnUnknown: safe
       mocks:
         - name: createdDefaultAnswer
           branch: created

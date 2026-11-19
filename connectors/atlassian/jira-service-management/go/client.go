@@ -35,6 +35,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -177,6 +178,8 @@ const (
 	writeRejected
 	writeNotFound
 	writeUncertain
+	// writeAcceptedUnreadable is a 2xx whose body cannot be used; the write happened and is never resent.
+	writeAcceptedUnreadable
 	writeDefect
 )
 
@@ -287,6 +290,10 @@ func (client *Client) startSession(call sdkgo.Call, operationID string) (*operat
 	}
 	operationContext, cancel := context.WithDeadline(call.Context, deadline)
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !isTerminalCredentialError(err) {
+		cancel()
+		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira Service Management credential lookup is temporarily unavailable"), isRetryable: true}
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		cancel()
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Jira Service Management connection credentials are unavailable; reconnect the connection")}
@@ -506,11 +513,11 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, "Jira Service Management accepted the "+subject+" but its response was interrupted")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureTransport, "Jira Service Management accepted the "+subject+" but its response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Jira Service Management accepted the "+subject+" but its response exceeds the configured size limit")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Jira Service Management accepted the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureProtocol, "Jira Service Management accepted the "+subject+" but its response contains credential material")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureProtocol, "Jira Service Management accepted the "+subject+" but its response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
@@ -519,9 +526,12 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira Service Management is temporarily unavailable for the "+subject)}
 	case response.statusCode == http.StatusConflict:
 		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureConflict, "Jira Service Management "+subject+" outcome requires read-back after HTTP 409")}
+	case !isCompleteResponse(response):
+		// A refusal status proves nothing when its body could not be read in full.
+		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Jira Service Management %s outcome is unknown after HTTP %d with an unreadable body", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode, providerRejection{})}
-	case isConclusiveRejectionStatus(response.statusCode):
+	case isDefiniteWriteRefusalStatus(response.statusCode):
 		rejection := readProviderRejection(response.body)
 		return writeClassification{outcome: writeRejected, rejection: rejection, failure: rejectionFailure(operationID, subject, response.statusCode, rejection)}
 	default:
@@ -602,9 +612,28 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408 and 429: the provider refused before changing anything.
-func isConclusiveRejectionStatus(statusCode int) bool {
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout && statusCode != http.StatusTooManyRequests
+// isTerminalCredentialError reports a credential failure no retry fixes; a store or broker outage may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+// isCompleteResponse reports a response whose body was read in full; only then can it prove a refusal.
+func isCompleteResponse(response providerResponse) bool {
+	return !response.hasBodyReadFailed && !response.isBodyTooLarge && !response.reflectsSecret
+}
+
+// isDefiniteWriteRefusalStatus reports a status proving the provider refused a write; others leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 func isRetryableStatus(statusCode int) bool {

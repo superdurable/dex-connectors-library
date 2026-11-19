@@ -5,13 +5,22 @@
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -51,6 +60,8 @@ class Exchange:
     status: int = 0
     request_id: str = ""
     body: bytes = b""
+    # A non-2xx body exceeded maxResponseBytes, so it proves no refusal.
+    is_error_body_too_large: bool = False
 
 
 def failure(kind: FailureKind, operation: str, message: str) -> Failure:
@@ -137,15 +148,39 @@ class Client:
 
     async def resolve_credentials(self, call: Call, operation: str) -> tuple[str, str] | Failure:
         """Resolve and validate a Mailchimp key without returning it in failures."""
+        connection, _ = await self.resolve_classified_credentials(call, operation)
+        return connection
+
+    async def resolve_classified_credentials(
+        self, call: Call, operation: str
+    ) -> tuple[tuple[str, str] | Failure, bool]:
+        """Resolve a Mailchimp key and report whether a failure may succeed on a later attempt.
+
+        Only a lookup error outside the terminal SDK credential errors is transient.
+        """
+        unavailable = failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
         try:
             credentials = await self._credentials.resolve(call)
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            return unavailable, False
+        except Exception as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            return unavailable, not is_credential_material_error(error)
+        try:
             key = credentials.api_key.reveal()
             match = _API_KEY.fullmatch(key)
             if not is_header_safe_credential(key) or match is None:
                 raise ValueError("invalid Mailchimp API key")
-            return key, self._api_base_url or f"https://{match.group(1)}.api.mailchimp.com/3.0"
+            return (key, self._api_base_url or f"https://{match.group(1)}.api.mailchimp.com/3.0"), False
         except Exception:
-            return failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
+            return unavailable, False
 
     async def exchange(
         self,
@@ -157,8 +192,13 @@ class Client:
         *,
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Issue one request and classify transport, status, and bounded body."""
+        """Issue one request and classify transport, status, and bounded body.
+
+        The response status is appended to `observed_statuses` when its headers arrive, so a
+        caller whose deadline cuts the body read still knows Mailchimp answered.
+        """
         key, base_url = connection
         target = base_url + path
         if query:
@@ -175,7 +215,10 @@ class Client:
             request = self._http_client.build_request(method, target, headers=headers, content=content)
             response, _ = await send_traced(self._http_client, request)
             status = response.status_code
+            if observed_statuses is not None:
+                observed_statuses.append(status)
             response_headers = response.headers.copy()
+            is_error_body_too_large = False
             try:
                 body = await read_bounded_body(response, self.config.max_response_bytes)
             except BodyTooLargeError:
@@ -190,6 +233,7 @@ class Client:
                         status=status,
                     )
                 body = b""
+                is_error_body_too_large = True
             request_id = response_headers.get("X-Request-Id", "")
             request_id = request_id if _REQUEST_ID.fullmatch(request_id) else ""
             if 200 <= status < 300:
@@ -205,7 +249,10 @@ class Client:
                         request_id=request_id,
                     )
                 return Exchange("succeeded", status=status, request_id=request_id, body=body)
-            return self._classify_status(operation, status, body, response_headers, request_id, key)
+            classified = self._classify_status(operation, status, body, response_headers, request_id, key)
+            if is_error_body_too_large:
+                return replace(classified, is_error_body_too_large=True)
+            return classified
         except ProviderTransportError as error:
             outcome = "notSent" if error.provably_not_sent else "unavailable"
             message = (
@@ -213,7 +260,10 @@ class Client:
                 if error.provably_not_sent
                 else "Mailchimp request failed before a response arrived"
             )
-            return Exchange(outcome, failure(FailureKind.TRANSPORT, operation, message))
+            # A status means headers arrived before the body broke, which a write must not resend after.
+            return Exchange(
+                outcome, failure(FailureKind.TRANSPORT, operation, message), status=error.status_code or 0
+            )
         except (ValueError, TypeError):
             return Exchange(
                 "defect", failure(FailureKind.LOCAL_DEFECT, operation, "Mailchimp request could not be built")

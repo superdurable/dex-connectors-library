@@ -3,9 +3,10 @@
 
 import { BodyTooLargeError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type Receipt } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Receipt } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { ListEventsOperation, GetEventOperation, CreateEventOperation, UpdateEventOperation, QueryFreeBusyOperation } from './operations.js';
 
 const defaultEndpoint = 'https://www.googleapis.com/calendar/v3';
@@ -58,10 +59,16 @@ export class CalendarClient {
 
   /** Resolve a generated OAuth or delegated access credential without exposing refresh errors. */
   async resolveAccessToken(call: Call): Promise<string | undefined> {
+    return (await this.resolveAccessTokenResult(call)).token;
+  }
+
+  /** Resolve an access token and report whether a failure is transient rather than needing reconnection. */
+  async resolveAccessTokenResult(call: Call): Promise<{ token?: string; isTransient: boolean }> {
     try {
       const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-      return credentials.accessToken?.reveal() || undefined;
-    } catch { return undefined; }
+      const token = credentials.accessToken?.reveal() || undefined;
+      return token ? { token, isTransient: false } : { isTransient: false };
+    } catch (error) { return { isTransient: !isTerminalCredentialError(error) }; }
   }
 
   /** Send a Calendar request, refreshing once after a rejected access token. */
@@ -108,6 +115,12 @@ export class CalendarClient {
 }
 
 /** Read a response header case-insensitively. */
+/** Report a resolve failure that only reconnection repairs; any other one is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
+
 export function header(response: CalendarResponse, name: string): string {
   const entry = Object.entries(response.headers).find(([key]) => key.toLowerCase() === name.toLowerCase());
   const value = entry?.[1];

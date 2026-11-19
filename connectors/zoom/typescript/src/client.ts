@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials, CredentialSource } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials, type CredentialSource } from './generated/models.js';
 import { ListMeetingsOperation, GetMeetingOperation, CreateMeetingOperation, UpdateMeetingOperation, ListPastMeetingParticipantsOperation } from './operations.js';
 
 const defaultEndpoint = 'https://api.zoom.us/v2';
@@ -22,7 +23,7 @@ export interface ZoomClientOptions {
 
 /** One provider exchange, retaining whether a failed write could have reached Zoom. */
 export type ZoomExchange =
-  | { response: ProviderResponse; isTooLarge: boolean; reflectsCredential: boolean }
+  | { response: ProviderResponse; isTooLarge: boolean; reflectsCredential: boolean; hasBodyReadFailed?: boolean }
   | { error: 'beforeSend' | 'afterSend' | 'notBuilt' };
 
 /** Zoom Meetings client with generated OAuth refresh policy. */
@@ -68,18 +69,21 @@ export class ZoomClient {
         return { failure: zoomFailure(operation, 'AUTHENTICATION', 'Zoom connection credentials are unavailable; reconnect the connection'), retry: false };
       return { credentials };
     } catch (error) {
-      if (error instanceof ReauthorizationRequiredError) return { failure: zoomFailure(operation, 'AUTHENTICATION', 'Zoom connection requires reauthorization; reconnect the connection'), retry: false };
+      if (isTerminalCredentialError(error)) return { failure: zoomFailure(operation, 'AUTHENTICATION', 'Zoom connection requires reauthorization; reconnect the connection'), retry: false };
       return { failure: zoomFailure(operation, 'AVAILABILITY', 'Zoom connection credentials could not be refreshed'), retry: true };
     }
   }
 
-  /** Force one generated refresh after Zoom rejects a fenced create credential. */
-  async refreshAfterRejection(call: Call, previousAccessToken: string): Promise<'replaced' | 'retryable' | 'reauthorize' | 'unsupported'> {
+  /** Force one generated refresh after Zoom rejects a fenced create credential; `retryable` marks a transient failure. */
+  async refreshAfterRejection(call: Call, previousAccessToken: string): Promise<'replaced' | 'retryable' | 'reauthorize' | 'unsupported' | 'notRefreshed'> {
     if (!('resolveAfterRejection' in this.credentials)) return 'unsupported';
     try {
       const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       return replacement.accessToken?.reveal() && replacement.accessToken.reveal() !== previousAccessToken ? 'replaced' : 'reauthorize';
-    } catch (error) { return error instanceof ReauthorizationRequiredError ? 'reauthorize' : 'retryable'; }
+    } catch (error) {
+      if (error instanceof RejectedCredentialNotRefreshedError) return 'notRefreshed';
+      return isTerminalCredentialError(error) ? 'reauthorize' : 'retryable';
+    }
   }
 
   /** Send one bounded request and refresh once after a rejected credential when allowed. */
@@ -93,7 +97,7 @@ export class ZoomClient {
         headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json', ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }) },
         ...(payload === undefined ? {} : { body: Buffer.from(JSON.stringify(payload), 'utf8') }),
         maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes), maxErrorResponseBytes: MaxErrorBodyBytes,
-        ignoreErrorBodyReadFailure: true, timeoutMs: 20_000,
+        timeoutMs: 20_000,
         addressPolicy: 'unrestricted',
         signal: signal ?? call.context.cancellationSignal,
       };
@@ -104,8 +108,11 @@ export class ZoomClient {
         result = { response: { ...response, body: isTooLarge ? new Uint8Array() : response.body }, isTooLarge,
           reflectsCredential: !isTooLarge && accessToken !== '' && Buffer.from(response.body).includes(Buffer.from(accessToken)) };
       } catch (error) {
-        if (error instanceof BodyTooLargeError && error.status !== undefined) result = { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isTooLarge: error.status >= 200 && error.status < 300, reflectsCredential: false };
-        else if (error instanceof ProviderTransportError) return { error: error.isProvablyNotSent ? 'beforeSend' : 'afterSend' };
+        if (error instanceof BodyTooLargeError && error.status !== undefined) result = { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isTooLarge: true, reflectsCredential: false };
+        // Headers arrived before the body failed, so the status still decides whether Zoom applied the request.
+        else if ((error instanceof ProviderTransportError && !error.isProvablyNotSent || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 100) {
+          result = { response: { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, isTooLarge: false, reflectsCredential: false, hasBodyReadFailed: true };
+        } else if (error instanceof ProviderTransportError) return { error: error.isProvablyNotSent ? 'beforeSend' : 'afterSend' };
         else if (error instanceof AddressRefusal || error instanceof TypeError) return { error: 'notBuilt' };
         else return { error: 'afterSend' };
       }
@@ -133,6 +140,12 @@ export class ZoomClient {
 }
 
 /** Construct one secret-free Zoom failure. */
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
+
 export function zoomFailure(operation: string, kind: Failure['kind'], message: string): Failure {
   return { kind, provider: 'zoom', operation, message };
 }

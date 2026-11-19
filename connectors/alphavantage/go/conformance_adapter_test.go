@@ -20,7 +20,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getGlobalQuote": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetGlobalQuote(), testConnection),
+		"getGlobalQuote":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetGlobalQuote(), testConnection),
 		"getTimeSeriesDaily": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTimeSeriesDaily(), testConnection),
 	}}
 }

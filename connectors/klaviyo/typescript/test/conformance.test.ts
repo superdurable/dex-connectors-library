@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { KlaviyoClient } from '../src/client.js';
 import { CreateEventInputSchema, GetProfileInputSchema, type CreateEventInput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/klaviyo/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/klaviyo/scenarios.json', import.meta.url))
+  .filter(scenario => ['getProfile', 'createEvent'].includes(scenario.operation));
 const connection = { provider: 'klaviyo', name: 'klaviyo' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeKlaviyo));

@@ -66,28 +66,45 @@ func (CreateItemOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateItemInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one item. Confirmed retryable failures reuse the key; ambiguous sent failures select uncertain.
+// Invoke creates one item. Proven unprocessed failures reuse the key; an unknown outcome resends
+// under the same key while the send cap allows and selects uncertain at the cap.
 func (operation CreateItemOperation) Invoke(call sdkgo.Call, input CreateItemInput) sdkgo.MutationAttempt[CreateItemOutput] {
 	client := operation.client
 	request, requested, err := buildCreateItemRequest(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(CreateItemBranchDefect, requested, mondayFailurePointer(sdkgo.FailureValidation, createItemOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	result := client.exchange(call, createItemOperationID, request)
+	branches := fencedWriteBranches{notFound: CreateItemBranchNotFound, providerRejected: CreateItemBranchProviderRejected, defect: CreateItemBranchDefect}
+	write, attempt, isFinal := startFencedWrite(call, CreateItemDefinition, createItemOperationID, requested, client.receipt(call, mondayResponse{}, ""), CreateItemBranchDefect)
+	if isFinal {
+		return attempt
+	}
+	credentials, failedResolution := client.resolveCredentials(call, createItemOperationID)
+	if failedResolution != nil {
+		return preSendFailureAttempt(write, createItemOperationID, *failedResolution, requested, branches)
+	}
+	result, attempt, isFinal := dispatchFencedWrite(write, client, call, credentials, createItemOperationID, request, requested, CreateItemBranchDefect)
+	if isFinal {
+		return attempt
+	}
 	receipt := client.receipt(call, result.response, "")
 	if item, isCreated := decodeMutationItem(result.response.data, "create_item"); isCreated {
+		recordAcceptedWrite(write, item.ID)
 		output := requested
 		output.ItemID, output.Item, output.IsReplayed = item.ID, &item, result.response.isReplayed
 		receipt.ProviderObjectID = item.ID
 		return sdkgo.NewMutationBranch(CreateItemBranchCreated, output, nil, receipt)
 	}
-	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
-		notFound: CreateItemBranchNotFound, providerRejected: CreateItemBranchProviderRejected, defect: CreateItemBranchDefect,
-	}); isTerminal {
+	unusable := mondayFailure(sdkgo.FailureProtocol, createItemOperationID, "monday.com accepted the item but returned an unusable item")
+	if itemID := acceptedReferenceID(result.response.data, "create_item"); itemID != "" {
+		recordAcceptedWrite(write, itemID)
+		receipt.ProviderObjectID = itemID
+		return sdkgo.NewMutationUncertain(requested, unusable, receipt)
+	}
+	if attempt, isFinal := attemptForWrite(write, createItemOperationID, result, "create_item", requested, receipt, branches); isFinal {
 		return attempt
 	}
-	return sdkgo.NewMutationUncertain(requested, mondayFailure(sdkgo.FailureProtocol, createItemOperationID,
-		"monday.com accepted the item but returned an unusable item"), receipt)
+	return resendOrSelectUncertain(write, requested, unusable, 0, receipt)
 }
 
 // buildCreateItemRequest validates input and returns the request plus the echo used by every branch.
@@ -116,7 +133,7 @@ func buildCreateItemRequest(input CreateItemInput) (graphQLRequest, CreateItemOu
 		}
 		variables["columnValues"] = columnValues
 	}
-	return graphQLRequest{document: createItemDocument, variables: variables, isMutation: true, requiresDispatchCheckpoint: true}, requested, nil
+	return graphQLRequest{document: createItemDocument, variables: variables, isMutation: true}, requested, nil
 }
 
 // validateItemName checks a one-line item name within monday.com's 255-character limit.

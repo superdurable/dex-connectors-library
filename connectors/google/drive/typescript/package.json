@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-google-drive",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "description": "Dex Google Drive connector for TypeScript, with file created, updated, and trashed Triggers",
   "repository": {

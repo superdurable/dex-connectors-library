@@ -27,7 +27,7 @@ SET_USER_PROPERTIES_DEFINITION = MutationDefinition(
     (
         BranchDefinition(ACCEPTED, "Heap accepted the property updates.", False),
         BranchDefinition(PROVIDER_REJECTED, "Heap conclusively rejected the request.", True),
-        BranchDefinition(INVALID_RESPONSE, "Heap returned an oversized or unreadable confirmation.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected: an oversized or unreadable confirmation now retries, because repeating the overwrite is safe.", True),
         BranchDefinition(DEFECT, "Local identity, property input, or app ID is invalid.", True),
     ),
     StepDefaults(

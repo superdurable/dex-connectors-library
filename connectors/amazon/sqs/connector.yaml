@@ -6,17 +6,17 @@ metadata:
   description: Consume messages from an Amazon SQS standard or FIFO queue, or an SQS-compatible queue such as ElasticMQ, with long-polling receive, acknowledgement by delete, and visibility changes that release or extend a message.
   company: Amazon
   categories: [developer-tools]
-  version: v0.3.0
+  version: v0.3.1
 spec:
   provider: amazon-sqs
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-amazon-sqs
       operations: [receiveMessages, deleteMessage, changeMessageVisibility]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.1.2
       operations: [receiveMessages, deleteMessage, changeMessageVisibility]
       triggers: []
   codegen:
@@ -105,6 +105,8 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost receive response may have hidden messages already; FIFO deduplicates its attempt ID for only five minutes and standard queues do not, so bound retries to two minutes."}}
+        # A repeated receive only hides messages until their visibility timeout ends, so they are delivered again.
+        repeatOnUnknown: safe
       mocks:
         - name: paidOrder
           branch: received
@@ -138,6 +140,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Amazon SQS accepts a repeated deletion with the same receipt handle.
+        repeatOnUnknown: safe
       mocks:
         - name: acknowledgedOrder
           branch: deleted
@@ -170,6 +174,8 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Each repeated visibility change starts the timeout again, so bound retries that can extend a message lease after a lost response."}}
+        # A repeat sets the same timeout from now; a repeated release that finds the message released selects changed.
+        repeatOnUnknown: safe
       mocks:
         - name: releasedOrder
           branch: changed

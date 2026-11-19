@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, retryCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
+import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
 import type { GetMessageInput, Message, SendMessageInput, SendMessageOutput, ReplyToMessageInput } from './models.js';
 import { GetMessageInputSchema, MessageSchema, SendMessageInputSchema, SendMessageOutputSchema, ReplyToMessageInputSchema } from './models.js';
@@ -92,6 +92,8 @@ export function sendMessageProviderRejected(value: SendMessageOutput, failure?: 
 export function sendMessageDefect(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("defect", value, failure); }
 /** Script a safe retry of sendMessage. */
 export function sendMessageRetry(failure: Failure, retryAfterMs = 0): Case<SendMessageOutput> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain sendMessage attempt. */
+export function sendMessageUncertain(value: SendMessageOutput, failure: Failure): Case<SendMessageOutput> { return uncertainCase(value, failure); }
 /** Manifest scenario sentToCustomer for sendMessage. */
 export function sendMessageSentToCustomer(): Case<SendMessageOutput> {
   const value = SendMessageOutputSchema.parse({"messageId":"18c0a1b2c3d4e600","recipients":["ada@example.com"],"sender":"support@example.org","threadId":"18c0a1b2c3d4e600"});
@@ -107,6 +109,11 @@ export function sendMessageInvalidRecipient(): Case<SendMessageOutput> {
 /** Manifest scenario connectionLost for sendMessage. */
 export function sendMessageConnectionLost(): Case<SendMessageOutput> {
   return retryCase({ kind: "TRANSPORT", provider: ConnectorID, operation: "sendMessage", message: "The connection closed before Gmail answered." });
+}
+/** Manifest scenario sendOutcomeUnknown for sendMessage. */
+export function sendMessageSendOutcomeUnknown(): Case<SendMessageOutput> {
+  const value = emptySendMessageOutput;
+  return uncertainCase(value, { kind: "TRANSPORT", provider: ConnectorID, operation: "sendMessage", message: "The connection closed before Gmail confirmed the message." });
 }
 /** Manifest scenario noRecipients for sendMessage. */
 export function sendMessageNoRecipients(): Case<SendMessageOutput> {
@@ -128,6 +135,8 @@ export function replyToMessageInvalidResponse(value: SendMessageOutput, failure?
 export function replyToMessageDefect(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("defect", value, failure); }
 /** Script a safe retry of replyToMessage. */
 export function replyToMessageRetry(failure: Failure, retryAfterMs = 0): Case<SendMessageOutput> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain replyToMessage attempt. */
+export function replyToMessageUncertain(value: SendMessageOutput, failure: Failure): Case<SendMessageOutput> { return uncertainCase(value, failure); }
 /** Manifest scenario repliedInThread for replyToMessage. */
 export function replyToMessageRepliedInThread(): Case<SendMessageOutput> {
   const value = SendMessageOutputSchema.parse({"messageId":"18c0a1b2c3d4e700","recipients":["ada.support@example.com"],"sender":"support@example.org","threadId":"18c0a1b2c3d4e5f0"});
@@ -148,6 +157,11 @@ export function replyToMessageMalformedSource(): Case<SendMessageOutput> {
 /** Manifest scenario connectionLost for replyToMessage. */
 export function replyToMessageConnectionLost(): Case<SendMessageOutput> {
   return retryCase({ kind: "TRANSPORT", provider: ConnectorID, operation: "replyToMessage", message: "The connection closed before Gmail answered." });
+}
+/** Manifest scenario replyOutcomeUnknown for replyToMessage. */
+export function replyToMessageReplyOutcomeUnknown(): Case<SendMessageOutput> {
+  const value = emptySendMessageOutput;
+  return uncertainCase(value, { kind: "TRANSPORT", provider: ConnectorID, operation: "replyToMessage", message: "The connection closed before Gmail confirmed the reply." });
 }
 /** Manifest scenario emptyBody for replyToMessage. */
 export function replyToMessageEmptyBody(): Case<SendMessageOutput> {

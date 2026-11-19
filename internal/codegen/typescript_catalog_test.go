@@ -4,6 +4,7 @@
 package codegen
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -153,11 +154,31 @@ func TestCatalogGeneratedTypeScriptCompiles(t *testing.T) {
 			}
 		}
 	}
-	command := exec.Command(compiler, "--project", generatedRoot)
-	command.Dir = generatedRoot
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("catalog-generated TypeScript did not compile: %v\n%s", err, output)
+	const connectorsPerCompile = 16
+	for start := 0; start < len(catalog); start += connectorsPerCompile {
+		end := min(start+connectorsPerCompile, len(catalog))
+		includes := make([]string, 0, end-start)
+		for _, connector := range catalog[start:end] {
+			includes = append(includes, filepath.ToSlash(connector.directory)+"/**/*.ts")
+		}
+		batchConfig, err := json.Marshal(struct {
+			Extends string   `json:"extends"`
+			Include []string `json:"include"`
+		}{Extends: "./tsconfig.json", Include: includes})
+		if err != nil {
+			t.Fatal(err)
+		}
+		batchConfigPath := filepath.Join(generatedRoot, "tsconfig-batch-"+strconv.Itoa(start/connectorsPerCompile)+".json")
+		if err := os.WriteFile(batchConfigPath, batchConfig, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		command := exec.Command(compiler, "--project", batchConfigPath)
+		command.Dir = generatedRoot
+		command.Env = append(os.Environ(), "NODE_OPTIONS=--max-old-space-size=2048")
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("catalog-generated TypeScript did not compile (connectors %d-%d of %d): %v\n%s", start+1, end, len(catalog), err, output)
+		}
 	}
 	var script strings.Builder
 	script.WriteString("// Copyright (c) 2026 Super Durable\n// SPDX-License-Identifier: MIT\n\n")
@@ -174,7 +195,7 @@ func TestCatalogGeneratedTypeScriptCompiles(t *testing.T) {
 	}
 	verification := exec.Command(filepath.Join(stripeDirectory, "node_modules", ".bin", "tsx"), filepath.Join(generatedRoot, "verify-mocks.mts"))
 	verification.Dir = stripeDirectory
-	output, err = verification.CombinedOutput()
+	output, err := verification.CombinedOutput()
 	if err != nil {
 		t.Fatalf("catalog-generated mocks did not parse: %v\n%s", err, output)
 	}

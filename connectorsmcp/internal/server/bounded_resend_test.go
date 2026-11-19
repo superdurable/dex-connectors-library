@@ -77,15 +77,16 @@ func TestAWriteThatIsNotLimitedIsNeverResent(t *testing.T) {
 	harness.provider.Script("sendMessage", lostAfterSend)
 	unsafe := harness.mustCallResult(unsafeMailTool, mailArguments, "flow/turn/alert-1")
 	require.Equal(t, "unknown", unsafe.outcome(), unsafe.text())
+	require.Equal(t, string(sdkgo.UncertainBranchID), unsafe.Meta[metaKeyBranch], "the retried attempt's Fence refused a resend")
 	require.Equal(t, 1, harness.provider.MessageRequests())
-	require.Equal(t, []int32{1}, harness.mailAttempts.MaxSendsPerAttempt(), "an unsafe write runs one attempt without a send cap option")
+	require.Equal(t, []int32{1, 1}, harness.mailAttempts.MaxSendsPerAttempt(), "the connector's Retry runs a second attempt, which never resends")
+	require.Equal(t, []time.Duration{time.Second}, harness.clock.recordedSleeps())
 
-	// postNote's metadata predates repeatOnUnknown, so it keeps one attempt too.
-	harness.provider.Script("postNote", testconnectors.ScriptedResponse{Status: http.StatusServiceUnavailable})
+	// postNote's metadata predates repeatOnUnknown; its unconfirmed send selects uncertain at once.
+	harness.provider.Script("postNote", testconnectors.ScriptedResponse{Status: http.StatusInternalServerError})
 	note := harness.mustCallResult("example-notes_post_note", map[string]any{"text": "hello"}, "flow/turn/post-1")
 	require.Equal(t, "unknown", note.outcome(), note.text())
 	require.Equal(t, 1, harness.provider.NoteRequests())
-	require.Empty(t, harness.clock.recordedSleeps(), "neither write is retried inline")
 }
 
 func TestALimitedWriteDefiniteRejectionIsNotResent(t *testing.T) {
@@ -97,7 +98,9 @@ func TestALimitedWriteDefiniteRejectionIsNotResent(t *testing.T) {
 
 	harness.provider.Script("sendMessage", testconnectors.ScriptedResponse{Status: http.StatusBadRequest})
 	afterSend := harness.mustCallResult(limitedMailTool, mailArguments, "flow/turn/mail-refused")
-	require.Equal(t, "unknown", afterSend.outcome(), "the Fence claimed a send, so even a refusal cannot prove nothing reached the provider")
+	// Dex Agents classify by the branch alone: a listed rejected branch stays rejected.
+	require.Equal(t, "rejected", afterSend.outcome(), afterSend.text())
+	require.NotContains(t, afterSend.text(), "nothing was sent")
 	require.Equal(t, "recipientRefused", afterSend.Meta[metaKeyBranch])
 	require.Equal(t, 1, harness.provider.MessageRequests(), "a definite rejection is never resent")
 	require.Empty(t, harness.clock.recordedSleeps())
@@ -121,7 +124,7 @@ func TestALimitedWriteWhoseRetryDelayEndsSettlesWithoutAnotherSend(t *testing.T)
 	harness.clock.setOnSleep(harness.server.BeginDrain)
 	result := harness.mustCallResult(limitedMailTool, mailArguments, "flow/turn/mail-drained")
 	require.Equal(t, "unknown", result.outcome(), result.text())
-	require.Contains(t, result.text(), "may have taken effect: the provider asked to retry later")
+	require.Contains(t, result.text(), "may have taken effect: the call ended while waiting to retry")
 	require.Len(t, harness.clock.recordedSleeps(), 1, "the call settled after its one delay")
 	require.Equal(t, 1, harness.provider.MessageRequests())
 

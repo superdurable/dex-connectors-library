@@ -31,18 +31,37 @@ export interface Credentials {
   consumerSecret: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["consumer_key", "consumer_secret"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["consumer_key"] != null && !(typeof fields["consumer_key"] === 'string')) throw new TypeError("credential consumer_key has an invalid type");
-  if (fields["consumer_secret"] != null && !(typeof fields["consumer_secret"] === 'string')) throw new TypeError("credential consumer_secret has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["consumer_key"] != null && !(typeof fields["consumer_key"] === 'string')) throw new CredentialMaterialError("credential consumer_key has an invalid type");
+  if (fields["consumer_secret"] != null && !(typeof fields["consumer_secret"] === 'string')) throw new CredentialMaterialError("credential consumer_secret has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["consumer_key"]) throw new TypeError("credential consumer_key is required");
+  if (!fields["consumer_key"]) throw new CredentialMaterialError("credential consumer_key is required");
   credentials.consumerKey = new SecretString((fields["consumer_key"] ?? '') as string);
-  if (!fields["consumer_secret"]) throw new TypeError("credential consumer_secret is required");
+  if (!fields["consumer_secret"]) throw new CredentialMaterialError("credential consumer_secret is required");
   credentials.consumerSecret = new SecretString((fields["consumer_secret"] ?? '') as string);
   return credentials;
 }

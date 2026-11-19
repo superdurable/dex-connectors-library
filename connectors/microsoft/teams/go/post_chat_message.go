@@ -39,9 +39,9 @@ func (PostChatMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ PostChatMe
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /chats/{chat-id}/messages at most once per Step execution. Reading chat messages needs
-// Chat.Read, which the connection does not request, so an unconfirmed send and an attempt that finds an
-// earlier attempt's checkpoint select uncertain without another request.
+// Invoke sends POST /chats/{chat-id}/messages. Reading chat messages needs Chat.Read, which the connection
+// does not request, so an unconfirmed send is resent without a read-back while possible sends stay below
+// the send cap (call.MaxSends()), and selects uncertain at the cap.
 func (operation PostChatMessageOperation) Invoke(call sdkgo.Call, input PostChatMessageInput) sdkgo.MutationAttempt[PostMessageOutput] {
 	client := operation.client
 	chatID := strings.TrimSpace(input.ChatID)

@@ -61,16 +61,20 @@ func (UpdateConversationStateOperation) IdempotencyKey(callID sdkgo.CallID, _ Up
 }
 
 // Invoke reads the conversation and writes POST /conversations/{id}/parts only when its state differs.
-// When Intercom rejects the write, it reads again and reports the requested state as already applied
-// when a concurrent attempt, such as Dex's second dispatch of this Step, reached it first.
+// When Intercom definitely rejects the write, it reads again and reports the requested state as already
+// applied when a concurrent attempt, such as Dex's second dispatch of this Step, reached it first. The
+// change is absolute, so an unknown outcome or an invalid answer after the write returns Retry.
 func (operation UpdateConversationStateOperation) Invoke(call sdkgo.Call, input UpdateConversationStateInput) sdkgo.MutationAttempt[UpdateConversationStateOutput] {
 	snoozedUntil, err := validateUpdateConversationStateInput(input)
 	if err != nil {
 		return sdkgo.NewMutationBranch(UpdateConversationStateBranchDefect, UpdateConversationStateOutput{}, intercomFailurePointer(sdkgo.FailureValidation, updateConversationStateOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, updateConversationStateOperation)
-	if failure != nil {
-		return sdkgo.NewMutationBranch(UpdateConversationStateBranchDefect, UpdateConversationStateOutput{}, failure, sdkgo.Receipt{})
+	credentials, credentialProblem := operation.client.resolveWriteCredentials(call, updateConversationStateOperation)
+	if credentialProblem != nil && credentialProblem.isTransient {
+		return sdkgo.NewMutationRetry[UpdateConversationStateOutput](credentialProblem.failure, 0)
+	}
+	if credentialProblem != nil {
+		return sdkgo.NewMutationBranch(UpdateConversationStateBranchDefect, UpdateConversationStateOutput{}, &credentialProblem.failure, sdkgo.Receipt{})
 	}
 	current, attempt, isTerminal := operation.readCurrentState(call, credentials, input)
 	if isTerminal {
@@ -82,20 +86,20 @@ func (operation UpdateConversationStateOperation) Invoke(call sdkgo.Call, input 
 	}
 	result := operation.client.exchange(call, credentials, updateConversationStateOperation, intercomRequest{
 		method: http.MethodPost, path: conversationPath(input.ConversationID) + "/parts", payload: conversationStateRequest(input, snoozedUntil),
-	})
+	}).withUntrustedRefusalAsUnknown(updateConversationStateOperation)
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
 	switch {
 	case result.outcome == exchangeSucceeded:
-	case result.isRetryableRead():
-		return sdkgo.NewMutationRetry[UpdateConversationStateOutput](result.failure, result.retryAfter)
-	case result.outcome == exchangeNotFound:
+	case result.outcome == exchangeNotFound && result.response.statusCode == http.StatusNotFound:
 		return sdkgo.NewMutationBranch(UpdateConversationStateBranchNotFound, UpdateConversationStateOutput{Conversation: current}, &result.failure, receipt)
-	case result.outcome == exchangeInvalid:
-		return sdkgo.NewMutationBranch(UpdateConversationStateBranchInvalidResponse, UpdateConversationStateOutput{Conversation: current}, &result.failure, receipt)
 	case result.outcome == exchangeDefect:
+		// The request could not be built, so nothing was sent.
 		return sdkgo.NewMutationBranch(UpdateConversationStateBranchDefect, UpdateConversationStateOutput{Conversation: current}, &result.failure, receipt)
-	default:
+	case result.outcome == exchangeRejected && isDefiniteRefusalStatus(result.response.statusCode):
 		return operation.reconcileRejectedWrite(call, credentials, input, snoozedUntil, result, receipt)
+	default:
+		// A lost answer, 3xx, 408, 409, 410, 5xx, unlisted status, or invalid answer may follow an applied change.
+		return sdkgo.NewMutationRetry[UpdateConversationStateOutput](result.failure, result.retryAfter)
 	}
 	wire, err := decodeConversationEnvelope(result.response.body, input.ConversationID)
 	var updated Conversation
@@ -106,8 +110,9 @@ func (operation UpdateConversationStateOperation) Invoke(call sdkgo.Call, input 
 		err = errors.New("conversation returned after the change is not in the requested state")
 	}
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateConversationStateBranchInvalidResponse, UpdateConversationStateOutput{Conversation: current}, intercomFailurePointer(sdkgo.FailureProtocol, updateConversationStateOperation,
-			"Intercom returned an invalid conversation: "+err.Error()), receipt)
+		// The change is absolute, so the next attempt reads the conversation and writes only if still needed.
+		return sdkgo.NewMutationRetry[UpdateConversationStateOutput](intercomFailure(sdkgo.FailureProtocol, updateConversationStateOperation,
+			"Intercom returned an invalid conversation after the change: "+err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateConversationStateBranchUpdated, UpdateConversationStateOutput{Conversation: updated}, nil, receipt)
 }
@@ -116,20 +121,20 @@ func (operation UpdateConversationStateOperation) Invoke(call sdkgo.Call, input 
 func (operation UpdateConversationStateOperation) readCurrentState(
 	call sdkgo.Call, credentials Credentials, input UpdateConversationStateInput,
 ) (Conversation, sdkgo.MutationAttempt[UpdateConversationStateOutput], bool) {
-	result := operation.client.readConversation(call, credentials, updateConversationStateOperation, input.ConversationID)
+	result := operation.client.readConversation(call, credentials, updateConversationStateOperation, input.ConversationID).
+		withUntrustedRefusalAsUnknown(updateConversationStateOperation)
 	receipt := operation.client.receipt(call, result.response, input.ConversationID)
-	switch {
+	// Only a readable listed refusal selects a branch; any other unusable read returns Retry.
+	switch statusCode := result.response.statusCode; {
 	case result.outcome == exchangeSucceeded:
-	case result.isRetryableRead():
-		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationStateOutput](result.failure, result.retryAfter), true
-	case result.outcome == exchangeNotFound:
-		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchNotFound, UpdateConversationStateOutput{}, &result.failure, receipt), true
-	case result.outcome == exchangeInvalid:
-		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchInvalidResponse, UpdateConversationStateOutput{}, &result.failure, receipt), true
 	case result.outcome == exchangeDefect:
 		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchDefect, UpdateConversationStateOutput{}, &result.failure, receipt), true
-	default:
+	case result.outcome == exchangeNotFound && statusCode == http.StatusNotFound:
+		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchNotFound, UpdateConversationStateOutput{}, &result.failure, receipt), true
+	case result.outcome == exchangeRejected && isDefiniteRefusalStatus(statusCode):
 		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchProviderRejected, UpdateConversationStateOutput{}, &result.failure, receipt), true
+	default:
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationStateOutput](result.failure, result.retryAfter), true
 	}
 	wire, err := decodeConversationEnvelope(result.response.body, input.ConversationID)
 	var current Conversation
@@ -137,20 +142,31 @@ func (operation UpdateConversationStateOperation) readCurrentState(
 		current, err = decodeConversationWire(wire, false)
 	}
 	if err != nil {
-		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationStateBranchInvalidResponse, UpdateConversationStateOutput{}, intercomFailurePointer(sdkgo.FailureProtocol, updateConversationStateOperation,
-			"Intercom returned an invalid conversation: "+err.Error()), receipt), true
+		// An unusable 2xx read before the change proves nothing, so the attempt repeats.
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationStateOutput](intercomFailure(sdkgo.FailureProtocol, updateConversationStateOperation,
+			"Intercom returned an invalid conversation: "+err.Error()), 0), true
 	}
 	return current, sdkgo.MutationAttempt[UpdateConversationStateOutput]{}, false
 }
 
 // reconcileRejectedWrite reports a rejection only when the conversation is still not in the requested state.
+// A failed reread retries, because the absolute change is safe to repeat.
 func (operation UpdateConversationStateOperation) reconcileRejectedWrite(
 	call sdkgo.Call, credentials Credentials, input UpdateConversationStateInput, snoozedUntil int64,
 	rejection intercomExchange, receipt sdkgo.Receipt,
 ) sdkgo.MutationAttempt[UpdateConversationStateOutput] {
-	current, attempt, isTerminal := operation.readCurrentState(call, credentials, input)
-	if isTerminal {
-		return attempt
+	result := operation.client.readConversation(call, credentials, updateConversationStateOperation, input.ConversationID)
+	if result.outcome != exchangeSucceeded {
+		return sdkgo.NewMutationRetry[UpdateConversationStateOutput](result.failure, result.retryAfter)
+	}
+	wire, err := decodeConversationEnvelope(result.response.body, input.ConversationID)
+	var current Conversation
+	if err == nil {
+		current, err = decodeConversationWire(wire, false)
+	}
+	if err != nil {
+		return sdkgo.NewMutationRetry[UpdateConversationStateOutput](intercomFailure(sdkgo.FailureProtocol, updateConversationStateOperation,
+			"Intercom returned an invalid conversation when read again after rejecting the change: "+err.Error()), 0)
 	}
 	if isInRequestedState(current, input.State, snoozedUntil) {
 		return sdkgo.NewMutationBranch(UpdateConversationStateBranchUpdated, UpdateConversationStateOutput{Conversation: current, WasAlreadyApplied: true}, nil, receipt)

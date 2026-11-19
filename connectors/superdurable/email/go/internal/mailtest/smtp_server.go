@@ -57,8 +57,8 @@ type SMTPServer struct {
 	endOfDataHold time.Duration
 	// endOfDataRelease holds the answer to the next final dot until it is closed.
 	endOfDataRelease chan struct{}
-	// dropsNextEndOfDataReply accepts the next message and closes the connection instead of answering.
-	dropsNextEndOfDataReply bool
+	// droppedEndOfDataReplies accepts that many messages and closes the connection instead of answering.
+	droppedEndOfDataReplies int
 	// temporaryMailFailures answers that many MAIL FROM commands with 451.
 	temporaryMailFailures int
 	rejectedRecipient     string
@@ -117,8 +117,13 @@ func (server *SMTPServer) HoldNextEndOfDataReplyUntil(release chan struct{}) {
 
 // DropNextEndOfDataReply accepts the next message and closes the connection instead of answering 250.
 func (server *SMTPServer) DropNextEndOfDataReply() {
+	server.DropNextEndOfDataReplies(1)
+}
+
+// DropNextEndOfDataReplies accepts the next count messages and closes each connection instead of answering 250.
+func (server *SMTPServer) DropNextEndOfDataReplies(count int) {
 	server.mutex.Lock()
-	server.dropsNextEndOfDataReply = true
+	server.droppedEndOfDataReplies = count
 	server.mutex.Unlock()
 }
 
@@ -229,8 +234,11 @@ func (session *recordingSession) Data(reader io.Reader) error {
 	server.mutex.Lock()
 	server.data++
 	server.submissions = append(server.submissions, Submission{From: session.from, Recipients: append([]string(nil), session.recipients...), Data: contents})
-	hold, release, dropsReply := server.endOfDataHold, server.endOfDataRelease, server.dropsNextEndOfDataReply
-	server.endOfDataHold, server.endOfDataRelease, server.dropsNextEndOfDataReply = 0, nil, false
+	hold, release, dropsReply := server.endOfDataHold, server.endOfDataRelease, server.droppedEndOfDataReplies > 0
+	server.endOfDataHold, server.endOfDataRelease = 0, nil
+	if dropsReply {
+		server.droppedEndOfDataReplies--
+	}
 	if hold > 0 || release != nil {
 		server.heldReplies.Add(1)
 	}

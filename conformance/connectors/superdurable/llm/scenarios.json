@@ -545,6 +545,914 @@
       },
       "name": "transport-before-send",
       "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"type\":\"message\",\"id\":\"msg_gateway_generated\",\"model\":\"gateway-model\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"status\\\":\\\"up\\\"}\"}],\"stop_reason\":\"end_turn\",\"usage\":{\"input_tokens\":31,\"output_tokens\":6}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "max_tokens": 100,
+            "messages": [
+              {
+                "content": "Is the gateway up?",
+                "role": "user"
+              },
+              {
+                "content": "Checking.",
+                "role": "assistant"
+              },
+              {
+                "content": "Report the status.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model",
+            "stream": true,
+            "system": "Answer in JSON.\n\nRespond with only one JSON object, without Markdown code fences, that matches the JSON Schema named \"status\" (Gateway status):\n{\"additionalProperties\":false,\"properties\":{\"status\":{\"type\":\"string\"}},\"required\":[\"status\"],\"type\":\"object\"}",
+            "temperature": 0.2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Anthropic-Version": [
+              "2023-06-01"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "generated",
+        "failureKind": "",
+        "output": {
+          "finishReason": "stop",
+          "providerFinishReason": "end_turn",
+          "requestedModel": "gateway-model",
+          "responseId": "msg_gateway_generated",
+          "servedModel": "gateway-model",
+          "text": "{\"status\":\"up\"}",
+          "usage": {
+            "inputTokens": 31,
+            "outputTokens": 6,
+            "totalTokens": 37
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "instructions": "Answer in JSON.",
+        "maxOutputTokens": 100,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Is the gateway up?"
+          },
+          {
+            "role": "assistant",
+            "text": "Checking."
+          },
+          {
+            "role": "user",
+            "text": "Report the status."
+          }
+        ],
+        "structuredOutput": {
+          "description": "Gateway status",
+          "name": "status",
+          "schema": {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "temperature": 0.2
+      },
+      "name": "anthropic-compatible-generated",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_gateway_streamed\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"gateway-model-2\",\"content\":[],\"stop_reason\":null,\"usage\":{\"input_tokens\":9,\"output_tokens\":1}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello \"}}\n\nevent: ping\ndata: {\"type\":\"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"gateway.\"}}\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":4}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+          "headers": {
+            "Content-Type": "text/event-stream"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "max_tokens": 16000,
+            "messages": [
+              {
+                "content": "Say hello.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model-2",
+            "stream": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Anthropic-Version": [
+              "2023-06-01"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "generated",
+        "failureKind": "",
+        "output": {
+          "finishReason": "stop",
+          "providerFinishReason": "end_turn",
+          "requestedModel": "gateway-model-2",
+          "responseId": "msg_gateway_streamed",
+          "servedModel": "gateway-model-2",
+          "text": "Hello gateway.",
+          "usage": {
+            "inputTokens": 9,
+            "outputTokens": 4,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Say hello."
+          }
+        ],
+        "model": "gateway-model-2"
+      },
+      "name": "anthropic-compatible-streamed",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"type\":\"message\",\"id\":\"msg_gateway_truncated\",\"model\":\"gateway-model\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Partial answer\"}],\"stop_reason\":\"max_tokens\",\"usage\":{\"input_tokens\":6,\"output_tokens\":16000}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "max_tokens": 16000,
+            "messages": [
+              {
+                "content": "Write a long answer.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model",
+            "stream": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Anthropic-Version": [
+              "2023-06-01"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "truncated",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "finishReason": "length",
+          "providerFinishReason": "max_tokens",
+          "requestedModel": "gateway-model",
+          "responseId": "msg_gateway_truncated",
+          "servedModel": "gateway-model",
+          "text": "Partial answer",
+          "usage": {
+            "inputTokens": 6,
+            "outputTokens": 16000,
+            "totalTokens": 16006
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Write a long answer."
+          }
+        ]
+      },
+      "name": "anthropic-compatible-truncated",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"type\":\"message\",\"id\":\"msg_gateway_blocked\",\"model\":\"gateway-model\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":\"refusal\",\"usage\":{\"input_tokens\":5,\"output_tokens\":0}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "max_tokens": 16000,
+            "messages": [
+              {
+                "content": "Blocked prompt.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model",
+            "stream": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Anthropic-Version": [
+              "2023-06-01"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "blocked",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "finishReason": "refusal",
+          "providerFinishReason": "refusal",
+          "requestedModel": "gateway-model",
+          "responseId": "msg_gateway_blocked",
+          "servedModel": "gateway-model",
+          "text": "",
+          "usage": {
+            "inputTokens": 5,
+            "outputTokens": 0,
+            "totalTokens": 5
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Blocked prompt."
+          }
+        ]
+      },
+      "name": "anthropic-compatible-blocked",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"secret omitted\"}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "max_tokens": 16000,
+            "messages": [
+              {
+                "content": "Say hello.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model",
+            "stream": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Anthropic-Version": [
+              "2023-06-01"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "requestedModel": "gateway-model",
+          "text": "",
+          "usage": {
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Say hello."
+          }
+        ]
+      },
+      "name": "anthropic-compatible-provider-rejected",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "requestedModel": "gateway-model",
+          "text": "",
+          "usage": {
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Say hello."
+          }
+        ],
+        "reasoningEffort": "high"
+      },
+      "name": "anthropic-compatible-defect-reasoning-effort",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\",\"message\":\"slow down\"}}",
+          "headers": {
+            "Content-Type": "application/json",
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "max_tokens": 16000,
+            "messages": [
+              {
+                "content": "Say hello.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model",
+            "stream": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Anthropic-Version": [
+              "2023-06-01"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Say hello."
+          }
+        ]
+      },
+      "name": "anthropic-compatible-retry-429",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"overloaded\"}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "max_tokens": 16000,
+            "messages": [
+              {
+                "content": "Say hello.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model",
+            "stream": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Anthropic-Version": [
+              "2023-06-01"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 529
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Say hello."
+          }
+        ]
+      },
+      "name": "anthropic-compatible-retry-529",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp-gateway-generated\",\"model\":\"gateway-model\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"{\\\"status\\\":\\\"up\\\"}\"}]}],\"usage\":{\"input_tokens\":21,\"output_tokens\":6,\"total_tokens\":27}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": [
+              {
+                "content": "Report the status.",
+                "role": "user"
+              }
+            ],
+            "instructions": "Answer in JSON.",
+            "max_output_tokens": 120,
+            "model": "gateway-model",
+            "reasoning": {
+              "effort": "low"
+            },
+            "store": false,
+            "stream": true,
+            "text": {
+              "format": {
+                "description": "Gateway status",
+                "name": "status",
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "generated",
+        "failureKind": "",
+        "output": {
+          "finishReason": "stop",
+          "providerFinishReason": "completed",
+          "requestedModel": "gateway-model",
+          "responseId": "resp-gateway-generated",
+          "servedModel": "gateway-model",
+          "text": "{\"status\":\"up\"}",
+          "usage": {
+            "inputTokens": 21,
+            "outputTokens": 6,
+            "totalTokens": 27
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "instructions": "Answer in JSON.",
+        "maxOutputTokens": 120,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Report the status."
+          }
+        ],
+        "reasoningEffort": "low",
+        "structuredOutput": {
+          "description": "Gateway status",
+          "name": "status",
+          "schema": {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        }
+      },
+      "name": "openai-compatible-responses-generated",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp-gateway-temperature\",\"model\":\"gateway-model-2\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello gateway.\"}]}],\"usage\":{\"input_tokens\":4,\"output_tokens\":3,\"total_tokens\":7}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": [
+              {
+                "content": "Say hello.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model-2",
+            "store": false,
+            "stream": true,
+            "temperature": 1.4
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "generated",
+        "failureKind": "",
+        "output": {
+          "finishReason": "stop",
+          "providerFinishReason": "completed",
+          "requestedModel": "gateway-model-2",
+          "responseId": "resp-gateway-temperature",
+          "servedModel": "gateway-model-2",
+          "text": "Hello gateway.",
+          "usage": {
+            "inputTokens": 4,
+            "outputTokens": 3,
+            "totalTokens": 7
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Say hello."
+          }
+        ],
+        "model": "gateway-model-2",
+        "temperature": 1.4
+      },
+      "name": "openai-compatible-responses-temperature",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp-gateway-truncated\",\"model\":\"gateway-model\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Partial answer\"}]}]}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": [
+              {
+                "content": "Write a long answer.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model",
+            "store": false,
+            "stream": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "truncated",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "finishReason": "length",
+          "providerFinishReason": "max_output_tokens",
+          "requestedModel": "gateway-model",
+          "responseId": "resp-gateway-truncated",
+          "servedModel": "gateway-model",
+          "text": "Partial answer",
+          "usage": {
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Write a long answer."
+          }
+        ]
+      },
+      "name": "openai-compatible-responses-truncated",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\",\"code\":\"model_not_found\",\"message\":\"secret omitted\"}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": [
+              {
+                "content": "Say hello.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model",
+            "store": false,
+            "stream": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "requestedModel": "gateway-model",
+          "text": "",
+          "usage": {
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Say hello."
+          }
+        ]
+      },
+      "name": "openai-compatible-responses-provider-rejected",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"server_error\",\"message\":\"internal\"}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": [
+              {
+                "content": "Say hello.",
+                "role": "user"
+              }
+            ],
+            "model": "gateway-model",
+            "store": false,
+            "stream": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/event-stream"
+            ],
+            "Authorization": [
+              "Bearer sk-llm-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messages": [
+          {
+            "role": "user",
+            "text": "Say hello."
+          }
+        ]
+      },
+      "name": "openai-compatible-responses-retry-500",
+      "operation": "generateText"
     }
   ],
   "schemaVersion": 1

@@ -9,7 +9,7 @@ import {
 } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { Client } from '../src/client.js';
 import { newConnection } from '../src/index.js';
-import { GenerateTextRequestSchema } from '../src/generated/models.js';
+import { GenerateTextRequestSchema, type Config } from '../src/generated/models.js';
 
 const active = vi.hoisted(() => ({ recorder: undefined as ExchangeRecorder | undefined }));
 vi.mock('@superdurable/connectors-sdk/providerhttp', async importOriginal => ({
@@ -25,11 +25,22 @@ const reference = { provider: 'llm', name: 'llm-conformance' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeLLM, '/v1'));
 
+/** Select the connection by scenario name, as the Go adapter does. */
+function connectionConfig(scenarioName: string): Config {
+  if (scenarioName.startsWith('anthropic-compatible-')) {
+    return { provider: 'anthropic-compatible', baseUrl: 'https://gateway.example/anthropic', model: 'gateway-model' };
+  }
+  if (scenarioName.startsWith('openai-compatible-responses-')) {
+    return { provider: 'openai-compatible', baseUrl: 'https://gateway.example/v1', model: 'gateway-model', openaiCompatibleApi: 'responses' };
+  }
+  return { provider: 'openai', model: 'gpt-6-sol' };
+}
+
 async function invokeLLM(scenario: Scenario, recorder: ExchangeRecorder) {
   active.recorder = recorder;
-  const client = new Client({ provider: 'openai', model: 'gpt-6-sol' }, {
+  const client = new Client(connectionConfig(scenario.name), {
     resolve: async () => ({ apiKey: new SecretString('sk-llm-conformance-key') }),
-  });
+  }, { baseURLForTest: 'http://127.0.0.1/v1' });
   const call = scenarioCall(scenario, reference, 'llm', {
     flowId: 'llm-conformance-flow', stepExecutionId: 'llm-conformance-step',
     attempt: 1, cancellationSignal: new AbortController().signal, recordHeartbeat: async () => {},

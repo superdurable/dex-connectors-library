@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -233,6 +234,13 @@ func (client *Client) UpdateRecord() UpdateRecordOperation {
 	return UpdateRecordOperation{client: client}
 }
 
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 // startSession resolves the credential and its API base URL under the deadline; callers cancel a returned session.
 func (client *Client) startSession(call sdkgo.Call, operation string) (*operationSession, context.CancelFunc, *sessionFailure) {
 	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
@@ -240,7 +248,7 @@ func (client *Client) startSession(call sdkgo.Call, operation string) (*operatio
 	var failure *sessionFailure
 	var apiBaseURL string
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		failure = &sessionFailure{route: sessionRejected, failure: crmFailure(sdkgo.FailureAuthentication, operation,
 			"Zoho authorization is revoked or expired; reconnect the connection")}
 	case err != nil:
@@ -520,12 +528,17 @@ func mutationAttemptForExchange[OUT any](result crmExchange, receipt sdkgo.Recei
 	case exchangeRetry:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
 	case exchangeInvalid:
-		return sdkgo.NewMutationBranch(branches.invalidResponse, value, &result.failure, receipt), true
+		// Both writes are safe to repeat, so an unusable answer retries instead of selecting invalidResponse.
+		return sdkgo.NewMutationRetry[OUT](result.failure, 0), true
 	case exchangeDefect:
 		return sdkgo.NewMutationBranch(branches.defect, value, &result.failure, receipt), true
 	}
 	status, summary := result.response.statusCode, result.summary
 	switch {
+	case status >= 300 && !isDefiniteRefusalStatus(status):
+		failure := result.failure
+		failure.Kind = sdkgo.FailureAvailability
+		return sdkgo.NewMutationRetry[OUT](failure, result.retryAfter), true
 	case summary.code == errorCodeDuplicateData:
 		return sdkgo.NewMutationBranch(branches.conflict, value, &result.failure, receipt), true
 	case branches.notFound != "" && summary.isRecordIDInvalid():
@@ -535,6 +548,16 @@ func mutationAttemptForExchange[OUT any](result crmExchange, receipt sdkgo.Recei
 	default:
 		return sdkgo.NewMutationBranch(branches.recordRejected, value, &result.failure, receipt), true
 	}
+}
+
+// isDefiniteRefusalStatus reports an HTTP status that proves Zoho CRM refused the write; any other status is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func safeCreditCount(value string) string {

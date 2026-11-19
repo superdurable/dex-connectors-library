@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "deleteItem/removedCopy/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onedrive.DeleteItemOutput](`{"itemId":"copy-file-1"}`)
+			return err
+		}},
+		{name: "renameItem/renamedCopy/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onedrive.RenameItemOutput](`{"item":{"id":"copy-file-1","name":"Ops-Policy-Final.txt","driveId":"b!financeLibrary-2","parentFolderId":"copy-folder-1","mimeType":"text/plain","sizeBytes":44}}`)
+			return err
+		}},
+		{name: "moveItem/movedCopy/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onedrive.MoveItemOutput](`{"item":{"id":"copy-file-1","name":"Ops-Policy-Final.txt","driveId":"b!financeLibrary-2","parentFolderId":"archive-folder-1","mimeType":"text/plain","sizeBytes":44}}`)
+			return err
+		}},
+		{name: "copyFile/queuedPolicyCopy/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onedrive.CopyFileOutput](`{"destinationDriveId":"b!financeLibrary-2","destinationFolderId":"copy-folder-1","name":"Ops-Policy-Copy.txt","isQueued":true}`)
+			return err
+		}},
 		{name: "searchFiles/foundDefaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[onedrive.SearchFilesOutput](`{"files":[{"id":"source-file-1","name":"Ops Policy.txt","driveId":"b!sourceLibrary_1","parentFolderId":"source-folder","mimeType":"text/plain","sizeBytes":44}],"nextPageToken":""}`)
 			return err
@@ -66,6 +82,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.DeleteItem().Definition().Operation.OperationID != "deleteItem" {
+		t.Errorf("deleteItem mock has another definition")
+	}
+	if mock.RenameItem().Definition().Operation.OperationID != "renameItem" {
+		t.Errorf("renameItem mock has another definition")
+	}
+	if mock.MoveItem().Definition().Operation.OperationID != "moveItem" {
+		t.Errorf("moveItem mock has another definition")
+	}
+	if mock.CopyFile().Definition().Operation.OperationID != "copyFile" {
+		t.Errorf("copyFile mock has another definition")
+	}
 	if mock.SearchFiles().Definition().Operation.OperationID != "searchFiles" {
 		t.Errorf("searchFiles mock has another definition")
 	}

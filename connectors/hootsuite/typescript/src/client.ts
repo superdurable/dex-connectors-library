@@ -1,12 +1,14 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { SecretString, ReauthorizationRequiredError, resolveCredential, newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, type Call, type CallID, type CredentialProvider, type CredentialRefreshDriver, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { definitionMaxSends, SecretString, ReauthorizationRequiredError, resolveCredential, newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, type Call, type CallID, type CredentialProvider, type CredentialRefreshDriver, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ListSocialProfilesDefinition, ListScheduledPostsDefinition, SchedulePostDefinition } from './generated/definitions.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
+import { isCredentialMaterialError } from './generated/models.js';
 import type { Config, Credentials, ListSocialProfilesInput, SocialProfile, SocialProfilesPage, ListScheduledPostsInput, ScheduledPost, ScheduledPostsPage, SchedulePostInput, ScheduledPostReceipt } from './generated/models.js';
 
 const emptyProfiles = (): SocialProfilesPage => ({ profiles: [] });
@@ -27,7 +29,7 @@ export interface HootsuiteExchange {
   /** Provider HTTP status, or zero before response headers. */ status: number;
   /** Bounded response body retained only in process memory. */ body: Uint8Array;
   /** Provider Retry-After delay in milliseconds. */ retryAfterMs: number;
-  /** Safe local error class. */ error?: 'credential' | 'refresh' | 'request' | 'tooLarge';
+  /** Safe local error class; read means the body failed after its status arrived. */ error?: 'credential' | 'refresh' | 'request' | 'read' | 'tooLarge';
   /** Whether request bytes may have reached Hootsuite. */ requestSent: boolean;
 }
 
@@ -58,14 +60,26 @@ export class HootsuiteClient {
   /** Bind the scheduled message Query. */ listScheduledPosts(): ListScheduledPostsOperation { return new ListScheduledPostsOperation(this); }
   /** Bind the scheduled message Mutation. */ schedulePost(): SchedulePostOperation { return new SchedulePostOperation(this); }
 
-  /** Resolve a header-safe access token for the current call. */
+  /** Resolve a header-safe access token for the current call, classified as for a write. */
   async resolveToken(call: Call): Promise<string | HootsuiteExchange> {
+    return this.resolveTokenClassifying(call, isTerminalCredentialError);
+  }
+
+  /**
+   * Resolve a header-safe access token for a write. A revoked, missing, unselected, or broker-refused
+   * connection is `credential`; any other read failure is `refresh` and may succeed on a later attempt.
+   */
+  async resolveWriteToken(call: Call): Promise<string | HootsuiteExchange> {
+    return this.resolveTokenClassifying(call, isTerminalCredentialError);
+  }
+
+  private async resolveTokenClassifying(call: Call, isTerminal: (error: unknown) => boolean): Promise<string | HootsuiteExchange> {
     try {
       const resolved = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       const token = resolved.accessToken instanceof SecretString ? resolved.accessToken.reveal() : '';
       return token && isHeaderSafeCredential(token) ? token : failedExchange('credential');
     } catch (error) {
-      return failedExchange(error instanceof ReauthorizationRequiredError ? 'credential' : 'refresh');
+      return failedExchange(isTerminal(error) ? 'credential' : 'refresh');
     }
   }
 
@@ -96,8 +110,14 @@ export class HootsuiteClient {
         ...failedExchange('tooLarge'), status: error.status, requestSent: true,
         retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after'), this.now()),
       };
+      // Headers arrived before the body failed, so the status still decides whether Hootsuite scheduled the message.
+      if ((error instanceof ProviderTransportError && !error.isProvablyNotSent || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 100) return {
+        ...failedExchange('read'), status: error.status, requestSent: true,
+        retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after'), this.now()),
+      };
       if (error instanceof ProviderTransportError) return { ...failedExchange('request'), requestSent: !error.isProvablyNotSent };
-      return failedExchange('request');
+      // Any other failure gives no proof the request stayed local.
+      return { ...failedExchange('request'), requestSent: true };
     }
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'), this.now());
     if (Buffer.from(response.body).includes(token)) return { ...failedExchange('credential'), status: response.status, requestSent: true, retryAfterMs };
@@ -164,33 +184,54 @@ export class SchedulePostOperation implements Mutation<SchedulePostInput, Schedu
   /** Bind the provider client. */ constructor(private readonly client: HootsuiteClient) {}
   /** Return the generated Mutation definition. */ definition(): MutationDefinition { return SchedulePostDefinition; }
   /** Record the Call ID; Hootsuite does not deduplicate this key. */ idempotencyKey(callID: CallID): string { return callID; }
-  /** Send once, returning uncertainty when the provider may have accepted the post. */
+  /**
+   * Schedule under a single-dispatch fence. Hootsuite has no message idempotency key, so an unknown
+   * outcome retries while possible sends stay below the send cap and selects uncertain at the cap.
+   * A definite refusal is never resent.
+   */
   async invoke(call: Call, input: SchedulePostInput): Promise<MutationAttempt<ScheduledPostReceipt>> {
     const operation = 'schedulePost';
     const empty = emptyReceipt();
-    let fence: ReturnType<typeof newFence>;
-    try { fence = newFence(call, SchedulePostDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
-    catch { return newMutationBranch('defect', empty, {}, failure(operation, 'LOCAL_DEFECT', 'Hootsuite dispatch fence is unavailable')); }
-    if (fence.decide().kind !== 'sendAllowed') return newMutationUncertain(empty, failure(operation, 'TRANSPORT', 'Hootsuite schedule outcome cannot be confirmed; inspect Planner before resending'));
     if (!input || typeof input.text !== 'string' || !input.text.trim() || Buffer.from(input.text, 'utf8').toString('utf8') !== input.text || Buffer.byteLength(input.text, 'utf8') > 10_000 || typeof input.socialProfileId !== 'string' || !numericID.test(input.socialProfileId) || utcTime(input.scheduledSendTime) === undefined) return newMutationBranch('defect', empty, {}, failure(operation, 'VALIDATION', 'scheduled message text, profile ID, or UTC time is invalid'));
-    const token = await this.client.resolveToken(call);
+    const operationMaxSends = definitionMaxSends(SchedulePostDefinition);
+    let fence: ReturnType<typeof newFence>;
+    try { fence = newFence(call, SchedulePostDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: operationMaxSends }); }
+    catch { return newMutationBranch('defect', empty, {}, failure(operation, 'LOCAL_DEFECT', 'Hootsuite dispatch fence is unavailable')); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return newMutationRetry(failure(operation, 'AVAILABILITY', 'Hootsuite dispatch checkpoint is unreadable; no message was scheduled in this attempt'));
+    if (decision.kind === 'readBackRequired') return newMutationUncertain(empty, failure(operation, 'TRANSPORT', 'an earlier attempt may have scheduled the Hootsuite message, and the send cap is reached; inspect Planner before resending'));
+    // A saved message ID proves Hootsuite scheduled the message, so it is never resent.
+    if (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId) return newMutationUncertain(empty, failure(operation, 'TRANSPORT', 'an earlier attempt scheduled the Hootsuite message, but its confirmation was lost'));
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    // This attempt's send would be the last one the cap allows when no further send remains.
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
+    // An earlier send may have scheduled the message, so a refusal of a resend proves nothing.
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
+    const token = await this.client.resolveWriteToken(call);
     if (typeof token !== 'string') {
-      if (token.error === 'credential') return newMutationBranch('defect', empty, {}, failure(operation, 'AUTHENTICATION', 'connection credentials require reauthorization'));
+      if (token.error === 'credential') return localScheduleFailure(fence, hasPossibleEarlierSend, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or require reauthorization'));
+      // notSent would hide an earlier possible send, so it is recorded only before any send.
+      if (!hasPossibleEarlierSend) {
+        try { await fence.recordNotSent(); }
+        catch { /* Without notSent the next attempt counts this attempt as a possible send. */ }
+      }
       return newMutationRetry(failure(operation, 'TRANSPORT', 'connection refresh failed'));
     }
     const body = Buffer.from(JSON.stringify({ text: input.text, socialProfileIds: [input.socialProfileId], scheduledSendTime: input.scheduledSendTime }));
     let exchange: HootsuiteExchange;
     try { exchange = await fence.dispatch(signal => this.client.send('POST', '/v1/messages', token, signal, body)); }
     catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure(operation, 'TRANSPORT', 'Hootsuite dispatch did not start'));
-      return newMutationUncertain(empty, failure(operation, 'TRANSPORT', 'Hootsuite schedule outcome is unknown'));
+      // The Fence raises these before sending, including its AggregateError for a short window and a failed notSent.
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error)) return newMutationRetry(failure(operation, 'TRANSPORT', 'Hootsuite dispatch did not start'));
+      return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'TRANSPORT', 'Hootsuite schedule outcome is unknown'));
     }
     if (exchange.error === 'request') {
       if (!exchange.requestSent) {
-        try { await fence.recordCanResend(); return newMutationRetry(failure(operation, 'TRANSPORT', 'Hootsuite could not be reached before sending')); }
-        catch { /* The claim marker still blocks a second send. */ }
+        try { await fence.recordCanResend(); }
+        catch { /* A lost canResend checkpoint leaves the claim, which the next attempt counts. */ }
+        return newMutationRetry(failure(operation, 'TRANSPORT', 'Hootsuite could not be reached before sending'));
       }
-      return newMutationUncertain(empty, failure(operation, 'TRANSPORT', 'Hootsuite schedule outcome is unknown'));
+      return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'TRANSPORT', 'Hootsuite schedule outcome is unknown'));
     }
     if (exchange.status === 429 || exchange.status === 503) {
       try { await fence.recordCanResend(); }
@@ -198,19 +239,71 @@ export class SchedulePostOperation implements Mutation<SchedulePostInput, Schedu
       const kind = exchange.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY';
       return newMutationRetry(failure(operation, kind, 'Hootsuite did not schedule the message'), exchange.retryAfterMs);
     }
-    if (exchange.status === 408 || exchange.status >= 500) return newMutationUncertain(empty, failure(operation, 'AVAILABILITY', 'Hootsuite schedule outcome is unknown'));
-    if (exchange.status >= 400 && exchange.status < 500) return newMutationBranch('providerRejected', empty, {}, failure(operation, 'PROVIDER_REJECTION', `Hootsuite rejected HTTP ${exchange.status}`));
-    if (exchange.status !== 200) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite returned an unexpected schedule response'));
-    if (exchange.error) return newMutationUncertain(empty, failure(operation, 'TRANSPORT', 'Hootsuite accepted the request but its response could not be read'));
-    const document = parseJSON(exchange.body);
+    const isSuccessStatus = exchange.status >= 200 && exchange.status < 300;
+    const isBodyReadable = !exchange.error;
+    const document = isBodyReadable ? parseJSON(exchange.body) : undefined;
     const data = isObject(document) ? document.data : undefined;
-    if (!Array.isArray(data) || data.length !== 1 || !isObject(data[0]) || typeof data[0].id !== 'string' || !data[0].id || typeof data[0].state !== 'string' || !data[0].state) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite accepted the request but returned no usable message ID'));
-    const socialProfile = data[0].socialProfile ?? {};
+    // A message ID in the body means Hootsuite scheduled the message.
+    const first = Array.isArray(data) && isObject(data[0]) ? data[0] : undefined;
+    const messageID = first && typeof first.id === 'string' ? first.id : '';
+    // Hootsuite accepted the request, so a resend could duplicate the message.
+    if (isSuccessStatus && !isBodyReadable) return newMutationUncertain(empty, failure(operation, 'TRANSPORT', 'Hootsuite accepted the request, but its response could not be read'));
+    if (isSuccessStatus && !messageID) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite accepted the request, but its response is malformed'));
+    if (!isSuccessStatus && messageID) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite returned a contradictory schedule response'));
+    if (!isSuccessStatus) {
+      // An unreadable or oversized error body cannot prove a refusal.
+      if (isBodyReadable && definiteRefusalStatuses.has(exchange.status)) return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, failure(operation, rejectionKind(exchange.status), `Hootsuite rejected HTTP ${exchange.status}`));
+      return resendOrSelectUncertain(canResendUnknownOutcome, failure(operation, 'AVAILABILITY', `Hootsuite schedule outcome is unknown after HTTP ${exchange.status}`), exchange.retryAfterMs);
+    }
+    if (!first || !Array.isArray(data)) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite accepted the request, but its response is malformed'));
+    try { await fence.recordProviderId(messageID); }
+    catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
+    // Hootsuite reported a message ID, so an unexpected response is never resent.
+    if (exchange.status !== 200 || data.length !== 1 || typeof first.state !== 'string' || !first.state) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite accepted the request but returned an unexpected schedule response'));
+    const socialProfile = first.socialProfile ?? {};
     if (!isObject(socialProfile) || (socialProfile.id && socialProfile.id !== input.socialProfileId)) return newMutationUncertain(empty, failure(operation, 'PROTOCOL', 'Hootsuite returned an unexpected social profile'));
-    try { await fence.recordProviderId(data[0].id); }
-    catch { /* The claim marker still blocks a second send. */ }
-    return newMutationBranch('scheduled', { id: data[0].id, state: data[0].state, socialProfileId: input.socialProfileId });
+    return newMutationBranch('scheduled', { id: messageID, state: first.state, socialProfileId: input.socialProfileId });
   }
+}
+
+// Only these statuses prove Hootsuite refused a write; other 4xx statuses leave the outcome unknown.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+}
+
+/** Retry a possibly scheduled message while the send cap allows another send, else select uncertain. */
+function resendOrSelectUncertain(canResendUnknownOutcome: boolean, unknownFailure: Failure, delay = 0): MutationAttempt<ScheduledPostReceipt> {
+  // The claim stays the last marker, so the next attempt counts this send.
+  return canResendUnknownOutcome ? newMutationRetry(unknownFailure, delay) : newMutationUncertain(emptyReceipt(), unknownFailure);
+}
+
+/** Select providerRejected only when no earlier send may have scheduled the message. */
+async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean, rejection: Failure): Promise<MutationAttempt<ScheduledPostReceipt>> {
+  if (hasPossibleEarlierSend) return newMutationUncertain(emptyReceipt(), rejection);
+  try { await fence.recordCanResend(); }
+  catch { /* The branch is terminal, so a lost canResend checkpoint cannot cause a resend. */ }
+  return newMutationBranch('providerRejected', emptyReceipt(), {}, rejection);
+}
+
+/** Select defect only when no earlier send may have scheduled the message; this terminal failure is uncertain afterwards. */
+async function localScheduleFailure(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean, localFailure: Failure): Promise<MutationAttempt<ScheduledPostReceipt>> {
+  if (hasPossibleEarlierSend) return newMutationUncertain(emptyReceipt(), { ...localFailure, message: `${localFailure.message}; an earlier attempt may have scheduled the message` });
+  try { await fence.recordNotSent(); }
+  catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
+  return newMutationBranch('defect', emptyReceipt(), {}, localFailure);
+}
+
+/** Report a credential failure that only reconnecting the connection can fix. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
+
+function rejectionKind(status: number): Failure['kind'] {
+  return status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
 }
 
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { provider: 'hootsuite', operation, kind, message }; }
@@ -218,7 +311,7 @@ function queryBranch<Output>(operation: string, branch: string, kind: Failure['k
 function queryRetry<Output>(operation: string, kind: Failure['kind'], message: string, delay = 0): QueryAttempt<Output> { return newQueryRetry(failure(operation, kind, message), delay); }
 function queryFailure<Output>(operation: string, exchange: HootsuiteExchange, empty: Output): QueryAttempt<Output> | undefined {
   if (exchange.error === 'credential') return queryBranch(operation, 'defect', 'AUTHENTICATION', 'connection credentials are unavailable or invalid', empty);
-  if (exchange.error === 'request' || exchange.error === 'refresh') return queryRetry(operation, 'TRANSPORT', 'Hootsuite request failed');
+  if (exchange.error === 'request' || exchange.error === 'refresh' || exchange.error === 'read') return queryRetry(operation, 'TRANSPORT', 'Hootsuite request failed');
   if (exchange.status === 429) return queryRetry(operation, 'RATE_LIMIT', 'Hootsuite rate limited the request', exchange.retryAfterMs);
   if (exchange.status === 408 || exchange.status >= 500) return queryRetry(operation, 'AVAILABILITY', 'Hootsuite is temporarily unavailable', exchange.retryAfterMs);
   if (exchange.status !== 200) return queryBranch(operation, 'providerRejected', 'PROVIDER_REJECTION', `Hootsuite rejected HTTP ${exchange.status}`, empty);
@@ -231,3 +324,5 @@ function parseJSON(body: Uint8Array): unknown { try { return JSON.parse(Buffer.f
 function safeQueryValue(value: string): boolean { return ![...value].some(character => { const code = character.charCodeAt(0); return code < 32 || code === 127; }); }
 function utcTime(value: unknown): number | undefined { if (typeof value !== 'string' || !utcInstant.test(value)) return undefined; const parsed = Date.parse(value); return Number.isNaN(parsed) ? undefined : parsed; }
 function header(headers: ProviderResponse['headers'], name: string): string { const value = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean { return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError); }

@@ -2,7 +2,7 @@
 
 ## Python package
 
-The Python package `dex-connector-microsoft-excel` (`v0.1.0`) provides
+The Python package `dex-connector-microsoft-excel` (`v0.1.1`) provides
 `new_get_table_rows_step`, `new_get_values_step`, `new_update_values_step`,
 and `new_append_table_rows_step` from `dex_connectors.microsoft_excel`.
 It uses the same Microsoft OAuth connection and operation branches as Go.
@@ -11,7 +11,7 @@ runs all four operations with a static `approvals` connection. Its integration
 test verifies the Flow through a real Dex Worker and Client against a local
 Microsoft Graph stand-in. Live Microsoft workbook behavior remains unverified.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/excel`.
 
@@ -33,6 +33,11 @@ these operation-specific Dex Step factories:
 | `excel.NewGetValuesStep` | Query | `read` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
 | `excel.NewUpdateValuesStep` | Mutation | `updated` | `notFound`, `providerRejected`, `defect` |
 | `excel.NewAppendTableRowsStep` | Mutation | `appended` | `notFound`, `columnsMismatch`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
+| `excel.NewListTableColumnsStep` | Query | `listed` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
+| `excel.NewFindTableRowStep` | Query | `found` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
+| `excel.NewListWorksheetsStep` | Query | `listed` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
+| `excel.NewListWorkbooksStep` | Query | `listed` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
+| `excel.NewCreateWorksheetStep` | Mutation | `created` | `nameConflict`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
 
 - `getTableRows` reads an Excel table as rows keyed by column name, without its
   header and total rows. It is the "policy table" read: one Step returns every
@@ -43,11 +48,17 @@ these operation-specific Dex Step factories:
   matches the values exactly.
 - `appendTableRows` appends rows to a table, skipping every row whose key
   column value the table already holds.
+- `listTableColumns` reads stable column IDs, positions, and names in table order.
+- `findTableRow` reads a bounded table and returns its first exact typed value match.
+- `listWorksheets` reads worksheet IDs and names for one workbook.
+- `listWorkbooks` searches one drive for `.xlsx` workbooks, one page at a time;
+  pass its `nextPageToken` to continue.
+- `createWorksheet` adds a named sheet. Its `limited` retry tier reads the name
+  back before another send and caps possible sends at three.
 
 Only the happy branch of each operation is required; an unwired optional branch
-fails the Flow. The three idempotent operations use async Execute durability, a
-30-second Execute timeout, and the one-hour default retry budget. `appendTableRows`
-uses sync durability and retries for up to five minutes; see
+fails the Flow. The read operations and `updateValues` use async Execute
+durability. `appendTableRows` uses sync durability and retries for up to five minutes; see
 [Duplicate dispatch](#duplicate-dispatch).
 
 The release has three Studio pickers, `workbookPicker`, `worksheetPicker`, and
@@ -174,8 +185,11 @@ a zero `CellValue` is rejected as `defect`, because Graph treats `null` as
 Microsoft Graph has no idempotency key for workbook writes. Dex may replay a
 Step after Worker loss or before an async result is committed.
 
-`updateValues` writes absolute values, so a repeated dispatch writes the same
-content again and the range ends the same. A dispatch that answers late can
+`updateValues` writes absolute values and declares `repeatOnUnknown: safe`, so
+a repeated dispatch writes the same content again and the range ends the same.
+Only 400, 401, 403, 404, 411, 413, 414, 415, and 422 select a rejection branch;
+every other status, every transport failure, and every credential failure
+that is not terminal, as `appendTableRows` below defines it, retry. A dispatch that answers late can
 still land after a later Step's write, so write one range from one Step per
 Flow, or read it back first, as the example does.
 
@@ -188,19 +202,35 @@ first append is still queued. So the operation:
 
 - runs with **sync** durability, so Dex never dispatches it again while an
   attempt is in flight;
-- records a Dex heartbeat checkpoint before it sends `rows/add`. A later
-  attempt of the same Step execution that finds the checkpoint never sends
-  again: it selects `appended` with `isFromEarlierAttempt` when the key column
-  holds every key, and `uncertain` otherwise;
-- clears the checkpoint only for a response that proves Excel appended
-  nothing: any 4xx except 408, plus 501 and 503;
-- treats a transport failure, 408, 500, 502, and 504 as unknown and retries
-  after 10 seconds, so the next attempt can find the rows in the key column.
+- counts possible sends with a single-dispatch fence (`sdkgo/singledispatch`)
+  whose cap is `Call.MaxSends()` (manifest `maxSends`, default 3, or the
+  Step's `MaxSends` override);
+- treats a transport failure, 408, 409, 500, 501, 502, 504, and every other
+  status that is not a definite refusal as unknown and retries after 10
+  seconds. The next attempt reads the key column first: it selects `appended`
+  with `isFromEarlierAttempt` when the column holds every key, resends the
+  missing rows while possible sends stay below the cap, and selects
+  `uncertain` once the cap is reached;
+- selects `appended` for any 2xx status, even when the response body then
+  fails to arrive, so an accepted append is never resent;
+- retries 429 and 503 after recording that Excel appended nothing;
+- retries every credential failure before any request, including a broker
+  outage and an unconfigured static connection, except a terminal one:
+  reauthorization required, a missing or unselected connection, a broker
+  refusal, or credential material that fails local checks. A terminal one
+  selects `defect` on a first send and `uncertain` after an earlier
+  unconfirmed send;
+- selects `notFound` or `providerRejected` only for a first send refused with
+  400, 401, 403, 404, 411, 413, 414, 415, or 422 and a non-empty body that
+  fits the response limit, and `uncertain` when such a refusal follows an
+  earlier unconfirmed send. A refusal whose body is empty or oversized is
+  unknown.
 
 Microsoft's guide says to repeat an append that answered 504. The connector
-reads the key column instead, so a 504 whose append landed converges to
-`appended`, and one that did not land selects `uncertain` instead of risking a
-second row. Wire `uncertain` to a person, or to a Timer and a later
+reads the key column first, so a 504 whose append landed converges to
+`appended`. An append that stays invisible in the key column is resent up to
+the cap, so a lagging key column can produce at most `maxSends` copies of a row;
+lower the Step's `MaxSends` to 1 to never resend. Wire `uncertain` to a person, or to a Timer and a later
 `getTableRows`. The example leaves `uncertain` unwired, so selecting it fails
 the Flow. A key the table already holds is never appended again, by any Flow;
 key text stored with a kept apostrophe still matches.
@@ -285,12 +315,12 @@ See [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks) for script
 
 ## Example
 
-[`examples/approval-decision`](go/examples/approval-decision/README.md) uses every
-operation in one Flow started from Dex Web: it reads an approval-policy table,
+[`examples/approval-decision`](go/examples/approval-decision/README.md) exercises
+table column listing in one Flow started from Dex Web: it reads an approval-policy table,
 decides a spending request, appends the decision to a decision log keyed by
 request ID, writes the latest decision to a summary range, and reads it back.
 
-The [TypeScript example](typescript/examples/approval-decision/README.md) exposes the same four connector operations through typed Dex Flows with the static `approvals` connection. Its real Dex integration test uses an inert Graph fixture, and its Go-recorded provider conformance fixture covers every operation branch, retry, transport failure, and the append checkpoint. The TypeScript package is `@superdurable/connector-microsoft-excel` v0.1.0 and uses Connector SDK 0.7.0. It adds no new React, Connector Studio, directory UI, or authorization fields. Live Microsoft OAuth and workbook requests remain unverified for this port. Go's independent eight second token refresh deadline awaits the separate Connector SDK 0.8.0 manifest timeout follow-up.
+The [TypeScript example](typescript/examples/approval-decision/README.md) exposes the same four connector operations through typed Dex Flows with the static `approvals` connection. Its real Dex integration test uses an inert Graph fixture, and its Go-recorded provider conformance fixture covers every operation branch, retry, transport failure, and the append send cap. The TypeScript package is `@superdurable/connector-microsoft-excel` v0.1.1 and uses Connector SDK 0.12.0. It adds no new React, Connector Studio, directory UI, or authorization fields. Live Microsoft OAuth and workbook requests remain unverified for this port. Go's independent eight second token refresh deadline awaits the separate Connector SDK 0.8.0 manifest timeout follow-up.
 
 ## Not in this release
 
@@ -302,8 +332,7 @@ The [TypeScript example](typescript/examples/approval-decision/README.md) expose
   so a Trigger would also need a table read after each change.
 - **App-only access**, because Microsoft documents no application permission
   for the workbook API; see [Why there is no app-only method](#why-there-is-no-app-only-method).
-- Workbook sessions, formulas, formatting, charts, and worksheet or table
-  creation.
+- Workbook sessions, formulas, formatting, charts, and table creation.
 - Personal Microsoft accounts and national clouds, whose sign-in hosts differ
   from the manifest's static endpoints.
 

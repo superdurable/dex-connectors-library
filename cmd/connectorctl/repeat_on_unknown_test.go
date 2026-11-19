@@ -117,7 +117,7 @@ func pythonProject(dependencies string) string {
 }
 
 // TestGeneratedRepeatTiersFollowEachLanguageGate regenerates a copy of Stripe, whose Python and TypeScript
-// packages implement limited Mutations and the agent-exposed safe createRefund, under each SDK gate.
+// packages implement only safe Mutations, which keep an ignored send-cap parameter, under each SDK gate.
 // Its Go module keeps an sdkgo before v0.37.0, so the Go gate stays off in every case.
 func TestGeneratedRepeatTiersFollowEachLanguageGate(t *testing.T) {
 	for _, scenario := range []struct {
@@ -145,23 +145,27 @@ func TestGeneratedRepeatTiersFollowEachLanguageGate(t *testing.T) {
 			pythonDefinitions := readTestFile(t, filepath.Join(pythonPackage, "_generated", "definitions.py"))
 			pythonSteps := readTestFile(t, filepath.Join(pythonPackage, "_generated", "steps.py"))
 			typeScriptDefinitions := readTestFile(t, filepath.Join(connectorDirectory, "typescript", "src", "generated", "definitions.ts"))
+			typeScriptSteps := readTestFile(t, filepath.Join(connectorDirectory, "typescript", "src", "generated", "steps.ts"))
 			if scenario.hasPythonTiers {
 				require.Contains(t, pythonDefinitions, "    RepeatOnUnknown,\n")
-				require.Contains(t, pythonDefinitions, "    ),\n    repeat_on_unknown=RepeatOnUnknown.LIMITED,\n    max_sends=3,\n)\n")
-				require.Contains(t, pythonDefinitions, "    ),\n    repeat_on_unknown=RepeatOnUnknown.SAFE,\n)\n")
-				require.Equal(t, 2, strings.Count(pythonSteps, "    max_sends_override: int | None = None,\n"), "only the two limited Mutations take a send cap")
-				require.Equal(t, 2, strings.Count(pythonSteps, "            max_sends_override=max_sends_override,\n"))
+				require.Equal(t, 3, strings.Count(pythonDefinitions, "    ),\n    repeat_on_unknown=RepeatOnUnknown.SAFE,\n)\n"))
+				require.NotContains(t, pythonDefinitions, "max_sends=", "a safe Mutation has no send cap")
+				require.Equal(t, 3, strings.Count(pythonSteps, "    # Accepted for compatibility; ignored because the operation is safe to repeat.\n    max_sends_override: int | None = None,\n"), "every safe Mutation keeps the released keyword")
+				require.NotContains(t, pythonSteps, "max_sends_override=max_sends_override", "a safe Mutation never forwards the send cap the SDK rejects")
 			} else {
 				require.NotContains(t, pythonDefinitions, "RepeatOnUnknown")
 				require.NotContains(t, pythonDefinitions, "max_sends")
 				require.NotContains(t, pythonSteps, "max_sends")
 			}
 			if scenario.hasTSTiers {
-				require.Contains(t, typeScriptDefinitions, "  repeatOnUnknown: \"limited\",\n  maxSends: 3,\n};\n")
-				require.Contains(t, typeScriptDefinitions, "  repeatOnUnknown: \"safe\",\n};\n")
+				require.Equal(t, 3, strings.Count(typeScriptDefinitions, "  repeatOnUnknown: \"safe\",\n};\n"))
+				require.NotContains(t, typeScriptDefinitions, "maxSends:", "a safe Mutation has no send cap")
+				require.Equal(t, 3, strings.Count(typeScriptSteps, "  /** Accepted for compatibility; ignored because the operation is safe to repeat. */\n  maxSends?: number;\n"))
+				require.Regexp(t, `const \{ connection, connectionName, refunded, [^}]*maxSends, \.\.\.stepConfiguration \}`, typeScriptSteps, "the safe createRefund drops maxSends before the SDK sees it")
 			} else {
 				require.NotContains(t, typeScriptDefinitions, "repeatOnUnknown")
 				require.NotContains(t, typeScriptDefinitions, "maxSends")
+				require.NotContains(t, typeScriptSteps, "maxSends")
 			}
 
 			pythonRefund := generatedFactory(t, filepath.Join(pythonPackage, "dex-connector.json"), "createRefund")

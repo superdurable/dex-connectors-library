@@ -73,7 +73,10 @@ func (operation ListUsersOperation) Invoke(call sdkgo.Call, input ListUsersInput
 	if err != nil {
 		return sdkgo.NewQueryBranch(ListUsersBranchDefect, ListUsersOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := operation.client.resolveCredential(call, operationID)
+	credential, failure, isRetryable := operation.client.resolveCredential(call, operationID)
+	if isRetryable {
+		return sdkgo.NewQueryRetry[ListUsersOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ListUsersBranchDefect, ListUsersOutput{}, failure, sdkgo.Receipt{})
 	}

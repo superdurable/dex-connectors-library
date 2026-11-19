@@ -91,13 +91,18 @@ func (operation UpdateMeetingOperation) Invoke(call sdkgo.Call, input UpdateMeet
 		return sdkgo.NewMutationBranch(UpdateMeetingBranchUpdated, updated, nil, client.receipt(call, meetingID, ""))
 	}
 	classification := client.classifyErrorStatus(updateMeetingOperationID, response)
-	switch classification.outcome {
-	case statusOutcomeRetry:
-		return sdkgo.NewMutationRetry[UpdatedMeeting](classification.failure, classification.retryAfter)
-	case statusOutcomeNotFound:
+	switch {
+	case response.isBodyTooLarge || response.hasBodyReadFailed:
+		// An unreadable error body cannot prove a refusal, and repeating the absolute patch is safe.
+		return sdkgo.NewMutationRetry[UpdatedMeeting](newFailure(updateMeetingOperationID, sdkgo.FailureAvailability, describeStatus("Zoom patch outcome is unknown", response.statusCode, "")), classification.retryAfter)
+	case classification.outcome == statusOutcomeNotFound:
 		return sdkgo.NewMutationBranch(UpdateMeetingBranchNotFound, updated, &classification.failure, client.receipt(call, meetingID, classification.errorCode))
-	default:
+	case classification.outcome == statusOutcomeRejected &&
+		(isDefiniteRefusalStatus(response.statusCode) || response.statusCode == http.StatusTooManyRequests):
 		return sdkgo.NewMutationBranch(UpdateMeetingBranchProviderRejected, updated, &classification.failure, client.receipt(call, meetingID, classification.errorCode))
+	default:
+		// A redirect or unlisted status leaves the outcome unknown, and repeating the absolute patch is safe.
+		return sdkgo.NewMutationRetry[UpdatedMeeting](classification.failure, classification.retryAfter)
 	}
 }
 

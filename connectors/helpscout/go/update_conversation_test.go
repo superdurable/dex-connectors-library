@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -156,6 +157,36 @@ func TestUpdateConversationUnassignsAndClearsEveryTag(t *testing.T) {
 	require.JSONEq(t, `{"tags":[]}`, fake.requestsTo(http.MethodPut, "/v2/conversations/501/tags")[0].body)
 }
 
+func TestUpdateConversationRetriesAnInconclusiveReadBeforeTheUpdate(t *testing.T) {
+	cases := map[string]http.HandlerFunc{
+		"unlisted 409":        respondJSON(http.StatusConflict, helpScoutErrorBody("Conflict", nil)),
+		"unlisted 410":        respondJSON(http.StatusGone, helpScoutErrorBody("Gone", nil)),
+		"oversized 404 body":  incompleteErrorBody(http.StatusNotFound, true),
+		"unreadable 403 body": incompleteErrorBody(http.StatusForbidden, false),
+		"unparseable 200 body": func(response http.ResponseWriter, _ *http.Request) {
+			writeJSON(response, http.StatusOK, `{"id":"broken"`)
+		},
+		"credential-echoing 404": respondJSON(http.StatusNotFound, `{"message":"`+sentinelToken+`"}`),
+	}
+	for name, read := range cases {
+		t.Run(name, func(t *testing.T) {
+			fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+				"GET /v2/conversations/501":   read,
+				"PATCH /v2/conversations/501": func(http.ResponseWriter, *http.Request) { t.Fatal("no write follows an inconclusive read") },
+			})
+			_, err := updateConversation(t, newFakeBackedClient(t, fake), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an inconclusive read before the update retries instead of selecting a branch")
+		})
+	}
+	readableRefusal := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501": respondJSON(http.StatusForbidden, helpScoutErrorBody("Forbidden", nil)),
+	})
+	result, err := updateConversation(t, newFakeBackedClient(t, readableRefusal), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+	require.NoError(t, err)
+	require.Equal(t, helpscout.UpdateConversationBranchProviderRejected, result.Branch, "a readable listed refusal stays definite")
+}
+
 func TestUpdateConversationMapsFailuresAndRetriesALostWrite(t *testing.T) {
 	stored := &storedConversation{id: 501, status: "active", assigneeID: 99}
 	routes := stored.routes()
@@ -179,6 +210,53 @@ func TestUpdateConversationMapsFailuresAndRetriesALostWrite(t *testing.T) {
 	})
 	_, err = updateConversation(t, newFakeBackedClient(t, lost), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
 	requireRetry(t, err, sdkgo.FailureTransport)
+
+	conflicted := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501":   stored.read,
+		"PATCH /v2/conversations/501": respondJSON(http.StatusConflict, helpScoutErrorBody("Conflict", nil)),
+	})
+	_, err = updateConversation(t, newFakeBackedClient(t, conflicted), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+	requireRetry(t, err, sdkgo.FailureAvailability) // A 409 is an unknown outcome, so the absolute write repeats.
+
+	for _, status := range []int{http.StatusPreconditionFailed, http.StatusLocked} {
+		locked := newFakeHelpScout(t, map[string]http.HandlerFunc{
+			"GET /v2/conversations/501":   stored.read,
+			"PATCH /v2/conversations/501": respondJSON(status, helpScoutErrorBody("Locked", nil)),
+		})
+		_, err = updateConversation(t, newFakeBackedClient(t, locked), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+		requireRetry(t, err, sdkgo.FailureAvailability) // A 412 or 423 is not a listed refusal, so the absolute write repeats.
+	}
+
+	for _, isOversized := range []bool{true, false} {
+		incomplete := newFakeHelpScout(t, map[string]http.HandlerFunc{
+			"GET /v2/conversations/501":   stored.read,
+			"PATCH /v2/conversations/501": incompleteErrorBody(http.StatusUnprocessableEntity, isOversized),
+		})
+		_, err = updateConversation(t, newFakeBackedClient(t, incomplete), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+		requireRetry(t, err, sdkgo.FailureAvailability) // A refusal whose body was not read in full is unknown, so the write repeats.
+	}
+
+	echoed := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501":   stored.read,
+		"PATCH /v2/conversations/501": respondJSON(http.StatusUnprocessableEntity, `{"message":"`+sentinelToken+`"}`),
+	})
+	_, err = updateConversation(t, newFakeBackedClient(t, echoed), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+	requireRetry(t, err, sdkgo.FailureAvailability) // A refusal that echoes the token is unknown, so the write repeats.
+
+	var reads atomic.Int32
+	invalidReadBack := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501": func(response http.ResponseWriter, request *http.Request) {
+			if reads.Add(1) == 1 {
+				stored.read(response, request)
+				return
+			}
+			writeJSON(response, http.StatusOK, `{"id":"broken"`)
+		},
+		"PATCH /v2/conversations/501": respondStatus(http.StatusNoContent, nil),
+	})
+	_, err = updateConversation(t, newFakeBackedClient(t, invalidReadBack), helpscout.UpdateConversationInput{ConversationID: 501, Status: helpscout.ConversationStatusClosed})
+	retry := requireRetry(t, err, sdkgo.FailureProtocol)
+	require.Contains(t, retry.Failure.Message, "Help Scout accepted the change", "an invalid read-back after a write repeats it instead of selecting invalidResponse")
 
 	for _, input := range []helpscout.UpdateConversationInput{
 		{Status: helpscout.ConversationStatusClosed},

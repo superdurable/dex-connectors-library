@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Non-secret Re:amaze brand subdomain: the acme in https://acme.reamaze.io. Sign in at https://www.reamaze.com/login, open Settings, choose Brands, open the brand, and copy the part of its Re:amaze host before .reamaze.io; the address bar of your Re:amaze inbox shows the same host. Enter lowercase letters, digits, and hyphens only, without https:// or .reamaze.io; a custom support or help-center domain does not work, because Re:amaze serves its API only on reamaze.io brand hosts. Required: Re:amaze scopes conversations and channels by this brand, while contacts are shared by every brand of the account. */
   brand: string;
-  /** Non-secret connector safety limit: the maximum complete Re:amaze API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when conversations carry unusually long messages. An oversized response selects invalidResponse for a read or an update; for a create or reply the connector reads back instead of resending, and selects uncertain if it cannot confirm the write. */
+  /** Non-secret connector safety limit: the maximum complete Re:amaze API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when conversations carry unusually long messages. An oversized response selects invalidResponse for a read, and an update retries it; an oversized accepted create or reply is never resent: the connector reads it back and selects uncertain if it cannot confirm the write. */
   maxResponseBytes?: number;
   /** Non-secret delay between conversationCreated Trigger polls of GET https://{brand}.reamaze.io/api/v1/conversations, as a Go duration of at least 10s such as 30s or 2m. Leave it blank to keep the displayed delay. Each poll normally makes one request, and Re:amaze limits every API token to a per-minute request count that it does not publish, shared with this connection's operation Steps; shorter intervals start Flows sooner and spend more of that limit. Runtime value in milliseconds. */
   pollIntervalMs?: number;
@@ -65,18 +65,37 @@ export interface Credentials {
   email: string;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["api_token", "email"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new TypeError("credential api_token has an invalid type");
-  if (fields["email"] != null && !(typeof fields["email"] === 'string')) throw new TypeError("credential email has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new CredentialMaterialError("credential api_token has an invalid type");
+  if (fields["email"] != null && !(typeof fields["email"] === 'string')) throw new CredentialMaterialError("credential email has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["email"]) throw new TypeError("credential email is required");
+  if (!fields["email"]) throw new CredentialMaterialError("credential email is required");
   credentials.email = (fields["email"] ?? '') as string;
-  if (!fields["api_token"]) throw new TypeError("credential api_token is required");
+  if (!fields["api_token"]) throw new CredentialMaterialError("credential api_token is required");
   credentials.apiToken = new SecretString((fields["api_token"] ?? '') as string);
   return credentials;
 }

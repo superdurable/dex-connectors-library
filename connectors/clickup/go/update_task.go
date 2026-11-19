@@ -72,13 +72,18 @@ func (UpdateTaskOperation) IdempotencyKey(callID sdkgo.CallID, _ UpdateTaskInput
 }
 
 // Invoke sends PUT /task/{task_id}, whose response is the updated task. Because a repeated PUT leaves
-// the same task, every ambiguous outcome, including a timeout after dispatch or a 5xx, retries.
+// the same task, every unknown outcome, including a timeout after dispatch, a 5xx, a 409, or another
+// status that does not prove a refusal, retries. A 2xx with an unreadable, oversized, or invalid body
+// also retries, so invalidResponse is never selected.
 func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInput) sdkgo.MutationAttempt[UpdateTaskOutput] {
 	output := UpdateTaskOutput{}
 	if err := validateUpdateTaskInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, output, clickupFailurePointer(sdkgo.FailureValidation, updateTaskOperation, err.Error()), sdkgo.Receipt{})
 	}
 	credentials, failure := operation.client.resolveCredentials(call, updateTaskOperation)
+	if failure != nil && failure.Kind != sdkgo.FailureAuthentication {
+		return sdkgo.NewMutationRetry[UpdateTaskOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, output, failure, sdkgo.Receipt{})
 	}
@@ -86,23 +91,22 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 		method: http.MethodPut, path: taskPath(input.TaskID), payload: updateTaskPayload(input),
 	})
 	receipt := operation.client.receipt(call, input.TaskID)
-	switch {
-	case result.outcome == exchangeSucceeded:
-	case result.isRetryableRead():
-		return sdkgo.NewMutationRetry[UpdateTaskOutput](result.failure, result.retryAfter)
-	case result.outcome == exchangeNotFound:
+	switch result.classifyWrite() {
+	case writeAccepted:
+	case writeNotFound:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchNotFound, output, &result.failure, receipt)
-	case result.outcome == exchangeInvalid:
-		return sdkgo.NewMutationBranch(UpdateTaskBranchInvalidResponse, output, &result.failure, receipt)
-	case result.outcome == exchangeDefect:
+	case writeRejected:
+		return sdkgo.NewMutationBranch(UpdateTaskBranchProviderRejected, output, &result.failure, receipt)
+	case writeDefect:
 		return sdkgo.NewMutationBranch(UpdateTaskBranchDefect, output, &result.failure, receipt)
 	default:
-		return sdkgo.NewMutationBranch(UpdateTaskBranchProviderRejected, output, &result.failure, receipt)
+		return sdkgo.NewMutationRetry[UpdateTaskOutput](result.failure, result.retryAfter)
 	}
 	task, err := decodeTaskBody(result.response.body, false)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateTaskBranchInvalidResponse, output, clickupFailurePointer(sdkgo.FailureProtocol, updateTaskOperation,
-			"ClickUp accepted the update but returned an invalid task: "+err.Error()), receipt)
+		// Repeating the absolute update is safe, so an unusable 2xx retries.
+		return sdkgo.NewMutationRetry[UpdateTaskOutput](clickupFailure(sdkgo.FailureProtocol, updateTaskOperation,
+			"ClickUp accepted the update but returned an invalid task: "+err.Error()), 0)
 	}
 	output.Task = task
 	return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, output, nil, receipt)

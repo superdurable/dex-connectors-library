@@ -261,6 +261,15 @@ dispatch, or a 5xx, repeats as the operation's manifest
 `execution.repeatOnUnknown` tier allows. Never repeating is worse than an
 occasional duplicate message, so almost every operation repeats:
 
+A dispatched write with HTTP 409, an unlisted 4xx, or an empty or contradictory
+error body has an unknown outcome. A listed refusal status selects a refusal
+branch only when its parsed body proves non-acceptance. After a possible earlier
+send, a refusal cannot close the Flow as rejected. A malformed or oversized 2xx
+response from a safe Mutation also retries because the write may have succeeded.
+If a single-dispatch Fence fails closed, retry the Step; an exhausted retry
+budget fails the Flow. At the limited send cap, read back by a stored provider
+ID or request-unique marker before selecting `uncertain`.
+
 | Tier | Operations | Unknown outcome |
 | --- | --- | --- |
 | `safe` | Reads; an idempotency key; an absolute replacement, upsert, or delete; or a harmless repeat. | Retry within the Step retry policy. |
@@ -282,7 +291,9 @@ bounded resend, described under
 comes from the generated definition through `Call.MaxSends`, never a copied
 number. An application changes one Step's cap with the operation-specific
 factory's `MaxSends` field, from 1 (no resend) to 10. The generated factory of a
-`safe` or `unsafe` operation has no such field. A raised cap adds its difference
+`safe` Mutation keeps the field, so a caller written while the operation was
+`limited` still compiles, and ignores its value; an `unsafe` operation's factory
+has no such field. A raised cap adds its difference
 from the manifest cap to a manifest retry policy that limits attempts, so the cap
 stays reachable; an explicit `StepOptionsOverride.ExecuteRetry` is used as given.
 The value is part of the Step configuration, so every attempt of one Step
@@ -295,7 +306,9 @@ one, and a `max_sends_override` parameter on a `limited` Mutation's Step
 factory. A TypeScript package whose runtime dependency pins
 `@superdurable/connectors-sdk` 0.11.0 or later gets `repeatOnUnknown` on each
 Mutation definition and `maxSends` on a `limited` one. Its Step factory already
-accepts the SDK's `maxSends`. See
+accepts the SDK's `maxSends`. A `safe` Mutation's Python and TypeScript factories
+keep `max_sends_override` and `maxSends` for compatibility and never pass them to
+the SDK, which rejects a send cap on a non-`limited` operation. See
 [manifest authoring](manifest-authoring.md) for the exact requirement forms.
 
 Mutation uncertainty is rare. Use `NewMutationUncertain` only when the request
@@ -307,7 +320,7 @@ before sending again returns Retry. Exhausting retries fails the Flow; it never
 turns into uncertainty. A Mutation that cannot produce uncertainty omits that
 branch and target. Invalid Attempts and local SDK defects fail closed to the
 standard `defect` branch. See the [uncertainty audit](uncertain-audit.md) for
-current declarations; the tiers supersede its never-resend verdicts.
+each operation's tier, read-back, and `uncertain` conditions.
 
 `FailureKind` records a safe fact, not retry policy. Authentication,
 authorization, not-found, rate-limit, transport, protocol, provider rejection,
@@ -392,11 +405,10 @@ guarantee.
 The fence reads the last checkpoint before credentials or provider lookups. It
 permits one send only on attempt one with no marker, or after the immediately
 preceding attempt recorded `notSent` or `canResend` for the same Call ID. A
-missing, foreign, stale, or claimed marker never authorizes another write,
+missing, stale, or claimed marker never authorizes another write,
 except through the [bounded resend](#bounded-resend) of a `limited` operation.
 Use exactly one Fence per Step call per attempt; separate Fence instances do
-not share an in-process send latch. A foreign marker fails closed with no
-provider identity exposed. The connector reads back a saved provider identity when possible; an
+not share an in-process send latch. The connector reads back a saved provider identity when possible; an
 unconfirmable possibly sent write selects `uncertain`. `notSent` is recorded
 before a pre-send Retry; `canResend` requires positive evidence that the
 provider did not process the request. The claim is the first heartbeat of the
@@ -421,11 +433,6 @@ unconditionally blocks Go's HTTP/2 replay of nil-body writes after a stream
 requests use `Transfer-Encoding: chunked`. Verify provider support before
 migrating an endpoint that requires a bodyless write.
 
-Legacy per-connector heartbeat markers are invalid to this shared fence and
-fail closed on the first deploy. Plan in-flight call reconciliation before
-replacing those markers; a saved legacy provider ID is not read back by this
-helper.
-
 `RecordHeartbeat` waits for a Worker frame, not backend persistence. If the
 claim frame is lost before persistence, the provider accepts the write, and
 the Worker dies, the next attempt sees no current claim. It fails closed to
@@ -435,21 +442,80 @@ retain its latest persisted marker or no marker. A persisted `notSent` or
 cannot. The fence does not guarantee exactly-once delivery or confirmation of
 an accepted write when the provider exposes no reliable read-back.
 
+#### Several fenced writes in one Step
+
+One Step may make several fenced writes with different Call IDs, such as an
+agent tool that sends a Gmail `sendMessage` and then a Slack
+`postThreadReply`, including concurrently. Every heartbeat a Fence records is
+the Step attempt's whole checkpoint: one marker per Call ID, holding the
+previous attempt's entries and every entry recorded so far in this attempt.
+The Fences of one Step attempt share that checkpoint in process (Go: per Step
+context; Python: per context object; TypeScript: per context object in a
+registry on `globalThis`, shared by every loaded SDK copy) and serialize their
+heartbeats, so none loses another's entry. An entry is committed only after
+its heartbeat succeeds, except that a provider ID stays in the in-process
+checkpoint even when its own heartbeat fails, so a later heartbeat of the Step
+carries it and the next attempt reads it back. Fences of the Go, Python, and TypeScript SDKs record
+the same JSON for the same calls; the cross-language
+[`single-dispatch-markers.json`](../conformance/single-dispatch-markers.json)
+scenarios pin it.
+
+A Fence reads only its own Call ID's entry. SDK releases before sdkgo v0.39.0,
+sdkpython 0.13.0, and sdkts 0.13.0 recorded a single marker as the whole
+heartbeat. When that marker's Call ID equals the Fence's, the Fence reads it as
+its own entry, keeping its state and provider ID, so a redeployed Worker never
+resends a write that the earlier release recorded as accepted; a missing send
+count is read as the marker's attempt for `claimed` and its attempt minus one
+otherwise. Later heartbeats carry that entry forward in the map format, even
+when another Call ID's Fence records first, and Fences always write the map
+format. A missing entry, an entry it cannot read or whose key differs from its
+Call ID, a legacy marker of another Call ID, and any other heartbeat value
+count as no marker: attempt one may send, and a later attempt assumes every
+earlier attempt sent once. That bound can
+only overcount, so ignoring an unreadable checkpoint never permits more sends
+than the cap. Only a heartbeat read error from Dex, and an own entry with a
+send count that one send per attempt could not produce, fail closed. Earlier
+SDK releases fail closed on the new format.
+
+Two calls of the same connector operation in one Step get distinct Call IDs.
+The SDKs count the calls of each operation per Step attempt: the first keeps
+the four-field derivation in [`identity.json`](../conformance/identity.json),
+so single-call idempotency keys and in-flight Flows are unchanged, and the
+n-th appends the decimal `n` as a fifth length-prefixed field
+(`occurrenceCallIds` pins occurrences 1 to 3). The count restarts each attempt,
+so a Step must make its connector calls in a deterministic order; otherwise
+two calls of one operation could swap identities, and checkpoint entries,
+between attempts. Concurrent Mutation calls of the same operation in one Step
+are therefore unsupported: a Mutation run (Go `RunMutation` and agent tools,
+Python `run_mutation`, TypeScript `runMutation`) that starts while an earlier
+call of the same operation in the Step attempt is still running selects
+`defect` before the operation is invoked, so it never sends. The refused call
+still keeps its place in the count, so Call IDs depend only on call order,
+never on which calls overlapped. Mutations of
+different operations may run concurrently, and Queries are not restricted
+because they never fence a write.
+
+The checkpoint format is internal to the connector SDKs and may change. Hosts,
+including Dex agents and MCP servers, must not parse it; they classify a
+result by the branch the connector selects.
+
 #### Bounded resend
 
 A `limited` operation constructs its Fence with
 `singledispatch.WithMaxSends(call.MaxSends())`. Without that option, or with
-1, the Fence behaves exactly as described above and writes the same markers.
-With a cap of 2 or more, each marker also records `sendCount`, the number of
-possibly effective sends of the Call ID through that attempt: a claim counts its
-own send, `notSent` and `canResend` carry the count from before their claim, and
-a provider-ID claim keeps its claim's count. The next attempt computes an upper
-bound of earlier sends: none on attempt one; one per earlier attempt without a
-marker; otherwise the marker's count plus the attempts after it. A marker
-without a count, written by an uncapped Fence or an earlier release, counts its
-own attempt for a claim and the attempts before it otherwise. A foreign or
-invalid marker, including a count larger than its attempt allows, still fails
-closed.
+1, the Fence never resends after a possible send, as described above. Every
+Fence, whatever its cap, records the exact `sendCount` in each checkpoint
+entry, zero included: the number of possibly effective sends of the Call ID
+through that attempt. A claim counts its own send, `notSent` and `canResend`
+carry the count from before their claim, and a provider-ID claim keeps its
+claim's count. The next attempt computes an upper bound of earlier sends: none
+on attempt one; one per earlier attempt without an entry; otherwise the
+entry's count, read exactly, plus the attempts after it. So after two
+attempts whose sends both got a 429, the third attempt knows no earlier send
+may have taken effect, also with a cap of 1. An entry without a count counts
+its own attempt for a claim and the attempts before it otherwise. An own entry
+with a count that one send per attempt could not produce, including a claim
+with a count of 0, fails closed.
 
 A decision that would require read-back becomes `ReadBackThenResendAllowed`
 while that bound is below the cap. The connector reads back first when it can:

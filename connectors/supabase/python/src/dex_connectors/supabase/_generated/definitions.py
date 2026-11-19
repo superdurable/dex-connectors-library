@@ -29,7 +29,7 @@ UPSERT_ROWS_DEFINITION = MutationDefinition(
     (
         BranchDefinition(UPSERTED, "Upsert rows with a declared unique conflict key and merge duplicates.", False),
         BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request or credentials.", True),
-        BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert.", True),
         BranchDefinition(DEFECT, "Local input, configuration, or credentials are invalid.", True),
     ),
     StepDefaults(

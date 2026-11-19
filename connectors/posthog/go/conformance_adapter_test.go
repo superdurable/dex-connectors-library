@@ -18,7 +18,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	t.Helper()
 	client, err := New(Config{CaptureURL: endpoint, AppURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
 		testConnection: {
-			ProjectToken: sdkgo.NewSecretString("phc_synthetic-token"),
+			ProjectToken:   sdkgo.NewSecretString("phc_synthetic-token"),
 			PersonalAPIKey: sdkgo.NewSecretString("phx_synthetic-key"),
 		},
 	}, WithHTTPClient(transport))

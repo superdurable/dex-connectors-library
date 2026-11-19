@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { defaultTriggerLogger, type Call, type CredentialProvider, type Failure, type Receipt, type TriggerLogger } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { defaultTriggerLogger, ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure, type Receipt, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { SearchTicketsOperation, GetTicketOperation, FindCustomerByEmailOperation, CreateTicketOperation, UpdateTicketOperation, AddNoteOperation } from './operations.js';
 
 const domainPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -15,10 +16,23 @@ const errorFieldPattern = /^[a-z][a-z0-9_]{0,63}$/;
 /** One classified Gorgias exchange, with provider response data only on success. */
 export type Exchange = {
   outcome: 'succeeded' | 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect';
+  /** Present whenever a status arrived, also when the body then failed; a 2xx proves acceptance. */
   response?: ProviderResponse;
   failure?: Failure;
   retryAfterMs: number;
+  /** The body exceeded maxResponseBytes and was not read, so it cannot prove a refusal. */
+  bodyTooLarge?: boolean;
+  /** The body contains the API key, so it cannot prove a refusal. */
+  bodyReflectsCredential?: boolean;
+  /** The top-level identity a readable body names; a write answer that carries an ID was accepted. */
+  object?: ObjectMarker;
 };
+
+/** Top-level id, external_id, and ticket_id of a response body; zeros and empty when absent. */
+export type ObjectMarker = { id: number; externalId: string; ticketId: number };
+
+/** Credential resolution; isTerminal marks revoked, unselected, or unusable credentials. */
+export type CredentialResolution = { credentials?: Credentials; failure?: Failure; isTerminal?: boolean };
 
 /** Injectable request sender for credential safe tests. */
 export type RequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -75,14 +89,30 @@ export class GorgiasClient {
 
   /** Return the current time of the injected clock. */ currentTime(): Date { return this.now(); }
 
-  /** Resolve current credentials without retaining credential bearing errors. */
-  async resolveCredentials(call: Call, operation: string): Promise<{ credentials?: Credentials; failure?: Failure }> {
-    try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      const secret = credentials.apiKey?.reveal();
-      if (isBareEmail(credentials.email) && !credentials.email.includes(':') && secret && isHeaderSafeCredential(secret)) return { credentials };
-    } catch { /* Credential provider errors may contain secrets. */ }
-    return { failure: gorgiasFailure('AUTHENTICATION', operation, 'connection credentials are unavailable') };
+  /**
+   * Resolve current credentials for a Query without retaining credential bearing errors. A terminal failure selects
+   * defect; any other one is retried, because nothing reached Gorgias.
+   */
+  async resolveCredentials(call: Call, operation: string): Promise<CredentialResolution> {
+    return this.resolveWriteCredentials(call, operation);
+  }
+
+  /**
+   * Resolve current credentials without retaining credential bearing errors. A failure is terminal for
+   * revoked, unselected, or unusable credentials; any other provider error may succeed on a later attempt.
+   */
+  async resolveWriteCredentials(call: Call, operation: string): Promise<CredentialResolution> {
+    const unusable = { failure: gorgiasFailure('AUTHENTICATION', operation, 'connection credentials are unavailable'), isTerminal: true };
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) {
+      // Credential provider errors may contain secrets, so only their class is kept.
+      if (error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) return unusable;
+      return { failure: gorgiasFailure('AVAILABILITY', operation, 'connection credentials could not be read'), isTerminal: false };
+    }
+    const secret = credentials?.apiKey?.reveal?.();
+    if (typeof credentials?.email === 'string' && isBareEmail(credentials.email) && !credentials.email.includes(':') && secret && isHeaderSafeCredential(secret)) return { credentials };
+    return unusable;
   }
 
   /** Send one request and classify its result before operation policy is applied. */
@@ -105,20 +135,34 @@ export class GorgiasClient {
       ...(payload !== undefined ? { body: Buffer.from(JSON.stringify(payload), 'utf8') } : {}),
     };
     let response: ProviderResponse;
+    let bodyTooLarge = false;
     try { response = await this.send(request); }
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers) {
         if (error.status >= 200 && error.status < 300) return { outcome: 'invalid', response: { status: error.status, headers: error.headers, body: new Uint8Array() }, failure: gorgiasFailure('RESPONSE_TOO_LARGE', operation, 'Gorgias response exceeds the configured maxResponseBytes limit'), retryAfterMs: 0 };
         response = { status: error.status, headers: error.headers, body: new Uint8Array() };
+        bodyTooLarge = true;
       } else {
         const isNotSent = error instanceof ProviderTransportError && error.isProvablyNotSent;
-        return { outcome: isNotSent ? 'notSent' : 'unavailable', failure: gorgiasFailure('TRANSPORT', operation, isNotSent ? 'Gorgias could not be reached; no request was sent' : 'Gorgias request failed before a response arrived'), retryAfterMs: 0 };
+        // A status that arrived before the body failed is kept, so a 2xx still proves acceptance.
+        const arrived = (error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.headers
+          ? { response: { status: error.status, headers: error.headers, body: new Uint8Array() } } : {};
+        const message = arrived.response ? 'Gorgias response could not be read' : isNotSent ? 'Gorgias could not be reached; no request was sent' : 'Gorgias request failed before a response arrived';
+        return { outcome: isNotSent ? 'notSent' : 'unavailable', ...arrived, failure: gorgiasFailure('TRANSPORT', operation, message), retryAfterMs: 0 };
       }
     }
+    const object = objectMarker(response.body);
     if (response.status >= 200 && response.status < 300) {
-      if (Buffer.from(response.body).includes(Buffer.from(credentials.apiKey.reveal(), 'utf8'))) return { outcome: 'invalid', response: { ...response, body: new Uint8Array() }, failure: gorgiasFailure('PROTOCOL', operation, 'Gorgias response reflected the connection credential'), retryAfterMs: 0 };
-      return { outcome: 'succeeded', response, retryAfterMs: 0 };
+      if (Buffer.from(response.body).includes(Buffer.from(credentials.apiKey.reveal(), 'utf8'))) return { outcome: 'invalid', response: { ...response, body: new Uint8Array() }, failure: gorgiasFailure('PROTOCOL', operation, 'Gorgias response reflected the connection credential'), retryAfterMs: 0, object };
+      return { outcome: 'succeeded', response, retryAfterMs: 0, object };
     }
+    const apiKey = credentials.apiKey.reveal();
+    const bodyReflectsCredential = apiKey !== '' && Buffer.from(response.body).includes(Buffer.from(apiKey, 'utf8'));
+    return { ...this.classifyFailureStatus(response, credentials, operation), bodyTooLarge, bodyReflectsCredential, object };
+  }
+
+  /** Map a non-2xx response; Gorgias documents 429 as a request it did not perform. */
+  private classifyFailureStatus(response: ProviderResponse, credentials: Credentials, operation: string): Exchange {
     const retryAfterMs = parseRetryAfter(header(response, 'retry-after'), this.now());
     const status = response.status;
     const summary = status === 401 || status === 403 ? '' : errorSummary(response.body, credentials.apiKey.reveal());
@@ -159,6 +203,17 @@ export function isBareEmail(value: string): boolean {
 }
 
 function safeResponse(response: ProviderResponse): ProviderResponse { return { ...response, body: new Uint8Array() }; }
+/** Read the top-level identity of a body as Go decodes it; any ill-typed field names no object. */
+function objectMarker(body: Uint8Array): ObjectMarker {
+  const none = { id: 0, externalId: '', ticketId: 0 };
+  let parsed: unknown;
+  try { parsed = JSON.parse(Buffer.from(body).toString('utf8')); } catch { return none; }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return none;
+  const { id, external_id: externalId, ticket_id: ticketId } = parsed as Record<string, unknown>;
+  const isOptionalInteger = (value: unknown) => value === undefined || value === null || Number.isSafeInteger(value);
+  if (!isOptionalInteger(id) || !isOptionalInteger(ticketId) || !(externalId === undefined || externalId === null || typeof externalId === 'string')) return none;
+  return { id: (id as number | null | undefined) ?? 0, externalId: (externalId as string | null | undefined) ?? '', ticketId: (ticketId as number | null | undefined) ?? 0 };
+}
 function header(response: ProviderResponse, name: string): string {
   const value = response.headers[name.toLowerCase()];
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';

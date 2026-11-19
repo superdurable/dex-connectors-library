@@ -279,7 +279,7 @@ Results use these shapes:
   JSON: sorted keys, no HTML escaping. `structuredContent` is the value when it
   is a JSON object.
 - **Error results.** They set `isError: true`. `rejected` and `unknown` also
-  set `io.superdurable.dex/outcome`. A read's `failed` has no outcome key,
+  set `io.superdurable.dex/outcome`. `failed` has no outcome key,
   because Dex reserves other values. Dex records it `failed`.
 - **Extra `_meta`.** Results carry `io.superdurable.connectors/branch` and,
   for a replay, `io.superdurable.connectors/replayed: true`.
@@ -300,26 +300,28 @@ Results use these shapes:
 | Key reused for another call (other tool, connection, project, or arguments) | runs (reads keep no state), `rejected` if the key holds a write record | `rejected`, nothing sent, state untouched | same |
 | Expected-identity key mismatch | JSON-RPC `-32602` with outcome `rejected`, not run | same | same |
 | Key's record names a tool this build cannot name, under a vanished name | n/a | `unknown`, state untouched | same |
-| Running key whose connection now points to another target | n/a | no attempt: `rejected` if proven not sent, else `unknown` | finalized from its checkpoint (never runs again) |
-| Attempt that did not succeed, after which the connection points to another target or is gone | `rejected`, no further attempt | no further attempt: `rejected` if proven not sent, else `unknown`; a listed `rejected` branch stays `rejected` unless an attempt may have applied | same |
+| Running key whose connection now points to another target | n/a | no attempt: `unknown` | `unknown` (never runs again) |
+| Attempt that did not succeed, after which the connection points to another target or is gone | `rejected`, no further attempt | no further attempt: a selected branch keeps its outcome below; a Retry or a missing branch is `unknown`, or `rejected` when no attempt invoked the operation | same |
 | Completed record | n/a | replay | replay |
 | Required branch | success | success | success |
-| Listed `rejected` branch | `rejected` | `rejected`; `unknown` once an earlier attempt may have applied | `rejected` |
-| Unlisted Query branch or Query `defect` | `failed` | n/a | n/a |
-| `uncertain`, listed `unknown`, unlisted Mutation branch, Mutation `defect`, or a branch after the Fence may have sent | n/a | `unknown` | `unknown` |
-| Connector Retry | inline retry; at the attempt cap `rejected`; budget spent: bare `-32603` | inline retry; at the cap or the window end `rejected` if proven not sent, else `unknown`; budget spent: bare `-32603`, record left running | no inline retry: `rejected` "not sent; the provider asked to retry later" if proven not sent, else `unknown`. A `limited` Mutation retries inline instead; see [Bounded resend](#bounded-resend) |
+| Listed `rejected` branch | `rejected` | `rejected` | `rejected` |
+| Unlisted optional branch or `defect` | `failed` | `failed` | `failed` |
+| `uncertain` or listed `unknown` | n/a | `unknown` | `unknown` |
+| Connector Retry | inline retry; at the attempt cap `rejected`; budget spent: bare `-32603` | inline retry; at the cap or the window end `unknown`, or `rejected` when no attempt invoked the operation; budget spent: bare `-32603`, record left running | inline retry under the Step retry policy, where the connector's Fence decides whether the next attempt resends; no attempt, window, or budget left: `unknown`, or `rejected` when no attempt invoked the operation. See [Bounded resend](#bounded-resend) for the `limited` send cap |
 | Attempt ended without a branch (panic, unencodable result) | bare `-32603` | `unknown`; bare `-32603` if the operation never ran | `unknown`; `rejected` if the operation never ran |
 | Call state unavailable before any send | runs without state | bare `-32603` | `rejected` when no record can exist, else `unknown` |
 | Another attempt of the same key holds it until the client gives up | bare `-32603` | bare `-32603` | `unknown` |
 | Record corrupt or of an unknown format | `unknown` | `unknown` | `unknown` |
 | Server stopping | bare `-32603` | bare `-32603`; a completed key still replays | `rejected` when no record exists; a completed key replays; a running record is finalized |
 
-"Proven not sent" requires two things:
-
-- The checkpoint of the record's current attempt is a `singledispatch`
-  `notSent` marker of this Call ID, with no provider ID. `canResend` follows a
-  claim, so it proves nothing.
-- The record's `possiblyApplied` flag is not set.
+The server classifies a call only by the branch its connector selects, as Dex
+Agents do. The connector selects `uncertain`, or returns Retry, whenever a
+send may have happened. The server never parses an attempt's heartbeat
+checkpoint: that is connector-internal Fence state, which it only stores and
+passes to the next attempt. A call that no branch settled says "nothing was
+sent" only when no attempt invoked the operation, which the record's
+`possiblyApplied` flag tracks. Invalid arguments after an attempt that
+invoked the operation answer `failed` instead of `rejected`.
 
 A non-idempotent write never ends in a bare `-32603`, because Dex records that
 as `outcome_unknown` even when nothing was sent.
@@ -330,8 +332,8 @@ Results longer than `--max-result-bytes` are cut on a UTF-8 boundary and get
 
 ### Inline retry
 
-Reads and idempotent writes retry a connector Retry inside one call, and so
-does a `limited` write, with the two exceptions noted below and in
+Every tool retries a connector Retry inside one call under the Step retry
+policy, with the non-idempotent exceptions noted below and in
 [Bounded resend](#bounded-resend).
 
 - **Delays.** The delay after attempt `n` is the operation's
@@ -345,8 +347,9 @@ does a `limited` write, with the two exceptions noted below and in
 - **Budget.** The first attempt of a call always runs. A later attempt starts
   only when its delay plus the attempt timeout fits in the rest of
   `--call-time-budget`. Otherwise the call returns a bare `-32603` and Dex
-  re-issues it with the same key. A `limited` write instead settles at once,
-  as it does when the client cancels the delay or the server starts stopping.
+  re-issues it with the same key. A non-idempotent write instead settles at
+  once, as it does when the client cancels the delay or the server starts
+  stopping.
 - **Retry window.** It is fixed at a write's first attempt: `firstAttemptAt`
   plus the policy's `TotalDuration` (1 hour when unset), never beyond the
   retention. No attempt starts at or after it.
@@ -378,13 +381,13 @@ the call stay below `execution.maxSends`. The server lets it, inside one
   `unknown`. An attempt cap or retry window reached first answers as the
   Connector Retry row above. A spent budget or a cancelled delay answers that
   row's `non_idempotent_write` result at once, because a re-issued key that is
-  still running is finalized from its checkpoint and never resends.
+  still running is finalized as `unknown` and never resends.
 - **Unchanged.** A definite rejection is never resent. The effect stays
   `non_idempotent_write`, and approval follows `agent.approval` alone. Every
   other Mutation gets no send cap option: a `safe` one is an
-  `idempotent_write` and retries inline as before, and any other
-  `non_idempotent_write`, including `unsafe` and metadata from an `sdkgo`
-  release before v0.37.0, keeps one attempt.
+  `idempotent_write`, and any other `non_idempotent_write`, including `unsafe`
+  and metadata from an `sdkgo` release before v0.37.0, retries under the plain
+  attempt cap, where its Fence never resends an unconfirmed write.
 
 ## Call state (`dex-connectors-mcp/call-state/v1`)
 
@@ -418,7 +421,7 @@ never logged.
   "firstAttemptAt": "2026-11-20T10:00:00.123456789Z",
   "retryWindowEndsAt": "2026-11-20T11:00:00.123456789Z",
   "attempt": 1,
-  "checkpoint": {"callId": "…", "attempt": 1, "state": "claimed"},
+  "checkpoint": {"…": "opaque connector Fence state"},
   "possiblyApplied": false,
   "status": "running",
   "result": null,
@@ -442,16 +445,18 @@ never logged.
   - `effect` is frozen at the first attempt. When a later build reclassifies
     the operation, the stricter effect applies.
   - `checkpoint` is the last heartbeat any attempt recorded. The next attempt
-    receives it as its last heartbeat value.
+    receives it as its last heartbeat value. Its format is internal to the
+    connector SDKs, and the server never parses it.
   - `possiblyApplied` is set once any attempt may have reached the provider,
     and it is never cleared. That covers three cases:
     - an attempt ended `unknown` or without a branch after `Invoke`;
-    - an attempt asked to retry without `notSent` proof;
+    - an attempt returned Retry after `Invoke`;
     - an attempt's outcome was never observed, because a re-issue found the
       record running.
 
-    While it is set, the call never ends `rejected`. A later listed rejection
-    or `notSent` proof becomes `unknown`.
+    While it is set, a call that no branch settled answers `unknown`, never
+    `rejected` "nothing was sent". A selected branch still takes its own
+    outcome, as in Dex Agents.
   - `result` is the exact MCP result returned.
 - **Frozen identities.**
   - Each attempt runs with a `dex.Context` whose Flow ID is
@@ -476,10 +481,9 @@ Protocol for a keyed call:
    - Another call (see [Calls and outcomes](#calls-and-outcomes)): `rejected`,
      state untouched.
    - `completed`: replay.
-   - `running` non-idempotent: finalize from the checkpoint without another
-     attempt.
-   - `running`: set `possiblyApplied` unless the current attempt proved
-     `notSent`.
+   - `running`: set `possiblyApplied`, because the last attempt's outcome was
+     never observed.
+   - `running` non-idempotent: finalize as `unknown` without another attempt.
    - `running` idempotent: finalize when the window passed, the cap was
      reached, the tool is no longer offered for that connection, or the
      connection's current target differs from `connectionTarget`. Otherwise
@@ -504,7 +508,7 @@ Each crash point leaves this for the next call with the key:
 | Crash point | Non-idempotent write | Idempotent write |
 | --- | --- | --- |
 | Before the first record write | runs as new | runs as new |
-| After the record write, before the claim | `unknown` (nothing proves `notSent`) | next attempt; the Fence forces read-back |
+| After the record write, before the claim | `unknown` (the server never reads the Fence state) | next attempt; the Fence forces read-back |
 | During the send, or after it before storing | `unknown` | next attempt reads back or resends with the provider key |
 | After storing the result | replay | replay |
 
@@ -523,11 +527,11 @@ Retention:
 Dex Web keeps one record per connection name in `connections.json`, so a
 connection of the same name can later point somewhere else. Each record stores
 `connectionTarget`, and no attempt of an existing key ever runs against a
-different target. A rebound key settles from its evidence and nothing runs:
+different target. A rebound key settles and nothing more runs:
 
+- a branch the last attempt selected keeps its outcome;
 - `rejected` ("the connection now points to a different target; nothing was
-  sent") when the current attempt proved `notSent` and nothing possibly
-  applied;
+  sent") when no attempt invoked the operation;
 - `unknown` otherwise.
 
 A new key after a rebind runs normally against the new target.
@@ -576,18 +580,16 @@ an error. After every attempt that did not succeed, and before any retry
 delay, the server therefore compares the current target again. When the
 target changed or the tool is gone, the call makes no further attempt:
 
-- **Write.** The key settles from its evidence, as above. A Retry or `unknown`
-  attempt answers `rejected` only with `notSent` proof. A listed `rejected`
-  branch keeps its branch and adds "the connection now points to a different
-  target". Once anything possibly applied, the answer is `unknown`. A target
-  change never turns a possibly applied write into `rejected`.
+- **Write.** The key settles, as above. A selected branch keeps its outcome
+  and adds "the connection now points to a different target". A Retry or an
+  attempt without a branch answers `unknown`, or `rejected` only when no
+  attempt invoked the operation.
 - **Read.** The read stops with `rejected` ("its connection was removed or now
   points to a different target; nothing was changed").
 
 An attempt that succeeded ran on the target it was checked against, and its
-result stands. A write without a `singledispatch` Fence, such as one that reads
-back and resends with a provider idempotency key, has no proof that a refused
-attempt sent nothing, so it settles `unknown`.
+result stands. A refused attempt that returned Retry after `Invoke` settles
+`unknown`, whatever its Fence recorded.
 
 **Hosted and shared connections.** Only a record of a Dex Web connections file
 can be compared while a credential resolves. `sdkgo` refuses an expected
@@ -600,7 +602,7 @@ Their records carry no authorization identity. For those connections:
 - read tools are offered and run without an expected target. The checks
   before each attempt and after each attempt that did not succeed still apply;
 - a running write key of such a connection settles because its tool is no
-  longer offered: `rejected` if proven not sent, else `unknown`.
+  longer offered: `unknown`, because its last attempt was never observed.
 
 Detected, because the target changes:
 
@@ -648,9 +650,7 @@ upgrade:
 
 - a completed record replays unchanged;
 - a running record written by 0.1.0 never runs again. Its target reads as
-  changed, so it settles `rejected` when its current attempt proved `notSent`
-  and nothing possibly applied, and `unknown` otherwise. Repeat such a call
-  with a new key;
+  changed, so it settles `unknown`. Repeat such a call with a new key;
 - a new key records the new fingerprint.
 
 ## Security

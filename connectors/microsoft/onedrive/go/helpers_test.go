@@ -70,25 +70,40 @@ func anyPath(string) bool { return true }
 
 type dexContext struct {
 	context.Context
-	step string
+	step              string
+	attempt           int32
+	previousHeartbeat []byte
+	recordedHeartbeat []byte
 }
 
 func newDexContext(step string) *dexContext {
-	return &dexContext{Context: context.Background(), step: step}
+	return &dexContext{Context: context.Background(), step: step, attempt: 1}
 }
-func (*dexContext) FlowID() string                                  { return "onedrive-flow" }
-func (*dexContext) RunID() string                                   { return "run" }
-func (*dexContext) FlowStartedAt() time.Time                        { return time.Unix(1, 0) }
-func (context *dexContext) StepExecutionID() string                 { return context.step }
-func (*dexContext) FromStepExecutionID() string                     { return "" }
-func (*dexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
-func (*dexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*dexContext) Attempt() int32                                  { return 1 }
-func (*dexContext) HasTimerFired() bool                             { return false }
-func (*dexContext) HasTimerFiredByIndex(int) bool                   { return false }
-func (*dexContext) WaitForMethodFailed() bool                       { return false }
-func (*dexContext) RecordHeartbeat(any) error                       { return nil }
-func (*dexContext) GetLastHeartbeatValue(any) (bool, error)         { return false, nil }
+func (*dexContext) FlowID() string                        { return "onedrive-flow" }
+func (*dexContext) RunID() string                         { return "run" }
+func (*dexContext) FlowStartedAt() time.Time              { return time.Unix(1, 0) }
+func (context *dexContext) StepExecutionID() string       { return context.step }
+func (*dexContext) FromStepExecutionID() string           { return "" }
+func (*dexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (*dexContext) FirstAttemptAt() time.Time             { return time.Unix(1, 0) }
+func (context *dexContext) Attempt() int32                { return context.attempt }
+func (*dexContext) HasTimerFired() bool                   { return false }
+func (*dexContext) HasTimerFiredByIndex(int) bool         { return false }
+func (*dexContext) WaitForMethodFailed() bool             { return false }
+func (context *dexContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.recordedHeartbeat = encoded
+	return nil
+}
+func (context *dexContext) GetLastHeartbeatValue(value any) (bool, error) {
+	if len(context.previousHeartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.previousHeartbeat, value)
+}
 func (*dexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*dexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }
 func (*dexContext) RecordEvent(string, any) error                   { return nil }

@@ -64,6 +64,9 @@ func (operation GetMessageOperation) Invoke(call sdkgo.Call, input GetMessageInp
 	}
 	credentials, failure := operation.client.resolveCredentials(call, getMessageOperation)
 	if failure != nil {
+		if isTransientCredentialFailure(*failure) {
+			return sdkgo.NewQueryRetry[Message](*failure, 0)
+		}
 		return sdkgo.NewQueryBranch(GetMessageBranchDefect, Message{}, failure, sdkgo.Receipt{})
 	}
 	ctx, cancel := context.WithTimeout(call.Context, imapOperationTimeout)

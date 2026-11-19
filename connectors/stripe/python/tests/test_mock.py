@@ -34,7 +34,7 @@ CONNECTION = ConnectionRef("stripe", "payments")
             FailureKind.PROVIDER_REJECTION,
         ),
         (create_card_checkout_session_case, "unconfirmedCardSession", "uncertain", FailureKind.AVAILABILITY),
-        (create_card_checkout_session_case, "malformedCardSession", "invalidResponse", FailureKind.PROTOCOL),
+        (create_card_checkout_session_case, "malformedCardSession", "uncertain", FailureKind.PROTOCOL),
         (create_card_checkout_session_case, "invalidCardCurrency", "defect", FailureKind.VALIDATION),
         (create_ach_checkout_session_case, "createdSession", "created", None),
         (
@@ -44,7 +44,7 @@ CONNECTION = ConnectionRef("stripe", "payments")
             FailureKind.PROVIDER_REJECTION,
         ),
         (create_ach_checkout_session_case, "unconfirmedSession", "uncertain", FailureKind.AVAILABILITY),
-        (create_ach_checkout_session_case, "malformedSession", "invalidResponse", FailureKind.PROTOCOL),
+        (create_ach_checkout_session_case, "malformedSession", "uncertain", FailureKind.PROTOCOL),
         (create_ach_checkout_session_case, "invalidCurrency", "defect", FailureKind.VALIDATION),
         (get_checkout_session_case, "paidSession", "found", None),
         (get_checkout_session_case, "missingSession", "notFound", FailureKind.NOT_FOUND),
@@ -59,7 +59,7 @@ CONNECTION = ConnectionRef("stripe", "payments")
         (create_refund_case, "succeededRefund", "refunded", None),
         (create_refund_case, "alreadyRefunded", "providerRejected", FailureKind.PROVIDER_REJECTION),
         (create_refund_case, "unconfirmedRefund", "uncertain", FailureKind.AVAILABILITY),
-        (create_refund_case, "malformedRefund", "invalidResponse", FailureKind.PROTOCOL),
+        (create_refund_case, "malformedRefund", "uncertain", FailureKind.PROTOCOL),
         (create_refund_case, "invalidAmount", "defect", FailureKind.VALIDATION),
     ],
 )

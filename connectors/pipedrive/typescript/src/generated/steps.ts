@@ -102,13 +102,13 @@ export interface UpsertObjectStepConfig<StepInput, OperationInput = UpsertObject
   connectionName: string;
   /** Pipedrive created the record or updated the one record that carries the identity value. */
   upserted: StepTarget<MutationResult<OperationOutput>>;
-  /** More than one record carries the identity value, so the connector changed nothing; the Result lists their IDs. */
+  /** More than one record carries the identity value before any create of this Step was sent, so the connector changed nothing; the Result lists their IDs. */
   multipleMatches?: StepTarget<MutationResult<OperationOutput>>;
   /** Pipedrive conclusively rejected the search or the write, such as an invalid field value, a revoked token, or a missing scope; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Pipedrive returned an invalid or oversized search page or updated record. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** A create sent in this or an earlier attempt was not confirmed, and identity read-back finds no record or cannot complete; the record may exist, so the connector does not create it again. */
+  /** Creates sent up to the Step's send cap were not confirmed, or Pipedrive refused a create after an earlier possible one, and identity read-back finds no record, finds several records, or cannot complete; the record may exist, so the connector does not create it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -138,7 +138,7 @@ export interface CreateObjectStepConfig<StepInput, OperationInput = CreateObject
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Pipedrive conclusively rejected the create, such as a missing title or name, an unknown stage or owner, or a revoked token; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The create was sent but its outcome cannot be confirmed, so the record may exist; the connector never sends it again. */
+  /** Creates whose outcome is unknown, such as a 5xx or lost response, were sent up to the Step's send cap, or Pipedrive accepted a create without a usable record, so the record may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -168,15 +168,18 @@ export interface UpdateObjectStepConfig<StepInput, OperationInput = UpdateObject
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Pipedrive conclusively rejected the update, such as an invalid field value, an unknown stage or owner, or a revoked token. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Pipedrive applied or rejected the update but returned an invalid or oversized record. */
+  /** No longer selected. An invalid or oversized record after the update is retried, because a repeated PATCH converges; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateObject Step from a named connection. */
 export function newUpdateObjectStep<StepInput, OperationInput = UpdateObjectInput, OperationOutput = CRMObject>(configuration: UpdateObjectStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateObject(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

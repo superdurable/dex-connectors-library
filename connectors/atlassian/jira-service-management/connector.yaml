@@ -3,20 +3,20 @@ kind: Connector
 metadata:
   name: jira-service-management
   displayName: Jira Service Management
-  description: Raise, read, label, comment on, and move Jira Service Management customer requests as tickets, with public replies and internal notes, SLA cycles, and customers found by email, never sending a request or comment twice.
+  description: Raise, read, label, comment on, and move Jira Service Management customer requests as tickets, with public replies and internal notes, SLA cycles, and customers found by email, resending an unconfirmed request or comment only within a send cap.
   company: Atlassian
   categories: [customer-support]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: atlassian
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-atlassian-jira-service-management'
       operations: [findCustomerByEmail, searchTickets, getTicket, createTicket, updateTicket, transitionTicket, addComment]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-atlassian-jira-service-management
       operations: [findCustomerByEmail, searchTickets, getTicket, createTicket, updateTicket, transitionTicket, addComment]
       triggers: []
@@ -40,7 +40,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete Jira Service Management or Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createTicket or addComment selects uncertain."
+        description: "Maximum complete Jira Service Management or Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, except that updateTicket returns Retry, and an oversized response to an accepted createTicket or addComment selects uncertain."
         required: false
         default: 4194304
   auth:
@@ -275,18 +275,19 @@ spec:
       inputType: CreateTicketInput
       outputType: CreateTicketOutput
       kind: mutation
-      description: Raise one customer request of a request type, optionally on a customer's behalf. The sync Step retries definite 429 and 503 responses but never repeats a possibly accepted request.
+      description: Raise one customer request of a request type, optionally on a customer's behalf. The sync Step retries definite 429 and 503 responses and resends a request with an unknown outcome only within the send cap.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: Jira Service Management created the request and returned its key.}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the customer request may exist; the connector never resends it.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or Jira Service Management accepted the request without a usable reference, and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: an async fallback attempt re-sends a slow create, and the provider has no idempotency key.
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another request because Jira Service Management has no create key or request lookup by Call ID."}}
       mocks:
         - name: createdDefaultAnswer
@@ -311,11 +312,13 @@ spec:
         - {id: updated, goName: Updated, description: "The request holds the requested labels and priority, written now or by an earlier attempt."}
         - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Each attempt rereads the labels and priority and sends only the missing change.
+        repeatOnUnknown: safe
       mocks:
         - name: updatedDefaultAnswer
           branch: updated
@@ -339,19 +342,22 @@ spec:
       inputType: TransitionTicketInput
       outputType: TransitionTicketOutput
       kind: mutation
-      description: Move one request through its Jira workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the request has already made.
+      description: Move one request through its Jira workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the request has already made. Before sending, the Step checkpoints the chosen transition ID and its source and destination statuses. A retried attempt never selects again; it rereads the request, succeeds when it is in the recorded destination, sends the recorded transition again only while the request is still in the recorded source, and selects transitionUnavailable without sending when someone else moved the request. Only a complete 404 or definite refusal of the request read selects a branch; any other read returns Retry.
       idempotency: required
       authorization: required
       branches:
         - {id: transitioned, goName: Transitioned, description: "The request is in the transition's destination status, including when it already was."}
         - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it., optional: true}
-        - {id: transitionUnavailable, goName: TransitionUnavailable, description: "No available transition from the request's current status matches, or several do; the Value lists the current status and the available transitions.", optional: true}
+        - {id: transitionUnavailable, goName: TransitionUnavailable, description: "No available transition from the request's current status matches, or several do, or on a retry the request is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Jira returned an invalid or oversized issue or transition list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "No longer selected. An invalid or oversized issue or transition list proves nothing about the request, so the Step retries; the branch stays declared for compatibility.", optional: true, retired: true, retiredReason: "An unusable request read returns Retry instead of invalidResponse, because it proves nothing about an earlier transition."}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      # The transition checkpoint needs durable sync heartbeats so a retry sees what an earlier attempt chose.
       execution:
         executeMethodTimeout: 30s
-        durability: async
+        durability: sync
+        # A transition has a fixed destination: a retry resends the recorded transition only from its source status.
+        repeatOnUnknown: safe
       mocks:
         - name: transitionedDefaultAnswer
           branch: transitioned
@@ -380,18 +386,19 @@ spec:
       inputType: AddCommentInput
       outputType: AddCommentOutput
       kind: mutation
-      description: Add one public reply, which Jira Service Management shares with the customer, or one internal note that only agents see. The sync Step retries definite 429 and 503 responses but never repeats a possibly accepted comment.
+      description: Add one public reply, which Jira Service Management shares with the customer, or one internal note that only agents see. The sync Step retries definite 429 and 503 responses and resends a comment with an unknown outcome only within the send cap.
       idempotency: required
       authorization: required
       branches:
         - {id: added, goName: Added, description: Jira Service Management added the comment and returned its ID.}
         - {id: notFound, goName: NotFound, description: "The request does not exist or the connection cannot view it; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The comment was sent but its outcome cannot be confirmed, so it may exist; the connector never resends it.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached, or Jira Service Management accepted the comment without a usable ID, and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another comment because Jira Service Management has no comment key or lookup by Call ID."}}
       mocks:
         - name: addedDefaultAnswer

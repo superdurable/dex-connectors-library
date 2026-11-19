@@ -162,6 +162,8 @@ func requireSecretFree(t *testing.T, result any) {
 type stepContext struct {
 	context.Context
 	step string
+	// laterAttempt is the attempt number when above one, otherwise the first attempt.
+	laterAttempt int32
 }
 
 func newStepContext(step string) *stepContext {
@@ -175,7 +177,7 @@ func (context *stepContext) StepExecutionID() string                 { return co
 func (*stepContext) FromStepExecutionID() string                     { return "" }
 func (*stepContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
 func (*stepContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*stepContext) Attempt() int32                                  { return 1 }
+func (context *stepContext) Attempt() int32                          { return max(1, context.laterAttempt) }
 func (*stepContext) HasTimerFired() bool                             { return false }
 func (*stepContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*stepContext) WaitForMethodFailed() bool                       { return false }

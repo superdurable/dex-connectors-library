@@ -1,6 +1,6 @@
 # Pipedrive Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pipedrive/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pipedrive/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/pipedrive`.
 
@@ -21,7 +21,7 @@ stage or create it.
 | `listObjects` | Query | async | `GET /api/v2/{objectType}` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `upsertObject` | Mutation | sync | search, then `POST /api/v2/{objectType}` or `PATCH .../{id}` | `upserted` | `multipleMatches`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
 | `createObject` | Mutation | sync | `POST /api/v2/{objectType}` | `created` | `providerRejected`, `uncertain`, `defect` |
-| `updateObject` | Mutation | async | `PATCH /api/v2/{objectType}/{id}` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| `updateObject` | Mutation | async | `PATCH /api/v2/{objectType}/{id}` | `updated` | `notFound`, `providerRejected`, `invalidResponse` (retired, never selected), `defect` |
 
 `ObjectType` is `persons`, `organizations`, or `deals`. Only each operation's
 happy branch is required; an unwired optional branch fails the Flow when
@@ -145,7 +145,9 @@ is updated with `PATCH` and the result reports `Created: false`; no match is
 created, with the email written as the person's primary work email or the name
 as the organization's name, and the result reports `Created: true`. More than
 one match selects `multipleMatches` with `MatchingIDs` and writes nothing,
-because Pipedrive does not enforce either value as unique. A person upsert
+because Pipedrive does not enforce either value as unique. After an earlier
+create of this Step may have been sent, several matches select `uncertain`
+instead, because one of them may be that create. A person upsert
 requires `Fields["name"]`, and neither type may set the identity field itself.
 
 ### createObject
@@ -161,9 +163,9 @@ deal's `stage_id` and `owner_id`; fields it does not name keep their values.
 
 ## Duplicate safety
 
-Pipedrive's [API reference](https://developers.pipedrive.com/docs/api/v1/Deals) does not document an idempotency key for record creation. `createObject` and the create path of `upsertObject` use the shared `sdkgo/singledispatch` fence with **sync** Execute durability. The fence records an attempt-numbered claim before sending. A later attempt may send only when the immediately previous attempt recorded that it did not send or received a definite refusal. Missing, stale, and unreadable markers fail closed. A claim can be lost between Dex acknowledging the heartbeat frame and persisting it; a later attempt then has no send permission, so this fence does not promise exactly-once confirmation.
+Pipedrive's [API reference](https://developers.pipedrive.com/docs/api/v1/Deals) does not document an idempotency key for record creation. `createObject` and the create path of `upsertObject` use the shared `sdkgo/singledispatch` fence with **sync** Execute durability. The fence records an attempt-numbered claim and a send count before sending. Both writes are `repeatOnUnknown: limited` with the default send cap of 3: an unknown outcome, such as a 5xx, 408, 409, 402, redirect, unlisted 4xx, or lost response, may be sent again only while possible sends stay below the Step's send cap, which an application changes with the factory's `MaxSends`. At the cap the Step selects `uncertain`. An attempt that left no readable checkpoint counts as a possible send. An unreadable checkpoint returns Retry without a send.
 
-A [429 means rate limiting](https://pipedrive.readme.io/docs/core-api-concepts-rate-limiting), and a [503 means service unavailable](https://pipedrive.readme.io/docs/core-api-concepts-http-status-codes). The connector records a can-resend marker and retries burst-limit 429 and 503, plus a transport failure positively observed before any connection was obtained. A daily-budget 429 selects `providerRejected` because its midnight reset exceeds the five-attempt, two-minute create retry budget. The assumption that Pipedrive has not processed a request it answers 503 is **not verified against a live Pipedrive company**. A lost sent response or another ambiguous write fails closed; `createObject` selects `uncertain` unless a provider ID was saved for GET read-back. For an unusable accepted response, `upsertObject` searches its email or name identity in the same attempt; later attempts search that identity or read a saved provider ID before deciding whether a previous create exists. A transient failure after a create request may require a later identity read-back; if the retry budget ends first, the Flow fails without sending another create. The [person search API](https://developers.pipedrive.com/docs/api/v1/Persons) documents exact, case-insensitive matching, but search indexing latency after create is **unverified live**. When read-back cannot confirm an earlier create, `upsertObject` selects `uncertain` and never creates again.
+A [429 means rate limiting](https://pipedrive.readme.io/docs/core-api-concepts-rate-limiting), and a [503 means service unavailable](https://pipedrive.readme.io/docs/core-api-concepts-http-status-codes). The connector records a can-resend marker and retries burst-limit 429 and 503, plus a transport failure positively observed before any connection was obtained. A daily-budget 429 selects `providerRejected` because its midnight reset exceeds the five-attempt, two-minute create retry budget. The assumption that Pipedrive has not processed a request it answers 503 is **not verified against a live Pipedrive company**. A definite refusal (400, 401, 403, 404, 411, 413, 414, 415, 422, or the daily-budget 429) records a can-resend marker and selects `providerRejected` only on a first send; after an earlier possible send it selects `uncertain`, because that earlier send may have created the record. `createObject` has no identity to search, so it resends an unknown outcome in the next attempt below the cap, reads back a saved provider ID instead of resending, and selects `uncertain` for an accepted response it cannot read. An accepted response counts as such when its `2xx` status arrived and the body then broke, stalled, or was cut off by the Fence write window. For an unusable accepted response, `upsertObject` searches its email or name identity in the same attempt and never posts again: a single match saves its record ID before it is read, so a transient read failure returns Retry and the next attempt reads that ID, while a search that fails or finds no single match selects `uncertain`. After an unknown outcome it returns Retry, and the next attempt searches that identity or reads a saved provider ID before it creates again below the cap. The [person search API](https://developers.pipedrive.com/docs/api/v1/Persons) documents exact, case-insensitive matching, but search indexing latency after create is **unverified live**: a search that misses a record created moments earlier lets the resend create a duplicate person or organization, at most up to the send cap. When read-back at the cap cannot confirm an earlier create, `upsertObject` selects `uncertain` and does not create again.
 
 Checkpoints written by v0.22.1 and earlier are invalid to the shared fence.
 An in-flight create retrying after a 429 may select `uncertain` after the
@@ -171,7 +173,7 @@ upgrade even when Pipedrive did not create a record; an in-flight upsert with
 a legacy dispatched marker also fails closed. Reconcile in-flight calls before
 upgrading.
 
-`updateObject` sets absolute field values and may retry; a repeat can overwrite an intervening user change. The bounded five-attempt, two-minute retry policy on creates remains because the provider has no deduplication key. The example's real-Dex integration tests exercise 429 and 503 once followed by success, a lost accepted reply, and Worker replacement. Those tests run in CI; this change has not used live Pipedrive authorization.
+`updateObject` declares `repeatOnUnknown: safe`: it sets absolute field values and retries any write status that does not prove a refusal; a repeat can overwrite an intervening user change. The bounded five-attempt, two-minute retry policy on creates remains because the provider has no deduplication key. The example's real-Dex integration tests exercise 429 and 503 once followed by success, a lost accepted reply, and Worker replacement. Those tests run in CI; this change has not used live Pipedrive authorization.
 
 ## Mocks
 
@@ -199,16 +201,17 @@ require.Equal(t, PhaseCompleted, intake.Phase)
 | --- | --- |
 | `400`, `422` | `providerRejected`, `VALIDATION` |
 | `401` | `providerRejected`, `AUTHENTICATION` if OAuth refresh fails; reads and repeatable updates may refresh and resend, while fenced creates refresh then retry on the next attempt |
-| `402` | `providerRejected`, `PROVIDER_REJECTION` (company account needs payment) |
+| `402` | `providerRejected`, `PROVIDER_REJECTION` (company account needs payment) on reads; a write treats it as an unknown outcome |
+| `3xx`, other unlisted `4xx` | `providerRejected` on reads; Retry on `updateObject`; an unknown outcome for creates |
 | `403`, including Pipedrive's block of API traffic that ignores `429` | `providerRejected`, `AUTHORIZATION` |
 | `404` | `notFound` on `getObject` and `updateObject`; `providerRejected` otherwise |
 | `429` with `x-daily-ratelimit-token-remaining: 0` | `providerRejected`, `QUOTA_EXHAUSTED`; the company's daily token budget resets at midnight in Pipedrive's server time zone |
 | other `429` (burst limit) | Retry after the longer of `Retry-After` and `x-ratelimit-reset`; the reset counts as at least Pipedrive's 2-second window and at most 10 seconds |
-| `408`, `409`, `5xx` except `501` | Retry, honoring `Retry-After`; `createObject` retries `503` and selects `uncertain` for other possibly processed writes; `upsertObject` retries read-back after `409` |
+| `408`, `409`, `5xx` except `501` | Retry, honoring `Retry-After`; creates resend below the send cap and select `uncertain` at it, and `upsertObject` searches the identity first |
 | connection never opened | Retry, nothing was sent |
-| dropped connection after sending | Retry; `uncertain` for `createObject` |
-| oversized, malformed, `success: false`, or ID-less success | `invalidResponse` on reads and repeatable updates; `uncertain` for `createObject`; `upsertObject` reads back an accepted create by identity within the attempt |
-| a response that echoes the credential | `invalidResponse`, and the body is discarded |
+| dropped connection after sending | Retry; creates resend below the send cap and select `uncertain` at it |
+| oversized, malformed, `success: false`, or ID-less success | `invalidResponse` on reads and on the `upsertObject` update of a match; Retry on `updateObject`, whose PATCH converges when repeated; `uncertain` for `createObject`; `upsertObject` reads back an accepted create by identity within the attempt |
+| a response that echoes the credential | `invalidResponse` on reads, Retry on `updateObject`, and the body is discarded |
 | invalid input | `defect`, no request; transient credential resolution before a fenced create returns Retry with a not-sent marker; reauthorization-required credentials select `providerRejected` with a reconnect hint and no request; missing credentials or an empty token select `defect` with a reconnect hint |
 
 After a fenced create, transient credential resolution during read-back returns Retry without another POST. Terminal credential failures select `uncertain` with an authentication failure and keep any saved provider ID in the receipt. A write 401 retries only after refresh supplies a changed, valid token; reauthorization failures ask for a reconnect, while transient refresh failures say the credentials are temporarily unavailable.

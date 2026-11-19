@@ -14,12 +14,15 @@ from dex_connectors.sdk import (
     CredentialRefreshDriver,
     Failure,
     FailureKind,
+    ReauthorizationRequiredError,
     Receipt,
     RejectedCredentialRefreshingProvider,
     resolve_credential,
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -49,6 +52,31 @@ if TYPE_CHECKING:
     )
 
 _PROVIDER = "google-workspace-admin"
+
+
+class WorkspaceCredentialMaterialError(ValueError):
+    """Resolved credential material failed a local check, so only reconnection repairs it."""
+
+
+def is_transient_credential_failure(error: BaseException) -> bool:
+    """Report a resolve failure that another attempt may clear; terminal ones need reconnection."""
+    # The generated connection module imports this one, so the predicate loads lazily.
+    from ._generated.connection import is_credential_material_error
+
+    if is_credential_material_error(error):
+        return False
+    return not isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+            WorkspaceCredentialMaterialError,
+        ),
+    )
+
+
 _REPORTABLE = frozenset(
     (
         "badRequest",
@@ -137,6 +165,10 @@ def _reason(body: bytes) -> tuple[str, bool]:
         return "", False
 
 
+# Only these statuses prove Google refused the request; any other one is unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 411, 413, 414, 415, 422))
+
+
 def _retry_after(headers: httpx.Headers) -> float:
     return parse_retry_after(headers.get("Retry-After", ""), datetime.now(UTC))
 
@@ -188,11 +220,20 @@ def _classify(status: int, headers: httpx.Headers, body: bytes) -> Exchange:
             FailureKind.CONFLICT,
             described("provider reported a conflicting resource"),
         )
+    if status not in _DEFINITE_REFUSAL_STATUSES:
+        return Exchange(
+            "retry",
+            status,
+            headers,
+            body,
+            FailureKind.AVAILABILITY,
+            described(f"provider answered HTTP {status}, which leaves the outcome unknown"),
+            _retry_after(headers),
+        )
     kind = {
         400: FailureKind.VALIDATION,
         401: FailureKind.AUTHENTICATION,
         403: FailureKind.AUTHORIZATION,
-        412: FailureKind.CONFLICT,
     }.get(status, FailureKind.PROVIDER_REJECTION)
     return Exchange(
         "rejected",
@@ -243,7 +284,9 @@ class Client:
         if not is_header_safe_credential(
             credential.access_token.reveal()
         ) or credential.auth_method_id not in ("", "workspace-domain-delegation", "google-oauth"):
-            raise ValueError("Google Workspace Admin connection credentials are unavailable")
+            raise WorkspaceCredentialMaterialError(
+                "Google Workspace Admin connection credentials are unavailable"
+            )
         return credential
 
     async def exchange(
@@ -288,7 +331,14 @@ class Client:
                         kind=FailureKind.RESPONSE_TOO_LARGE,
                         message="provider response exceeds the configured limit",
                     )
-                data = b""
+                # An oversized error body may hide acceptance or a retryable reason.
+                return Exchange(
+                    "retry",
+                    status,
+                    response_headers,
+                    kind=FailureKind.TRANSPORT,
+                    message="provider error response exceeds the configured limit",
+                )
             except ProviderTransportError:
                 return Exchange(
                     "retry",

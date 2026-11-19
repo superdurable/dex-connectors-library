@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: doc2x
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-doc2x
+      operations: [getParseStatus]
+      triggers: []
   codegen:
     go:
       package: doc2x

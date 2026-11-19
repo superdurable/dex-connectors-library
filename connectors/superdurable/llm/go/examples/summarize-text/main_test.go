@@ -40,6 +40,11 @@ func TestProjectConnectionNeedsAProviderAndTakesAnOptionalModel(t *testing.T) {
 		{"provider": "openai"},
 		{"provider": "qwen", "region": "hong-kong"},
 		{"provider": "openai-compatible", "baseUrl": "https://example.com/v1", "model": "qwen-example"},
+		{
+			"provider": "openai-compatible", "baseUrl": "https://example.com/v1", "model": "gateway-model", "openaiCompatibleApi": "responses",
+			"models": []any{"gateway-model", "gateway-model-2"}, "modelContextWindowTokens": []any{"gateway-model=128000"},
+		},
+		{"provider": "anthropic-compatible", "baseUrl": "https://example.com/anthropic", "model": "gateway-model"},
 	} {
 		project := projectWithConnection(t, configuration, map[string]any{"api_key": "sk-SENTINEL-llm-project-connection"})
 		connection, err := llm.NewProjectConnection(project, summarizetext.ConnectionName)
@@ -55,6 +60,10 @@ func TestProjectConnectionNeedsAProviderAndTakesAnOptionalModel(t *testing.T) {
 		map[string]any{"api_key": "sk-SENTINEL"})
 	_, err = llm.NewProjectConnection(project, summarizetext.ConnectionName)
 	require.Error(t, err, "settings decode strictly, so a field the manifest does not declare stops the Worker")
+
+	project = projectWithConnection(t, map[string]any{"provider": "openai", "models": []any{"gpt-6-luna"}}, map[string]any{"api_key": "sk-SENTINEL"})
+	_, err = llm.NewProjectConnection(project, summarizetext.ConnectionName)
+	require.ErrorContains(t, err, "must be one of the models entries", "the default model must be an offered model")
 
 	project = projectWithConnection(t, map[string]any{"provider": "openai", "region": "eu"}, map[string]any{"api_key": "sk-SENTINEL"})
 	_, err = llm.NewProjectConnection(project, summarizetext.ConnectionName)

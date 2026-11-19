@@ -56,7 +56,10 @@ func (operation RevokeSignInSessionsOperation) Invoke(call sdkgo.Call, input Rev
 	if err != nil {
 		return sdkgo.NewMutationBranch(RevokeSignInSessionsBranchDefect, RevokeSignInSessionsOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := operation.client.resolveCredential(call, operationID)
+	credential, failure, isRetryable := operation.client.resolveCredential(call, operationID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[RevokeSignInSessionsOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(RevokeSignInSessionsBranchDefect, RevokeSignInSessionsOutput{}, failure, sdkgo.Receipt{})
 	}
@@ -74,8 +77,8 @@ func (operation RevokeSignInSessionsOperation) Invoke(call sdkgo.Call, input Rev
 	}
 	var response revokeSignInSessionsResponse
 	if json.Unmarshal(exchange.response.body, &response) != nil {
-		return sdkgo.NewMutationBranch(RevokeSignInSessionsBranchInvalidResponse, output,
-			failurePointer(sdkgo.FailureProtocol, operationID, "provider returned an invalid revocation response"), receipt)
+		// Revoking again is harmless, so an unusable acceptance retries.
+		return sdkgo.NewMutationRetry[RevokeSignInSessionsOutput](graphFailure(sdkgo.FailureProtocol, operationID, "provider returned an invalid revocation response"), 0)
 	}
 	if response.Value != nil && !*response.Value {
 		return sdkgo.NewMutationBranch(RevokeSignInSessionsBranchProviderRejected, output,

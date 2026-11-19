@@ -11,6 +11,11 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt, TriggerLogger
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -163,14 +168,14 @@ class Client:
         body: dict[str, Any] | None = None,
     ) -> Exchange:
         """Resolve credentials, send a request, and classify non-success statuses."""
+        unavailable = Exchange(
+            disposition="defect",
+            failure=failure(
+                operation, FailureKind.AUTHENTICATION, "HubSpot connection credentials are unavailable"
+            ),
+        )
         try:
             credentials = await self.credentials.resolve(call)
-            if (
-                not isinstance(credentials, Credentials)
-                or credentials.access_token is None
-                or not is_header_safe_credential(credentials.access_token.reveal())
-            ):
-                raise ValueError("invalid access token")
         except ReauthorizationRequiredError:
             return Exchange(
                 disposition="rejected",
@@ -187,13 +192,29 @@ class Client:
                     "HubSpot OAuth token refresh is temporarily unavailable",
                 ),
             )
-        except Exception:
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError):
+            return unavailable
+        except Exception as error:
+            # The generated connection module imports this module, so import it lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return unavailable
+            # A write may have applied in an earlier attempt, so a passing outage must not select defect.
             return Exchange(
-                disposition="defect",
+                disposition="retry",
                 failure=failure(
-                    operation, FailureKind.AUTHENTICATION, "HubSpot connection credentials are unavailable"
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "HubSpot connection credentials are temporarily unavailable",
                 ),
             )
+        if (
+            not isinstance(credentials, Credentials)
+            or credentials.access_token is None
+            or not is_header_safe_credential(credentials.access_token.reveal())
+        ):
+            return unavailable
         target = f"{self.endpoint}/{path}" + (f"?{query}" if query else "")
         for attempt in range(2):
             try:
@@ -335,9 +356,16 @@ def classify_response(operation: str, response: Exchange, now: datetime) -> Exch
         )
     if status == 404:
         return classified("notFound", FailureKind.NOT_FOUND, "HubSpot found no such record" + detail)
-    if status == 409:
+    if status == 409 and category in ("CONFLICT", "OBJECT_ALREADY_EXISTS"):
         return classified(
             "conflict", FailureKind.CONFLICT, "HubSpot reported a conflict with another record" + detail
+        )
+    if status == 409:
+        # A write answered with a bare 409 has an unknown outcome and is retried.
+        return classified(
+            "rejected",
+            FailureKind.CONFLICT,
+            "HubSpot answered HTTP 409 without a documented conflict category" + detail,
         )
     if status in (400, 422) or category == "VALIDATION_ERROR":
         return classified(

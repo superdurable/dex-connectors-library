@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -218,19 +220,63 @@ func TestOversizedResponseSelectsInvalidResponse(t *testing.T) {
 	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
 }
 
-func TestUnavailableCredentialsSelectDefectWithoutProviderRequest(t *testing.T) {
-	provider := newRecordingProvider(t, func(http.ResponseWriter, *http.Request, int) {})
-	client, err := outlookcalendar.New(outlookcalendar.Config{}, sdkgo.StaticCredentialProvider[outlookcalendar.Credentials]{}, outlookcalendar.WithLocalProviderURL(provider.URL))
-	require.NoError(t, err)
-	result, err := sdkgo.RunQuery(newCalendarDexContext("no-credentials"), client.GetEvent(), calendarConnection, outlookcalendar.GetEventInput{EventID: "event-1"})
-	require.NoError(t, err)
-	require.Equal(t, outlookcalendar.GetEventBranchDefect, result.Branch)
-	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
-	require.Zero(t, provider.requestCount())
+// failingCalendarCredentials returns one credential error for every call.
+type failingCalendarCredentials struct{ err error }
+
+func (provider failingCalendarCredentials) Resolve(sdkgo.Call) (outlookcalendar.Credentials, error) {
+	return outlookcalendar.Credentials{}, provider.err
+}
+
+func (provider failingCalendarCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[outlookcalendar.Credentials]) (outlookcalendar.Credentials, error) {
+	return outlookcalendar.Credentials{}, provider.err
+}
+
+func TestCredentialFailuresAreClassifiedTheSameWayWithoutProviderRequest(t *testing.T) {
+	cases := []struct {
+		name       string
+		err        error
+		isTerminal bool
+	}{
+		{name: "sdk reauthorization", err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked")), isTerminal: true},
+		{name: "project reauthorization", err: projectconfig.ErrReauthorizationRequired, isTerminal: true},
+		{name: "object not found", err: projectconfig.ErrObjectNotFound, isTerminal: true},
+		{name: "connection not selected", err: projectconfig.ErrConnectionNotSelected, isTerminal: true},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected, isTerminal: true},
+		{name: "broker unavailable", err: projectconfig.ErrCredentialBrokerUnavailable},
+		{name: "rejected credential not refreshed", err: projectconfig.ErrRejectedCredentialNotRefreshed},
+		{name: "static connection not configured", err: errors.New("connection is not configured")},
+		{name: "deadline", err: context.DeadlineExceeded},
+	}
+	renamedSubject := "Renamed"
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			provider := newRecordingProvider(t, func(http.ResponseWriter, *http.Request, int) {})
+			client, err := outlookcalendar.New(outlookcalendar.Config{}, failingCalendarCredentials{err: testCase.err}, outlookcalendar.WithLocalProviderURL(provider.URL))
+			require.NoError(t, err)
+			read, readErr := sdkgo.RunQuery(newCalendarDexContext("credential-query"), client.GetEvent(), calendarConnection, outlookcalendar.GetEventInput{EventID: "event-1"})
+			updated, updateErr := sdkgo.RunMutation(newCalendarDexContext("credential-mutation"), client.UpdateEvent(), calendarConnection, outlookcalendar.UpdateEventInput{EventID: "event-1", Subject: &renamedSubject})
+			if testCase.isTerminal {
+				require.NoError(t, readErr)
+				require.NoError(t, updateErr)
+				require.Equal(t, outlookcalendar.GetEventBranchDefect, read.Branch)
+				require.Equal(t, outlookcalendar.UpdateEventBranchDefect, updated.Branch)
+				require.Equal(t, sdkgo.FailureAuthentication, read.Failure.Kind)
+			} else {
+				for _, attemptErr := range []error{readErr, updateErr} {
+					var retry *sdkgo.RetryError
+					require.ErrorAs(t, attemptErr, &retry)
+					require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+				}
+			}
+			require.Zero(t, provider.requestCount())
+		})
+	}
 }
 
 type rejectionRefreshingCredentialProvider struct {
 	forcedRefreshes int
+	// refreshErrors are returned, in order, by the first forced refreshes.
+	refreshErrors []error
 }
 
 func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (outlookcalendar.Credentials, error) {
@@ -252,6 +298,9 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	sdkgo.CredentialRefreshDriver[outlookcalendar.Credentials],
 ) (outlookcalendar.Credentials, error) {
 	provider.forcedRefreshes++
+	if provider.forcedRefreshes <= len(provider.refreshErrors) {
+		return outlookcalendar.Credentials{}, provider.refreshErrors[provider.forcedRefreshes-1]
+	}
 	return outlookcalendar.Credentials{AuthMethodID: outlookcalendar.MicrosoftOAuthAuthMethodID, AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
 }
 
@@ -365,25 +414,40 @@ func newCalendarClient(t *testing.T, providerURL string) *outlookcalendar.Client
 
 type calendarDexContext struct {
 	context.Context
-	step string
+	step              string
+	attempt           int32
+	previousHeartbeat []byte
+	recordedHeartbeat []byte
 }
 
 func newCalendarDexContext(step string) *calendarDexContext {
-	return &calendarDexContext{Context: context.Background(), step: step}
+	return &calendarDexContext{Context: context.Background(), step: step, attempt: 1}
 }
-func (*calendarDexContext) FlowID() string                                  { return "calendar-flow" }
-func (*calendarDexContext) RunID() string                                   { return "run" }
-func (*calendarDexContext) FlowStartedAt() time.Time                        { return time.Unix(1, 0) }
-func (context *calendarDexContext) StepExecutionID() string                 { return context.step }
-func (*calendarDexContext) FromStepExecutionID() string                     { return "" }
-func (*calendarDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
-func (*calendarDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*calendarDexContext) Attempt() int32                                  { return 1 }
-func (*calendarDexContext) HasTimerFired() bool                             { return false }
-func (*calendarDexContext) HasTimerFiredByIndex(int) bool                   { return false }
-func (*calendarDexContext) WaitForMethodFailed() bool                       { return false }
-func (*calendarDexContext) RecordHeartbeat(any) error                       { return nil }
-func (*calendarDexContext) GetLastHeartbeatValue(any) (bool, error)         { return false, nil }
+func (*calendarDexContext) FlowID() string                        { return "calendar-flow" }
+func (*calendarDexContext) RunID() string                         { return "run" }
+func (*calendarDexContext) FlowStartedAt() time.Time              { return time.Unix(1, 0) }
+func (context *calendarDexContext) StepExecutionID() string       { return context.step }
+func (*calendarDexContext) FromStepExecutionID() string           { return "" }
+func (*calendarDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (*calendarDexContext) FirstAttemptAt() time.Time             { return time.Unix(1, 0) }
+func (context *calendarDexContext) Attempt() int32                { return context.attempt }
+func (*calendarDexContext) HasTimerFired() bool                   { return false }
+func (*calendarDexContext) HasTimerFiredByIndex(int) bool         { return false }
+func (*calendarDexContext) WaitForMethodFailed() bool             { return false }
+func (context *calendarDexContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.recordedHeartbeat = encoded
+	return nil
+}
+func (context *calendarDexContext) GetLastHeartbeatValue(value any) (bool, error) {
+	if len(context.previousHeartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.previousHeartbeat, value)
+}
 func (*calendarDexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*calendarDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }
 func (*calendarDexContext) RecordEvent(string, any) error                   { return nil }

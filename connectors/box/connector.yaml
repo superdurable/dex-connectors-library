@@ -6,16 +6,16 @@ metadata:
   description: Download bounded files and replace existing file content through typed Dex operations.
   company: Box
   categories: [files-documents]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: box
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [downloadFile, uploadFile]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       operations: [downloadFile, uploadFile]
       triggers: []
   codegen:
@@ -134,12 +134,16 @@ spec:
       description: Replace an existing Box file's current content with bounded Base64 bytes, skipping an already identical file.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # Each attempt compares the current SHA-1 and size first and writes the same absolute content.
+        repeatOnUnknown: safe
       branches:
         - {id: uploaded, goName: Uploaded, description: The existing Box file now has the requested content.}
         - {id: notFound, goName: NotFound, description: Box did not find the file or the user lacks access., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Box conclusively rejected the replacement., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized file metadata., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Retained for compatibility and no longer selected: malformed or oversized file metadata now retries.", optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: uploadedDefault

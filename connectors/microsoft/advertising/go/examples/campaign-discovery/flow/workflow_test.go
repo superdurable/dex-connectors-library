@@ -24,3 +24,30 @@ func TestCampaignDiscoveryFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestAdGroupDiscoveryFlowRegisters(t *testing.T) {
+	mock := microsoftadvertisingmock.New(t, ConnectionName)
+	_, err := dex.NewRegistry([]dex.Flow{NewAdGroupDiscoveryFlow(mock.Connection())})
+	require.NoError(t, err)
+	wait, err := startAdGroupDiscovery{}.WaitFor(nil, microsoftadvertising.ListAdGroupsInput{})
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+}
+
+func TestKeywordDiscoveryFlowRegisters(t *testing.T) {
+	mock := microsoftadvertisingmock.New(t, ConnectionName)
+	_, err := dex.NewRegistry([]dex.Flow{NewKeywordDiscoveryFlow(mock.Connection())})
+	require.NoError(t, err)
+	wait, err := startKeywordDiscovery{}.WaitFor(nil, microsoftadvertising.ListKeywordsInput{})
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+}
+
+func TestAdDiscoveryFlowRegisters(t *testing.T) {
+	mock := microsoftadvertisingmock.New(t, ConnectionName)
+	_, err := dex.NewRegistry([]dex.Flow{NewAdDiscoveryFlow(mock.Connection())})
+	require.NoError(t, err)
+	wait, err := startAdDiscovery{}.WaitFor(nil, microsoftadvertising.ListAdsInput{})
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+}

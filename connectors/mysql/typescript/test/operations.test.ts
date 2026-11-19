@@ -4,8 +4,10 @@
 import { describe, expect, it } from 'vitest';
 import { Readable } from 'node:stream';
 import type { ConnectionOptions } from 'mysql2/promise';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { MySQLClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 import { classifyDriverError } from '../src/failures.js';
 
 const call = { id: 'de4b2ac7-66a0-4547-b4c8-6d44a12d6029', idempotencyKey: 'de4b2ac7-66a0-4547-b4c8-6d44a12d6029', connection: { provider: 'mysql', name: 'mysql-refunds' }, operation: { connectorId: 'mysql', operationId: 'query' }, context: { cancellationSignal: new AbortController().signal } } as Call;
@@ -171,12 +173,12 @@ it('rejects invalid SQL and unavailable credentials before opening a session', a
   const client = new MySQLClient(config, credentials, { connect: async () => { connections++; throw new Error('must not connect'); } });
   const invalid = await client.query().invoke(call, { statement: 'DELETE FROM refunds' });
   expect(invalid).toMatchObject({ kind: 'branch', branch: 'defect' });
-  const missing = new MySQLClient(config, { resolve: async () => { throw new Error('unavailable'); } }, { connect: async () => { connections++; throw new Error('must not connect'); } });
+  const missing = new MySQLClient(config, { resolve: async () => ({ password: new SecretString('') }) }, { connect: async () => { connections++; throw new Error('must not connect'); } });
   expect(await missing.execute().invoke(call, { statement: 'INSERT INTO refunds VALUES (1)' })).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
   expect(connections).toBe(0);
 });
 
-it('routes bounded query results, write limit rollback, and commit uncertainty', async () => {
+it('routes bounded query results, write limit rollback, and a retried unknown commit', async () => {
   const issued: string[] = [];
   let shouldFailCommit = false;
   const connection = {
@@ -201,7 +203,193 @@ it('routes bounded query results, write limit rollback, and commit uncertainty',
   expect(limited).toMatchObject({ kind: 'branch', branch: 'limitExceeded' });
   expect(issued).not.toContain('COMMIT');
   shouldFailCommit = true;
-  expect(await client.execute().invoke(call, { statement: 'INSERT INTO refunds VALUES (?)', parameters: ['one'] })).toMatchObject({ kind: 'uncertain' });
+  // execute is repeat-safe, so an unknown COMMIT runs again instead of selecting uncertain.
+  expect(await client.execute().invoke(call, { statement: 'INSERT INTO refunds VALUES (?)', parameters: ['one'] })).toMatchObject({ kind: 'retry', failure: { kind: 'TRANSPORT' } });
+});
+
+/** Keeps the last heartbeat across Execute attempts like Dex does. */
+class AttemptContext {
+  attempt = 1;
+  marker: { state?: string } | undefined;
+  readError: Error | undefined;
+  readonly runId = 'run';
+  readonly flowId = 'non-idempotent-flow';
+  readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
+  readonly deadline = new Date(Date.now() + 30_000);
+  readonly cancellationSignal = new AbortController().signal;
+  hasLastHeartbeatValue(): boolean { if (this.readError) throw this.readError; return this.marker !== undefined; }
+  getLastHeartbeatValue(): unknown { return this.marker; }
+  async recordHeartbeat(value: unknown): Promise<void> { this.marker = value as { state?: string }; }
+}
+
+function fakeWriteConnection(errors: { statement?: unknown; commit?: unknown } = {}, rowsAffected = 1) {
+  const issued: string[] = [];
+  let connects = 0;
+  const connection = {
+    query: async (sql: string) => {
+      issued.push(sql);
+      if (sql === 'SELECT CONNECTION_ID(), VERSION()') return [[[12, '8.4.0']], []];
+      if (sql === 'SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count') return [[[rowsAffected, '0', 0]], []];
+      if (sql === 'COMMIT' && errors.commit) throw errors.commit;
+      return [[], []];
+    },
+    execute: async (sql: string) => {
+      issued.push(sql);
+      if (errors.statement) throw errors.statement;
+      return [[], []];
+    },
+    destroy: () => { issued.push('destroy'); },
+  };
+  const client = new MySQLClient(config, credentials, { connect: async () => { connects++; return connection as never; } });
+  return { client, issued, connects: () => connects };
+}
+
+const balanceInput = { statement: 'UPDATE balances SET amount = amount + ? WHERE account_id = ?', parameters: ['25.00', 'acct_1'] };
+const fencedCall = (context: AttemptContext): Call => ({ ...call, operation: { connectorId: 'mysql', operationId: 'executeNonIdempotent' }, context } as unknown as Call);
+const serverError = (errno: number, sqlState: string) => ({ errno, sqlState, code: 'ER_SERVER', message: 'secret server text' });
+
+describe('executeNonIdempotent', () => {
+  it('declares the unsafe sync tier next to the safe execute tier', async () => {
+    const { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition } = await import('../src/generated/definitions.js');
+    expect(ExecuteStatementDefinition.repeatOnUnknown).toBe('safe');
+    expect(ExecuteStatementNonIdempotentDefinition).toMatchObject({ repeatOnUnknown: 'unsafe', stepDefaults: { executeDurability: 'sync' } });
+  });
+
+  it('claims before COMMIT and commits once', async () => {
+    const { client, issued } = fakeWriteConnection();
+    const context = new AttemptContext();
+    expect(await client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'branch', branch: 'completed', value: { rowsAffected: 1 } });
+    expect(context.marker?.state).toBe('claimed');
+    expect(issued.filter(sql => sql === 'COMMIT')).toHaveLength(1);
+  });
+
+  it.each([
+    ['connection lost', { code: 'ECONNRESET' }],
+    ['server error at COMMIT', serverError(1180, 'HY000')],
+    ['driver AggregateError at COMMIT', new AggregateError([{ code: 'ECONNRESET' }], 'driver failure')],
+  ])('selects uncertain after a %s and never runs the statement again', async (_name, commitError) => {
+    const { client, connects } = fakeWriteConnection({ commit: commitError });
+    const context = new AttemptContext();
+    expect(await client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain', failure: { operation: 'executeNonIdempotent' } });
+    context.attempt = 2;
+    const before = connects();
+    expect(await client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(connects()).toBe(before);
+  });
+
+  it('resends only after a proven rollback', async () => {
+    const deadlock = fakeWriteConnection({ commit: serverError(1213, '40001') });
+    const context = new AttemptContext();
+    expect(await deadlock.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry' });
+    expect(context.marker?.state).toBe('canResend');
+    context.attempt = 2;
+    const healthy = fakeWriteConnection();
+    expect(await healthy.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'branch', branch: 'completed' });
+
+    const lost = fakeWriteConnection({ statement: { code: 'ECONNRESET' } });
+    const lostContext = new AttemptContext();
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(lostContext), balanceInput)).toMatchObject({ kind: 'retry' });
+    expect(lost.issued).not.toContain('COMMIT');
+    expect(lostContext.marker?.state).toBe('notSent');
+  });
+
+  it('never records notSent after a possible earlier COMMIT', async () => {
+    const lost = fakeWriteConnection({ statement: { code: 'ECONNRESET' } });
+    const context = new AttemptContext();
+    // A canResend marker that still counts one possibly effective send keeps a send allowed.
+    const seeded = { callId: fencedCall(context).id, attempt: 2, state: 'canResend', sendCount: 1 };
+    context.marker = seeded;
+    context.attempt = 3;
+    // A transient failure returns Retry; the attempt after it still treats the earlier send as possible.
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry' });
+    expect(lost.issued).not.toContain('COMMIT');
+    expect(context.marker).toBe(seeded);
+    context.attempt = 4;
+    const connectsBefore = lost.connects();
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(lost.connects()).toBe(connectsBefore);
+
+    const refused = fakeWriteConnection({ statement: serverError(3819, 'HY000') });
+    const refusedContext = new AttemptContext();
+    refusedContext.marker = seeded;
+    refusedContext.attempt = 3;
+    expect(await refused.client.executeNonIdempotent().invoke(fencedCall(refusedContext), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(refused.issued).not.toContain('COMMIT');
+    expect(refusedContext.marker).toBe(seeded);
+  });
+
+  it('selects uncertain when the driver throws a local error after COMMIT was sent', async () => {
+    const { client } = fakeWriteConnection({ commit: new TypeError('connection state is null') });
+    const context = new AttemptContext();
+    expect(await client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(context.marker?.state).toBe('claimed');
+  });
+
+  it('returns Retry and records notSent when the credential broker is temporarily unavailable', async () => {
+    let connections = 0;
+    const unavailable = new MySQLClient(config, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } }, { connect: async () => { connections++; throw new Error('must not connect'); } });
+    expect(await unavailable.query().invoke(call, { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(await unavailable.execute().invoke(call, balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    const context = new AttemptContext();
+    expect(await unavailable.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(context.marker?.state).toBe('notSent');
+    expect(connections).toBe(0);
+  });
+
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed stored password', new CredentialMaterialError('MySQL password is unavailable'), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['rejected credential not refreshed', new RejectedCredentialNotRefreshedError(), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure before and after a possible COMMIT', async (_name, failure, isTerminal) => {
+    let connections = 0;
+    const failing = new MySQLClient(config, { resolve: async () => { throw failure; } }, { connect: async () => { connections++; throw new Error('must not connect'); } });
+    const firstExpected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await failing.execute().invoke(call, balanceInput)).toMatchObject(firstExpected);
+    const context = new AttemptContext();
+    expect(await failing.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject(firstExpected);
+    expect(context.marker?.state).toBe('notSent');
+    const later = new AttemptContext();
+    later.marker = { callId: fencedCall(later).id, attempt: 2, state: 'canResend', sendCount: 1 } as { state?: string };
+    later.attempt = 3;
+    expect(await failing.executeNonIdempotent().invoke(fencedCall(later), balanceInput)).toMatchObject({ kind: isTerminal ? 'uncertain' : 'retry' });
+    expect(connections).toBe(0);
+  });
+
+  it('selects uncertain after a lost Worker and retries an unreadable checkpoint without connecting', async () => {
+    const { client, connects } = fakeWriteConnection();
+    const afterLostWorker = new AttemptContext();
+    afterLostWorker.attempt = 2;
+    expect(await client.executeNonIdempotent().invoke(fencedCall(afterLostWorker), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    const unreadable = new AttemptContext();
+    unreadable.readError = new Error('heartbeat store unavailable');
+    expect(await client.executeNonIdempotent().invoke(fencedCall(unreadable), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(connects()).toBe(0);
+  });
+
+  it('rejects a definite refusal without committing', async () => {
+    const rejected = fakeWriteConnection({ statement: serverError(3819, 'HY000') });
+    const context = new AttemptContext();
+    const result = await rejected.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput);
+    expect(result).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'CONFLICT' } });
+    expect(JSON.stringify(result)).not.toContain('secret');
+    expect(rejected.issued).not.toContain('COMMIT');
+    expect(context.marker?.state).toBe('notSent');
+
+    const deferred = fakeWriteConnection({ commit: serverError(1062, '23000') });
+    const deferredContext = new AttemptContext();
+    expect(await deferred.client.executeNonIdempotent().invoke(fencedCall(deferredContext), balanceInput)).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+    expect(deferredContext.marker?.state).toBe('canResend');
+
+    const limited = fakeWriteConnection({}, 3);
+    expect(await limited.client.executeNonIdempotent().invoke(fencedCall(new AttemptContext()), { ...balanceInput, maxRowsAffected: 1 })).toMatchObject({ kind: 'branch', branch: 'limitExceeded' });
+    expect(await limited.client.executeNonIdempotent().invoke(fencedCall(new AttemptContext()), { statement: 'CREATE TABLE t (id INT)' })).toMatchObject({ kind: 'branch', branch: 'defect' });
+  });
 });
 
 it('bounds native prepared-statement rows while streaming', async () => {

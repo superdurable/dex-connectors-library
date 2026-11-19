@@ -5,7 +5,8 @@
 // work or school and SharePoint document libraries through the Microsoft
 // Graph workbook API at https://graph.microsoft.com/v1.0.
 //
-// A Client exposes four operations. GetTableRows reads an Excel table as rows
+// A Client exposes workbook and worksheet discovery, table column and row
+// reads, range reads and writes, and worksheet and table mutations. GetTableRows reads an Excel table as rows
 // keyed by its column names, GetValues reads a bounded A1 range, UpdateValues
 // writes literal values to a bounded A1 range, and AppendTableRows appends
 // table rows whose key column value the table does not hold yet. Every
@@ -24,12 +25,13 @@
 // durability, and records a Dex heartbeat checkpoint before it sends the
 // append, so one Step execution sends it at most once.
 //
-// The runnable example in examples/approval-decision uses every operation in
-// one Flow.
+// The runnable example in examples/approval-decision exercises table column
+// discovery alongside its approval decisions.
 package excel
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -40,6 +42,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -156,10 +159,11 @@ type Client struct {
 
 // graphRequest is one Graph request; body is resent once after a 401 forces a refresh.
 type graphRequest struct {
-	method        string
-	target        string
-	body          []byte
-	responseLimit int64
+	method         string
+	target         string
+	body           []byte
+	responseLimit  int64
+	requestContext context.Context
 }
 
 // graphResponse holds the safe parts of one response; an oversized 2xx body is dropped.
@@ -257,6 +261,31 @@ func (client *Client) GetTableRows() GetTableRowsOperation {
 	return GetTableRowsOperation{client: client}
 }
 
+// ListTableColumns returns the ListTableColumns operation bound to this client.
+func (client *Client) ListTableColumns() ListTableColumnsOperation {
+	return ListTableColumnsOperation{client: client}
+}
+
+// FindTableRow returns the FindTableRow operation bound to this client.
+func (client *Client) FindTableRow() FindTableRowOperation {
+	return FindTableRowOperation{client: client}
+}
+
+// ListWorksheets returns the ListWorksheets operation bound to this client.
+func (client *Client) ListWorksheets() ListWorksheetsOperation {
+	return ListWorksheetsOperation{client: client}
+}
+
+// ListWorkbooks returns the ListWorkbooks operation bound to this client.
+func (client *Client) ListWorkbooks() ListWorkbooksOperation {
+	return ListWorkbooksOperation{client: client}
+}
+
+// CreateWorksheet returns the CreateWorksheet operation bound to this client.
+func (client *Client) CreateWorksheet() CreateWorksheetOperation {
+	return CreateWorksheetOperation{client: client}
+}
+
 // GetValues returns the GetValues operation bound to this client.
 func (client *Client) GetValues() GetValuesOperation { return GetValuesOperation{client: client} }
 
@@ -276,6 +305,26 @@ func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (Cr
 		return Credentials{}, excelFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable")
 	}
 	return credential, nil
+}
+
+// resolveWriteCredential is resolveCredential for a write, which retries every credential failure
+// isTerminalCredentialError does not name. isRetryable reports such a failure.
+func (client *Client) resolveWriteCredential(call sdkgo.Call, operationID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
+	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, excelFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are temporarily unavailable"), true
+	}
+	if err != nil || validateResolvedCredentials(credential) != nil {
+		return Credentials{}, excelFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable"), false
+	}
+	return credential, nil, false
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // sendRead performs one idempotent Graph read and classifies every non-2xx or unreadable response.
@@ -339,7 +388,11 @@ func (client *Client) sendOnce(call sdkgo.Call, credential *Credentials, request
 	if request.body != nil {
 		body = bytes.NewReader(request.body)
 	}
-	httpRequest, err := http.NewRequestWithContext(call.Context, request.method, request.target, body)
+	requestContext := request.requestContext
+	if requestContext == nil {
+		requestContext = call.Context
+	}
+	httpRequest, err := http.NewRequestWithContext(requestContext, request.method, request.target, body)
 	if err != nil {
 		return graphResponse{}, &graphTransportError{}
 	}
@@ -466,6 +519,17 @@ func mutationAttemptFromReadOutcome[T any](outcome *readOutcome) sdkgo.MutationA
 }
 
 func isSuccessStatus(status int) bool { return status >= 200 && status < 300 }
+
+// isDefiniteRefusalStatus reports a status that proves Microsoft refused a write; others leave it unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
 
 func excelFailure(kind sdkgo.FailureKind, operationID string, message string) sdkgo.Failure {
 	return sdkgo.Failure{Kind: kind, Provider: providerName, Operation: operationID, Message: message}

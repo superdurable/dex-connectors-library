@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, retryCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
+import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
 import type { ListEventsInput, EventDateTime, EventAttendee, EventOnlineMeeting, Event, ListEventsOutput, GetEventInput, EventAttendeeInput, CreateEventInput, CreateEventOutput, UpdateEventInput, UpdateEventOutput, QueryFreeBusyInput, ScheduleItem, ScheduleAvailability, QueryFreeBusyOutput } from './models.js';
 import { ListEventsInputSchema, EventDateTimeSchema, EventAttendeeSchema, EventOnlineMeetingSchema, EventSchema, ListEventsOutputSchema, GetEventInputSchema, EventAttendeeInputSchema, CreateEventInputSchema, CreateEventOutputSchema, UpdateEventInputSchema, UpdateEventOutputSchema, QueryFreeBusyInputSchema, ScheduleItemSchema, ScheduleAvailabilitySchema, QueryFreeBusyOutputSchema } from './models.js';
@@ -170,6 +170,8 @@ export function createEventInvalidResponse(value: CreateEventOutput, failure?: F
 export function createEventDefect(value: CreateEventOutput, failure?: Failure): Case<CreateEventOutput> { return branchCase("defect", value, failure); }
 /** Script a safe retry of createEvent. */
 export function createEventRetry(failure: Failure, retryAfterMs = 0): Case<CreateEventOutput> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain createEvent attempt. */
+export function createEventUncertain(value: CreateEventOutput, failure: Failure): Case<CreateEventOutput> { return uncertainCase(value, failure); }
 /** Manifest scenario createdDefaultAnswer for createEvent. */
 export function createEventCreatedDefaultAnswer(): Case<CreateEventOutput> {
   const value = CreateEventOutputSchema.parse({"event":{"body":"Agenda to follow.","calendarId":"team-calendar","end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"id":"hold-1","isAllDay":false,"isCancelled":false,"isOrganizer":true,"onlineMeeting":{"joinUrl":"https://teams.microsoft.com/l/meetup-join/hold-1","provider":"teamsForBusiness"},"showAs":"busy","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"subject":"Meridian kickoff"},"wasAlreadyCreated":false});

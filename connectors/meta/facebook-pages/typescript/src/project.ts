@@ -6,7 +6,7 @@ import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
 import { FacebookPagesClient } from './client.js';
 import { newProjectConnection as generatedProjectConnection } from './generated/connection.js';
-import type { Config, Credentials } from './generated/models.js';
+import { CredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 
 /** Open one named Facebook Pages connection from Dex project configuration. */
 export function newProjectConnection(project: LoadedProject, connectionName: string) {
@@ -23,7 +23,7 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     const credentials: CredentialProvider<Credentials> = {
       async resolve(_call, signal) {
         const privateFields = await loadedProject.resolveCredential('facebook-pages', name, signal);
-        if (typeof privateFields.page_access_token !== 'string') throw new TypeError('Facebook Pages Page token is unavailable');
+        if (typeof privateFields.page_access_token !== 'string') throw new CredentialMaterialError('Facebook Pages Page token is unavailable');
         return { pageAccessToken: new SecretString(privateFields.page_access_token) };
       },
     };

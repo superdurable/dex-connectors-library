@@ -113,9 +113,11 @@ func TestCallIDUsesStableDexAndOperationIdentity(t *testing.T) {
 	second, err := sdkgo.RunQuery(ctx, operation, testConnection, "profile")
 	require.NoError(t, err)
 	require.Equal(t, firstID, second.Receipt.CallID)
+	ctx.AttemptNo = 10
 	otherConnection, err := sdkgo.RunQuery(ctx, operation, sdkgo.ConnectionRef{Provider: "mock", Name: "other"}, "profile")
 	require.NoError(t, err)
 	require.Equal(t, firstID, otherConnection.Receipt.CallID)
+	ctx.AttemptNo = 11
 
 	for _, changed := range []*testsupport.DexContext{
 		testsupport.NewDexContext("customer/43", "step-execution-1"),

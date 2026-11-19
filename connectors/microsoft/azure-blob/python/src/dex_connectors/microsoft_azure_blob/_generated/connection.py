@@ -63,6 +63,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.microsoft_azure_blob.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Azure Blob Storage credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,14 +88,14 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Azure Blob Storage stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Azure Blob Storage stored credential does not match the connector credential fields")
         if set(material) - set(('account_key',)):
-            raise ValueError("Azure Blob Storage stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Azure Blob Storage stored credential does not match the connector credential fields")
         account_key = material.get("account_key")
         if account_key is not None and not (isinstance(account_key, str)):
-            raise ValueError("Azure Blob Storage credential account_key has an invalid type")
+            raise CredentialMaterialError("Azure Blob Storage credential account_key has an invalid type")
         if not account_key:
-            raise ValueError("Azure Blob Storage credential account_key is required")
+            raise CredentialMaterialError("Azure Blob Storage credential account_key is required")
         return Credentials(SecretString(account_key))
 
 
@@ -108,7 +124,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.microsoft_azure_bl
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"accountName", "endpoint", "timeout", "maxResponseBytes"}:
+    if set(value) - {"accountName", "endpoint", "timeout", "maxResponseBytes", "listPageSize"}:
         raise ValueError("Azure Blob Storage configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "accountName" in value:
@@ -135,4 +151,9 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(max_response_bytes) is int):
             raise ValueError("Azure Blob Storage configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
+    if "listPageSize" in value:
+        list_page_size = value["listPageSize"]
+        if not (type(list_page_size) is int):
+            raise ValueError("Azure Blob Storage configuration listPageSize has an invalid type")
+        config_arguments['list_page_size'] = list_page_size
     return Config(**config_arguments)

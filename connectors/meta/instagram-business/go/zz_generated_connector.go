@@ -40,11 +40,19 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetAccount() sdkgo.Query[GetAccountInput, InstagramAccount]
+	GetMedia() sdkgo.Query[GetMediaInput, InstagramMedia]
 	ListMedia() sdkgo.Query[ListMediaInput, MediaListPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetAccount() sdkgo.Query[GetAccountInput, InstagramAccount] {
+	return operations.client.GetAccount()
+}
+func (operations clientOperations) GetMedia() sdkgo.Query[GetMediaInput, InstagramMedia] {
+	return operations.client.GetMedia()
+}
 func (operations clientOperations) ListMedia() sdkgo.Query[ListMediaInput, MediaListPage] {
 	return operations.client.ListMedia()
 }
@@ -184,6 +192,160 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential user_access_token is required")
 	}
 	return nil
+}
+
+const GetAccountBranchFound sdkgo.BranchID = "found"
+const GetAccountBranchNotFound sdkgo.BranchID = "notFound"
+const GetAccountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAccountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAccountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAccountDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAccount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAccountBranchFound, Description: "Meta returned the account."},
+		{ID: GetAccountBranchNotFound, Description: "The account is missing or inaccessible.", Optional: true},
+		{ID: GetAccountBranchProviderRejected, Description: "Meta definitively rejected the lookup.", Optional: true},
+		{ID: GetAccountBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: GetAccountBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAccountResult = sdkgo.QueryResult[InstagramAccount]
+
+type GetAccountStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=instagram-business"`
+	operationID                    struct{}                                            `connector:"operationId=getAccount"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAccountInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAccountResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAccountResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAccountResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAccountResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAccountResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InstagramAccount]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetAccountStep[IN any](config GetAccountStepConfig[IN]) sdkgo.QueryStep[IN, GetAccountInput, InstagramAccount] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("instagram-business connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAccountInput, InstagramAccount]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAccount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAccountResult] {
+			branches := make([]sdkgo.BranchTarget[GetAccountResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAccountBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAccountBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAccountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAccountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAccountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetMediaBranchFound sdkgo.BranchID = "found"
+const GetMediaBranchNotFound sdkgo.BranchID = "notFound"
+const GetMediaBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetMediaBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetMediaBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetMediaDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMedia"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetMediaBranchFound, Description: "Meta returned the media object."},
+		{ID: GetMediaBranchNotFound, Description: "The media is missing or inaccessible.", Optional: true},
+		{ID: GetMediaBranchProviderRejected, Description: "Meta definitively rejected the lookup.", Optional: true},
+		{ID: GetMediaBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: GetMediaBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetMediaResult = sdkgo.QueryResult[InstagramMedia]
+
+type GetMediaStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=instagram-business"`
+	operationID                    struct{}                                          `connector:"operationId=getMedia"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetMediaInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetMediaResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetMediaResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetMediaResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetMediaResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetMediaResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InstagramMedia]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetMediaStep[IN any](config GetMediaStepConfig[IN]) sdkgo.QueryStep[IN, GetMediaInput, InstagramMedia] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("instagram-business connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMediaInput, InstagramMedia]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetMedia(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetMediaResult] {
+			branches := make([]sdkgo.BranchTarget[GetMediaResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetMediaBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetMediaBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetMediaBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetMediaBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetMediaBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListMediaBranchListed sdkgo.BranchID = "listed"

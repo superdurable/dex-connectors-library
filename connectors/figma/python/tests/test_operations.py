@@ -99,7 +99,7 @@ async def test_get_file_encodes_document_numbers_like_go() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("number", [b"1.234567890123456789", b"1e5000"])
 async def test_get_file_rejects_number_that_codec_cannot_encode(number: bytes) -> None:
-    body = b'{"name":"Numeric Design","document":{"children":[{"x":' + number + b'}]}}'
+    body = b'{"name":"Numeric Design","document":{"children":[{"x":' + number + b"}]}}"
     result = await run_query(
         make_client(httpx.Response(200, content=body)).get_file(), file_call(), GetFileInput("AbC")
     )

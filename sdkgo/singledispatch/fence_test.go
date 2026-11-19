@@ -36,7 +36,7 @@ func TestDispatchDecisionOnlyImmediateProofPermitsSend(t *testing.T) {
 		{name: "immediate canResend", attempts: 1, marker: &singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateCanResend}, want: singledispatch.SendAllowed},
 		{name: "immediate notSent", attempts: 1, marker: &singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateNotSent}, want: singledispatch.SendAllowed},
 		{name: "claimed", attempts: 1, marker: &singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateClaimed}, want: singledispatch.ReadBackRequired},
-		{name: "foreign", attempts: 1, marker: &singledispatch.Marker{CallID: "call-2", Attempt: 1, State: singledispatch.StateCanResend}, want: singledispatch.FailClosed},
+		{name: "foreign legacy marker counts as none", attempts: 1, marker: &singledispatch.Marker{CallID: "call-2", Attempt: 1, State: singledispatch.StateCanResend}, want: singledispatch.ReadBackRequired},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			ctx := singledispatchtest.NewContext("flow-1", "step-1")
@@ -44,7 +44,7 @@ func TestDispatchDecisionOnlyImmediateProofPermitsSend(t *testing.T) {
 				ctx.AdvanceAttempt()
 			}
 			if scenario.marker != nil {
-				require.NoError(t, ctx.SetPersistedCheckpoint(scenario.marker))
+				require.NoError(t, ctx.SetPersistedMarkers(scenario.marker))
 			}
 			fence := newFence(t, ctx)
 			require.Equal(t, scenario.want, fence.Decide().Kind)
@@ -68,9 +68,10 @@ func TestForeignMarkerDoesNotExposeProviderID(t *testing.T) {
 		CallID: "other-call", Attempt: 1, State: singledispatch.StateClaimed, ProviderID: "other-resource",
 	}))
 	decision := newFence(t, ctx).Decide()
-	require.Equal(t, singledispatch.FailClosed, decision.Kind)
+	require.Equal(t, singledispatch.ReadBackRequired, decision.Kind)
 	require.Empty(t, decision.Marker)
-	require.Error(t, decision.Err)
+	require.NoError(t, decision.Err)
+	require.Equal(t, int32(1), decision.MaximumPriorSends)
 }
 
 func TestFailedNotSentCheckpointLatchesAttempt(t *testing.T) {

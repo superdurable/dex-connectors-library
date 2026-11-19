@@ -7,8 +7,8 @@
 // with an absolute change that is safe to repeat and reads the conversation back; and
 // addNote and createSharedDraft add an internal note or a shared reply draft. Hiver
 // documents no idempotency key, so those two run with sync durability and record a Dex
-// single-dispatch fence before sending; a retry without a stored safe-resend marker
-// selects uncertain instead of sending again.
+// single-dispatch fence before sending; an unknown outcome is resent while the send cap
+// allows, and a 2xx answer is never resent.
 //
 // The connector sends an admin-created API key as a bearer token to
 // https://api2.hiverhq.com/v1 and spaces its own requests, because Hiver allows one
@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -153,6 +154,8 @@ type hiverExchange struct {
 	response   hiverResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+	// isErrorBodyUnreadable means a non-2xx body was oversized, broke while reading, or reflected the credential.
+	isErrorBodyUnreadable bool
 }
 
 type dispatchObservation struct {
@@ -234,11 +237,24 @@ func (client *Client) CreateSharedDraft() CreateSharedDraftOperation {
 
 // resolveCredentials returns a header-safe API key, or a safe defect Failure.
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+	credentials, failure, _ := client.resolveWriteCredentials(call, operation)
+	return credentials, failure
+}
+
+// resolveWriteCredentials also reports whether a failure is terminal: a revoked, absent, or
+// malformed credential that a retry cannot fix. Any other resolution error may clear on retry.
+func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, hiverFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	if err != nil {
+		isTerminal := sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+			errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+			errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+		return Credentials{}, hiverFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), isTerminal
 	}
-	return credentials, nil
+	if validateResolvedCredentials(credentials) != nil {
+		return Credentials{}, hiverFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), true
+	}
+	return credentials, nil, false
 }
 
 // exchange waits for the connection's next request slot, then sends one request.
@@ -325,8 +341,16 @@ func (client *Client) sendWithContext(requestContext context.Context, credential
 	closeErr := httpResponse.Body.Close()
 	response := hiverResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header, requestID: safeRequestID(httpResponse.Header)}
 	if httpResponse.StatusCode < 200 || httpResponse.StatusCode >= 300 {
-		// The status line decides a failure; its body is never used, so a read error cannot change it.
-		return client.classifyFailureStatus(response, operation)
+		// A write refusal is definite only when its body reads in full; callers check it.
+		result := client.classifyFailureStatus(response, operation)
+		apiKey := credentials.APIKey.Reveal()
+		// A credential-reflecting refusal body is untrusted, so it is treated like an unreadable one.
+		if readErr != nil || closeErr != nil || (apiKey != "" && bytes.Contains(body, []byte(apiKey))) {
+			result.isErrorBodyUnreadable = true
+		} else {
+			result.response.body = body
+		}
+		return result
 	}
 	switch {
 	case errors.Is(readErr, providerhttp.ErrBodyTooLarge):

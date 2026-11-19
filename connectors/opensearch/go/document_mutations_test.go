@@ -95,3 +95,20 @@ func TestDeleteDocumentTreatsRepeatedDeleteAsSuccess(t *testing.T) {
 	require.Equal(t, DeleteDocumentBranchIndexNotFound, missingIndex.Branch)
 	require.Equal(t, 3, requests)
 }
+
+func TestDocumentWritesRetryUnlistedStatusesAsUnknown(t *testing.T) {
+	for _, status := range []int{http.StatusMethodNotAllowed, http.StatusConflict, http.StatusTooEarly, http.StatusUnavailableForLegalReasons} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(status)
+			_, err := fmt.Fprint(w, `{}`)
+			require.NoError(t, err)
+		}))
+		client := newTestClient(t, server.URL)
+		_, err := sdkgo.RunMutation(queryContext{}, client.IndexDocument(), testConnection,
+			IndexDocumentInput{Index: "products", DocumentID: "sku-42", Source: []byte(`{"title":"Meridian"}`)})
+		require.Error(t, err, "HTTP %d on indexDocument is unknown and retries", status)
+		_, err = sdkgo.RunMutation(queryContext{}, client.DeleteDocument(), testConnection, DeleteDocumentInput{Index: "products", DocumentID: "sku-42"})
+		require.Error(t, err, "HTTP %d on deleteDocument is unknown and retries", status)
+		server.Close()
+	}
+}

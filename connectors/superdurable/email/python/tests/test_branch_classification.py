@@ -131,4 +131,4 @@ async def test_smtp_permanent_rejection_does_not_retry(monkeypatch: pytest.Monke
         make_send_call(context), SendMessageInput(to=("jane@example.com",), subject="Hello", text="Body")
     )
     assert attempt.kind == "branch" and attempt.branch == "providerRejected"
-    assert context.marker is None
+    assert getattr(context.marker, "submission_count", None) == 0, "the refusal is recorded as not submitted"

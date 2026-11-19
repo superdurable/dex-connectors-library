@@ -6,6 +6,7 @@ package jiraservicemanagement
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -108,12 +109,13 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 		method: http.MethodGet, api: jiraPlatformAPI, path: issuePath(change.issueIDOrKey), query: url.Values{"fields": {"labels,priority"}},
 	})
 	receipt := client.receipt(session, result.response, change.issueIDOrKey)
-	if classification := client.classifyRead(updateTicketOperationID, "request", result); classification.outcome != readSucceeded {
+	if classification := client.classifyRepeatableWrite(updateTicketOperationID, "request", result); classification.outcome != readSucceeded {
 		return updateTicketFailureAttempt(classification, UpdateTicketOutput{Labels: []string{}}, receipt)
 	}
 	var current labelsAndPriorityResource
 	if err := json.Unmarshal(result.response.body, &current); err != nil || !numericIDPattern.MatchString(current.ID) || !issueKeyPattern.MatchString(current.Key) {
-		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, UpdateTicketOutput{Labels: []string{}}, failurePointer(updateTicketOperationID, sdkgo.FailureProtocol, "Jira returned an invalid request issue"), receipt)
+		// An unusable read proves nothing about the request, so a later attempt reads it again.
+		return sdkgo.NewMutationRetry[UpdateTicketOutput](newFailure(updateTicketOperationID, sdkgo.FailureProtocol, "Jira returned an invalid request issue"), 0)
 	}
 	receipt.ProviderObjectID = current.Key
 	output := UpdateTicketOutput{IssueID: current.ID, IssueKey: current.Key, Labels: append([]string{}, current.Fields.Labels...)}
@@ -127,7 +129,7 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	}
 	result = client.exchange(session, providerRequest{method: http.MethodPut, api: jiraPlatformAPI, path: issuePath(current.Key), payload: body})
 	receipt = client.receipt(session, result.response, current.Key)
-	if classification := client.classifyRead(updateTicketOperationID, updateTicketFailureSubject, result); classification.outcome != readSucceeded {
+	if classification := client.classifyRepeatableWrite(updateTicketOperationID, updateTicketFailureSubject, result); classification.outcome != readSucceeded {
 		if classification.outcome == readRejected {
 			output.RejectedFieldIDs = readProviderRejection(result.response.body).fieldIDs
 		}
@@ -205,6 +207,21 @@ func validateLabelsAndPriorityChange(input UpdateTicketInput) (labelsAndPriority
 		return labelsAndPriorityChange{}, errors.New("set addLabels, removeLabels, or priorityName")
 	}
 	return change, nil
+}
+
+// classifyRepeatableWrite classifies an edit, or the read before it, that the next attempt rereads before repeating:
+// only a definite refusal with a readable body is terminal, and any other unexpected response returns Retry.
+func (client *Client) classifyRepeatableWrite(operationID string, subject string, result exchangeResult) readClassification {
+	classification := client.classifyRead(operationID, subject, result)
+	isRefusal := classification.outcome == readRejected || classification.outcome == readNotFound
+	isUnknown := classification.outcome == readInvalid ||
+		(classification.outcome == readRejected && !isDefiniteWriteRefusalStatus(result.response.statusCode)) ||
+		(isRefusal && !isCompleteResponse(result.response))
+	if isUnknown {
+		return readClassification{outcome: readRetry, retryAfter: client.retryAfter(result.response), failure: newFailure(operationID, sdkgo.FailureAvailability,
+			fmt.Sprintf("Jira Service Management %s outcome is unknown after HTTP %d; the next attempt rereads the request first", subject, result.response.statusCode))}
+	}
+	return classification
 }
 
 func updateTicketFailureAttempt(classification readClassification, output UpdateTicketOutput, receipt sdkgo.Receipt) sdkgo.MutationAttempt[UpdateTicketOutput] {

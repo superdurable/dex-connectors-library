@@ -206,8 +206,9 @@ class UploadFileOperation:
                 defs.DEFECT, FailureKind.VALIDATION, "Box upload content must be bounded Base64"
             )
         digest = hashlib.sha1(content).hexdigest().upper()
+        is_later_attempt = call.context is not None and call.context.attempt > 1
         metadata_exchange = await self.client.get_file_metadata(call, input.file_id)
-        metadata, decision = _initial_metadata(metadata_exchange, input.file_id)
+        metadata, decision = _initial_metadata(metadata_exchange, input.file_id, is_later_attempt)
         if decision is not None:
             return decision
         assert metadata is not None
@@ -215,9 +216,7 @@ class UploadFileOperation:
             return _uploaded(metadata)
         exchange = await self.client.upload(call, input.file_id, metadata.name, content)
         if exchange.error == "credential" and not exchange.request_sent:
-            return _mutation_branch(
-                defs.DEFECT, FailureKind.AUTHENTICATION, "Box credentials are unavailable or invalid"
-            )
+            return _credential_failure(is_later_attempt)
         if exchange.error == "refresh":
             return _mutation_retry(FailureKind.AVAILABILITY, "Box credentials could not be refreshed")
         if exchange.error == "request" and not exchange.request_sent:
@@ -230,13 +229,10 @@ class UploadFileOperation:
             return _mutation_retry(
                 FailureKind.AVAILABILITY, "Box upload is temporarily unavailable", exchange.retry_after
             )
-        if exchange.status == 404:
-            return _mutation_branch(defs.NOT_FOUND, FailureKind.NOT_FOUND, "Box did not find the file")
+        if _is_definite_refusal(exchange):
+            return _refusal(exchange.status)
+        # Any other answer, such as 409, 3xx, or an unreadable error body, is unknown: read back below.
         is_accepted = exchange.status in (200, 201)
-        if exchange.status != 0 and not is_accepted:
-            return _mutation_branch(
-                defs.PROVIDER_REJECTED, FailureKind.PROVIDER_REJECTION, f"Box rejected HTTP {exchange.status}"
-            )
         if is_accepted and not exchange.error:
             try:
                 wire: Any = json.loads(exchange.body)
@@ -262,11 +258,14 @@ class UploadFileOperation:
 
 
 def _initial_metadata(
-    exchange: Exchange, file_id: str
+    exchange: Exchange, file_id: str, is_later_attempt: bool
 ) -> tuple[_FileMetadata | None, MutationAttempt[UploadedFile] | None]:
+    """Select a branch only for a definite answer; anything unknown returns Retry."""
+    if exchange.error == "credential" and exchange.status == 0:
+        return None, _credential_failure(is_later_attempt)
     if exchange.error == "credential":
-        return None, _mutation_branch(
-            defs.DEFECT, FailureKind.AUTHENTICATION, "Box credentials are unavailable or invalid"
+        return None, _mutation_retry(
+            FailureKind.PROTOCOL, "Box metadata echoed the access token", exchange.retry_after
         )
     if exchange.error == "refresh":
         return None, _mutation_retry(FailureKind.AVAILABILITY, "Box credentials could not be refreshed")
@@ -280,21 +279,57 @@ def _initial_metadata(
         return None, _mutation_retry(
             FailureKind.AVAILABILITY, "Box metadata is temporarily unavailable", exchange.retry_after
         )
-    if exchange.status == 404:
-        return None, _mutation_branch(defs.NOT_FOUND, FailureKind.NOT_FOUND, "Box did not find the file")
+    if _is_definite_refusal(exchange):
+        return None, _refusal(exchange.status)
     if exchange.status != 200:
-        return None, _mutation_branch(
-            defs.PROVIDER_REJECTED, FailureKind.PROVIDER_REJECTION, f"Box rejected HTTP {exchange.status}"
+        return None, _mutation_retry(
+            FailureKind.PROTOCOL,
+            f"Box answered metadata lookup with unexpected HTTP {exchange.status}",
+            exchange.retry_after,
         )
     if exchange.error == "too_large":
-        return None, _mutation_branch(
-            defs.INVALID_RESPONSE, FailureKind.RESPONSE_TOO_LARGE, "Box metadata exceeds the configured limit"
+        return None, _mutation_retry(
+            FailureKind.RESPONSE_TOO_LARGE, "Box metadata exceeds the configured limit"
         )
     if exchange.error:
         return None, _mutation_retry(FailureKind.TRANSPORT, "Box metadata response was interrupted")
     try:
         return _decode_metadata(exchange.body, file_id), None
     except (ValueError, TypeError):
-        return None, _mutation_branch(
-            defs.INVALID_RESPONSE, FailureKind.PROTOCOL, "Box returned invalid file metadata"
+        return None, _mutation_retry(FailureKind.PROTOCOL, "Box returned invalid file metadata")
+
+
+def _credential_failure(is_later_attempt: bool) -> MutationAttempt[UploadedFile]:
+    """Keep defect for the first attempt; a later one may follow an applied upload, so it retries."""
+    if is_later_attempt:
+        return _mutation_retry(
+            FailureKind.AUTHENTICATION,
+            "Box credentials are unavailable or invalid after a possible earlier upload",
         )
+    return _mutation_branch(
+        defs.DEFECT, FailureKind.AUTHENTICATION, "Box credentials are unavailable or invalid"
+    )
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_definite_refusal(exchange: Exchange) -> bool:
+    """Report an allowlisted refusal status whose fully read body describes no file."""
+    if exchange.error or exchange.status not in _DEFINITE_REFUSAL_STATUSES:
+        return False
+    try:
+        wire: Any = json.loads(exchange.body)
+    except (ValueError, UnicodeDecodeError):
+        return True
+    if not isinstance(wire, dict):
+        return True
+    return wire.get("type") != "file" and wire.get("entries") is None
+
+
+def _refusal(status: int) -> MutationAttempt[UploadedFile]:
+    if status == 404:
+        return _mutation_branch(defs.NOT_FOUND, FailureKind.NOT_FOUND, "Box did not find the file")
+    return _mutation_branch(
+        defs.PROVIDER_REJECTED, FailureKind.PROVIDER_REJECTION, f"Box rejected HTTP {status}"
+    )

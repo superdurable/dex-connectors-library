@@ -4,14 +4,15 @@
 package oauth2http_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptrace"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/v1"
@@ -26,16 +27,30 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	credentials := sdkgo.StaticCredentialProvider[oauth2http.Credentials]{testConnection: testCredentials("conformance-access-token", "")}
 	client, err := oauth2http.NewWithConformanceTransportForTest(config, credentials, &conformanceTracedTransport{transport: transport.Transport, exchanges: scenario.Exchanges}, conformanceFixedClock(t, scenario))
 	require.NoError(t, err)
-	context := testsupport.NewDexContext("oauth2-http-conformance", "send-request")
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"sendRequest": newConformanceMutationInvocation(t, scenario.Input, context, client.SendRequest(), testConnection, scenario.CallID),
+	// The context persists heartbeats across attempts, so the postNonIdempotent fence sees earlier claims.
+	context := singledispatchtest.NewContext("oauth2-http-conformance", "send-request")
+	var priorHeartbeat []byte
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { priorHeartbeat = value })
+	for range priorAttempt {
+		context.AdvanceAttempt()
+	}
+	if priorHeartbeat != nil {
+		require.NoError(t, context.SetPersistedCheckpoint(json.RawMessage(priorHeartbeat)))
+	}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			context.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"sendRequest":       newConformanceMutationInvocation(t, scenario.Input, context, client.SendRequest(), testConnection, scenario.CallID),
+		"postNonIdempotent": newConformanceMutationInvocation(t, scenario.Input, context, client.PostNonIdempotent(), testConnection, scenario.CallID),
 	}}
 }
 
 type conformanceTracedTransport struct {
 	transport http.RoundTripper
 	exchanges []conformanceExchange
-	index int
+	index     int
 }
 
 func (transport *conformanceTracedTransport) RoundTrip(request *http.Request) (*http.Response, error) {

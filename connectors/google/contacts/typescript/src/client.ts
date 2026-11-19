@@ -3,9 +3,10 @@
 
 import { SecretString, ReauthorizationRequiredError, resolveCredential, type Call, type CredentialProvider, type CredentialRefreshDriver } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { CreateContactOperation, GetContactOperation, ListContactsOperation } from './operations.js';
 
 /** Injectable provider transport and OAuth refresh dependencies. */
@@ -60,7 +61,7 @@ export class ContactsClient {
       if (!token || !isHeaderSafeCredential(token)) return { token: '', error: 'credential' };
       return { token };
     } catch (error) {
-      return { token: '', error: error instanceof ReauthorizationRequiredError ? 'credential' : 'refresh' };
+      return { token: '', error: isTerminalCredentialError(error) ? 'credential' : 'refresh' };
     }
   }
 
@@ -85,14 +86,22 @@ export class ContactsClient {
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined)
         return { ...failedExchange('tooLarge'), status: error.status, retryAfterMs: parseRetryAfter(header(error.headers ?? {}, 'retry-after'), this.now()) };
+      // A failure after the response headers keeps their status, so a 2xx create is known accepted.
       if (error instanceof ProviderTransportError)
-        return { ...failedExchange('request'), isProvablyNotSent: error.isProvablyNotSent };
+        return { ...failedExchange('request'), status: error.status ?? 0, isProvablyNotSent: error.isProvablyNotSent };
+      if (error instanceof ProviderStalledError) return { ...failedExchange('request'), status: error.status ?? 0 };
       return failedExchange('request');
     }
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'), this.now());
     if (Buffer.from(response.body).includes(token)) return { ...failedExchange('credential'), status: response.status, retryAfterMs };
     return { status: response.status, body: response.body, retryAfterMs };
   }
+}
+
+/** Report a resolve failure that only reconnection repairs; any other one is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 function failedExchange(error: NonNullable<ContactsExchange['error']>): ContactsExchange {

@@ -161,7 +161,10 @@ func (operation ReceiveMessagesOperation) Invoke(call sdkgo.Call, input ReceiveM
 		}
 		request.ReceiveRequestAttemptID = attemptID
 	}
-	session, cancel, failure := client.startSession(call, receiveMessagesOperationID)
+	session, cancel, failure, shouldRetry := client.startSession(call, receiveMessagesOperationID)
+	if shouldRetry {
+		return sdkgo.NewMutationRetry[ReceivedMessages](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(ReceiveMessagesBranchDefect, ReceivedMessages{}, failure, sdkgo.Receipt{})
 	}

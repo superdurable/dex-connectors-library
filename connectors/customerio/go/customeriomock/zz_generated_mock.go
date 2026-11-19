@@ -18,6 +18,9 @@ import (
 // Mock is a scripted customerio connection. Script each operation through its accessor.
 type Mock struct {
 	connection          customerio.Connection
+	getCampaign         *connectormock.Query[customerio.GetCampaignInput, customerio.CampaignSummary]
+	listCampaigns       *connectormock.Query[customerio.ListCampaignsInput, customerio.CampaignsPage]
+	getCampaignMetrics  *connectormock.Query[customerio.GetCampaignMetricsInput, customerio.CampaignMetrics]
 	getCustomersByEmail *connectormock.Query[customerio.GetCustomersByEmailInput, customerio.CustomerLookupPage]
 }
 
@@ -26,8 +29,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getCampaign:         connectormock.NewQuery[customerio.GetCampaignInput, customerio.CampaignSummary](t, customerio.GetCampaignDefinition),
+		listCampaigns:       connectormock.NewQuery[customerio.ListCampaignsInput, customerio.CampaignsPage](t, customerio.ListCampaignsDefinition),
+		getCampaignMetrics:  connectormock.NewQuery[customerio.GetCampaignMetricsInput, customerio.CampaignMetrics](t, customerio.GetCampaignMetricsDefinition),
 		getCustomersByEmail: connectormock.NewQuery[customerio.GetCustomersByEmailInput, customerio.CustomerLookupPage](t, customerio.GetCustomersByEmailDefinition),
 	}
+	mock.getCampaign.Default(GetCampaignDefault())
+	mock.listCampaigns.Default(ListCampaignsDefault())
+	mock.getCampaignMetrics.Default(GetCampaignMetricsDefault())
 	mock.getCustomersByEmail.Default(GetCustomersByEmailDefault())
 	connection, err := customerio.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "customerio", Name: connectionName})
 	if err != nil {
@@ -40,6 +49,21 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() customerio.Connection { return mock.connection }
 
+// GetCampaign returns the getCampaign script.
+func (mock *Mock) GetCampaign() *connectormock.Query[customerio.GetCampaignInput, customerio.CampaignSummary] {
+	return mock.getCampaign
+}
+
+// ListCampaigns returns the listCampaigns script.
+func (mock *Mock) ListCampaigns() *connectormock.Query[customerio.ListCampaignsInput, customerio.CampaignsPage] {
+	return mock.listCampaigns
+}
+
+// GetCampaignMetrics returns the getCampaignMetrics script.
+func (mock *Mock) GetCampaignMetrics() *connectormock.Query[customerio.GetCampaignMetricsInput, customerio.CampaignMetrics] {
+	return mock.getCampaignMetrics
+}
+
 // GetCustomersByEmail returns the getCustomersByEmail script.
 func (mock *Mock) GetCustomersByEmail() *connectormock.Query[customerio.GetCustomersByEmailInput, customerio.CustomerLookupPage] {
 	return mock.getCustomersByEmail
@@ -47,8 +71,135 @@ func (mock *Mock) GetCustomersByEmail() *connectormock.Query[customerio.GetCusto
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetCampaign() sdkgo.Query[customerio.GetCampaignInput, customerio.CampaignSummary] {
+	return operations.mock.getCampaign
+}
+func (operations mockOperations) ListCampaigns() sdkgo.Query[customerio.ListCampaignsInput, customerio.CampaignsPage] {
+	return operations.mock.listCampaigns
+}
+func (operations mockOperations) GetCampaignMetrics() sdkgo.Query[customerio.GetCampaignMetricsInput, customerio.CampaignMetrics] {
+	return operations.mock.getCampaignMetrics
+}
 func (operations mockOperations) GetCustomersByEmail() sdkgo.Query[customerio.GetCustomersByEmailInput, customerio.CustomerLookupPage] {
 	return operations.mock.getCustomersByEmail
+}
+
+// GetCampaignFound selects the found branch: Customer.io returned the campaign.
+func GetCampaignFound(value customerio.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignSummary] {
+	return connectormock.Branch(customerio.GetCampaignBranchFound, value, failure)
+}
+
+// GetCampaignNotFound selects the notFound branch: No accessible campaign has this ID.
+func GetCampaignNotFound(value customerio.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignSummary] {
+	return connectormock.Branch(customerio.GetCampaignBranchNotFound, value, failure)
+}
+
+// GetCampaignProviderRejected selects the providerRejected branch: Customer.io rejected the campaign lookup.
+func GetCampaignProviderRejected(value customerio.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignSummary] {
+	return connectormock.Branch(customerio.GetCampaignBranchProviderRejected, value, failure)
+}
+
+// GetCampaignInvalidResponse selects the invalidResponse branch: Customer.io returned invalid or oversized JSON.
+func GetCampaignInvalidResponse(value customerio.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignSummary] {
+	return connectormock.Branch(customerio.GetCampaignBranchInvalidResponse, value, failure)
+}
+
+// GetCampaignDefect selects the defect branch: Input or App API credentials are invalid.
+func GetCampaignDefect(value customerio.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignSummary] {
+	return connectormock.Branch(customerio.GetCampaignBranchDefect, value, failure)
+}
+
+// GetCampaignRetry asks Dex to retry the getCampaign Step, after the delay when it is positive.
+func GetCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[customerio.CampaignSummary] {
+	return connectormock.Retry[customerio.CampaignSummary](failure, after)
+}
+
+// GetCampaignFoundDefault is the manifest mock foundDefault: A sample campaign is returned.
+func GetCampaignFoundDefault() connectormock.Case[customerio.CampaignSummary] {
+	value := connectormock.MustDecodeOutput[customerio.CampaignSummary](`{"id":5,"name":"Welcome series","active":true,"state":"running"}`)
+	return connectormock.Branch(customerio.GetCampaignBranchFound, value, nil)
+}
+
+// GetCampaignDefault is the manifest default, foundDefault, which New installs.
+func GetCampaignDefault() connectormock.Case[customerio.CampaignSummary] {
+	return GetCampaignFoundDefault()
+}
+
+// ListCampaignsListed selects the listed branch: Customer.io returned the campaign list.
+func ListCampaignsListed(value customerio.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignsPage] {
+	return connectormock.Branch(customerio.ListCampaignsBranchListed, value, failure)
+}
+
+// ListCampaignsProviderRejected selects the providerRejected branch: Customer.io rejected the campaign list.
+func ListCampaignsProviderRejected(value customerio.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignsPage] {
+	return connectormock.Branch(customerio.ListCampaignsBranchProviderRejected, value, failure)
+}
+
+// ListCampaignsInvalidResponse selects the invalidResponse branch: Customer.io returned invalid or oversized JSON.
+func ListCampaignsInvalidResponse(value customerio.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignsPage] {
+	return connectormock.Branch(customerio.ListCampaignsBranchInvalidResponse, value, failure)
+}
+
+// ListCampaignsDefect selects the defect branch: App API credentials are invalid.
+func ListCampaignsDefect(value customerio.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignsPage] {
+	return connectormock.Branch(customerio.ListCampaignsBranchDefect, value, failure)
+}
+
+// ListCampaignsRetry asks Dex to retry the listCampaigns Step, after the delay when it is positive.
+func ListCampaignsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[customerio.CampaignsPage] {
+	return connectormock.Retry[customerio.CampaignsPage](failure, after)
+}
+
+// ListCampaignsListedDefault is the manifest mock listedDefault: One sample campaign is listed.
+func ListCampaignsListedDefault() connectormock.Case[customerio.CampaignsPage] {
+	value := connectormock.MustDecodeOutput[customerio.CampaignsPage](`{"campaigns":[{"id":5,"name":"Welcome series","active":true,"state":"running"}]}`)
+	return connectormock.Branch(customerio.ListCampaignsBranchListed, value, nil)
+}
+
+// ListCampaignsDefault is the manifest default, listedDefault, which New installs.
+func ListCampaignsDefault() connectormock.Case[customerio.CampaignsPage] {
+	return ListCampaignsListedDefault()
+}
+
+// GetCampaignMetricsFound selects the found branch: Customer.io returned campaign metric series.
+func GetCampaignMetricsFound(value customerio.CampaignMetrics, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignMetrics] {
+	return connectormock.Branch(customerio.GetCampaignMetricsBranchFound, value, failure)
+}
+
+// GetCampaignMetricsNotFound selects the notFound branch: No accessible campaign has this ID.
+func GetCampaignMetricsNotFound(value customerio.CampaignMetrics, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignMetrics] {
+	return connectormock.Branch(customerio.GetCampaignMetricsBranchNotFound, value, failure)
+}
+
+// GetCampaignMetricsProviderRejected selects the providerRejected branch: Customer.io rejected the metrics request.
+func GetCampaignMetricsProviderRejected(value customerio.CampaignMetrics, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignMetrics] {
+	return connectormock.Branch(customerio.GetCampaignMetricsBranchProviderRejected, value, failure)
+}
+
+// GetCampaignMetricsInvalidResponse selects the invalidResponse branch: Customer.io returned invalid or oversized JSON.
+func GetCampaignMetricsInvalidResponse(value customerio.CampaignMetrics, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignMetrics] {
+	return connectormock.Branch(customerio.GetCampaignMetricsBranchInvalidResponse, value, failure)
+}
+
+// GetCampaignMetricsDefect selects the defect branch: Input or App API credentials are invalid.
+func GetCampaignMetricsDefect(value customerio.CampaignMetrics, failure *sdkgo.Failure) connectormock.Case[customerio.CampaignMetrics] {
+	return connectormock.Branch(customerio.GetCampaignMetricsBranchDefect, value, failure)
+}
+
+// GetCampaignMetricsRetry asks Dex to retry the getCampaignMetrics Step, after the delay when it is positive.
+func GetCampaignMetricsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[customerio.CampaignMetrics] {
+	return connectormock.Retry[customerio.CampaignMetrics](failure, after)
+}
+
+// GetCampaignMetricsFoundDefault is the manifest mock foundDefault: One sample campaign metric is returned.
+func GetCampaignMetricsFoundDefault() connectormock.Case[customerio.CampaignMetrics] {
+	value := connectormock.MustDecodeOutput[customerio.CampaignMetrics](`{"campaignId":5,"series":{"sent":[1],"delivered":[1]}}`)
+	return connectormock.Branch(customerio.GetCampaignMetricsBranchFound, value, nil)
+}
+
+// GetCampaignMetricsDefault is the manifest default, foundDefault, which New installs.
+func GetCampaignMetricsDefault() connectormock.Case[customerio.CampaignMetrics] {
+	return GetCampaignMetricsFoundDefault()
 }
 
 // GetCustomersByEmailFound selects the found branch: Customer.io returned matching customer IDs, possibly empty.

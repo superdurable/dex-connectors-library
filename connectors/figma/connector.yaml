@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: figma
   displayName: Figma
-  description: Read Figma records with a connection-owned API key.
+  description: Read Figma file content, selected nodes, and comments with a connection-owned API key.
   company: Figma
   categories: [productivity]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: figma
   languages:
@@ -110,3 +110,20 @@ spec:
           branch: providerRejected
           description: "The connection token is invalid."
           failure: {kind: AUTHENTICATION, message: "Figma rejected the token."}
+    - name: getFileNodes
+      goName: GetFileNodes
+      inputType: GetFileNodesInput
+      outputType: FileNodes
+      kind: query
+      description: Read selected nodes of a Figma file by node IDs.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Figma returned the selected nodes.}
+        - {id: notFound, goName: NotFound, description: Figma did not find the file., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Figma conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Figma returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example page node., output: {name: Meridian Design, lastModified: "2026-10-28T12:00:00Z", nodes: {"0:1": {document: {id: "0:1", type: CANVAS, name: Home}}}}}

@@ -20,7 +20,7 @@ export const SetUserPropertiesBranch = {
 export const SetUserPropertiesBranchAccepted = SetUserPropertiesBranch.Accepted;
 /** Heap conclusively rejected the request. */
 export const SetUserPropertiesBranchProviderRejected = SetUserPropertiesBranch.ProviderRejected;
-/** Heap returned an oversized or unreadable confirmation. */
+/** Kept for compatibility and no longer selected: an oversized or unreadable confirmation now retries, because repeating the overwrite is safe. */
 export const SetUserPropertiesBranchInvalidResponse = SetUserPropertiesBranch.InvalidResponse;
 /** Local identity, property input, or app ID is invalid. */
 export const SetUserPropertiesBranchDefect = SetUserPropertiesBranch.Defect;
@@ -30,7 +30,7 @@ export const SetUserPropertiesDefinition: MutationDefinition = {
   branches: [
     { id: "accepted", description: "Heap accepted the property updates." },
     { id: "providerRejected", description: "Heap conclusively rejected the request.", optional: true },
-    { id: "invalidResponse", description: "Heap returned an oversized or unreadable confirmation.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an oversized or unreadable confirmation now retries, because repeating the overwrite is safe.", optional: true },
     { id: "defect", description: "Local identity, property input, or app ID is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

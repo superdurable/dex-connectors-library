@@ -30,18 +30,21 @@ export class CreateOrUpdateContactOperation implements Mutation<CreateOrUpdateCo
     if (body.byteLength > 1 << 20) return newMutationBranch('defect', emptyWrite, {}, brevoFailure(operation, 'VALIDATION', 'contact payload is invalid or too large'));
     const exchange = await this.client.exchange(call, operation, 'POST', '/contacts', body);
     if ('failure' in exchange) {
-      if (exchange.classification === 'retry') return newMutationRetry(exchange.failure);
-      return newMutationBranch(exchange.classification === 'invalidResponse' ? 'invalidResponse' : 'defect', emptyWrite, {}, exchange.failure);
+      // A repeated upsert by email converges, so an oversized answer retries.
+      if (exchange.classification === 'retry' || exchange.classification === 'invalidResponse') return newMutationRetry(exchange.failure);
+      return newMutationBranch('defect', emptyWrite, {}, exchange.failure);
     }
     const { response } = exchange;
     if (isRetryableStatus(response.status)) return newMutationRetry(brevoFailure(operation, 'AVAILABILITY', 'Brevo contact request is temporarily unavailable'), this.client.retryAfter(response));
+    if (response.status !== 201 && response.status !== 204 && ![400, 401, 403, 404, 411, 413, 414, 415, 422].includes(response.status))
+      return newMutationRetry(brevoFailure(operation, 'AVAILABILITY', `Brevo answered the contact request with HTTP ${response.status}`));
     if (response.status !== 201 && response.status !== 204) return newMutationBranch('providerRejected', emptyWrite, {}, brevoFailure(operation, rejectionFailureKind(response.status), `Brevo rejected contact request with HTTP ${response.status}`));
     if (response.status === 204) return newMutationBranch('saved', { email: input.email, created: false });
     try {
       const decoded: unknown = JSON.parse(Buffer.from(response.body).toString('utf8'));
       if (!decoded || typeof decoded !== 'object' || !('id' in decoded) || typeof decoded.id !== 'number' || !Number.isSafeInteger(decoded.id) || decoded.id <= 0) throw new TypeError('invalid ID');
       return newMutationBranch('saved', { id: decoded.id, email: input.email, created: true });
-    } catch { return newMutationBranch('invalidResponse', emptyWrite, {}, brevoFailure(operation, 'PROTOCOL', 'Brevo returned an invalid contact ID')); }
+    } catch { return newMutationRetry(brevoFailure(operation, 'PROTOCOL', 'Brevo returned an invalid contact ID')); }
   }
 }
 

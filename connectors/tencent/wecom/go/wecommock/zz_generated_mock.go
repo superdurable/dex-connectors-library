@@ -77,7 +77,7 @@ func SendGroupRobotMessageUncertain(value wecom.SentGroupRobotMessage, failure s
 	return connectormock.Uncertain(value, failure)
 }
 
-// SendGroupRobotMessageDefect selects the defect branch: Local input, the connection method, the webhook key, or the dispatch checkpoint is invalid; nothing was posted.
+// SendGroupRobotMessageDefect selects the defect branch: Local input, the connection method, the webhook key, or the dispatch fence is invalid; nothing was posted.
 func SendGroupRobotMessageDefect(value wecom.SentGroupRobotMessage, failure *sdkgo.Failure) connectormock.Case[wecom.SentGroupRobotMessage] {
 	return connectormock.Branch(wecom.SendGroupRobotMessageBranchDefect, value, failure)
 }

@@ -227,7 +227,7 @@ func TestCreateEventRejectsInvalidInputBeforeCallingGoogle(t *testing.T) {
 	require.Zero(t, provider.requestCount())
 }
 
-func TestCreateEventClassifiesConclusiveRejectionsAndInvalidResponses(t *testing.T) {
+func TestCreateEventClassifiesConclusiveRejectionsAndRetriesUnknownResponses(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		status int
@@ -236,8 +236,9 @@ func TestCreateEventClassifiesConclusiveRejectionsAndInvalidResponses(t *testing
 	}{
 		{name: "read-only calendar", status: http.StatusForbidden, body: `{"error":{"errors":[{"reason":"requiredAccessLevel"}]}}`, branch: calendar.CreateEventBranchProviderRejected},
 		{name: "invalid attendee", status: http.StatusBadRequest, body: `{"error":{"errors":[{"reason":"invalidAttendeeEmail"}]}}`, branch: calendar.CreateEventBranchProviderRejected},
-		{name: "another event ID", status: http.StatusOK, body: timedEventJSON("someotherid", "Kickoff"), branch: calendar.CreateEventBranchInvalidResponse},
-		{name: "not JSON", status: http.StatusOK, body: `<html>`, branch: calendar.CreateEventBranchInvalidResponse},
+		{name: "another event ID", status: http.StatusOK, body: timedEventJSON("someotherid", "Kickoff")},
+		{name: "not JSON", status: http.StatusOK, body: `<html>`},
+		{name: "unlisted status", status: http.StatusPreconditionFailed, body: `{}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
@@ -249,10 +250,34 @@ func TestCreateEventClassifiesConclusiveRejectionsAndInvalidResponses(t *testing
 			})
 			client := newCalendarClient(t, provider.URL)
 			result, err := sdkgo.RunMutation(newCalendarDexContext("create-"+test.name), client.CreateEvent(), calendarConnection, timedMeetingInput())
+			if test.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry, "a safe write retries an unknown outcome")
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, test.branch, result.Branch)
 		})
 	}
+}
+
+func TestCreateEventKeepsWaitingForATakenIDAfterAnEarlierAttempt(t *testing.T) {
+	provider := newRecordingProvider(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusNotFound, `{}`)
+			return
+		}
+		writeJSON(t, response, http.StatusConflict, `{"error":{"errors":[{"reason":"duplicate"}]}}`)
+	})
+	client := newCalendarClient(t, provider.URL)
+	first, err := sdkgo.RunMutation(newCalendarDexContext("taken-first"), client.CreateEvent(), calendarConnection, timedMeetingInput())
+	require.NoError(t, err)
+	require.Equal(t, calendar.CreateEventBranchConflict, first.Branch, "with no earlier attempt the event is not this Step's")
+	later := newCalendarDexContext("taken-later")
+	later.attempt = 2
+	_, err = sdkgo.RunMutation(later, client.CreateEvent(), calendarConnection, timedMeetingInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "the unreadable event may be this Step's earlier insert")
 }
 
 // eventStore is a minimal stateful Google Calendar event collection for the primary calendar.

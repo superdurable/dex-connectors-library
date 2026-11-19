@@ -153,7 +153,8 @@ func TestTimeoutAfterDispatchIsReconciledWithoutCreatingAgainWithRealDex(t *test
 	require.NotNil(t, uncertain.UncertainCreate)
 	require.Equal(t, sdkgo.FailureTransport, uncertain.UncertainCreate.FailureKind)
 	require.NotEmpty(t, uncertain.UncertainCreate.CallID)
-	require.Equal(t, 1, provider.createCount(taskName), "a timeout after dispatch is never retried")
+	sendCap := int(asana.CreateTaskDefinition.MaxSends)
+	require.Equal(t, sendCap, provider.createCount(taskName), "a timeout after dispatch is resent up to the send cap")
 
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.ConfirmCreatedTask, ConfirmCreatedTaskInput{TaskID: "1204999999999999"}, nil))
 	waitForReconciliationNote(t, ctx, harness, flow, flowID, NoteReportedTaskMissing)
@@ -167,7 +168,7 @@ func TestTimeoutAfterDispatchIsReconciledWithoutCreatingAgainWithRealDex(t *test
 	require.Equal(t, createdID, record.TaskID)
 	require.Nil(t, record.UncertainCreate)
 	require.Equal(t, 1, record.CreateAttempts)
-	require.Equal(t, 1, provider.createCount(taskName), "reconciliation adopted the existing task")
+	require.Equal(t, sendCap, provider.createCount(taskName), "reconciliation adopted an existing task without another create")
 }
 
 func TestServerErrorIsCreatedAgainOnlyAfterOperatorApprovalWithRealDex(t *testing.T) {
@@ -178,13 +179,14 @@ func TestServerErrorIsCreatedAgainOnlyAfterOperatorApprovalWithRealDex(t *testin
 
 	uncertain := waitForPhase(t, ctx, harness, flow, flowID, PhaseNeedsReconciliation)
 	require.Equal(t, sdkgo.FailureAvailability, uncertain.UncertainCreate.FailureKind)
-	require.Equal(t, 1, provider.createCount(taskName))
+	sendCap := int(asana.CreateTaskDefinition.MaxSends)
+	require.Equal(t, sendCap, provider.createCount(taskName), "each 5xx is resent up to the send cap")
 
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.ApproveTaskCreateRetry, nil, nil))
 	record := waitForFlowOutput(t, ctx, harness, flowID)
 	require.Equal(t, PhaseReady, record.Phase)
 	require.Equal(t, 2, record.CreateAttempts)
-	require.Equal(t, 2, provider.createCount(taskName), "only the approved retry sent a second create")
+	require.Equal(t, sendCap+1, provider.createCount(taskName), "only the approved retry sent another create")
 }
 
 // TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex verifies one create during a healthy slow request.
@@ -237,7 +239,7 @@ func TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
 	require.Equal(t, 1, len(provider.commentTexts(provider.taskIDForName(taskName))), "one Step execution dispatches one comment request")
 }
 
-func TestCommentTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestCommentTimeoutResendsUpToTheSendCapThenFailsWithRealDex(t *testing.T) {
 	provider, flow, harness := newAsanaIntegrationHarness(t, shortRequestTimeout)
 	ctx := integrationContext(t)
 
@@ -248,7 +250,7 @@ func TestCommentTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, len(provider.commentTexts(provider.taskIDForName(taskName))), "an uncertain comment is never re-sent")
+	require.Equal(t, int(asana.AddCommentDefinition.MaxSends), len(provider.commentTexts(provider.taskIDForName(taskName))), "an unconfirmed comment is resent up to the send cap")
 }
 
 func TestRejectedAssigneeFailsBeforeCommentWithRealDex(t *testing.T) {
@@ -451,7 +453,7 @@ func (provider *fakeAsana) createTask(response http.ResponseWriter, request *htt
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"errors":[{"message":"SENTINEL You have made too many requests recently."}]}`)
 	case strings.Contains(name, markerUnavailable) && attempt == 1:
 		provider.writeJSON(response, http.StatusServiceUnavailable, `{"errors":[{"message":"SENTINEL temporarily unavailable"}]}`)
-	case strings.Contains(name, markerServerError) && attempt == 1:
+	case strings.Contains(name, markerServerError) && attempt <= int(asana.CreateTaskDefinition.MaxSends):
 		provider.writeJSON(response, http.StatusInternalServerError, `{"errors":[{"message":"SENTINEL","phrase":"6 sad squid snuggle softly"}]}`)
 	case strings.Contains(name, markerCreateTimeout):
 		provider.storeTask(name, membership.Project, membership.Section, body.Data.DueOn)

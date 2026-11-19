@@ -14,6 +14,7 @@ package onedrive
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -205,11 +207,12 @@ type graphCollectionResponse struct {
 
 // graphRequest is one Graph HTTP request; body is resent once after a 401 forces a refresh.
 type graphRequest struct {
-	method        string
-	target        string
-	body          []byte
-	contentType   string
-	responseLimit int64
+	method         string
+	target         string
+	body           []byte
+	contentType    string
+	responseLimit  int64
+	requestContext context.Context
 	// isRawContent omits Accept: application/json from a file content request.
 	isRawContent bool
 }
@@ -219,6 +222,8 @@ type graphResponse struct {
 	header    http.Header
 	body      []byte
 	requestID string
+	// isErrorBodyIncomplete marks an error body dropped for exceeding its bound.
+	isErrorBodyIncomplete bool
 }
 
 type graphRequestError struct {
@@ -314,16 +319,39 @@ func (client *Client) CreateFolder() CreateFolderOperation {
 	return CreateFolderOperation{client: client}
 }
 
+// DeleteItem returns the DeleteItem operation bound to this client.
+func (client *Client) DeleteItem() DeleteItemOperation { return DeleteItemOperation{client: client} }
+
+// RenameItem returns the RenameItem operation bound to this client.
+func (client *Client) RenameItem() RenameItemOperation { return RenameItemOperation{client: client} }
+
+// MoveItem returns the MoveItem operation bound to this client.
+func (client *Client) MoveItem() MoveItemOperation { return MoveItemOperation{client: client} }
+
+// CopyFile returns the CopyFile operation bound to this client.
+func (client *Client) CopyFile() CopyFileOperation { return CopyFileOperation{client: client} }
+
 // resolveCredential refreshes the credential and rejects a blank drive ID for app-only connections.
-func (client *Client) resolveCredential(call sdkgo.Call, operationID string, driveID string) (Credentials, *sdkgo.Failure) {
+// isRetryable reports a failure isTerminalCredentialError does not name, which a later attempt may clear.
+func (client *Client) resolveCredential(call sdkgo.Call, operationID string, driveID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, graphFailurePointer(sdkgo.FailureAvailability, operationID, "connection credentials are temporarily unavailable; nothing was sent"), true
+	}
 	if err != nil || validateResolvedCredentials(credential) != nil {
-		return Credentials{}, graphFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable")
+		return Credentials{}, graphFailurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable"), false
 	}
 	if driveID == "" && credential.AuthMethodID == MicrosoftAppOnlyAuthMethodID {
-		return Credentials{}, graphFailurePointer(sdkgo.FailureValidation, operationID, "driveId is required with app-only authorization, which has no signed-in user")
+		return Credentials{}, graphFailurePointer(sdkgo.FailureValidation, operationID, "driveId is required with app-only authorization, which has no signed-in user"), false
 	}
-	return credential, nil
+	return credential, nil, false
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // sendRead performs one idempotent Graph read and classifies every non-2xx or unreadable response.
@@ -373,7 +401,11 @@ func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, requ
 		if request.body != nil {
 			body = bytes.NewReader(request.body)
 		}
-		httpRequest, err := http.NewRequestWithContext(call.Context, request.method, request.target, body)
+		requestContext := request.requestContext
+		if requestContext == nil {
+			requestContext = call.Context
+		}
+		httpRequest, err := http.NewRequestWithContext(requestContext, request.method, request.target, body)
 		if err != nil {
 			return graphResponse{}, &graphRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 		}
@@ -422,6 +454,7 @@ func (client *Client) readResponse(httpResponse *http.Response, responseLimit in
 	if isOversized {
 		// An oversized error body carries no usable code, so the status alone classifies it.
 		response.body = nil
+		response.isErrorBodyIncomplete = true
 		readErr = nil
 	}
 	if readErr != nil || closeErr != nil {

@@ -1282,7 +1282,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 1,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "providerId": "9876543210",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "boardId": "1234567890",
@@ -1377,7 +1380,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
-          "canResend": true
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -1452,7 +1455,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
-          "canResend": true
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -1520,21 +1523,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
-        },
-        "output": {
-          "boardId": "1234567890",
-          "groupId": "topics",
-          "itemName": "Fire drill"
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "fixedClock": "2026-10-01T00:00:00Z",
       "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
@@ -1603,7 +1603,8 @@
         "failureKind": "NOT_FOUND",
         "heartbeat": {
           "attempt": 1,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "state": "canResend"
         },
         "output": {
           "boardId": "1234567890",
@@ -1682,7 +1683,8 @@
         "failureKind": "AUTHORIZATION",
         "heartbeat": {
           "attempt": 1,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "state": "canResend"
         },
         "output": {
           "boardId": "1234567890",
@@ -1760,8 +1762,10 @@
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+          "attempt": 3,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "sendCount": 3,
+          "state": "claimed"
         },
         "output": {
           "boardId": "1234567890",
@@ -1796,6 +1800,93 @@
         "itemName": "Fire drill"
       },
       "name": "createItem-uncertain-response",
+      "operation": "createItem",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+        "sendCount": 2,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"create_item\":{\"name\":\"Fire drill\"}},\"errors\":[{\"extensions\":{\"code\":\"ColumnValueException\"}}]}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"date4\":{\"date\":\"2026-02-18\"},\"status\":{\"label\":\"Done\"},\"text\":\"Ready\"}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Fire drill"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "itemName": "Fire drill"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "fixedClock": "2026-10-01T00:00:00Z",
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "date4": {
+            "date": "2026-02-18",
+            "type": "date"
+          },
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          },
+          "text": {
+            "text": "Ready",
+            "type": "text"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Fire drill"
+      },
+      "name": "createItem-value-beside-refusal-uncertain",
       "operation": "createItem"
     },
     {
@@ -1837,8 +1928,10 @@
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+          "attempt": 3,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "sendCount": 3,
+          "state": "claimed"
         },
         "output": {
           "boardId": "1234567890",
@@ -1873,7 +1966,13 @@
         "itemName": "Fire drill"
       },
       "name": "createItem-uncertain-transport",
-      "operation": "createItem"
+      "operation": "createItem",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
@@ -2466,7 +2565,7 @@
       "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
       "exchanges": [
         {
-          "body": "{\"data\":{}}",
+          "body": "{\"data\":{\"change_multiple_column_values\":{\"id\":\"9876543210\",\"name\":\"mondayTestToken0123456789abcdefSENTINELKEY\"}}}",
           "derivedKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
           "headers": {},
           "keyMode": "derived",
@@ -2638,7 +2737,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 1,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "providerId": "5550004",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-01-28T10:05:00Z",
@@ -2700,7 +2802,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
-          "canResend": true
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2756,7 +2858,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
-          "canResend": true
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -2805,19 +2907,18 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
-        },
-        "output": {
-          "itemId": "9876543210"
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "fixedClock": "2026-10-01T00:00:00Z",
       "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
@@ -2867,7 +2968,8 @@
         "failureKind": "NOT_FOUND",
         "heartbeat": {
           "attempt": 1,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "state": "canResend"
         },
         "output": {
           "itemId": "9876543210"
@@ -2925,7 +3027,8 @@
         "failureKind": "AUTHORIZATION",
         "heartbeat": {
           "attempt": 1,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "state": "canResend"
         },
         "output": {
           "itemId": "9876543210"
@@ -2982,8 +3085,10 @@
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+          "attempt": 3,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "sendCount": 3,
+          "state": "claimed"
         },
         "output": {
           "itemId": "9876543210"
@@ -3000,7 +3105,13 @@
         "itemId": "9876543210"
       },
       "name": "addUpdate-uncertain-response",
-      "operation": "addUpdate"
+      "operation": "addUpdate",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
@@ -3038,8 +3149,10 @@
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+          "attempt": 3,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "sendCount": 3,
+          "state": "claimed"
         },
         "output": {
           "itemId": "9876543210"
@@ -3056,7 +3169,13 @@
         "itemId": "9876543210"
       },
       "name": "addUpdate-uncertain-transport",
-      "operation": "addUpdate"
+      "operation": "addUpdate",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
       "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
@@ -3412,7 +3531,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 2,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "providerId": "9876543210",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "boardId": "1234567890",
@@ -3468,7 +3590,7 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
-            "canResend": true
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }
@@ -3518,7 +3640,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 2,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "providerId": "9876543210",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "boardId": "1234567890",
@@ -3571,11 +3696,8 @@
       "operation": "createItem",
       "priorHeartbeat": {
         "attempt": 1,
-        "value": {
-          "attempt": 1,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
-          "canResend": true
-        }
+        "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+        "state": "canResend"
       }
     },
     {
@@ -3616,15 +3738,159 @@
         "groupId": "topics",
         "itemName": "Fire drill"
       },
-      "name": "createItem-prior-in-flight",
+      "name": "createItem-prior-claimed-at-send-cap",
       "operation": "createItem",
       "priorHeartbeat": {
-        "attempt": 1,
-        "value": {
-          "attempt": 1,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
-        }
+        "attempt": 3,
+        "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+        "sendCount": 3,
+        "state": "claimed"
       }
+    },
+    {
+      "attempts": 2,
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"date4\":{\"date\":\"2026-02-18\"},\"status\":{\"label\":\"Done\"},\"text\":\"Ready\"}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Fire drill"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"data\":{\"create_item\":{\"id\":\"9876543210\",\"name\":\"Fire drill\",\"state\":\"active\",\"created_at\":\"2026-01-28T10:00:00Z\",\"updated_at\":\"2026-01-28T10:05:00Z\",\"url\":\"https://acme.monday.com/boards/1234567890/pulses/9876543210\",\"creator_id\":\"48202303\",\"board\":{\"id\":\"1234567890\"},\"group\":{\"id\":\"topics\",\"title\":\"February\"}}},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {
+            "Idempotency-Replayed": "true"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"date4\":{\"date\":\"2026-02-18\"},\"status\":{\"label\":\"Done\"},\"text\":\"Ready\"}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Fire drill"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "providerId": "9876543210",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "item": {
+            "boardId": "1234567890",
+            "createdAt": "2026-01-28T10:00:00Z",
+            "creatorId": "48202303",
+            "group": {
+              "id": "topics",
+              "title": "February"
+            },
+            "id": "9876543210",
+            "name": "Fire drill",
+            "state": "active",
+            "updatedAt": "2026-01-28T10:05:00Z",
+            "url": "https://acme.monday.com/boards/1234567890/pulses/9876543210"
+          },
+          "itemId": "9876543210",
+          "itemName": "Fire drill",
+          "replayed": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-01T00:00:00Z",
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "date4": {
+            "date": "2026-02-18",
+            "type": "date"
+          },
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          },
+          "text": {
+            "text": "Ready",
+            "type": "text"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Fire drill"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createItem-unknown-outcome-resent-below-send-cap",
+      "operation": "createItem"
     },
     {
       "attempts": 2,
@@ -3696,7 +3962,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 2,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "providerId": "5550004",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-01-28T10:05:00Z",
@@ -3722,7 +3991,7 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
-            "canResend": true
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }
@@ -3769,7 +4038,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 2,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "providerId": "5550004",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-01-28T10:05:00Z",
@@ -3792,11 +4064,8 @@
       "operation": "addUpdate",
       "priorHeartbeat": {
         "attempt": 1,
-        "value": {
-          "attempt": 1,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
-          "canResend": true
-        }
+        "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+        "state": "canResend"
       }
     },
     {
@@ -3819,15 +4088,183 @@
         "body": "Fire drill \u003cdone\u003e\nReviewed",
         "itemId": "9876543210"
       },
-      "name": "addUpdate-prior-in-flight",
+      "name": "addUpdate-prior-claimed-at-send-cap",
       "operation": "addUpdate",
       "priorHeartbeat": {
-        "attempt": 1,
-        "value": {
-          "attempt": 1,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
-        }
+        "attempt": 3,
+        "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+        "sendCount": 3,
+        "state": "claimed"
       }
+    },
+    {
+      "attempts": 2,
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Internal server error\"}]}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Fire drill \u0026lt;done\u0026gt;\u003cbr\u003eReviewed",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":{\"create_update\":{\"id\":\"5550004\",\"item_id\":\"9876543210\",\"created_at\":\"2026-01-28T10:05:00Z\",\"creator_id\":\"48202303\"}},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Fire drill \u0026lt;done\u0026gt;\u003cbr\u003eReviewed",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "providerId": "5550004",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "createdAt": "2026-01-28T10:05:00Z",
+          "creatorId": "48202303",
+          "itemId": "9876543210",
+          "updateId": "5550004"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-01T00:00:00Z",
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Fire drill \u003cdone\u003e\nReviewed",
+        "itemId": "9876543210"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addUpdate-unknown-outcome-resent-below-send-cap",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"create_update\":{\"id\":\"5550004\",\"item_id\":\"1111111111\"}}}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Fire drill \u0026lt;done\u0026gt;\u003cbr\u003eReviewed",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "providerId": "5550004",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "itemId": "9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "fixedClock": "2026-10-01T00:00:00Z",
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Fire drill \u003cdone\u003e\nReviewed",
+        "itemId": "9876543210"
+      },
+      "name": "addUpdate-identified-but-unusable",
+      "operation": "addUpdate"
     },
     {
       "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
@@ -3871,7 +4308,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 1,
-          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "providerId": "9876543210",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "boardId": "1234567890",
@@ -4034,7 +4474,10 @@
         "failureKind": "",
         "heartbeat": {
           "attempt": 1,
-          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "providerId": "5550004",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "createdAt": "2026-01-28T10:05:00Z",

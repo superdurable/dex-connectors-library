@@ -54,6 +54,9 @@ func TestApprovalDecisionExampleRunsOnExcelMockWithRealDex(t *testing.T) {
 	require.True(t, decision.IsLogRowAppended)
 	require.False(t, decision.WasLogRowAlreadyPresent)
 	require.True(t, decision.IsSummaryConfirmed)
+	columnReads := mock.ListTableColumns().Calls()
+	require.Len(t, columnReads, 1)
+	require.Equal(t, excel.ListTableColumnsInput{DriveID: integrationDriveID, WorkbookID: policyWorkbookID, Table: policyTableID}, columnReads[0].Input)
 
 	policyReads := mock.GetTableRows().Calls()
 	require.Len(t, policyReads, 1)

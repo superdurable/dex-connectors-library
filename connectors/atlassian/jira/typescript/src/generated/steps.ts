@@ -76,7 +76,7 @@ export interface CreateIssueStepConfig<StepInput, OperationInput = CreateIssueIn
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request may have reached Jira but could not be confirmed; the issue may exist and must not be created again automatically. */
+  /** The send cap is reached, or Jira accepted the create without a usable issue reference, and read-back could not confirm the issue; it may exist and must not be created again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -104,19 +104,22 @@ export interface TransitionIssueStepConfig<StepInput, OperationInput = Transitio
   transitioned: StepTarget<MutationResult<OperationOutput>>;
   /** The issue does not exist or the connection cannot browse it. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** No available transition from the issue's current status matches the request, or several do; the Value lists the current status and the available transitions. */
+  /** No available transition from the issue's current status matches the request, or several do, or on a retry the issue is in neither the recorded source nor destination status; the Value lists the current status and the available transitions. */
   transitionUnavailable?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the transition, such as a required transition screen field or missing permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Jira returned an invalid or oversized issue or transition list. */
+  /** No longer selected. An invalid or oversized issue or transition list proves nothing about the issue, so the Step retries; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the transitionIssue Step from a named connection. */
 export function newTransitionIssueStep<StepInput, OperationInput = TransitionIssueInput, OperationOutput = TransitionIssueOutput>(configuration: TransitionIssueStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, transitioned, notFound, transitionUnavailable, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, transitioned, notFound, transitionUnavailable, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.transitionIssue(), connection: connection.reference, branches: [
     goToBranch("transitioned", transitioned),
@@ -140,7 +143,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request may have reached Jira but could not be confirmed; the comment may exist and must not be added again automatically. */
+  /** The send cap is reached, or Jira accepted the comment without a usable comment reference, and read-back could not confirm the comment; it may exist and must not be added again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

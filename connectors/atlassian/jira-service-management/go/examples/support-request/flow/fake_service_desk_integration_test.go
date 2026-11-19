@@ -33,6 +33,7 @@ const (
 	markerReject         = "[reject]"
 	markerRateLimit      = "[rate-limit]"
 	markerServerError    = "[server-error]"
+	sendCap              = 3
 	markerUnavailable    = "[unavailable]"
 	markerCreateTimeout  = "[create-timeout]"
 	markerSlowCreate     = "[slow-create]"
@@ -205,7 +206,7 @@ func (provider *fakeServiceDesk) createRequest(response http.ResponseWriter, req
 	case strings.Contains(summary, markerRateLimit) && attempt == 1:
 		response.Header().Set("Retry-After", "1")
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"errorMessage":"SENTINEL rate limited"}`)
-	case strings.Contains(summary, markerServerError) && attempt == 1:
+	case strings.Contains(summary, markerServerError) && attempt <= sendCap:
 		provider.writeJSON(response, http.StatusInternalServerError, `{"errorMessage":"SENTINEL internal error"}`)
 	case strings.Contains(summary, markerUnavailable) && attempt == 1:
 		provider.writeJSON(response, http.StatusServiceUnavailable, `{"errorMessage":"SENTINEL temporarily unavailable"}`)

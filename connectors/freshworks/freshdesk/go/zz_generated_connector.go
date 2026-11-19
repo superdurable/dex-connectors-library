@@ -394,9 +394,9 @@ const CreateTicketBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var CreateTicketDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTicket"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: CreateTicketBranchCreated, Description: "Freshdesk created the ticket and returned it."},
+		{ID: CreateTicketBranchCreated, Description: "Freshdesk created the ticket and returned it, or the ticket was read back by the ID Freshdesk returned."},
 		{ID: CreateTicketBranchProviderRejected, Description: "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", Optional: true},
-		{ID: CreateTicketBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", Optional: true},
+		{ID: CreateTicketBranchUncertain, Description: "The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted the ticket with an unusable answer and the ticket could not be read back by its ID. The Step does not send it again.", Optional: true},
 		{ID: CreateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -474,16 +474,15 @@ var UpdateTicketDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateTicketBranchUpdated, Description: "The ticket holds the requested values, written now or by an earlier attempt."},
 		{ID: UpdateTicketBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's agent.", Optional: true},
 		{ID: UpdateTicketBranchProviderRejected, Description: "Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket.", Optional: true},
-		{ID: UpdateTicketBranchInvalidResponse, Description: "Freshdesk returned an invalid or oversized ticket, so the change may have been applied.", Optional: true},
-		{ID: UpdateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: UpdateTicketBranchInvalidResponse, Description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so an invalid or oversized ticket on the read or after the change repeats the absolute change.", Optional: true},
+		{ID: UpdateTicketBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid, or the connection credentials are unusable on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateTicketResult = sdkgo.MutationResult[UpdateTicketOutput]
@@ -504,7 +503,7 @@ type UpdateTicketStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateTicketResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateTicketOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -540,7 +539,6 @@ func NewUpdateTicketStep[IN any](config UpdateTicketStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -553,10 +551,10 @@ const AddNoteBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var AddNoteDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addNote"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: AddNoteBranchAdded, Description: "Freshdesk added the note or reply and returned it."},
+		{ID: AddNoteBranchAdded, Description: "Freshdesk added the note or reply and returned it, or the ticket's conversation list shows it by the ID Freshdesk returned."},
 		{ID: AddNoteBranchNotFound, Description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", Optional: true},
 		{ID: AddNoteBranchProviderRejected, Description: "Freshdesk conclusively rejected the note or reply; nothing was added.", Optional: true},
-		{ID: AddNoteBranchUncertain, Description: "The request was sent but its outcome cannot be confirmed, so the note or reply may exist; the connector never resends it.", Optional: true},
+		{ID: AddNoteBranchUncertain, Description: "The note or reply may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, an oversized refusal, or another server error besides 503; or Freshdesk accepted it with an unusable answer and the ticket's conversation list did not show it by its ID. The Step does not send it again.", Optional: true},
 		{ID: AddNoteBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

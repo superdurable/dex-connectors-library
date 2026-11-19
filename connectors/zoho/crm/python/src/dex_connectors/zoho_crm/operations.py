@@ -143,10 +143,19 @@ def _mutation_result(
             exchange.failure or failure(operation, FailureKind.TRANSPORT, "Zoho CRM request failed"),
             exchange.retry_after,
         )
+    if exchange.outcome == "invalid" or (
+        exchange.status >= 300 and exchange.status not in (400, 401, 403, 404, 411, 413, 414, 415, 422)
+    ):
+        # Both writes are safe to repeat, so an unusable or ambiguous answer retries.
+        if exchange.outcome == "invalid" and exchange.failure is not None:
+            return MutationAttempt.retry(exchange.failure)
+        return MutationAttempt.retry(
+            failure(
+                operation, FailureKind.AVAILABILITY, f"Zoho CRM answered with HTTP {exchange.status}"
+            )
+        )
     if exchange.outcome == "defect":
         branch = "defect"
-    elif exchange.outcome == "invalid":
-        branch = "invalidResponse"
     elif exchange.summary.code == "DUPLICATE_DATA":
         branch = "conflict"
     elif not_found and exchange.summary.is_record_id_invalid:
@@ -677,13 +686,10 @@ class UpsertRecordOperation:
                 try:
                     written = _write_result(exchange)
                 except (ValueError, TypeError, UnicodeDecodeError):
-                    return MutationAttempt.branch_result(
-                        "invalidResponse",
-                        UpsertRecordOutput(input.module),
-                        call_receipt(call, exchange),
+                    return MutationAttempt.retry(
                         failure(
                             "upsertRecord", FailureKind.PROTOCOL, "Zoho CRM returned an invalid write result"
-                        ),
+                        )
                     )
                 return MutationAttempt.branch_result(
                     "upserted",
@@ -739,24 +745,18 @@ class UpdateRecordOperation:
             try:
                 written = _write_result(exchange)
             except (ValueError, TypeError, UnicodeDecodeError):
-                return MutationAttempt.branch_result(
-                    "invalidResponse",
-                    UpdateRecordOutput(input.module),
-                    call_receipt(call, exchange, input.record_id),
+                return MutationAttempt.retry(
                     failure(
                         "updateRecord", FailureKind.PROTOCOL, "Zoho CRM returned an invalid write result"
-                    ),
+                    )
                 )
             if written[0] != input.record_id:
-                return MutationAttempt.branch_result(
-                    "invalidResponse",
-                    UpdateRecordOutput(input.module),
-                    call_receipt(call, exchange, input.record_id),
+                return MutationAttempt.retry(
                     failure(
                         "updateRecord",
                         FailureKind.PROTOCOL,
                         "Zoho CRM reported a write to a record other than the one requested",
-                    ),
+                    )
                 )
             return MutationAttempt.branch_result(
                 "updated",

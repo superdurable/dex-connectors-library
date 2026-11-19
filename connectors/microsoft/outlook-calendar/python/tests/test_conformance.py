@@ -24,6 +24,11 @@ import connector_scenarios as conformance  # noqa: E402
 SCENARIOS = conformance.load_scenarios(
     ROOT / "conformance/connectors/microsoft/outlook-calendar/scenarios.json"
 )
+SCENARIOS = [
+    scenario
+    for scenario in SCENARIOS
+    if scenario["operation"] in {"listEvents", "getEvent", "createEvent", "updateEvent", "queryFreeBusy"}
+]
 CONNECTION = sdk.ConnectionRef("microsoft", "outlook-calendar-test")
 ADAPTER = conformance.PythonOperationAdapter(
     "outlook-calendar",
@@ -47,6 +52,7 @@ ADAPTER = conformance.PythonOperationAdapter(
         "updateEvent": UpdateEventOperation,
         "queryFreeBusy": QueryFreeBusyOperation,
     },
+    with_context=True,
 )
 
 

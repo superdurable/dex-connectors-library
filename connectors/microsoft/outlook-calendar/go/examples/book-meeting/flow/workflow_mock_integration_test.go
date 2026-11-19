@@ -29,6 +29,9 @@ func TestBookMeetingUsesMockDefaultsWithRealDex(t *testing.T) {
 	require.Equal(t, "teamsForBusiness", outcome.Event.OnlineMeeting.Provider)
 	require.Equal(t, input.Attendees, attendeeEmails(outcome.Event.Attendees))
 	require.Empty(t, outcome.ConflictingEventIDs)
+	calendarReads := mock.GetCalendar().Calls()
+	require.Len(t, calendarReads, 1)
+	require.Equal(t, outlookcalendar.GetCalendarInput{CalendarID: "team-calendar"}, calendarReads[0].Input)
 
 	freeBusy := mock.QueryFreeBusy().Calls()
 	require.Len(t, freeBusy, 1)

@@ -391,6 +391,2419 @@
       ],
       "name": "listDatasets-retryThenListed",
       "operation": "listDatasets"
+    },
+    {
+      "callId": "cb86f33c-ff42-425d-850d-fd3524eefac1",
+      "exchanges": [
+        {
+          "body": "{\"datasetReference\":{\"datasetId\":\"reporting\",\"projectId\":\"sample-project\"},\"friendlyName\":\"Reporting\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "friendlyName": "Reporting",
+          "id": "reporting",
+          "projectId": "sample-project"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project"
+      },
+      "name": "getDataset-found",
+      "operation": "getDataset"
+    },
+    {
+      "callId": "cb86f33c-ff42-425d-850d-fd3524eefac1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "friendlyName": "",
+          "id": "",
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project"
+      },
+      "name": "getDataset-notFound",
+      "operation": "getDataset"
+    },
+    {
+      "callId": "cb86f33c-ff42-425d-850d-fd3524eefac1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "friendlyName": "",
+          "id": "",
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project"
+      },
+      "name": "getDataset-providerRejected",
+      "operation": "getDataset"
+    },
+    {
+      "callId": "cb86f33c-ff42-425d-850d-fd3524eefac1",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "friendlyName": "",
+          "id": "",
+          "projectId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project"
+      },
+      "name": "getDataset-invalidResponse",
+      "operation": "getDataset"
+    },
+    {
+      "callId": "cb86f33c-ff42-425d-850d-fd3524eefac1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "friendlyName": "",
+          "id": "",
+          "projectId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": ""
+      },
+      "name": "getDataset-defect",
+      "operation": "getDataset"
+    },
+    {
+      "callId": "cb86f33c-ff42-425d-850d-fd3524eefac1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project"
+      },
+      "name": "getDataset-rateLimit",
+      "operation": "getDataset"
+    },
+    {
+      "callId": "cb86f33c-ff42-425d-850d-fd3524eefac1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project"
+      },
+      "name": "getDataset-serviceUnavailable",
+      "operation": "getDataset"
+    },
+    {
+      "callId": "cb86f33c-ff42-425d-850d-fd3524eefac1",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project"
+      },
+      "name": "getDataset-serverError",
+      "operation": "getDataset"
+    },
+    {
+      "callId": "cb86f33c-ff42-425d-850d-fd3524eefac1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project"
+      },
+      "name": "getDataset-transportFailure",
+      "operation": "getDataset"
+    },
+    {
+      "callId": "9f0395d4-2d4a-43d5-81e9-63edc11d1045",
+      "exchanges": [
+        {
+          "body": "{\"tables\":[{\"tableReference\":{\"projectId\":\"sample-project\",\"datasetId\":\"reporting\",\"tableId\":\"daily\"},\"type\":\"TABLE\"}],\"nextPageToken\":\"later\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "later",
+          "tables": [
+            {
+              "datasetId": "reporting",
+              "id": "daily",
+              "projectId": "sample-project",
+              "type": "TABLE"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listTables-listed",
+      "operation": "listTables"
+    },
+    {
+      "callId": "9f0395d4-2d4a-43d5-81e9-63edc11d1045",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "tables": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listTables-notFound",
+      "operation": "listTables"
+    },
+    {
+      "callId": "9f0395d4-2d4a-43d5-81e9-63edc11d1045",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "tables": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listTables-providerRejected",
+      "operation": "listTables"
+    },
+    {
+      "callId": "9f0395d4-2d4a-43d5-81e9-63edc11d1045",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "tables": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listTables-invalidResponse",
+      "operation": "listTables"
+    },
+    {
+      "callId": "9f0395d4-2d4a-43d5-81e9-63edc11d1045",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "tables": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": ""
+      },
+      "name": "listTables-defect",
+      "operation": "listTables"
+    },
+    {
+      "callId": "9f0395d4-2d4a-43d5-81e9-63edc11d1045",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listTables-rateLimit",
+      "operation": "listTables"
+    },
+    {
+      "callId": "9f0395d4-2d4a-43d5-81e9-63edc11d1045",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listTables-serviceUnavailable",
+      "operation": "listTables"
+    },
+    {
+      "callId": "9f0395d4-2d4a-43d5-81e9-63edc11d1045",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listTables-serverError",
+      "operation": "listTables"
+    },
+    {
+      "callId": "9f0395d4-2d4a-43d5-81e9-63edc11d1045",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "listTables-transportFailure",
+      "operation": "listTables"
+    },
+    {
+      "callId": "c73f1f9a-1f94-4509-83ac-8d9f12a82149",
+      "exchanges": [
+        {
+          "body": "{\"tableReference\":{\"projectId\":\"sample-project\",\"datasetId\":\"reporting\",\"tableId\":\"daily\"},\"type\":\"TABLE\",\"schema\":{\"fields\":[{\"name\":\"country\",\"type\":\"STRING\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "datasetId": "reporting",
+          "fields": [
+            {
+              "name": "country",
+              "type": "STRING"
+            }
+          ],
+          "id": "daily",
+          "projectId": "sample-project",
+          "type": "TABLE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "getTable-found",
+      "operation": "getTable"
+    },
+    {
+      "callId": "c73f1f9a-1f94-4509-83ac-8d9f12a82149",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "datasetId": "",
+          "id": "",
+          "projectId": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "getTable-notFound",
+      "operation": "getTable"
+    },
+    {
+      "callId": "c73f1f9a-1f94-4509-83ac-8d9f12a82149",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "datasetId": "",
+          "id": "",
+          "projectId": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "getTable-providerRejected",
+      "operation": "getTable"
+    },
+    {
+      "callId": "c73f1f9a-1f94-4509-83ac-8d9f12a82149",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "datasetId": "",
+          "id": "",
+          "projectId": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "getTable-invalidResponse",
+      "operation": "getTable"
+    },
+    {
+      "callId": "c73f1f9a-1f94-4509-83ac-8d9f12a82149",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "datasetId": "",
+          "id": "",
+          "projectId": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "",
+        "tableId": "daily"
+      },
+      "name": "getTable-defect",
+      "operation": "getTable"
+    },
+    {
+      "callId": "c73f1f9a-1f94-4509-83ac-8d9f12a82149",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "getTable-rateLimit",
+      "operation": "getTable"
+    },
+    {
+      "callId": "c73f1f9a-1f94-4509-83ac-8d9f12a82149",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "getTable-serviceUnavailable",
+      "operation": "getTable"
+    },
+    {
+      "callId": "c73f1f9a-1f94-4509-83ac-8d9f12a82149",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "getTable-serverError",
+      "operation": "getTable"
+    },
+    {
+      "callId": "c73f1f9a-1f94-4509-83ac-8d9f12a82149",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "getTable-transportFailure",
+      "operation": "getTable"
+    },
+    {
+      "callId": "a34a98a2-88c4-4d74-a517-3207da4a34ce",
+      "exchanges": [
+        {
+          "body": "{\"rows\":[{\"f\":[{\"v\":\"US\"}]}],\"pageToken\":\"later\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily/data",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "later",
+          "rows": [
+            {
+              "cells": [
+                {
+                  "value": "US"
+                }
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "listTableRows-listed",
+      "operation": "listTableRows"
+    },
+    {
+      "callId": "a34a98a2-88c4-4d74-a517-3207da4a34ce",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily/data",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "listTableRows-notFound",
+      "operation": "listTableRows"
+    },
+    {
+      "callId": "a34a98a2-88c4-4d74-a517-3207da4a34ce",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily/data",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "listTableRows-providerRejected",
+      "operation": "listTableRows"
+    },
+    {
+      "callId": "a34a98a2-88c4-4d74-a517-3207da4a34ce",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily/data",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "listTableRows-invalidResponse",
+      "operation": "listTableRows"
+    },
+    {
+      "callId": "a34a98a2-88c4-4d74-a517-3207da4a34ce",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rows": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "",
+        "tableId": "daily"
+      },
+      "name": "listTableRows-defect",
+      "operation": "listTableRows"
+    },
+    {
+      "callId": "a34a98a2-88c4-4d74-a517-3207da4a34ce",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily/data",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "listTableRows-rateLimit",
+      "operation": "listTableRows"
+    },
+    {
+      "callId": "a34a98a2-88c4-4d74-a517-3207da4a34ce",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily/data",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "listTableRows-serviceUnavailable",
+      "operation": "listTableRows"
+    },
+    {
+      "callId": "a34a98a2-88c4-4d74-a517-3207da4a34ce",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily/data",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "listTableRows-serverError",
+      "operation": "listTableRows"
+    },
+    {
+      "callId": "a34a98a2-88c4-4d74-a517-3207da4a34ce",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets/reporting/tables/daily/data",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "datasetId": "reporting",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project",
+        "tableId": "daily"
+      },
+      "name": "listTableRows-transportFailure",
+      "operation": "listTableRows"
+    },
+    {
+      "callId": "7c8ba857-2546-436e-ae8d-ff9a16761835",
+      "exchanges": [
+        {
+          "body": "{\"jobReference\":{\"jobId\":\"sample-job\",\"location\":\"US\"},\"jobComplete\":true,\"rows\":[{\"f\":[{\"v\":\"US\"}]}],\"pageToken\":\"later\",\"totalRows\":\"1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bigquery/v2/projects/sample-project/queries",
+          "requestBody": {
+            "location": "US",
+            "maxResults": 10,
+            "maximumBytesBilled": "1000000",
+            "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10",
+            "timeoutMs": 10000,
+            "useLegacySql": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "jobId": "sample-job",
+          "location": "US",
+          "nextPageToken": "later",
+          "rows": [
+            {
+              "cells": [
+                {
+                  "value": "US"
+                }
+              ]
+            }
+          ],
+          "totalRows": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "US",
+        "maxResults": 10,
+        "maximumBytesBilled": 1000000,
+        "projectId": "sample-project",
+        "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10"
+      },
+      "name": "runReadQuery-completed",
+      "operation": "runReadQuery"
+    },
+    {
+      "callId": "7c8ba857-2546-436e-ae8d-ff9a16761835",
+      "exchanges": [
+        {
+          "body": "{\"jobReference\":{\"jobId\":\"sample-job\",\"location\":\"US\"},\"jobComplete\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bigquery/v2/projects/sample-project/queries",
+          "requestBody": {
+            "location": "US",
+            "maxResults": 10,
+            "maximumBytesBilled": "1000000",
+            "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10",
+            "timeoutMs": 10000,
+            "useLegacySql": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "pending",
+        "failureKind": "",
+        "output": {
+          "jobId": "sample-job",
+          "location": "US",
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "US",
+        "maxResults": 10,
+        "maximumBytesBilled": 1000000,
+        "projectId": "sample-project",
+        "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10"
+      },
+      "name": "runReadQuery-pending",
+      "operation": "runReadQuery"
+    },
+    {
+      "callId": "7c8ba857-2546-436e-ae8d-ff9a16761835",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bigquery/v2/projects/sample-project/queries",
+          "requestBody": {
+            "location": "US",
+            "maxResults": 10,
+            "maximumBytesBilled": "1000000",
+            "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10",
+            "timeoutMs": 10000,
+            "useLegacySql": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "jobId": "",
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "US",
+        "maxResults": 10,
+        "maximumBytesBilled": 1000000,
+        "projectId": "sample-project",
+        "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10"
+      },
+      "name": "runReadQuery-providerRejected",
+      "operation": "runReadQuery"
+    },
+    {
+      "callId": "7c8ba857-2546-436e-ae8d-ff9a16761835",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bigquery/v2/projects/sample-project/queries",
+          "requestBody": {
+            "location": "US",
+            "maxResults": 10,
+            "maximumBytesBilled": "1000000",
+            "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10",
+            "timeoutMs": 10000,
+            "useLegacySql": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "jobId": "",
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "US",
+        "maxResults": 10,
+        "maximumBytesBilled": 1000000,
+        "projectId": "sample-project",
+        "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10"
+      },
+      "name": "runReadQuery-invalidResponse",
+      "operation": "runReadQuery"
+    },
+    {
+      "callId": "7c8ba857-2546-436e-ae8d-ff9a16761835",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "jobId": "",
+          "rows": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "US",
+        "maxResults": 10,
+        "maximumBytesBilled": 1000000,
+        "projectId": "",
+        "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10"
+      },
+      "name": "runReadQuery-defect",
+      "operation": "runReadQuery"
+    },
+    {
+      "callId": "7c8ba857-2546-436e-ae8d-ff9a16761835",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bigquery/v2/projects/sample-project/queries",
+          "requestBody": {
+            "location": "US",
+            "maxResults": 10,
+            "maximumBytesBilled": "1000000",
+            "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10",
+            "timeoutMs": 10000,
+            "useLegacySql": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "US",
+        "maxResults": 10,
+        "maximumBytesBilled": 1000000,
+        "projectId": "sample-project",
+        "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10"
+      },
+      "name": "runReadQuery-rateLimit",
+      "operation": "runReadQuery"
+    },
+    {
+      "callId": "7c8ba857-2546-436e-ae8d-ff9a16761835",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bigquery/v2/projects/sample-project/queries",
+          "requestBody": {
+            "location": "US",
+            "maxResults": 10,
+            "maximumBytesBilled": "1000000",
+            "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10",
+            "timeoutMs": 10000,
+            "useLegacySql": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "US",
+        "maxResults": 10,
+        "maximumBytesBilled": 1000000,
+        "projectId": "sample-project",
+        "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10"
+      },
+      "name": "runReadQuery-serviceUnavailable",
+      "operation": "runReadQuery"
+    },
+    {
+      "callId": "7c8ba857-2546-436e-ae8d-ff9a16761835",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bigquery/v2/projects/sample-project/queries",
+          "requestBody": {
+            "location": "US",
+            "maxResults": 10,
+            "maximumBytesBilled": "1000000",
+            "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10",
+            "timeoutMs": 10000,
+            "useLegacySql": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "US",
+        "maxResults": 10,
+        "maximumBytesBilled": 1000000,
+        "projectId": "sample-project",
+        "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10"
+      },
+      "name": "runReadQuery-serverError",
+      "operation": "runReadQuery"
+    },
+    {
+      "callId": "7c8ba857-2546-436e-ae8d-ff9a16761835",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bigquery/v2/projects/sample-project/queries",
+          "requestBody": {
+            "location": "US",
+            "maxResults": 10,
+            "maximumBytesBilled": "1000000",
+            "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10",
+            "timeoutMs": 10000,
+            "useLegacySql": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "location": "US",
+        "maxResults": 10,
+        "maximumBytesBilled": 1000000,
+        "projectId": "sample-project",
+        "query": "SELECT country FROM `sample-project.reporting.daily` LIMIT 10"
+      },
+      "name": "runReadQuery-transportFailure",
+      "operation": "runReadQuery"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [
+        {
+          "body": "{\"jobReference\":{\"jobId\":\"sample-job\",\"location\":\"US\"},\"jobComplete\":true,\"rows\":[{\"f\":[{\"v\":\"US\"}]}],\"pageToken\":\"later\",\"totalRows\":\"1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/queries/sample-job",
+          "query": {
+            "location": [
+              "US"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "jobId": "sample-job",
+          "location": "US",
+          "nextPageToken": "later",
+          "rows": [
+            {
+              "cells": [
+                {
+                  "value": "US"
+                }
+              ]
+            }
+          ],
+          "totalRows": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "getQueryResults-completed",
+      "operation": "getQueryResults"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [
+        {
+          "body": "{\"jobReference\":{\"jobId\":\"sample-job\",\"location\":\"US\"},\"jobComplete\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/queries/sample-job",
+          "query": {
+            "location": [
+              "US"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "pending",
+        "failureKind": "",
+        "output": {
+          "jobId": "sample-job",
+          "location": "US",
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "getQueryResults-pending",
+      "operation": "getQueryResults"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/queries/sample-job",
+          "query": {
+            "location": [
+              "US"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "jobId": "",
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "getQueryResults-notFound",
+      "operation": "getQueryResults"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/queries/sample-job",
+          "query": {
+            "location": [
+              "US"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "jobId": "",
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "getQueryResults-providerRejected",
+      "operation": "getQueryResults"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/queries/sample-job",
+          "query": {
+            "location": [
+              "US"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "jobId": "",
+          "rows": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "getQueryResults-invalidResponse",
+      "operation": "getQueryResults"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "jobId": "",
+          "rows": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": ""
+      },
+      "name": "getQueryResults-defect",
+      "operation": "getQueryResults"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/queries/sample-job",
+          "query": {
+            "location": [
+              "US"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "getQueryResults-rateLimit",
+      "operation": "getQueryResults"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/queries/sample-job",
+          "query": {
+            "location": [
+              "US"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "getQueryResults-serviceUnavailable",
+      "operation": "getQueryResults"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/queries/sample-job",
+          "query": {
+            "location": [
+              "US"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "getQueryResults-serverError",
+      "operation": "getQueryResults"
+    },
+    {
+      "callId": "0417cb3c-2852-4de7-b626-f43c8994055f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/queries/sample-job",
+          "query": {
+            "location": [
+              "US"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jobId": "sample-job",
+        "location": "US",
+        "maxResults": 10,
+        "pageToken": "next",
+        "projectId": "sample-project"
+      },
+      "name": "getQueryResults-transportFailure",
+      "operation": "getQueryResults"
     }
   ],
   "schemaVersion": 1

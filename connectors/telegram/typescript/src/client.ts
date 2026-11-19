@@ -2,21 +2,24 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry,
-  type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
+  ReauthorizationRequiredError, definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch,
+  newQueryRetry, type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
   type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import {
-  BodyTooLargeError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
+  BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL,
   type ProviderRequest, type ProviderResponse,
 } from '@superdurable/connectors-sdk/providerhttp';
-import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
 import { GetChatDefinition, SendMessageDefinition } from './generated/definitions.js';
-import type { Chat, Config, Credentials, GetChatInput, SendMessageInput, SentMessage } from './generated/models.js';
+import { isCredentialMaterialError, type Chat, type Config, type Credentials, type GetChatInput, type SendMessageInput, type SentMessage } from './generated/models.js';
 
 const tokenPattern = /^[0-9]+:[A-Za-z0-9_-]+$/;
 const usernamePattern = /^@[A-Za-z0-9_]{5,32}$/;
 const chatTypes = new Set(['private', 'group', 'supergroup', 'channel']);
+// Only these statuses prove Telegram refused a send; other 4xx statuses leave the outcome unknown.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 const emptyMessage: SentMessage = { chatId: 0, messageId: 0, date: 0 };
 const emptyChat: Chat = { id: 0, type: '', title: '', username: '' };
 
@@ -69,11 +72,22 @@ export class TelegramClient {
 
   /** Resolve and validate the current bot token without returning it in failures. */
   async botToken(call: Call): Promise<string | undefined> {
+    const resolution = await this.botTokenWithReason(call);
+    return 'token' in resolution ? resolution.token : undefined;
+  }
+
+  /**
+   * Resolve the bot token, separating a terminal failure from a transient one. A revoked, missing,
+   * unselected, broker-refused, or malformed credential is terminal; any other read failure is transient.
+   */
+  async botTokenWithReason(call: Call): Promise<{ token: string } | { isTerminal: boolean }> {
+    let credentials: Credentials;
+    try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) { return { isTerminal: isTerminalCredentialError(error) }; }
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
       const token = credentials.botToken.reveal();
-      return tokenPattern.test(token) ? token : undefined;
-    } catch { return undefined; }
+      return tokenPattern.test(token) ? { token } : { isTerminal: true };
+    } catch { return { isTerminal: true }; }
   }
 
   /** Send one bounded Bot API request and retain positive no-send evidence. */
@@ -93,6 +107,10 @@ export class TelegramClient {
       if (error instanceof BodyTooLargeError && error.status !== undefined)
         return { status: error.status, body: new Uint8Array(),
           retryAfterMs: this.retryAfter(error.headers ?? {}), error: 'tooLarge', requestSent: true };
+      // Headers arrived before the body failed, so the status still decides whether Telegram sent the message.
+      if ((error instanceof ProviderTransportError && !error.isProvablyNotSent || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 100)
+        return { status: error.status, body: new Uint8Array(),
+          retryAfterMs: this.retryAfter(error.headers ?? {}), error: 'read', requestSent: true };
       if (error instanceof ProviderTransportError)
         return { status: 0, body: new Uint8Array(),
           retryAfterMs: 0, error: 'request',
@@ -124,18 +142,39 @@ export class SendMessageOperation implements Mutation<SendMessageInput, SentMess
   /** Keep stable Dex call identity; Telegram receives no deduplication key. */
   idempotencyKey(callId: string): string { return callId; }
 
-  /** Claim a checkpoint before dispatch and classify one Telegram response. */
+  /**
+   * Send under a single-dispatch fence. Telegram has no send idempotency key or message read-back,
+   * so an unknown outcome retries while possible sends stay below the send cap and selects
+   * uncertain at the cap. A definite refusal is never resent.
+   */
   async invoke(call: Call, input: SendMessageInput): Promise<MutationAttempt<SentMessage>> {
-    let fence: ReturnType<typeof newFence>;
-    try { fence = newFence(call, SendMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
-    catch { return sendFailure('defect', 'LOCAL_DEFECT', 'Telegram dispatch fence is unavailable'); }
-    if (fence.decide().kind !== 'sendAllowed')
-      return sendUncertain('TRANSPORT', 'Telegram send outcome cannot be confirmed; do not resend');
     if (!input || !validChatID(input.chatId) || typeof input.text !== 'string' || !input.text ||
       Buffer.from(input.text).toString() !== input.text || [...input.text].length > 4096)
       return sendFailure('defect', 'VALIDATION', 'chatId or text is invalid');
-    const token = await this.client.botToken(call);
-    if (!token) return sendFailure('defect', 'AUTHENTICATION', 'bot token is unavailable or invalid');
+    const operationMaxSends = definitionMaxSends(SendMessageDefinition);
+    let fence: ReturnType<typeof newFence>;
+    try {
+      fence = newFence(call, SendMessageDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000,
+        { maxSends: operationMaxSends });
+    } catch { return sendFailure('defect', 'LOCAL_DEFECT', 'Telegram dispatch fence is unavailable'); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed')
+      return sendRetry('AVAILABILITY', 'Telegram dispatch checkpoint is unreadable; no message was sent in this attempt');
+    if (decision.kind === 'readBackRequired')
+      return sendUncertain('TRANSPORT', 'an earlier attempt may have sent the Telegram message, and the send cap is reached');
+    // A saved message ID proves Telegram created the message, so it is never resent.
+    if (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId)
+      return sendUncertain('TRANSPORT', 'an earlier attempt sent the Telegram message, but its confirmation was lost');
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    // This attempt's send would be the last one the cap allows when no further send remains.
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
+    // An earlier send may have created the message, so a refusal of a resend proves nothing.
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
+    const resolution = await this.client.botTokenWithReason(call);
+    if (!('token' in resolution)) return localSendFailure(fence, hasPossibleEarlierSend, resolution.isTerminal,
+      resolution.isTerminal ? 'AUTHENTICATION' : 'AVAILABILITY',
+      resolution.isTerminal ? 'bot token is unavailable or invalid' : 'bot token could not be read');
+    const token = resolution.token;
     const body = Buffer.from(new URLSearchParams({ chat_id: input.chatId, text: input.text }).toString());
     const url = `${this.client.baseUrl}/bot${token}/sendMessage`;
     let exchange: TelegramExchange;
@@ -143,18 +182,18 @@ export class SendMessageOperation implements Mutation<SendMessageInput, SentMess
       exchange = await fence.dispatch(signal => this.client.exchange(call, 'POST', url,
         { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body, signal));
     } catch (error) {
-      if (error instanceof CheckpointError || error instanceof InsufficientTimeError)
+      // The Fence raises these before sending, including its AggregateError for a short window and a failed notSent.
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || isFenceInsufficientTimeAggregateError(error))
         return sendRetry('TRANSPORT', 'Telegram dispatch was not started');
-      return sendUncertain('TRANSPORT', 'Telegram message outcome is unknown');
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'Telegram message outcome is unknown');
     }
     if (exchange.error === 'request') {
       if (!exchange.requestSent) {
-        try {
-          await fence.recordCanResend();
-          return sendRetry('TRANSPORT', 'Telegram could not be reached before sending');
-        } catch { /* The claimed marker still blocks another send. */ }
+        try { await fence.recordCanResend(); }
+        catch { /* A lost canResend checkpoint leaves the claim, which the next attempt counts. */ }
+        return sendRetry('TRANSPORT', 'Telegram could not be reached before sending');
       }
-      return sendUncertain('TRANSPORT', 'Telegram message outcome is unknown');
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT', 'Telegram message outcome is unknown');
     }
     if (exchange.status === 429 || exchange.status === 503) {
       try { await fence.recordCanResend(); }
@@ -162,26 +201,76 @@ export class SendMessageOperation implements Mutation<SendMessageInput, SentMess
       return sendRetry(exchange.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY',
         'Telegram did not process the send', exchange.retryAfterMs);
     }
-    if (exchange.status >= 500 || exchange.status === 408 || exchange.status === 409)
-      return sendUncertain('AVAILABILITY', 'Telegram message outcome is unknown');
-    if (exchange.error) return sendUncertain('TRANSPORT', 'Telegram send response could not be confirmed');
-    const envelope = parseJSON(exchange.body);
-    if (envelope === undefined) return sendUncertain('PROTOCOL', 'Telegram send response is malformed');
-    if (exchange.status >= 400 && exchange.status < 500 && isRecord(envelope) && envelope.ok !== true)
-      return sendFailure('providerRejected', rejectionKind(exchange.status),
-        `Telegram rejected the message with HTTP ${exchange.status}`);
-    const result = isRecord(envelope) ? envelope.result : undefined;
+    const isSuccessStatus = exchange.status >= 200 && exchange.status < 300;
+    const isBodyReadable = !exchange.error;
+    const envelope = isBodyReadable ? parseJSON(exchange.body) : undefined;
+    // Telegram refuses with an error status, so ok:true or a 2xx means it created the message.
+    const isAccepted = isRecord(envelope) && envelope.ok === true;
+    if (isSuccessStatus && !isBodyReadable) return sendUncertain('TRANSPORT', 'Telegram accepted the message, but its response could not be read');
+    if (isSuccessStatus && !isAccepted) return sendUncertain('PROTOCOL', 'Telegram accepted the message, but its response is malformed');
+    // A body that reports acceptance means a resend could duplicate the message.
+    if (!isSuccessStatus && isAccepted) return sendUncertain('PROTOCOL', 'Telegram returned a contradictory send response');
+    if (!isSuccessStatus) {
+      // An unreadable or oversized error body cannot prove a refusal.
+      if (isBodyReadable && definiteRefusalStatuses.has(exchange.status))
+        return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionKind(exchange.status),
+          `Telegram rejected the message with HTTP ${exchange.status}`);
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'AVAILABILITY',
+        `Telegram message outcome is unknown after HTTP ${exchange.status}`);
+    }
+    if (!isRecord(envelope)) return sendUncertain('PROTOCOL', 'Telegram accepted the message, but its response is malformed');
+    const result = envelope.result;
     const chat = isRecord(result) ? result.chat : undefined;
-    if (exchange.status !== 200 || !isRecord(envelope) || envelope.ok !== true ||
-      !isRecord(result) || !Number.isSafeInteger(result.message_id) || (result.message_id as number) <= 0 ||
+    // Telegram reported acceptance, so an incomplete response is never resent.
+    if (!isRecord(result) || !Number.isSafeInteger(result.message_id) || (result.message_id as number) <= 0 ||
       !Number.isSafeInteger(result.date) || (result.date as number) <= 0 ||
       !isRecord(chat) || !Number.isSafeInteger(chat.id) || chat.id === 0)
       return sendUncertain('PROTOCOL', 'Telegram send response is incomplete');
     const messageId = result.message_id as number;
     try { await fence.recordProviderId(String(messageId)); }
-    catch { /* The claimed marker still blocks another send. */ }
+    catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
     return newMutationBranch('sent', { chatId: chat.id as number, messageId, date: result.date as number });
   }
+}
+
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+}
+
+/** Retry a possibly sent message while the send cap allows another send, else select uncertain. */
+function resendOrSelectUncertain(canResendUnknownOutcome: boolean, kind: Failure['kind'], message: string): MutationAttempt<SentMessage> {
+  // The claim stays the last marker, so the next attempt counts this send.
+  return canResendUnknownOutcome ? sendRetry(kind, message) : sendUncertain(kind, message);
+}
+
+/** Select providerRejected only when no earlier send may have created the message. */
+async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean,
+  kind: Failure['kind'], message: string): Promise<MutationAttempt<SentMessage>> {
+  if (hasPossibleEarlierSend) return sendUncertain(kind, message);
+  try { await fence.recordCanResend(); }
+  catch { /* The branch is terminal, so a lost canResend checkpoint cannot cause a resend. */ }
+  return sendFailure('providerRejected', kind, message);
+}
+
+/**
+ * Return Retry for a transient failure, recording notSent only when no earlier send may have created
+ * the message. A terminal failure selects defect before any possible send and uncertain after one.
+ */
+async function localSendFailure(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean,
+  isTerminal: boolean, kind: Failure['kind'], message: string): Promise<MutationAttempt<SentMessage>> {
+  if (!isTerminal) {
+    if (!hasPossibleEarlierSend) {
+      try { await fence.recordNotSent(); }
+      catch { /* Without notSent the next attempt counts this attempt as a possible send. */ }
+    }
+    // After a possible send, notSent would hide that send, so nothing is recorded.
+    return sendRetry(kind, `${message}; no message was sent in this attempt`);
+  }
+  if (hasPossibleEarlierSend) return sendUncertain(kind, `${message}; an earlier attempt may have sent the message`);
+  try { await fence.recordNotSent(); }
+  catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
+  return sendFailure('defect', kind, message);
 }
 
 /** Read basic metadata for one bot-accessible Telegram chat. */
@@ -193,8 +282,10 @@ export class GetChatOperation implements Query<GetChatInput, Chat> {
   async invoke(call: Call, input: GetChatInput): Promise<QueryAttempt<Chat>> {
     if (!input || !validChatID(input.chatId))
       return chatFailure('defect', 'VALIDATION', 'chatId must be a decimal ID or public @username');
-    const token = await this.client.botToken(call);
-    if (!token) return chatFailure('defect', 'AUTHENTICATION', 'bot token is unavailable or invalid');
+    const resolution = await this.client.botTokenWithReason(call);
+    if (!('token' in resolution) && !resolution.isTerminal) return chatRetry('AVAILABILITY', 'bot token is temporarily unavailable');
+    if (!('token' in resolution)) return chatFailure('defect', 'AUTHENTICATION', 'bot token is unavailable or invalid');
+    const token = resolution.token;
     const url = `${this.client.baseUrl}/bot${token}/getChat?${new URLSearchParams({ chat_id: input.chatId })}`;
     const exchange = await this.client.exchange(call, 'GET', url, { Accept: 'application/json' });
     if (exchange.error === 'request') return chatRetry('AVAILABILITY', 'Telegram request failed');
@@ -238,6 +329,16 @@ export class GetChatOperation implements Query<GetChatInput, Chat> {
   }
 }
 
+/** Match only the Fence's pre-send AggregateError: too little time, and the notSent checkpoint failed. */
+function isFenceInsufficientTimeAggregateError(error: unknown): boolean {
+  return error instanceof AggregateError && error.errors.some(cause => cause instanceof InsufficientTimeError);
+}
+
+/** Report a credential failure that only reconnecting the connection can fix. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
 function validChatID(value: unknown): boolean {
   if (typeof value !== 'string') return false;
   if (usernamePattern.test(value)) return true;

@@ -1,5 +1,7 @@
 # Mixpanel event track example
 
+The same worker package also defines `MixpanelProfileQuery`, a minimal profile lookup Flow. Its mock-backed real-Dex test starts both Flows and verifies the profile distinct ID without exposing profile properties.
+
 This runnable Flow imports one event from Dex Web Start Flow. The start Step fixes a missing `time` once before dispatch; the connector derives `$insert_id` from Dex's stable call identity. The `imported` branch completes after Mixpanel confirms strict ingestion. Optional branches are unwired and fail the Flow. `ConnectionName` is statically `mixpanel`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
@@ -22,7 +24,7 @@ mkdir -p /tmp/mixpanel-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/mixpanel/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/mixpanel/go \
-  --version v0.2.0 --tag connectors/mixpanel/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/mixpanel/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mixpanel-release/connector-release.json \
   --digest-output /tmp/mixpanel-release/connector-release.json.sha256

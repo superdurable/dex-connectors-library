@@ -4,9 +4,11 @@
 import { describe, expect, it } from 'vitest';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { BrevoClient, isPlainEmail } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const credentials = { resolve: async () => ({ apiKey: new SecretString('brevo-test-key') }) };
 
@@ -23,6 +25,27 @@ describe('Brevo client configuration', () => {
     const result = await client.createOrUpdateContact().invoke(call, { email: 'member@meridian.example' });
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.branch).toBe('providerRejected');
+  });
+
+  it('retries only transient credential resolve failures', async () => {
+    const call = { context: { cancellationSignal: new AbortController().signal } } as Call;
+    for (const [error, kind] of [
+      [new Error('connection is not configured'), 'retry'], [new CredentialBrokerUnavailableError(), 'retry'], [new RangeError('unlisted'), 'retry'],
+      [new ReauthorizationRequiredError(), 'branch'], [new ObjectNotFoundError(), 'branch'], [new ConnectionNotSelectedError(), 'branch'],
+      [new CredentialBrokerRejectedError(), 'branch'], [new TypeError('fetch failed'), 'retry'],
+      [new CredentialMaterialError('credential api_key is required'), 'branch'], [new TypeError('project credential decoding failed'), 'branch'],
+    ] as const) {
+      const client = new BrevoClient({}, { resolve: async () => { throw error; } }, { send: async () => { throw new Error('unexpected request'); } });
+      const result = await client.createOrUpdateContact().invoke(call, { email: 'member@meridian.example' });
+      expect(result.kind, error.name).toBe(kind);
+      if (result.kind === 'branch') expect(result.branch).toBe('defect');
+    }
+  });
+
+  it.each([[200, ''], [405, ''], [201, '{"id":0}'], [201, 'not json']])('retries an upsert answered with HTTP %i body %s', async (status, body) => {
+    const client = new BrevoClient({}, credentials, { send: async () => ({ status, headers: {}, body: Buffer.from(body) }) });
+    const call = { context: { cancellationSignal: new AbortController().signal } } as Call;
+    expect(await client.createOrUpdateContact().invoke(call, { email: 'member@meridian.example' })).toMatchObject({ kind: 'retry' });
   });
 
   it('accepts plain email addresses and rejects display names', () => {

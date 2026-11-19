@@ -85,7 +85,10 @@ func (operation UpdateMemberTagsOperation) Invoke(call sdkgo.Call, input UpdateM
 	if err := validateUpdateMemberTagsInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateMemberTagsBranchDefect, UpdateMemberTagsOutput{}, mailchimpFailurePointer(sdkgo.FailureValidation, updateMemberTagsOperation, err.Error()), sdkgo.Receipt{})
 	}
-	connection, failure := operation.client.resolveConnection(call, updateMemberTagsOperation)
+	connection, failure, isTransient := operation.client.resolveClassifiedConnection(call, updateMemberTagsOperation)
+	if failure != nil && isTransient {
+		return sdkgo.NewMutationRetry[UpdateMemberTagsOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateMemberTagsBranchDefect, UpdateMemberTagsOutput{}, failure, sdkgo.Receipt{})
 	}

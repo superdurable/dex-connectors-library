@@ -77,22 +77,39 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	if err := validateUpdateConversationInput(input); err != nil {
 		return sdkgo.NewMutationBranch(UpdateConversationBranchDefect, output, frontFailurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := client.resolveCredentials(call, operationID)
+	credentials, failure, credentialError := client.resolveCredentialsWithCause(call, operationID)
+	if failure != nil && !isTerminalCredentialFailure(credentialError) {
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](frontFailure(sdkgo.FailureAvailability, operationID,
+			"Front credentials were temporarily unavailable; nothing was written in this attempt"), 0)
+	}
+	if failure != nil && call.Context.Attempt() > 1 {
+		// defect would hide writes an earlier attempt may have sent; repeating them after reconnection is safe.
+		return sdkgo.NewMutationRetry[UpdateConversationOutput](frontFailure(sdkgo.FailureAuthentication, operationID,
+			"Reconnect the Front connection; an earlier attempt may have written some changes"), 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateConversationBranchDefect, output, failure, sdkgo.Receipt{})
 	}
 	receipt := client.receipt(call, input.ConversationID)
 	conversationPath := "/conversations/" + input.ConversationID
-	current, attempt, isTerminal := client.readConversationForUpdate(call, credentials, conversationPath, receipt)
+	current, attempt, isTerminal := client.readConversationForUpdate(call, credentials, conversationPath, receipt, false)
 	if isTerminal {
 		return attempt
 	}
 	writes := planConversationWrites(input, current, conversationPath)
 	for index, write := range writes {
 		result := client.exchange(call.Context, credentials, operationID, write)
+		if result.isErrorBodyUnreadable && !result.isRetryable() {
+			// An unreadable refusal body cannot rule out the write, and repeating it is safe.
+			return sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter)
+		}
 		if result.outcome == exchangeNotFound {
 			// The read just found the conversation, so a 404 most likely names an unknown teammate, tag, or status.
 			result.outcome = exchangeRejected
+		}
+		if result.outcome == exchangeInvalid || (result.outcome == exchangeRejected && !isDefiniteRefusalStatus(result.response.statusCode)) {
+			// Every write sets a final value, so an unknown outcome repeats it.
+			return sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter)
 		}
 		if result.outcome != exchangeSucceeded {
 			appliedWritesNote := ""
@@ -105,7 +122,7 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	if len(writes) == 0 {
 		return sdkgo.NewMutationBranch(UpdateConversationBranchUpdated, UpdateConversationOutput{Conversation: current, WasAlreadyApplied: true}, nil, receipt)
 	}
-	updated, attempt, isTerminal := client.readConversationForUpdate(call, credentials, conversationPath, receipt)
+	updated, attempt, isTerminal := client.readConversationForUpdate(call, credentials, conversationPath, receipt, true)
 	if isTerminal {
 		return attempt
 	}
@@ -118,11 +135,21 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 }
 
 // readConversationForUpdate reads the conversation; a merged one selects notFound, because its ID no longer accepts writes.
+// After a write, an invalid or rejected read retries, because the final values are safe to repeat.
 func (client *Client) readConversationForUpdate(
-	call sdkgo.Call, credentials Credentials, conversationPath string, receipt sdkgo.Receipt,
+	call sdkgo.Call, credentials Credentials, conversationPath string, receipt sdkgo.Receipt, isAfterWrite bool,
 ) (Conversation, sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
 	operationID := UpdateConversationDefinition.Operation.OperationID
 	result := client.exchange(call.Context, credentials, operationID, frontRequest{method: http.MethodGet, path: conversationPath})
+	if isAfterWrite && (result.outcome == exchangeInvalid || result.outcome == exchangeRejected) {
+		failure := result.failure
+		failure.Message = "Front accepted the change but its read-back failed: " + failure.Message
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](failure, result.retryAfter), true
+	}
+	if !isAfterWrite && isUnknownConversationRead(result) {
+		// An earlier attempt's write may have applied, and only a definite answer selects a branch on any attempt.
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](result.failure, result.retryAfter), true
+	}
 	if result.outcome != exchangeSucceeded {
 		return Conversation{}, classifyUpdateFailure(result, UpdateConversationOutput{}, receipt, ""), true
 	}
@@ -131,10 +158,27 @@ func (client *Client) readConversationForUpdate(
 		err = errors.New("Front returned another conversation")
 	}
 	if err != nil {
-		return Conversation{}, sdkgo.NewMutationBranch(UpdateConversationBranchInvalidResponse, UpdateConversationOutput{},
-			frontFailurePointer(sdkgo.FailureProtocol, operationID, "Front returned an invalid conversation: "+err.Error()), receipt), true
+		// An invalid conversation is an unknown answer, so the safe change repeats; invalidResponse stays declared.
+		message := "Front returned an invalid conversation: "
+		if isAfterWrite {
+			message = "Front accepted the change but returned an invalid conversation: "
+		}
+		return Conversation{}, sdkgo.NewMutationRetry[UpdateConversationOutput](frontFailure(sdkgo.FailureProtocol, operationID, message+err.Error()), 0), true
 	}
 	return conversation, sdkgo.MutationAttempt[UpdateConversationOutput]{}, false
+}
+
+// isUnknownConversationRead reports a failed read that proves nothing: an invalid answer, or a refusal whose
+// status is not a definite one or whose body was unreadable, oversized, or reflected the token. A merged 301 is definite.
+func isUnknownConversationRead(result frontExchange) bool {
+	switch result.outcome {
+	case exchangeInvalid:
+		return true
+	case exchangeNotFound, exchangeRejected:
+		return !isDefiniteRefusalStatus(result.response.statusCode) || result.isErrorBodyUnreadable
+	default:
+		return false
+	}
 }
 
 // classifyUpdateFailure maps a failed request; appliedWritesNote tells the Flow that earlier writes stay applied.

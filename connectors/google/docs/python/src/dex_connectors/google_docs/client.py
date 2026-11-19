@@ -9,7 +9,19 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -34,7 +46,26 @@ if TYPE_CHECKING:
         ReplaceDocumentTextOperation,
     )
 
-DRIVE_ID = re.compile(r"[A-Za-z0-9_-]{1,256}\Z")
+# Resolve failures that only reconnection repairs; any other resolve failure is transient.
+TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure that only reconnection repairs, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
+
+
+DRIVE_ID =re.compile(r"[A-Za-z0-9_-]{1,256}\Z")
+# Only these statuses prove Google refused a write; every other status is an unknown outcome.
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 TAB_ID = re.compile(r"[A-Za-z0-9_.-]{1,256}\Z")
 GO_PATH_SAFE = "-._~$&+=:@"
 READ_FIELDS = (
@@ -55,6 +86,8 @@ class Exchange:
     body: bytes = b""
     error: str = ""
     request_id: str = ""
+    # A non-2xx body dropped for its size, which could hide a created object.
+    is_error_body_too_large: bool = False
 
 
 class Client:
@@ -132,6 +165,21 @@ class Client:
         except Exception:
             return None
 
+    async def write_credential(self, call: Call) -> tuple[Credentials | None, bool]:
+        """Resolve a write credential and report whether a failure may clear on a later attempt.
+
+        Only a terminal resolve error or an unusable credential is terminal; any other resolution
+        error, including an unconfigured static connection, is transient.
+        """
+        try:
+            credential = await self._credentials.resolve(call)
+        except Exception as error:
+            return None, not is_terminal_credential_error(error)
+        token = credential.access_token.reveal() if credential.access_token else ""
+        if credential.auth_method_id not in ("", "google-oauth", "workspace-domain-delegation"):
+            return None, False
+        return (credential, False) if is_header_safe_credential(token) else (None, False)
+
     async def exchange(
         self,
         call: Call,
@@ -142,8 +190,13 @@ class Client:
         content_type: str = "",
         *,
         single_dispatch: bool = False,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one request, refreshing a rejected credential only for ordinary reads and guarded writes."""
+        """Send one request, refreshing a rejected credential only for ordinary reads and guarded writes.
+
+        `observed_statuses` receives each response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Google answered.
+        """
         for attempt in range(2):
             token = credential.access_token.reveal() if credential.access_token else ""
             headers = {"Authorization": "Bearer " + token}
@@ -157,7 +210,10 @@ class Client:
                 response, observation = await send_traced(self._http_client, request)
             except ProviderTransportError as error:
                 return Exchange(error="beforeSend" if error.provably_not_sent else "afterSend")
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
             limit = self.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
+            is_error_body_too_large = False
             try:
                 contents = await read_bounded_body(response, limit)
             except BodyTooLargeError:
@@ -168,7 +224,7 @@ class Client:
                         error="tooLarge",
                         request_id=_request_id(response.headers),
                     )
-                contents = b""
+                contents, is_error_body_too_large = b"", True
             except ProviderTransportError:
                 return Exchange(
                     status=response.status_code,
@@ -177,7 +233,11 @@ class Client:
                     request_id=_request_id(response.headers),
                 )
             result = Exchange(
-                response.status_code, response.headers, contents, request_id=_request_id(response.headers)
+                response.status_code,
+                response.headers,
+                contents,
+                request_id=_request_id(response.headers),
+                is_error_body_too_large=is_error_body_too_large,
             )
             if (
                 response.status_code != 401

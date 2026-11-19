@@ -149,11 +149,13 @@ loopback-only, stateless Streamable HTTP. It is built from three parts:
 
 - **Tool metadata.** It comes from the generated `ExposedAgentTools()` and
   `Connection.AgentTools()` code of each linked connector module. Tools run
-  through `sdkgo.AgentTool.RunAttemptWithOptions`, which also classifies each
-  attempt's branch. A `limited` Mutation gets its manifest `maxSends` through
-  `sdkgo.WithMaxSends` on every attempt of a call, so its Fence may resend an
-  unconfirmed write within that cap. An `idempotent_write` still retries
-  inline, and every other `non_idempotent_write` runs once.
+  through `sdkgo.AgentTool.RunAttemptWithOptions`. The server classifies each
+  attempt only by the branch the connector selects, as Dex Agents do, and
+  never parses the connector's heartbeat checkpoint. A connector Retry runs
+  the next attempt under the Step retry policy. A `limited` Mutation gets its
+  manifest `maxSends` through `sdkgo.WithMaxSends` on every attempt of a call,
+  so its Fence may resend an unconfirmed write within that cap. For every
+  other write, the connector's Fence decides whether the next attempt sends.
 - **Results.** Tool `_meta` and results follow the Dex MCP conventions:
   - `io.superdurable.dex/effect` and `io.superdurable.dex/approval` describe
     each tool.
@@ -256,6 +258,57 @@ changes, without selecting connectors. See
 Compatibility jobs resolve the latest stable Dex CLI release and the latest
 stable Dex Go SDK on every run, so no checked-in file pins a Dex version. See
 [Dex versions](versioning-and-releases.md#dex-versions).
+
+### Mac Studio verified pull requests
+
+The commit status `mac-studio-verified` = `success` on a pull request head
+means the owner's Mac Studio tooling, `remote-test.py attest`, posted it after
+a passing full local run of that commit. The `local-verification` job trusts it
+only when the newest status with that context on the head is `success` and its
+creator holds the `admin` or `maintain` repository role; on a merge group it
+checks the head of the pull request the queue ref names. On a push to `main`
+it checks the head SHA of the one merged pull request whose squash commit the
+push adds, because the squash commit itself carries no status; a push adding
+several commits, a commit with no or several pull requests, or a pull request
+merged without the status, such as an `--admin` merge, is untrusted. A trusted run skips
+only the jobs the Mac Studio `connector-ci` recipe reproduces, which
+`LOCALLY_VERIFIED_SKIPPED_JOBS` in `script/ci_summary.py` names: `connectors`,
+`connector-conformance`, `language-connectors`,
+`python-connectors-latest-sdk`, `dex-integration-connectors`,
+`dex-compat-current`, and `dex-compat-latest-go-sdk`. Jobs that recipe does
+not reproduce still run: `workspace-connector-dependents`,
+`dex-integration-sdk`, `database-language-integration`,
+`email-language-integration`, `sdkpython-integration`, and
+`sdkts-integration`. So do the planning jobs, repository checks, common
+blocks, SDK unit suites, React, site, Connectors MCP, and
+`connector-generation`, which validates and generation-checks every selected
+connector in one job. `ci-summary` accepts the skipped heavy jobs
+only when `local-verification` succeeded with `trusted=true` on a pull request,
+merge group, or push; every other run is checked exactly as before. Each heavy job
+checks its original dependencies with explicit `needs.<job>.result` checks, so a
+failed or cancelled `local-verification` still runs it, and `ci-summary` fails.
+Trust relies on the reviewed workflow and scripts, so review every pull request
+that changes `.github/workflows/ci.yml`, `script/ci_local_verification.py`, or
+`script/ci_summary.py` with that in mind.
+
+Limitations:
+
+- The skipped jobs are not re-run on the merge-group commit. That commit can
+  differ from the verified head when `main` moved after the local run.
+- A merge group whose base is not already on `main` holds earlier queued pull
+  requests and is never trusted, so it runs every job.
+- A status posted after a pull request's CI started counts only on a rerun or
+  in the merge queue.
+- The skipped jobs are not re-run on `main` after an attested pull request
+  merges. Scheduled and manual runs are never trusted. Of the skipped jobs,
+  the daily scheduled run covers the full catalog with `connectors`,
+  `connector-conformance`, `language-connectors`,
+  `python-connectors-latest-sdk`, and `dex-compat-latest-go-sdk`, but it
+  skips `dex-integration-connectors` and `dex-compat-current`, as it always
+  does. For attested pull requests those two run on merged results only when
+  someone starts CI manually with `workflow_dispatch`, which tests every
+  connector.
+- API errors make the run untrusted.
 
 ## Studio UI distribution
 

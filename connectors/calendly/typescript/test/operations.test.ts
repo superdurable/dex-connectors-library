@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { HeartbeatContext, scenarioCall } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { CalendlyClient } from '../src/client.js';
 import type { Credentials } from '../src/generated/models.js';
@@ -109,5 +109,37 @@ describe('Calendly operation edge cases', () => {
     expect(attempt).toMatchObject({ kind: 'branch', branch: 'listed' });
     expect(refreshes).toBe(1);
     expect(authorization).toEqual(['Bearer old', 'Bearer new', 'Bearer new']);
+  });
+});
+
+describe('Calendly repeat-safe writes retry an answer they cannot read in full', () => {
+  const oversizedRefusal = (status: number): ProviderResponse => ({ status, headers: {}, body: new Uint8Array(MaxErrorBodyBytes + 1) });
+
+  it.each([404, 422])('retries a cancellation refusal %i whose body exceeds the error limit', async status => {
+    const client = new CalendlyClient({}, new StaticCredentialProvider([[connection, credentials]]), { send: async () => oversizedRefusal(status) });
+    const attempt = await client.cancelScheduledEvent().invoke(call('cancelScheduledEvent'), { scheduledEventUri: eventURI });
+    expect(attempt.kind).toBe('retry');
+  });
+
+  it.each([
+    ['malformed', async () => response(200, { resource: { uri: 7 } })],
+    ['oversized', async () => { throw new BodyTooLargeError(200, {}); }],
+  ] as const)('retries a %s read-back after a 403 cancellation refusal', async (_, readBack) => {
+    const client = new CalendlyClient({}, new StaticCredentialProvider([[connection, credentials]]), {
+      send: async request => (request.method === 'POST' ? response(403, { title: 'Permission Denied' }) : readBack()),
+    });
+    const attempt = await client.cancelScheduledEvent().invoke(call('cancelScheduledEvent'), { scheduledEventUri: eventURI });
+    expect(attempt.kind).toBe('retry');
+  });
+
+  it('retries a subscription refusal whose body broke', async () => {
+    const client = new CalendlyClient({}, new StaticCredentialProvider([[connection, { ...credentials, webhookSigningKey: new SecretString('signing-key') }]]), {
+      send: async request => {
+        if (request.method === 'GET') return response(200, { collection: [], pagination: {} });
+        throw new ProviderTransportError(false, 400, {});
+      },
+    });
+    const attempt = await client.createWebhookSubscription().invoke(call('createWebhookSubscription'), { callbackUrl: 'https://hooks.example.com/webhooks/calendly', userUri: userURI, organizationUri: organizationURI });
+    expect(attempt.kind).toBe('retry');
   });
 });

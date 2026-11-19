@@ -273,7 +273,7 @@ func UpdateCardProviderRejected(value trello.UpdateCardOutput, failure *sdkgo.Fa
 	return connectormock.Branch(trello.UpdateCardBranchProviderRejected, value, failure)
 }
 
-// UpdateCardInvalidResponse selects the invalidResponse branch: Trello returned an invalid or oversized card, or a card that does not show a requested change.
+// UpdateCardInvalidResponse selects the invalidResponse branch: No longer selected. An invalid or oversized card, or a card that does not show a requested change, is retried because a repeated update converges; the branch stays declared for compatibility.
 func UpdateCardInvalidResponse(value trello.UpdateCardOutput, failure *sdkgo.Failure) connectormock.Case[trello.UpdateCardOutput] {
 	return connectormock.Branch(trello.UpdateCardBranchInvalidResponse, value, failure)
 }

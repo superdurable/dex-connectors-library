@@ -69,6 +69,7 @@ const (
 )
 
 var (
+	channelPathPattern         = regexp.MustCompile(`^/v1\.0/teams/([^/]+)/channels/([^/]+)$`)
 	channelMessagesPathPattern = regexp.MustCompile(`^/v1\.0/teams/([^/]+)/channels/([^/]+)/messages$`)
 	threadRepliesPathPattern   = regexp.MustCompile(`^/v1\.0/teams/([^/]+)/channels/([^/]+)/messages/([0-9]+)/replies$`)
 	chatMessagesPathPattern    = regexp.MustCompile(`^/v1\.0/chats/([^/]+)/messages$`)
@@ -166,7 +167,7 @@ func TestUnavailablePostRetriesOnceWithTheSameCallIDWithRealDex(t *testing.T) {
 	require.Equal(t, provider.rootCallIDs[0], provider.rootCallIDs[1])
 }
 
-func TestLostPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
+func TestLostPostWithoutAMatchIsResentOnlyUpToTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeTeams(t)
 	provider.setRootPostBehavior(rootPostLostWithoutStoring)
 	harness := newIncidentHarness(t, provider, shortRequestTimeout, EscalationChatSelection{})
@@ -175,11 +176,11 @@ func TestLostPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
 	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "uncertain", incidentInput()))
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.rootPostCount())
+	require.Equal(t, 3, provider.rootPostCount(), "each resend follows an empty read-back and stops at the default send cap of 3")
 	require.Zero(t, provider.replyPostCount())
 }
 
-func TestConflictingPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
+func TestConflictingPostWithoutAMatchIsResentOnlyUpToTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeTeams(t)
 	provider.setRootPostBehavior(rootPostConflict)
 	harness := newIncidentHarness(t, provider, shortRequestTimeout, EscalationChatSelection{})
@@ -187,7 +188,7 @@ func TestConflictingPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
 
 	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "conflict", incidentInput()))
 	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Equal(t, 1, provider.rootPostCount())
+	require.Equal(t, 3, provider.rootPostCount(), "a 409 is an unknown outcome, resent after an empty read-back up to the default send cap of 3")
 	require.Zero(t, provider.replyPostCount())
 }
 
@@ -461,6 +462,9 @@ func (provider *fakeTeams) serveHTTP(response http.ResponseWriter, request *http
 		return
 	}
 	switch {
+	case channelPathPattern.MatchString(request.URL.Path) && request.Method == http.MethodGet:
+		channelID := channelPathPattern.FindStringSubmatch(request.URL.Path)[2]
+		provider.writeJSON(response, http.StatusOK, `{"id":"`+channelID+`","displayName":"Incidents","membershipType":"standard"}`)
 	case channelMessagesPathPattern.MatchString(request.URL.Path) && request.Method == http.MethodPost:
 		provider.postRoot(response, request)
 	case channelMessagesPathPattern.MatchString(request.URL.Path) && request.Method == http.MethodGet:

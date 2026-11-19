@@ -15,21 +15,26 @@ package support
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/http/httptrace"
 	"net/mail"
 	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -121,6 +126,16 @@ type zendeskRequest struct {
 	query          url.Values
 	payload        any
 	idempotencyKey sdkgo.IdempotencyKey
+	// requestContext replaces the call context, such as the fence's write window; nil keeps the call context.
+	requestContext context.Context
+	// isFencedWrite disables transparent replay and reports a traced pre-connection failure as exchangeNotSent.
+	isFencedWrite bool
+}
+
+// dispatchObservation records whether a failed request ever obtained a connection.
+type dispatchObservation struct {
+	hasObtainedConnection     atomic.Bool
+	hasFailedBeforeConnection atomic.Bool
 }
 
 type zendeskResponse struct {
@@ -128,6 +143,12 @@ type zendeskResponse struct {
 	header     http.Header
 	body       []byte
 	requestID  string
+	// hasOversizedBody means a non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal.
+	hasOversizedBody bool
+	// hasTicketIdentity means a non-2xx body carries a ticket ID, which contradicts a refusal.
+	hasTicketIdentity bool
+	// hasCredentialEcho means a non-2xx body contains the API token, so it cannot prove a refusal.
+	hasCredentialEcho bool
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Zendesk request that each operation maps to a branch.
@@ -137,6 +158,8 @@ const (
 	exchangeSucceeded exchangeOutcome = iota + 1
 	exchangeNotFound
 	exchangeRetryable
+	// exchangeNotSent is a fenced write whose connection failed before any request byte reached Zendesk.
+	exchangeNotSent
 	exchangeRejected
 	exchangeInvalid
 	exchangeDefect
@@ -223,28 +246,56 @@ func (client *Client) UpdateTicket() UpdateTicketOperation {
 	return UpdateTicketOperation{client: client}
 }
 
-// resolveCredentials returns a header-safe API token and bare agent address, or a safe defect Failure.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+// resolveWriteCredentials returns a header-safe API token and bare agent address for a Mutation or Query.
+// isTerminal reports credentials that only reconnecting the connection can fix; any other failure is
+// transient and may resolve on a later attempt.
+func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string) (credentials Credentials, failure *sdkgo.Failure, isTerminal bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, zendeskFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	if err == nil && validateResolvedCredentials(credentials) == nil {
+		return credentials, nil, false
 	}
-	return credentials, nil
+	if err == nil || isTerminalCredentialError(err) {
+		return Credentials{}, zendeskFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), true
+	}
+	return Credentials{}, zendeskFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials could not be read"), false
 }
 
-// exchange sends one authenticated request and classifies its response; every operation's retry is duplicate-safe.
+// isTerminalCredentialError reports a credential failure that a later attempt cannot recover from.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+// exchange sends one authenticated request and classifies its response without choosing a branch.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request zendeskRequest) zendeskExchange {
-	return client.exchangeWithContext(call.Context, credentials, operation, request)
+	requestContext := context.Context(call.Context)
+	if request.requestContext != nil {
+		requestContext = request.requestContext
+	}
+	return client.exchangeWithContext(requestContext, credentials, operation, request)
 }
 
 // exchangeWithContext is exchange under ctx; Trigger pollers pass their own ctx because their calls have no Dex Step context.
 func (client *Client) exchangeWithContext(ctx context.Context, credentials Credentials, operation string, request zendeskRequest) zendeskExchange {
+	observation := &dispatchObservation{}
+	if request.isFencedWrite {
+		ctx = httptrace.WithClientTrace(ctx, observation.clientTrace())
+	}
 	httpRequest, err := client.buildRequest(ctx, credentials, request)
 	if err != nil {
 		return zendeskExchange{outcome: exchangeDefect, failure: zendeskFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
+	if request.isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return zendeskExchange{outcome: exchangeDefect, failure: zendeskFailure(sdkgo.FailureLocalDefect, operation, "Zendesk write request could not be prepared")}
+		}
+	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
+		if request.isFencedWrite && observation.hasFailedBeforeConnection.Load() && !observation.hasObtainedConnection.Load() {
+			return zendeskExchange{outcome: exchangeNotSent, failure: zendeskFailure(sdkgo.FailureTransport, operation, "Zendesk could not be reached; no request was sent")}
+		}
 		return zendeskExchange{outcome: exchangeRetryable, failure: zendeskFailure(sdkgo.FailureTransport, operation, "Zendesk request failed before a response arrived")}
 	}
 	body, readErr := providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)
@@ -255,9 +306,11 @@ func (client *Client) exchangeWithContext(ctx context.Context, credentials Crede
 	case errors.Is(readErr, providerhttp.ErrBodyTooLarge) && isSuccess:
 		return zendeskExchange{outcome: exchangeInvalid, response: response, failure: zendeskFailure(sdkgo.FailureResponseTooLarge, operation, "Zendesk response exceeds the configured maxResponseBytes limit")}
 	case readErr != nil && !errors.Is(readErr, providerhttp.ErrBodyTooLarge), closeErr != nil:
+		// The status is kept: a write answered 2xx was accepted even when its body breaks.
 		return zendeskExchange{outcome: exchangeRetryable, response: response, failure: zendeskFailure(sdkgo.FailureTransport, operation, "Zendesk response could not be read")}
 	}
 	response.body = body
+	response.hasOversizedBody = errors.Is(readErr, providerhttp.ErrBodyTooLarge)
 	if isSuccess {
 		if bytes.Contains(body, []byte(credentials.APIToken.Reveal())) {
 			response.body = nil
@@ -305,6 +358,9 @@ func (client *Client) buildRequest(ctx context.Context, credentials Credentials,
 // classifyFailureStatus maps a non-2xx response; Zendesk documents retrying a 409 collision after a fresh read.
 func (client *Client) classifyFailureStatus(response zendeskResponse, credentials Credentials, operation string) zendeskExchange {
 	summary := describeZendeskError(response.body, credentials)
+	response.hasTicketIdentity = hasTicketIdentity(response.body)
+	apiToken := credentials.APIToken.Reveal()
+	response.hasCredentialEcho = apiToken != "" && bytes.Contains(response.body, []byte(apiToken))
 	response.body = nil
 	retryAfter := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 	switch status := response.statusCode; {
@@ -376,6 +432,16 @@ func describeZendeskError(body []byte, credentials Credentials) zendeskErrorSumm
 	return summary
 }
 
+// hasTicketIdentity reports a body whose ticket object carries a positive integer ID.
+func hasTicketIdentity(body []byte) bool {
+	var envelope struct {
+		Ticket struct {
+			ID int64 `json:"id"`
+		} `json:"ticket"`
+	}
+	return json.Unmarshal(body, &envelope) == nil && envelope.Ticket.ID > 0
+}
+
 // isCredentialFreeToken rejects an error token that echoes the API token back.
 func isCredentialFreeToken(token string, secret string) bool {
 	return secret == "" || !strings.Contains(token, secret)
@@ -426,6 +492,28 @@ func validateResolvedCredentials(credentials Credentials) error {
 func isBareEmailAddress(value string) bool {
 	address, err := mail.ParseAddress(value)
 	return err == nil && address.Name == "" && address.Address == value && !strings.ContainsAny(value, " \"'()<>,;")
+}
+
+// clientTrace proves a write unsent only when DNS, connect, or TLS failed and no connection was obtained.
+func (observation *dispatchObservation) clientTrace() *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{
+		GotConn: func(httptrace.GotConnInfo) { observation.hasObtainedConnection.Store(true) },
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			if info.Err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+		ConnectDone: func(_ string, _ string, err error) {
+			if err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
+			if err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+	}
 }
 
 func zendeskFailure(kind sdkgo.FailureKind, operation string, message string) sdkgo.Failure {

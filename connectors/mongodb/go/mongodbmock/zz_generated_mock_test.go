@@ -20,6 +20,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[mongodb.DocumentSet](`{"documents":[{"_id":{"$oid":"507f1f77bcf86cd799439011"},"status":"active"}]}`)
 			return err
 		}},
+		{name: "aggregateDocuments/aggregatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[mongodb.DocumentSet](`{"documents":[{"status":"active","count":3}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +36,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.FindDocuments().Definition().Operation.OperationID != "findDocuments" {
 		t.Errorf("findDocuments mock has another definition")
+	}
+	if mock.AggregateDocuments().Definition().Operation.OperationID != "aggregateDocuments" {
+		t.Errorf("aggregateDocuments mock has another definition")
 	}
 }

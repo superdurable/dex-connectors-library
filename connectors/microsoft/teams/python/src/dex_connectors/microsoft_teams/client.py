@@ -26,6 +26,11 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -311,6 +316,10 @@ class Exchange:
     request_build_failed: bool = False
 
 
+def _interrupted_body_exchange(status: int, headers: httpx.Headers | None) -> Exchange:
+    return Exchange(status, headers, body_read_failed=True, dispatched=True)
+
+
 class Client:
     """Execute Microsoft Teams operations with call-time renewable credentials."""
 
@@ -378,10 +387,24 @@ class Client:
         return PostChatMessageOperation(self)
 
     async def resolve_credentials(self, call: Call) -> Credentials:
-        """Resolve and validate the current access token."""
+        """Resolve and validate the current access token.
+
+        Raises ReauthorizationRequiredError for every terminal credential failure; any other
+        exception is transient.
+        """
         self.operation_deadline.set(time.monotonic() + 25)
-        async with asyncio.timeout(25):
-            credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
+        try:
+            async with asyncio.timeout(25):
+                credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
+        except (ObjectNotFoundError, ConnectionNotSelectedError, CredentialBrokerRejectedError) as error:
+            raise ReauthorizationRequiredError() from error
+        except ValueError as error:
+            # Imported here because the generated connection module imports this one.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                raise ReauthorizationRequiredError() from error
+            raise
         if not is_header_safe_credential(credentials.access_token.reveal()):
             raise ReauthorizationRequiredError()
         return credentials
@@ -398,10 +421,17 @@ class Client:
         query: dict[str, str] | None = None,
         retry_rejected: bool = True,
         timeout: float = 20,
+        observed_statuses: list[int] | None = None,
     ) -> tuple[Exchange, Credentials]:
-        """Send one bounded request and refresh a rejected read credential once."""
+        """Send one bounded request and refresh a rejected read credential once.
+
+        `observed_statuses` receives each response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Graph answered.
+        """
         target = absolute_url or self.endpoint + path + (("?" + query_encode(query)) if query else "")
         for attempt in range(2):
+            status: int | None = None
+            response_headers: httpx.Headers | None = None
             deadline = self.operation_deadline.get()
             remaining = min(timeout, max(0, deadline - time.monotonic())) if deadline is not None else timeout
             if remaining <= 0:
@@ -437,6 +467,8 @@ class Client:
                         except Exception:
                             pass
                     status, response_headers = response.status_code, response.headers
+                    if observed_statuses is not None:
+                        observed_statuses.append(status)
                     try:
                         body = await read_bounded_body(
                             response, self.max_response_bytes if 200 <= status < 300 else MAX_ERROR_BODY_BYTES
@@ -457,8 +489,13 @@ class Client:
                         dispatched=True,
                     ), credentials
             except ProviderTransportError as error:
+                if status is not None:
+                    return _interrupted_body_exchange(status, response_headers), credentials
                 return Exchange(error=error, dispatched=not error.provably_not_sent), credentials
             except (TimeoutError, httpx.HTTPError) as error:
+                if status is not None:
+                    # Graph answered before the body read timed out; the status still classifies the write.
+                    return _interrupted_body_exchange(status, response_headers), credentials
                 return Exchange(error=error, dispatched=True), credentials
             except (ValueError, TypeError) as error:
                 return Exchange(error=error, dispatched=False, request_build_failed=True), credentials

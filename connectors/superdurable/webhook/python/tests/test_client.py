@@ -16,8 +16,17 @@ from dex_connectors.sdk import (
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.credentials import ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.provider import ExchangePendingError, RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.superdurable_webhook import Client, Config, Credentials, SendEventInput
+from dex_connectors.superdurable_webhook._generated.connection import CredentialMaterialError
 
 
 def _config(delivery_url: str) -> Config:
@@ -71,16 +80,50 @@ def _call() -> Call:
 
 
 @pytest.mark.asyncio
-async def test_unexpected_credential_error_is_authentication_defect() -> None:
-    """Map a credential provider failure to the same definite defect as Go."""
+@pytest.mark.parametrize(
+    "terminal",
+    [
+        ReauthorizationRequiredError(),
+        ObjectNotFoundError(),
+        ConnectionNotSelectedError(),
+        CredentialBrokerRejectedError(),
+        CredentialMaterialError("Webhook credential signing_secret is required"),
+    ],
+)
+async def test_terminal_credential_error_is_authentication_defect(terminal: Exception) -> None:
+    """Map a terminal credential provider failure to the same definite defect as Go."""
     class FailingCredentials:
         async def resolve(self, call: Call) -> None:
-            raise RuntimeError("credential source failed")
+            raise terminal
 
     client = Client(_config("https://receiver.example.test/hook"), FailingCredentials())  # type: ignore[arg-type]
     attempt = await client.send_event().invoke(_call(), SendEventInput(b"null"))
     assert attempt.branch == "defect"
     assert attempt.failure is not None and attempt.failure.kind == FailureKind.AUTHENTICATION
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "transient",
+    [
+        CredentialBrokerUnavailableError(),
+        ExchangePendingError(),
+        RefreshFailedError(),
+        ValueError("connection is not configured"),
+        RuntimeError("unlisted credential source failure"),
+    ],
+)
+async def test_transient_credential_error_retries_without_sending(transient: Exception) -> None:
+    """A credential source that is unavailable now returns Retry and never selects defect."""
+    class UnavailableCredentials:
+        async def resolve(self, call: Call) -> None:
+            raise transient
+
+    client = Client(_config("https://receiver.example.test/hook"), UnavailableCredentials())  # type: ignore[arg-type]
+    attempt = await client.send_event().invoke(_call(), SendEventInput(b"null"))
+    assert attempt.kind == "retry"
+    assert attempt.failure is not None and attempt.failure.kind == FailureKind.AVAILABILITY
     await client.aclose()
 
 
@@ -142,3 +185,43 @@ async def test_whsec_secret_accepts_base64_line_breaks() -> None:
         client = Client(_config("https://receiver.example.test/hook"), credentials, http_client)
         attempt = await client.send_event().invoke(_call(), SendEventInput(b"null"))
         assert attempt.branch == "delivered"
+
+
+class _LaterAttemptContext:
+    attempt = 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [302, 405, 410, 412, 418])
+async def test_unlisted_status_retries_as_an_unknown_outcome(status: int) -> None:
+    """Only the definite refusal statuses select rejected; others retry the safe write."""
+    transport = httpx.MockTransport(lambda request: httpx.Response(status))
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = Client(_config("https://receiver.example.test/hook"), _credentials(), http_client)
+        attempt = await client.send_event().invoke(_call(), SendEventInput(b"null"))
+        assert attempt.kind == "retry"
+        assert attempt.failure is not None and attempt.failure.kind == FailureKind.PROTOCOL
+
+
+@pytest.mark.asyncio
+async def test_later_attempt_retries_a_refusal_and_never_selects_defect() -> None:
+    """A later attempt may follow a delivered event, so refusal and defect become Retry."""
+    sent: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        sent.append(request)
+        return httpx.Response(422)
+
+    later_call = replace(_call(), context=_LaterAttemptContext())  # type: ignore[arg-type]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        client = Client(_config("https://receiver.example.test/hook"), _credentials(), http_client)
+        refused = await client.send_event().invoke(later_call, SendEventInput(b"null"))
+        assert refused.kind == "retry"
+        first = await client.send_event().invoke(_call(), SendEventInput(b"null"))
+        assert first.branch == "rejected"
+    blank = Client(_config(""), _credentials())
+    local_failure = await blank.send_event().invoke(later_call, SendEventInput(b"null"))
+    assert local_failure.kind == "retry"
+    assert local_failure.failure is not None and local_failure.failure.kind == FailureKind.VALIDATION
+    await blank.aclose()
+    assert len(sent) == 2

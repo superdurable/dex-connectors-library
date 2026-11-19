@@ -40,12 +40,16 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListLeads() sdkgo.Query[ListLeadsInput, LeadsPage]
 	ListLeadForms() sdkgo.Query[ListLeadFormsInput, LeadFormsPage]
 	GetLead() sdkgo.Query[GetLeadInput, LeadMetadata]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListLeads() sdkgo.Query[ListLeadsInput, LeadsPage] {
+	return operations.client.ListLeads()
+}
 func (operations clientOperations) ListLeadForms() sdkgo.Query[ListLeadFormsInput, LeadFormsPage] {
 	return operations.client.ListLeadForms()
 }
@@ -188,6 +192,83 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential page_access_token is required")
 	}
 	return nil
+}
+
+const ListLeadsBranchListed sdkgo.BranchID = "listed"
+const ListLeadsBranchNotFound sdkgo.BranchID = "notFound"
+const ListLeadsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListLeadsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListLeadsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListLeadsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listLeads"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListLeadsBranchListed, Description: "Meta returned one lead page."},
+		{ID: ListLeadsBranchNotFound, Description: "The form is missing or inaccessible.", Optional: true},
+		{ID: ListLeadsBranchProviderRejected, Description: "Meta definitively rejected the lookup.", Optional: true},
+		{ID: ListLeadsBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: ListLeadsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListLeadsResult = sdkgo.QueryResult[LeadsPage]
+
+type ListLeadsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=facebook-lead-ads"`
+	operationID                    struct{}                                     `connector:"operationId=listLeads"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListLeadsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListLeadsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListLeadsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListLeadsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListLeadsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListLeadsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[LeadsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListLeadsStep[IN any](config ListLeadsStepConfig[IN]) sdkgo.QueryStep[IN, ListLeadsInput, LeadsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("facebook-lead-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListLeadsInput, LeadsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListLeads(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListLeadsResult] {
+			branches := make([]sdkgo.BranchTarget[ListLeadsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListLeadsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListLeadsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListLeadsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListLeadsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListLeadsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListLeadFormsBranchListed sdkgo.BranchID = "listed"

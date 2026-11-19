@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{leadforms.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{leadforms.NewFlow(connection), leadforms.NewLeadListingFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Facebook Lead Ads lead-form inspection Flow: %w", err)
 	}

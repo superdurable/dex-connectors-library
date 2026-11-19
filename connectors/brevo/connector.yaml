@@ -6,17 +6,17 @@ metadata:
   description: Create or update a contact by email and retrieve a contact.
   company: Brevo
   categories: [marketing]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: brevo
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [createOrUpdateContact, getContact]
       triggers: []
     typescript:
       package: '@superdurable/connector-brevo'
-      version: v0.1.1
+      version: v0.1.2
       operations: [createOrUpdateContact, getContact]
       triggers: []
   codegen:
@@ -68,7 +68,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Brevo rejected the contact or credentials., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Brevo returned malformed or oversized data., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # updateEnabled makes the POST an upsert by email, so a repeat sets the same attributes.
+        repeatOnUnknown: safe
       mocks:
         - name: savedDefaultContact
           branch: saved

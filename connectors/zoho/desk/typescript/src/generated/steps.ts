@@ -76,7 +76,7 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Zoho Desk conclusively rejected the ticket, such as an unknown department, status, or assignee; no ticket was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it. */
+  /** The ticket may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal whose body was oversized or untrusted, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the ticket with a 2xx that had no readable ticket ID; or reading back the accepted ticket ID did not confirm it. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -106,15 +106,18 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Zoho Desk conclusively rejected the change, such as an unknown status, an assignee outside the department, or a blueprint that forbids the transition. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Zoho Desk returned an invalid or oversized ticket, so the change may have been applied. */
+  /** Not selected by this release: an invalid or oversized answer to the ticket read or to the change retries, because the change is absolute and an earlier attempt may have sent it. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateTicket Step from a named connection. */
 export function newUpdateTicketStep<StepInput, OperationInput = UpdateTicketInput, OperationOutput = UpdateTicketOutput>(configuration: UpdateTicketStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateTicket(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -137,7 +140,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Zoho Desk conclusively rejected the comment; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed, so the comment may exist; the connector never resends it. */
+  /** The comment may exist: the send cap is reached after answers that were lost, 408, 409, an unlisted status, a refusal whose body was oversized or untrusted, or another server error besides 503; a later attempt was refused, or its credentials were revoked, after an earlier possible send; Zoho Desk accepted the comment with a 2xx that had no readable comment ID or another visibility; or reading back the accepted comment ID did not confirm it. The Step does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

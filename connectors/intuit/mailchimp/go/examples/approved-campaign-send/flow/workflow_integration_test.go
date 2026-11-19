@@ -197,7 +197,7 @@ func TestSlowSendIsSentOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.count("campaign"))
 }
 
-func TestLostSendResponseFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestLostSendResponseIsReadBackWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeMailchimp(t)
 	provider.losesFirstSendResponse = true
 	harness := newLaunchHarness(t, provider, defaultRequestTimeout)
@@ -205,12 +205,41 @@ func TestLostSendResponseFailsWithoutResendingWithRealDex(t *testing.T) {
 	harness.waitForPhase(t, flowID, PhaseAwaitingApproval)
 	require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.ApproveCampaignSend, approval(), nil))
 
+	record := harness.waitForFlowOutput(t, flowID)
+	require.Equal(t, PhaseSent, record.Phase, "the retry read the campaign as sending")
+	require.Equal(t, 1, provider.count("send"), "a send the read-back confirms is never resent")
+	require.Equal(t, 1, provider.appliedSendCount())
+	require.Equal(t, 2, provider.count("campaign"), "one read before the send and one read-back by the retry")
+}
+
+func TestUnappliedLostSendIsResentOnceWithRealDex(t *testing.T) {
+	provider := newFakeMailchimp(t)
+	provider.losesSendsBeforeApplying = 1
+	harness := newLaunchHarness(t, provider, defaultRequestTimeout)
+	flowID := harness.startLaunch(t, "unapplied-lost-send", integrationLaunchInput())
+	harness.waitForPhase(t, flowID, PhaseAwaitingApproval)
+	require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.ApproveCampaignSend, approval(), nil))
+
+	record := harness.waitForFlowOutput(t, flowID)
+	require.Equal(t, PhaseSent, record.Phase, "the retry read a draft and resent below the send cap")
+	require.Equal(t, 2, provider.count("send"))
+	require.Equal(t, 1, provider.appliedSendCount())
+}
+
+func TestEveryLostSendFailsAtTheSendCapWithRealDex(t *testing.T) {
+	provider := newFakeMailchimp(t)
+	provider.losesSendsBeforeApplying = 10
+	harness := newLaunchHarness(t, provider, defaultRequestTimeout)
+	flowID := harness.startLaunch(t, "lost-sends-at-cap", integrationLaunchInput())
+	harness.waitForPhase(t, flowID, PhaseAwaitingApproval)
+	require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.ApproveCampaignSend, approval(), nil))
+
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	require.Equal(t, 1, provider.count("send"), "an unconfirmed send is never resent")
-	require.Equal(t, 1, provider.appliedSendCount())
+	require.Equal(t, int(mailchimp.SendCampaignDefinition.MaxSends), provider.count("send"), "sends stop at the manifest send cap")
+	require.Zero(t, provider.appliedSendCount())
 }
 
 // TestLostWorkerDuringSendCompletesWithoutResendingWithRealDex replaces the Worker mid-send.
@@ -244,7 +273,7 @@ func TestRateLimitedSendWaitsAndSendsOnceWithRealDex(t *testing.T) {
 	require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.ApproveCampaignSend, approval(), nil))
 
 	record := harness.waitForFlowOutput(t, flowID)
-	require.Equal(t, PhaseSent, record.Phase, "a 429 clears the checkpoint, so the retry may send")
+	require.Equal(t, PhaseSent, record.Phase, "a 429 does not count as a send, so the retry may send")
 	times := provider.requestTimes("send")
 	require.Len(t, times, 2)
 	require.GreaterOrEqual(t, times[1].Sub(times[0]), time.Second, "the retry waited for Retry-After")
@@ -335,9 +364,11 @@ type fakeMailchimp struct {
 	failFirstAcceptedTags   bool
 	delaysFirstSend         bool
 	losesFirstSendResponse  bool
-	holdsFirstSend          chan struct{}
-	rateLimitsFirstSend     bool
-	rejectsUpsertFor        string
+	// losesSendsBeforeApplying drops this many first send connections without applying them.
+	losesSendsBeforeApplying int
+	holdsFirstSend           chan struct{}
+	rateLimitsFirstSend      bool
+	rejectsUpsertFor         string
 }
 
 type fakeMember struct {
@@ -540,6 +571,10 @@ func (provider *fakeMailchimp) sendCampaign(response http.ResponseWriter, reques
 		provider.writeProblem(response, http.StatusTooManyRequests, "Too Many Requests")
 		return
 	}
+	if attempt <= provider.losesSendsBeforeApplying {
+		provider.dropConnection(response)
+		return
+	}
 	provider.mutex.Lock()
 	if provider.campaign.status != "save" {
 		provider.mutex.Unlock()
@@ -560,14 +595,19 @@ func (provider *fakeMailchimp) sendCampaign(response http.ResponseWriter, reques
 		case <-time.After(2 * time.Minute):
 		}
 	case provider.losesFirstSendResponse && attempt == 1:
-		hijacker, isHijacker := response.(http.Hijacker)
-		require.True(provider.t, isHijacker)
-		connection, _, err := hijacker.Hijack()
-		require.NoError(provider.t, err)
-		require.NoError(provider.t, connection.Close())
+		provider.dropConnection(response)
 		return
 	}
 	response.WriteHeader(http.StatusNoContent)
+}
+
+// dropConnection closes the connection without a response, as a lost Mailchimp reply.
+func (provider *fakeMailchimp) dropConnection(response http.ResponseWriter) {
+	hijacker, isHijacker := response.(http.Hijacker)
+	require.True(provider.t, isHijacker)
+	connection, _, err := hijacker.Hijack()
+	require.NoError(provider.t, err)
+	require.NoError(provider.t, connection.Close())
 }
 
 func (provider *fakeMailchimp) sleepWhileDelayed() {

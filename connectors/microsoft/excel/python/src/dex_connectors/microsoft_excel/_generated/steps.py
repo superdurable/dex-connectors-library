@@ -147,6 +147,8 @@ def new_update_values_step(
     defect: dex.StepTarget[MutationResult[UpdateValuesOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateValuesOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateValuesInput, UpdateValuesOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Microsoft Excel Step connection name must match its connection reference")
@@ -200,6 +202,7 @@ def new_append_table_rows_step(
     defect: dex.StepTarget[MutationResult[AppendTableRowsOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[AppendTableRowsOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, AppendTableRowsInput, AppendTableRowsOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Microsoft Excel Step connection name must match its connection reference")
@@ -237,6 +240,7 @@ def new_append_table_rows_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

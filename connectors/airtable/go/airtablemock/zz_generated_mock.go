@@ -203,7 +203,7 @@ func UpsertRecordsProviderRejected(value airtable.UpsertedRecords, failure *sdkg
 	return connectormock.Branch(airtable.UpsertRecordsBranchProviderRejected, value, failure)
 }
 
-// UpsertRecordsInvalidResponse selects the invalidResponse branch: Airtable applied or rejected the upsert but returned an invalid or oversized response.
+// UpsertRecordsInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe.
 func UpsertRecordsInvalidResponse(value airtable.UpsertedRecords, failure *sdkgo.Failure) connectormock.Case[airtable.UpsertedRecords] {
 	return connectormock.Branch(airtable.UpsertRecordsBranchInvalidResponse, value, failure)
 }
@@ -250,7 +250,7 @@ func UpdateRecordsProviderRejected(value airtable.UpdatedRecords, failure *sdkgo
 	return connectormock.Branch(airtable.UpdateRecordsBranchProviderRejected, value, failure)
 }
 
-// UpdateRecordsInvalidResponse selects the invalidResponse branch: Airtable applied or rejected the update but returned an invalid or oversized response.
+// UpdateRecordsInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because repeating absolute values is safe.
 func UpdateRecordsInvalidResponse(value airtable.UpdatedRecords, failure *sdkgo.Failure) connectormock.Case[airtable.UpdatedRecords] {
 	return connectormock.Branch(airtable.UpdateRecordsBranchInvalidResponse, value, failure)
 }

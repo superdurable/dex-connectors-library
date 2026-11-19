@@ -37,7 +37,7 @@ func TestDisableAndEnableSetAnAbsoluteValueThatIsSafeToRepeat(t *testing.T) {
 	require.Equal(t, true, graph.User(userID)["accountEnabled"])
 }
 
-func TestAccountStateRetriesAStaleReadBackAndThenRejects(t *testing.T) {
+func TestAccountStateRetriesAStaleReadBackEvenLate(t *testing.T) {
 	graph := graphfake.New(t.Cleanup)
 	userID := graph.SeedUser("ada@contoso.com", true, nil)
 	graph.Intercept = func(request graphfake.Request, _ int) (graphfake.Answer, bool) {
@@ -51,10 +51,8 @@ func TestAccountStateRetriesAStaleReadBackAndThenRejects(t *testing.T) {
 
 	_, err := sdkgo.RunMutation(newTestDexContext("disable"), client.DisableUser(), testConnection, entraid.DisableUserInput{UserKey: userID})
 	require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind)
-	late, err := sdkgo.RunMutation(newLateTestDexContext("disable"), client.DisableUser(), testConnection, entraid.DisableUserInput{UserKey: userID})
-	require.NoError(t, err)
-	require.Equal(t, entraid.DisableUserBranchProviderRejected, late.Branch)
-	require.True(t, late.Value.IsAccountEnabled, "the rejected Result carries the account Microsoft returned")
+	_, err = sdkgo.RunMutation(newLateTestDexContext("disable"), client.DisableUser(), testConnection, entraid.DisableUserInput{UserKey: userID})
+	require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind, "the accepted write is never reported as rejected")
 }
 
 func TestAccountStateSelectsNotFoundAndProviderRejected(t *testing.T) {

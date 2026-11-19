@@ -511,8 +511,8 @@ var CreatePageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreatePageBranchCreated, Description: "Notion created the page and returned or confirmed its ID."},
 		{ID: CreatePageBranchNotFound, Description: "The database or data source does not exist or is not shared with the connection; nothing was created.", Optional: true},
-		{ID: CreatePageBranchProviderRejected, Description: "Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created.", Optional: true},
-		{ID: CreatePageBranchUncertain, Description: "The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically.", Optional: true},
+		{ID: CreatePageBranchProviderRejected, Description: "Notion conclusively rejected the first send with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as a missing property, a value of the wrong type, or missing Insert content capability; nothing was created.", Optional: true},
+		{ID: CreatePageBranchUncertain, Description: "Sends up to the send cap had unknown outcomes, or Notion accepted the page without a confirmable ID; Notion has no idempotency key, so the page may exist and must not be created again automatically.", Optional: true},
 		{ID: CreatePageBranchInvalidResponse, Description: "Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created.", Optional: true},
 		{ID: CreatePageBranchDefect, Description: "Local input, credential authorization, or connector definition is invalid, including a database ID whose database holds several data sources.", Optional: true},
 	},
@@ -601,7 +601,7 @@ var UpdatePagePropertiesDefinition = sdkgo.MutationDefinition{
 		{ID: UpdatePagePropertiesBranchUpdated, Description: "Notion applied the property values and returned the page."},
 		{ID: UpdatePagePropertiesBranchNotFound, Description: "The page does not exist or is not shared with the connection; nothing was changed.", Optional: true},
 		{ID: UpdatePagePropertiesBranchProviderRejected, Description: "Notion conclusively rejected the update, such as a missing property, a value of the wrong type, a locked or archived page, or missing Update content capability.", Optional: true},
-		{ID: UpdatePagePropertiesBranchInvalidResponse, Description: "Notion applied the update but returned an invalid or oversized page.", Optional: true},
+		{ID: UpdatePagePropertiesBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe.", Optional: true},
 		{ID: UpdatePagePropertiesBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -631,6 +631,8 @@ type UpdatePagePropertiesStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdatePagePropertiesResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatePagePropertiesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdatePagePropertiesStep[IN any](config UpdatePagePropertiesStepConfig[IN]) sdkgo.MutationStep[IN, UpdatePagePropertiesInput, UpdatePagePropertiesOutput] {

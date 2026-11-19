@@ -9,9 +9,11 @@ from datetime import UTC, datetime, timedelta
 from email.utils import parseaddr
 from typing import Any
 
+import httpx
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -28,7 +30,13 @@ from dex_connectors.sdk.singledispatch import (
 )
 
 from ._generated import definitions
-from .client import Client, Exchange, bamboohr_failure
+from .client import (
+    DEFINITE_REFUSAL_STATUSES,
+    DOCUMENTED_CONFLICT_STATUSES,
+    Client,
+    Exchange,
+    bamboohr_failure,
+)
 from .models import (
     AddEmployeeInput,
     AddEmployeeOutput,
@@ -49,6 +57,8 @@ from .models import (
     UpdateEmployeeOutput,
 )
 
+# A definite refusal or BambooHR's documented duplicate-email conflict.
+_DEFINITE_WRITE_STATUSES = DEFINITE_REFUSAL_STATUSES | DOCUMENTED_CONFLICT_STATUSES
 _EMPLOYEE_ID = re.compile(r"^[1-9][0-9]{0,18}$")
 _FIELD_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
 _FIELD_ID = re.compile(r"^[1-9][0-9]{0,9}$")
@@ -192,6 +202,19 @@ def _employee_record(body: bytes, expected_id: str, fields: tuple[str, ...]) -> 
     return EmployeeRecord(identifier, values, tuple(sorted(name for name in fields if name not in values)))
 
 
+def _credential_query_failure(
+    operation: str, failure: Failure, is_terminal: bool, empty: Any
+) -> QueryAttempt[Any]:
+    """Select defect for a terminal credential failure and retry a transient one."""
+    if is_terminal:
+        return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+    return QueryAttempt.retry(
+        bamboohr_failure(
+            operation, FailureKind.AVAILABILITY, "connection credentials are temporarily unavailable"
+        )
+    )
+
+
 def _query_failure(exchange: Exchange, empty: Any, receipt: Receipt) -> QueryAttempt[Any] | None:
     if exchange.outcome == "succeeded":
         return None
@@ -228,9 +251,11 @@ class GetEmployeeOperation:
                 Receipt(),
                 bamboohr_failure("getEmployee", FailureKind.VALIDATION, str(error)),
             )
-        credentials, failure = await self.client.resolve_credentials(call, "getEmployee")
+        credentials, failure, is_terminal = await self.client.resolve_credentials_with_terminality(
+            call, "getEmployee"
+        )
         if failure is not None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _credential_query_failure("getEmployee", failure, is_terminal, empty)
         assert credentials is not None
         query = {"fields": ",".join(input.fields)}
         if input.include_future_values:
@@ -288,9 +313,11 @@ class FindEmployeeByEmailOperation:
                 Receipt(),
                 bamboohr_failure("findEmployeeByEmail", FailureKind.VALIDATION, str(error)),
             )
-        credentials, failure = await self.client.resolve_credentials(call, "findEmployeeByEmail")
+        credentials, failure, is_terminal = await self.client.resolve_credentials_with_terminality(
+            call, "findEmployeeByEmail"
+        )
         if failure is not None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _credential_query_failure("findEmployeeByEmail", failure, is_terminal, empty)
         assert credentials is not None
         fields = ["workEmail", "homeEmail"]
         fields.extend(field for field in input.fields if field not in fields and field not in _SUMMARY_FIELDS)
@@ -420,9 +447,11 @@ class ListEmployeeChangesOperation:
                 Receipt(),
                 bamboohr_failure("listEmployeeChanges", FailureKind.VALIDATION, str(error)),
             )
-        credentials, failure = await self.client.resolve_credentials(call, "listEmployeeChanges")
+        credentials, failure, is_terminal = await self.client.resolve_credentials_with_terminality(
+            call, "listEmployeeChanges"
+        )
         if failure is not None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _credential_query_failure("listEmployeeChanges", failure, is_terminal, empty)
         assert credentials is not None
         since = input.since.astimezone(UTC)
         query_instant = (
@@ -571,9 +600,11 @@ class ListTimeOffRequestsOperation:
                 Receipt(),
                 bamboohr_failure("listTimeOffRequests", FailureKind.VALIDATION, str(error)),
             )
-        credentials, failure = await self.client.resolve_credentials(call, "listTimeOffRequests")
+        credentials, failure, is_terminal = await self.client.resolve_credentials_with_terminality(
+            call, "listTimeOffRequests"
+        )
         if failure is not None:
-            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
+            return _credential_query_failure("listTimeOffRequests", failure, is_terminal, empty)
         assert credentials is not None
         query = {"filter": _time_off_filter(input), "page": str(page), "pageSize": str(page_size)}
         exchange = await self.client.exchange(
@@ -624,6 +655,34 @@ def _mutation_exchange(
     return MutationAttempt.branch_result(branch, value, receipt, exchange.failure)
 
 
+def _mutation_write_exchange(
+    exchange: Exchange, value: UpdateEmployeeOutput, receipt: Receipt
+) -> MutationAttempt[UpdateEmployeeOutput] | None:
+    # A write without a definite refusal may have applied; the next attempt reads first.
+    is_unknown_outcome = exchange.outcome == "invalid" or (
+        exchange.outcome in ("rejected", "not_found")
+        and (exchange.status_code not in _DEFINITE_WRITE_STATUSES or not exchange.is_readable_refusal)
+    )
+    if is_unknown_outcome:
+        assert exchange.failure is not None
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+    return _mutation_exchange(exchange, value, receipt)
+
+
+def _pre_write_read_exchange(
+    exchange: Exchange, value: UpdateEmployeeOutput, receipt: Receipt
+) -> MutationAttempt[UpdateEmployeeOutput] | None:
+    # Only a readable allowlisted refusal or a 404 selects a branch; anything else is unknown.
+    is_unknown_outcome = exchange.outcome == "invalid" or (
+        exchange.outcome in ("rejected", "not_found")
+        and (exchange.status_code not in DEFINITE_REFUSAL_STATUSES or not exchange.is_readable_refusal)
+    )
+    if is_unknown_outcome:
+        assert exchange.failure is not None
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+    return _mutation_exchange(exchange, value, receipt)
+
+
 class UpdateEmployeeOperation:
     """Set absolute plain employee fields and read them back."""
 
@@ -652,7 +711,17 @@ class UpdateEmployeeOperation:
                 Receipt(),
                 bamboohr_failure("updateEmployee", FailureKind.VALIDATION, str(error)),
             )
-        credentials, failure = await self.client.resolve_credentials(call, "updateEmployee")
+        credentials, failure, is_terminal_credential = await self.client.resolve_credentials_with_terminality(
+            call, "updateEmployee"
+        )
+        if failure is not None and not is_terminal_credential:
+            return MutationAttempt.retry(
+                bamboohr_failure(
+                    "updateEmployee",
+                    FailureKind.AVAILABILITY,
+                    "connection credentials could not be read; nothing was sent",
+                )
+            )
         if failure is not None:
             return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
         assert credentials is not None
@@ -667,19 +736,16 @@ class UpdateEmployeeOperation:
             f"/employees/{input.employee_id}",
             {"fields": ",".join(names)},
         )
-        terminal = _mutation_exchange(current_exchange, empty, receipt)
+        terminal = _pre_write_read_exchange(current_exchange, empty, receipt)
         if terminal is not None:
             return terminal
         try:
             current = _employee_record(current_exchange.body, input.employee_id, names)
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                receipt,
+            return MutationAttempt.retry(
                 bamboohr_failure(
                     "updateEmployee", FailureKind.PROTOCOL, "BambooHR returned an invalid employee"
-                ),
+                )
             )
         writes = {
             name: value
@@ -693,12 +759,9 @@ class UpdateEmployeeOperation:
         write_exchange = await self.client.exchange(
             call, credentials, "updateEmployee", "POST", f"/employees/{input.employee_id}", payload=writes
         )
-        terminal = _mutation_exchange(write_exchange, UpdateEmployeeOutput(employee=current), receipt)
+        terminal = _mutation_write_exchange(write_exchange, UpdateEmployeeOutput(employee=current), receipt)
         if terminal is not None:
             return terminal
-        output = UpdateEmployeeOutput(
-            employee=EmployeeRecord(fields={}), written_fields=tuple(sorted(writes))
-        )
         stored_exchange = await self.client.exchange(
             call,
             credentials,
@@ -707,19 +770,17 @@ class UpdateEmployeeOperation:
             f"/employees/{input.employee_id}",
             {"fields": ",".join(names)},
         )
-        terminal = _mutation_exchange(stored_exchange, output, receipt)
-        if terminal is not None:
-            return terminal
+        # After an accepted write, every failed read-back retries the safe absolute write.
+        if stored_exchange.outcome != "succeeded":
+            assert stored_exchange.failure is not None
+            return MutationAttempt.retry(stored_exchange.failure, stored_exchange.retry_after)
         try:
             stored = _employee_record(stored_exchange.body, input.employee_id, names)
         except (ValueError, TypeError, KeyError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                output,
-                receipt,
+            return MutationAttempt.retry(
                 bamboohr_failure(
                     "updateEmployee", FailureKind.PROTOCOL, "BambooHR returned an invalid employee"
-                ),
+                )
             )
         unmatched = tuple(
             name for name in names if stored.fields is None or stored.fields.get(name) != fields[name]
@@ -775,7 +836,11 @@ class AddEmployeeOperation:
             )
         receipt = self.client.receipt(call)
         try:
-            fence = Fence(call, definitions.ADD_EMPLOYEE_DEFINITION.step_defaults.execute_method_timeout)
+            fence = Fence(
+                call,
+                definitions.ADD_EMPLOYEE_DEFINITION.step_defaults.execute_method_timeout,
+                max_sends=call.max_sends,
+            )
             decision = await fence.decide()
         except ValueError as error:
             return MutationAttempt.branch_result(
@@ -785,21 +850,47 @@ class AddEmployeeOperation:
                 bamboohr_failure("addEmployee", FailureKind.LOCAL_DEFECT, str(error)),
             )
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return _add_uncertain(
-                receipt,
-                FailureKind.TRANSPORT,
-                "the dispatch checkpoint is unavailable or untrusted; the request is not sent again",
+            return MutationAttempt.retry(
+                bamboohr_failure(
+                    "addEmployee",
+                    FailureKind.AVAILABILITY,
+                    "the dispatch checkpoint could not be read; nothing was sent",
+                )
             )
+        saved_identifier = decision.marker.provider_id if decision.marker else ""
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            identifier = decision.marker.provider_id if decision.marker else ""
-            if not _valid_employee_id(identifier):
+            if not _valid_employee_id(saved_identifier):
                 return _add_uncertain(
                     receipt,
                     FailureKind.TRANSPORT,
-                    "an earlier attempt may have sent the request; no employee ID is available for read-back",
+                    "earlier attempts may have added the employee up to the send cap; "
+                    "no employee ID is available for read-back",
                 )
-            return await self._read_back(call, identifier)
-        credentials, failure = await self.client.resolve_credentials(call, "addEmployee")
+            return await self._read_back(call, saved_identifier)
+        # BambooHR returns an ID only for an employee it added, so a saved ID is read back, never resent.
+        if saved_identifier:
+            return await self._read_back(call, saved_identifier)
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
+        credentials, failure, is_terminal_credential = await self.client.resolve_credentials_with_terminality(
+            call, "addEmployee"
+        )
+        if failure is not None and has_possible_earlier_send:
+            # notSent would hide the earlier possible send, so nothing is recorded.
+            if is_terminal_credential:
+                return _add_uncertain(
+                    receipt,
+                    FailureKind.AUTHENTICATION,
+                    "an earlier attempt may have added the employee, and the connection credentials "
+                    "are unavailable to resend it; reconnect the connection",
+                )
+            return MutationAttempt.retry(
+                bamboohr_failure(
+                    "addEmployee",
+                    FailureKind.AVAILABILITY,
+                    "connection credentials could not be read; nothing was sent in this attempt",
+                )
+            )
         if failure is not None:
             try:
                 await fence.record_not_sent()
@@ -811,7 +902,13 @@ class AddEmployeeOperation:
                         "credentials and not-sent checkpoint are unavailable",
                     )
                 )
-            return MutationAttempt.branch_result("defect", empty, receipt, failure)
+            if is_terminal_credential:
+                return MutationAttempt.branch_result("defect", empty, receipt, failure)
+            return MutationAttempt.retry(
+                bamboohr_failure(
+                    "addEmployee", FailureKind.AVAILABILITY, "connection credentials could not be read"
+                )
+            )
         assert credentials is not None
         payload = dict(input.fields)
         payload.update(firstName=input.first_name, lastName=input.last_name)
@@ -824,9 +921,17 @@ class AddEmployeeOperation:
             if value:
                 payload[key] = value
 
+        observed_heads: list[tuple[int, httpx.Headers]] = []
+
         async def send(deadline: datetime) -> Exchange:
             return await self.client.exchange(
-                call, credentials, "addEmployee", "POST", "/employees", payload=payload
+                call,
+                credentials,
+                "addEmployee",
+                "POST",
+                "/employees",
+                payload=payload,
+                observed_heads=observed_heads,
             )
 
         try:
@@ -840,7 +945,18 @@ class AddEmployeeOperation:
                 )
             )
         except Exception:
-            return _add_uncertain(receipt, FailureKind.TRANSPORT, "the dispatch outcome is unavailable")
+            if observed_heads and 200 <= observed_heads[-1][0] < 300:
+                # The write window cut the body after BambooHR accepted, so only the headers remain.
+                status_code, headers = observed_heads[-1]
+                exchange = Exchange("unavailable", status_code, headers)
+            else:
+                return _resend_or_select_add_uncertain(
+                    can_resend_unknown_outcome,
+                    receipt,
+                    bamboohr_failure(
+                        "addEmployee", FailureKind.TRANSPORT, "the dispatch outcome is unavailable"
+                    ),
+                )
         if 200 <= exchange.status_code < 300:
             try:
                 identifier = _employee_id(_read_json(exchange.body)["id"])
@@ -848,6 +964,7 @@ class AddEmployeeOperation:
                 match = _LOCATION_ID.search(exchange.headers.get("Location", ""))
                 identifier = match.group(1) if match else ""
             if not identifier:
+                # BambooHR accepted this POST, so a resend would duplicate the employee.
                 return _add_uncertain(
                     receipt,
                     FailureKind.PROTOCOL,
@@ -874,16 +991,45 @@ class AddEmployeeOperation:
                 )
             assert exchange.failure is not None
             return MutationAttempt.retry(exchange.failure, exchange.retry_after)
-        if exchange.outcome in ("unavailable", "invalid"):
-            assert exchange.failure is not None
-            return MutationAttempt.uncertain(empty, exchange.failure, receipt)
-        if exchange.outcome == "defect":
+        assert exchange.failure is not None
+        if exchange.outcome == "defect" and not has_possible_earlier_send:
             return MutationAttempt.branch_result("defect", empty, receipt, exchange.failure)
-        return MutationAttempt.branch_result("providerRejected", empty, receipt, exchange.failure)
+        if (
+            exchange.outcome in ("rejected", "not_found")
+            and exchange.status_code in _DEFINITE_WRITE_STATUSES
+            and exchange.is_readable_refusal
+        ):
+            # An earlier send may have added the employee, so a refusal of this resend proves nothing.
+            if has_possible_earlier_send:
+                return MutationAttempt.uncertain(empty, exchange.failure, receipt)
+            try:
+                await fence.record_can_resend()
+            except Exception:
+                return MutationAttempt.retry(
+                    bamboohr_failure(
+                        "addEmployee",
+                        FailureKind.AVAILABILITY,
+                        "BambooHR refused the request, but the refusal checkpoint failed",
+                    )
+                )
+            return MutationAttempt.branch_result("providerRejected", empty, receipt, exchange.failure)
+        # A timeout, 5xx, 408, redirect, or other status leaves the outcome unknown.
+        return _resend_or_select_add_uncertain(
+            can_resend_unknown_outcome, receipt, exchange.failure, exchange.retry_after
+        )
 
     async def _read_back(self, call: Call, identifier: str) -> MutationAttempt[AddEmployeeOutput]:
         receipt = self.client.receipt(call, identifier)
-        credentials, failure = await self.client.resolve_credentials(call, "addEmployee")
+        credentials, failure, is_terminal_credential = await self.client.resolve_credentials_with_terminality(
+            call, "addEmployee"
+        )
+        if failure is not None and is_terminal_credential:
+            return _add_uncertain(
+                receipt,
+                FailureKind.AUTHENTICATION,
+                "the employee may have been added, and the connection credentials are unavailable "
+                "to read it back; reconnect the connection",
+            )
         if failure is not None:
             return MutationAttempt.retry(failure)
         assert credentials is not None
@@ -906,6 +1052,15 @@ class AddEmployeeOperation:
             )
         assert exchange.failure is not None
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+
+
+def _resend_or_select_add_uncertain(
+    can_resend_unknown_outcome: bool, receipt: Receipt, failure: Failure, retry_after: float = 0
+) -> MutationAttempt[AddEmployeeOutput]:
+    if can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return MutationAttempt.retry(failure, retry_after)
+    return MutationAttempt.uncertain(AddEmployeeOutput(), failure, receipt)
 
 
 def _add_uncertain(receipt: Receipt, kind: FailureKind, message: str) -> MutationAttempt[AddEmployeeOutput]:

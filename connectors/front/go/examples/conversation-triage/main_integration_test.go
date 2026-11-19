@@ -122,7 +122,7 @@ func TestTriageCommentRetries503OnceWithRealDex(t *testing.T) {
 }
 
 // TestLostWorkerDuringCommentFailsWithoutResendingWithRealDex replaces the Worker after Front received the comment.
-func TestLostWorkerDuringCommentFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestLostWorkerDuringCommentResendsWithinTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeFront(t)
 	scenario := seedTriageScenario(provider)
 	provider.holdsFirstComment = make(chan struct{})
@@ -134,13 +134,11 @@ func TestLostWorkerDuringCommentFailsWithoutResendingWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstComment)
-	require.Equal(t, dex.FlowFailed, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, dex.FlowCompleted, result.Status, "the new Worker counts the lost send and resends below the cap: %s", result.ErrorMessage)
 	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("comment"), "the attempt on the new Worker did not send the comment again")
-	require.Len(t, provider.conversation(scenario.triagedID).comments, 1, "the held comment exists once")
-	require.Zero(t, provider.count("tagAdd"), "an unconfirmed comment is not followed by routing")
+	require.Equal(t, 2, provider.count("comment"), "the attempt on the new Worker resent the comment")
+	require.Len(t, provider.conversation(scenario.triagedID).comments, 2, "limited accepts a duplicate comment instead of an uncertain Flow")
+	require.Equal(t, 1, provider.count("tagAdd"), "routing follows the confirmed comment")
 }
 
 // TestSlowTagWriteIsSafeToRepeatWithRealDex repeats a tag write after a Worker disconnect.

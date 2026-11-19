@@ -42,7 +42,7 @@ CREATE_ENVELOPE_FROM_TEMPLATE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "DocuSign holds the envelope this Step execution created; wasRecovered tells whether a later attempt found it by its custom field after an interrupted one.", False),
         BranchDefinition(PROVIDER_REJECTED, "DocuSign conclusively rejected the envelope, such as an unknown template, an unfilled or unknown role, an invalid email address, an exhausted envelope allowance, or a user who may not send; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The create request was sent but DocuSign's answer was lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, so an envelope may exist that this Result does not name; do not create another automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap was reached with DocuSign's answer lost, a server error, or unreadable, and no envelope with this Step's custom field could be found, or several envelopes carry it, or DocuSign refused a resend after an earlier attempt may have sent, or a terminal credential failure followed a possible send, or an accepted create, including an error answer that named an envelope, could not be found within the attempts or recorded as accepted, so an envelope may exist that this Result does not name; do not create another automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -93,7 +93,7 @@ VOID_ENVELOPE_DEFINITION = MutationDefinition(
         BranchDefinition(NOT_VOIDABLE, "The envelope is completed, declined, or still a draft, which DocuSign does not void; status names which.", True),
         BranchDefinition(NOT_FOUND, "The envelope does not exist in the connection's account or the user may not see it.", True),
         BranchDefinition(PROVIDER_REJECTED, "DocuSign conclusively rejected the void, such as a user who is not the sender or lacks permission.", True),
-        BranchDefinition(INVALID_RESPONSE, "DocuSign returned a malformed or oversized response.", True),
+        BranchDefinition(INVALID_RESPONSE, "DocuSign returned malformed or oversized account information before the void was sent; an unreadable answer after the void retries, since voiding again is safe.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -101,8 +101,7 @@ VOID_ENVELOPE_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 0, timedelta(seconds=3900)),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 DOWNLOAD_COMBINED_DOCUMENT_DEFINITION = QueryDefinition(

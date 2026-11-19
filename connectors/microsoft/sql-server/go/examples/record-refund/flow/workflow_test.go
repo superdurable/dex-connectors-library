@@ -65,21 +65,24 @@ func TestResolveRefundOutcomeTellsThisFlowsRowFromAnotherFlowsRow(t *testing.T) 
 	require.Equal(t, StatusRecorded, outcome.Status)
 	require.True(t, outcome.WasReconciled, "a replay that inserted nothing is confirmed by the read-back")
 
-	uncertain := sqlserver.ExecuteStatementResult{Branch: sqlserver.ExecuteStatementBranchUncertain, Receipt: replayed.Receipt}
-	outcome, err = resolveRefundOutcome(uncertain, thisRow)
-	require.NoError(t, err)
-	require.Equal(t, StatusRecorded, outcome.Status)
-
 	otherRow := sqlserver.QueryRowsResult{Branch: sqlserver.QueryRowsBranchCompleted, Value: sqlserver.RowSet{Rows: []map[string]any{refundLedgerRow("9", otherFlowKey)}}}
 	outcome, err = resolveRefundOutcome(replayed, otherRow)
 	require.NoError(t, err)
 	require.Equal(t, StatusAlreadyRecorded, outcome.Status, "NOT EXISTS matched another Flow's order_id")
 	require.Equal(t, otherFlowKey, outcome.Refund.IdempotencyKey)
 
-	_, err = resolveRefundOutcome(uncertain, sqlserver.QueryRowsResult{Branch: sqlserver.QueryRowsBranchCompleted})
-	require.ErrorIs(t, err, errRefundNotFound, "an uncertain insert without a row stops for review")
-	_, err = resolveRefundOutcome(uncertain, otherRow)
-	require.ErrorIs(t, err, errRefundNotFound, "an uncertain insert never claims another Flow's row")
+	_, err = resolveRefundOutcome(replayed, sqlserver.QueryRowsResult{Branch: sqlserver.QueryRowsBranchCompleted})
+	require.ErrorIs(t, err, errRefundNotFound, "a replayed insert without a row stops for review")
+}
+
+func TestMapToAddRefundToDailyTotalInputAddsTheRecordedAmountToOneRow(t *testing.T) {
+	flow := NewFlow(sqlserver.Connection{})
+	input := flow.MapToAddRefundToDailyTotalInput(Outcome{Status: StatusRecorded, Refund: Refund{AmountUSD: "250.00"}})
+	require.Equal(t, AddRefundToDailyTotalStatement, input.Statement)
+	require.Equal(t, []any{"250.00"}, input.Parameters)
+	require.Zero(t, input.IdempotencyKeyPlaceholder)
+	require.False(t, input.ReturnsOutputRows)
+	require.Equal(t, int64(1), *input.MaxRowsAffected)
 }
 
 func TestRecordRefundRequestRejectsInvalidInputBeforeTheDatabase(t *testing.T) {

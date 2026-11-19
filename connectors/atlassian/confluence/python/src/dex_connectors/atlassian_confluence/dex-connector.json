@@ -1,10 +1,10 @@
 {
   "connectorId": "confluence",
-  "releaseTag": "connectors/atlassian/confluence/go/v0.25.0",
+  "releaseTag": "connectors/atlassian/confluence/go/v0.25.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-atlassian-confluence",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -351,7 +351,7 @@
       "kind": "mutation",
       "operationId": "addComment",
       "inputType": "AddCommentInput",
-      "description": "Add one footer comment with a Markdown or plain-text body to a page, sending it at most once per Step execution and confirming an unconfirmed attempt by reading the page's comments.",
+      "description": "Add one footer comment with a Markdown or plain-text body to a page; an unconfirmed attempt is confirmed by reading the page's comments before a resend within the send cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

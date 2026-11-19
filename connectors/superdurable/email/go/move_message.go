@@ -56,7 +56,7 @@ func (operation MoveMessageOperation) Invoke(call sdkgo.Call, input MoveMessageI
 	}
 	credentials, failure := operation.client.resolveCredentials(call, moveMessageOperation)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(MoveMessageBranchDefect, MovedMessage{}, failure, sdkgo.Receipt{})
+		return repeatSafeWriteCredentialAttempt[MovedMessage](call, MoveMessageBranchDefect, *failure)
 	}
 	ctx, cancel := context.WithTimeout(call.Context, imapOperationTimeout)
 	defer cancel()

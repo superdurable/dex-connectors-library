@@ -25,19 +25,38 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret GitLab personal access token from User Settings > Access Tokens at https://gitlab.com/-/user_settings/personal_access_tokens. Create a token with read_api for reads or api for label updates, and copy it. Blank prevents requests. */
+  /** Secret GitLab personal access token from User Settings > Access Tokens at https://gitlab.com/-/user_settings/personal_access_tokens. Create a token with read_api for reads or api for issue, release, or repository writes, and copy it. Blank prevents requests. */
   accessToken: SecretString;
+}
+
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
 }
 
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["access_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new CredentialMaterialError("credential access_token has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+  if (!fields["access_token"]) throw new CredentialMaterialError("credential access_token is required");
   credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
   return credentials;
 }

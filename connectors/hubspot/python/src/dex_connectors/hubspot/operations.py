@@ -300,10 +300,32 @@ def _query_outcome(
     )
 
 
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses that prove HubSpot refused a write; any other failure leaves the write unknown."""
+
+
 def _mutation_outcome(
-    client: Client, call: Call, operation: str, result: Exchange, empty: Output, object_id: str = ""
+    client: Client,
+    call: Call,
+    operation: str,
+    result: Exchange,
+    empty: Output,
+    object_id: str = "",
+    is_http_status: bool = True,
 ) -> MutationAttempt[Output]:
-    if result.disposition == "retry":
+    # Both writes are repeat-safe, so an HTTP status that does not prove a refusal, such as a bare 409,
+    # is retried. A documented CONFLICT is definite even after an earlier send: repeating our own
+    # write sets the same values on the same record and cannot conflict with it.
+    is_unknown_status = (
+        is_http_status
+        and result.disposition != "conflict"
+        and result.status != 0
+        and not 200 <= result.status < 300
+        and result.status not in _DEFINITE_REFUSAL_STATUSES
+        and (result.failure is None or result.failure.kind != FailureKind.QUOTA_EXHAUSTED)
+    )
+    # An oversized or unusable answer may follow an applied write, and repeating it is safe.
+    if result.disposition in ("retry", "invalidResponse") or is_unknown_status:
         assert result.failure is not None
         return MutationAttempt.retry(result.failure, result.retry_after)
     return MutationAttempt.branch_result(
@@ -445,6 +467,7 @@ class UpsertObjectOperation:
                 f"crm/objects/2026-09/{input.object_type}/batch/upsert",
                 body=body,
             )
+            is_batch_error = False
             if not result.disposition:
                 try:
                     decoded = _mapping(json.loads(result.body))
@@ -461,6 +484,8 @@ class UpsertObjectOperation:
                             else 400
                         )
                         category = _text(first.get("category"))
+                        # A 2xx batch error is HubSpot's definite answer, whatever its status field says.
+                        is_batch_error = True
                         result = classify_response(
                             "upsertObject",
                             Exchange(status, result.headers, json.dumps({"category": category}).encode()),
@@ -482,15 +507,13 @@ class UpsertObjectOperation:
                             self.client.receipt(call, result, value.id),
                         )
                 except (ValueError, TypeError, OverflowError) as error:
-                    return MutationAttempt.branch_result(
-                        "invalidResponse",
-                        empty,
-                        self.client.receipt(call, result),
-                        failure("upsertObject", FailureKind.PROTOCOL, str(error)),
-                    )
+                    # The upsert may have applied; repeating it converges on the same record.
+                    return MutationAttempt.retry(failure("upsertObject", FailureKind.PROTOCOL, str(error)))
             if result.disposition == "conflict" and dispatch == 0:
                 continue
-            return _mutation_outcome(self.client, call, "upsertObject", result, empty)
+            return _mutation_outcome(
+                self.client, call, "upsertObject", result, empty, is_http_status=not is_batch_error
+            )
         raise AssertionError("unreachable upsert dispatch")
 
 
@@ -529,6 +552,11 @@ class UpdateObjectOperation:
             f"crm/objects/2026-09/{input.object_type}/{input.object_id}",
             body={"properties": input.properties},
         )
+        if result.disposition == "conflict":
+            # HubSpot's 409 CONFLICT, such as for an email another contact owns, is the only path to conflict.
+            return MutationAttempt.branch_result(
+                "conflict", empty, self.client.receipt(call, result, input.object_id), result.failure
+            )
         if result.disposition:
             return _mutation_outcome(self.client, call, "updateObject", result, empty, input.object_id)
         try:
@@ -536,11 +564,9 @@ class UpdateObjectOperation:
             if value.id != input.object_id:
                 raise ValueError("record ID mismatch")
         except (ValueError, TypeError, OverflowError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                empty,
-                self.client.receipt(call, result, input.object_id),
-                failure("updateObject", FailureKind.PROTOCOL, "HubSpot returned an invalid record"),
+            # The update may have applied; setting the same values again is safe.
+            return MutationAttempt.retry(
+                failure("updateObject", FailureKind.PROTOCOL, "HubSpot returned an invalid record")
             )
         return MutationAttempt.branch_result(
             "updated", value, self.client.receipt(call, result, input.object_id)

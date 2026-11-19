@@ -90,7 +90,7 @@ UPLOAD_FILE_DEFINITION = MutationDefinition(
         BranchDefinition(UPLOADED, "Microsoft Graph stored the file, or the file at that path already has exactly this content, such as from an earlier attempt of the Step.", False),
         BranchDefinition(ALREADY_EXISTS, "With the fail conflict behavior, a different file or a folder already has the name, so nothing was written.", True),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the upload, such as a missing or read-only parent folder, a blocked file type, or a full quota.", True),
-        BranchDefinition(INVALID_RESPONSE, "Microsoft Graph returned an invalid or oversized response while reading back a conflicting item.", True),
+        BranchDefinition(INVALID_RESPONSE, "Retained for compatibility and no longer selected: an invalid or oversized read-back of a conflicting item now retries.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -105,8 +105,8 @@ CREATE_FOLDER_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Microsoft Graph created the folder or a folder with that name already existed.", False),
         BranchDefinition(NAME_CONFLICT, "A file, not a folder, already has the name in the parent folder, so nothing was created.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder.", True),
-        BranchDefinition(INVALID_RESPONSE, "Microsoft Graph returned an invalid or oversized response to the creation or its read-back.", True),
+        BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the folder creation, such as a missing or read-only parent folder or a full quota.", True),
+        BranchDefinition(INVALID_RESPONSE, "Retained for compatibility and no longer selected: an invalid or oversized creation answer or read-back now retries.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

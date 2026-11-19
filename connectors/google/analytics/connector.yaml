@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-analytics-4
   displayName: Google Analytics 4
-  description: Read a GA4 report, property metadata, and one audience page.
+  description: Read GA4 standard and realtime reports, property and data stream metadata, and audience pages.
   company: Google
   categories: [analytics, marketing]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: google-analytics-4
   languages:
@@ -94,6 +94,54 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: runRealtimeReport
+      goName: RunRealtimeReport
+      inputType: RunRealtimeReportInput
+      outputType: ReportPage
+      kind: query
+      description: Run one bounded GA4 realtime report for the last 30 minutes.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: reported, goName: Reported, description: Google returned realtime report rows.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google rejected the realtime request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized report JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local report input or credentials are invalid., optional: true}
+      mocks:
+        - {name: reportedDefault, branch: reported, default: true, description: One realtime country row was returned., output: {rows: [{dimensions: [US], metrics: ['5']}], rowCount: 1}}
+    - name: listProperties
+      goName: ListProperties
+      inputType: ListPropertiesInput
+      outputType: PropertiesPage
+      kind: query
+      description: List one page of GA4 properties under an Analytics account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a property page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google rejected the property listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized property JSON., optional: true}
+        - {id: defect, goName: Defect, description: Account ID or page input is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One GA4 property was listed., output: {properties: [{name: properties/123456789, displayName: Example Analytics, timeZone: America/Los_Angeles, currencyCode: USD}]}}
+    - name: listDataStreams
+      goName: ListDataStreams
+      inputType: ListDataStreamsInput
+      outputType: DataStreamsPage
+      kind: query
+      description: List one page of GA4 data streams for a property.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a data stream page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google rejected the data stream listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized data stream JSON., optional: true}
+        - {id: defect, goName: Defect, description: Property ID or page input is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One web stream was listed., output: {dataStreams: [{name: properties/123456789/dataStreams/42, displayName: Example Web, type: WEB_DATA_STREAM}]}}
     - name: runReport
       goName: RunReport
       inputType: RunReportInput
@@ -102,7 +150,7 @@ spec:
       description: Run one bounded GA4 Data API report for a property, reporting-time-zone date range, requested dimensions and metrics.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: reported, goName: Reported, description: Google returned a report page.}
         - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the report request., optional: true}
@@ -122,7 +170,7 @@ spec:
       description: Read the GA4 property name, display name, time zone, and currency.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Google returned property metadata.}
         - {id: notFound, goName: NotFound, description: The property does not exist or is inaccessible., optional: true}
@@ -143,7 +191,7 @@ spec:
       description: List one bounded GA4 audience page with identity, display name, and description.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Google returned an audience page.}
         - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the lookup., optional: true}

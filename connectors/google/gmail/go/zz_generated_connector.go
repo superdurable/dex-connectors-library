@@ -512,6 +512,7 @@ func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[
 
 const SendMessageBranchSent sdkgo.BranchID = "sent"
 const SendMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const SendMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var SendMessageDefinition = sdkgo.MutationDefinition{
@@ -519,6 +520,7 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendMessageBranchSent, Description: "Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match."},
 		{ID: SendMessageBranchProviderRejected, Description: "Gmail conclusively rejected the message.", Optional: true},
+		{ID: SendMessageBranchUncertain, Description: "Gmail may have sent the message, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it.", Optional: true},
 		{ID: SendMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -544,6 +546,7 @@ type SendMessageStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) SendMessageInput                               `connector:"mapToOperationInput"`
 	Sent                              sdkgo.Target[SendMessageResult]                         `connector:"branch=sent"`
 	ProviderRejected                  sdkgo.Target[SendMessageResult]                         `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendMessageResult]                         `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[SendMessageResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
@@ -564,12 +567,15 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 		Operation:       config.Connection.operations.SendMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SendMessageResult] {
-			branches := make([]sdkgo.BranchTarget[SendMessageResult], 0, 3)
+			branches := make([]sdkgo.BranchTarget[SendMessageResult], 0, 4)
 			if config.Sent.HasStep() {
 				branches = append(branches, config.Sent.BranchTarget(SendMessageBranchSent))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(SendMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendMessageBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SendMessageBranchDefect))
@@ -585,6 +591,7 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 const ReplyToMessageBranchSent sdkgo.BranchID = "sent"
 const ReplyToMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const ReplyToMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ReplyToMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const ReplyToMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var ReplyToMessageDefinition = sdkgo.MutationDefinition{
@@ -593,6 +600,7 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToMessageBranchSent, Description: "Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains."},
 		{ID: ReplyToMessageBranchProviderRejected, Description: "Gmail conclusively rejected the reply.", Optional: true},
 		{ID: ReplyToMessageBranchInvalidResponse, Description: "Gmail returned an invalid or oversized source message response before sending the reply.", Optional: true},
+		{ID: ReplyToMessageBranchUncertain, Description: "Gmail may have sent the reply, and the send cap was reached, or the connection credentials need reconnection, before Sent Mail read-back could confirm it.", Optional: true},
 		{ID: ReplyToMessageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -619,6 +627,7 @@ type ReplyToMessageStepConfig[IN any] struct {
 	Sent                              sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=sent"`
 	ProviderRejected                  sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=providerRejected,optional"`
 	InvalidResponse                   sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[ReplyToMessageResult]                      `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMessageOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
@@ -639,7 +648,7 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 		Operation:       config.Connection.operations.ReplyToMessage(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[ReplyToMessageResult] {
-			branches := make([]sdkgo.BranchTarget[ReplyToMessageResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[ReplyToMessageResult], 0, 5)
 			if config.Sent.HasStep() {
 				branches = append(branches, config.Sent.BranchTarget(ReplyToMessageBranchSent))
 			}
@@ -648,6 +657,9 @@ func NewReplyToMessageStep[IN any](config ReplyToMessageStepConfig[IN]) sdkgo.Mu
 			}
 			if config.InvalidResponse.HasStep() {
 				branches = append(branches, config.InvalidResponse.BranchTarget(ReplyToMessageBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(ReplyToMessageBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ReplyToMessageBranchDefect))

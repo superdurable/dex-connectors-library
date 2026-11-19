@@ -59,9 +59,8 @@ func TestRecordPaymentSendsTheExactAmountUnderTheStepKey(t *testing.T) {
 		`"Reference":"ch_3QxF2a","IsReconciled":true}`, request.body)
 }
 
-func TestRecordPaymentReportsAnUnknownOutcomeInsteadOfPayingAgain(t *testing.T) {
+func TestRecordPaymentRetriesAnUnknownOutcomeUnderTheKey(t *testing.T) {
 	for name, reply := range map[string]func(http.ResponseWriter){
-		"cached internal error": func(response http.ResponseWriter) { writeJSON(t, response, http.StatusInternalServerError, `{}`) },
 		"payment for another invoice": func(response http.ResponseWriter) {
 			writeValue(t, response, http.StatusOK, map[string]any{"Payments": []any{paymentJSON(otherContactID)}})
 		},
@@ -71,13 +70,24 @@ func TestRecordPaymentReportsAnUnknownOutcomeInsteadOfPayingAgain(t *testing.T) 
 	} {
 		t.Run(name, func(t *testing.T) {
 			provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) { reply(response) })
-			result, err := sdkgo.RunMutation(newXeroDexContext("pay-"+name), newXeroClient(t, provider.URL).RecordPayment(), xeroConnection, validRecordPaymentInput())
-			require.NoError(t, err)
-			require.Equal(t, xero.RecordPaymentBranchUncertain, result.Branch)
-			require.Equal(t, testInvoiceID, result.Value.InvoiceID, "the invoice is echoed so the application can read it back")
+			_, err := sdkgo.RunMutation(newXeroDexContext("pay-"+name), newXeroClient(t, provider.URL).RecordPayment(), xeroConnection, validRecordPaymentInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the Idempotency-Key makes the identical resend safe")
 			require.Equal(t, 1, provider.requestCount())
+			require.NotEmpty(t, provider.request(0).header.Get("Idempotency-Key"))
 		})
 	}
+}
+
+func TestRecordPaymentSelectsUncertainForACachedInternalError(t *testing.T) {
+	provider := newRecordingXero(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
+		writeJSON(t, response, http.StatusInternalServerError, `{}`)
+	})
+	result, err := sdkgo.RunMutation(newXeroDexContext("pay-cached-500"), newXeroClient(t, provider.URL).RecordPayment(), xeroConnection, validRecordPaymentInput())
+	require.NoError(t, err)
+	require.Equal(t, xero.RecordPaymentBranchUncertain, result.Branch, "Xero replays the cached 500 to every resend under the key")
+	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
+	require.Equal(t, 1, provider.requestCount())
 }
 
 func TestRecordPaymentRejectsInexactOrAmbiguousInputBeforeAnyRequest(t *testing.T) {

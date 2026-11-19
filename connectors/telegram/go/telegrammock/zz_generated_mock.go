@@ -77,7 +77,7 @@ func SendMessageUncertain(value telegram.SentMessage, failure sdkgo.Failure) con
 	return connectormock.Uncertain(value, failure)
 }
 
-// SendMessageDefect selects the defect branch: Local input, bot token, or dispatch checkpoint is invalid.
+// SendMessageDefect selects the defect branch: Local input, bot token, or dispatch fence is invalid before any send.
 func SendMessageDefect(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
 	return connectormock.Branch(telegram.SendMessageBranchDefect, value, failure)
 }

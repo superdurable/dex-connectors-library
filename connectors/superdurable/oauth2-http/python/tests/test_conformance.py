@@ -44,6 +44,8 @@ ADAPTER = conformance.PythonOperationAdapter(
             recorder.scenario.get("fixedClock", "1970-01-01T00:00:01Z")
         ).astimezone(UTC),
     ),
+    # The postNonIdempotent fence reads and writes heartbeats across replayed attempts.
+    with_context=True,
 )
 
 

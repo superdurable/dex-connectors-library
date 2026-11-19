@@ -326,8 +326,8 @@ func (CancelScheduledEventOperation) IdempotencyKey(callID sdkgo.CallID, _ Cance
 
 // Invoke posts POST /scheduled_events/{id}/cancellation. Calendly answers 403 for an event that is already
 // canceled, so a 403 reads the event back: a canceled event selects canceled with AlreadyCanceled, and an
-// active one selects providerRejected. A lost answer or a 5xx returns Retry, because repeating the request
-// reaches the same read-back.
+// active one selects providerRejected. A lost, malformed, or oversized answer, a 5xx, or any status other
+// than a definite refusal returns Retry, because repeating the request reaches the same read-back.
 func (operation CancelScheduledEventOperation) Invoke(call sdkgo.Call, input CancelScheduledEventInput) sdkgo.MutationAttempt[ScheduledEventCancellation] {
 	operationID := CancelScheduledEventDefinition.Operation.OperationID
 	client := operation.client
@@ -350,6 +350,10 @@ func (operation CancelScheduledEventOperation) Invoke(call sdkgo.Call, input Can
 	}
 	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodPost, "/scheduled_events/"+eventID+"/cancellation", nil, body)
 	if err != nil {
+		if errors.Is(err, errCalendlyResponseTooLarge) {
+			return sdkgo.NewMutationRetry[ScheduledEventCancellation](calendlyFailure(operationID, sdkgo.FailureResponseTooLarge,
+				"Calendly's cancellation answer exceeds maxResponseBytes; the retry reads the event back"), 0)
+		}
 		return cancellationAttemptForExchangeError(client, operationID, output, err)
 	}
 	switch {
@@ -363,19 +367,21 @@ func (operation CancelScheduledEventOperation) Invoke(call sdkgo.Call, input Can
 			cancellation, err = decoded.Resource.convert()
 		}
 		if err != nil {
-			return sdkgo.NewMutationBranch(CancelScheduledEventBranchInvalidResponse, output,
-				calendlyFailurePointer(operationID, sdkgo.FailureProtocol, errCalendlyResponseMalformed.Error()), client.calendlyReceipt(output.ScheduledEventURI))
+			// The cancellation may have applied; the retry's 403 reads the canceled event back.
+			return sdkgo.NewMutationRetry[ScheduledEventCancellation](calendlyFailure(operationID, sdkgo.FailureProtocol,
+				"Calendly's cancellation answer is malformed; the retry reads the event back"), 0)
 		}
 		output.Cancellation = cancellation
 		return sdkgo.NewMutationBranch(CancelScheduledEventBranchCanceled, output, nil, client.calendlyReceipt(output.ScheduledEventURI))
 	case response.statusCode == http.StatusForbidden:
 		return operation.readBackRefusedCancellation(call, &credentials, eventID, output, response)
-	case response.statusCode == http.StatusNotFound:
+	case response.statusCode == http.StatusNotFound && !response.isErrorBodyIncomplete:
 		return sdkgo.NewMutationBranch(CancelScheduledEventBranchNotFound, output,
 			calendlyFailurePointer(operationID, sdkgo.FailureNotFound, "the Calendly scheduled event was not found"), client.calendlyReceipt(output.ScheduledEventURI))
 	}
 	outcome := client.classifyCalendlyFailure(operationID, response)
-	if outcome.isRetry {
+	// A non-refusal status, such as 409 or 408, or an unreadable refusal body leaves the cancellation unknown.
+	if outcome.isRetry || !isDefiniteWriteRefusal(response) {
 		return sdkgo.NewMutationRetry[ScheduledEventCancellation](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(CancelScheduledEventBranchProviderRejected, output, &outcome.failure, client.calendlyReceipt(output.ScheduledEventURI))
@@ -392,13 +398,13 @@ func (operation CancelScheduledEventOperation) readBackRefusedCancellation(
 	if err != nil {
 		return cancellationAttemptForExchangeError(client, operationID, output, err)
 	}
-	if response.statusCode == http.StatusNotFound {
+	if response.statusCode == http.StatusNotFound && !response.isErrorBodyIncomplete {
 		return sdkgo.NewMutationBranch(CancelScheduledEventBranchNotFound, output,
 			calendlyFailurePointer(operationID, sdkgo.FailureNotFound, "the Calendly scheduled event was not found"), client.calendlyReceipt(output.ScheduledEventURI))
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
 		outcome := client.classifyCalendlyFailure(operationID, response)
-		if outcome.isRetry {
+		if outcome.isRetry || !isDefiniteWriteRefusal(response) {
 			return sdkgo.NewMutationRetry[ScheduledEventCancellation](outcome.failure, outcome.retryAfter)
 		}
 		refused := client.classifyCalendlyFailure(operationID, refusal)
@@ -406,8 +412,9 @@ func (operation CancelScheduledEventOperation) readBackRefusedCancellation(
 	}
 	event, err := decodeScheduledEventResource(response.body, output.ScheduledEventURI)
 	if err != nil {
-		return sdkgo.NewMutationBranch(CancelScheduledEventBranchInvalidResponse, output,
-			calendlyFailurePointer(operationID, sdkgo.FailureProtocol, errCalendlyResponseMalformed.Error()), client.calendlyReceipt(output.ScheduledEventURI))
+		// A repeated cancellation is harmless, so the retry reads the event again.
+		return sdkgo.NewMutationRetry[ScheduledEventCancellation](calendlyFailure(operationID, sdkgo.FailureProtocol,
+			"Calendly's scheduled event answer is malformed; the retry reads the event back"), 0)
 	}
 	if event.Status == ScheduledEventStatusCanceled {
 		output.AlreadyCanceled = true
@@ -435,8 +442,8 @@ func cancellationAttemptForExchangeError(
 			calendlyFailurePointer(operationID, sdkgo.FailureLocalDefect, errCalendlyRequestInvalid.Error()), sdkgo.Receipt{})
 	}
 	if errors.Is(err, errCalendlyResponseTooLarge) {
-		return sdkgo.NewMutationBranch(CancelScheduledEventBranchInvalidResponse, output,
-			calendlyFailurePointer(operationID, sdkgo.FailureResponseTooLarge, errCalendlyResponseTooLarge.Error()), client.calendlyReceipt(output.ScheduledEventURI))
+		return sdkgo.NewMutationRetry[ScheduledEventCancellation](calendlyFailure(operationID, sdkgo.FailureResponseTooLarge,
+			"Calendly's scheduled event answer exceeds maxResponseBytes; the retry reads the event back"), 0)
 	}
 	return sdkgo.NewMutationRetry[ScheduledEventCancellation](calendlyFailure(operationID, sdkgo.FailureTransport,
 		"Calendly's answer to the cancellation was lost; the retry reads the event back"), 0)

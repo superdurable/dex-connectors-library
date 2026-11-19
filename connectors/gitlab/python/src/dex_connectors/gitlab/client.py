@@ -29,6 +29,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import OperationRef as OperationRef
 from dex_connectors.sdk import SecretString as SecretString
 from dex_connectors.sdk import StepDefaults as StepDefaults
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -186,12 +188,23 @@ class Client:
         """Send one request and classify it exactly like the Go executeQuery and executeMutation helpers."""
         try:
             credentials = await self.credentials.resolve(call)
-        except (ValueError, LookupError, OSError, ReauthorizationRequiredError):
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return _outcome(
+                    DEFECT, operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+                )
             return _outcome(
-                DEFECT, operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+                "",
+                operation,
+                FailureKind.AVAILABILITY,
+                "connection credentials could not be read, so nothing was sent",
+                is_retry=True,
             )
-        token = credentials.access_token.reveal()
-        if not token or not is_header_safe_credential(token):
+        try:
+            token = credentials.access_token.reveal()
+        except AttributeError:
+            token = ""
+        if not isinstance(token, str) or not token or not is_header_safe_credential(token):
             return _outcome(
                 DEFECT, operation, FailureKind.AUTHENTICATION, "connection credentials are invalid"
             )
@@ -214,6 +227,11 @@ class Client:
                 kind = FailureKind.RATE_LIMIT if status == 429 else FailureKind.AVAILABILITY
                 retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
                 return _outcome("", operation, kind, f"GitLab returned HTTP {status}", True, retry_after)
+            # Replacing the complete label set is safe to repeat, so the PUT retries unknown answers.
+            is_safe_write = method == "PUT"
+            if status != 200 and is_safe_write and status not in _DEFINITE_REFUSAL_STATUSES:
+                message = f"GitLab answered HTTP {status}, so the outcome is unknown"
+                return _outcome("", operation, FailureKind.AVAILABILITY, message, is_retry=True)
             if status != 200:
                 branch = NOT_FOUND if status == 404 and has_not_found else PROVIDER_REJECTED
                 kind = _STATUS_KINDS.get(status, FailureKind.PROVIDER_REJECTION)
@@ -222,10 +240,11 @@ class Client:
                 response_body = await read_bounded_body(response, self.max_response_bytes)
             except BodyTooLargeError:
                 return _outcome(
-                    INVALID_RESPONSE,
+                    "" if is_safe_write else INVALID_RESPONSE,
                     operation,
                     FailureKind.RESPONSE_TOO_LARGE,
                     "response exceeded the configured limit",
+                    is_retry=is_safe_write,
                 )
             except ProviderTransportError:
                 return _outcome(
@@ -234,7 +253,13 @@ class Client:
             try:
                 return _Success(decode(json.loads(response_body)))
             except (ValueError, TypeError, UnicodeDecodeError):
-                return _outcome(INVALID_RESPONSE, operation, FailureKind.PROTOCOL, "response was malformed")
+                return _outcome(
+                    "" if is_safe_write else INVALID_RESPONSE,
+                    operation,
+                    FailureKind.PROTOCOL,
+                    "response was malformed",
+                    is_retry=is_safe_write,
+                )
         finally:
             await response.aclose()
 
@@ -408,6 +433,25 @@ def _optional(document: dict[str, Any], name: str, default: Any) -> Any:
 def _query_failed(operation: str, value: Output, message: str) -> QueryAttempt[Output]:
     return QueryAttempt.branch_result(
         DEFECT, value, Receipt(), Failure(FailureKind.VALIDATION, CONNECTOR_ID, operation, message)
+    )
+
+
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    # Imported here because the generated connection module imports this client.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
     )
 
 

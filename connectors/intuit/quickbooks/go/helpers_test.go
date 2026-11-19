@@ -177,14 +177,23 @@ func customerJSON(customerID string, displayName string, email string, isActive 
 	}
 }
 
-// quickbooksDexContext is a minimal dex.Context for running one operation outside a Worker.
+// quickbooksDexContext is a minimal dex.Context whose heartbeat reads the previous attempt's value, as Dex supplies it.
 type quickbooksDexContext struct {
 	context.Context
-	step string
+	step              string
+	attempt           int32
+	previousHeartbeat json.RawMessage
+	recordedHeartbeat json.RawMessage
+	heartbeatCount    int
 }
 
 func newQuickBooksDexContext(step string) *quickbooksDexContext {
-	return &quickbooksDexContext{Context: context.Background(), step: step}
+	return &quickbooksDexContext{Context: context.Background(), step: step, attempt: 1}
+}
+
+// nextAttempt is the following attempt of the same Step execution, which sees this attempt's last heartbeat.
+func (context *quickbooksDexContext) nextAttempt() *quickbooksDexContext {
+	return &quickbooksDexContext{Context: context.Context, step: context.step, attempt: context.attempt + 1, previousHeartbeat: context.recordedHeartbeat}
 }
 
 func (*quickbooksDexContext) FlowID() string                          { return "quickbooks-flow" }
@@ -194,7 +203,7 @@ func (context *quickbooksDexContext) StepExecutionID() string         { return c
 func (*quickbooksDexContext) FromStepExecutionID() string             { return "" }
 func (*quickbooksDexContext) RecoveryError() *dex.RecoveryErrorInfo   { return nil }
 func (*quickbooksDexContext) FirstAttemptAt() time.Time               { return time.Unix(1, 0) }
-func (*quickbooksDexContext) Attempt() int32                          { return 1 }
+func (context *quickbooksDexContext) Attempt() int32                  { return context.attempt }
 func (*quickbooksDexContext) HasTimerFired() bool                     { return false }
 func (*quickbooksDexContext) HasTimerFiredByIndex(int) bool           { return false }
 func (*quickbooksDexContext) WaitForMethodFailed() bool               { return false }
@@ -202,8 +211,27 @@ func (*quickbooksDexContext) SetStepExecutionLocal(string, any) error { return n
 func (*quickbooksDexContext) GetStepExecutionLocal(string, any) (bool, error) {
 	return false, nil
 }
-func (*quickbooksDexContext) RecordEvent(string, any) error           { return nil }
-func (*quickbooksDexContext) RecordHeartbeat(any) error               { return nil }
-func (*quickbooksDexContext) GetLastHeartbeatValue(any) (bool, error) { return false, nil }
+func (*quickbooksDexContext) RecordEvent(string, any) error { return nil }
+
+func (context *quickbooksDexContext) RecordHeartbeat(value any) error {
+	context.heartbeatCount++
+	if value == nil {
+		context.recordedHeartbeat = nil
+		return nil
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.recordedHeartbeat = encoded
+	return nil
+}
+
+func (context *quickbooksDexContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if context.previousHeartbeat == nil {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.previousHeartbeat, target)
+}
 
 var _ dex.Context = (*quickbooksDexContext)(nil)

@@ -24,7 +24,8 @@ import (
 func TestContactInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := getresponsemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	updateFlow := NewContactUpdateFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, updateFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestContactInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, 20, output.PerPage)
 	require.Len(t, mock.ListContacts().Calls(), 1)
+	updateFlowID := "getresponse-contactupdate-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, updateFlow, updateFlowID, getresponse.UpdateContactInput{ContactID: "abc123", Name: "Ada Byron"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateResult, err := client.WaitForFlow(ctx, updateFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateResult.Status, updateResult.ErrorMessage)
+	var updated getresponse.ContactMetadata
+	require.NoError(t, updateResult.DecodeSingleOutput(&updated))
+	require.Equal(t, "Ada Byron", updated.Name)
+	require.Len(t, mock.UpdateContact().Calls(), 1)
 }

@@ -21,7 +21,9 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -206,13 +208,22 @@ class Client:
                     "Linear OAuth token refresh is temporarily unavailable",
                 ),
             )
-        except (ValueError, LookupError, OSError):
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return Exchange(
+                    "defect",
+                    failure=_failure(
+                        operation,
+                        FailureKind.AUTHENTICATION,
+                        "Linear connection credentials are unavailable or unusable",
+                    ),
+                )
             return Exchange(
-                "defect",
+                "retry",
                 failure=_failure(
                     operation,
-                    FailureKind.AUTHENTICATION,
-                    "Linear connection credentials are unavailable or unusable",
+                    FailureKind.AVAILABILITY,
+                    "Linear connection credentials could not be read, so nothing was sent",
                 ),
             )
         if not isinstance(credential, Credentials):
@@ -396,6 +407,25 @@ class Client:
         return Exchange("succeeded", data=data, status=status, request_id=request_id)
 
 
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    # Imported here because the generated connection module imports this client.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
+
+
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "linear", operation, message)
 
@@ -452,10 +482,11 @@ def _classify_failure(
         outcome, kind, verb = "rejected", FailureKind.AUTHORIZATION, "denied permission"
     elif status == 400 and not code and not error_type:
         outcome, kind, verb = "defect", FailureKind.PROTOCOL, "rejected the connector's GraphQL request"
-    elif 300 <= status < 400:
-        outcome, kind, verb = "rejected", FailureKind.PROTOCOL, "redirected the request"
-    else:
+    elif status in _DEFINITE_REFUSAL_STATUSES:
         outcome, kind, verb = "rejected", FailureKind.PROVIDER_REJECTION, "rejected the request"
+    else:
+        # A redirect or unlisted status proves nothing, so the request is retried.
+        outcome, kind, verb = "retry", FailureKind.AVAILABILITY, "answered with an unexpected status"
     return Exchange(
         outcome,
         status=status,

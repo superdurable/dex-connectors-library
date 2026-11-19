@@ -1,12 +1,13 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { MaxChangesPerPage } from '@superdurable/connectors-sdk/pollingtrigger';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { GetValuesOperation, FindRowOperation, UpsertRowOperation } from './operations.js';
 
 const defaultEndpoint = 'https://sheets.googleapis.com/v4';
@@ -93,7 +94,7 @@ export class SpreadsheetClient {
       if (!credential.accessToken.reveal()) throw new ReauthorizationRequiredError();
       return { credential, reauthorization: false };
     } catch (error) {
-      const reauthorization = error instanceof ReauthorizationRequiredError;
+      const reauthorization = isTerminalCredentialError(error);
       return { failure: this.failure(call.operation.operationId, reauthorization ? 'AUTHENTICATION' : 'AVAILABILITY', reauthorization ? 'connection credentials are unavailable; reconnect the connection' : 'credential resolution is temporarily unavailable'), reauthorization };
     }
   }
@@ -105,7 +106,7 @@ export class SpreadsheetClient {
       const credential = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       if (!credential.accessToken.reveal() || (!allowUnchanged && credential.accessToken.reveal() === rejected.accessToken.reveal())) return { reauthorization: true };
       return { credential, reauthorization: false };
-    } catch (error) { return { reauthorization: error instanceof ReauthorizationRequiredError }; }
+    } catch (error) { return { reauthorization: isTerminalCredentialError(error) }; }
   }
 
   /** Make one request, refreshing once on 401 for reads. */
@@ -134,6 +135,11 @@ export class SpreadsheetClient {
           const headers = error.headers ?? {};
           exchange = { status: error.status ?? 0, headers, body: new Uint8Array(), requestId: header(headers, 'x-goog-request-id') || header(headers, 'x-request-id'), isTooLarge: true, isProvablyNotSent: false, error };
         } else {
+          // A failure after the response headers keeps their status, so a 2xx write is known accepted.
+          if (!observedStatus && (error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status) {
+            observedStatus = error.status;
+            observedHeaders = error.headers ?? {};
+          }
           exchange = { status: observedStatus, headers: observedHeaders, body: new Uint8Array(), requestId: header(observedHeaders, 'x-goog-request-id') || header(observedHeaders, 'x-request-id'), isTooLarge: false, isProvablyNotSent: error instanceof ProviderTransportError && error.isProvablyNotSent, error };
         }
       }
@@ -168,6 +174,12 @@ export class SpreadsheetClient {
 
 /** Escape a path component with Go url.PathEscape's safe set. */
 export function goPathEscape(value: string): string { return Array.from(Buffer.from(value)).map(byte => /[A-Za-z0-9._~$&+=:@-]/.test(String.fromCharCode(byte)) ? String.fromCharCode(byte) : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`).join(''); }
+
+/** Report a resolve failure that only reconnection repairs; any other one is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
 
 function header(headers: ProviderResponse['headers'], name: string): string { const value = headers[name]; return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }
 /** Format one decoded cell value as Go fmt.Sprint formats it. */

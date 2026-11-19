@@ -11,19 +11,27 @@ a Flow started from Dex Web **Start Flow**:
    refund_id = LAST_INSERT_ID(refund_id)`. The connector binds the Step
    execution's idempotency key as the fourth `?`, and `MaxRowsAffected` is
    one. The Result is also kept in the `mysql-refund-insert-result`
-   Attribute.
-4. MySQL has no `RETURNING` clause, so both `completed` and `uncertain` go to
+   Attribute. `execute` is repeat-safe, so a `COMMIT` with an unknown outcome
+   returns Retry and Dex sends the same `INSERT` again with the same key.
+4. MySQL has no `RETURNING` clause, so `completed` goes to
    `FindInsertedRefund`, which reads the row back by the idempotency key or
    by the `LastInsertID` the insert reported.
-5. `CompleteRefundRecording` completes with:
+5. `CompleteRefundRecording` records:
    - `recorded` when the row carries this Step's key, with `wasReconciled`
-     when the insert was uncertain or a replay changed nothing;
+     when a replay changed nothing, and continues to the daily total;
    - `alreadyRecorded` when another Flow recorded the order between the
      duplicate check and the insert, because `ON DUPLICATE KEY UPDATE` turned
-     the conflict on `order_id` into a no-op and reported that row's ID.
+     the conflict on `order_id` into a no-op and reported that row's ID; the
+     Flow completes.
 
-   When an uncertain insert left no row, it fails the Flow for review instead
-   of inserting again.
+   When the read-back finds no row, it fails the Flow for review instead of
+   inserting again.
+6. `AddRefundToDailyTotal` uses `executeNonIdempotent` to add the new refund
+   to today's UTC total in `refund_daily_totals`. Running it twice would count
+   the refund twice, so the connector commits it at most once. An `uncertain`
+   daily total is not wired and fails the Flow for review; inspect
+   `refund_daily_totals` before correcting it by hand.
+7. `CompleteDailyTotal` completes with `isAddedToDailyTotal`.
 
 `ON DUPLICATE KEY UPDATE` is the idempotent write: a replayed dispatch of the
 same Step execution conflicts on `idempotency_key` and changes nothing, and
@@ -42,7 +50,7 @@ example needs. `ON DUPLICATE KEY UPDATE` needs `UPDATE` as well as `INSERT`:
 ```bash
 mysql --host=db.example.com --user=app_owner --password --ssl-mode=REQUIRED app < examples/record-refund/schema.sql
 mysql --host=db.example.com --user=app_owner --password --ssl-mode=REQUIRED app \
-  -e "GRANT SELECT, INSERT, UPDATE ON app.refund_ledger TO 'dex_app'@'%'"
+  -e "GRANT SELECT, INSERT, UPDATE ON app.refund_ledger TO 'dex_app'@'%'; GRANT INSERT, UPDATE ON app.refund_daily_totals TO 'dex_app'@'%'"
 ```
 
 The schema needs MySQL 8.0.16 or later, or MariaDB 10.6 or later, for its
@@ -65,7 +73,7 @@ repository root:
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/mysql/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/mysql/go \
-  --version v0.23.0 --tag connectors/mysql/go/v0.23.0 \
+  --version v0.24.0 --tag connectors/mysql/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mysql-refund/release/connector-release.json \
   --digest-output /tmp/mysql-refund/release/connector-release.json.sha256
@@ -121,9 +129,12 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 The integration suite runs the Flow on a real Dex Worker against the scripted
 MySQL server. It covers:
 
-- a new refund and a duplicate order;
+- a new refund, its daily total, and a duplicate order;
 - another Flow's refund committed between the duplicate check and the insert;
-- a `COMMIT` whose reply was dropped, once after it applied and once before;
+- an `INSERT` `COMMIT` whose reply was dropped, once after it applied and
+  once before, each retried with the same key;
+- a daily-total `COMMIT` whose reply was dropped, which selects `uncertain`
+  and is never sent again;
 - a write lost before `COMMIT` and retried with the same key;
 - an `INSERT` committed before its Worker is lost and dispatched again with the
   same key, which still writes one row;

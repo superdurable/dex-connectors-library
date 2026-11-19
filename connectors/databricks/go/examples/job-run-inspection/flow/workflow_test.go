@@ -24,3 +24,16 @@ func TestJobRunInspectionFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestJobListingFlowIdentityAndMapping(t *testing.T) {
+	input := databricks.ListJobsInput{Name: "Example job", Limit: 25}
+	require.Equal(t, input, mapJobListingInput(input))
+	require.Equal(t, JobListingFlowType, dex.GetFinalFlowType(NewJobListingFlow(databricks.Connection{})))
+	require.Equal(t, "StartJobListing", dex.GetFinalStepType[databricks.ListJobsInput](startJobListing{}))
+	wait, err := startJobListing{}.WaitFor(nil, input)
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+	mock := databricksmock.New(t, ConnectionName)
+	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection()), NewJobListingFlow(mock.Connection())})
+	require.NoError(t, err)
+}
