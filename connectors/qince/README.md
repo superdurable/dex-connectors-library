@@ -11,3 +11,5 @@ The enterprise administrator enables OpenAPI under **系统管理 > 集成管理
 ## Example
 
 The [department catalog Flow](go/examples/department-catalog/) is a runnable Worker with static Dex connection name `qince`. Its mock uses synthetic department metadata and is verified against a real Dex Worker and Client. Live OpenAPI activation, region selection, and department data remain unverified until an authorized enterprise connection is configured.
+
+The [TypeScript package](typescript/) implements signed `listDepartments` and replays Go provider scenarios. Its [runnable Dex Flow](typescript/examples/basic/) persists department metadata through a Worker and Client. Live Qince authorization remains unverified.

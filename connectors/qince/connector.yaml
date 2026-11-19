@@ -8,6 +8,8 @@ metadata:
   categories: [crm-sales]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-qince", operations: [listDepartments], triggers: []}
   provider: qince
   codegen:
     go:
