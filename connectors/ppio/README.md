@@ -5,3 +5,7 @@ This connector implements the read-only [model list API](https://ppio.com/docs/m
 Create an API key from [API key management](https://ppio.com/settings/key-management). Enter the full key in Dex Web Connections. Rate limits and temporary service errors retry; invalid keys select `providerRejected`.
 
 The runnable [list-models example](go/examples/list-models/README.md) demonstrates the generated operation-specific Step and static `ppio` connection. Real PPIO authorization remains to be tested with a user-controlled Dex Web Connection.
+
+## Python
+
+The first Python package implements the read-only operation and all Go-recorded provider branches. See [Python package](python/README.md) and its [runnable Flow](python/examples/models/README.md). Live provider authorization and responses are unverified.
