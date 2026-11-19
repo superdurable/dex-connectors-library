@@ -24,7 +24,8 @@ import (
 func TestContactUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := dynamics365salesmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	accountFlow := NewAccountCreationFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, accountFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestContactUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "00000000-0000-0000-0000-000000000001", output.ContactID)
 	require.Len(t, mock.FindContact().Calls(), 1)
+	accountFlowID := "dynamics365sales-account-create-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, accountFlow, accountFlowID, dynamics365sales.CreateAccountInput{Name: "Example"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	accountResult, err := client.WaitForFlow(ctx, accountFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, accountResult.Status, accountResult.ErrorMessage)
+	var account dynamics365sales.Account
+	require.NoError(t, accountResult.DecodeSingleOutput(&account))
+	require.Equal(t, "Example", account.Name)
+	require.Len(t, mock.CreateAccount().Calls(), 1)
 }

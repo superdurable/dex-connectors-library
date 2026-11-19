@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/mixpanel/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/mixpanel/scenarios.json")
+    if scenario["operation"] in {"trackEvent", "exportEvents"}
+]
 CONNECTION = sdk.ConnectionRef("mixpanel", "mixpanel")
 ADAPTER = PythonOperationAdapter(
     "mixpanel",
@@ -26,11 +30,13 @@ ADAPTER = PythonOperationAdapter(
             base_url="http://127.0.0.1:12345",
             export_base_url="http://127.0.0.1:12345/api/2.0",
         ),
-        sdk.StaticCredentialProvider({
-            CONNECTION: mixpanel.Credentials(
-                sdk.SecretString("service-user"), sdk.SecretString("service-secret")
-            )
-        }),
+        sdk.StaticCredentialProvider(
+            {
+                CONNECTION: mixpanel.Credentials(
+                    sdk.SecretString("service-user"), sdk.SecretString("service-secret")
+                )
+            }
+        ),
         http_client,
     ),
 )

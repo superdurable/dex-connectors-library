@@ -73,7 +73,7 @@ func TestApprovalDecisionWaitsForRetryAfterWhenTheReadIsThrottledWithRealDex(t *
 
 	decision := harness.runDecision(t, "throttled", travelRequest("REQ-1003", 100))
 	require.Equal(t, PhaseCompleted, decision.Phase)
-	require.Equal(t, 2, provider.Count(fakeexcel.CountColumnReads), "the throttled policy read was retried once")
+	require.Equal(t, 3, provider.Count(fakeexcel.CountColumnReads), "the throttled policy read was retried once before the decision row lookup")
 }
 
 func TestApprovalDecisionInvalidRequestFailsBeforeCallingExcelWithRealDex(t *testing.T) {

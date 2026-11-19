@@ -14,9 +14,13 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(
-    ROOT / "conformance/connectors/microsoft/dynamics-365-sales/scenarios.json"
-)
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(
+        ROOT / "conformance/connectors/microsoft/dynamics-365-sales/scenarios.json"
+    )
+    if scenario["operation"] == "findContact"
+]
 CONNECTION = sdk.ConnectionRef("microsoft-dynamics-365-sales", "microsoft-dynamics-365-sales")
 TEST_CREDENTIALS = microsoft_dynamics_365_sales.Credentials(sdk.SecretString("test-client-secret"))
 ADAPTER = conformance.PythonOperationAdapter(

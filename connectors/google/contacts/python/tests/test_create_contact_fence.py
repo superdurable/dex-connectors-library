@@ -223,9 +223,7 @@ async def test_write_deadline_that_cuts_an_accepted_body_is_never_resent() -> No
 async def test_unreadable_refusal_is_an_unknown_outcome() -> None:
     """A refusal whose body cannot be read safely might hide a created contact."""
     requests: list[httpx.Request] = []
-    outcome = await run_attempts(
-        lambda _request: httpx.Response(400, json={"error": TOKEN}), requests, 1
-    )
+    outcome = await run_attempts(lambda _request: httpx.Response(400, json={"error": TOKEN}), requests, 1)
     assert isinstance(outcome, RetryError)
     assert posts(requests) == 1
 

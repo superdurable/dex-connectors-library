@@ -21,6 +21,6 @@ func TestBoardInspectionFlowIdentityAndMapping(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)
 	mock := miromock.New(t, ConnectionName)
-	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
+	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection()), NewListBoardsFlow(mock.Connection())})
 	require.NoError(t, err)
 }
