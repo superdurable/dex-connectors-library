@@ -1,0 +1,303 @@
+{
+  "connector": "showapi",
+  "scenarios": [
+    {
+      "callId": "c65469e9-303a-5e78-93c3-e1c3be1d85aa",
+      "exchanges": [
+        {
+          "body": "{\"showapi_res_code\":0,\"showapi_res_body\":{\"ret_code\":0,\"list\":[{\"prov\":\"云南\",\"area\":\"丽江\",\"areaCode\":\"530700\",\"cityInfo\":{\"latitude\":26.9}}]}}",
+          "form": {
+            "area": [
+              "丽江"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9-3",
+          "query": {
+            "appKey": [
+              "secretKey"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "matches": [
+            {
+              "area": "丽江",
+              "areaCode": "530700",
+              "province": "云南"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "area": "丽江"
+      },
+      "name": "lookupAreaCodes-success",
+      "operation": "lookupAreaCodes"
+    },
+    {
+      "callId": "e9dc7888-dab9-5d51-9c04-a23237935c9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "area": [
+              "丽江"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9-3",
+          "query": {
+            "appKey": [
+              "secretKey"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "matches": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "area": "丽江"
+      },
+      "name": "lookupAreaCodes-providerRejected",
+      "operation": "lookupAreaCodes"
+    },
+    {
+      "callId": "0dc4854b-e440-5999-b626-c1545bb3ddea",
+      "exchanges": [
+        {
+          "body": "{\"showapi_res_code\":0,\"showapi_res_body\":{\"ret_code\":0}}",
+          "form": {
+            "area": [
+              "丽江"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9-3",
+          "query": {
+            "appKey": [
+              "secretKey"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "matches": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "area": "丽江"
+      },
+      "name": "lookupAreaCodes-invalidResponse",
+      "operation": "lookupAreaCodes"
+    },
+    {
+      "callId": "e7413e81-4f8f-582b-a253-278569b4f020",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "area": [
+              "丽江"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9-3",
+          "query": {
+            "appKey": [
+              "secretKey"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "area": "丽江"
+      },
+      "name": "lookupAreaCodes-retry429",
+      "operation": "lookupAreaCodes"
+    },
+    {
+      "callId": "d38803e6-bbf5-500f-8325-025993df7b39",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "area": [
+              "丽江"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9-3",
+          "query": {
+            "appKey": [
+              "secretKey"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "area": "丽江"
+      },
+      "name": "lookupAreaCodes-retry503",
+      "operation": "lookupAreaCodes"
+    },
+    {
+      "callId": "1f86f394-9571-5cb6-ae4d-34e68b421901",
+      "exchanges": [
+        {
+          "form": {
+            "area": [
+              "丽江"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9-3",
+          "query": {
+            "appKey": [
+              "secretKey"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "area": "丽江"
+      },
+      "name": "lookupAreaCodes-transportFailure",
+      "operation": "lookupAreaCodes"
+    },
+    {
+      "callId": "cfabfdd2-796d-5dfc-9a11-1588e853bffc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "matches": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "area": "\n"
+      },
+      "name": "lookupAreaCodes-defect",
+      "operation": "lookupAreaCodes"
+    }
+  ],
+  "schemaVersion": 1
+}
