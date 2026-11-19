@@ -5,3 +5,8 @@ This Go connector reads daily free quota balances for API categories available t
 Sign in to [Personal Center](https://developer.zhihu.com/profile) and copy the account's Access Secret into the secret Dex Web `access_secret` connection field without `Bearer`. Platform access may be required before a secret is available. The connector calls `GET https://developer.zhihu.com/api/v1/quota` with `Authorization: Bearer` and an automatically generated `X-Request-Timestamp` in Unix seconds. The timestamp must be within ten minutes of Zhihu's server time. [Zhihu's public API contract](https://developer.zhihu.com/console/api/v3/docs) documents the request, response, and error codes. Rate limits (`30001`, HTTP 429) and temporary quota-data failures (`90001`, HTTP 5xx) are retried by Dex.
 
 The [runnable Dex Flow](go/examples/quota-list/README.md) shows connection setup and output. The [Zhihu logo](https://commons.wikimedia.org/wiki/File:Zhihu_logo.svg) is attributed there to Zhihu's website. No live account authorization has been verified.
+
+
+## Python
+
+The first Python package implements the read-only `listQuotas` operation and replays all Go-recorded outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/quota_list/README.md). Live provider authorization and responses remain unverified.
