@@ -1,0 +1,650 @@
+{
+  "connector": "getui",
+  "scenarios": [
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"token\":\"test-token\",\"expire_time\":\"4102444800000\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":{\"2021-01-01\":{\"total\":{\"request_num\":10,\"msg_num\":4,\"target_num\":4,\"receive_num\":4,\"display_num\":2,\"click_num\":2}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/test-app/report/push/date/2021-01-01",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "clickedCount": 2,
+          "date": "2021-01-01",
+          "displayedCount": 2,
+          "eligibleMessageCount": 4,
+          "receivedCount": 4,
+          "requestCount": 10,
+          "sentCount": 4
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-found",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"code\":10002}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "clickedCount": 0,
+          "date": "",
+          "displayedCount": 0,
+          "eligibleMessageCount": 0,
+          "receivedCount": 0,
+          "requestCount": 0,
+          "sentCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-providerRejected",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"token\":\"test-token\",\"expire_time\":\"bad\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clickedCount": 0,
+          "date": "",
+          "displayedCount": 0,
+          "eligibleMessageCount": 0,
+          "receivedCount": 0,
+          "requestCount": 0,
+          "sentCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-invalidResponse",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "clickedCount": 0,
+          "date": "",
+          "displayedCount": 0,
+          "eligibleMessageCount": 0,
+          "receivedCount": 0,
+          "requestCount": 0,
+          "sentCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-defect",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-429",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-503",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-transport",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"token\":\"test-token\",\"expire_time\":\"4102444800000\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "clickedCount": 0,
+          "date": "",
+          "displayedCount": 0,
+          "eligibleMessageCount": 0,
+          "receivedCount": 0,
+          "requestCount": 0,
+          "sentCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-oversized",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"token\":\"test-token\",\"expire_time\":\"4102444800000\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":10003}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/test-app/report/push/date/2021-01-01",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "clickedCount": 0,
+          "date": "",
+          "displayedCount": 0,
+          "eligibleMessageCount": 0,
+          "receivedCount": 0,
+          "requestCount": 0,
+          "sentCount": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-reportRejected",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"token\":\"test-token\",\"expire_time\":\"4102444800000\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":10001}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/test-app/report/push/date/2021-01-01",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-tokenExpired",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"token\":\"test-token\",\"expire_time\":\"4102444800000\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/test-app/report/push/date/2021-01-01",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-report429",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"token\":\"test-token\",\"expire_time\":\"4102444800000\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/test-app/report/push/date/2021-01-01",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-report503",
+      "operation": "getDailyPushReport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000013",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"token\":\"test-token\",\"expire_time\":\"4102444800000\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/test-app/auth",
+          "requestBody": {
+            "appkey": "test-appkey",
+            "sign": "4b658891e55d70c418c993ede4dee7f1692fe291d1afcaa9cbe33805d0da671b",
+            "timestamp": "1767225600000"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/test-app/report/push/date/2021-01-01",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "date": "2021-01-01"
+      },
+      "name": "getDailyPushReport-reportTransport",
+      "operation": "getDailyPushReport"
+    }
+  ],
+  "schemaVersion": 1
+}
