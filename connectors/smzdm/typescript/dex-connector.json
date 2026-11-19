@@ -12,7 +12,7 @@
       "kind": "query",
       "operationId": "searchProducts",
       "inputType": "SearchProductsInput",
-      "description": "Search the first page of SMZDM product index entries by keyword.",
+      "description": "Search the first page of product-index entries for a bounded keyword, returning titles and prices only.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,10 +43,10 @@
       ],
       "inputSchema": {
         "additionalProperties": false,
-        "description": "SearchProductsInput selects the first page of product-index entries.",
+        "description": "SearchProductsInput selects a bounded first page from the SMZDM product index.",
         "properties": {
           "keyword": {
-            "description": "Product search term, 1 to 100 printable Unicode characters.",
+            "description": "Keyword is the product search term, limited to 100 Unicode characters.",
             "type": "string"
           }
         },
