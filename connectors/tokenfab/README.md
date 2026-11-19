@@ -5,3 +5,7 @@
 Sign in at the [TokenFab Console](https://www.tokenfab.cn/console), open 控制台 > API 密钥, create a `tk-` prefixed secret key, and copy it once into Dex Web Connections. The provider announced that its old `.com` API domain was retired; this connector uses `api.tokenfab.cn`. Leave timeout and maxResponseBytes blank for their displayed defaults.
 
 The [runnable Dex example](go/examples/list-models/) uses a synthetic mock. Live account authorization and current model visibility have not been verified without a user-controlled provider key.
+
+## Python
+
+The [Python package](python/) exposes the same Query and branch contract as Go. Its [runnable example](python/examples/query/) uses static connection name `tokenfab`. The package replays Go-recorded provider scenarios and the example verifies retry and persistence with a real Dex Worker and Client. Live provider authorization has not been verified.
