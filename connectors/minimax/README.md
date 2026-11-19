@@ -37,3 +37,5 @@ key and Dex Web connection are needed for live verification.
 
 References: [MiniMax Token Plan usage endpoint](https://platform.minimaxi.com/subscribe/token-plan)
 and [MiniMax's CLI quota response fixture](https://github.com/MiniMax-AI/cli/blob/main/test/fixtures/quota-response.json).
+
+The [Python getTokenPlanRemains example](python/examples/) provides a runnable Dex Worker and local conformance replay.
