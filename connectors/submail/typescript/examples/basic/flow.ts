@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newGetSMSBalanceStep, type Connection, type GetSMSBalanceInput, type SMSBalance } from '@superdurable/connector-submail';
+import { newGetSMSBalanceStep, type Connection, type GetSMSBalanceInput, type SMSBalance } from '../../src/index.js';
 
 /** Static Dex Web connection for this example. */
 export const ConnectionName = 'submail';
