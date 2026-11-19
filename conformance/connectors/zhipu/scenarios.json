@@ -1,0 +1,630 @@
+{
+  "connector": "zhipu",
+  "scenarios": [
+    {
+      "callId": "f34f6d7d-62e3-55e0-b745-7d701b14cebb",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"chat-1\",\"model\":\"glm-4.7-flash\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"world\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":2,\"completion_tokens\":3,\"total_tokens\":5}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "generated",
+        "failureKind": "",
+        "output": {
+          "finishReason": "stop",
+          "model": "glm-4.7-flash",
+          "responseId": "chat-1",
+          "text": "world",
+          "usage": {
+            "completionTokens": 3,
+            "promptTokens": 2,
+            "totalTokens": 5
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-generated",
+      "operation": "generateText"
+    },
+    {
+      "callId": "1707d5ad-b6d5-5d64-8348-e4e7e2df637f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"chat-1\",\"model\":\"glm-4.7-flash\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"partial\"},\"finish_reason\":\"length\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "truncated",
+        "failureKind": "",
+        "output": {
+          "finishReason": "length",
+          "model": "glm-4.7-flash",
+          "responseId": "chat-1",
+          "text": "partial",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-truncated",
+      "operation": "generateText"
+    },
+    {
+      "callId": "c9e3a77a-2c78-5414-a779-0eeb1d0a5f67",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"chat-1\",\"model\":\"glm-4.7-flash\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null},\"finish_reason\":\"sensitive\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "blocked",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "finishReason": "sensitive",
+          "model": "glm-4.7-flash",
+          "responseId": "chat-1",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-blocked",
+      "operation": "generateText"
+    },
+    {
+      "callId": "8f1874cd-55cc-5f1d-8ee6-15109f135743",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "finishReason": "",
+          "model": "",
+          "responseId": "",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-providerRejected",
+      "operation": "generateText"
+    },
+    {
+      "callId": "290fb098-8a50-56bf-888f-8811c37e2f2a",
+      "exchanges": [
+        {
+          "body": "{\"choices\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "finishReason": "",
+          "model": "",
+          "responseId": "",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-invalidResponse",
+      "operation": "generateText"
+    },
+    {
+      "callId": "cf348fbd-079b-58b6-bff2-a24c63a4f211",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"chat-1\",\"model\":\"glm-4.7-flash\",\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{}]},\"finish_reason\":\"tool_calls\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "finishReason": "",
+          "model": "",
+          "responseId": "",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-toolCall",
+      "operation": "generateText"
+    },
+    {
+      "callId": "f865fec1-ea3d-5c76-bd8b-123b40c24336",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-retry429",
+      "operation": "generateText"
+    },
+    {
+      "callId": "6c06d0a0-e050-5a1a-baa5-b7ad2c28ea37",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-retry503",
+      "operation": "generateText"
+    },
+    {
+      "callId": "06db0402-1272-51b7-8afe-6b9749d5bde7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-transport",
+      "operation": "generateText"
+    },
+    {
+      "callId": "a765b581-5620-5236-bc4d-c83c29ae9288",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/paas/v4/chat/completions",
+          "requestBody": {
+            "max_tokens": 64,
+            "messages": [
+              {
+                "content": "hello",
+                "role": "user"
+              }
+            ],
+            "model": "glm-4.7-flash",
+            "response_format": {
+              "type": "text"
+            },
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer REDACTED_ZHIPU_API_KEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "finishReason": "",
+          "model": "",
+          "responseId": "",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-oversized",
+      "operation": "generateText"
+    },
+    {
+      "callId": "1e8f69fd-b5af-5385-a223-65a829362487",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "finishReason": "",
+          "model": "",
+          "responseId": "",
+          "text": "",
+          "usage": {
+            "completionTokens": 0,
+            "promptTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxOutputTokens": 64,
+        "prompt": "hello"
+      },
+      "name": "generateText-defect",
+      "operation": "generateText"
+    }
+  ],
+  "schemaVersion": 1
+}
