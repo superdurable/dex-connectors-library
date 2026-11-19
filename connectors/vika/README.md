@@ -7,3 +7,5 @@ Create an API Token in [Vika](https://vika.cn) under the lower-left profile menu
 The connector calls `GET https://vika.cn/fusion/v1/spaces` over HTTPS. The free plan documents two requests per second per user and datasheet; higher tiers permit more. Rate limits and transient server failures are retried by Dex. No live account authorization has been verified.
 
 The [runnable Dex Flow](go/examples/space-list/README.md) shows connection setup, local mock verification, and Flow output. The logo is the official Vika SVG from the [APITable source repository](https://github.com/apitable/apitable/blob/develop/packages/datasheet/public/logo_text_dark.svg).
+
+Python v0.1.0: [package and runnable example](python/README.md).
