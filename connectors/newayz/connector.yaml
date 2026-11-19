@@ -11,6 +11,11 @@ spec:
   provider: newayz
   languages:
     python: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-newayz"
+      operations: [getCurrentWeather]
+      triggers: []
   codegen:
     go:
       package: newayz
