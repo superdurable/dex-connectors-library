@@ -63,6 +63,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.bmob.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Bmob credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -72,19 +88,19 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("Bmob stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Bmob stored credential does not match the connector credential fields")
         if set(material) - set(('application_id', 'rest_api_key')):
-            raise ValueError("Bmob stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("Bmob stored credential does not match the connector credential fields")
         application_id = material.get("application_id")
         if application_id is not None and not (isinstance(application_id, str)):
-            raise ValueError("Bmob credential application_id has an invalid type")
+            raise CredentialMaterialError("Bmob credential application_id has an invalid type")
         rest_api_key = material.get("rest_api_key")
         if rest_api_key is not None and not (isinstance(rest_api_key, str)):
-            raise ValueError("Bmob credential rest_api_key has an invalid type")
+            raise CredentialMaterialError("Bmob credential rest_api_key has an invalid type")
         if not application_id:
-            raise ValueError("Bmob credential application_id is required")
+            raise CredentialMaterialError("Bmob credential application_id is required")
         if not rest_api_key:
-            raise ValueError("Bmob credential rest_api_key is required")
+            raise CredentialMaterialError("Bmob credential rest_api_key is required")
         return Credentials(SecretString(application_id), SecretString(rest_api_key))
 
 
