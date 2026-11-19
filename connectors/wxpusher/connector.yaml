@@ -8,6 +8,8 @@ metadata:
   categories: [communication]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, operations: [getSubscriberCount], triggers: []}
   provider: wxpusher
   codegen:
     go:
