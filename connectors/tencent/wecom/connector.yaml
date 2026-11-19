@@ -8,6 +8,8 @@ metadata:
   categories: [communication]
   version: v0.1.1
 spec:
+  languages:
+    python: {version: v0.1.0, operations: [sendGroupRobotMessage, sendApplicationMessage], triggers: []}
   provider: wecom
   codegen:
     go:
