@@ -9,3 +9,5 @@ The Query retries HTTP 408, 429, 5xx, and transport failures under Dex's default
 Install `github.com/superdurable/dex-connectors-library/connectors/gitee/go@v0.1.0` after release. Provider tests use an HTTP test server. The mock-backed example integration test uses a real Dex Worker and Client. Live personal-token authentication and private-repository lookup require a user-configured token and remain unverified by local tests.
 
 The [Python package](python/README.md) implements `getRepository` and includes a [runnable Dex Flow](python/examples/repository_lookup/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.
+
+The [TypeScript package](typescript/README.md) implements the same `getRepository` Query and includes a [runnable Dex Flow](typescript/examples/basic/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.
