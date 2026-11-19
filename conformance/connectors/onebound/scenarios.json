@@ -1,0 +1,648 @@
+{
+  "connector": "onebound",
+  "scenarios": [
+    {
+      "callId": "30000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":\"0000\",\"items\":{\"page\":\"2\",\"total_results\":43,\"item\":[{\"num_iid\":\"123456789\",\"title\":\"Work gloves\",\"price\":\"12.00\",\"detail_url\":\"https://detail.1688.com/offer/123456789.html\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "pageNumber": 2,
+          "products": [
+            {
+              "detailURL": "https://detail.1688.com/offer/123456789.html",
+              "price": "12.00",
+              "productID": "123456789",
+              "title": "Work gloves"
+            }
+          ],
+          "total": 43
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-listed",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":\"2000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "pageNumber": 2,
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-empty",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":\"4005\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "pageNumber": 0,
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-providerRejected",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":\"0000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "pageNumber": 0,
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-invalidResponse",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "pageNumber": 0,
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "",
+        "pageNumber": -1
+      },
+      "name": "searchProducts-defect",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-429",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-503",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-transport",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":\"0000\",\"items\":{\"page\":\"2\",\"total_results\":43,\"item\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "pageNumber": 0,
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-oversized",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":\"4009\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-maintenance",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":\"4008\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-concurrency",
+      "operation": "searchProducts"
+    },
+    {
+      "callId": "30000000-0000-4000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/1688/item_search/",
+          "query": {
+            "dateline": [
+              "2026-01-01 08:00:00"
+            ],
+            "key": [
+              "testKey"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "40"
+            ],
+            "q": [
+              "gloves"
+            ],
+            "sign": [
+              "a19de45eb020c5cf5d62f823883e17ca"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "pageNumber": 0,
+          "products": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "keyword": "gloves",
+        "pageNumber": 2
+      },
+      "name": "searchProducts-unauthorized",
+      "operation": "searchProducts"
+    }
+  ],
+  "schemaVersion": 1
+}
