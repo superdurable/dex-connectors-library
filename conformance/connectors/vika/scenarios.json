@@ -1,0 +1,229 @@
+{
+  "connector": "vika",
+  "scenarios": [
+    {
+      "callId": "e4b9b5db-27ae-5e02-8ef5-55eed7a9a345",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"code\":200,\"data\":{\"spaces\":[{\"id\":\"spczdmQDfBAn5\",\"name\":\"Example Workspace\",\"isAdmin\":true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "spaces": [
+            {
+              "id": "spczdmQDfBAn5",
+              "isAdmin": true,
+              "name": "Example Workspace"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-success",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "5f47934e-5795-5f47-b9b1-d50f262d1806",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-providerRejected",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "74fb1f30-17c2-5aed-99cf-3bc15257f3ae",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-invalidResponse",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "a5fddd46-3ea7-5f9e-818a-4fd16d06d64f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-retry429",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "e07c4970-1e12-521a-a171-7991fb99ac6f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-retry503",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "25fdd389-1a67-5f99-9bbf-eee84a766213",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/fusion/v1/spaces",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer uskTestToken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-transportFailure",
+      "operation": "listSpaces"
+    },
+    {
+      "callId": "0fbc5074-f1ef-5b55-82fd-c8f1bbfc8f79",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "spaces": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSpaces-defect",
+      "operation": "listSpaces"
+    }
+  ],
+  "schemaVersion": 1
+}
