@@ -1,6 +1,14 @@
 # Campaign Monitor client discovery Flow
 
-This runnable Flow calls `listClients` with the static `campaignmonitor` Dex Web connection. It stores client IDs and names in an Attribute and completes with the typed result. Optional branches are unwired and fail the Flow when selected. The API key does not enter Flow state.
+This runnable Flow calls `listClients`, then `listSubscriberLists` for the first returned client, then `listSubscribers` for the first returned list, with the static `campaignmonitor` Dex Web connection. It stores client IDs and names in an Attribute and completes with the typed client result. An account with no clients or lists completes without the later calls. Optional branches are unwired and fail the Flow when selected. The API key does not enter Flow state.
+
+The same Worker registers `CampaignMonitorListCreate`. Start it with a client ID returned by `listClients`, a unique title, and an unsubscribe setting, for example `{"clientId":"client-1","title":"Campaign updates","unsubscribeSetting":"AllClientLists"}`. It calls `createList` and returns the new list ID. Its mock-backed integration test runs through a real Dex Worker and Client.
+
+The Worker also registers `CampaignMonitorSegmentCreate`. Start it with a list ID from `listSubscriberLists`, a title, and optional rule groups, for example `{"listId":"list-1","title":"Recent readers","ruleGroups":[{"rules":[{"ruleType":"EmailAddress","clause":"CONTAINS @example.com"}]}]}`. It calls `createSegment` and returns the new segment ID. Its integration test runs against the mock through a real Dex Worker and Client.
+
+The Worker also registers `CampaignMonitorDraftCampaignCreate`. Start it with a client ID, unique campaign name, subject, sender and reply addresses, hosted HTML URL, and recipient lists or segments. For example, `{"clientId":"client-1","name":"Autumn issue","subject":"New issue","fromName":"Newsletter Team","fromEmail":"sender@example.com","replyTo":"reply@example.com","htmlUrl":"https://example.com/campaign.html","listIds":["list-1"]}` creates a draft without sending it. Its mock-backed integration test runs through a real Dex Worker and Client.
+
+The Worker also registers `CampaignMonitorSubscriberUnsubscribe`. Start it with a list ID and subscribed email, for example `{"listId":"list-1","email":"member@example.com"}`. It unsubscribes that address and returns its email identity; the list's suppression policy applies. Its mock-backed integration test runs through a real Dex Worker and Client.
 
 ## Strict FDG 2.0 generation
 

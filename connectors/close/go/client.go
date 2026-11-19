@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package close implements read-only Close API Queries.
+// Package close implements Close API Queries and Mutations.
 package close
 
 import (

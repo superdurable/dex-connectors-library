@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Cloudflare API token from My Profile > API Tokens at https://dash.cloudflare.com/profile/api-tokens. Create a custom token with Zone > Zone > Read and Zone > Cache Purge permissions for the intended zones, then copy it. Blank prevents requests. */
+  /** Secret Cloudflare API token from My Profile > API Tokens at https://dash.cloudflare.com/profile/api-tokens. Create a custom token with Zone > Zone > Read, Zone > Cache Purge, and Zone > DNS > Read/Edit permissions for intended zones, then copy it. Blank prevents requests. */
   apiToken: SecretString;
 }
 

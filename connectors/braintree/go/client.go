@@ -6,11 +6,13 @@ package braintree
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -29,11 +31,12 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 
 // Client holds immutable provider settings and resolves credentials per call.
 type Client struct {
-	baseURL          string
-	apiVersion       string
-	maxResponseBytes int64
-	credentials      CredentialSource
-	httpClient       *http.Client
+	baseURL           string
+	apiVersion        string
+	maxResponseBytes  int64
+	evidenceDirectory string
+	credentials       CredentialSource
+	httpClient        *http.Client
 }
 
 // New validates configuration and required dependencies without contacting Braintree.
@@ -52,7 +55,10 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Braintree API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, apiVersion: config.APIVersion, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	if config.EvidenceDirectory != "" && !filepath.IsAbs(config.EvidenceDirectory) {
+		return nil, errors.New("Braintree evidence directory must be absolute")
+	}
+	client := &Client{baseURL: baseURL, apiVersion: config.APIVersion, maxResponseBytes: config.MaxResponseBytes, evidenceDirectory: config.EvidenceDirectory, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Braintree client option is required")
@@ -76,6 +82,14 @@ type providerResponse struct {
 const getTransactionGraphQL = "query GetTransaction($id: ID!) { node(id: $id) { __typename ... on Transaction { id status } } }"
 
 func (client *Client) get(call sdkgo.Call, input GetTransactionInput) providerResponse {
+	return client.getNode(call, getTransactionGraphQL, input.TransactionID)
+}
+
+func (client *Client) getNode(call sdkgo.Call, query, nodeID string) providerResponse {
+	return client.graphQL(call, call.Context, query, map[string]any{"id": nodeID})
+}
+
+func (client *Client) graphQL(call sdkgo.Call, requestContext context.Context, query string, variables any) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -87,16 +101,12 @@ func (client *Client) get(call sdkgo.Call, input GetTransactionInput) providerRe
 	}
 	body, err := json.Marshal(struct {
 		Query     string `json:"query"`
-		Variables struct {
-			ID string `json:"id"`
-		} `json:"variables"`
-	}{Query: getTransactionGraphQL, Variables: struct {
-		ID string `json:"id"`
-	}{ID: input.TransactionID}})
+		Variables any    `json:"variables"`
+	}{Query: query, Variables: variables})
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+"/graphql", bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, client.baseURL+"/graphql", bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

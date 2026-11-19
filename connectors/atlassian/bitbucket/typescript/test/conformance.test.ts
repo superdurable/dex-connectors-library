@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { BitbucketClient } from '../src/client.js';
 import { ListPullRequestsInputSchema, ListRepositoriesInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/atlassian/bitbucket/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/atlassian/bitbucket/scenarios.json', import.meta.url))
+  .filter(scenario => ['listRepositories', 'listPullRequests'].includes(scenario.operation));
 const connection = { provider: 'bitbucket', name: 'bitbucket' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeBitbucket));

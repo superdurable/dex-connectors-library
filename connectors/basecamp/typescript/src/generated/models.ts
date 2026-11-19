@@ -10,15 +10,18 @@ import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk'
 export interface Config {
   /** Basecamp authorization API HTTPS origin. Blank uses the displayed provider endpoint; override only for a trusted test gateway. */
   baseUrl?: string;
+  /** Basecamp 3 API HTTPS origin. Blank uses the displayed provider endpoint; override only for a trusted test gateway. */
+  apiBaseUrl?: string;
   /** Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for a slow gateway. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large account pages. */
+  /** Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large people or resource pages. */
   maxResponseBytes?: number;
 }
 
 /** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "baseUrl": z.string().optional(),
+  "apiBaseUrl": z.string().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),
 });

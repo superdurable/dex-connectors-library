@@ -11,6 +11,7 @@ from dex_connectors.sdk import SecretString
 class Config:
 
     base_url: str = "https://launchpad.37signals.com"
+    api_base_url: str = "https://3.basecampapi.com"
     timeout_seconds: float = 15
     max_response_bytes: int = 1048576
 

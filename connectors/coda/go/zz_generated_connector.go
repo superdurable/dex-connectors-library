@@ -42,6 +42,11 @@ type Connection struct {
 type Operations interface {
 	ListRows() sdkgo.Query[ListRowsInput, ListRowsOutput]
 	GetRow() sdkgo.Query[GetRowInput, GetRowOutput]
+	ListDocs() sdkgo.Query[ListDocsInput, DocsPage]
+	GetDoc() sdkgo.Query[GetDocInput, Doc]
+	ListTables() sdkgo.Query[ListTablesInput, TablesPage]
+	GetTable() sdkgo.Query[GetTableInput, Table]
+	ListColumns() sdkgo.Query[ListColumnsInput, ColumnsPage]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +56,21 @@ func (operations clientOperations) ListRows() sdkgo.Query[ListRowsInput, ListRow
 }
 func (operations clientOperations) GetRow() sdkgo.Query[GetRowInput, GetRowOutput] {
 	return operations.client.GetRow()
+}
+func (operations clientOperations) ListDocs() sdkgo.Query[ListDocsInput, DocsPage] {
+	return operations.client.ListDocs()
+}
+func (operations clientOperations) GetDoc() sdkgo.Query[GetDocInput, Doc] {
+	return operations.client.GetDoc()
+}
+func (operations clientOperations) ListTables() sdkgo.Query[ListTablesInput, TablesPage] {
+	return operations.client.ListTables()
+}
+func (operations clientOperations) GetTable() sdkgo.Query[GetTableInput, Table] {
+	return operations.client.GetTable()
+}
+func (operations clientOperations) ListColumns() sdkgo.Query[ListColumnsInput, ColumnsPage] {
+	return operations.client.ListColumns()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +350,385 @@ func NewGetRowStep[IN any](config GetRowStepConfig[IN]) sdkgo.QueryStep[IN, GetR
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetRowBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListDocsBranchListed sdkgo.BranchID = "listed"
+const ListDocsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDocsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDocsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDocsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDocs"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDocsBranchListed, Description: "Coda returned the doc page."},
+		{ID: ListDocsBranchProviderRejected, Description: "Coda conclusively rejected the read.", Optional: true},
+		{ID: ListDocsBranchInvalidResponse, Description: "Coda returned malformed or oversized JSON.", Optional: true},
+		{ID: ListDocsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDocsResult = sdkgo.QueryResult[DocsPage]
+
+type ListDocsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=coda"`
+	operationID                    struct{}                                    `connector:"operationId=listDocs"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDocsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDocsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListDocsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDocsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDocsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DocsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListDocsStep[IN any](config ListDocsStepConfig[IN]) sdkgo.QueryStep[IN, ListDocsInput, DocsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("coda connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDocsInput, DocsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDocs(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDocsResult] {
+			branches := make([]sdkgo.BranchTarget[ListDocsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDocsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDocsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDocsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDocsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetDocBranchFound sdkgo.BranchID = "found"
+const GetDocBranchNotFound sdkgo.BranchID = "notFound"
+const GetDocBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDocBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDocBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDocDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDoc"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDocBranchFound, Description: "Coda returned the doc."},
+		{ID: GetDocBranchNotFound, Description: "The doc does not exist or is inaccessible.", Optional: true},
+		{ID: GetDocBranchProviderRejected, Description: "Coda conclusively rejected the read.", Optional: true},
+		{ID: GetDocBranchInvalidResponse, Description: "Coda returned malformed or oversized JSON.", Optional: true},
+		{ID: GetDocBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDocResult = sdkgo.QueryResult[Doc]
+
+type GetDocStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                               `connector:"connectorId=coda"`
+	operationID                    struct{}                               `connector:"operationId=getDoc"`
+	StepType                       string                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                  `connector:"annotations"`
+	Connection                     Connection                             `connector:"connection"`
+	ConnectionName                 string                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDocInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDocResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDocResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDocResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDocResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDocResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Doc]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                       `connector:"stepOptionsOverride"`
+}
+
+func NewGetDocStep[IN any](config GetDocStepConfig[IN]) sdkgo.QueryStep[IN, GetDocInput, Doc] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("coda connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDocInput, Doc]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDoc(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDocResult] {
+			branches := make([]sdkgo.BranchTarget[GetDocResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDocBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDocBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDocBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDocBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDocBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTablesBranchListed sdkgo.BranchID = "listed"
+const ListTablesBranchNotFound sdkgo.BranchID = "notFound"
+const ListTablesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTablesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTablesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTablesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTables"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTablesBranchListed, Description: "Coda returned the table page."},
+		{ID: ListTablesBranchNotFound, Description: "The doc does not exist or is inaccessible.", Optional: true},
+		{ID: ListTablesBranchProviderRejected, Description: "Coda conclusively rejected the read.", Optional: true},
+		{ID: ListTablesBranchInvalidResponse, Description: "Coda returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTablesBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTablesResult = sdkgo.QueryResult[TablesPage]
+
+type ListTablesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=coda"`
+	operationID                    struct{}                                      `connector:"operationId=listTables"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTablesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTablesResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListTablesResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListTablesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTablesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTablesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TablesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListTablesStep[IN any](config ListTablesStepConfig[IN]) sdkgo.QueryStep[IN, ListTablesInput, TablesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("coda connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTablesInput, TablesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTables(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTablesResult] {
+			branches := make([]sdkgo.BranchTarget[ListTablesResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTablesBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListTablesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTablesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTablesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTablesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTableBranchFound sdkgo.BranchID = "found"
+const GetTableBranchNotFound sdkgo.BranchID = "notFound"
+const GetTableBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTableBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTableBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTableDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTable"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTableBranchFound, Description: "Coda returned the table."},
+		{ID: GetTableBranchNotFound, Description: "The table does not exist or is inaccessible.", Optional: true},
+		{ID: GetTableBranchProviderRejected, Description: "Coda conclusively rejected the read.", Optional: true},
+		{ID: GetTableBranchInvalidResponse, Description: "Coda returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTableBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTableResult = sdkgo.QueryResult[Table]
+
+type GetTableStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=coda"`
+	operationID                    struct{}                                 `connector:"operationId=getTable"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTableInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTableResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTableResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTableResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTableResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTableResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Table]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetTableStep[IN any](config GetTableStepConfig[IN]) sdkgo.QueryStep[IN, GetTableInput, Table] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("coda connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTableInput, Table]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTable(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTableResult] {
+			branches := make([]sdkgo.BranchTarget[GetTableResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTableBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTableBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTableBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTableBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTableBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListColumnsBranchListed sdkgo.BranchID = "listed"
+const ListColumnsBranchNotFound sdkgo.BranchID = "notFound"
+const ListColumnsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListColumnsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListColumnsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListColumnsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listColumns"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListColumnsBranchListed, Description: "Coda returned the column page."},
+		{ID: ListColumnsBranchNotFound, Description: "The table does not exist or is inaccessible.", Optional: true},
+		{ID: ListColumnsBranchProviderRejected, Description: "Coda conclusively rejected the read.", Optional: true},
+		{ID: ListColumnsBranchInvalidResponse, Description: "Coda returned malformed or oversized JSON.", Optional: true},
+		{ID: ListColumnsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListColumnsResult = sdkgo.QueryResult[ColumnsPage]
+
+type ListColumnsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=coda"`
+	operationID                    struct{}                                       `connector:"operationId=listColumns"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListColumnsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListColumnsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListColumnsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListColumnsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListColumnsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListColumnsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ColumnsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListColumnsStep[IN any](config ListColumnsStepConfig[IN]) sdkgo.QueryStep[IN, ListColumnsInput, ColumnsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("coda connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListColumnsInput, ColumnsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListColumns(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListColumnsResult] {
+			branches := make([]sdkgo.BranchTarget[ListColumnsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListColumnsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListColumnsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListColumnsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListColumnsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListColumnsBranchDefect))
 			}
 			return branches
 		}(),

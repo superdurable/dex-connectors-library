@@ -40,11 +40,39 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetEvent() sdkgo.Query[GetEventInput, EventSummary]
+	ListEvents() sdkgo.Query[ListEventsInput, EventPage]
+	ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage]
+	GetCustomer() sdkgo.Query[GetCustomerInput, CustomerIdentity]
+	ListCustomers() sdkgo.Query[ListCustomersInput, CustomerPage]
+	GetInvoice() sdkgo.Query[GetInvoiceInput, InvoiceStatus]
+	ListInvoices() sdkgo.Query[ListInvoicesInput, InvoicePage]
 	GetSubscription() sdkgo.Query[GetSubscriptionInput, SubscriptionStatus]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetEvent() sdkgo.Query[GetEventInput, EventSummary] {
+	return operations.client.GetEvent()
+}
+func (operations clientOperations) ListEvents() sdkgo.Query[ListEventsInput, EventPage] {
+	return operations.client.ListEvents()
+}
+func (operations clientOperations) ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage] {
+	return operations.client.ListSubscriptions()
+}
+func (operations clientOperations) GetCustomer() sdkgo.Query[GetCustomerInput, CustomerIdentity] {
+	return operations.client.GetCustomer()
+}
+func (operations clientOperations) ListCustomers() sdkgo.Query[ListCustomersInput, CustomerPage] {
+	return operations.client.ListCustomers()
+}
+func (operations clientOperations) GetInvoice() sdkgo.Query[GetInvoiceInput, InvoiceStatus] {
+	return operations.client.GetInvoice()
+}
+func (operations clientOperations) ListInvoices() sdkgo.Query[ListInvoicesInput, InvoicePage] {
+	return operations.client.ListInvoices()
+}
 func (operations clientOperations) GetSubscription() sdkgo.Query[GetSubscriptionInput, SubscriptionStatus] {
 	return operations.client.GetSubscription()
 }
@@ -183,6 +211,521 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const GetEventBranchFound sdkgo.BranchID = "found"
+const GetEventBranchNotFound sdkgo.BranchID = "notFound"
+const GetEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEventBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEventDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEventBranchFound, Description: "Chargebee returned the event."},
+		{ID: GetEventBranchNotFound, Description: "Chargebee did not find a recent event.", Optional: true},
+		{ID: GetEventBranchProviderRejected, Description: "Chargebee rejected the request.", Optional: true},
+		{ID: GetEventBranchInvalidResponse, Description: "Chargebee returned invalid JSON.", Optional: true},
+		{ID: GetEventBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEventResult = sdkgo.QueryResult[EventSummary]
+
+type GetEventStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=chargebee"`
+	operationID                    struct{}                                        `connector:"operationId=getEvent"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetEventInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEventResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetEventResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetEventResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEventResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEventResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EventSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetEventStep[IN any](config GetEventStepConfig[IN]) sdkgo.QueryStep[IN, GetEventInput, EventSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("chargebee connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEventInput, EventSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEventResult] {
+			branches := make([]sdkgo.BranchTarget[GetEventResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEventBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetEventBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEventBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEventBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEventBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListEventsBranchListed sdkgo.BranchID = "listed"
+const ListEventsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEventsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEventsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEventsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEvents"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEventsBranchListed, Description: "Chargebee returned an event page."},
+		{ID: ListEventsBranchProviderRejected, Description: "Chargebee rejected the request.", Optional: true},
+		{ID: ListEventsBranchInvalidResponse, Description: "Chargebee returned invalid JSON.", Optional: true},
+		{ID: ListEventsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEventsResult = sdkgo.QueryResult[EventPage]
+
+type ListEventsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=chargebee"`
+	operationID                    struct{}                                     `connector:"operationId=listEvents"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListEventsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListEventsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListEventsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEventsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEventsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EventPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListEventsStep[IN any](config ListEventsStepConfig[IN]) sdkgo.QueryStep[IN, ListEventsInput, EventPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("chargebee connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEventsInput, EventPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEvents(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEventsResult] {
+			branches := make([]sdkgo.BranchTarget[ListEventsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListEventsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEventsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEventsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEventsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSubscriptionsBranchListed sdkgo.BranchID = "listed"
+const ListSubscriptionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubscriptionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubscriptionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubscriptionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubscriptions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubscriptionsBranchListed, Description: "Chargebee returned a subscription page."},
+		{ID: ListSubscriptionsBranchProviderRejected, Description: "Chargebee rejected the request.", Optional: true},
+		{ID: ListSubscriptionsBranchInvalidResponse, Description: "Chargebee returned invalid JSON.", Optional: true},
+		{ID: ListSubscriptionsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubscriptionsResult = sdkgo.QueryResult[SubscriptionPage]
+
+type ListSubscriptionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=chargebee"`
+	operationID                    struct{}                                            `connector:"operationId=listSubscriptions"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSubscriptionsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubscriptionsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscriptionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListSubscriptionsStep[IN any](config ListSubscriptionsStepConfig[IN]) sdkgo.QueryStep[IN, ListSubscriptionsInput, SubscriptionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("chargebee connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscriptionsInput, SubscriptionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubscriptions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubscriptionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubscriptionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSubscriptionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubscriptionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubscriptionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubscriptionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCustomerBranchFound sdkgo.BranchID = "found"
+const GetCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const GetCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCustomerDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCustomerBranchFound, Description: "Chargebee returned the customer."},
+		{ID: GetCustomerBranchNotFound, Description: "Chargebee did not find the customer.", Optional: true},
+		{ID: GetCustomerBranchProviderRejected, Description: "Chargebee rejected the request.", Optional: true},
+		{ID: GetCustomerBranchInvalidResponse, Description: "Chargebee returned invalid JSON.", Optional: true},
+		{ID: GetCustomerBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCustomerResult = sdkgo.QueryResult[CustomerIdentity]
+
+type GetCustomerStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=chargebee"`
+	operationID                    struct{}                                            `connector:"operationId=getCustomer"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCustomerInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCustomerResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCustomerResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCustomerResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCustomerResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCustomerResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CustomerIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetCustomerStep[IN any](config GetCustomerStepConfig[IN]) sdkgo.QueryStep[IN, GetCustomerInput, CustomerIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("chargebee connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCustomerInput, CustomerIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[GetCustomerResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCustomerBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCustomersBranchListed sdkgo.BranchID = "listed"
+const ListCustomersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCustomersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCustomersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCustomersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCustomers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCustomersBranchListed, Description: "Chargebee returned a customer page."},
+		{ID: ListCustomersBranchProviderRejected, Description: "Chargebee rejected the request.", Optional: true},
+		{ID: ListCustomersBranchInvalidResponse, Description: "Chargebee returned invalid JSON.", Optional: true},
+		{ID: ListCustomersBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCustomersResult = sdkgo.QueryResult[CustomerPage]
+
+type ListCustomersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=chargebee"`
+	operationID                    struct{}                                        `connector:"operationId=listCustomers"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCustomersInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCustomersResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCustomersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCustomersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCustomersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CustomerPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListCustomersStep[IN any](config ListCustomersStepConfig[IN]) sdkgo.QueryStep[IN, ListCustomersInput, CustomerPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("chargebee connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCustomersInput, CustomerPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCustomers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCustomersResult] {
+			branches := make([]sdkgo.BranchTarget[ListCustomersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCustomersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCustomersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCustomersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCustomersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetInvoiceBranchFound sdkgo.BranchID = "found"
+const GetInvoiceBranchNotFound sdkgo.BranchID = "notFound"
+const GetInvoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInvoiceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInvoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInvoiceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInvoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInvoiceBranchFound, Description: "Chargebee returned the invoice."},
+		{ID: GetInvoiceBranchNotFound, Description: "Chargebee did not find the invoice.", Optional: true},
+		{ID: GetInvoiceBranchProviderRejected, Description: "Chargebee rejected the request.", Optional: true},
+		{ID: GetInvoiceBranchInvalidResponse, Description: "Chargebee returned invalid JSON.", Optional: true},
+		{ID: GetInvoiceBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInvoiceResult = sdkgo.QueryResult[InvoiceStatus]
+
+type GetInvoiceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=chargebee"`
+	operationID                    struct{}                                         `connector:"operationId=getInvoice"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInvoiceInput                         `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetInvoiceResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetInvoiceResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetInvoiceResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInvoiceResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInvoiceResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InvoiceStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetInvoiceStep[IN any](config GetInvoiceStepConfig[IN]) sdkgo.QueryStep[IN, GetInvoiceInput, InvoiceStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("chargebee connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInvoiceInput, InvoiceStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInvoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInvoiceResult] {
+			branches := make([]sdkgo.BranchTarget[GetInvoiceResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetInvoiceBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetInvoiceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInvoiceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInvoiceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInvoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListInvoicesBranchListed sdkgo.BranchID = "listed"
+const ListInvoicesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInvoicesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInvoicesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInvoicesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInvoices"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInvoicesBranchListed, Description: "Chargebee returned an invoice page."},
+		{ID: ListInvoicesBranchProviderRejected, Description: "Chargebee rejected the request.", Optional: true},
+		{ID: ListInvoicesBranchInvalidResponse, Description: "Chargebee returned invalid JSON.", Optional: true},
+		{ID: ListInvoicesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInvoicesResult = sdkgo.QueryResult[InvoicePage]
+
+type ListInvoicesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=chargebee"`
+	operationID                    struct{}                                       `connector:"operationId=listInvoices"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInvoicesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInvoicesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListInvoicesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInvoicesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInvoicesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InvoicePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListInvoicesStep[IN any](config ListInvoicesStepConfig[IN]) sdkgo.QueryStep[IN, ListInvoicesInput, InvoicePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("chargebee connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInvoicesInput, InvoicePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInvoices(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInvoicesResult] {
+			branches := make([]sdkgo.BranchTarget[ListInvoicesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInvoicesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInvoicesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInvoicesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInvoicesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetSubscriptionBranchFound sdkgo.BranchID = "found"

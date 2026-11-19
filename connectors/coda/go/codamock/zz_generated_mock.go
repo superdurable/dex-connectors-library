@@ -17,9 +17,14 @@ import (
 
 // Mock is a scripted coda connection. Script each operation through its accessor.
 type Mock struct {
-	connection coda.Connection
-	listRows   *connectormock.Query[coda.ListRowsInput, coda.ListRowsOutput]
-	getRow     *connectormock.Query[coda.GetRowInput, coda.GetRowOutput]
+	connection  coda.Connection
+	listRows    *connectormock.Query[coda.ListRowsInput, coda.ListRowsOutput]
+	getRow      *connectormock.Query[coda.GetRowInput, coda.GetRowOutput]
+	listDocs    *connectormock.Query[coda.ListDocsInput, coda.DocsPage]
+	getDoc      *connectormock.Query[coda.GetDocInput, coda.Doc]
+	listTables  *connectormock.Query[coda.ListTablesInput, coda.TablesPage]
+	getTable    *connectormock.Query[coda.GetTableInput, coda.Table]
+	listColumns *connectormock.Query[coda.ListColumnsInput, coda.ColumnsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +32,21 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listRows: connectormock.NewQuery[coda.ListRowsInput, coda.ListRowsOutput](t, coda.ListRowsDefinition),
-		getRow:   connectormock.NewQuery[coda.GetRowInput, coda.GetRowOutput](t, coda.GetRowDefinition),
+		listRows:    connectormock.NewQuery[coda.ListRowsInput, coda.ListRowsOutput](t, coda.ListRowsDefinition),
+		getRow:      connectormock.NewQuery[coda.GetRowInput, coda.GetRowOutput](t, coda.GetRowDefinition),
+		listDocs:    connectormock.NewQuery[coda.ListDocsInput, coda.DocsPage](t, coda.ListDocsDefinition),
+		getDoc:      connectormock.NewQuery[coda.GetDocInput, coda.Doc](t, coda.GetDocDefinition),
+		listTables:  connectormock.NewQuery[coda.ListTablesInput, coda.TablesPage](t, coda.ListTablesDefinition),
+		getTable:    connectormock.NewQuery[coda.GetTableInput, coda.Table](t, coda.GetTableDefinition),
+		listColumns: connectormock.NewQuery[coda.ListColumnsInput, coda.ColumnsPage](t, coda.ListColumnsDefinition),
 	}
 	mock.listRows.Default(ListRowsDefault())
 	mock.getRow.Default(GetRowDefault())
+	mock.listDocs.Default(ListDocsDefault())
+	mock.getDoc.Default(GetDocDefault())
+	mock.listTables.Default(ListTablesDefault())
+	mock.getTable.Default(GetTableDefault())
+	mock.listColumns.Default(ListColumnsDefault())
 	connection, err := coda.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "coda", Name: connectionName})
 	if err != nil {
 		t.Fatalf("coda mock connection: %v", err)
@@ -53,6 +68,29 @@ func (mock *Mock) GetRow() *connectormock.Query[coda.GetRowInput, coda.GetRowOut
 	return mock.getRow
 }
 
+// ListDocs returns the listDocs script.
+func (mock *Mock) ListDocs() *connectormock.Query[coda.ListDocsInput, coda.DocsPage] {
+	return mock.listDocs
+}
+
+// GetDoc returns the getDoc script.
+func (mock *Mock) GetDoc() *connectormock.Query[coda.GetDocInput, coda.Doc] { return mock.getDoc }
+
+// ListTables returns the listTables script.
+func (mock *Mock) ListTables() *connectormock.Query[coda.ListTablesInput, coda.TablesPage] {
+	return mock.listTables
+}
+
+// GetTable returns the getTable script.
+func (mock *Mock) GetTable() *connectormock.Query[coda.GetTableInput, coda.Table] {
+	return mock.getTable
+}
+
+// ListColumns returns the listColumns script.
+func (mock *Mock) ListColumns() *connectormock.Query[coda.ListColumnsInput, coda.ColumnsPage] {
+	return mock.listColumns
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListRows() sdkgo.Query[coda.ListRowsInput, coda.ListRowsOutput] {
@@ -60,6 +98,21 @@ func (operations mockOperations) ListRows() sdkgo.Query[coda.ListRowsInput, coda
 }
 func (operations mockOperations) GetRow() sdkgo.Query[coda.GetRowInput, coda.GetRowOutput] {
 	return operations.mock.getRow
+}
+func (operations mockOperations) ListDocs() sdkgo.Query[coda.ListDocsInput, coda.DocsPage] {
+	return operations.mock.listDocs
+}
+func (operations mockOperations) GetDoc() sdkgo.Query[coda.GetDocInput, coda.Doc] {
+	return operations.mock.getDoc
+}
+func (operations mockOperations) ListTables() sdkgo.Query[coda.ListTablesInput, coda.TablesPage] {
+	return operations.mock.listTables
+}
+func (operations mockOperations) GetTable() sdkgo.Query[coda.GetTableInput, coda.Table] {
+	return operations.mock.getTable
+}
+func (operations mockOperations) ListColumns() sdkgo.Query[coda.ListColumnsInput, coda.ColumnsPage] {
+	return operations.mock.listColumns
 }
 
 // ListRowsListed selects the listed branch: List one page of rows in a Coda table.
@@ -134,3 +187,193 @@ func GetRowDefaultGetRow() connectormock.Case[coda.GetRowOutput] {
 
 // GetRowDefault is the manifest default, defaultGetRow, which New installs.
 func GetRowDefault() connectormock.Case[coda.GetRowOutput] { return GetRowDefaultGetRow() }
+
+// ListDocsListed selects the listed branch: Coda returned the doc page.
+func ListDocsListed(value coda.DocsPage, failure *sdkgo.Failure) connectormock.Case[coda.DocsPage] {
+	return connectormock.Branch(coda.ListDocsBranchListed, value, failure)
+}
+
+// ListDocsProviderRejected selects the providerRejected branch: Coda conclusively rejected the read.
+func ListDocsProviderRejected(value coda.DocsPage, failure *sdkgo.Failure) connectormock.Case[coda.DocsPage] {
+	return connectormock.Branch(coda.ListDocsBranchProviderRejected, value, failure)
+}
+
+// ListDocsInvalidResponse selects the invalidResponse branch: Coda returned malformed or oversized JSON.
+func ListDocsInvalidResponse(value coda.DocsPage, failure *sdkgo.Failure) connectormock.Case[coda.DocsPage] {
+	return connectormock.Branch(coda.ListDocsBranchInvalidResponse, value, failure)
+}
+
+// ListDocsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListDocsDefect(value coda.DocsPage, failure *sdkgo.Failure) connectormock.Case[coda.DocsPage] {
+	return connectormock.Branch(coda.ListDocsBranchDefect, value, failure)
+}
+
+// ListDocsRetry asks Dex to retry the listDocs Step, after the delay when it is positive.
+func ListDocsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[coda.DocsPage] {
+	return connectormock.Retry[coda.DocsPage](failure, after)
+}
+
+// ListDocsListedDefault is the manifest mock listedDefault: One Meridian doc is returned.
+func ListDocsListedDefault() connectormock.Case[coda.DocsPage] {
+	value := connectormock.MustDecodeOutput[coda.DocsPage](`{"items":[{"id":"AbCDeFGH","name":"Meridian"}],"nextPageToken":""}`)
+	return connectormock.Branch(coda.ListDocsBranchListed, value, nil)
+}
+
+// ListDocsDefault is the manifest default, listedDefault, which New installs.
+func ListDocsDefault() connectormock.Case[coda.DocsPage] { return ListDocsListedDefault() }
+
+// GetDocFound selects the found branch: Coda returned the doc.
+func GetDocFound(value coda.Doc, failure *sdkgo.Failure) connectormock.Case[coda.Doc] {
+	return connectormock.Branch(coda.GetDocBranchFound, value, failure)
+}
+
+// GetDocNotFound selects the notFound branch: The doc does not exist or is inaccessible.
+func GetDocNotFound(value coda.Doc, failure *sdkgo.Failure) connectormock.Case[coda.Doc] {
+	return connectormock.Branch(coda.GetDocBranchNotFound, value, failure)
+}
+
+// GetDocProviderRejected selects the providerRejected branch: Coda conclusively rejected the read.
+func GetDocProviderRejected(value coda.Doc, failure *sdkgo.Failure) connectormock.Case[coda.Doc] {
+	return connectormock.Branch(coda.GetDocBranchProviderRejected, value, failure)
+}
+
+// GetDocInvalidResponse selects the invalidResponse branch: Coda returned malformed or oversized JSON.
+func GetDocInvalidResponse(value coda.Doc, failure *sdkgo.Failure) connectormock.Case[coda.Doc] {
+	return connectormock.Branch(coda.GetDocBranchInvalidResponse, value, failure)
+}
+
+// GetDocDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetDocDefect(value coda.Doc, failure *sdkgo.Failure) connectormock.Case[coda.Doc] {
+	return connectormock.Branch(coda.GetDocBranchDefect, value, failure)
+}
+
+// GetDocRetry asks Dex to retry the getDoc Step, after the delay when it is positive.
+func GetDocRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[coda.Doc] {
+	return connectormock.Retry[coda.Doc](failure, after)
+}
+
+// GetDocFoundDefault is the manifest mock foundDefault: Meridian doc is returned.
+func GetDocFoundDefault() connectormock.Case[coda.Doc] {
+	value := connectormock.MustDecodeOutput[coda.Doc](`{"id":"AbCDeFGH","name":"Meridian"}`)
+	return connectormock.Branch(coda.GetDocBranchFound, value, nil)
+}
+
+// GetDocDefault is the manifest default, foundDefault, which New installs.
+func GetDocDefault() connectormock.Case[coda.Doc] { return GetDocFoundDefault() }
+
+// ListTablesListed selects the listed branch: Coda returned the table page.
+func ListTablesListed(value coda.TablesPage, failure *sdkgo.Failure) connectormock.Case[coda.TablesPage] {
+	return connectormock.Branch(coda.ListTablesBranchListed, value, failure)
+}
+
+// ListTablesNotFound selects the notFound branch: The doc does not exist or is inaccessible.
+func ListTablesNotFound(value coda.TablesPage, failure *sdkgo.Failure) connectormock.Case[coda.TablesPage] {
+	return connectormock.Branch(coda.ListTablesBranchNotFound, value, failure)
+}
+
+// ListTablesProviderRejected selects the providerRejected branch: Coda conclusively rejected the read.
+func ListTablesProviderRejected(value coda.TablesPage, failure *sdkgo.Failure) connectormock.Case[coda.TablesPage] {
+	return connectormock.Branch(coda.ListTablesBranchProviderRejected, value, failure)
+}
+
+// ListTablesInvalidResponse selects the invalidResponse branch: Coda returned malformed or oversized JSON.
+func ListTablesInvalidResponse(value coda.TablesPage, failure *sdkgo.Failure) connectormock.Case[coda.TablesPage] {
+	return connectormock.Branch(coda.ListTablesBranchInvalidResponse, value, failure)
+}
+
+// ListTablesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListTablesDefect(value coda.TablesPage, failure *sdkgo.Failure) connectormock.Case[coda.TablesPage] {
+	return connectormock.Branch(coda.ListTablesBranchDefect, value, failure)
+}
+
+// ListTablesRetry asks Dex to retry the listTables Step, after the delay when it is positive.
+func ListTablesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[coda.TablesPage] {
+	return connectormock.Retry[coda.TablesPage](failure, after)
+}
+
+// ListTablesListedDefault is the manifest mock listedDefault: Meridian has one table.
+func ListTablesListedDefault() connectormock.Case[coda.TablesPage] {
+	value := connectormock.MustDecodeOutput[coda.TablesPage](`{"items":[{"id":"grid-pqRst-U","name":"Accounts"}],"nextPageToken":""}`)
+	return connectormock.Branch(coda.ListTablesBranchListed, value, nil)
+}
+
+// ListTablesDefault is the manifest default, listedDefault, which New installs.
+func ListTablesDefault() connectormock.Case[coda.TablesPage] { return ListTablesListedDefault() }
+
+// GetTableFound selects the found branch: Coda returned the table.
+func GetTableFound(value coda.Table, failure *sdkgo.Failure) connectormock.Case[coda.Table] {
+	return connectormock.Branch(coda.GetTableBranchFound, value, failure)
+}
+
+// GetTableNotFound selects the notFound branch: The table does not exist or is inaccessible.
+func GetTableNotFound(value coda.Table, failure *sdkgo.Failure) connectormock.Case[coda.Table] {
+	return connectormock.Branch(coda.GetTableBranchNotFound, value, failure)
+}
+
+// GetTableProviderRejected selects the providerRejected branch: Coda conclusively rejected the read.
+func GetTableProviderRejected(value coda.Table, failure *sdkgo.Failure) connectormock.Case[coda.Table] {
+	return connectormock.Branch(coda.GetTableBranchProviderRejected, value, failure)
+}
+
+// GetTableInvalidResponse selects the invalidResponse branch: Coda returned malformed or oversized JSON.
+func GetTableInvalidResponse(value coda.Table, failure *sdkgo.Failure) connectormock.Case[coda.Table] {
+	return connectormock.Branch(coda.GetTableBranchInvalidResponse, value, failure)
+}
+
+// GetTableDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetTableDefect(value coda.Table, failure *sdkgo.Failure) connectormock.Case[coda.Table] {
+	return connectormock.Branch(coda.GetTableBranchDefect, value, failure)
+}
+
+// GetTableRetry asks Dex to retry the getTable Step, after the delay when it is positive.
+func GetTableRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[coda.Table] {
+	return connectormock.Retry[coda.Table](failure, after)
+}
+
+// GetTableFoundDefault is the manifest mock foundDefault: Meridian Accounts table is returned.
+func GetTableFoundDefault() connectormock.Case[coda.Table] {
+	value := connectormock.MustDecodeOutput[coda.Table](`{"id":"grid-pqRst-U","name":"Accounts"}`)
+	return connectormock.Branch(coda.GetTableBranchFound, value, nil)
+}
+
+// GetTableDefault is the manifest default, foundDefault, which New installs.
+func GetTableDefault() connectormock.Case[coda.Table] { return GetTableFoundDefault() }
+
+// ListColumnsListed selects the listed branch: Coda returned the column page.
+func ListColumnsListed(value coda.ColumnsPage, failure *sdkgo.Failure) connectormock.Case[coda.ColumnsPage] {
+	return connectormock.Branch(coda.ListColumnsBranchListed, value, failure)
+}
+
+// ListColumnsNotFound selects the notFound branch: The table does not exist or is inaccessible.
+func ListColumnsNotFound(value coda.ColumnsPage, failure *sdkgo.Failure) connectormock.Case[coda.ColumnsPage] {
+	return connectormock.Branch(coda.ListColumnsBranchNotFound, value, failure)
+}
+
+// ListColumnsProviderRejected selects the providerRejected branch: Coda conclusively rejected the read.
+func ListColumnsProviderRejected(value coda.ColumnsPage, failure *sdkgo.Failure) connectormock.Case[coda.ColumnsPage] {
+	return connectormock.Branch(coda.ListColumnsBranchProviderRejected, value, failure)
+}
+
+// ListColumnsInvalidResponse selects the invalidResponse branch: Coda returned malformed or oversized JSON.
+func ListColumnsInvalidResponse(value coda.ColumnsPage, failure *sdkgo.Failure) connectormock.Case[coda.ColumnsPage] {
+	return connectormock.Branch(coda.ListColumnsBranchInvalidResponse, value, failure)
+}
+
+// ListColumnsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListColumnsDefect(value coda.ColumnsPage, failure *sdkgo.Failure) connectormock.Case[coda.ColumnsPage] {
+	return connectormock.Branch(coda.ListColumnsBranchDefect, value, failure)
+}
+
+// ListColumnsRetry asks Dex to retry the listColumns Step, after the delay when it is positive.
+func ListColumnsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[coda.ColumnsPage] {
+	return connectormock.Retry[coda.ColumnsPage](failure, after)
+}
+
+// ListColumnsListedDefault is the manifest mock listedDefault: Accounts has one Name column.
+func ListColumnsListedDefault() connectormock.Case[coda.ColumnsPage] {
+	value := connectormock.MustDecodeOutput[coda.ColumnsPage](`{"items":[{"id":"c-Name","name":"Name"}],"nextPageToken":""}`)
+	return connectormock.Branch(coda.ListColumnsBranchListed, value, nil)
+}
+
+// ListColumnsDefault is the manifest default, listedDefault, which New installs.
+func ListColumnsDefault() connectormock.Case[coda.ColumnsPage] { return ListColumnsListedDefault() }

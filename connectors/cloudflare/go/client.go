@@ -249,7 +249,8 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 	}
 	if response.StatusCode != http.StatusOK {
 		rejectedFailure := statusFailure(response, operation)
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) {
 			// Repeating a purge has the same effect, so an ambiguous answer retries.
 			rejectedFailure.Kind = sdkgo.FailureAvailability
 			return sdkgo.NewMutationRetry[T](rejectedFailure, 0)
@@ -274,11 +275,11 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 }
 
 // isDefiniteRefusalStatus reports a status that proves Cloudflare refused the write; any other status is unknown.
-func isDefiniteRefusalStatus(status int) bool {
+func isDefiniteRefusalStatus(status int, body []byte) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
 		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+		return isCloudflareRejection(body)
 	}
 	return false
 }

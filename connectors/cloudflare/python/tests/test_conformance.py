@@ -14,14 +14,27 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/cloudflare/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/cloudflare/scenarios.json")
+    if scenario["operation"] in ("listZones", "purgeCacheByURLs")
+]
 CONNECTION = sdk.ConnectionRef("cloudflare", "cloudflare")
 ADAPTER = PythonOperationAdapter(
-    "cloudflare", CONNECTION, cloudflare,
+    "cloudflare",
+    CONNECTION,
+    cloudflare,
     lambda client, recorder: cloudflare.Client(
         cloudflare.Config(base_url="http://127.0.0.1:12345"),
-        sdk.StaticCredentialProvider({CONNECTION: cloudflare.Credentials(
-            sdk.SecretString("" if recorder.scenario["name"] == "listZones-defect" else "test-apitoken"))}),
+        sdk.StaticCredentialProvider(
+            {
+                CONNECTION: cloudflare.Credentials(
+                    sdk.SecretString(
+                        "" if recorder.scenario["name"] == "listZones-defect" else "test-apitoken"
+                    )
+                )
+            }
+        ),
         client,
     ),
     operation_types={"purgeCacheByURLs": cloudflare.PurgeCacheByURLsOperation},

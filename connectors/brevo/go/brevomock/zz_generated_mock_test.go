@@ -16,6 +16,53 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.ContactWriteResult](`{"id":21,"email":"member@meridian.example","created":true}`)
+			return err
+		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.ContactsList](`{"contacts":[{"id":21,"email":"member@meridian.example"}],"count":1}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.ContactChangeResult](`{"email":"member@meridian.example"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.ContactChangeResult](`{"email":"member@meridian.example"}`)
+			return err
+		}},
+		{name: "listAttributes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.AttributesList](`{"attributes":[{"name":"FIRSTNAME","category":"normal","type":"text"}]}`)
+			return err
+		}},
+		{name: "createAttribute/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.AttributeChangeResult](`{"category":"normal","name":"CUSTOMER_CODE"}`)
+			return err
+		}},
+		{name: "updateAttribute/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.AttributeChangeResult](`{"category":"normal","name":"CUSTOMER_TIER"}`)
+			return err
+		}},
+		{name: "deleteAttribute/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.AttributeChangeResult](`{"category":"normal","name":"CUSTOMER_CODE"}`)
+			return err
+		}},
+		{name: "listSenders/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.SendersList](`{"senders":[{"id":1,"name":"Support","email":"support@example.com","active":true}]}`)
+			return err
+		}},
+		{name: "createSender/createdDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[brevo.SenderChangeResult](`{"id":1}`); return err }},
+		{name: "updateSender/updatedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[brevo.SenderChangeResult](`{"id":1}`); return err }},
+		{name: "deleteSender/deletedDefault/1", decode: func() error { _, err := connectormock.DecodeOutput[brevo.SenderChangeResult](`{"id":1}`); return err }},
+		{name: "sendEmail/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.EmailSendResult](`{"messageId":"\u003csample@relay.example\u003e"}`)
+			return err
+		}},
+		{name: "sendTemplateEmail/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[brevo.EmailSendResult](`{"messageId":"\u003csample-template@relay.example\u003e"}`)
+			return err
+		}},
 		{name: "createOrUpdateContact/savedDefaultContact/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[brevo.ContactWriteResult](`{"id":21,"email":"member@meridian.example","created":true}`)
 			return err
@@ -34,6 +81,48 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.ListAttributes().Definition().Operation.OperationID != "listAttributes" {
+		t.Errorf("listAttributes mock has another definition")
+	}
+	if mock.CreateAttribute().Definition().Operation.OperationID != "createAttribute" {
+		t.Errorf("createAttribute mock has another definition")
+	}
+	if mock.UpdateAttribute().Definition().Operation.OperationID != "updateAttribute" {
+		t.Errorf("updateAttribute mock has another definition")
+	}
+	if mock.DeleteAttribute().Definition().Operation.OperationID != "deleteAttribute" {
+		t.Errorf("deleteAttribute mock has another definition")
+	}
+	if mock.ListSenders().Definition().Operation.OperationID != "listSenders" {
+		t.Errorf("listSenders mock has another definition")
+	}
+	if mock.CreateSender().Definition().Operation.OperationID != "createSender" {
+		t.Errorf("createSender mock has another definition")
+	}
+	if mock.UpdateSender().Definition().Operation.OperationID != "updateSender" {
+		t.Errorf("updateSender mock has another definition")
+	}
+	if mock.DeleteSender().Definition().Operation.OperationID != "deleteSender" {
+		t.Errorf("deleteSender mock has another definition")
+	}
+	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
+		t.Errorf("sendEmail mock has another definition")
+	}
+	if mock.SendTemplateEmail().Definition().Operation.OperationID != "sendTemplateEmail" {
+		t.Errorf("sendTemplateEmail mock has another definition")
+	}
 	if mock.CreateOrUpdateContact().Definition().Operation.OperationID != "createOrUpdateContact" {
 		t.Errorf("createOrUpdateContact mock has another definition")
 	}

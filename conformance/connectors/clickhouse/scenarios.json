@@ -2,6 +2,621 @@
   "connector": "clickhouse",
   "scenarios": [
     {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"name\":\"analytics\"},{\"name\":\"default\"}],\"rows\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "query": [
+              "SELECT name FROM system.databases ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "names": [
+            "analytics",
+            "default"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDatabases-listed",
+      "operation": "listDatabases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "query": [
+              "SELECT name FROM system.databases ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "names": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDatabases-providerRejected",
+      "operation": "listDatabases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"name\":\"\"}],\"rows\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "query": [
+              "SELECT name FROM system.databases ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "names": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDatabases-invalidResponse",
+      "operation": "listDatabases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "hasMore": false,
+          "names": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDatabases-defect",
+      "operation": "listDatabases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "query": [
+              "SELECT name FROM system.databases ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDatabases-rateLimit",
+      "operation": "listDatabases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "query": [
+              "SELECT name FROM system.databases ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDatabases-serverUnavailable",
+      "operation": "listDatabases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "query": [
+              "SELECT name FROM system.databases ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDatabases-transportFailure",
+      "operation": "listDatabases"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"name\":\"id\",\"type\":\"UInt64\"},{\"name\":\"event\",\"type\":\"String\"}],\"rows\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "param_table": [
+              "events"
+            ],
+            "query": [
+              "SELECT name, type FROM system.columns WHERE database = {database:String} AND table = {table:String} ORDER BY position LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "columns": [
+            {
+              "name": "id",
+              "type": "UInt64"
+            },
+            {
+              "name": "event",
+              "type": "String"
+            }
+          ],
+          "database": "analytics",
+          "hasMore": false,
+          "table": "events"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics",
+        "table": "events"
+      },
+      "name": "listColumns-listed",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "param_table": [
+              "events"
+            ],
+            "query": [
+              "SELECT name, type FROM system.columns WHERE database = {database:String} AND table = {table:String} ORDER BY position LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "columns": [],
+          "database": "",
+          "hasMore": false,
+          "table": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics",
+        "table": "events"
+      },
+      "name": "listColumns-providerRejected",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"name\":\"id\",\"type\":\"\"}],\"rows\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "param_table": [
+              "events"
+            ],
+            "query": [
+              "SELECT name, type FROM system.columns WHERE database = {database:String} AND table = {table:String} ORDER BY position LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "columns": [],
+          "database": "",
+          "hasMore": false,
+          "table": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics",
+        "table": "events"
+      },
+      "name": "listColumns-invalidResponse",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000011",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "columns": [],
+          "database": "",
+          "hasMore": false,
+          "table": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "",
+        "table": "events"
+      },
+      "name": "listColumns-defect",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "param_table": [
+              "events"
+            ],
+            "query": [
+              "SELECT name, type FROM system.columns WHERE database = {database:String} AND table = {table:String} ORDER BY position LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics",
+        "table": "events"
+      },
+      "name": "listColumns-rateLimit",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000013",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "param_table": [
+              "events"
+            ],
+            "query": [
+              "SELECT name, type FROM system.columns WHERE database = {database:String} AND table = {table:String} ORDER BY position LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics",
+        "table": "events"
+      },
+      "name": "listColumns-serverUnavailable",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000014",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "param_table": [
+              "events"
+            ],
+            "query": [
+              "SELECT name, type FROM system.columns WHERE database = {database:String} AND table = {table:String} ORDER BY position LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics",
+        "table": "events"
+      },
+      "name": "listColumns-transportFailure",
+      "operation": "listColumns"
+    },
+    {
       "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
       "exchanges": [
         {
