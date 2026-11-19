@@ -1,0 +1,531 @@
+{
+  "connector": "netease",
+  "scenarios": [
+    {
+      "callId": "10000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"account_id\":\"sample-user\",\"name\":\"Sample User\",\"email\":\"private@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "001e4ab55e70028ef24d88f8676e8425f8bd855e"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "50254cdae6225bb72c760a443e8eecaa"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "accountId": "sample-user",
+          "name": "Sample User"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-fetched",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-fetched"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"code\":102404,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "c1c1d42289dc55ff88e634373ddad29586d128f4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "9576e3bd9ee76d0070915459236476d5"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-notFound",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-notFound"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"code\":414,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "4e5189e22db7b6729ce7e9f8a81ce61566ff4b75"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "a562c4bc8f82ad1c47f4c2df250d8854"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-providerRejected",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-providerRejected"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "d4d4f207d6fa7509d60a4e999a25210cd3a8ca2b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "832db21b928c24765529b6e63843cb08"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-invalidResponse",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-invalidResponse"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": ""
+      },
+      "name": "getUserProfile-defect",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-defect"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "7af5e7291040da9c832e0bee82277a8aa547d7d1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "20e743406263ae908807532678390628"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-429",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-429"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "c9381ccc64a821040f352fdaad67fa49b3ec566c"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "b42ad2f191210a5d6b3b92bac54f32dd"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-503",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-503"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "9a37dcf8b54f38e8b3e095fb7527a1778f19773f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "dbe2c9a6c45109b5858392db1452a829"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-transport",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-transport"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"data\":{\"account_id\":\"sample-user\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "78d3faaa93ba0dff7f233ad796bf1f57055aff42"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "7abe1701ea061ce1991a045514fb6893"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-oversized",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-oversized"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"code\":500}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "63afa67bccbe75145def7f1e41ffc285748ee5c7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "86300c73660479364546ec9a4705ebbf"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-provider500",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-provider500"
+    },
+    {
+      "callId": "10000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{\"code\":103404}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/im/v2/users/sample-user",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Appkey": [
+              "test-app-key"
+            ],
+            "Checksum": [
+              "cb9dd8f01fdcf205a1a77b5641d9ee68c2a65820"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Curtime": [
+              "1767225600"
+            ],
+            "Nonce": [
+              "dcfe2fee3d37cab78e1687fb6dd1f449"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-01T00:00:00Z",
+      "input": {
+        "accountId": "sample-user"
+      },
+      "name": "getUserProfile-profileAbsent",
+      "operation": "getUserProfile",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NETEASE_getUserProfile-profileAbsent"
+    }
+  ],
+  "schemaVersion": 1
+}
