@@ -9,3 +9,8 @@ Use an organization-operated Zadig deployment reachable through HTTPS. Its addre
 ## Go
 
 The [project catalog Flow](go/examples/project-catalog/) is a runnable Worker with static Dex Web connection name `zadig`. Input `pageNum` and `pageSize` default to 1 and 20; `listed` completes the Flow. Optional branches fail unless an application wires a business response. Transient failures retry safely. The local mock integration uses synthetic project data and a real Dex Worker and Client. Live deployment authorization and project values remain unverified without a user-controlled connection.
+
+
+## Python
+
+The first Python package implements the read-only `listProjects` operation and replays all Go-recorded outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/project_list/README.md). Live provider authorization and responses remain unverified.
