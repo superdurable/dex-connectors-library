@@ -429,6 +429,88 @@ func TestRetriedTransitionReadFailures(t *testing.T) {
 	require.Equal(t, 1, provider.posts())
 }
 
+// unknownTransitionReads are issue reads that prove nothing about the issue.
+var unknownTransitionReads = map[string]func(*testing.T, http.ResponseWriter){
+	"409":              func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusConflict, `{"errorMessages":["SENTINEL"]}`) },
+	"425":              func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusTooEarly, `{}`) },
+	"unlisted 4xx":     func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusTeapot, `{}`) },
+	"cut 403":          func(_ *testing.T, response http.ResponseWriter) { writeTruncatedJSON(response, http.StatusForbidden) },
+	"cut 404":          func(_ *testing.T, response http.ResponseWriter) { writeTruncatedJSON(response, http.StatusNotFound) },
+	"unparseable 2xx":  func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{}`) },
+	"token-reflecting": func(t *testing.T, response http.ResponseWriter) { writeJSON(t, response, http.StatusOK, `{"token":"`+testAccessToken+`"}`) },
+}
+
+func TestFirstTransitionReadWithoutADefiniteOutcomeRetriesAndRecordsNotSent(t *testing.T) {
+	for name, answer := range unknownTransitionReads {
+		t.Run(name, func(t *testing.T) {
+			provider := newWorkflowJira(t, "1")
+			provider.readResponse = func(response http.ResponseWriter) bool { answer(t, response); return true }
+			ctx := singledispatchtest.NewContext("jira-flow", "transition-unknown-first-read")
+			_, err := runTransitionInContext(t, ctx, provider, jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Zero(t, provider.posts())
+			heartbeats := ctx.Heartbeats()
+			require.Len(t, heartbeats, 1)
+			require.Contains(t, string(heartbeats[0]), `"state":"notSent"`, "the next attempt may still select")
+		})
+	}
+}
+
+func TestRetriedTransitionReadWithoutADefiniteOutcomeRetries(t *testing.T) {
+	for name, answer := range unknownTransitionReads {
+		t.Run(name, func(t *testing.T) {
+			provider := newWorkflowJira(t, "1")
+			failFirstTransitionPost(provider)
+			ctx := singledispatchtest.NewContext("jira-flow", "transition-unknown-retried-read")
+			input := jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"}
+			_, err := runTransitionInContext(t, ctx, provider, input)
+			requireRetry(t, err, sdkgo.FailureAvailability)
+			provider.readResponse = func(response http.ResponseWriter) bool { answer(t, response); return true }
+			ctx.AdvanceAttempt()
+			_, err = runTransitionInContext(t, ctx, provider, input)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "a possible earlier transition never selects a failure branch on an unknown read")
+			require.Equal(t, 1, provider.posts())
+			require.Len(t, ctx.Heartbeats(), 1, "the recorded plan is kept")
+		})
+	}
+}
+
+func TestTransitionReadWithADefiniteRefusalKeepsItsBranch(t *testing.T) {
+	provider := newWorkflowJira(t, "1")
+	provider.readResponse = func(response http.ResponseWriter) bool {
+		writeJSON(provider.t, response, http.StatusForbidden, `{"errorMessages":["SENTINEL"]}`)
+		return true
+	}
+	ctx := singledispatchtest.NewContext("jira-flow", "transition-forbidden-read")
+	result, err := runTransitionInContext(t, ctx, provider, jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"})
+	require.NoError(t, err)
+	require.Equal(t, jira.TransitionIssueBranchProviderRejected, result.Branch)
+	require.Zero(t, provider.posts())
+}
+
+func TestTransitionRefreshesARejectedTokenAndResendsOnce(t *testing.T) {
+	provider := newWorkflowJira(t, "1")
+	provider.postResponse = func(response http.ResponseWriter, post int) bool {
+		if post > 1 {
+			return false
+		}
+		writeJSON(provider.t, response, http.StatusUnauthorized, `{"code":401,"message":"SENTINEL Unauthorized"}`)
+		return true
+	}
+	credentials := &rejectionRefreshingCredentialProvider{}
+	client, err := jira.New(jira.Config{CloudID: testCloudID, Endpoint: provider.URL}, credentials)
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("jira-flow", "transition-refresh")
+	result, err := sdkgo.RunMutation(ctx, client.TransitionIssue(), jiraConnection, jira.TransitionIssueInput{IssueIDOrKey: "OPS-42", TransitionID: "11"})
+	require.NoError(t, err)
+	require.Equal(t, jira.TransitionIssueBranchTransitioned, result.Branch)
+	require.Equal(t, 2, provider.posts(), "a 401 proves Jira did not apply the first transition")
+	require.Equal(t, 1, credentials.forcedRefreshes)
+	require.Equal(t, "Bearer replacement-token", provider.request(provider.requestCount()-1).authorization)
+}
+
 func TestTransitionRefusalWithAnUnreadableBodyIsUnknown(t *testing.T) {
 	provider := newWorkflowJira(t, "1")
 	provider.postResponse = func(response http.ResponseWriter, post int) bool {

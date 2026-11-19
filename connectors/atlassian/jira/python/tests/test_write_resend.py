@@ -578,6 +578,100 @@ async def test_retried_transition_read_failures(status: int, branch: str) -> Non
     assert len(requests) == 1
 
 
+UNKNOWN_TRANSITION_READS = [
+    (409, '{"errorMessages":["SENTINEL"]}'),
+    (425, "{}"),
+    (418, "{}"),
+    (403, TRUNCATED_BODY),
+    (404, TRUNCATED_BODY),
+    (200, "{}"),
+    (200, '{"token":"jira-access-token"}'),
+]
+"""Issue reads that prove nothing about the issue."""
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("status", "body"), UNKNOWN_TRANSITION_READS)
+async def test_first_transition_read_without_a_definite_outcome_retries_and_records_not_sent(
+    status: int, body: str
+) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext()
+    result = await run(
+        "transitionIssue", lambda _request: (status, body), context, requests, transition=TRANSITION
+    )
+    assert isinstance(result, sdk.RetryError)
+    assert posts(requests, "/transitions") == 0
+    assert isinstance(context.heartbeat_value, dict) and context.heartbeat_value["state"] == "notSent"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("status", "body"), UNKNOWN_TRANSITION_READS)
+async def test_retried_transition_read_without_a_definite_outcome_retries(status: int, body: str) -> None:
+    requests: list[httpx.Request] = []
+    context = AttemptContext(attempt=2, heartbeat_value=RECORDED_STOP_PROGRESS)
+    result = await run(
+        "transitionIssue", lambda _request: (status, body), context, requests, transition=TRANSITION
+    )
+    assert isinstance(result, sdk.RetryError), "a possible earlier transition never selects a failure branch"
+    assert len(requests) == 1
+    assert context.heartbeat_value == RECORDED_STOP_PROGRESS, "the recorded plan is kept"
+
+
+@pytest.mark.asyncio
+async def test_transition_read_with_a_definite_refusal_keeps_its_branch() -> None:
+    requests: list[httpx.Request] = []
+    result = await run(
+        "transitionIssue", lambda _request: (403, '{"errorMessages":["SENTINEL"]}'), AttemptContext(),
+        requests, transition=TRANSITION,
+    )
+    assert isinstance(result, sdk.MutationResult) and result.branch == "providerRejected"
+    assert posts(requests, "/transitions") == 0
+
+
+class RejectionRefreshingCredentials:
+    """Credentials whose token Jira rejects once until a forced refresh replaces it."""
+
+    def __init__(self) -> None:
+        self.forced_refreshes = 0
+
+    def _credentials(self, token: str) -> jira.Credentials:
+        return jira.Credentials(
+            "client-id", sdk.SecretString("secret"), sdk.SecretString(token), sdk.SecretString("")
+        )
+
+    async def resolve(self, call: sdk.Call) -> jira.Credentials:
+        """Return the current token."""
+        return self._credentials("replacement-token" if self.forced_refreshes else "rejected-token")
+
+    async def resolve_after_rejection(self, call: sdk.Call) -> jira.Credentials:
+        """Replace the rejected token."""
+        self.forced_refreshes += 1
+        return self._credentials("replacement-token")
+
+
+@pytest.mark.asyncio
+async def test_transition_refreshes_a_rejected_token_and_resends_once() -> None:
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> tuple[int, str]:
+        if request.method == "GET":
+            return 200, IN_PROGRESS_ISSUE
+        if request.headers["Authorization"] == "Bearer rejected-token":
+            return 401, '{"code":401,"message":"SENTINEL Unauthorized"}'
+        return 204, ""
+
+    credentials = RejectionRefreshingCredentials()
+    result = await run(
+        "transitionIssue", answer, AttemptContext(), requests,
+        credential_provider=credentials, transition=TRANSITION,
+    )
+    assert isinstance(result, sdk.MutationResult) and result.branch == "transitioned"
+    assert posts(requests, "/transitions") == 2, "a 401 proves Jira did not apply the first transition"
+    assert credentials.forced_refreshes == 1
+    assert requests[-1].headers["Authorization"] == "Bearer replacement-token"
+
+
 @pytest.mark.asyncio
 async def test_transition_rate_limit_allows_the_next_attempt_to_send() -> None:
     requests: list[httpx.Request] = []

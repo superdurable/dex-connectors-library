@@ -108,7 +108,7 @@ export interface TransitionIssueStepConfig<StepInput, OperationInput = Transitio
   transitionUnavailable?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the transition, such as a required transition screen field or missing permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Jira returned an invalid or oversized issue or transition list. */
+  /** No longer selected. An invalid or oversized issue or transition list proves nothing about the issue, so the Step retries; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
