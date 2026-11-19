@@ -104,11 +104,14 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	token, err := operation.client.accessToken(call)
 	if err != nil {
 		if sdkgo.IsReauthorizationRequired(err) || errors.Is(err, errInvalidAccessToken) {
+			if decision.MaximumPriorSends > 0 {
+				return sdkgo.NewMutationRetry[ContactSummary](contactsFailure("createContact", sdkgo.FailureAvailability, "earlier contact creation may have succeeded"), 0)
+			}
 			return createContactBranch(CreateContactBranchDefect, sdkgo.FailureAuthentication, "Creatio connection needs authorization")
 		}
 		return sdkgo.NewMutationRetry[ContactSummary](contactsFailure("createContact", sdkgo.FailureTransport, "Creatio credential minting failed"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
 		if decision.Marker.ProviderID != "" {
 			response := operation.client.doODataRequest(call.Context, token, http.MethodGet, "/0/odata/Contact("+decision.Marker.ProviderID+")?$select=Id%2CName%2CEmail", nil)
 			if response.err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
@@ -124,18 +127,9 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 			return sdkgo.NewMutationBranch(CreateContactBranchCreated, contact, nil, sdkgo.Receipt{})
 		}
 		if input.Email != "" {
-			matching, known, retry := operation.client.findContactByNameAndEmail(call, token, input.Name, input.Email)
+			_, _, retry := operation.client.findContactByNameAndEmail(call, token, input.Name, input.Email)
 			if retry {
 				return sdkgo.NewMutationRetry[ContactSummary](contactsFailure("createContact", sdkgo.FailureAvailability, "Creatio contact read-back unavailable"), 0)
-			}
-			if matching != nil {
-				if strings.EqualFold(matching.ID, decision.Marker.ProviderID) {
-					return sdkgo.NewMutationBranch(CreateContactBranchCreated, *matching, nil, sdkgo.Receipt{})
-				}
-				return createContactUncertain("a matching contact cannot prove this creation")
-			}
-			if !known {
-				return createContactUncertain("previous creation cannot be confirmed")
 			}
 		}
 		if decision.Kind == singledispatch.ReadBackRequired {
@@ -171,8 +165,20 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return sdkgo.NewMutationRetry[ContactSummary](contactsFailure("createContact", sdkgo.FailureTransport, "contact creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteCreatioWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createContactUncertain("contact creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[ContactSummary](contactsFailure("createContact", sdkgo.FailureAvailability, "contact creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return createContactUncertain("an earlier contact creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createContactUncertain("an earlier contact creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[ContactSummary](contactsFailure("createContact", sdkgo.FailureAvailability, "earlier contact creation may have succeeded"), 0)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[ContactSummary](contactsFailure("createContact", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		return createContactBranch(CreateContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Creatio rejected HTTP "+strconv.Itoa(response.status))
 	}

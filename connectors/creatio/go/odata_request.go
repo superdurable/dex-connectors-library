@@ -6,6 +6,7 @@ package creatio
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -21,6 +22,24 @@ type odataResponse struct {
 	retryAfter     time.Duration
 	err            error
 	isBodyTooLarge bool
+}
+
+func isDefiniteCreatioWriteRefusal(response odataResponse) bool {
+	if response.err != nil || response.isBodyTooLarge {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var answer struct {
+		Error json.RawMessage `json:"error"`
+		ID    json.RawMessage `json:"Id"`
+	}
+	return json.Unmarshal(response.body, &answer) == nil && len(bytes.TrimSpace(answer.Error)) > 0 && len(bytes.TrimSpace(answer.ID)) == 0
 }
 
 var errInvalidAccessToken = errors.New("Creatio access token unavailable")

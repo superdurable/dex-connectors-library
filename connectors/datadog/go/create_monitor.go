@@ -62,6 +62,9 @@ func (operation CreateMonitorOperation) Invoke(call sdkgo.Call, input CreateMoni
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) || !providerhttp.IsHeaderSafeCredential(credentials.ApplicationKey.Reveal()) {
+		if decision.MaximumPriorSends > 0 {
+			return monitorMutationRetry[Monitor]("createMonitor", sdkgo.FailureAvailability, "earlier monitor creation may have succeeded", 0)
+		}
 		if decision.Kind == singledispatch.SendAllowed {
 			_ = fence.RecordNotSent()
 		}
@@ -99,8 +102,12 @@ func (operation CreateMonitorOperation) Invoke(call sdkgo.Call, input CreateMoni
 		return operation.retryOrUncertain(call, decision, after, "Datadog monitor creation outcome is unknown")
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated {
-		if decision.Kind != singledispatch.SendAllowed {
+		responseBody, readErr := providerhttp.ReadBoundedBody(response.Body, providerhttp.MaxErrorBodyBytes)
+		if readErr != nil || !isDefiniteDatadogCreateRefusal(response.StatusCode, responseBody) || decision.MaximumPriorSends > 0 {
 			return operation.retryOrUncertain(call, decision, 0, "earlier monitor creation may have applied before a later refusal")
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return monitorMutationRetry[Monitor]("createMonitor", sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
 		}
 		return monitorMutationBranch[Monitor](CreateMonitorBranchProviderRejected, "createMonitor", statusFailure(response, "createMonitor").Kind, "Datadog rejected monitor creation with HTTP "+strconv.Itoa(response.StatusCode))
 	}
@@ -123,6 +130,21 @@ func (operation CreateMonitorOperation) Invoke(call sdkgo.Call, input CreateMoni
 		return operation.readCreatedMonitor(call, input, monitorID)
 	}
 	return sdkgo.NewMutationBranch(CreateMonitorBranchCreated, monitor, nil, monitorCreateReceipt(call, monitorID))
+}
+
+func isDefiniteDatadogCreateRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var answer struct {
+		Errors []string        `json:"errors"`
+		ID     json.RawMessage `json:"id"`
+	}
+	return json.Unmarshal(body, &answer) == nil && len(answer.Errors) > 0 && len(answer.ID) == 0
 }
 
 func validCreateMonitorInput(input CreateMonitorInput) bool {

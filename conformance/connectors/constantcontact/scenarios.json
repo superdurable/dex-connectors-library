@@ -583,6 +583,7 @@
       "priorHeartbeat": {
         "attempt": 1,
         "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
+        "providerId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
         "state": "claimed"
       }
     },
@@ -775,6 +776,7 @@
       "priorHeartbeat": {
         "attempt": 1,
         "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
+        "providerId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
         "state": "claimed"
       }
     },
@@ -1019,19 +1021,16 @@
         }
       ],
       "expected": {
-        "branch": "alreadyExists",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "contactId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1043,7 +1042,7 @@
         "firstName": "Avery",
         "lastName": "Reader"
       },
-      "name": "createContact-alreadyExists",
+      "name": "createContact-conflictUnknown",
       "operation": "createContact"
     },
     {
@@ -1084,8 +1083,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8969ab12-0960-5998-aeae-3b8d560095b7",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "contactId": ""
@@ -2876,21 +2874,16 @@
         }
       ],
       "expected": {
-        "branch": "alreadyExists",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "favorite": false,
-          "listId": "",
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2900,7 +2893,7 @@
         "favorite": true,
         "name": "Customers"
       },
-      "name": "createContactList-alreadyExists",
+      "name": "createContactList-conflictUnknown",
       "operation": "createContactList"
     },
     {
@@ -2937,8 +2930,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "favorite": false,
@@ -6054,6 +6046,7 @@
       "priorHeartbeat": {
         "attempt": 1,
         "callId": "55db8f88-e308-52a3-8694-84ebdecab6e6",
+        "providerId": "30",
         "state": "claimed"
       }
     },
@@ -6271,20 +6264,16 @@
         }
       ],
       "expected": {
-        "branch": "alreadyExists",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "55db8f88-e308-52a3-8694-84ebdecab6e6",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "name": "",
-          "segmentId": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6293,7 +6282,7 @@
         "name": "Recent readers",
         "segmentCriteria": "{\"version\":\"1.0.0\",\"criteria\":{\"type\":\"and\",\"group\":[]}}"
       },
-      "name": "createSegment-alreadyExists",
+      "name": "createSegment-conflictUnknown",
       "operation": "createSegment"
     },
     {
@@ -6329,8 +6318,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "55db8f88-e308-52a3-8694-84ebdecab6e6",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "name": "",

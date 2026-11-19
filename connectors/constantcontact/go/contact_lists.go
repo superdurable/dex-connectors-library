@@ -262,15 +262,15 @@ func (operation CreateContactListOperation) Invoke(call sdkgo.Call, input Create
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "list dispatch checkpoint is unreadable"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
-		list, isKnown, shouldRetry := operation.client.findContactListByName(call, input)
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
+		list, _, shouldRetry := operation.client.findContactListByName(call, input)
 		if shouldRetry {
 			return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "list read-back unavailable"), 0)
 		}
-		if list != nil {
+		if list != nil && list.ListID == decision.Marker.ProviderID && decision.Marker.ProviderID != "" {
 			return sdkgo.NewMutationBranch(CreateContactListBranchCreated, *list, nil, sdkgo.Receipt{})
 		}
-		if decision.Kind == singledispatch.ReadBackRequired || !isKnown {
+		if decision.Kind == singledispatch.ReadBackRequired {
 			return createContactListUncertain("previous list creation cannot be confirmed")
 		}
 	}
@@ -305,24 +305,26 @@ func (operation CreateContactListOperation) Invoke(call sdkgo.Call, input Create
 	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureTransport, "list creation outcome is unknown"), 0)
 	}
-	if kind, failure := classifyListResponse("createContactList", response); kind != listResponseSuccess {
-		if kind == listResponseRetry || kind == listResponseInvalid {
-			return sdkgo.NewMutationRetry[ContactListMetadata](failure, response.retryAfter)
+	if response.status >= 400 {
+		if !isDefiniteConstantContactWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createContactListUncertain("list creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "list creation outcome is unknown"), 0)
 		}
 		if decision.MaximumPriorSends > 0 {
-			return createContactListUncertain("an earlier list creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createContactListUncertain("an earlier list creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "earlier list creation may have succeeded"), 0)
 		}
-		branch := CreateContactListBranchProviderRejected
-		if response.status == http.StatusConflict {
-			branch = CreateContactListBranchAlreadyExists
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
-		if kind == listResponseDefect {
-			branch = CreateContactListBranchDefect
-		}
-		return sdkgo.NewMutationBranch(branch, ContactListMetadata{}, &failure, sdkgo.Receipt{})
+		return listMutationBranch[ContactListMetadata]("createContactList", CreateContactListBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
 	}
 	if response.status != http.StatusCreated && response.status != http.StatusOK {
-		return listMutationBranch[ContactListMetadata]("createContactList", CreateContactListBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
+		return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureProtocol, "list creation response is inconclusive"), 0)
 	}
 	list, err := decodeContactList(response.body)
 	if err != nil {

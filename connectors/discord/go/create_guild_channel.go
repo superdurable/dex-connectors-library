@@ -60,6 +60,9 @@ func (operation CreateGuildChannelOperation) Invoke(call sdkgo.Call, input Creat
 	}
 	credentials, credentialOutcome := operation.client.resolveCredentials(call, "createGuildChannel")
 	if credentialOutcome != nil {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[Channel](providerFailure("createGuildChannel", sdkgo.FailureAvailability, "earlier channel creation may have succeeded"), 0)
+		}
 		if decision.Kind == singledispatch.SendAllowed {
 			_ = fence.RecordNotSent()
 		}
@@ -95,8 +98,11 @@ func (operation CreateGuildChannelOperation) Invoke(call sdkgo.Call, input Creat
 		return operation.retryOrUncertain(call, decision, outcome.retryAfter, "Discord channel creation outcome is unknown")
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
-		if decision.Kind != singledispatch.SendAllowed {
+		if !isDefiniteGuildChannelRefusal(response) || decision.MaximumPriorSends > 0 {
 			return operation.retryOrUncertain(call, decision, 0, "earlier channel creation may have applied before a later refusal")
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[Channel](providerFailure("createGuildChannel", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		outcome := classifyErrorResponse("createGuildChannel", response, operation.client.now())
 		return sdkgo.NewMutationBranch(CreateGuildChannelBranchProviderRejected, Channel{}, &outcome.failure, operation.client.receipt(call, input.GuildID))
@@ -116,6 +122,18 @@ func (operation CreateGuildChannelOperation) Invoke(call sdkgo.Call, input Creat
 		return operation.retryOrUncertain(call, decision, 0, "Discord accepted channel creation without a confirmed channel ID")
 	}
 	return sdkgo.NewMutationBranch(CreateGuildChannelBranchCreated, channel, nil, operation.client.receipt(call, channel.ID))
+}
+
+func isDefiniteGuildChannelRefusal(response providerResponse) bool {
+	if response.isErrorBodyOversized || !isRefusalStatus(response.statusCode) {
+		return false
+	}
+	var answer struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		ID      string `json:"id"`
+	}
+	return json.Unmarshal(response.body, &answer) == nil && answer.Code > 0 && answer.Message != "" && answer.ID == ""
 }
 
 func (operation CreateGuildChannelOperation) readCreatedChannel(call sdkgo.Call, input CreateGuildChannelInput, channelID string) sdkgo.MutationAttempt[Channel] {

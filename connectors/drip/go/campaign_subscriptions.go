@@ -198,7 +198,7 @@ func (operation ListSubscriberCampaignSubscriptionsOperation) Invoke(call sdkgo.
 	return invokeQuery(call, operation.client, "listSubscriberCampaignSubscriptions", subscriberPath(input)+"/campaign_subscriptions", branches, decodeCampaignSubscriptionsPage)
 }
 
-// Invoke adds one subscriber, recovering by membership read-back after an unknown send.
+// Invoke adds one subscriber; membership read-back cannot prove which request created it.
 func (operation SubscribeToCampaignOperation) Invoke(call sdkgo.Call, input SubscribeToCampaignInput) sdkgo.MutationAttempt[SubscriberMetadata] {
 	if !validAccountID(input.AccountID) || !validAccountID(input.CampaignID) || !validSubscriberEmail(input.Email) {
 		return subscribeFailure(SubscribeToCampaignBranchDefect, sdkgo.FailureValidation, "subscription identity is invalid")
@@ -233,11 +233,7 @@ func (operation SubscribeToCampaignOperation) Invoke(call sdkgo.Call, input Subs
 			if decodeErr != nil || memberships.TotalPages > 1 {
 				return subscribeRetry(sdkgo.FailureProtocol, "campaign membership read-back is incomplete", 0)
 			}
-			for _, membership := range memberships.Subscriptions {
-				if membership.CampaignID == input.CampaignID && membership.Status == "active" {
-					return sdkgo.NewMutationBranch(SubscribeToCampaignBranchSubscribed, subscriber, nil, sdkgo.Receipt{})
-				}
-			}
+			_ = memberships // Membership does not identify which request created it.
 		} else if status != http.StatusNotFound {
 			return subscribeRetry(sdkgo.FailureProtocol, "subscriber read-back is inconclusive", 0)
 		}
@@ -264,9 +260,15 @@ func (operation SubscribeToCampaignOperation) Invoke(call sdkgo.Call, input Subs
 		return subscribeRetry(sdkgo.FailureAvailability, "subscription was not dispatched", 0)
 	}
 	if err != nil {
-		return subscribeUncertain("subscription dispatch was not allowed")
+		return subscribeRetry(sdkgo.FailureAvailability, "subscription dispatch was not allowed", 0)
 	}
 	if errors.Is(sendErr, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return subscribeRetry(sdkgo.FailureAuthentication, "connection credentials are unavailable", 0)
+		}
+		if recordErr := fence.RecordCanResend(); recordErr != nil {
+			return subscribeRetry(sdkgo.FailureAvailability, "subscription retry checkpoint is unavailable", 0)
+		}
 		return subscribeFailure(SubscribeToCampaignBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
 	if status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable {
@@ -283,13 +285,37 @@ func (operation SubscribeToCampaignOperation) Invoke(call sdkgo.Call, input Subs
 		return subscribeRetry(sdkgo.FailureAvailability, "subscription outcome is unknown", retryAfter)
 	}
 	if status != http.StatusOK && status != http.StatusCreated {
-		return subscribeFailure(SubscribeToCampaignBranchProviderRejected, sdkgo.FailureProviderRejection, "Drip rejected subscription with HTTP "+strconv.Itoa(status))
+		if isDefiniteDripSubscriptionRefusal(status, body) && decision.MaximumPriorSends == 0 {
+			if recordErr := fence.RecordCanResend(); recordErr != nil {
+				return subscribeRetry(sdkgo.FailureAvailability, "subscription retry checkpoint is unavailable", 0)
+			}
+			return subscribeFailure(SubscribeToCampaignBranchProviderRejected, sdkgo.FailureProviderRejection, "Drip rejected subscription with HTTP "+strconv.Itoa(status))
+		}
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return subscribeUncertain("subscription cannot be confirmed after the send cap")
+		}
+		return subscribeRetry(sdkgo.FailureAvailability, "subscription outcome is unknown", retryAfter)
 	}
 	subscriber, decodeErr := decodeSubscriber(body)
 	if decodeErr != nil || subscriber.Email != input.Email {
 		return subscribeRetry(sdkgo.FailureProtocol, "Drip subscription confirmation is unusable", 0)
 	}
 	return sdkgo.NewMutationBranch(SubscribeToCampaignBranchSubscribed, subscriber, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteDripSubscriptionRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var response struct {
+		Errors      []string `json:"errors"`
+		Subscribers []any    `json:"subscribers"`
+	}
+	return json.Unmarshal(body, &response) == nil && len(response.Errors) > 0 && len(response.Subscribers) == 0
 }
 
 // Invoke removes one campaign membership; repeating the removal converges on the same state.

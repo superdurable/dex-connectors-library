@@ -347,15 +347,15 @@ func (operation CreateSegmentOperation) Invoke(call sdkgo.Call, input CreateSegm
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("createSegment", sdkgo.FailureAvailability, "segment dispatch checkpoint is unreadable"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
-		segment, isKnown, shouldRetry := operation.client.findSegmentByName(call, input)
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
+		segment, _, shouldRetry := operation.client.findSegmentByName(call, input)
 		if shouldRetry {
 			return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("createSegment", sdkgo.FailureAvailability, "segment read-back unavailable"), 0)
 		}
-		if segment != nil {
+		if segment != nil && strconv.FormatInt(segment.SegmentID, 10) == decision.Marker.ProviderID && decision.Marker.ProviderID != "" {
 			return sdkgo.NewMutationBranch(CreateSegmentBranchCreated, *segment, nil, sdkgo.Receipt{})
 		}
-		if decision.Kind == singledispatch.ReadBackRequired || !isKnown {
+		if decision.Kind == singledispatch.ReadBackRequired {
 			return createSegmentUncertain("previous segment creation cannot be confirmed")
 		}
 	}
@@ -392,24 +392,26 @@ func (operation CreateSegmentOperation) Invoke(call sdkgo.Call, input CreateSegm
 	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("createSegment", sdkgo.FailureTransport, "segment creation outcome is unknown"), 0)
 	}
-	if kind, failure := classifyListResponse("createSegment", response); kind != listResponseSuccess {
-		if kind == listResponseRetry || kind == listResponseInvalid {
-			return sdkgo.NewMutationRetry[SegmentMetadata](failure, response.retryAfter)
+	if response.status >= 400 {
+		if !isDefiniteConstantContactWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createSegmentUncertain("segment creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("createSegment", sdkgo.FailureAvailability, "segment creation outcome is unknown"), 0)
 		}
 		if decision.MaximumPriorSends > 0 {
-			return createSegmentUncertain("an earlier segment creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createSegmentUncertain("an earlier segment creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("createSegment", sdkgo.FailureAvailability, "earlier segment creation may have succeeded"), 0)
 		}
-		branch := CreateSegmentBranchProviderRejected
-		if response.status == http.StatusConflict {
-			branch = CreateSegmentBranchAlreadyExists
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("createSegment", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
-		if kind == listResponseDefect {
-			branch = CreateSegmentBranchDefect
-		}
-		return sdkgo.NewMutationBranch(branch, SegmentMetadata{}, &failure, sdkgo.Receipt{})
+		return listMutationBranch[SegmentMetadata]("createSegment", CreateSegmentBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
 	}
 	if response.status != http.StatusCreated && response.status != http.StatusOK {
-		return listMutationBranch[SegmentMetadata]("createSegment", CreateSegmentBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected segment creation")
+		return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("createSegment", sdkgo.FailureProtocol, "segment creation response is inconclusive"), 0)
 	}
 	segment, err := decodeSegment(response.body, true)
 	if err != nil {

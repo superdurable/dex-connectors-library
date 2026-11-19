@@ -147,7 +147,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Constant Contact created the segment.}
         - {id: uncertain, goName: Uncertain, description: An earlier segment creation could not be confirmed after the send cap., optional: true}
-        - {id: alreadyExists, goName: AlreadyExists, description: A segment with this name exists., optional: true}
+        - {id: alreadyExists, goName: AlreadyExists, description: No longer selected; a 409 cannot prove this segment was not created., optional: true, retired: true, retiredReason: "An unconfirmed 409 now retries within the send cap and then selects uncertain."}
         - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected creation., optional: true}
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
@@ -250,7 +250,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Constant Contact created the contact.}
         - {id: uncertain, goName: Uncertain, description: An earlier contact creation could not be confirmed after the send cap., optional: true}
-        - {id: alreadyExists, goName: AlreadyExists, description: A contact with this email exists., optional: true}
+        - {id: alreadyExists, goName: AlreadyExists, description: No longer selected; a 409 cannot prove this contact was not created., optional: true, retired: true, retiredReason: "An unconfirmed 409 now retries within the send cap and then selects uncertain."}
         - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the creation., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
@@ -398,7 +398,7 @@ spec:
       branches:
         - {id: created, goName: Created, description: Constant Contact created the list.}
         - {id: uncertain, goName: Uncertain, description: An earlier list creation could not be confirmed after the send cap., optional: true}
-        - {id: alreadyExists, goName: AlreadyExists, description: A list with this name exists., optional: true}
+        - {id: alreadyExists, goName: AlreadyExists, description: No longer selected; a 409 cannot prove this list was not created., optional: true, retired: true, retiredReason: "An unconfirmed 409 now retries within the send cap and then selects uncertain."}
         - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the request., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:

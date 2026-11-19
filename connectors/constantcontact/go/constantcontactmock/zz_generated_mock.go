@@ -314,7 +314,7 @@ func CreateSegmentUncertain(value constantcontact.SegmentMetadata, failure sdkgo
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateSegmentAlreadyExists selects the alreadyExists branch: A segment with this name exists.
+// CreateSegmentAlreadyExists selects the alreadyExists branch: No longer selected; a 409 cannot prove this segment was not created.
 func CreateSegmentAlreadyExists(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
 	return connectormock.Branch(constantcontact.CreateSegmentBranchAlreadyExists, value, failure)
 }
@@ -509,7 +509,7 @@ func CreateContactUncertain(value constantcontact.ContactMetadata, failure sdkgo
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateContactAlreadyExists selects the alreadyExists branch: A contact with this email exists.
+// CreateContactAlreadyExists selects the alreadyExists branch: No longer selected; a 409 cannot prove this contact was not created.
 func CreateContactAlreadyExists(value constantcontact.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ContactMetadata] {
 	return connectormock.Branch(constantcontact.CreateContactBranchAlreadyExists, value, failure)
 }
@@ -787,7 +787,7 @@ func CreateContactListUncertain(value constantcontact.ContactListMetadata, failu
 	return connectormock.Uncertain(value, failure)
 }
 
-// CreateContactListAlreadyExists selects the alreadyExists branch: A list with this name exists.
+// CreateContactListAlreadyExists selects the alreadyExists branch: No longer selected; a 409 cannot prove this list was not created.
 func CreateContactListAlreadyExists(value constantcontact.ContactListMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ContactListMetadata] {
 	return connectormock.Branch(constantcontact.CreateContactListBranchAlreadyExists, value, failure)
 }

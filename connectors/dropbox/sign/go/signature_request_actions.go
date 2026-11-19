@@ -273,9 +273,13 @@ func invokeLimitedSignatureAction(call sdkgo.Call, client *Client, definition sd
 		return actionRetry(operation, sdkgo.FailureAvailability, "send was not dispatched", 0)
 	}
 	if err != nil {
-		return actionUncertain(operation, "send dispatch was not allowed")
+		return actionRetry(operation, sdkgo.FailureAvailability, "send dispatch was not allowed", 0)
 	}
 	if errors.Is(response.err, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return actionRetry(operation, sdkgo.FailureAvailability, "earlier send may have succeeded", 0)
+		}
+		_ = fence.RecordCanResend()
 		return actionFailure(operation, defect, sdkgo.FailureAuthentication, "Dropbox Sign credentials are unavailable")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
@@ -292,6 +296,15 @@ func invokeLimitedSignatureAction(call sdkgo.Call, client *Client, definition sd
 		return actionRetry(operation, sdkgo.FailureAvailability, "send outcome is unknown", response.retryAfter)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
+		if !isDefiniteSignatureActionRefusal(response) || decision.MaximumPriorSends > 0 {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return actionUncertain(operation, "send outcome cannot be confirmed")
+			}
+			return actionRetry(operation, sdkgo.FailureAvailability, "send outcome is unknown", response.retryAfter)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return actionRetry(operation, sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
+		}
 		return actionFailure(operation, rejected, sdkgo.FailureProviderRejection, "Dropbox Sign rejected HTTP "+strconv.Itoa(response.status))
 	}
 	status, decodeErr := decodeSentSignatureRequest(response.body, expectedID)
@@ -304,6 +317,27 @@ func invokeLimitedSignatureAction(call sdkgo.Call, client *Client, definition sd
 		}
 	}
 	return sdkgo.NewMutationBranch(success, status, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteSignatureActionRefusal(response providerResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var answer struct {
+		Error struct {
+			Name    string `json:"error_name"`
+			Message string `json:"error_msg"`
+		} `json:"error"`
+		SignatureRequest json.RawMessage `json:"signature_request"`
+	}
+	return json.Unmarshal(response.body, &answer) == nil && answer.Error.Name != "" && answer.Error.Message != "" && len(answer.SignatureRequest) == 0
 }
 
 func decodeSentSignatureRequest(body []byte, expectedID string) (SignatureRequestStatus, error) {

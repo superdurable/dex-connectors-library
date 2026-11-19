@@ -1217,8 +1217,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "5a0962cd-e682-5761-ba21-464c5034c25e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": 0,
@@ -2964,8 +2963,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "cd39a9bc-98a6-5a51-86ab-04375f06e4ce",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": 0,
@@ -5000,8 +4998,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "companyName": "",
@@ -6760,8 +6757,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": 0,
@@ -8498,8 +8494,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "5c5c74f3-b85a-5799-9a68-e0c3409d816b",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": 0,
@@ -10250,8 +10245,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "ce0ebb6b-56f2-5f4f-89fe-437af8fd4a3a",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": 0,

@@ -475,7 +475,7 @@ var CreateSegmentDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateSegmentBranchCreated, Description: "Constant Contact created the segment."},
 		{ID: CreateSegmentBranchUncertain, Description: "An earlier segment creation could not be confirmed after the send cap.", Optional: true},
-		{ID: CreateSegmentBranchAlreadyExists, Description: "A segment with this name exists.", Optional: true},
+		{ID: CreateSegmentBranchAlreadyExists, Description: "No longer selected; a 409 cannot prove this segment was not created.", Optional: true},
 		{ID: CreateSegmentBranchProviderRejected, Description: "Constant Contact rejected creation.", Optional: true},
 		{ID: CreateSegmentBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
 	},
@@ -859,7 +859,7 @@ var CreateContactDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateContactBranchCreated, Description: "Constant Contact created the contact."},
 		{ID: CreateContactBranchUncertain, Description: "An earlier contact creation could not be confirmed after the send cap.", Optional: true},
-		{ID: CreateContactBranchAlreadyExists, Description: "A contact with this email exists.", Optional: true},
+		{ID: CreateContactBranchAlreadyExists, Description: "No longer selected; a 409 cannot prove this contact was not created.", Optional: true},
 		{ID: CreateContactBranchProviderRejected, Description: "Constant Contact rejected the creation.", Optional: true},
 		{ID: CreateContactBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
@@ -1391,7 +1391,7 @@ var CreateContactListDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateContactListBranchCreated, Description: "Constant Contact created the list."},
 		{ID: CreateContactListBranchUncertain, Description: "An earlier list creation could not be confirmed after the send cap.", Optional: true},
-		{ID: CreateContactListBranchAlreadyExists, Description: "A list with this name exists.", Optional: true},
+		{ID: CreateContactListBranchAlreadyExists, Description: "No longer selected; a 409 cannot prove this list was not created.", Optional: true},
 		{ID: CreateContactListBranchProviderRejected, Description: "Constant Contact rejected the request.", Optional: true},
 		{ID: CreateContactListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},

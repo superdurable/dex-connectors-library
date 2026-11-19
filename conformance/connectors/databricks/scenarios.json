@@ -917,8 +917,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "cfc1705b-c3aa-59b2-978f-367a71f05e59",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",

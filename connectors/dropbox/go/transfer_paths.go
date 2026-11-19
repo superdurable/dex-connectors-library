@@ -84,15 +84,17 @@ func invokePathTransfer(call sdkgo.Call, client *Client, operation, endpoint str
 	if decision.Kind == singledispatch.FailClosed {
 		return transferRetry(operation, sdkgo.FailureAvailability, "transfer checkpoint cannot be trusted", 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
 		readBack := readTransferDestination(call, client, input.ToPath)
 		if readBack.isPresent {
 			if decision.Marker.ProviderID != "" && readBack.entry.ID == decision.Marker.ProviderID {
 				return sdkgo.NewMutationBranch(success, readBack.entry, nil, sdkgo.Receipt{})
 			}
-			return transferUncertain(operation, "destination exists but cannot be attributed to this call")
+			if decision.Kind == singledispatch.ReadBackRequired {
+				return transferUncertain(operation, "destination exists but cannot be attributed to this call")
+			}
 		}
-		if !readBack.isAbsent {
+		if !readBack.isPresent && !readBack.isAbsent {
 			return transferRetry(operation, readBack.failureKind, "destination read-back is unavailable", readBack.retryAfter)
 		}
 		if decision.Kind == singledispatch.ReadBackRequired {
@@ -111,9 +113,13 @@ func invokePathTransfer(call sdkgo.Call, client *Client, operation, endpoint str
 		return transferRetry(operation, sdkgo.FailureAvailability, "transfer was not dispatched", 0)
 	}
 	if err != nil {
-		return transferUncertain(operation, "transfer dispatch was not allowed")
+		return transferRetry(operation, sdkgo.FailureAvailability, "transfer dispatch was not allowed", 0)
 	}
 	if errors.Is(requestErr, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return transferRetry(operation, sdkgo.FailureAvailability, "earlier transfer may have succeeded", 0)
+		}
+		_ = fence.RecordCanResend()
 		return transferFailure(operation, defect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if errors.Is(requestErr, errRefresh) {
@@ -137,6 +143,15 @@ func invokePathTransfer(call sdkgo.Call, client *Client, operation, endpoint str
 		return transferRetry(operation, sdkgo.FailureAvailability, "Dropbox transfer outcome is unknown", retryAfter)
 	}
 	if status != http.StatusOK {
+		if requestErr != nil || !isDefiniteDropboxTransferRefusal(status, body) || decision.MaximumPriorSends > 0 {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return transferUncertain(operation, "transfer outcome cannot be confirmed")
+			}
+			return transferRetry(operation, sdkgo.FailureAvailability, "transfer outcome is unknown", retryAfter)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return transferRetry(operation, sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
+		}
 		return transferFailure(operation, rejected, sdkgo.FailureProviderRejection, "Dropbox rejected transfer with HTTP "+strconv.Itoa(status))
 	}
 	if requestErr != nil {
@@ -154,6 +169,26 @@ func invokePathTransfer(call sdkgo.Call, client *Client, operation, endpoint str
 	}
 	_ = fence.RecordProviderID(entry.ID)
 	return sdkgo.NewMutationBranch(success, entry, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteDropboxTransferRefusal(status int, body []byte) bool {
+	var answer struct {
+		ErrorSummary string          `json:"error_summary"`
+		Metadata     json.RawMessage `json:"metadata"`
+	}
+	if json.Unmarshal(body, &answer) != nil || answer.ErrorSummary == "" || len(answer.Metadata) > 0 {
+		return false
+	}
+	if status == http.StatusConflict {
+		return strings.HasPrefix(answer.ErrorSummary, "to/conflict/file/")
+	}
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 type transferReadBack struct {

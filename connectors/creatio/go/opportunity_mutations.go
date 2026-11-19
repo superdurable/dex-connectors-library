@@ -124,11 +124,14 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 	token, err := operation.client.accessToken(call)
 	if err != nil {
 		if sdkgo.IsReauthorizationRequired(err) || errors.Is(err, errInvalidAccessToken) {
+			if decision.MaximumPriorSends > 0 {
+				return sdkgo.NewMutationRetry[OpportunitySummary](opportunitiesFailure("createOpportunity", sdkgo.FailureAvailability, "earlier opportunity creation may have succeeded"), 0)
+			}
 			return createOpportunityBranch(CreateOpportunityBranchDefect, sdkgo.FailureAuthentication, "Creatio connection needs authorization")
 		}
 		return sdkgo.NewMutationRetry[OpportunitySummary](opportunitiesFailure("createOpportunity", sdkgo.FailureTransport, "Creatio credential minting failed"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
 		if decision.Marker.ProviderID != "" {
 			response := operation.client.doODataRequest(call.Context, token, http.MethodGet, "/0/odata/Opportunity("+decision.Marker.ProviderID+")?$select=Id%2CName", nil)
 			if response.err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
@@ -144,18 +147,9 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 			return sdkgo.NewMutationBranch(CreateOpportunityBranchCreated, opportunity, nil, sdkgo.Receipt{})
 		}
 		if input.Name != "" {
-			matching, known, retry := operation.client.findOpportunityByName(call, token, input.Name)
+			_, _, retry := operation.client.findOpportunityByName(call, token, input.Name)
 			if retry {
 				return sdkgo.NewMutationRetry[OpportunitySummary](opportunitiesFailure("createOpportunity", sdkgo.FailureAvailability, "Creatio opportunity read-back unavailable"), 0)
-			}
-			if matching != nil {
-				if strings.EqualFold(matching.ID, decision.Marker.ProviderID) {
-					return sdkgo.NewMutationBranch(CreateOpportunityBranchCreated, *matching, nil, sdkgo.Receipt{})
-				}
-				return createOpportunityUncertain("a matching opportunity cannot prove this creation")
-			}
-			if !known {
-				return createOpportunityUncertain("previous creation cannot be confirmed")
 			}
 		}
 		if decision.Kind == singledispatch.ReadBackRequired {
@@ -193,8 +187,20 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationRetry[OpportunitySummary](opportunitiesFailure("createOpportunity", sdkgo.FailureTransport, "opportunity creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteCreatioWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createOpportunityUncertain("opportunity creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[OpportunitySummary](opportunitiesFailure("createOpportunity", sdkgo.FailureAvailability, "opportunity creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return createOpportunityUncertain("an earlier opportunity creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createOpportunityUncertain("an earlier opportunity creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[OpportunitySummary](opportunitiesFailure("createOpportunity", sdkgo.FailureAvailability, "earlier opportunity creation may have succeeded"), 0)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[OpportunitySummary](opportunitiesFailure("createOpportunity", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		return createOpportunityBranch(CreateOpportunityBranchProviderRejected, sdkgo.FailureProviderRejection, "Creatio rejected HTTP "+strconv.Itoa(response.status))
 	}

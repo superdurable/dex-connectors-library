@@ -201,15 +201,15 @@ func (operation CreatePersonOperation) Invoke(call sdkgo.Call, input CreatePerso
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[PersonMetadata](queryFailure("createPerson", sdkgo.FailureAvailability, "person dispatch checkpoint is unreadable"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
-		found, isKnown, retry := operation.client.findPersonByEmail(call, input.Email, input.Name)
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
+		found, _, retry := operation.client.findPersonByEmail(call, input.Email, input.Name)
 		if retry {
 			return sdkgo.NewMutationRetry[PersonMetadata](queryFailure("createPerson", sdkgo.FailureAvailability, "Copper email search unavailable"), 0)
 		}
-		if found != nil {
+		if found != nil && strconv.FormatInt(found.ID, 10) == decision.Marker.ProviderID && decision.Marker.ProviderID != "" {
 			return sdkgo.NewMutationBranch(CreatePersonBranchCreated, *found, nil, sdkgo.Receipt{})
 		}
-		if decision.Kind == singledispatch.ReadBackRequired || !isKnown {
+		if decision.Kind == singledispatch.ReadBackRequired {
 			return personUncertain("previous person creation cannot be confirmed")
 		}
 	}
@@ -245,8 +245,20 @@ func (operation CreatePersonOperation) Invoke(call sdkgo.Call, input CreatePerso
 		return sdkgo.NewMutationRetry[PersonMetadata](queryFailure("createPerson", sdkgo.FailureTransport, "person creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteCopperWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return personUncertain("person creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[PersonMetadata](queryFailure("createPerson", sdkgo.FailureAvailability, "person creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return personUncertain("an earlier person creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return personUncertain("an earlier person creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[PersonMetadata](queryFailure("createPerson", sdkgo.FailureAvailability, "earlier person creation may have succeeded"), 0)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[PersonMetadata](queryFailure("createPerson", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		return personFailure[PersonMetadata]("createPerson", CreatePersonBranchProviderRejected, sdkgo.FailureProviderRejection, "Copper rejected HTTP "+strconv.Itoa(response.status))
 	}
@@ -263,6 +275,24 @@ type personResponse struct {
 	status     int
 	retryAfter time.Duration
 	err        error
+}
+
+func isDefiniteCopperWriteRefusal(response personResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var answer struct {
+		Error json.RawMessage `json:"error"`
+		ID    json.RawMessage `json:"id"`
+	}
+	return json.Unmarshal(response.body, &answer) == nil && len(bytes.TrimSpace(answer.Error)) > 0 && len(bytes.TrimSpace(answer.ID)) == 0
 }
 
 func (client *Client) personRequest(requestContext context.Context, call sdkgo.Call, method, path string, body []byte) personResponse {

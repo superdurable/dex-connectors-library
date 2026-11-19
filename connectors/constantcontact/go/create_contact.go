@@ -45,7 +45,7 @@ func (CreateContactOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateContac
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates a contact and checks the unique email before any possible resend.
+// Invoke creates a contact and reads its email before a bounded resend.
 func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateContactInput) sdkgo.MutationAttempt[ContactMetadata] {
 	address, addressError := mail.ParseAddress(input.EmailAddress)
 	if addressError != nil || address.Address != input.EmailAddress || len(input.EmailAddress) > 80 ||
@@ -62,15 +62,15 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[ContactMetadata](listFailure("createContact", sdkgo.FailureAvailability, "contact dispatch checkpoint is unreadable"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
-		contact, isKnown, shouldRetry := operation.client.findContactByEmail(call, input)
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
+		contact, _, shouldRetry := operation.client.findContactByEmail(call, input)
 		if shouldRetry {
 			return sdkgo.NewMutationRetry[ContactMetadata](listFailure("createContact", sdkgo.FailureAvailability, "contact read-back unavailable"), 0)
 		}
-		if contact != nil {
+		if contact != nil && contact.ContactID == decision.Marker.ProviderID && decision.Marker.ProviderID != "" {
 			return sdkgo.NewMutationBranch(CreateContactBranchCreated, *contact, nil, sdkgo.Receipt{})
 		}
-		if decision.Kind == singledispatch.ReadBackRequired || !isKnown {
+		if decision.Kind == singledispatch.ReadBackRequired {
 			return createContactUncertain("previous contact creation cannot be confirmed")
 		}
 	}
@@ -124,14 +124,22 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 		return sdkgo.NewMutationRetry[ContactMetadata](listFailure("createContact", sdkgo.FailureTransport, "contact creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteConstantContactWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createContactUncertain("contact creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[ContactMetadata](listFailure("createContact", sdkgo.FailureAvailability, "contact creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return createContactUncertain("an earlier contact creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createContactUncertain("an earlier contact creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[ContactMetadata](listFailure("createContact", sdkgo.FailureAvailability, "earlier contact creation may have succeeded"), 0)
 		}
-		branch := CreateContactBranchProviderRejected
-		if response.status == http.StatusConflict {
-			branch = CreateContactBranchAlreadyExists
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[ContactMetadata](listFailure("createContact", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
-		return listMutationBranch[ContactMetadata]("createContact", branch, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
+		return listMutationBranch[ContactMetadata]("createContact", CreateContactBranchProviderRejected, sdkgo.FailureProviderRejection, "Constant Contact rejected HTTP "+strconv.Itoa(response.status))
 	}
 	contact, decodeError := decodeContact(response.body)
 	if response.status != http.StatusCreated && response.status != http.StatusOK || decodeError != nil {
@@ -165,6 +173,34 @@ func (client *Client) findContactByEmail(call sdkgo.Call, input CreateContactInp
 		}
 	}
 	return nil, true, false
+}
+
+func isDefiniteConstantContactWriteRefusal(response providerResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var answer map[string]json.RawMessage
+	if json.Unmarshal(response.body, &answer) != nil {
+		return false
+	}
+	hasError := false
+	for key, value := range answer {
+		lowerKey := strings.ToLower(key)
+		if strings.HasSuffix(lowerKey, "id") || lowerKey == "contacts" || lowerKey == "lists" || lowerKey == "segments" {
+			return false
+		}
+		if strings.HasPrefix(lowerKey, "error") && len(value) > 0 {
+			hasError = true
+		}
+	}
+	return hasError
 }
 
 func createContactUncertain(message string) sdkgo.MutationAttempt[ContactMetadata] {

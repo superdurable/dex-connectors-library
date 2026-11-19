@@ -3242,20 +3242,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "AUTHORIZATION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "id": "",
-          "index": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3296,7 +3292,7 @@
       "callId": "947dd91c-c1ba-573b-8502-1d9bf9b5bfb4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"type\":\"security_exception\",\"reason\":\"forbidden\"},\"status\":403}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

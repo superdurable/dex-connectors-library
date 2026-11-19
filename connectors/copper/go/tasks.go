@@ -218,8 +218,20 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 		return sdkgo.NewMutationRetry[TaskMetadata](queryFailure("createTask", sdkgo.FailureTransport, "task creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteCopperWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return taskUncertain("task creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[TaskMetadata](queryFailure("createTask", sdkgo.FailureAvailability, "task creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return taskUncertain("an earlier task creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return taskUncertain("an earlier task creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[TaskMetadata](queryFailure("createTask", sdkgo.FailureAvailability, "earlier task creation may have succeeded"), 0)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[TaskMetadata](queryFailure("createTask", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		return taskFailure[TaskMetadata]("createTask", CreateTaskBranchProviderRejected, sdkgo.FailureProviderRejection, "Copper rejected HTTP "+strconv.Itoa(response.status))
 	}

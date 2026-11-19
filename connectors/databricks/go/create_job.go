@@ -83,6 +83,9 @@ func (operation CreateJobOperation) Invoke(call sdkgo.Call, input CreateJobInput
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
+		if decision.MaximumPriorSends > 0 {
+			return mutationRetry[JobSummary]("createJob", sdkgo.FailureAvailability, "earlier job creation may have succeeded", 0)
+		}
 		if decision.Kind == singledispatch.SendAllowed {
 			_ = fence.RecordNotSent()
 		}
@@ -110,8 +113,11 @@ func (operation CreateJobOperation) Invoke(call sdkgo.Call, input CreateJobInput
 	case response.err != nil || response.status >= 500:
 		return operation.retryOrUncertain(call, decision, response.retryAfter, "Databricks job creation outcome is unknown")
 	case response.status != http.StatusOK:
-		if decision.Kind != singledispatch.SendAllowed {
+		if !isDefiniteDatabricksCreateRefusal(response) || decision.MaximumPriorSends > 0 {
 			return operation.retryOrUncertain(call, decision, 0, "an earlier job creation may have applied before this refusal")
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return mutationRetry[JobSummary]("createJob", sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
 		}
 		return mutationBranch[JobSummary](CreateJobBranchProviderRejected, "createJob", sdkgo.FailureProviderRejection, "Databricks rejected job creation with HTTP "+strconv.Itoa(response.status))
 	}
@@ -124,6 +130,24 @@ func (operation CreateJobOperation) Invoke(call sdkgo.Call, input CreateJobInput
 	jobID := strconv.FormatInt(answer.JobID, 10)
 	_ = fence.RecordProviderID(jobID)
 	return sdkgo.NewMutationBranch(CreateJobBranchCreated, JobSummary{ID: jobID, Name: input.Name}, nil, jobReceipt(call, jobID))
+}
+
+func isDefiniteDatabricksCreateRefusal(response providerResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var answer struct {
+		ErrorCode string          `json:"error_code"`
+		JobID     json.RawMessage `json:"job_id"`
+	}
+	return json.Unmarshal(response.body, &answer) == nil && answer.ErrorCode != "" && len(answer.JobID) == 0
 }
 
 func (operation CreateJobOperation) retryOrUncertain(call sdkgo.Call, decision singledispatch.Decision, retryAfter time.Duration, message string) sdkgo.MutationAttempt[JobSummary] {

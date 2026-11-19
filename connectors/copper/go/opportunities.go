@@ -171,8 +171,8 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[OpportunityMetadata](queryFailure("createOpportunity", sdkgo.FailureAvailability, "opportunity dispatch checkpoint is unreadable"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
-		found, isKnown, retry := operation.client.findOpportunityByName(call, input.Name)
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
+		found, _, retry := operation.client.findOpportunityByName(call, input.Name)
 		if retry {
 			return sdkgo.NewMutationRetry[OpportunityMetadata](queryFailure("createOpportunity", sdkgo.FailureAvailability, "Copper opportunity search unavailable"), 0)
 		}
@@ -180,9 +180,8 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 			if decision.Marker.ProviderID == strconv.FormatInt(found.ID, 10) {
 				return sdkgo.NewMutationBranch(CreateOpportunityBranchCreated, *found, nil, sdkgo.Receipt{})
 			}
-			return opportunityUncertain("a matching opportunity cannot prove this creation")
 		}
-		if decision.Kind == singledispatch.ReadBackRequired || !isKnown {
+		if decision.Kind == singledispatch.ReadBackRequired {
 			return opportunityUncertain("previous opportunity creation cannot be confirmed")
 		}
 	}
@@ -214,8 +213,20 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationRetry[OpportunityMetadata](queryFailure("createOpportunity", sdkgo.FailureTransport, "opportunity creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteCopperWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return opportunityUncertain("opportunity creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[OpportunityMetadata](queryFailure("createOpportunity", sdkgo.FailureAvailability, "opportunity creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return opportunityUncertain("an earlier opportunity creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return opportunityUncertain("an earlier opportunity creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[OpportunityMetadata](queryFailure("createOpportunity", sdkgo.FailureAvailability, "earlier opportunity creation may have succeeded"), 0)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[OpportunityMetadata](queryFailure("createOpportunity", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		return opportunityFailure[OpportunityMetadata]("createOpportunity", CreateOpportunityBranchProviderRejected, sdkgo.FailureProviderRejection, "Copper rejected HTTP "+strconv.Itoa(response.status))
 	}

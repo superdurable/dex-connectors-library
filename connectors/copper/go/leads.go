@@ -161,8 +161,8 @@ func (operation CreateLeadOperation) Invoke(call sdkgo.Call, input CreateLeadInp
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[LeadMetadata](queryFailure("createLead", sdkgo.FailureAvailability, "lead dispatch checkpoint is unreadable"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
-		found, isKnown, retry := operation.client.findLeadByEmail(call, input.Email, input.Name)
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
+		found, _, retry := operation.client.findLeadByEmail(call, input.Email, input.Name)
 		if retry {
 			return sdkgo.NewMutationRetry[LeadMetadata](queryFailure("createLead", sdkgo.FailureAvailability, "Copper email search unavailable"), 0)
 		}
@@ -170,9 +170,8 @@ func (operation CreateLeadOperation) Invoke(call sdkgo.Call, input CreateLeadInp
 			if decision.Marker.ProviderID == strconv.FormatInt(found.ID, 10) {
 				return sdkgo.NewMutationBranch(CreateLeadBranchCreated, *found, nil, sdkgo.Receipt{})
 			}
-			return leadUncertain("a matching pre-existing lead cannot be distinguished from this creation")
 		}
-		if decision.Kind == singledispatch.ReadBackRequired || !isKnown {
+		if decision.Kind == singledispatch.ReadBackRequired {
 			return leadUncertain("previous lead creation cannot be confirmed")
 		}
 	}
@@ -211,8 +210,20 @@ func (operation CreateLeadOperation) Invoke(call sdkgo.Call, input CreateLeadInp
 		return sdkgo.NewMutationRetry[LeadMetadata](queryFailure("createLead", sdkgo.FailureTransport, "lead creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteCopperWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return leadUncertain("lead creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[LeadMetadata](queryFailure("createLead", sdkgo.FailureAvailability, "lead creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return leadUncertain("an earlier lead creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return leadUncertain("an earlier lead creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[LeadMetadata](queryFailure("createLead", sdkgo.FailureAvailability, "earlier lead creation may have succeeded"), 0)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[LeadMetadata](queryFailure("createLead", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		return leadFailure[LeadMetadata]("createLead", CreateLeadBranchProviderRejected, sdkgo.FailureProviderRejection, "Copper rejected HTTP "+strconv.Itoa(response.status))
 	}

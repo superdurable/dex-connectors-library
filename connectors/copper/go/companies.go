@@ -184,7 +184,7 @@ func (operation DeleteCompanyOperation) Invoke(call sdkgo.Call, input DeleteComp
 	return sdkgo.NewMutationBranch(DeleteCompanyBranchDeleted, DeleteCompanyOutput{wire.ID, true}, nil, sdkgo.Receipt{})
 }
 
-// Invoke creates a company and checks its unique email domain before any resend.
+// Invoke creates a company and reads its email domain before bounded resend.
 func (operation CreateCompanyOperation) Invoke(call sdkgo.Call, input CreateCompanyInput) sdkgo.MutationAttempt[CompanyMetadata] {
 	if strings.TrimSpace(input.Name) == "" || len(input.Name) > 255 || !validCompanyDomain(input.EmailDomain) {
 		return companyFailure[CompanyMetadata]("createCompany", CreateCompanyBranchDefect, sdkgo.FailureValidation, "name and unique email domain are required")
@@ -197,15 +197,15 @@ func (operation CreateCompanyOperation) Invoke(call sdkgo.Call, input CreateComp
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[CompanyMetadata](queryFailure("createCompany", sdkgo.FailureAvailability, "company dispatch checkpoint is unreadable"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
-		found, isKnown, retry := operation.client.findCompanyByEmailDomain(call, input.EmailDomain, input.Name)
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
+		found, _, retry := operation.client.findCompanyByEmailDomain(call, input.EmailDomain, input.Name)
 		if retry {
 			return sdkgo.NewMutationRetry[CompanyMetadata](queryFailure("createCompany", sdkgo.FailureAvailability, "Copper domain search unavailable"), 0)
 		}
-		if found != nil {
+		if found != nil && strconv.FormatInt(found.ID, 10) == decision.Marker.ProviderID && decision.Marker.ProviderID != "" {
 			return sdkgo.NewMutationBranch(CreateCompanyBranchCreated, *found, nil, sdkgo.Receipt{})
 		}
-		if decision.Kind == singledispatch.ReadBackRequired || !isKnown {
+		if decision.Kind == singledispatch.ReadBackRequired {
 			return companyUncertain("previous company creation cannot be confirmed")
 		}
 	}
@@ -238,8 +238,20 @@ func (operation CreateCompanyOperation) Invoke(call sdkgo.Call, input CreateComp
 		return sdkgo.NewMutationRetry[CompanyMetadata](queryFailure("createCompany", sdkgo.FailureTransport, "company creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteCopperWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return companyUncertain("company creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[CompanyMetadata](queryFailure("createCompany", sdkgo.FailureAvailability, "company creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return companyUncertain("an earlier company creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return companyUncertain("an earlier company creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[CompanyMetadata](queryFailure("createCompany", sdkgo.FailureAvailability, "earlier company creation may have succeeded"), 0)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[CompanyMetadata](queryFailure("createCompany", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		return companyFailure[CompanyMetadata]("createCompany", CreateCompanyBranchProviderRejected, sdkgo.FailureProviderRejection, "Copper rejected HTTP "+strconv.Itoa(response.status))
 	}

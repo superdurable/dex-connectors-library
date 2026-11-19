@@ -569,7 +569,10 @@ class LocalVerificationJobsTest(unittest.TestCase):
         job = workflow_job(self.workflow, "local-verification")
         for line in ("GITHUB_TOKEN: ${{ github.token }}", "PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}",
                      "MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}",
-                     "MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}", "run: python3 script/ci_local_verification.py"):
+                     "MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}",
+                     "PUSH_REF: ${{ github.event_name == 'push' && github.ref || '' }}",
+                     "PUSH_SHA: ${{ github.event_name == 'push' && github.sha || '' }}",
+                     "PUSH_BEFORE_SHA: ${{ github.event.before }}", "run: python3 script/ci_local_verification.py"):
             self.assertIn(line, job)
 
     def test_workflow_skips_exactly_the_summary_heavy_jobs_when_trusted(self) -> None:
@@ -583,6 +586,14 @@ class LocalVerificationJobsTest(unittest.TestCase):
             with self.subTest(job=name):
                 self.assertTrue(self.job_condition(name).endswith(self.trusted_skip), name)
                 self.assertEqual("local-verification", self.job_needs(name)[-1])
+
+    def test_jobs_connector_ci_does_not_reproduce_never_wait_for_local_verification(self) -> None:
+        for name in ("workspace-connector-dependents", "dex-integration-sdk", "database-language-integration",
+                     "email-language-integration", "sdkpython-integration", "sdkts-integration"):
+            with self.subTest(job=name):
+                self.assertNotIn("local-verification", self.job_needs(name))
+                self.assertNotIn("local-verification", self.job_condition(name))
+                self.assertNotIn("cancelled()", self.job_condition(name))
 
     def test_heavy_jobs_require_their_original_needs_explicitly_but_not_local_verification(self) -> None:
         # An implicit success() would also skip heavy jobs when local-verification fails or is cancelled.

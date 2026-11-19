@@ -171,8 +171,8 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[ProjectMetadata](queryFailure("createProject", sdkgo.FailureAvailability, "project dispatch checkpoint is unreadable"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
-		found, isKnown, retry := operation.client.findProjectByName(call, input.Name)
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
+		found, _, retry := operation.client.findProjectByName(call, input.Name)
 		if retry {
 			return sdkgo.NewMutationRetry[ProjectMetadata](queryFailure("createProject", sdkgo.FailureAvailability, "Copper project search unavailable"), 0)
 		}
@@ -180,9 +180,8 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 			if decision.Marker.ProviderID == strconv.FormatInt(found.ID, 10) {
 				return sdkgo.NewMutationBranch(CreateProjectBranchCreated, *found, nil, sdkgo.Receipt{})
 			}
-			return projectUncertain("a matching project cannot prove this creation")
 		}
-		if decision.Kind == singledispatch.ReadBackRequired || !isKnown {
+		if decision.Kind == singledispatch.ReadBackRequired {
 			return projectUncertain("previous project creation cannot be confirmed")
 		}
 	}
@@ -214,8 +213,20 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 		return sdkgo.NewMutationRetry[ProjectMetadata](queryFailure("createProject", sdkgo.FailureTransport, "project creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteCopperWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return projectUncertain("project creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[ProjectMetadata](queryFailure("createProject", sdkgo.FailureAvailability, "project creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return projectUncertain("an earlier project creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return projectUncertain("an earlier project creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[ProjectMetadata](queryFailure("createProject", sdkgo.FailureAvailability, "earlier project creation may have succeeded"), 0)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[ProjectMetadata](queryFailure("createProject", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		return projectFailure[ProjectMetadata]("createProject", CreateProjectBranchProviderRejected, sdkgo.FailureProviderRejection, "Copper rejected HTTP "+strconv.Itoa(response.status))
 	}

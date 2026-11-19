@@ -117,11 +117,14 @@ func (operation CreateActivityOperation) Invoke(call sdkgo.Call, input CreateAct
 	token, err := operation.client.accessToken(call)
 	if err != nil {
 		if sdkgo.IsReauthorizationRequired(err) || errors.Is(err, errInvalidAccessToken) {
+			if decision.MaximumPriorSends > 0 {
+				return sdkgo.NewMutationRetry[ActivitySummary](activitiesFailure("createActivity", sdkgo.FailureAvailability, "earlier activity creation may have succeeded"), 0)
+			}
 			return createActivityBranch(CreateActivityBranchDefect, sdkgo.FailureAuthentication, "Creatio connection needs authorization")
 		}
 		return sdkgo.NewMutationRetry[ActivitySummary](activitiesFailure("createActivity", sdkgo.FailureTransport, "Creatio credential minting failed"), 0)
 	}
-	if decision.Kind != singledispatch.SendAllowed {
+	if decision.MaximumPriorSends > 0 || decision.Kind != singledispatch.SendAllowed {
 		if decision.Marker.ProviderID != "" {
 			response := operation.client.doODataRequest(call.Context, token, http.MethodGet, "/0/odata/Activity("+decision.Marker.ProviderID+")?$select=Id%2CTitle", nil)
 			if response.err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
@@ -137,18 +140,9 @@ func (operation CreateActivityOperation) Invoke(call sdkgo.Call, input CreateAct
 			return sdkgo.NewMutationBranch(CreateActivityBranchCreated, activity, nil, sdkgo.Receipt{})
 		}
 		if input.Title != "" {
-			matching, known, retry := operation.client.findActivityByTitle(call, token, input.Title)
+			_, _, retry := operation.client.findActivityByTitle(call, token, input.Title)
 			if retry {
 				return sdkgo.NewMutationRetry[ActivitySummary](activitiesFailure("createActivity", sdkgo.FailureAvailability, "Creatio activity read-back unavailable"), 0)
-			}
-			if matching != nil {
-				if strings.EqualFold(matching.ID, decision.Marker.ProviderID) {
-					return sdkgo.NewMutationBranch(CreateActivityBranchCreated, *matching, nil, sdkgo.Receipt{})
-				}
-				return createActivityUncertain("a matching activity cannot prove this creation")
-			}
-			if !known {
-				return createActivityUncertain("previous creation cannot be confirmed")
 			}
 		}
 		if decision.Kind == singledispatch.ReadBackRequired {
@@ -185,8 +179,20 @@ func (operation CreateActivityOperation) Invoke(call sdkgo.Call, input CreateAct
 		return sdkgo.NewMutationRetry[ActivitySummary](activitiesFailure("createActivity", sdkgo.FailureTransport, "activity creation outcome is unknown"), 0)
 	}
 	if response.status >= 400 {
+		if !isDefiniteCreatioWriteRefusal(response) {
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createActivityUncertain("activity creation outcome cannot be confirmed")
+			}
+			return sdkgo.NewMutationRetry[ActivitySummary](activitiesFailure("createActivity", sdkgo.FailureAvailability, "activity creation outcome is unknown"), 0)
+		}
 		if decision.MaximumPriorSends > 0 {
-			return createActivityUncertain("an earlier activity creation may have succeeded")
+			if decision.MaximumPriorSends+1 >= call.MaxSends() {
+				return createActivityUncertain("an earlier activity creation may have succeeded")
+			}
+			return sdkgo.NewMutationRetry[ActivitySummary](activitiesFailure("createActivity", sdkgo.FailureAvailability, "earlier activity creation may have succeeded"), 0)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[ActivitySummary](activitiesFailure("createActivity", sdkgo.FailureAvailability, "refusal checkpoint unavailable"), 0)
 		}
 		return createActivityBranch(CreateActivityBranchProviderRejected, sdkgo.FailureProviderRejection, "Creatio rejected HTTP "+strconv.Itoa(response.status))
 	}

@@ -55,7 +55,7 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDoc
 	if decision.Marker.ProviderID != "" {
 		readBack := exchangeDocument(operation.client, call, http.MethodGet, input.Index, decision.Marker.ProviderID, nil)
 		if readBack.requestFailure != nil {
-			return createDocumentUncertain("generated document ID cannot be verified")
+			return createDocumentRetry(sdkgo.FailureAvailability, "generated document ID cannot be verified", 0)
 		}
 		if readBack.shouldRetry {
 			return createDocumentRetry(readBack.retryKind, "generated document read-back is unavailable", readBack.retryAfter)
@@ -71,7 +71,7 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDoc
 			}
 		}
 		if readBack.status != http.StatusNotFound {
-			return createDocumentUncertain("generated document read-back is inconclusive")
+			return createDocumentRetry(sdkgo.FailureProtocol, "generated document read-back is inconclusive", 0)
 		}
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
@@ -86,9 +86,15 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDoc
 		return createDocumentRetry(sdkgo.FailureAvailability, "document creation was not dispatched", 0)
 	}
 	if err != nil {
-		return createDocumentUncertain("document creation dispatch was not allowed")
+		return createDocumentRetry(sdkgo.FailureAvailability, "document creation dispatch was not allowed", 0)
 	}
 	if exchange.requestFailure != nil {
+		if decision.MaximumPriorSends > 0 {
+			return createDocumentRetry(exchange.requestFailure.Kind, exchange.requestFailure.Message, 0)
+		}
+		if recordErr := fence.RecordCanResend(); recordErr != nil {
+			return createDocumentRetry(sdkgo.FailureAvailability, "document retry checkpoint is unavailable", 0)
+		}
 		return createDocumentFailure(CreateDocumentBranchDefect, exchange.requestFailure.Kind, exchange.requestFailure.Message)
 	}
 	if exchange.shouldRetry {
@@ -100,7 +106,16 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDoc
 		return createDocumentRetry(exchange.retryKind, exchange.retryMessage, exchange.retryAfter)
 	}
 	if exchange.status != http.StatusCreated {
-		return createDocumentFailure(CreateDocumentBranchProviderRejected, indexStatusFailureKind(exchange.status), "Elasticsearch rejected document creation with HTTP "+strconv.Itoa(exchange.status))
+		if isDefiniteElasticsearchCreateRefusal(exchange.status, exchange.body) && decision.MaximumPriorSends == 0 {
+			if recordErr := fence.RecordCanResend(); recordErr != nil {
+				return createDocumentRetry(sdkgo.FailureAvailability, "document retry checkpoint is unavailable", 0)
+			}
+			return createDocumentFailure(CreateDocumentBranchProviderRejected, indexStatusFailureKind(exchange.status), "Elasticsearch rejected document creation with HTTP "+strconv.Itoa(exchange.status))
+		}
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return createDocumentUncertain("document creation cannot be confirmed after the send cap")
+		}
+		return createDocumentRetry(sdkgo.FailureAvailability, "document creation outcome is unknown", 0)
 	}
 	var response struct {
 		Index  string `json:"_index"`
@@ -114,6 +129,24 @@ func (operation CreateDocumentOperation) Invoke(call sdkgo.Call, input CreateDoc
 		return createDocumentRetry(sdkgo.FailureAvailability, "document ID checkpoint is unavailable", 0)
 	}
 	return sdkgo.NewMutationBranch(CreateDocumentBranchCreated, IndexedDocument{Index: input.Index, ID: response.ID}, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteElasticsearchCreateRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var response struct {
+		Error struct {
+			Type   string `json:"type"`
+			Reason string `json:"reason"`
+		} `json:"error"`
+		ID string `json:"_id"`
+	}
+	return json.Unmarshal(body, &response) == nil && response.Error.Type != "" && response.Error.Reason != "" && response.ID == ""
 }
 
 func createDocumentFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[IndexedDocument] {

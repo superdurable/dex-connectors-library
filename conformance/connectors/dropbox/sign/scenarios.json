@@ -1155,23 +1155,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "hasError": false,
-          "id": "",
-          "isComplete": false,
-          "isDeclined": false,
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1232,7 +1225,7 @@
       "callId": "1341f57f-4e4a-5dd1-831c-358a4ebc079d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"error_msg\":\"Invalid request.\",\"error_name\":\"bad_request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1629,23 +1622,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "hasError": false,
-          "id": "",
-          "isComplete": false,
-          "isDeclined": false,
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1705,7 +1691,7 @@
       "callId": "0addcd52-1fb3-5dc9-a0ae-2e1eaef5e310",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"error_msg\":\"Invalid request.\",\"error_name\":\"bad_request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2348,23 +2334,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "hasError": false,
-          "id": "",
-          "isComplete": false,
-          "isDeclined": false,
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2406,7 +2385,7 @@
       "callId": "7790185e-3cbf-553e-be8d-3dc9fe299f4b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"error_msg\":\"Invalid request.\",\"error_name\":\"bad_request\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

@@ -887,7 +887,7 @@
       "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":{\"code\":\"Forbidden\",\"message\":\"Access denied\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -916,8 +916,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "email": "",
@@ -2422,7 +2421,7 @@
       "callId": "43f3c9a3-7d03-53ce-a1ec-a6acdb3d007b",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":{\"code\":\"Forbidden\",\"message\":\"Access denied\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2450,8 +2449,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "43f3c9a3-7d03-53ce-a1ec-a6acdb3d007b",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -3935,7 +3933,7 @@
       "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":{\"code\":\"Forbidden\",\"message\":\"Access denied\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3965,8 +3963,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "ec07c8e3-8162-5291-ab6f-0c52530b8c2a",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -5474,7 +5471,7 @@
       "callId": "190f7c2d-2997-512f-924c-ceba899157f8",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":{\"code\":\"Forbidden\",\"message\":\"Access denied\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5505,8 +5502,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "190f7c2d-2997-512f-924c-ceba899157f8",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",
@@ -7019,7 +7015,7 @@
       "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"error\":{\"code\":\"Forbidden\",\"message\":\"Access denied\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7047,8 +7043,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "76209174-4ddf-5a31-8736-bf9f25b58c56",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": "",

@@ -3579,23 +3579,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "email": "",
-          "firstName": "",
-          "id": "",
-          "lastName": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3612,7 +3605,7 @@
       "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[\"Subscription forbidden\"]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4689,19 +4682,19 @@
         }
       ],
       "expected": {
-        "branch": "subscribed",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
         "output": {
-          "email": "ada@example.com",
+          "email": "",
           "firstName": "",
-          "id": "sub-1",
+          "id": "",
           "lastName": "",
-          "status": "active"
+          "status": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
       "input": {
@@ -4709,14 +4702,14 @@
         "campaignId": "123456",
         "email": "ada@example.com"
       },
-      "name": "subscribeToCampaign-read-back",
+      "name": "subscribeToCampaign-read-back-cap-uncertain",
       "operation": "subscribeToCampaign",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "value": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         }
       }
