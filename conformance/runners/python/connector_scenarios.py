@@ -219,7 +219,7 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
         raise ValueError(f"{path}: scenarios must be nonempty")
     for scenario in scenarios:
         _keys(scenario, {"name", "operation", "callId", "input", "exchanges", "expected"},
-              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "fixedClock", "randomSeed", "randomRequestFields"}, str(path))
+              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "fixedClock", "randomSeed", "randomRequestFields", "randomFormFields"}, str(path))
         if any(not isinstance(scenario[field], str) or not scenario[field]
                for field in ("name", "operation", "callId")):
             raise ValueError(f"{scenario['name']}: invalid Call ID")
@@ -233,12 +233,24 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
                                                   or any(not isinstance(field, str) or not field.startswith("/") or "~" in field
                                                          for field in scenario["randomRequestFields"])):
             raise ValueError(f"{scenario['name']}: invalid random request fields")
+        if "randomFormFields" in scenario and ("randomSeed" not in scenario
+                                               or not isinstance(scenario["randomFormFields"], list)
+                                               or not scenario["randomFormFields"]
+                                               or any(not isinstance(field, str) or not field or "/" in field or "~" in field
+                                                      for field in scenario["randomFormFields"])):
+            raise ValueError(f"{scenario['name']}: invalid random form fields")
         if not isinstance(scenario["input"], dict) or not isinstance(scenario["exchanges"], list):
             raise TypeError(f"{scenario['name']}: invalid input or exchanges")
         for exchange in scenario["exchanges"]:
             _keys(exchange, {"method", "path", "keyMode"},
                   {"status", "headers", "body", "query", "form", "requestBody", "requestHeaders", "transportFailure", "derivedKey"},
                   scenario["name"])
+            for name, value in (exchange.get("form") if isinstance(exchange.get("form"), dict) else {}).items():
+                if name in scenario.get("randomFormFields", []):
+                    if (not isinstance(value, dict) or set(value) != {"$syntheticSha256"}
+                            or not isinstance(value["$syntheticSha256"], str)
+                            or not re.fullmatch(r"[0-9a-f]{64}", value["$syntheticSha256"])):
+                        raise ValueError(f"{scenario['name']}: invalid random form digest")
             if ("transportFailure" in exchange) == ("status" in exchange):
                 raise ValueError(f"{scenario['name']}: exchange requires exactly one response or transport failure")
             if any(not isinstance(exchange[field], str) or not exchange[field] for field in ("method", "path")):
@@ -260,7 +272,12 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
                 raise ValueError(f"{scenario['name']}: derived key is missing")
             for field in ("query", "form", "requestHeaders"):
                 if field in exchange and (not isinstance(exchange[field], dict)
-                                          or any(not isinstance(key, str) or not (isinstance(value, str) or
+                                          or any(not isinstance(key, str) or not (
+                                              field == "form" and key in scenario.get("randomFormFields", [])
+                                              and isinstance(value, dict) and set(value) == {"$syntheticSha256"}
+                                              and isinstance(value["$syntheticSha256"], str)
+                                              and re.fullmatch(r"[0-9a-f]{64}", value["$syntheticSha256"])
+                                              or isinstance(value, str) or
                                               isinstance(value, list) and bool(value) and all(isinstance(item, str) for item in value))
                                                  for key, value in exchange[field].items())):
                     raise ValueError(f"{scenario['name']}: invalid {field}")
@@ -425,7 +442,12 @@ class ExchangeRecorder:
                               ("form", parse_qs(request.content.decode(), keep_blank_values=True)
                                if request.headers.get("content-type", "").startswith("application/x-www-form-urlencoded") else {})):
             for key, value in exchange.get(field, {}).items():
-                self._equal(index, f"{field} {key}", actual.get(key), value if isinstance(value, list) else [value])
+                if field == "form" and isinstance(value, dict) and set(value) == {"$syntheticSha256"}:
+                    observed = actual.get(key)
+                    digest = hashlib.sha256(observed[0].encode()).hexdigest() if isinstance(observed, list) and len(observed) == 1 and observed[0] else None
+                    self._equal(index, f"form {key} digest", digest, value["$syntheticSha256"])
+                else:
+                    self._equal(index, f"{field} {key}", actual.get(key), value if isinstance(value, list) else [value])
             for key, values in actual.items():
                 if key not in exchange.get(field, {}):
                     self.mismatches.append(f"request {index}: unasserted {field} {key}={values!r}")

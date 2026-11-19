@@ -9,7 +9,9 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from connector_scenarios import HeartbeatContext, _same_heartbeat, load_scenarios
+import httpx
+
+from connector_scenarios import ExchangeRecorder, HeartbeatContext, _same_heartbeat, load_scenarios
 from dex_connectors.sdk.singledispatch import Marker
 
 
@@ -106,6 +108,36 @@ class HeartbeatFormatTranslationTest(unittest.TestCase):
         self.assertTrue(_same_heartbeat(exact, legacy, self.call_id))
         self.assertFalse(_same_heartbeat(exact, {**legacy, "state": "notSent"}, self.call_id))
         self.assertFalse(_same_heartbeat(exact, {**legacy, "sendCount": 1}, self.call_id))
+class SignedFormTest(unittest.IsolatedAsyncioTestCase):
+    def test_signed_form_fixture_validation(self) -> None:
+        source = json.loads((ROOT / "conformance/connectors/airtable/scenarios.json").read_text())
+        scenario = source["scenarios"][0]
+        scenario["randomSeed"] = "SYNTHETIC_CONFORMANCE_FORM"
+        scenario["randomFormFields"] = ["salt"]
+        scenario["exchanges"][0]["form"] = {"salt": {"$syntheticSha256": "a" * 64}}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "scenarios.json"
+            path.write_text(json.dumps(source))
+            self.assertEqual(load_scenarios(path)[0]["randomFormFields"], ["salt"])
+            scenario["exchanges"][0]["form"]["salt"]["$syntheticSha256"] = "invalid"
+            path.write_text(json.dumps(source))
+            self.assertRaises(ValueError, load_scenarios, path)
+
+    async def test_youdao_shaped_signed_form(self) -> None:
+        cases = json.loads((ROOT / "conformance/runners/matcher_cases.json").read_text())
+        for case in cases:
+            if not case["name"].startswith("signed-form-"):
+                continue
+            with self.subTest(case=case["name"]):
+                recorder = ExchangeRecorder({"exchanges": [case["exchange"]]}, "call")
+                request = httpx.Request("POST", "http://localhost" + case["requestPath"],
+                                        headers={name: values[0] for name, values in case["requestHeaders"].items()},
+                                        content=case["requestBody"])
+                await recorder.answer(request)
+                self.assertEqual(recorder.request_count, 1)
+                self.assertEqual(len(recorder.mismatches), len(case["expectedMismatches"]))
+                for expected in case["expectedMismatches"]:
+                    self.assertIn(expected, "\n".join(recorder.mismatches))
 
 
 if __name__ == "__main__":

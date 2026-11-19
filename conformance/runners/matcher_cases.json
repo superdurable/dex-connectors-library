@@ -604,7 +604,7 @@
         "multipart/form-data; boundary=utf8-boundary"
       ]
     },
-    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\n",
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"résumé.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\nÿ\r\n--utf8-boundary--\r\n",
     "exchange": {
       "method": "POST",
       "path": "/matcher",
@@ -620,7 +620,7 @@
           {
             "headers": {
               "Content-Disposition": [
-                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+                "form-data; name=\"file\"; filename=\"résumé.pdf\""
               ],
               "Content-Type": [
                 "application/octet-stream"
@@ -641,7 +641,7 @@
         "multipart/form-data; boundary=utf8-boundary"
       ]
     },
-    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ngarbage\r\nX-Unasserted: anything\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\n",
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"résumé.pdf\" \t\r\ngarbage\r\nX-Unasserted: anything\r\ncontent-type: application/octet-stream \t\r\n\r\nÿ\r\n--utf8-boundary--\r\n",
     "exchange": {
       "method": "POST",
       "path": "/matcher",
@@ -657,7 +657,7 @@
           {
             "headers": {
               "Content-Disposition": [
-                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+                "form-data; name=\"file\"; filename=\"résumé.pdf\""
               ],
               "Content-Type": [
                 "application/octet-stream"
@@ -680,7 +680,7 @@
         "multipart/form-data; boundary=utf8-boundary; boundary=another"
       ]
     },
-    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\n",
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"résumé.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\nÿ\r\n--utf8-boundary--\r\n",
     "exchange": {
       "method": "POST",
       "path": "/matcher",
@@ -696,7 +696,7 @@
           {
             "headers": {
               "Content-Disposition": [
-                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+                "form-data; name=\"file\"; filename=\"résumé.pdf\""
               ],
               "Content-Type": [
                 "application/octet-stream"
@@ -720,7 +720,7 @@
         "multipart/form-data; boundary=utf8-boundary"
       ]
     },
-    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\nepilogue bytes\r\n",
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"résumé.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\nÿ\r\n--utf8-boundary--\r\nepilogue bytes\r\n",
     "exchange": {
       "method": "POST",
       "path": "/matcher",
@@ -736,7 +736,7 @@
           {
             "headers": {
               "Content-Disposition": [
-                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+                "form-data; name=\"file\"; filename=\"résumé.pdf\""
               ],
               "Content-Type": [
                 "application/octet-stream"
@@ -970,7 +970,9 @@
     "requestPath": "/matcher",
     "requestHeaders": {},
     "requestBody": "{\"password\":\"synthetic-value\",\"name\":\"Ada\"}",
-    "randomRequestFields": ["/password"],
+    "randomRequestFields": [
+      "/password"
+    ],
     "exchange": {
       "method": "POST",
       "path": "/matcher",
@@ -979,7 +981,9 @@
       "headers": {},
       "body": "",
       "requestBody": {
-        "password": {"$syntheticSha256": "7ad2f62f8a196437950f87f28d16e8f8da3d6b7fcd9736a0bc49b31e28930684"},
+        "password": {
+          "$syntheticSha256": "7ad2f62f8a196437950f87f28d16e8f8da3d6b7fcd9736a0bc49b31e28930684"
+        },
         "name": "Ada"
       }
     },
@@ -990,7 +994,9 @@
     "requestPath": "/matcher",
     "requestHeaders": {},
     "requestBody": "{\"password\":\"synthetic-value\",\"name\":\"Ada\"}",
-    "randomRequestFields": ["/password"],
+    "randomRequestFields": [
+      "/password"
+    ],
     "exchange": {
       "method": "POST",
       "path": "/matcher",
@@ -999,16 +1005,24 @@
       "headers": {},
       "body": "",
       "requestBody": {
-        "password": {"$syntheticSha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+        "password": {
+          "$syntheticSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
         "name": "Ada"
       }
     },
-    "expectedMismatches": ["body"]
+    "expectedMismatches": [
+      "body"
+    ]
   },
   {
     "name": "noncanonical-header-name",
     "requestPath": "/matcher",
-    "requestHeaders": {"orgId": ["12345"]},
+    "requestHeaders": {
+      "orgId": [
+        "12345"
+      ]
+    },
     "requestBody": "",
     "exchange": {
       "method": "POST",
@@ -1017,14 +1031,20 @@
       "status": 200,
       "headers": {},
       "body": "",
-      "requestHeaders": {"Orgid": "12345"}
+      "requestHeaders": {
+        "Orgid": "12345"
+      }
     },
     "expectedMismatches": []
   },
   {
     "name": "noncanonical-header-value-mismatch",
     "requestPath": "/matcher",
-    "requestHeaders": {"orgId": ["12345"]},
+    "requestHeaders": {
+      "orgId": [
+        "12345"
+      ]
+    },
     "requestBody": "",
     "exchange": {
       "method": "POST",
@@ -1033,8 +1053,118 @@
       "status": 200,
       "headers": {},
       "body": "",
-      "requestHeaders": {"Orgid": "wrong"}
+      "requestHeaders": {
+        "Orgid": "wrong"
+      }
     },
-    "expectedMismatches": ["header Orgid"]
+    "expectedMismatches": [
+      "header Orgid"
+    ]
+  },
+  {
+    "name": "signed-form-digests",
+    "requestPath": "/api",
+    "requestHeaders": {
+      "Content-Type": [
+        "application/x-www-form-urlencoded"
+      ]
+    },
+    "requestBody": "q=Hello&from=en&to=zh-CHS&appKey=synthetic-app-key&salt=0123456789abcdef0123456789abcdef&curtime=1760000000&signType=v3&sign=077741714a0fe9ff4d63208233986144ccfa729eae45b7c14250f2ad45a1a4b6",
+    "randomFormFields": [
+      "salt",
+      "sign"
+    ],
+    "exchange": {
+      "method": "POST",
+      "path": "/api",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "form": {
+        "q": [
+          "Hello"
+        ],
+        "from": [
+          "en"
+        ],
+        "to": [
+          "zh-CHS"
+        ],
+        "appKey": [
+          "synthetic-app-key"
+        ],
+        "salt": {
+          "$syntheticSha256": "3eb1bd439947eb762998e566ccc2e099c791118b2f40579cc4f7da2b5061b7f9"
+        },
+        "curtime": [
+          "1760000000"
+        ],
+        "signType": [
+          "v3"
+        ],
+        "sign": {
+          "$syntheticSha256": "4367ceae1b8e2e21d6a5906f09e7895401e79f6dd2071432cbe7230ff2190363"
+        }
+      },
+      "requestHeaders": {
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "signed-form-signature-mutation",
+    "requestPath": "/api",
+    "requestHeaders": {
+      "Content-Type": [
+        "application/x-www-form-urlencoded"
+      ]
+    },
+    "requestBody": "q=Hello&from=en&to=zh-CHS&appKey=synthetic-app-key&salt=0123456789abcdef0123456789abcdef&curtime=1760000000&signType=v3&sign=077741714a0fe9ff4d63208233986144ccfa729eae45b7c14250f2ad45a1a4b6",
+    "randomFormFields": [
+      "salt",
+      "sign"
+    ],
+    "exchange": {
+      "method": "POST",
+      "path": "/api",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "form": {
+        "q": [
+          "Hello"
+        ],
+        "from": [
+          "en"
+        ],
+        "to": [
+          "zh-CHS"
+        ],
+        "appKey": [
+          "synthetic-app-key"
+        ],
+        "salt": {
+          "$syntheticSha256": "3eb1bd439947eb762998e566ccc2e099c791118b2f40579cc4f7da2b5061b7f9"
+        },
+        "curtime": [
+          "1760000000"
+        ],
+        "signType": [
+          "v3"
+        ],
+        "sign": {
+          "$syntheticSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "requestHeaders": {
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    },
+    "expectedMismatches": [
+      "form sign digest"
+    ]
   }
 ]

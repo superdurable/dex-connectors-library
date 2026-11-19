@@ -24,6 +24,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -73,6 +74,7 @@ type conformanceScenario struct {
 	CallID              string                    `json:"callId"`
 	RandomSeed          string                    `json:"randomSeed"`
 	RandomRequestFields []string                  `json:"randomRequestFields"`
+	RandomFormFields    []string                  `json:"randomFormFields"`
 	IdempotencyKey      string                    `json:"idempotencyKey"`
 	Input               json.RawMessage           `json:"input"`
 	Exchanges           []conformanceExchange     `json:"exchanges"`
@@ -136,6 +138,7 @@ type conformanceMatcherCase struct {
 	Exchange            conformanceExchange `json:"exchange"`
 	ExpectedMismatches  []string            `json:"expectedMismatches"`
 	RandomRequestFields []string            `json:"randomRequestFields"`
+	RandomFormFields    []string            `json:"randomFormFields"`
 }
 
 type conformanceOutcome struct {
@@ -367,6 +370,16 @@ func TestConnectorConformance(t *testing.T) {
 					}
 				}
 				require.True(t, found, "random request field %s was never redacted", pointer)
+			}
+			for _, field := range scenario.RandomFormFields {
+				found := false
+				for _, exchange := range recorder.observed {
+					if conformanceHasRandomDigest(exchange["form"], field) {
+						found = true
+						break
+					}
+				}
+				require.True(t, found, "random form field %s was never redacted", field)
 			}
 			if !recording {
 				require.Empty(t, recorder.mismatches)
@@ -669,7 +682,7 @@ func TestConformanceMatcher(t *testing.T) {
 	require.NoError(t, decoder.Decode(&cases))
 	for _, test := range cases {
 		t.Run(test.Name, func(t *testing.T) {
-			recorder := &conformanceRecorder{scenario: conformanceScenario{CallID: "call", Exchanges: []conformanceExchange{test.Exchange}, RandomRequestFields: test.RandomRequestFields}}
+			recorder := &conformanceRecorder{scenario: conformanceScenario{CallID: "call", Exchanges: []conformanceExchange{test.Exchange}, RandomRequestFields: test.RandomRequestFields, RandomFormFields: test.RandomFormFields}}
 			request, err := http.NewRequest(test.Exchange.Method, "http://localhost"+conformanceFixturePathPrefix+test.RequestPath, strings.NewReader(test.RequestBody))
 			require.NoError(t, err)
 			for name, values := range test.RequestHeaders {
@@ -692,6 +705,27 @@ func TestConformanceMatcher(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConformanceRandomFormFixture(t *testing.T) {
+	data, err := os.ReadFile("../../../../conformance/connectors/microsoft/todo/scenarios.json")
+	require.NoError(t, err)
+	var document map[string]any
+	require.NoError(t, json.Unmarshal(data, &document))
+	scenario := document["scenarios"].([]any)[0].(map[string]any)
+	scenario["randomSeed"] = "SYNTHETIC_CONFORMANCE_FORM"
+	scenario["randomFormFields"] = []string{"salt"}
+	exchange := scenario["exchanges"].([]any)[0].(map[string]any)
+	exchange["form"] = map[string]any{"salt": map[string]any{"$syntheticSha256": strings.Repeat("a", 64)}}
+	encoded, err := json.Marshal(document)
+	require.NoError(t, err)
+	_, err = decodeConformanceScenarios(encoded)
+	require.NoError(t, err)
+	exchange["form"].(map[string]any)["salt"] = map[string]any{"$syntheticSha256": "invalid"}
+	encoded, err = json.Marshal(document)
+	require.NoError(t, err)
+	_, err = decodeConformanceScenarios(encoded)
+	require.ErrorContains(t, err, "invalid random form digest")
 }
 
 func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Response, error) {
@@ -733,7 +767,14 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: parse form: %v", index, parseErr))
 		}
 		for name, value := range exchange.Form {
-			recorder.matchValues(index, "form "+name, form[name], conformanceExpectedValues(value))
+			if digest, ok := conformanceExpectedRandomDigest(value); ok {
+				actual := form[name]
+				if len(actual) != 1 || actual[0] == "" || conformanceDigest(actual[0]) != digest {
+					recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: form %s digest mismatch", index, name))
+				}
+			} else {
+				recorder.matchValues(index, "form "+name, form[name], conformanceExpectedValues(value))
+			}
 		}
 		for name, values := range form {
 			if _, asserted := exchange.Form[name]; !asserted {
@@ -923,7 +964,18 @@ func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[
 			return observed, err
 		}
 		if len(values) > 0 {
-			observed["form"] = values
+			form := map[string]any{}
+			for name, entries := range values {
+				if slices.Contains(recorder.scenario.RandomFormFields, name) {
+					if len(entries) != 1 || entries[0] == "" {
+						return observed, fmt.Errorf("random form field %s must contain one nonempty string", name)
+					}
+					form[name] = map[string]any{"$syntheticSha256": conformanceDigest(entries[0])}
+				} else {
+					form[name] = entries
+				}
+			}
+			observed["form"] = form
 		}
 	} else if conformanceIsMultipart(conformanceHeaderValue(request.Header, "Content-Type")) {
 		value, err := conformanceMultipartBody(conformanceHeaderValue(request.Header, "Content-Type"), body)
@@ -995,12 +1047,20 @@ func conformanceRedactRandomFields(body any, fields []string) error {
 
 func conformanceHasRandomDigest(body any, pointer string) bool {
 	current := body
-	for _, part := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+	if strings.HasPrefix(pointer, "/") {
+		for _, part := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+			object, ok := current.(map[string]any)
+			if !ok {
+				return false
+			}
+			current = object[part]
+		}
+	} else {
 		object, ok := current.(map[string]any)
 		if !ok {
 			return false
 		}
-		current = object[part]
+		current = object[pointer]
 	}
 	descriptor, ok := current.(map[string]any)
 	if !ok {
@@ -1008,6 +1068,28 @@ func conformanceHasRandomDigest(body any, pointer string) bool {
 	}
 	digest, ok := descriptor["$syntheticSha256"].(string)
 	return ok && len(descriptor) == 1 && len(digest) == 64
+}
+
+func conformanceDigest(value string) string {
+	digest := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(digest[:])
+}
+
+func conformanceExpectedRandomDigest(raw json.RawMessage) (string, bool) {
+	var descriptor map[string]string
+	if json.Unmarshal(raw, &descriptor) != nil || len(descriptor) != 1 {
+		return "", false
+	}
+	digest, ok := descriptor["$syntheticSha256"]
+	if !ok || len(digest) != 64 {
+		return "", false
+	}
+	for _, character := range digest {
+		if character < '0' || character > '9' && character < 'a' || character > 'f' {
+			return "", false
+		}
+	}
+	return digest, true
 }
 
 func conformanceIsMultipart(contentType string) bool {
@@ -1146,7 +1228,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 	}
 	scenarios := make([]conformanceScenario, 0, len(rawScenarios))
 	for _, rawScenario := range rawScenarios {
-		fields, err := conformanceObject(rawScenario, []string{"name", "operation", "callId", "input", "exchanges"}, []string{"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "expected", "fixedClock", "randomSeed", "randomRequestFields"})
+		fields, err := conformanceObject(rawScenario, []string{"name", "operation", "callId", "input", "exchanges"}, []string{"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "expected", "fixedClock", "randomSeed", "randomRequestFields", "randomFormFields"})
 		if err != nil {
 			return nil, err
 		}
@@ -1167,6 +1249,14 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 		for _, field := range scenario.RandomRequestFields {
 			if !strings.HasPrefix(field, "/") || strings.Contains(field, "~") {
 				return nil, errors.New("random request field must be a simple JSON pointer")
+			}
+		}
+		if len(scenario.RandomFormFields) > 0 && scenario.RandomSeed == "" {
+			return nil, errors.New("random form fields require a synthetic seed")
+		}
+		for _, field := range scenario.RandomFormFields {
+			if field == "" || strings.ContainsAny(field, "/~") {
+				return nil, errors.New("random form field must be a simple field name")
 			}
 		}
 		if _, hasFixedClock := fields["fixedClock"]; hasFixedClock {
@@ -1223,7 +1313,17 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 					if json.Unmarshal(raw, &values) != nil || values == nil {
 						return nil, fmt.Errorf("invalid %s", field)
 					}
-					for _, value := range values {
+					for name, value := range values {
+						if field == "form" && slices.Contains(scenario.RandomFormFields, name) {
+							digest, ok := conformanceExpectedRandomDigest(value)
+							if ok && len(digest) == 64 {
+								continue
+							}
+							if os.Getenv("CONNECTOR_CONFORMANCE_MODE") == "record" {
+								continue
+							}
+							return nil, errors.New("invalid random form digest")
+						}
 						var scalar string
 						var repeated []string
 						if bytes.Equal(bytes.TrimSpace(value), []byte("null")) || json.Unmarshal(value, &scalar) != nil && (json.Unmarshal(value, &repeated) != nil || len(repeated) == 0) {
