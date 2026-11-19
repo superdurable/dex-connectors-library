@@ -456,6 +456,5804 @@
       },
       "name": "searchPartners-transportFailure",
       "operation": "searchPartners"
+    },
+    {
+      "callId": "odoo-listContacts-success",
+      "exchanges": [
+        {
+          "body": "[{\"id\":42,\"name\":\"Acme Company\",\"email\":\"contact@example.com\",\"phone\":\"4155550100\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "email": "contact@example.com",
+              "id": 42,
+              "name": "Acme Company",
+              "phone": "4155550100"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listContacts-success",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "odoo-listContacts-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contacts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listContacts-rejected",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "odoo-listContacts-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contacts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listContacts-malformed",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "odoo-listContacts-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listContacts-rate-limited",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "odoo-listContacts-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listContacts-unavailable",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "odoo-listContacts-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listContacts-transport",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "odoo-listContacts-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contacts": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 0,
+        "offset": -1
+      },
+      "name": "listContacts-defect",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "odoo-getContact-success",
+      "exchanges": [
+        {
+          "body": "[{\"id\":42,\"name\":\"Acme Company\",\"email\":\"contact@example.com\",\"phone\":\"4155550100\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "contact@example.com",
+          "id": 42,
+          "name": "Acme Company",
+          "phone": "4155550100"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getContact-success",
+      "operation": "getContact"
+    },
+    {
+      "callId": "odoo-getContact-not-found",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": 0,
+          "name": "",
+          "phone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getContact-not-found",
+      "operation": "getContact"
+    },
+    {
+      "callId": "odoo-getContact-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "id": 0,
+          "name": "",
+          "phone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getContact-rejected",
+      "operation": "getContact"
+    },
+    {
+      "callId": "odoo-getContact-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": 0,
+          "name": "",
+          "phone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getContact-malformed",
+      "operation": "getContact"
+    },
+    {
+      "callId": "odoo-getContact-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getContact-rate-limited",
+      "operation": "getContact"
+    },
+    {
+      "callId": "odoo-getContact-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getContact-unavailable",
+      "operation": "getContact"
+    },
+    {
+      "callId": "odoo-getContact-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email",
+              "phone"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 42
+      },
+      "name": "getContact-transport",
+      "operation": "getContact"
+    },
+    {
+      "callId": "odoo-getContact-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": 0,
+          "name": "",
+          "phone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 0
+      },
+      "name": "getContact-defect",
+      "operation": "getContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "[43]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 43
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-success",
+      "operation": "createContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-rejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-malformed",
+      "operation": "createContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-rate-limited",
+      "operation": "createContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-unavailable",
+      "operation": "createContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-transport",
+      "operation": "createContact"
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "",
+        "name": "",
+        "phone": ""
+      },
+      "name": "createContact-defect",
+      "operation": "createContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-success",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-not-found",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-rejected",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-malformed",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-rate-limited",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-unavailable",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "email": "ada@example.com",
+              "name": "Ada Lovelace",
+              "phone": "4155550111"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "ada@example.com",
+        "id": 42,
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "updateContact-transport",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "27159e6d-05bf-52fc-bcd0-48214bf4b168",
+      "input": {
+        "email": "",
+        "id": 0,
+        "name": "",
+        "phone": ""
+      },
+      "name": "updateContact-defect",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-success",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-not-found",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-rejected",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-malformed",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-rate-limited",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-unavailable",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 42
+      },
+      "name": "deleteContact-transport",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deccf33f-29ec-5cd9-902e-8b8e0c517971",
+      "input": {
+        "id": 0
+      },
+      "name": "deleteContact-defect",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "odoo-listOpportunities-success",
+      "exchanges": [
+        {
+          "body": "[{\"id\":73,\"name\":\"Example opportunity\",\"email_from\":\"lead@example.com\",\"phone\":\"4155550100\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "type",
+                "=",
+                "opportunity"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "opportunities": [
+            {
+              "emailFrom": "lead@example.com",
+              "id": 73,
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listOpportunities-success",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "odoo-listOpportunities-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "type",
+                "=",
+                "opportunity"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "opportunities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listOpportunities-rejected",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "odoo-listOpportunities-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "type",
+                "=",
+                "opportunity"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "opportunities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listOpportunities-malformed",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "odoo-listOpportunities-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "type",
+                "=",
+                "opportunity"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listOpportunities-rate-limited",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "odoo-listOpportunities-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "type",
+                "=",
+                "opportunity"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listOpportunities-unavailable",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "odoo-listOpportunities-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "type",
+                "=",
+                "opportunity"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "offset": 1
+      },
+      "name": "listOpportunities-transport",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "odoo-listOpportunities-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "opportunities": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 0,
+        "offset": -1
+      },
+      "name": "listOpportunities-defect",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "odoo-getOpportunity-success",
+      "exchanges": [
+        {
+          "body": "[{\"id\":73,\"name\":\"Example opportunity\",\"email_from\":\"lead@example.com\",\"phone\":\"4155550100\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "emailFrom": "lead@example.com",
+          "id": 73,
+          "name": "Example opportunity",
+          "phone": "4155550100"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 73
+      },
+      "name": "getOpportunity-success",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "odoo-getOpportunity-not-found",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailFrom": "",
+          "id": 0,
+          "name": "",
+          "phone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 73
+      },
+      "name": "getOpportunity-not-found",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "odoo-getOpportunity-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "emailFrom": "",
+          "id": 0,
+          "name": "",
+          "phone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 73
+      },
+      "name": "getOpportunity-rejected",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "odoo-getOpportunity-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailFrom": "",
+          "id": 0,
+          "name": "",
+          "phone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 73
+      },
+      "name": "getOpportunity-malformed",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "odoo-getOpportunity-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 73
+      },
+      "name": "getOpportunity-rate-limited",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "odoo-getOpportunity-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 73
+      },
+      "name": "getOpportunity-unavailable",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "odoo-getOpportunity-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name",
+              "email_from",
+              "phone"
+            ],
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 73
+      },
+      "name": "getOpportunity-transport",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "odoo-getOpportunity-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailFrom": "",
+          "id": 0,
+          "name": "",
+          "phone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 0
+      },
+      "name": "getOpportunity-defect",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "body": "[73]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 73
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-success",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-rejected",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-malformed",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-rate-limited",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-unavailable",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email_from": "lead@example.com",
+                "name": "Example opportunity",
+                "phone": "4155550100",
+                "type": "opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "createOpportunity-transport",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "795eeaed-ca02-54d5-b4e6-336c02a3ba7f",
+      "input": {
+        "emailFrom": "",
+        "name": "",
+        "phone": ""
+      },
+      "name": "createOpportunity-defect",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 73
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-success",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-not-found",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-rejected",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-malformed",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-rate-limited",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-unavailable",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/write",
+          "requestBody": {
+            "ids": [
+              73
+            ],
+            "vals": {
+              "email_from": "lead@example.com",
+              "name": "Example opportunity",
+              "phone": "4155550100"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "lead@example.com",
+        "id": 73,
+        "name": "Example opportunity",
+        "phone": "4155550100"
+      },
+      "name": "updateOpportunity-transport",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "da9e218b-1f77-5855-b997-62ae4be4447b",
+      "input": {
+        "emailFrom": "",
+        "id": 0,
+        "name": "",
+        "phone": ""
+      },
+      "name": "updateOpportunity-defect",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 73
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-success",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-not-found",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-rejected",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-malformed",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-rate-limited",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-unavailable",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/crm.lead/unlink",
+          "requestBody": {
+            "ids": [
+              73
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 73
+      },
+      "name": "deleteOpportunity-transport",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1f60d3f6-681f-582f-b387-bc615edae233",
+      "input": {
+        "id": 0
+      },
+      "name": "deleteOpportunity-defect",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "odoo-listRecords-success",
+      "exchanges": [
+        {
+          "body": "[{\"id\":42,\"name\":\"Acme Company\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "records": [
+            {
+              "fields": {
+                "name": "Acme Company"
+              },
+              "id": 42
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-success",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-rejected",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-malformed",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-rate-limited",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-unavailable",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "limit": 5,
+        "model": "x_customer",
+        "offset": 1
+      },
+      "name": "listRecords-transport",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-listRecords-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [],
+        "limit": 0,
+        "model": "bad/model",
+        "offset": -1
+      },
+      "name": "listRecords-defect",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "odoo-getRecord-success",
+      "exchanges": [
+        {
+          "body": "[{\"id\":42,\"name\":\"Acme Company\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "name": "Acme Company"
+          },
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-not-found",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fields": {},
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-not-found",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fields": {},
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-rejected",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": {},
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-malformed",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-rate-limited",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-unavailable",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/read",
+          "requestBody": {
+            "fields": [
+              "id",
+              "name"
+            ],
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "name"
+        ],
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "getRecord-transport",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "odoo-getRecord-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": {},
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [],
+        "id": 0,
+        "model": "bad/model"
+      },
+      "name": "getRecord-defect",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "[42]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-success",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-rejected",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-malformed",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-rate-limited",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-unavailable",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "name": "Acme Company"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "x_customer",
+        "readBackField": "name",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "createRecord-transport",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bf78a34-b6db-5666-aeae-52ba6efda0a4",
+      "input": {
+        "model": "bad/model",
+        "readBackField": "",
+        "values": {}
+      },
+      "name": "createRecord-defect",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-success",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-not-found",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-rejected",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-malformed",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-rate-limited",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-unavailable",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/write",
+          "requestBody": {
+            "ids": [
+              42
+            ],
+            "vals": {
+              "name": "Acme Company"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 42,
+        "model": "x_customer",
+        "values": {
+          "name": "Acme Company"
+        }
+      },
+      "name": "updateRecord-transport",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c83949ad-71f8-58d7-b09f-278f12d1ee81",
+      "input": {
+        "id": 0,
+        "model": "bad/model",
+        "values": {}
+      },
+      "name": "updateRecord-defect",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-success",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-not-found",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-rejected",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-malformed",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-rate-limited",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-unavailable",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/x_customer/unlink",
+          "requestBody": {
+            "ids": [
+              42
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 42,
+        "model": "x_customer"
+      },
+      "name": "deleteRecord-transport",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "34bbc32c-95f6-50c2-859d-4917219de2b4",
+      "input": {
+        "id": 0,
+        "model": "bad/model"
+      },
+      "name": "deleteRecord-defect",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "odoo-listRecords-activity",
+      "exchanges": [
+        {
+          "body": "[{\"id\":83,\"summary\":\"Call customer\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/mail.activity/search_read",
+          "requestBody": {
+            "domain": [],
+            "fields": [
+              "id",
+              "summary"
+            ],
+            "limit": 5,
+            "offset": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "records": [
+            {
+              "fields": {
+                "summary": "Call customer"
+              },
+              "id": 83
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "summary"
+        ],
+        "limit": 5,
+        "model": "mail.activity",
+        "offset": 1
+      },
+      "name": "listRecords-activity",
+      "operation": "listRecords"
     }
   ],
   "schemaVersion": 1

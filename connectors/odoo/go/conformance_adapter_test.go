@@ -22,6 +22,21 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"searchPartners": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchPartners(), reference),
+		"searchPartners":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchPartners(), reference),
+		"listContacts":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), reference),
+		"getContact":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), reference),
+		"createContact":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateContact(), reference, scenario.CallID),
+		"updateContact":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateContact(), reference, scenario.CallID),
+		"deleteContact":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContact(), reference, scenario.CallID),
+		"listOpportunities": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOpportunities(), reference),
+		"getOpportunity":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOpportunity(), reference),
+		"createOpportunity": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateOpportunity(), reference, scenario.CallID),
+		"updateOpportunity": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateOpportunity(), reference, scenario.CallID),
+		"deleteOpportunity": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteOpportunity(), reference, scenario.CallID),
+		"listRecords":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListRecords(), reference),
+		"getRecord":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetRecord(), reference),
+		"createRecord":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateRecord(), reference, scenario.CallID),
+		"updateRecord":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateRecord(), reference, scenario.CallID),
+		"deleteRecord":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteRecord(), reference, scenario.CallID),
 	}}
 }

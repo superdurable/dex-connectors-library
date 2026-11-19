@@ -18,3 +18,8 @@ func TestRequestMappingAndFlowIdentity(t *testing.T) {
 	require.Equal(t, FlowType, dex.GetFinalFlowType(NewFlow(paypal.Connection{})))
 	require.Equal(t, "PrepareResourceRead", dex.GetFinalStepType[Request](prepareRequest{}))
 }
+
+func TestPayoutBatchFlowIdentity(t *testing.T) {
+	require.Equal(t, PayoutBatchFlowType, dex.GetFinalFlowType(NewPayoutBatchFlow(paypal.Connection{})))
+	require.Equal(t, "PreparePayoutBatchRead", dex.GetFinalStepType[PayoutBatchRequest](preparePayoutBatchRequest{}))
+}

@@ -1,6 +1,6 @@
 {
   "connectorId": "personio",
-  "releaseTag": "connectors/personio/go/v0.1.0",
+  "releaseTag": "connectors/personio/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-personio",

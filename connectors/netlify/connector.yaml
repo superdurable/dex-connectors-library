@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: netlify
   displayName: Netlify
-  description: "Use the Netlify REST API through typed Dex connector Steps."
+  description: "List and inspect Netlify sites and deploys, delete sites, and cancel deploys through typed Dex connector Steps."
   company: Netlify
   categories: [developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: netlify
   languages:
@@ -99,3 +99,70 @@ spec:
           description: "A Meridian example returns a representative DeploysPage."
           default: true
           output: {"deploys":[{"id":"deploy-meridian","site_id":"site-meridian","state":"ready","url":"https://meridian.netlify.app"}]}
+    - name: getSite
+      goName: GetSite
+      inputType: GetSiteInput
+      outputType: Site
+      kind: query
+      description: "Get one Netlify site by Project ID."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The site was found.}
+        - {id: notFound, goName: NotFound, description: The site was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: foundDefault, branch: found, description: A Meridian example site., default: true, output: {id: site-meridian, name: meridian-web, url: "https://meridian.netlify.app"}}
+    - name: getDeploy
+      goName: GetDeploy
+      inputType: GetDeployInput
+      outputType: Deploy
+      kind: query
+      description: "Get one deploy for a Netlify site."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: The deploy was found.}
+        - {id: notFound, goName: NotFound, description: The deploy was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: foundDefault, branch: found, description: A Meridian example deploy., default: true, output: {id: deploy-meridian, site_id: site-meridian, state: ready}}
+    - name: deleteSite
+      goName: DeleteSite
+      inputType: DeleteSiteInput
+      outputType: DeletedSite
+      kind: mutation
+      description: "Delete one Netlify site by Project ID."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: The site was deleted.}
+        - {id: notFound, goName: NotFound, description: The site was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: deletedDefault, branch: deleted, description: A Meridian example site deletion., default: true, output: {siteId: site-meridian}}
+    - name: cancelDeploy
+      goName: CancelDeploy
+      inputType: CancelDeployInput
+      outputType: Deploy
+      kind: mutation
+      description: "Cancel one Netlify deploy."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: cancelled, goName: Cancelled, description: The deploy was cancelled.}
+        - {id: notFound, goName: NotFound, description: The deploy was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: cancelledDefault, branch: cancelled, description: A Meridian example cancelled deploy., default: true, output: {id: deploy-meridian, site_id: site-meridian, state: cancelled}}

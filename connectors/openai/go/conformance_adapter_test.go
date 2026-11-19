@@ -39,8 +39,15 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		context.AttemptNo = int32(attempt)
 	}, actions: map[string]conformanceOperationInvocation{
-		"createResponse":   newConformanceMutationInvocation(t, scenario.Input, context, client.CreateResponse(), reference, scenario.CallID),
-		"retrieveResponse": newConformanceQueryInvocation(t, scenario.Input, context, client.RetrieveResponse(), reference),
+		"createResponse":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateResponse(), reference, scenario.CallID),
+		"retrieveResponse":     newConformanceQueryInvocation(t, scenario.Input, context, client.RetrieveResponse(), reference),
+		"deleteResponse":       newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteResponse(), reference, scenario.CallID),
+		"createConversation":   newConformanceMutationInvocation(t, scenario.Input, context, client.CreateConversation(), reference, scenario.CallID),
+		"retrieveConversation": newConformanceQueryInvocation(t, scenario.Input, context, client.RetrieveConversation(), reference),
+		"updateConversation":   newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateConversation(), reference, scenario.CallID),
+		"deleteConversation":   newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteConversation(), reference, scenario.CallID),
+		"listFiles":            newConformanceQueryInvocation(t, scenario.Input, context, client.ListFiles(), reference),
+		"deleteFile":           newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteFile(), reference, scenario.CallID),
 	}}
 }
 

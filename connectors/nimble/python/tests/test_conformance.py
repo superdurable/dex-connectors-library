@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/nimble/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/nimble/scenarios.json")
+    if scenario["operation"] in {"listContactIDs", "getContact"}
+]
 CONNECTION = sdk.ConnectionRef("nimble", "nimble")
 TEST_CREDENTIALS = nimble.Credentials(sdk.SecretString("test-token"))
 ADAPTER = conformance.PythonOperationAdapter(
@@ -25,9 +29,7 @@ ADAPTER = conformance.PythonOperationAdapter(
         nimble.Config(base_url="http://127.0.0.1:8848/api/v1"),
         conformance.static_credentials(CONNECTION, TEST_CREDENTIALS)
         if recorder.scenario["name"] != "listContactIDs-defect"
-        else conformance.static_credentials(
-            sdk.ConnectionRef("nimble", "missing"), TEST_CREDENTIALS
-        ),
+        else conformance.static_credentials(sdk.ConnectionRef("nimble", "missing"), TEST_CREDENTIALS),
         http_client,
     ),
     operation_types={"listContactIDs": nimble.ListContactIDsOperation},

@@ -2,6 +2,2241 @@
   "connector": "paypal",
   "scenarios": [
     {
+      "callId": "11111111-1111-5111-8111-000000000101",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "BATCH101",
+        "page": 1
+      },
+      "name": "getPayoutBatch-token429",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "BATCH101",
+        "page": 1
+      },
+      "name": "getPayoutBatch-token503",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000103",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "getPayoutItem-token429",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000104",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "getPayoutItem-token503",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "Payment",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-token429",
+      "operation": "createPayoutBatch"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "Payment",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-token503",
+      "operation": "createPayoutBatch"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "cancelPayoutItem-token429",
+      "operation": "cancelPayoutItem"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "cancelPayoutItem-token503",
+      "operation": "cancelPayoutItem"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"batch_header\":{\"payout_batch_id\":\"BATCH101\",\"batch_status\":\"SUCCESS\"},\"items\":[],\"total_pages\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts/BATCH101",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "batch_header": {
+            "batch_status": "SUCCESS",
+            "payout_batch_id": "BATCH101"
+          },
+          "total_pages": 1
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "BATCH101",
+        "page": 1
+      },
+      "name": "getPayoutBatch-success",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"name\":\"INVALID_REQUEST\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts/BATCH101",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "batch_header": {
+            "batch_status": "",
+            "payout_batch_id": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "BATCH101",
+        "page": 1
+      },
+      "name": "getPayoutBatch-providerRejected",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"batch_header\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts/BATCH101",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "batch_header": {
+            "batch_status": "",
+            "payout_batch_id": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "BATCH101",
+        "page": 1
+      },
+      "name": "getPayoutBatch-invalidResponse",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts/BATCH101",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "BATCH101",
+        "page": 1
+      },
+      "name": "getPayoutBatch-final429",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000005",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts/BATCH101",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "BATCH101",
+        "page": 1
+      },
+      "name": "getPayoutBatch-final503",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000006",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts/BATCH101",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "BATCH101",
+        "page": 1
+      },
+      "name": "getPayoutBatch-transportFailure",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000007",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts/BATCH101",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "batch_header": {
+            "batch_status": "",
+            "payout_batch_id": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "BATCH101",
+        "page": 1
+      },
+      "name": "getPayoutBatch-notFound",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000008",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "batch_header": {
+            "batch_status": "",
+            "payout_batch_id": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchId": "",
+        "page": 1
+      },
+      "name": "getPayoutBatch-defect",
+      "operation": "getPayoutBatch"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"payout_item_id\":\"ITEM101\",\"transaction_status\":\"UNCLAIMED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts-item/ITEM101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "payout_item_id": "ITEM101",
+          "transaction_status": "UNCLAIMED"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "getPayoutItem-success",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"name\":\"INVALID_REQUEST\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts-item/ITEM101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "payout_item_id": "",
+          "transaction_status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "getPayoutItem-providerRejected",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000011",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts-item/ITEM101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "payout_item_id": "",
+          "transaction_status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "getPayoutItem-invalidResponse",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000012",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts-item/ITEM101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "getPayoutItem-final429",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000013",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts-item/ITEM101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "getPayoutItem-final503",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000014",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts-item/ITEM101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "getPayoutItem-transportFailure",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000015",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/payments/payouts-item/ITEM101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "payout_item_id": "",
+          "transaction_status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "getPayoutItem-notFound",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-000000000016",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "payout_item_id": "",
+          "transaction_status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": ""
+      },
+      "name": "getPayoutItem-defect",
+      "operation": "getPayoutItem"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"batch_header\":{\"payout_batch_id\":\"BATCH101\",\"batch_status\":\"PENDING\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts",
+          "requestBody": {
+            "items": [
+              {
+                "amount": {
+                  "currency": "USD",
+                  "value": "10.00"
+                },
+                "receiver": "recipient@example.com",
+                "recipient_type": "EMAIL",
+                "sender_item_id": "ITEM-REF-101"
+              }
+            ],
+            "sender_batch_header": {
+              "email_subject": "Payment",
+              "sender_batch_id": "d548249e-df43-5925-b1c7-82791a60e4fd"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "batch_header": {
+            "batch_status": "PENDING",
+            "payout_batch_id": "BATCH101"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "Payment",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-success",
+      "operation": "createPayoutBatch"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"name\":\"INVALID_REQUEST\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts",
+          "requestBody": {
+            "items": [
+              {
+                "amount": {
+                  "currency": "USD",
+                  "value": "10.00"
+                },
+                "receiver": "recipient@example.com",
+                "recipient_type": "EMAIL",
+                "sender_item_id": "ITEM-REF-101"
+              }
+            ],
+            "sender_batch_header": {
+              "email_subject": "Payment",
+              "sender_batch_id": "d548249e-df43-5925-b1c7-82791a60e4fd"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "batch_header": {
+            "batch_status": "",
+            "payout_batch_id": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "Payment",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-providerRejected",
+      "operation": "createPayoutBatch"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts",
+          "requestBody": {
+            "items": [
+              {
+                "amount": {
+                  "currency": "USD",
+                  "value": "10.00"
+                },
+                "receiver": "recipient@example.com",
+                "recipient_type": "EMAIL",
+                "sender_item_id": "ITEM-REF-101"
+              }
+            ],
+            "sender_batch_header": {
+              "email_subject": "Payment",
+              "sender_batch_id": "d548249e-df43-5925-b1c7-82791a60e4fd"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "batch_header": {
+            "batch_status": "",
+            "payout_batch_id": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "Payment",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-invalidResponse",
+      "operation": "createPayoutBatch"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts",
+          "requestBody": {
+            "items": [
+              {
+                "amount": {
+                  "currency": "USD",
+                  "value": "10.00"
+                },
+                "receiver": "recipient@example.com",
+                "recipient_type": "EMAIL",
+                "sender_item_id": "ITEM-REF-101"
+              }
+            ],
+            "sender_batch_header": {
+              "email_subject": "Payment",
+              "sender_batch_id": "d548249e-df43-5925-b1c7-82791a60e4fd"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "Payment",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-final429",
+      "operation": "createPayoutBatch"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts",
+          "requestBody": {
+            "items": [
+              {
+                "amount": {
+                  "currency": "USD",
+                  "value": "10.00"
+                },
+                "receiver": "recipient@example.com",
+                "recipient_type": "EMAIL",
+                "sender_item_id": "ITEM-REF-101"
+              }
+            ],
+            "sender_batch_header": {
+              "email_subject": "Payment",
+              "sender_batch_id": "d548249e-df43-5925-b1c7-82791a60e4fd"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "Payment",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-final503",
+      "operation": "createPayoutBatch"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts",
+          "requestBody": {
+            "items": [
+              {
+                "amount": {
+                  "currency": "USD",
+                  "value": "10.00"
+                },
+                "receiver": "recipient@example.com",
+                "recipient_type": "EMAIL",
+                "sender_item_id": "ITEM-REF-101"
+              }
+            ],
+            "sender_batch_header": {
+              "email_subject": "Payment",
+              "sender_batch_id": "d548249e-df43-5925-b1c7-82791a60e4fd"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "Payment",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-transportFailure",
+      "operation": "createPayoutBatch"
+    },
+    {
+      "callId": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "batch_header": {
+            "batch_status": "",
+            "payout_batch_id": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d548249e-df43-5925-b1c7-82791a60e4fd",
+      "input": {
+        "emailSubject": "",
+        "items": [
+          {
+            "amount": {
+              "currency": "USD",
+              "value": "10.00"
+            },
+            "receiver": "recipient@example.com",
+            "recipient_type": "EMAIL",
+            "sender_item_id": "ITEM-REF-101"
+          }
+        ]
+      },
+      "name": "createPayoutBatch-defect",
+      "operation": "createPayoutBatch"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"payout_item_id\":\"ITEM101\",\"transaction_status\":\"RETURNED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts-item/ITEM101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "payout_item_id": "ITEM101",
+          "transaction_status": "RETURNED"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "cancelPayoutItem-success",
+      "operation": "cancelPayoutItem"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"name\":\"INVALID_REQUEST\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts-item/ITEM101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "payout_item_id": "",
+          "transaction_status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "cancelPayoutItem-providerRejected",
+      "operation": "cancelPayoutItem"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts-item/ITEM101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "payout_item_id": "",
+          "transaction_status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "cancelPayoutItem-invalidResponse",
+      "operation": "cancelPayoutItem"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts-item/ITEM101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "cancelPayoutItem-final429",
+      "operation": "cancelPayoutItem"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts-item/ITEM101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "cancelPayoutItem-final503",
+      "operation": "cancelPayoutItem"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts-item/ITEM101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "cancelPayoutItem-transportFailure",
+      "operation": "cancelPayoutItem"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"short-lived-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}",
+          "form": {
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestHeaders": {
+            "Authorization": [
+              "Basic Y2xpZW50LXRlc3Q6c2VjcmV0LXRlc3Q="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/payments/payouts-item/ITEM101/cancel",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer short-lived-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "payout_item_id": "",
+          "transaction_status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": "ITEM101"
+      },
+      "name": "cancelPayoutItem-notFound",
+      "operation": "cancelPayoutItem"
+    },
+    {
+      "callId": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "payout_item_id": "",
+          "transaction_status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e423b3a0-66f8-5a13-a124-ec6e032f56c3",
+      "input": {
+        "itemId": ""
+      },
+      "name": "cancelPayoutItem-defect",
+      "operation": "cancelPayoutItem"
+    },
+    {
       "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
       "exchanges": [
         {

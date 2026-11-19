@@ -13,7 +13,8 @@ import {
   type ExchangeRecorder, type HeartbeatContext, type Scenario,
 } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/opensearch/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/opensearch/scenarios.json', import.meta.url))
+  .filter(scenario => ['indexDocument', 'deleteDocument', 'searchDocuments'].includes(scenario.operation));
 const connection = { provider: 'opensearch', name: 'opensearch' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeOpenSearch));
 

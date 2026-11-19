@@ -40,12 +40,36 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	FetchVectors() sdkgo.Query[FetchVectorsInput, FetchedVectors]
+	ListVectorIDs() sdkgo.Query[ListVectorIDsInput, VectorIDPage]
+	DescribeIndexStats() sdkgo.Query[DescribeIndexStatsInput, IndexStats]
+	UpdateVector() sdkgo.Mutation[UpdateVectorInput, VectorAction]
+	DeleteVectors() sdkgo.Mutation[DeleteVectorsInput, VectorAction]
+	ClearNamespace() sdkgo.Mutation[ClearNamespaceInput, VectorAction]
 	UpsertVectors() sdkgo.Mutation[UpsertVectorsInput, UpsertVectorsOutput]
 	QueryVectors() sdkgo.Query[QueryVectorsInput, QueryVectorsOutput]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) FetchVectors() sdkgo.Query[FetchVectorsInput, FetchedVectors] {
+	return operations.client.FetchVectors()
+}
+func (operations clientOperations) ListVectorIDs() sdkgo.Query[ListVectorIDsInput, VectorIDPage] {
+	return operations.client.ListVectorIDs()
+}
+func (operations clientOperations) DescribeIndexStats() sdkgo.Query[DescribeIndexStatsInput, IndexStats] {
+	return operations.client.DescribeIndexStats()
+}
+func (operations clientOperations) UpdateVector() sdkgo.Mutation[UpdateVectorInput, VectorAction] {
+	return operations.client.UpdateVector()
+}
+func (operations clientOperations) DeleteVectors() sdkgo.Mutation[DeleteVectorsInput, VectorAction] {
+	return operations.client.DeleteVectors()
+}
+func (operations clientOperations) ClearNamespace() sdkgo.Mutation[ClearNamespaceInput, VectorAction] {
+	return operations.client.ClearNamespace()
+}
 func (operations clientOperations) UpsertVectors() sdkgo.Mutation[UpsertVectorsInput, UpsertVectorsOutput] {
 	return operations.client.UpsertVectors()
 }
@@ -187,6 +211,432 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const FetchVectorsBranchFetched sdkgo.BranchID = "fetched"
+const FetchVectorsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const FetchVectorsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const FetchVectorsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var FetchVectorsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "fetchVectors"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: FetchVectorsBranchFetched, Description: "Selected vectors were fetched."},
+		{ID: FetchVectorsBranchProviderRejected, Description: "Pinecone rejected the fetch.", Optional: true},
+		{ID: FetchVectorsBranchInvalidResponse, Description: "Pinecone returned invalid JSON.", Optional: true},
+		{ID: FetchVectorsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type FetchVectorsResult = sdkgo.QueryResult[FetchedVectors]
+
+type FetchVectorsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=pinecone"`
+	operationID                    struct{}                                          `connector:"operationId=fetchVectors"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) FetchVectorsInput                        `connector:"mapToOperationInput"`
+	Fetched                        sdkgo.Target[FetchVectorsResult]                  `connector:"branch=fetched"`
+	ProviderRejected               sdkgo.Target[FetchVectorsResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[FetchVectorsResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[FetchVectorsResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FetchedVectors]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewFetchVectorsStep[IN any](config FetchVectorsStepConfig[IN]) sdkgo.QueryStep[IN, FetchVectorsInput, FetchedVectors] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinecone connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FetchVectorsInput, FetchedVectors]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.FetchVectors(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[FetchVectorsResult] {
+			branches := make([]sdkgo.BranchTarget[FetchVectorsResult], 0, 4)
+			if config.Fetched.HasStep() {
+				branches = append(branches, config.Fetched.BranchTarget(FetchVectorsBranchFetched))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(FetchVectorsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(FetchVectorsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(FetchVectorsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListVectorIDsBranchListed sdkgo.BranchID = "listed"
+const ListVectorIDsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListVectorIDsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListVectorIDsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListVectorIDsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listVectorIDs"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListVectorIDsBranchListed, Description: "Vector IDs were listed."},
+		{ID: ListVectorIDsBranchProviderRejected, Description: "Pinecone rejected the list.", Optional: true},
+		{ID: ListVectorIDsBranchInvalidResponse, Description: "Pinecone returned invalid JSON.", Optional: true},
+		{ID: ListVectorIDsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListVectorIDsResult = sdkgo.QueryResult[VectorIDPage]
+
+type ListVectorIDsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=pinecone"`
+	operationID                    struct{}                                        `connector:"operationId=listVectorIDs"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListVectorIDsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListVectorIDsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListVectorIDsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListVectorIDsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListVectorIDsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[VectorIDPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListVectorIDsStep[IN any](config ListVectorIDsStepConfig[IN]) sdkgo.QueryStep[IN, ListVectorIDsInput, VectorIDPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinecone connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListVectorIDsInput, VectorIDPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListVectorIDs(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListVectorIDsResult] {
+			branches := make([]sdkgo.BranchTarget[ListVectorIDsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListVectorIDsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListVectorIDsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListVectorIDsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListVectorIDsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DescribeIndexStatsBranchDescribed sdkgo.BranchID = "described"
+const DescribeIndexStatsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DescribeIndexStatsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DescribeIndexStatsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DescribeIndexStatsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "describeIndexStats"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DescribeIndexStatsBranchDescribed, Description: "Index statistics were read."},
+		{ID: DescribeIndexStatsBranchProviderRejected, Description: "Pinecone rejected the read.", Optional: true},
+		{ID: DescribeIndexStatsBranchInvalidResponse, Description: "Pinecone returned invalid JSON.", Optional: true},
+		{ID: DescribeIndexStatsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DescribeIndexStatsResult = sdkgo.QueryResult[IndexStats]
+
+type DescribeIndexStatsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=pinecone"`
+	operationID                    struct{}                                      `connector:"operationId=describeIndexStats"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) DescribeIndexStatsInput              `connector:"mapToOperationInput"`
+	Described                      sdkgo.Target[DescribeIndexStatsResult]        `connector:"branch=described"`
+	ProviderRejected               sdkgo.Target[DescribeIndexStatsResult]        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[DescribeIndexStatsResult]        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[DescribeIndexStatsResult]        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[IndexStats]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewDescribeIndexStatsStep[IN any](config DescribeIndexStatsStepConfig[IN]) sdkgo.QueryStep[IN, DescribeIndexStatsInput, IndexStats] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinecone connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, DescribeIndexStatsInput, IndexStats]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DescribeIndexStats(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DescribeIndexStatsResult] {
+			branches := make([]sdkgo.BranchTarget[DescribeIndexStatsResult], 0, 4)
+			if config.Described.HasStep() {
+				branches = append(branches, config.Described.BranchTarget(DescribeIndexStatsBranchDescribed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DescribeIndexStatsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DescribeIndexStatsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DescribeIndexStatsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateVectorBranchUpdated sdkgo.BranchID = "updated"
+const UpdateVectorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateVectorBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateVectorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateVectorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateVector"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateVectorBranchUpdated, Description: "The vector was updated."},
+		{ID: UpdateVectorBranchProviderRejected, Description: "Pinecone rejected the update.", Optional: true},
+		{ID: UpdateVectorBranchInvalidResponse, Description: "Pinecone returned invalid JSON.", Optional: true},
+		{ID: UpdateVectorBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateVectorResult = sdkgo.MutationResult[VectorAction]
+
+type UpdateVectorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=pinecone"`
+	operationID                       struct{}                                           `connector:"operationId=updateVector"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateVectorInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateVectorResult]                   `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateVectorResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateVectorResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateVectorResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[VectorAction]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateVectorStep[IN any](config UpdateVectorStepConfig[IN]) sdkgo.MutationStep[IN, UpdateVectorInput, VectorAction] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinecone connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateVectorInput, VectorAction]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateVector(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateVectorResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateVectorResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateVectorBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateVectorBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateVectorBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateVectorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteVectorsBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteVectorsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteVectorsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteVectorsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteVectorsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteVectors"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteVectorsBranchDeleted, Description: "Selected vectors were deleted."},
+		{ID: DeleteVectorsBranchProviderRejected, Description: "Pinecone rejected the deletion.", Optional: true},
+		{ID: DeleteVectorsBranchInvalidResponse, Description: "Pinecone returned invalid JSON.", Optional: true},
+		{ID: DeleteVectorsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteVectorsResult = sdkgo.MutationResult[VectorAction]
+
+type DeleteVectorsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=pinecone"`
+	operationID                       struct{}                                           `connector:"operationId=deleteVectors"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteVectorsInput                        `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteVectorsResult]                  `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteVectorsResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteVectorsResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteVectorsResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[VectorAction]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteVectorsStep[IN any](config DeleteVectorsStepConfig[IN]) sdkgo.MutationStep[IN, DeleteVectorsInput, VectorAction] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinecone connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteVectorsInput, VectorAction]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteVectors(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteVectorsResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteVectorsResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteVectorsBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteVectorsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteVectorsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteVectorsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ClearNamespaceBranchCleared sdkgo.BranchID = "cleared"
+const ClearNamespaceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ClearNamespaceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ClearNamespaceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ClearNamespaceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "clearNamespace"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ClearNamespaceBranchCleared, Description: "The namespace was cleared."},
+		{ID: ClearNamespaceBranchProviderRejected, Description: "Pinecone rejected the clear.", Optional: true},
+		{ID: ClearNamespaceBranchInvalidResponse, Description: "Pinecone returned invalid JSON.", Optional: true},
+		{ID: ClearNamespaceBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ClearNamespaceResult = sdkgo.MutationResult[VectorAction]
+
+type ClearNamespaceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=pinecone"`
+	operationID                       struct{}                                           `connector:"operationId=clearNamespace"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) ClearNamespaceInput                       `connector:"mapToOperationInput"`
+	Cleared                           sdkgo.Target[ClearNamespaceResult]                 `connector:"branch=cleared"`
+	ProviderRejected                  sdkgo.Target[ClearNamespaceResult]                 `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ClearNamespaceResult]                 `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ClearNamespaceResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[VectorAction]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewClearNamespaceStep[IN any](config ClearNamespaceStepConfig[IN]) sdkgo.MutationStep[IN, ClearNamespaceInput, VectorAction] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinecone connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ClearNamespaceInput, VectorAction]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ClearNamespace(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ClearNamespaceResult] {
+			branches := make([]sdkgo.BranchTarget[ClearNamespaceResult], 0, 4)
+			if config.Cleared.HasStep() {
+				branches = append(branches, config.Cleared.BranchTarget(ClearNamespaceBranchCleared))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ClearNamespaceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ClearNamespaceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ClearNamespaceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const UpsertVectorsBranchUpserted sdkgo.BranchID = "upserted"

@@ -278,6 +278,2407 @@
       },
       "name": "getDocument-transportFailure",
       "operation": "getDocument"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000201",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"id\":\"fANp5wW5EwY7AkiTkTGekZ\",\"name\":\"Example agreement\",\"status\":\"document.draft\"}],\"count\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "25"
+            ],
+            "page": [
+              "2"
+            ],
+            "q": [
+              "agreement"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "count": 1,
+          "results": [
+            {
+              "id": "fANp5wW5EwY7AkiTkTGekZ",
+              "name": "Example agreement",
+              "status": "document.draft"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 25,
+        "page": 2,
+        "query": "agreement"
+      },
+      "name": "listDocuments-success",
+      "operation": "listDocuments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000202",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "25"
+            ],
+            "page": [
+              "2"
+            ],
+            "q": [
+              "agreement"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "count": 0,
+          "results": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 25,
+        "page": 2,
+        "query": "agreement"
+      },
+      "name": "listDocuments-rejected",
+      "operation": "listDocuments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000203",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "25"
+            ],
+            "page": [
+              "2"
+            ],
+            "q": [
+              "agreement"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 25,
+        "page": 2,
+        "query": "agreement"
+      },
+      "name": "listDocuments-rate-limit",
+      "operation": "listDocuments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000204",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "25"
+            ],
+            "page": [
+              "2"
+            ],
+            "q": [
+              "agreement"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 25,
+        "page": 2,
+        "query": "agreement"
+      },
+      "name": "listDocuments-service-unavailable",
+      "operation": "listDocuments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000205",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "25"
+            ],
+            "page": [
+              "2"
+            ],
+            "q": [
+              "agreement"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 25,
+        "page": 2,
+        "query": "agreement"
+      },
+      "name": "listDocuments-unavailable",
+      "operation": "listDocuments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000206",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "25"
+            ],
+            "page": [
+              "2"
+            ],
+            "q": [
+              "agreement"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 25,
+        "page": 2,
+        "query": "agreement"
+      },
+      "name": "listDocuments-transport",
+      "operation": "listDocuments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000207",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "count": 0,
+          "results": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": -1,
+        "page": 2,
+        "query": "agreement"
+      },
+      "name": "listDocuments-defect",
+      "operation": "listDocuments"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000208",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "25"
+            ],
+            "page": [
+              "2"
+            ],
+            "q": [
+              "agreement"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0,
+          "results": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 25,
+        "page": 2,
+        "query": "agreement"
+      },
+      "name": "listDocuments-invalid-response",
+      "operation": "listDocuments"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-success",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-rejected",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-rate-limit",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-service-unavailable",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-unavailable",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-transport",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-defect",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestBody": {
+            "name": "Revised agreement"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d632a904-bdd6-59de-9a51-a27cc12aceb2",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "name": "Revised agreement"
+      },
+      "name": "updateDocument-not-found",
+      "operation": "updateDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-success",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 423
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-rejected",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-rate-limit",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-service-unavailable",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-unavailable",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-transport",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": ""
+      },
+      "name": "deleteDocument-defect",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4010f49c-bcf8-57ca-bc3d-0ee5c1ba899e",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+      },
+      "name": "deleteDocument-not-found",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"fANp5wW5EwY7AkiTkTGekZ\",\"name\":\"Example agreement\",\"status\":\"document.uploaded\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "fANp5wW5EwY7AkiTkTGekZ",
+          "name": "Example agreement",
+          "status": "document.uploaded"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-success",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-rejected",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-rate-limit",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-service-unavailable",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-unavailable",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-transport",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": ""
+      },
+      "name": "createDocument-defect",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-invalid-response",
+      "operation": "createDocument"
+    },
+    {
+      "attempts": 3,
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"results\":[],\"count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "metadata_dex_call_id": [
+              "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"results\":[],\"count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "metadata_dex_call_id": [
+              "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDocument-send-cap",
+      "operation": "createDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-success",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-rejected",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-rate-limit",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-service-unavailable",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-unavailable",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-transport",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-defect",
+      "operation": "sendDocument"
+    },
+    {
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "name": "sendDocument-not-found",
+      "operation": "sendDocument"
+    },
+    {
+      "attempts": 3,
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"fANp5wW5EwY7AkiTkTGekZ\",\"name\":\"Example agreement\",\"status\":\"document.draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"fANp5wW5EwY7AkiTkTGekZ\",\"name\":\"Example agreement\",\"status\":\"document.draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "documentId": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendDocument-send-cap",
+      "operation": "sendDocument"
+    },
+    {
+      "attempts": 2,
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"results\":[{\"id\":\"fANp5wW5EwY7AkiTkTGekZ\",\"name\":\"Example agreement\",\"status\":\"document.draft\"}],\"count\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "metadata_dex_call_id": [
+              "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "fANp5wW5EwY7AkiTkTGekZ",
+          "name": "Example agreement",
+          "status": "document.draft"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDocument-read-back",
+      "operation": "createDocument"
+    },
+    {
+      "attempts": 2,
+      "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ/send",
+          "requestBody": {
+            "message": "Review the agreement.",
+            "silent": true,
+            "subject": "Please sign"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"fANp5wW5EwY7AkiTkTGekZ\",\"name\":\"Example agreement\",\"status\":\"document.sent\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/fANp5wW5EwY7AkiTkTGekZ",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "documentId": "fANp5wW5EwY7AkiTkTGekZ"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+      "input": {
+        "documentId": "fANp5wW5EwY7AkiTkTGekZ",
+        "message": "Review the agreement.",
+        "silent": true,
+        "subject": "Please sign"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "e66a3c22-5813-52cb-9a7a-4e9bbfb575b3",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendDocument-read-back",
+      "operation": "sendDocument"
     }
   ],
   "schemaVersion": 1

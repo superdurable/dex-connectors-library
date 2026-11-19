@@ -22,6 +22,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"listSites":   newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListSites(), testConnection),
 		"listDeploys": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListDeploys(), testConnection),
+		"getSite": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetSite(), testConnection),
+		"getDeploy": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetDeploy(), testConnection),
+		"deleteSite": newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.DeleteSite(), testConnection, scenario.CallID),
+		"cancelDeploy": newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.CancelDeploy(), testConnection, scenario.CallID),
 	}}
 }
 
