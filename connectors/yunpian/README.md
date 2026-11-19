@@ -9,3 +9,8 @@ Sign in at [Yunpian](https://www.yunpian.com), then open **Account Settings → 
 The provider's [return codes](https://global.yunpian.com/official/document/sms/zh_CN/returnvalue_common) `-5`, `-50`, and `-51`, HTTP 429/5xx, and transport failures retry. Other definite provider codes select optional `providerRejected`; invalid or oversized account JSON selects optional `invalidResponse`. These optional branches are unwired in the example and fail the Flow when selected.
 
 The runnable Go example is in [`go/examples/balance-read`](go/examples/balance-read). Provider tests use a local HTTP server. Real Yunpian authorization, IP whitelist setup, and live account balance remain unverified without a user-controlled key.
+
+
+## Python
+
+The first Python package implements the read-only `getAccountBalance` operation and replays all Go-recorded outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/account_balance/README.md). Live provider authorization and responses remain unverified.
