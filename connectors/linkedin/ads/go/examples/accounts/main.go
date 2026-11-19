@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{accounts.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{accounts.NewFlow(connection), accounts.NewCampaignGroupsFlow(connection), accounts.NewAdAccountLookupFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register LinkedIn Ads list Flow: %w", err)
 	}
