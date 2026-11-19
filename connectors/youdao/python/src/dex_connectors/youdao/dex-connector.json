@@ -1,0 +1,70 @@
+{
+  "connectorId": "youdao",
+  "releaseTag": "connectors/youdao/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-youdao",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_translate_text_step",
+      "kind": "query",
+      "operationId": "translateText",
+      "inputType": "TranslateTextInput",
+      "description": "Translate up to 5000 UTF-8 characters into a target language.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "translated",
+          "field": "translated",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "TranslateTextInput gives the bounded source text and language codes.",
+        "properties": {
+          "sourceLanguage": {
+            "description": "SourceLanguage is a Youdao language code or auto.",
+            "type": "string"
+          },
+          "targetLanguage": {
+            "description": "TargetLanguage is a Youdao target language code.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is UTF-8 source text of at most 5000 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceLanguage",
+          "targetLanguage",
+          "text"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

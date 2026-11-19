@@ -9,3 +9,5 @@ Sign in at [Youdao Zhiyun](https://ai.youdao.com), open **Console > Application 
 The operation accepts `text`, `sourceLanguage`, and `targetLanguage`. Use Youdao language codes such as `en` and `zh-CHS`; `auto` is valid only for the source. Responses retain just translation strings and requested language codes, omitting provider dictionary links and audio URLs. Provider error codes 411/412 and 302/303/304 retry; definitive rejection selects `providerRejected`; malformed or oversized JSON selects `invalidResponse`. The retry budget is three attempts over five minutes because repeat translations can incur another charge. Optional branches are unwired in the example and fail the Flow.
 
 Run the [Text Translation example](go/examples/text-translation) with its static `youdao` connection. Provider tests use a local HTTP server. Live Youdao credentials and a real provider translation remain unverified.
+
+The [Python Flow example](python/examples/translate_text/) exercises this Query through Dex. Live provider authorization remains unverified.
