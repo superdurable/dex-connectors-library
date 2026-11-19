@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: moka
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-moka"
+      operations: [listJobFunctions]
+      triggers: []
   codegen:
     go:
       package: moka
