@@ -9,3 +9,5 @@ Sign in as the intended OKKI CRM company's main account and open **企业管理 
 The connector sends `GET /v1/company/fields?type=company` with the access token in the `Authorization` header, as shown in the [official API example](https://open.xiaoman.cn/api-3478270). HTTP 429, 5xx, transport failures, and provider 5xx codes retry. Definitive authorization errors select optional `providerRejected`; invalid or oversized JSON selects optional `invalidResponse`. The example leaves optional branches unwired, so they fail the Flow. Public documentation does not state a fixed API quota or charge.
 
 The [customer-fields example](go/examples/customer-fields/README.md) starts `OKKICustomerFields` with `{}`. Its static ConnectionName is `okki`. A real Dex Worker/Client test runs the Flow with a generated provider mock. Live OKKI authentication, token renewal, field retrieval, and Dex Web setup remain unverified.
+
+The [TypeScript package](typescript/README.md) exposes `listCustomerFields` and includes a runnable Dex Flow, Go scenario replay, and a local provider integration test.
