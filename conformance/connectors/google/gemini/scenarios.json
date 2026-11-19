@@ -2,6 +2,1215 @@
   "connector": "gemini",
   "scenarios": [
     {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"fileSearchStores/team-docs-abc123def456\",\"displayName\":\"Team docs\",\"embeddingModel\":\"models/gemini-embedding-2\",\"createTime\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "createTime": "2026-11-16T00:00:00Z",
+          "displayName": "Team docs",
+          "embeddingModel": "models/gemini-embedding-2",
+          "name": "fileSearchStores/team-docs-abc123def456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "Team docs",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-provider-id-read-back",
+      "operation": "createFileSearchStore",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+        "providerId": "fileSearchStores/team-docs-abc123def456",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"fileSearchStores/team-docs-abc123def456\",\"displayName\":\"Team docs\",\"embeddingModel\":\"models/gemini-embedding-2\",\"createTime\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/fileSearchStores",
+          "requestBody": {
+            "displayName": "Team docs",
+            "embeddingModel": "models/gemini-embedding-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+          "providerId": "fileSearchStores/team-docs-abc123def456",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "createTime": "2026-11-16T00:00:00Z",
+          "displayName": "Team docs",
+          "embeddingModel": "models/gemini-embedding-2",
+          "name": "fileSearchStores/team-docs-abc123def456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "Team docs",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-concurrent-same-name",
+      "operation": "createFileSearchStore",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+        "sendCount": 1,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "gemini-listFileSearchStores-invalid",
+      "exchanges": [
+        {
+          "body": "{\"fileSearchStores\":[{\"name\":\"invalid\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "start-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fileSearchStores": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "start-page"
+      },
+      "name": "listFileSearchStores-invalid",
+      "operation": "listFileSearchStores"
+    },
+    {
+      "callId": "gemini-listFileSearchStores-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fileSearchStores": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 21,
+        "pageToken": "start-page"
+      },
+      "name": "listFileSearchStores-defect",
+      "operation": "listFileSearchStores"
+    },
+    {
+      "callId": "gemini-getFileSearchStore-not-found",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"NOT_FOUND\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "getFileSearchStore-not-found",
+      "operation": "getFileSearchStore"
+    },
+    {
+      "callId": "gemini-getFileSearchStore-invalid",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "getFileSearchStore-invalid",
+      "operation": "getFileSearchStore"
+    },
+    {
+      "callId": "gemini-getFileSearchStore-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "invalid"
+      },
+      "name": "getFileSearchStore-defect",
+      "operation": "getFileSearchStore"
+    },
+    {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-defect",
+      "operation": "createFileSearchStore"
+    },
+    {
+      "callId": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "input": {
+        "force": true,
+        "name": "invalid"
+      },
+      "name": "deleteFileSearchStore-defect",
+      "operation": "deleteFileSearchStore"
+    },
+    {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "Team docs",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-uncertain",
+      "operation": "createFileSearchStore",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "gemini-listFileSearchStores-success",
+      "exchanges": [
+        {
+          "body": "{\"fileSearchStores\":[{\"name\":\"fileSearchStores/team-docs-abc123def456\",\"displayName\":\"Team docs\",\"embeddingModel\":\"models/gemini-embedding-2\",\"createTime\":\"2026-11-16T00:00:00Z\"}],\"nextPageToken\":\"next-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "start-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "fileSearchStores": [
+            {
+              "createTime": "2026-11-16T00:00:00Z",
+              "displayName": "Team docs",
+              "embeddingModel": "models/gemini-embedding-2",
+              "name": "fileSearchStores/team-docs-abc123def456"
+            }
+          ],
+          "nextPageToken": "next-page"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "start-page"
+      },
+      "name": "listFileSearchStores-success",
+      "operation": "listFileSearchStores"
+    },
+    {
+      "callId": "gemini-listFileSearchStores-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "start-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fileSearchStores": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "start-page"
+      },
+      "name": "listFileSearchStores-rejected",
+      "operation": "listFileSearchStores"
+    },
+    {
+      "callId": "gemini-listFileSearchStores-retry-429",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "start-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "start-page"
+      },
+      "name": "listFileSearchStores-retry-429",
+      "operation": "listFileSearchStores"
+    },
+    {
+      "callId": "gemini-listFileSearchStores-retry-503",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "start-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "start-page"
+      },
+      "name": "listFileSearchStores-retry-503",
+      "operation": "listFileSearchStores"
+    },
+    {
+      "callId": "gemini-listFileSearchStores-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "start-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "start-page"
+      },
+      "name": "listFileSearchStores-transport",
+      "operation": "listFileSearchStores"
+    },
+    {
+      "callId": "gemini-getFileSearchStore-success",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"fileSearchStores/team-docs-abc123def456\",\"displayName\":\"Team docs\",\"embeddingModel\":\"models/gemini-embedding-2\",\"createTime\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createTime": "2026-11-16T00:00:00Z",
+          "displayName": "Team docs",
+          "embeddingModel": "models/gemini-embedding-2",
+          "name": "fileSearchStores/team-docs-abc123def456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "getFileSearchStore-success",
+      "operation": "getFileSearchStore"
+    },
+    {
+      "callId": "gemini-getFileSearchStore-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "getFileSearchStore-rejected",
+      "operation": "getFileSearchStore"
+    },
+    {
+      "callId": "gemini-getFileSearchStore-retry-429",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "getFileSearchStore-retry-429",
+      "operation": "getFileSearchStore"
+    },
+    {
+      "callId": "gemini-getFileSearchStore-retry-503",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "getFileSearchStore-retry-503",
+      "operation": "getFileSearchStore"
+    },
+    {
+      "callId": "gemini-getFileSearchStore-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "getFileSearchStore-transport",
+      "operation": "getFileSearchStore"
+    },
+    {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"fileSearchStores/team-docs-abc123def456\",\"displayName\":\"Team docs\",\"embeddingModel\":\"models/gemini-embedding-2\",\"createTime\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/fileSearchStores",
+          "requestBody": {
+            "displayName": "Team docs",
+            "embeddingModel": "models/gemini-embedding-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+          "providerId": "fileSearchStores/team-docs-abc123def456",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "createTime": "2026-11-16T00:00:00Z",
+          "displayName": "Team docs",
+          "embeddingModel": "models/gemini-embedding-2",
+          "name": "fileSearchStores/team-docs-abc123def456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "Team docs",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-success",
+      "operation": "createFileSearchStore"
+    },
+    {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/fileSearchStores",
+          "requestBody": {
+            "displayName": "Team docs",
+            "embeddingModel": "models/gemini-embedding-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "Team docs",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-rejected",
+      "operation": "createFileSearchStore"
+    },
+    {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/fileSearchStores",
+          "requestBody": {
+            "displayName": "Team docs",
+            "embeddingModel": "models/gemini-embedding-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "Team docs",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-retry-429",
+      "operation": "createFileSearchStore"
+    },
+    {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/fileSearchStores",
+          "requestBody": {
+            "displayName": "Team docs",
+            "embeddingModel": "models/gemini-embedding-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "Team docs",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-retry-503",
+      "operation": "createFileSearchStore"
+    },
+    {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/fileSearchStores",
+          "requestBody": {
+            "displayName": "Team docs",
+            "embeddingModel": "models/gemini-embedding-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "Team docs",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-transport",
+      "operation": "createFileSearchStore"
+    },
+    {
+      "callId": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "fileSearchStores/team-docs-abc123def456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "input": {
+        "force": true,
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "deleteFileSearchStore-success",
+      "operation": "deleteFileSearchStore"
+    },
+    {
+      "callId": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "input": {
+        "force": true,
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "deleteFileSearchStore-rejected",
+      "operation": "deleteFileSearchStore"
+    },
+    {
+      "callId": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "input": {
+        "force": true,
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "deleteFileSearchStore-retry-429",
+      "operation": "deleteFileSearchStore"
+    },
+    {
+      "callId": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "input": {
+        "force": true,
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "deleteFileSearchStore-retry-503",
+      "operation": "deleteFileSearchStore"
+    },
+    {
+      "callId": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "input": {
+        "force": true,
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "deleteFileSearchStore-transport",
+      "operation": "deleteFileSearchStore"
+    },
+    {
       "callId": "gemini-generated",
       "exchanges": [
         {

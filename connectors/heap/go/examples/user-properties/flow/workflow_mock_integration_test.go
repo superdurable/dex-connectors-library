@@ -63,6 +63,7 @@ func TestUserPropertiesUsesMockWithRealDex(t *testing.T) {
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	calls := mock.SetUserProperties().Calls()
 	require.Len(t, calls, 1)
+	require.Len(t, mock.TrackEvent().Calls(), 1)
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "member-1", calls[0].Input.Identity)
 }

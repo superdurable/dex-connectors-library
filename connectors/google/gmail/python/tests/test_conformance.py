@@ -12,18 +12,33 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/google/gmail/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/google/gmail/scenarios.json")
+    if scenario["operation"] in {"getMessage", "sendMessage", "replyToMessage"}
+]
 CONNECTION = sdk.ConnectionRef("google", "support")
 ADAPTER = conformance.PythonOperationAdapter(
-    "gmail", CONNECTION, gmail,
+    "gmail",
+    CONNECTION,
+    gmail,
     lambda client, recorder: gmail.GmailProvider(
         gmail.Config(endpoint="http://127.0.0.1:12345/gmail/v1"),
         conformance.static_credentials(
-            CONNECTION, gmail.Credentials(sdk.SecretString("gmail-token"), "owner@example.com")),
-        conformance.NeverRefreshCredentials(recorder), client),
-    {"getMessage": gmail.GetMessageOperation, "sendMessage": gmail.SendMessageOperation,
-     "replyToMessage": gmail.ReplyToMessageOperation}, with_context=True,
+            CONNECTION, gmail.Credentials(sdk.SecretString("gmail-token"), "owner@example.com")
+        ),
+        conformance.NeverRefreshCredentials(recorder),
+        client,
+    ),
+    {
+        "getMessage": gmail.GetMessageOperation,
+        "sendMessage": gmail.SendMessageOperation,
+        "replyToMessage": gmail.ReplyToMessageOperation,
+    },
+    with_context=True,
 )
+
+
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
     await conformance.replay(scenario, ADAPTER.invoke, "/gmail/v1")

@@ -17,12 +17,26 @@ import (
 
 // Mock is a scripted google-youtube connection. Script each operation through its accessor.
 type Mock struct {
-	connection        youtube.Connection
-	searchVideos      *connectormock.Query[youtube.SearchVideosInput, youtube.VideoSearchPage]
-	getVideo          *connectormock.Query[youtube.GetVideoInput, youtube.Video]
-	getChannel        *connectormock.Query[youtube.GetChannelInput, youtube.Channel]
-	listPlaylistItems *connectormock.Query[youtube.ListPlaylistItemsInput, youtube.PlaylistItemPage]
-	addPlaylistItem   *connectormock.Mutation[youtube.AddPlaylistItemInput, youtube.AddedPlaylistItem]
+	connection          youtube.Connection
+	listChannels        *connectormock.Query[youtube.ListChannelsInput, youtube.ChannelsPage]
+	updateChannel       *connectormock.Mutation[youtube.UpdateChannelInput, youtube.UpdatedChannelDescription]
+	listVideos          *connectormock.Query[youtube.ListVideosInput, youtube.VideosPage]
+	listVideoCategories *connectormock.Query[youtube.ListVideoCategoriesInput, youtube.VideoCategoriesPage]
+	rateVideo           *connectormock.Mutation[youtube.RateVideoInput, youtube.RatedVideo]
+	deleteVideo         *connectormock.Mutation[youtube.GetVideoInput, youtube.DeletedVideo]
+	updateVideo         *connectormock.Mutation[youtube.UpdateVideoInput, youtube.UpdatedVideo]
+	createPlaylist      *connectormock.Mutation[youtube.CreatePlaylistInput, youtube.Playlist]
+	getPlaylistItem     *connectormock.Query[youtube.PlaylistItemIDInput, youtube.PlaylistItem]
+	deletePlaylistItem  *connectormock.Mutation[youtube.PlaylistItemIDInput, youtube.DeletedPlaylistItem]
+	getPlaylist         *connectormock.Query[youtube.GetPlaylistInput, youtube.Playlist]
+	listPlaylists       *connectormock.Query[youtube.ListPlaylistsInput, youtube.PlaylistsPage]
+	updatePlaylist      *connectormock.Mutation[youtube.UpdatePlaylistInput, youtube.Playlist]
+	deletePlaylist      *connectormock.Mutation[youtube.GetPlaylistInput, youtube.DeletedPlaylist]
+	searchVideos        *connectormock.Query[youtube.SearchVideosInput, youtube.VideoSearchPage]
+	getVideo            *connectormock.Query[youtube.GetVideoInput, youtube.Video]
+	getChannel          *connectormock.Query[youtube.GetChannelInput, youtube.Channel]
+	listPlaylistItems   *connectormock.Query[youtube.ListPlaylistItemsInput, youtube.PlaylistItemPage]
+	addPlaylistItem     *connectormock.Mutation[youtube.AddPlaylistItemInput, youtube.AddedPlaylistItem]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -30,12 +44,40 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		searchVideos:      connectormock.NewQuery[youtube.SearchVideosInput, youtube.VideoSearchPage](t, youtube.SearchVideosDefinition),
-		getVideo:          connectormock.NewQuery[youtube.GetVideoInput, youtube.Video](t, youtube.GetVideoDefinition),
-		getChannel:        connectormock.NewQuery[youtube.GetChannelInput, youtube.Channel](t, youtube.GetChannelDefinition),
-		listPlaylistItems: connectormock.NewQuery[youtube.ListPlaylistItemsInput, youtube.PlaylistItemPage](t, youtube.ListPlaylistItemsDefinition),
-		addPlaylistItem:   connectormock.NewMutation[youtube.AddPlaylistItemInput, youtube.AddedPlaylistItem](t, youtube.AddPlaylistItemDefinition),
+		listChannels:        connectormock.NewQuery[youtube.ListChannelsInput, youtube.ChannelsPage](t, youtube.ListChannelsDefinition),
+		updateChannel:       connectormock.NewMutation[youtube.UpdateChannelInput, youtube.UpdatedChannelDescription](t, youtube.UpdateChannelDefinition),
+		listVideos:          connectormock.NewQuery[youtube.ListVideosInput, youtube.VideosPage](t, youtube.ListVideosDefinition),
+		listVideoCategories: connectormock.NewQuery[youtube.ListVideoCategoriesInput, youtube.VideoCategoriesPage](t, youtube.ListVideoCategoriesDefinition),
+		rateVideo:           connectormock.NewMutation[youtube.RateVideoInput, youtube.RatedVideo](t, youtube.RateVideoDefinition),
+		deleteVideo:         connectormock.NewMutation[youtube.GetVideoInput, youtube.DeletedVideo](t, youtube.DeleteVideoDefinition),
+		updateVideo:         connectormock.NewMutation[youtube.UpdateVideoInput, youtube.UpdatedVideo](t, youtube.UpdateVideoDefinition),
+		createPlaylist:      connectormock.NewMutation[youtube.CreatePlaylistInput, youtube.Playlist](t, youtube.CreatePlaylistDefinition),
+		getPlaylistItem:     connectormock.NewQuery[youtube.PlaylistItemIDInput, youtube.PlaylistItem](t, youtube.GetPlaylistItemDefinition),
+		deletePlaylistItem:  connectormock.NewMutation[youtube.PlaylistItemIDInput, youtube.DeletedPlaylistItem](t, youtube.DeletePlaylistItemDefinition),
+		getPlaylist:         connectormock.NewQuery[youtube.GetPlaylistInput, youtube.Playlist](t, youtube.GetPlaylistDefinition),
+		listPlaylists:       connectormock.NewQuery[youtube.ListPlaylistsInput, youtube.PlaylistsPage](t, youtube.ListPlaylistsDefinition),
+		updatePlaylist:      connectormock.NewMutation[youtube.UpdatePlaylistInput, youtube.Playlist](t, youtube.UpdatePlaylistDefinition),
+		deletePlaylist:      connectormock.NewMutation[youtube.GetPlaylistInput, youtube.DeletedPlaylist](t, youtube.DeletePlaylistDefinition),
+		searchVideos:        connectormock.NewQuery[youtube.SearchVideosInput, youtube.VideoSearchPage](t, youtube.SearchVideosDefinition),
+		getVideo:            connectormock.NewQuery[youtube.GetVideoInput, youtube.Video](t, youtube.GetVideoDefinition),
+		getChannel:          connectormock.NewQuery[youtube.GetChannelInput, youtube.Channel](t, youtube.GetChannelDefinition),
+		listPlaylistItems:   connectormock.NewQuery[youtube.ListPlaylistItemsInput, youtube.PlaylistItemPage](t, youtube.ListPlaylistItemsDefinition),
+		addPlaylistItem:     connectormock.NewMutation[youtube.AddPlaylistItemInput, youtube.AddedPlaylistItem](t, youtube.AddPlaylistItemDefinition),
 	}
+	mock.listChannels.Default(ListChannelsDefault())
+	mock.updateChannel.Default(UpdateChannelDefault())
+	mock.listVideos.Default(ListVideosDefault())
+	mock.listVideoCategories.Default(ListVideoCategoriesDefault())
+	mock.rateVideo.Default(RateVideoDefault())
+	mock.deleteVideo.Default(DeleteVideoDefault())
+	mock.updateVideo.Default(UpdateVideoDefault())
+	mock.createPlaylist.Default(CreatePlaylistDefault())
+	mock.getPlaylistItem.Default(GetPlaylistItemDefault())
+	mock.deletePlaylistItem.Default(DeletePlaylistItemDefault())
+	mock.getPlaylist.Default(GetPlaylistDefault())
+	mock.listPlaylists.Default(ListPlaylistsDefault())
+	mock.updatePlaylist.Default(UpdatePlaylistDefault())
+	mock.deletePlaylist.Default(DeletePlaylistDefault())
 	mock.searchVideos.Default(SearchVideosDefault())
 	mock.getVideo.Default(GetVideoDefault())
 	mock.getChannel.Default(GetChannelDefault())
@@ -51,6 +93,76 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() youtube.Connection { return mock.connection }
+
+// ListChannels returns the listChannels script.
+func (mock *Mock) ListChannels() *connectormock.Query[youtube.ListChannelsInput, youtube.ChannelsPage] {
+	return mock.listChannels
+}
+
+// UpdateChannel returns the updateChannel script.
+func (mock *Mock) UpdateChannel() *connectormock.Mutation[youtube.UpdateChannelInput, youtube.UpdatedChannelDescription] {
+	return mock.updateChannel
+}
+
+// ListVideos returns the listVideos script.
+func (mock *Mock) ListVideos() *connectormock.Query[youtube.ListVideosInput, youtube.VideosPage] {
+	return mock.listVideos
+}
+
+// ListVideoCategories returns the listVideoCategories script.
+func (mock *Mock) ListVideoCategories() *connectormock.Query[youtube.ListVideoCategoriesInput, youtube.VideoCategoriesPage] {
+	return mock.listVideoCategories
+}
+
+// RateVideo returns the rateVideo script.
+func (mock *Mock) RateVideo() *connectormock.Mutation[youtube.RateVideoInput, youtube.RatedVideo] {
+	return mock.rateVideo
+}
+
+// DeleteVideo returns the deleteVideo script.
+func (mock *Mock) DeleteVideo() *connectormock.Mutation[youtube.GetVideoInput, youtube.DeletedVideo] {
+	return mock.deleteVideo
+}
+
+// UpdateVideo returns the updateVideo script.
+func (mock *Mock) UpdateVideo() *connectormock.Mutation[youtube.UpdateVideoInput, youtube.UpdatedVideo] {
+	return mock.updateVideo
+}
+
+// CreatePlaylist returns the createPlaylist script.
+func (mock *Mock) CreatePlaylist() *connectormock.Mutation[youtube.CreatePlaylistInput, youtube.Playlist] {
+	return mock.createPlaylist
+}
+
+// GetPlaylistItem returns the getPlaylistItem script.
+func (mock *Mock) GetPlaylistItem() *connectormock.Query[youtube.PlaylistItemIDInput, youtube.PlaylistItem] {
+	return mock.getPlaylistItem
+}
+
+// DeletePlaylistItem returns the deletePlaylistItem script.
+func (mock *Mock) DeletePlaylistItem() *connectormock.Mutation[youtube.PlaylistItemIDInput, youtube.DeletedPlaylistItem] {
+	return mock.deletePlaylistItem
+}
+
+// GetPlaylist returns the getPlaylist script.
+func (mock *Mock) GetPlaylist() *connectormock.Query[youtube.GetPlaylistInput, youtube.Playlist] {
+	return mock.getPlaylist
+}
+
+// ListPlaylists returns the listPlaylists script.
+func (mock *Mock) ListPlaylists() *connectormock.Query[youtube.ListPlaylistsInput, youtube.PlaylistsPage] {
+	return mock.listPlaylists
+}
+
+// UpdatePlaylist returns the updatePlaylist script.
+func (mock *Mock) UpdatePlaylist() *connectormock.Mutation[youtube.UpdatePlaylistInput, youtube.Playlist] {
+	return mock.updatePlaylist
+}
+
+// DeletePlaylist returns the deletePlaylist script.
+func (mock *Mock) DeletePlaylist() *connectormock.Mutation[youtube.GetPlaylistInput, youtube.DeletedPlaylist] {
+	return mock.deletePlaylist
+}
 
 // SearchVideos returns the searchVideos script.
 func (mock *Mock) SearchVideos() *connectormock.Query[youtube.SearchVideosInput, youtube.VideoSearchPage] {
@@ -79,6 +191,48 @@ func (mock *Mock) AddPlaylistItem() *connectormock.Mutation[youtube.AddPlaylistI
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListChannels() sdkgo.Query[youtube.ListChannelsInput, youtube.ChannelsPage] {
+	return operations.mock.listChannels
+}
+func (operations mockOperations) UpdateChannel() sdkgo.Mutation[youtube.UpdateChannelInput, youtube.UpdatedChannelDescription] {
+	return operations.mock.updateChannel
+}
+func (operations mockOperations) ListVideos() sdkgo.Query[youtube.ListVideosInput, youtube.VideosPage] {
+	return operations.mock.listVideos
+}
+func (operations mockOperations) ListVideoCategories() sdkgo.Query[youtube.ListVideoCategoriesInput, youtube.VideoCategoriesPage] {
+	return operations.mock.listVideoCategories
+}
+func (operations mockOperations) RateVideo() sdkgo.Mutation[youtube.RateVideoInput, youtube.RatedVideo] {
+	return operations.mock.rateVideo
+}
+func (operations mockOperations) DeleteVideo() sdkgo.Mutation[youtube.GetVideoInput, youtube.DeletedVideo] {
+	return operations.mock.deleteVideo
+}
+func (operations mockOperations) UpdateVideo() sdkgo.Mutation[youtube.UpdateVideoInput, youtube.UpdatedVideo] {
+	return operations.mock.updateVideo
+}
+func (operations mockOperations) CreatePlaylist() sdkgo.Mutation[youtube.CreatePlaylistInput, youtube.Playlist] {
+	return operations.mock.createPlaylist
+}
+func (operations mockOperations) GetPlaylistItem() sdkgo.Query[youtube.PlaylistItemIDInput, youtube.PlaylistItem] {
+	return operations.mock.getPlaylistItem
+}
+func (operations mockOperations) DeletePlaylistItem() sdkgo.Mutation[youtube.PlaylistItemIDInput, youtube.DeletedPlaylistItem] {
+	return operations.mock.deletePlaylistItem
+}
+func (operations mockOperations) GetPlaylist() sdkgo.Query[youtube.GetPlaylistInput, youtube.Playlist] {
+	return operations.mock.getPlaylist
+}
+func (operations mockOperations) ListPlaylists() sdkgo.Query[youtube.ListPlaylistsInput, youtube.PlaylistsPage] {
+	return operations.mock.listPlaylists
+}
+func (operations mockOperations) UpdatePlaylist() sdkgo.Mutation[youtube.UpdatePlaylistInput, youtube.Playlist] {
+	return operations.mock.updatePlaylist
+}
+func (operations mockOperations) DeletePlaylist() sdkgo.Mutation[youtube.GetPlaylistInput, youtube.DeletedPlaylist] {
+	return operations.mock.deletePlaylist
+}
 func (operations mockOperations) SearchVideos() sdkgo.Query[youtube.SearchVideosInput, youtube.VideoSearchPage] {
 	return operations.mock.searchVideos
 }
@@ -93,6 +247,639 @@ func (operations mockOperations) ListPlaylistItems() sdkgo.Query[youtube.ListPla
 }
 func (operations mockOperations) AddPlaylistItem() sdkgo.Mutation[youtube.AddPlaylistItemInput, youtube.AddedPlaylistItem] {
 	return operations.mock.addPlaylistItem
+}
+
+// ListChannelsListed selects the listed branch: YouTube confirmed the channel listed result.
+func ListChannelsListed(value youtube.ChannelsPage, failure *sdkgo.Failure) connectormock.Case[youtube.ChannelsPage] {
+	return connectormock.Branch(youtube.ListChannelsBranchListed, value, failure)
+}
+
+// ListChannelsNotFound selects the notFound branch: The selected channel is not visible.
+func ListChannelsNotFound(value youtube.ChannelsPage, failure *sdkgo.Failure) connectormock.Case[youtube.ChannelsPage] {
+	return connectormock.Branch(youtube.ListChannelsBranchNotFound, value, failure)
+}
+
+// ListChannelsQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func ListChannelsQuotaExhausted(value youtube.ChannelsPage, failure *sdkgo.Failure) connectormock.Case[youtube.ChannelsPage] {
+	return connectormock.Branch(youtube.ListChannelsBranchQuotaExhausted, value, failure)
+}
+
+// ListChannelsProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func ListChannelsProviderRejected(value youtube.ChannelsPage, failure *sdkgo.Failure) connectormock.Case[youtube.ChannelsPage] {
+	return connectormock.Branch(youtube.ListChannelsBranchProviderRejected, value, failure)
+}
+
+// ListChannelsInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func ListChannelsInvalidResponse(value youtube.ChannelsPage, failure *sdkgo.Failure) connectormock.Case[youtube.ChannelsPage] {
+	return connectormock.Branch(youtube.ListChannelsBranchInvalidResponse, value, failure)
+}
+
+// ListChannelsDefect selects the defect branch: Input or connection credentials are invalid.
+func ListChannelsDefect(value youtube.ChannelsPage, failure *sdkgo.Failure) connectormock.Case[youtube.ChannelsPage] {
+	return connectormock.Branch(youtube.ListChannelsBranchDefect, value, failure)
+}
+
+// ListChannelsRetry asks Dex to retry the listChannels Step, after the delay when it is positive.
+func ListChannelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.ChannelsPage] {
+	return connectormock.Retry[youtube.ChannelsPage](failure, after)
+}
+
+// ListChannelsListedDefault is the manifest mock listedDefault: One example channel identity is returned.
+func ListChannelsListedDefault() connectormock.Case[youtube.ChannelsPage] {
+	value := connectormock.MustDecodeOutput[youtube.ChannelsPage](`{"channels":[{"id":"UC1234567890123456789012","title":"Compiler Lab","description":"Compiler tutorials"}],"nextPageToken":""}`)
+	return connectormock.Branch(youtube.ListChannelsBranchListed, value, nil)
+}
+
+// ListChannelsDefault is the manifest default, listedDefault, which New installs.
+func ListChannelsDefault() connectormock.Case[youtube.ChannelsPage] {
+	return ListChannelsListedDefault()
+}
+
+// UpdateChannelUpdated selects the updated branch: YouTube confirmed the channel updated result.
+func UpdateChannelUpdated(value youtube.UpdatedChannelDescription, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedChannelDescription] {
+	return connectormock.Branch(youtube.UpdateChannelBranchUpdated, value, failure)
+}
+
+// UpdateChannelNotFound selects the notFound branch: The selected channel is not visible.
+func UpdateChannelNotFound(value youtube.UpdatedChannelDescription, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedChannelDescription] {
+	return connectormock.Branch(youtube.UpdateChannelBranchNotFound, value, failure)
+}
+
+// UpdateChannelQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func UpdateChannelQuotaExhausted(value youtube.UpdatedChannelDescription, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedChannelDescription] {
+	return connectormock.Branch(youtube.UpdateChannelBranchQuotaExhausted, value, failure)
+}
+
+// UpdateChannelProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func UpdateChannelProviderRejected(value youtube.UpdatedChannelDescription, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedChannelDescription] {
+	return connectormock.Branch(youtube.UpdateChannelBranchProviderRejected, value, failure)
+}
+
+// UpdateChannelInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func UpdateChannelInvalidResponse(value youtube.UpdatedChannelDescription, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedChannelDescription] {
+	return connectormock.Branch(youtube.UpdateChannelBranchInvalidResponse, value, failure)
+}
+
+// UpdateChannelDefect selects the defect branch: Input or connection credentials are invalid.
+func UpdateChannelDefect(value youtube.UpdatedChannelDescription, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedChannelDescription] {
+	return connectormock.Branch(youtube.UpdateChannelBranchDefect, value, failure)
+}
+
+// UpdateChannelRetry asks Dex to retry the updateChannel Step, after the delay when it is positive.
+func UpdateChannelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.UpdatedChannelDescription] {
+	return connectormock.Retry[youtube.UpdatedChannelDescription](failure, after)
+}
+
+// UpdateChannelUpdatedDefault is the manifest mock updatedDefault: One example channel identity is returned.
+func UpdateChannelUpdatedDefault() connectormock.Case[youtube.UpdatedChannelDescription] {
+	value := connectormock.MustDecodeOutput[youtube.UpdatedChannelDescription](`{"id":"UC1234567890123456789012","description":"Updated compiler tutorials"}`)
+	return connectormock.Branch(youtube.UpdateChannelBranchUpdated, value, nil)
+}
+
+// UpdateChannelDefault is the manifest default, updatedDefault, which New installs.
+func UpdateChannelDefault() connectormock.Case[youtube.UpdatedChannelDescription] {
+	return UpdateChannelUpdatedDefault()
+}
+
+// ListVideosListed selects the listed branch: YouTube confirmed the listVideos result.
+func ListVideosListed(value youtube.VideosPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideosPage] {
+	return connectormock.Branch(youtube.ListVideosBranchListed, value, failure)
+}
+
+// ListVideosNotFound selects the notFound branch: The selected video is not visible.
+func ListVideosNotFound(value youtube.VideosPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideosPage] {
+	return connectormock.Branch(youtube.ListVideosBranchNotFound, value, failure)
+}
+
+// ListVideosQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func ListVideosQuotaExhausted(value youtube.VideosPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideosPage] {
+	return connectormock.Branch(youtube.ListVideosBranchQuotaExhausted, value, failure)
+}
+
+// ListVideosProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func ListVideosProviderRejected(value youtube.VideosPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideosPage] {
+	return connectormock.Branch(youtube.ListVideosBranchProviderRejected, value, failure)
+}
+
+// ListVideosInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func ListVideosInvalidResponse(value youtube.VideosPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideosPage] {
+	return connectormock.Branch(youtube.ListVideosBranchInvalidResponse, value, failure)
+}
+
+// ListVideosDefect selects the defect branch: Input or connection credentials are invalid.
+func ListVideosDefect(value youtube.VideosPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideosPage] {
+	return connectormock.Branch(youtube.ListVideosBranchDefect, value, failure)
+}
+
+// ListVideosRetry asks Dex to retry the listVideos Step, after the delay when it is positive.
+func ListVideosRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.VideosPage] {
+	return connectormock.Retry[youtube.VideosPage](failure, after)
+}
+
+// ListVideosListedDefault is the manifest mock listedDefault: One example listVideos result is returned.
+func ListVideosListedDefault() connectormock.Case[youtube.VideosPage] {
+	value := connectormock.MustDecodeOutput[youtube.VideosPage](`{"videos":[{"id":"AbCdEfGhI12","channelId":"UC1234567890123456789012","channelTitle":"Compiler Lab","title":"Compiler release walkthrough","description":"A short compiler tour","publishedAt":"2026-10-20T10:00:00Z","privacyStatus":"public"}],"nextPageToken":""}`)
+	return connectormock.Branch(youtube.ListVideosBranchListed, value, nil)
+}
+
+// ListVideosDefault is the manifest default, listedDefault, which New installs.
+func ListVideosDefault() connectormock.Case[youtube.VideosPage] { return ListVideosListedDefault() }
+
+// ListVideoCategoriesListed selects the listed branch: YouTube confirmed the listVideoCategories result.
+func ListVideoCategoriesListed(value youtube.VideoCategoriesPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideoCategoriesPage] {
+	return connectormock.Branch(youtube.ListVideoCategoriesBranchListed, value, failure)
+}
+
+// ListVideoCategoriesNotFound selects the notFound branch: The selected video is not visible.
+func ListVideoCategoriesNotFound(value youtube.VideoCategoriesPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideoCategoriesPage] {
+	return connectormock.Branch(youtube.ListVideoCategoriesBranchNotFound, value, failure)
+}
+
+// ListVideoCategoriesQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func ListVideoCategoriesQuotaExhausted(value youtube.VideoCategoriesPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideoCategoriesPage] {
+	return connectormock.Branch(youtube.ListVideoCategoriesBranchQuotaExhausted, value, failure)
+}
+
+// ListVideoCategoriesProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func ListVideoCategoriesProviderRejected(value youtube.VideoCategoriesPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideoCategoriesPage] {
+	return connectormock.Branch(youtube.ListVideoCategoriesBranchProviderRejected, value, failure)
+}
+
+// ListVideoCategoriesInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func ListVideoCategoriesInvalidResponse(value youtube.VideoCategoriesPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideoCategoriesPage] {
+	return connectormock.Branch(youtube.ListVideoCategoriesBranchInvalidResponse, value, failure)
+}
+
+// ListVideoCategoriesDefect selects the defect branch: Input or connection credentials are invalid.
+func ListVideoCategoriesDefect(value youtube.VideoCategoriesPage, failure *sdkgo.Failure) connectormock.Case[youtube.VideoCategoriesPage] {
+	return connectormock.Branch(youtube.ListVideoCategoriesBranchDefect, value, failure)
+}
+
+// ListVideoCategoriesRetry asks Dex to retry the listVideoCategories Step, after the delay when it is positive.
+func ListVideoCategoriesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.VideoCategoriesPage] {
+	return connectormock.Retry[youtube.VideoCategoriesPage](failure, after)
+}
+
+// ListVideoCategoriesListedDefault is the manifest mock listedDefault: One example listVideoCategories result is returned.
+func ListVideoCategoriesListedDefault() connectormock.Case[youtube.VideoCategoriesPage] {
+	value := connectormock.MustDecodeOutput[youtube.VideoCategoriesPage](`{"categories":[{"id":"27","title":"Education","assignable":true}]}`)
+	return connectormock.Branch(youtube.ListVideoCategoriesBranchListed, value, nil)
+}
+
+// ListVideoCategoriesDefault is the manifest default, listedDefault, which New installs.
+func ListVideoCategoriesDefault() connectormock.Case[youtube.VideoCategoriesPage] {
+	return ListVideoCategoriesListedDefault()
+}
+
+// RateVideoRated selects the rated branch: YouTube confirmed the rateVideo result.
+func RateVideoRated(value youtube.RatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.RatedVideo] {
+	return connectormock.Branch(youtube.RateVideoBranchRated, value, failure)
+}
+
+// RateVideoNotFound selects the notFound branch: The selected video is not visible.
+func RateVideoNotFound(value youtube.RatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.RatedVideo] {
+	return connectormock.Branch(youtube.RateVideoBranchNotFound, value, failure)
+}
+
+// RateVideoQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func RateVideoQuotaExhausted(value youtube.RatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.RatedVideo] {
+	return connectormock.Branch(youtube.RateVideoBranchQuotaExhausted, value, failure)
+}
+
+// RateVideoProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func RateVideoProviderRejected(value youtube.RatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.RatedVideo] {
+	return connectormock.Branch(youtube.RateVideoBranchProviderRejected, value, failure)
+}
+
+// RateVideoInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func RateVideoInvalidResponse(value youtube.RatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.RatedVideo] {
+	return connectormock.Branch(youtube.RateVideoBranchInvalidResponse, value, failure)
+}
+
+// RateVideoDefect selects the defect branch: Input or connection credentials are invalid.
+func RateVideoDefect(value youtube.RatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.RatedVideo] {
+	return connectormock.Branch(youtube.RateVideoBranchDefect, value, failure)
+}
+
+// RateVideoRetry asks Dex to retry the rateVideo Step, after the delay when it is positive.
+func RateVideoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.RatedVideo] {
+	return connectormock.Retry[youtube.RatedVideo](failure, after)
+}
+
+// RateVideoRatedDefault is the manifest mock ratedDefault: One example rateVideo result is returned.
+func RateVideoRatedDefault() connectormock.Case[youtube.RatedVideo] {
+	value := connectormock.MustDecodeOutput[youtube.RatedVideo](`{"videoId":"AbCdEfGhI12","rating":"like"}`)
+	return connectormock.Branch(youtube.RateVideoBranchRated, value, nil)
+}
+
+// RateVideoDefault is the manifest default, ratedDefault, which New installs.
+func RateVideoDefault() connectormock.Case[youtube.RatedVideo] { return RateVideoRatedDefault() }
+
+// DeleteVideoDeleted selects the deleted branch: YouTube confirmed the deleteVideo result.
+func DeleteVideoDeleted(value youtube.DeletedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedVideo] {
+	return connectormock.Branch(youtube.DeleteVideoBranchDeleted, value, failure)
+}
+
+// DeleteVideoNotFound selects the notFound branch: The selected video is not visible.
+func DeleteVideoNotFound(value youtube.DeletedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedVideo] {
+	return connectormock.Branch(youtube.DeleteVideoBranchNotFound, value, failure)
+}
+
+// DeleteVideoQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func DeleteVideoQuotaExhausted(value youtube.DeletedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedVideo] {
+	return connectormock.Branch(youtube.DeleteVideoBranchQuotaExhausted, value, failure)
+}
+
+// DeleteVideoProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func DeleteVideoProviderRejected(value youtube.DeletedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedVideo] {
+	return connectormock.Branch(youtube.DeleteVideoBranchProviderRejected, value, failure)
+}
+
+// DeleteVideoInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func DeleteVideoInvalidResponse(value youtube.DeletedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedVideo] {
+	return connectormock.Branch(youtube.DeleteVideoBranchInvalidResponse, value, failure)
+}
+
+// DeleteVideoDefect selects the defect branch: Input or connection credentials are invalid.
+func DeleteVideoDefect(value youtube.DeletedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedVideo] {
+	return connectormock.Branch(youtube.DeleteVideoBranchDefect, value, failure)
+}
+
+// DeleteVideoRetry asks Dex to retry the deleteVideo Step, after the delay when it is positive.
+func DeleteVideoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.DeletedVideo] {
+	return connectormock.Retry[youtube.DeletedVideo](failure, after)
+}
+
+// DeleteVideoDeletedDefault is the manifest mock deletedDefault: One example deleteVideo result is returned.
+func DeleteVideoDeletedDefault() connectormock.Case[youtube.DeletedVideo] {
+	value := connectormock.MustDecodeOutput[youtube.DeletedVideo](`{"videoId":"AbCdEfGhI12"}`)
+	return connectormock.Branch(youtube.DeleteVideoBranchDeleted, value, nil)
+}
+
+// DeleteVideoDefault is the manifest default, deletedDefault, which New installs.
+func DeleteVideoDefault() connectormock.Case[youtube.DeletedVideo] {
+	return DeleteVideoDeletedDefault()
+}
+
+// UpdateVideoUpdated selects the updated branch: YouTube confirmed the updateVideo result.
+func UpdateVideoUpdated(value youtube.UpdatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedVideo] {
+	return connectormock.Branch(youtube.UpdateVideoBranchUpdated, value, failure)
+}
+
+// UpdateVideoNotFound selects the notFound branch: The selected video is not visible.
+func UpdateVideoNotFound(value youtube.UpdatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedVideo] {
+	return connectormock.Branch(youtube.UpdateVideoBranchNotFound, value, failure)
+}
+
+// UpdateVideoQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func UpdateVideoQuotaExhausted(value youtube.UpdatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedVideo] {
+	return connectormock.Branch(youtube.UpdateVideoBranchQuotaExhausted, value, failure)
+}
+
+// UpdateVideoProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func UpdateVideoProviderRejected(value youtube.UpdatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedVideo] {
+	return connectormock.Branch(youtube.UpdateVideoBranchProviderRejected, value, failure)
+}
+
+// UpdateVideoInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func UpdateVideoInvalidResponse(value youtube.UpdatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedVideo] {
+	return connectormock.Branch(youtube.UpdateVideoBranchInvalidResponse, value, failure)
+}
+
+// UpdateVideoDefect selects the defect branch: Input or connection credentials are invalid.
+func UpdateVideoDefect(value youtube.UpdatedVideo, failure *sdkgo.Failure) connectormock.Case[youtube.UpdatedVideo] {
+	return connectormock.Branch(youtube.UpdateVideoBranchDefect, value, failure)
+}
+
+// UpdateVideoRetry asks Dex to retry the updateVideo Step, after the delay when it is positive.
+func UpdateVideoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.UpdatedVideo] {
+	return connectormock.Retry[youtube.UpdatedVideo](failure, after)
+}
+
+// UpdateVideoUpdatedDefault is the manifest mock updatedDefault: One example updateVideo result is returned.
+func UpdateVideoUpdatedDefault() connectormock.Case[youtube.UpdatedVideo] {
+	value := connectormock.MustDecodeOutput[youtube.UpdatedVideo](`{"videoId":"AbCdEfGhI12","title":"Updated walkthrough","description":"A short compiler tour","categoryId":"27","privacyStatus":"public"}`)
+	return connectormock.Branch(youtube.UpdateVideoBranchUpdated, value, nil)
+}
+
+// UpdateVideoDefault is the manifest default, updatedDefault, which New installs.
+func UpdateVideoDefault() connectormock.Case[youtube.UpdatedVideo] {
+	return UpdateVideoUpdatedDefault()
+}
+
+// CreatePlaylistCreated selects the created branch: YouTube confirmed the created playlist.
+func CreatePlaylistCreated(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.CreatePlaylistBranchCreated, value, failure)
+}
+
+// CreatePlaylistQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func CreatePlaylistQuotaExhausted(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.CreatePlaylistBranchQuotaExhausted, value, failure)
+}
+
+// CreatePlaylistProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func CreatePlaylistProviderRejected(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.CreatePlaylistBranchProviderRejected, value, failure)
+}
+
+// CreatePlaylistUncertain returns an uncertain createPlaylist outcome.
+func CreatePlaylistUncertain(value youtube.Playlist, failure sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreatePlaylistDefect selects the defect branch: Input or connection credentials are invalid.
+func CreatePlaylistDefect(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.CreatePlaylistBranchDefect, value, failure)
+}
+
+// CreatePlaylistRetry asks Dex to retry the createPlaylist Step, after the delay when it is positive.
+func CreatePlaylistRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.Playlist] {
+	return connectormock.Retry[youtube.Playlist](failure, after)
+}
+
+// CreatePlaylistCreatedDefault is the manifest mock createdDefault: One private example playlist is created.
+func CreatePlaylistCreatedDefault() connectormock.Case[youtube.Playlist] {
+	value := connectormock.MustDecodeOutput[youtube.Playlist](`{"id":"PLcurated123","title":"Compiler picks","description":"Curated videos","privacyStatus":"private"}`)
+	return connectormock.Branch(youtube.CreatePlaylistBranchCreated, value, nil)
+}
+
+// CreatePlaylistDefault is the manifest default, createdDefault, which New installs.
+func CreatePlaylistDefault() connectormock.Case[youtube.Playlist] {
+	return CreatePlaylistCreatedDefault()
+}
+
+// GetPlaylistItemFound selects the found branch: YouTube confirmed the item found result.
+func GetPlaylistItemFound(value youtube.PlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistItem] {
+	return connectormock.Branch(youtube.GetPlaylistItemBranchFound, value, failure)
+}
+
+// GetPlaylistItemNotFound selects the notFound branch: The item is not visible.
+func GetPlaylistItemNotFound(value youtube.PlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistItem] {
+	return connectormock.Branch(youtube.GetPlaylistItemBranchNotFound, value, failure)
+}
+
+// GetPlaylistItemQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func GetPlaylistItemQuotaExhausted(value youtube.PlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistItem] {
+	return connectormock.Branch(youtube.GetPlaylistItemBranchQuotaExhausted, value, failure)
+}
+
+// GetPlaylistItemProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func GetPlaylistItemProviderRejected(value youtube.PlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistItem] {
+	return connectormock.Branch(youtube.GetPlaylistItemBranchProviderRejected, value, failure)
+}
+
+// GetPlaylistItemInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func GetPlaylistItemInvalidResponse(value youtube.PlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistItem] {
+	return connectormock.Branch(youtube.GetPlaylistItemBranchInvalidResponse, value, failure)
+}
+
+// GetPlaylistItemDefect selects the defect branch: Input or connection credentials are invalid.
+func GetPlaylistItemDefect(value youtube.PlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistItem] {
+	return connectormock.Branch(youtube.GetPlaylistItemBranchDefect, value, failure)
+}
+
+// GetPlaylistItemRetry asks Dex to retry the getPlaylistItem Step, after the delay when it is positive.
+func GetPlaylistItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.PlaylistItem] {
+	return connectormock.Retry[youtube.PlaylistItem](failure, after)
+}
+
+// GetPlaylistItemFoundDefault is the manifest mock foundDefault: One example playlist item is returned.
+func GetPlaylistItemFoundDefault() connectormock.Case[youtube.PlaylistItem] {
+	value := connectormock.MustDecodeOutput[youtube.PlaylistItem](`{"id":"PLITEM001","playlistId":"PLcurated123","videoId":"AbCdEfGhI12","title":"Compiler release walkthrough","position":0,"addedAt":"2026-10-26T10:00:00Z","videoPublishedAt":"2026-10-20T10:00:00Z"}`)
+	return connectormock.Branch(youtube.GetPlaylistItemBranchFound, value, nil)
+}
+
+// GetPlaylistItemDefault is the manifest default, foundDefault, which New installs.
+func GetPlaylistItemDefault() connectormock.Case[youtube.PlaylistItem] {
+	return GetPlaylistItemFoundDefault()
+}
+
+// DeletePlaylistItemDeleted selects the deleted branch: YouTube confirmed the item deleted result.
+func DeletePlaylistItemDeleted(value youtube.DeletedPlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylistItem] {
+	return connectormock.Branch(youtube.DeletePlaylistItemBranchDeleted, value, failure)
+}
+
+// DeletePlaylistItemNotFound selects the notFound branch: The item is not visible.
+func DeletePlaylistItemNotFound(value youtube.DeletedPlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylistItem] {
+	return connectormock.Branch(youtube.DeletePlaylistItemBranchNotFound, value, failure)
+}
+
+// DeletePlaylistItemQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func DeletePlaylistItemQuotaExhausted(value youtube.DeletedPlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylistItem] {
+	return connectormock.Branch(youtube.DeletePlaylistItemBranchQuotaExhausted, value, failure)
+}
+
+// DeletePlaylistItemProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func DeletePlaylistItemProviderRejected(value youtube.DeletedPlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylistItem] {
+	return connectormock.Branch(youtube.DeletePlaylistItemBranchProviderRejected, value, failure)
+}
+
+// DeletePlaylistItemInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func DeletePlaylistItemInvalidResponse(value youtube.DeletedPlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylistItem] {
+	return connectormock.Branch(youtube.DeletePlaylistItemBranchInvalidResponse, value, failure)
+}
+
+// DeletePlaylistItemDefect selects the defect branch: Input or connection credentials are invalid.
+func DeletePlaylistItemDefect(value youtube.DeletedPlaylistItem, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylistItem] {
+	return connectormock.Branch(youtube.DeletePlaylistItemBranchDefect, value, failure)
+}
+
+// DeletePlaylistItemRetry asks Dex to retry the deletePlaylistItem Step, after the delay when it is positive.
+func DeletePlaylistItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.DeletedPlaylistItem] {
+	return connectormock.Retry[youtube.DeletedPlaylistItem](failure, after)
+}
+
+// DeletePlaylistItemDeletedDefault is the manifest mock deletedDefault: One example playlist item is returned.
+func DeletePlaylistItemDeletedDefault() connectormock.Case[youtube.DeletedPlaylistItem] {
+	value := connectormock.MustDecodeOutput[youtube.DeletedPlaylistItem](`{"playlistItemId":"PLITEM001"}`)
+	return connectormock.Branch(youtube.DeletePlaylistItemBranchDeleted, value, nil)
+}
+
+// DeletePlaylistItemDefault is the manifest default, deletedDefault, which New installs.
+func DeletePlaylistItemDefault() connectormock.Case[youtube.DeletedPlaylistItem] {
+	return DeletePlaylistItemDeletedDefault()
+}
+
+// GetPlaylistFound selects the found branch: YouTube confirmed the getPlaylist result.
+func GetPlaylistFound(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.GetPlaylistBranchFound, value, failure)
+}
+
+// GetPlaylistNotFound selects the notFound branch: The selected playlist is not visible.
+func GetPlaylistNotFound(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.GetPlaylistBranchNotFound, value, failure)
+}
+
+// GetPlaylistQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func GetPlaylistQuotaExhausted(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.GetPlaylistBranchQuotaExhausted, value, failure)
+}
+
+// GetPlaylistProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func GetPlaylistProviderRejected(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.GetPlaylistBranchProviderRejected, value, failure)
+}
+
+// GetPlaylistInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func GetPlaylistInvalidResponse(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.GetPlaylistBranchInvalidResponse, value, failure)
+}
+
+// GetPlaylistDefect selects the defect branch: Input or connection credentials are invalid.
+func GetPlaylistDefect(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.GetPlaylistBranchDefect, value, failure)
+}
+
+// GetPlaylistRetry asks Dex to retry the getPlaylist Step, after the delay when it is positive.
+func GetPlaylistRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.Playlist] {
+	return connectormock.Retry[youtube.Playlist](failure, after)
+}
+
+// GetPlaylistFoundDefault is the manifest mock foundDefault: One example getPlaylist result is returned.
+func GetPlaylistFoundDefault() connectormock.Case[youtube.Playlist] {
+	value := connectormock.MustDecodeOutput[youtube.Playlist](`{"id":"PLcurated123","title":"Compiler picks","description":"Curated videos","privacyStatus":"private"}`)
+	return connectormock.Branch(youtube.GetPlaylistBranchFound, value, nil)
+}
+
+// GetPlaylistDefault is the manifest default, foundDefault, which New installs.
+func GetPlaylistDefault() connectormock.Case[youtube.Playlist] { return GetPlaylistFoundDefault() }
+
+// ListPlaylistsListed selects the listed branch: YouTube confirmed the listPlaylists result.
+func ListPlaylistsListed(value youtube.PlaylistsPage, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistsPage] {
+	return connectormock.Branch(youtube.ListPlaylistsBranchListed, value, failure)
+}
+
+// ListPlaylistsNotFound selects the notFound branch: The selected playlist is not visible.
+func ListPlaylistsNotFound(value youtube.PlaylistsPage, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistsPage] {
+	return connectormock.Branch(youtube.ListPlaylistsBranchNotFound, value, failure)
+}
+
+// ListPlaylistsQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func ListPlaylistsQuotaExhausted(value youtube.PlaylistsPage, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistsPage] {
+	return connectormock.Branch(youtube.ListPlaylistsBranchQuotaExhausted, value, failure)
+}
+
+// ListPlaylistsProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func ListPlaylistsProviderRejected(value youtube.PlaylistsPage, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistsPage] {
+	return connectormock.Branch(youtube.ListPlaylistsBranchProviderRejected, value, failure)
+}
+
+// ListPlaylistsInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func ListPlaylistsInvalidResponse(value youtube.PlaylistsPage, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistsPage] {
+	return connectormock.Branch(youtube.ListPlaylistsBranchInvalidResponse, value, failure)
+}
+
+// ListPlaylistsDefect selects the defect branch: Input or connection credentials are invalid.
+func ListPlaylistsDefect(value youtube.PlaylistsPage, failure *sdkgo.Failure) connectormock.Case[youtube.PlaylistsPage] {
+	return connectormock.Branch(youtube.ListPlaylistsBranchDefect, value, failure)
+}
+
+// ListPlaylistsRetry asks Dex to retry the listPlaylists Step, after the delay when it is positive.
+func ListPlaylistsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.PlaylistsPage] {
+	return connectormock.Retry[youtube.PlaylistsPage](failure, after)
+}
+
+// ListPlaylistsListedDefault is the manifest mock listedDefault: One example listPlaylists result is returned.
+func ListPlaylistsListedDefault() connectormock.Case[youtube.PlaylistsPage] {
+	value := connectormock.MustDecodeOutput[youtube.PlaylistsPage](`{"playlists":[{"id":"PLcurated123","title":"Compiler picks","description":"Curated videos","privacyStatus":"private"}],"nextPageToken":""}`)
+	return connectormock.Branch(youtube.ListPlaylistsBranchListed, value, nil)
+}
+
+// ListPlaylistsDefault is the manifest default, listedDefault, which New installs.
+func ListPlaylistsDefault() connectormock.Case[youtube.PlaylistsPage] {
+	return ListPlaylistsListedDefault()
+}
+
+// UpdatePlaylistUpdated selects the updated branch: YouTube confirmed the updatePlaylist result.
+func UpdatePlaylistUpdated(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.UpdatePlaylistBranchUpdated, value, failure)
+}
+
+// UpdatePlaylistNotFound selects the notFound branch: The selected playlist is not visible.
+func UpdatePlaylistNotFound(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.UpdatePlaylistBranchNotFound, value, failure)
+}
+
+// UpdatePlaylistQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func UpdatePlaylistQuotaExhausted(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.UpdatePlaylistBranchQuotaExhausted, value, failure)
+}
+
+// UpdatePlaylistProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func UpdatePlaylistProviderRejected(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.UpdatePlaylistBranchProviderRejected, value, failure)
+}
+
+// UpdatePlaylistInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func UpdatePlaylistInvalidResponse(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.UpdatePlaylistBranchInvalidResponse, value, failure)
+}
+
+// UpdatePlaylistDefect selects the defect branch: Input or connection credentials are invalid.
+func UpdatePlaylistDefect(value youtube.Playlist, failure *sdkgo.Failure) connectormock.Case[youtube.Playlist] {
+	return connectormock.Branch(youtube.UpdatePlaylistBranchDefect, value, failure)
+}
+
+// UpdatePlaylistRetry asks Dex to retry the updatePlaylist Step, after the delay when it is positive.
+func UpdatePlaylistRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.Playlist] {
+	return connectormock.Retry[youtube.Playlist](failure, after)
+}
+
+// UpdatePlaylistUpdatedDefault is the manifest mock updatedDefault: One example updatePlaylist result is returned.
+func UpdatePlaylistUpdatedDefault() connectormock.Case[youtube.Playlist] {
+	value := connectormock.MustDecodeOutput[youtube.Playlist](`{"id":"PLcurated123","title":"Updated picks","description":"Curated videos","privacyStatus":"private"}`)
+	return connectormock.Branch(youtube.UpdatePlaylistBranchUpdated, value, nil)
+}
+
+// UpdatePlaylistDefault is the manifest default, updatedDefault, which New installs.
+func UpdatePlaylistDefault() connectormock.Case[youtube.Playlist] {
+	return UpdatePlaylistUpdatedDefault()
+}
+
+// DeletePlaylistDeleted selects the deleted branch: YouTube confirmed the deletePlaylist result.
+func DeletePlaylistDeleted(value youtube.DeletedPlaylist, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylist] {
+	return connectormock.Branch(youtube.DeletePlaylistBranchDeleted, value, failure)
+}
+
+// DeletePlaylistNotFound selects the notFound branch: The selected playlist is not visible.
+func DeletePlaylistNotFound(value youtube.DeletedPlaylist, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylist] {
+	return connectormock.Branch(youtube.DeletePlaylistBranchNotFound, value, failure)
+}
+
+// DeletePlaylistQuotaExhausted selects the quotaExhausted branch: YouTube daily quota is exhausted.
+func DeletePlaylistQuotaExhausted(value youtube.DeletedPlaylist, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylist] {
+	return connectormock.Branch(youtube.DeletePlaylistBranchQuotaExhausted, value, failure)
+}
+
+// DeletePlaylistProviderRejected selects the providerRejected branch: YouTube definitively rejected the request.
+func DeletePlaylistProviderRejected(value youtube.DeletedPlaylist, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylist] {
+	return connectormock.Branch(youtube.DeletePlaylistBranchProviderRejected, value, failure)
+}
+
+// DeletePlaylistInvalidResponse selects the invalidResponse branch: YouTube returned malformed or oversized JSON.
+func DeletePlaylistInvalidResponse(value youtube.DeletedPlaylist, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylist] {
+	return connectormock.Branch(youtube.DeletePlaylistBranchInvalidResponse, value, failure)
+}
+
+// DeletePlaylistDefect selects the defect branch: Input or connection credentials are invalid.
+func DeletePlaylistDefect(value youtube.DeletedPlaylist, failure *sdkgo.Failure) connectormock.Case[youtube.DeletedPlaylist] {
+	return connectormock.Branch(youtube.DeletePlaylistBranchDefect, value, failure)
+}
+
+// DeletePlaylistRetry asks Dex to retry the deletePlaylist Step, after the delay when it is positive.
+func DeletePlaylistRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[youtube.DeletedPlaylist] {
+	return connectormock.Retry[youtube.DeletedPlaylist](failure, after)
+}
+
+// DeletePlaylistDeletedDefault is the manifest mock deletedDefault: One example deletePlaylist result is returned.
+func DeletePlaylistDeletedDefault() connectormock.Case[youtube.DeletedPlaylist] {
+	value := connectormock.MustDecodeOutput[youtube.DeletedPlaylist](`{"playlistId":"PLcurated123"}`)
+	return connectormock.Branch(youtube.DeletePlaylistBranchDeleted, value, nil)
+}
+
+// DeletePlaylistDefault is the manifest default, deletedDefault, which New installs.
+func DeletePlaylistDefault() connectormock.Case[youtube.DeletedPlaylist] {
+	return DeletePlaylistDeletedDefault()
 }
 
 // SearchVideosSearched selects the searched branch: YouTube returned one page of matching videos; the page may be empty.

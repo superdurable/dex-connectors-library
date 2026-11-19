@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted gusto connection. Script each operation through its accessor.
 type Mock struct {
-	connection  gusto.Connection
-	getEmployee *connectormock.Query[gusto.GetEmployeeInput, gusto.Employee]
+	connection    gusto.Connection
+	listEmployees *connectormock.Query[gusto.ListEmployeesInput, gusto.EmployeesPage]
+	getEmployee   *connectormock.Query[gusto.GetEmployeeInput, gusto.Employee]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +27,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getEmployee: connectormock.NewQuery[gusto.GetEmployeeInput, gusto.Employee](t, gusto.GetEmployeeDefinition),
+		listEmployees: connectormock.NewQuery[gusto.ListEmployeesInput, gusto.EmployeesPage](t, gusto.ListEmployeesDefinition),
+		getEmployee:   connectormock.NewQuery[gusto.GetEmployeeInput, gusto.Employee](t, gusto.GetEmployeeDefinition),
 	}
+	mock.listEmployees.Default(ListEmployeesDefault())
 	mock.getEmployee.Default(GetEmployeeDefault())
 	connection, err := gusto.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "gusto", Name: connectionName})
 	if err != nil {
@@ -40,6 +43,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() gusto.Connection { return mock.connection }
 
+// ListEmployees returns the listEmployees script.
+func (mock *Mock) ListEmployees() *connectormock.Query[gusto.ListEmployeesInput, gusto.EmployeesPage] {
+	return mock.listEmployees
+}
+
 // GetEmployee returns the getEmployee script.
 func (mock *Mock) GetEmployee() *connectormock.Query[gusto.GetEmployeeInput, gusto.Employee] {
 	return mock.getEmployee
@@ -47,8 +55,52 @@ func (mock *Mock) GetEmployee() *connectormock.Query[gusto.GetEmployeeInput, gus
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListEmployees() sdkgo.Query[gusto.ListEmployeesInput, gusto.EmployeesPage] {
+	return operations.mock.listEmployees
+}
 func (operations mockOperations) GetEmployee() sdkgo.Query[gusto.GetEmployeeInput, gusto.Employee] {
 	return operations.mock.getEmployee
+}
+
+// ListEmployeesListed selects the listed branch: Gusto returned the requested employee page.
+func ListEmployeesListed(value gusto.EmployeesPage, failure *sdkgo.Failure) connectormock.Case[gusto.EmployeesPage] {
+	return connectormock.Branch(gusto.ListEmployeesBranchListed, value, failure)
+}
+
+// ListEmployeesMissing selects the missing branch: The company is not visible to this connection.
+func ListEmployeesMissing(value gusto.EmployeesPage, failure *sdkgo.Failure) connectormock.Case[gusto.EmployeesPage] {
+	return connectormock.Branch(gusto.ListEmployeesBranchMissing, value, failure)
+}
+
+// ListEmployeesProviderRejected selects the providerRejected branch: Gusto conclusively rejected the list request.
+func ListEmployeesProviderRejected(value gusto.EmployeesPage, failure *sdkgo.Failure) connectormock.Case[gusto.EmployeesPage] {
+	return connectormock.Branch(gusto.ListEmployeesBranchProviderRejected, value, failure)
+}
+
+// ListEmployeesInvalidResponse selects the invalidResponse branch: Gusto returned malformed or oversized employee data.
+func ListEmployeesInvalidResponse(value gusto.EmployeesPage, failure *sdkgo.Failure) connectormock.Case[gusto.EmployeesPage] {
+	return connectormock.Branch(gusto.ListEmployeesBranchInvalidResponse, value, failure)
+}
+
+// ListEmployeesDefect selects the defect branch: Page settings, company UUID, or OAuth credentials are invalid.
+func ListEmployeesDefect(value gusto.EmployeesPage, failure *sdkgo.Failure) connectormock.Case[gusto.EmployeesPage] {
+	return connectormock.Branch(gusto.ListEmployeesBranchDefect, value, failure)
+}
+
+// ListEmployeesRetry asks Dex to retry the listEmployees Step, after the delay when it is positive.
+func ListEmployeesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gusto.EmployeesPage] {
+	return connectormock.Retry[gusto.EmployeesPage](failure, after)
+}
+
+// ListEmployeesListedDefault is the manifest mock listedDefault: A sample employee page is returned.
+func ListEmployeesListedDefault() connectormock.Case[gusto.EmployeesPage] {
+	value := connectormock.MustDecodeOutput[gusto.EmployeesPage](`{"employees":[{"employeeId":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","companyId":"7d61f73e-a18c-46a5-88e2-2bfa894657d7"}]}`)
+	return connectormock.Branch(gusto.ListEmployeesBranchListed, value, nil)
+}
+
+// ListEmployeesDefault is the manifest default, listedDefault, which New installs.
+func ListEmployeesDefault() connectormock.Case[gusto.EmployeesPage] {
+	return ListEmployeesListedDefault()
 }
 
 // GetEmployeeFound selects the found branch: Gusto returned the selected employee.

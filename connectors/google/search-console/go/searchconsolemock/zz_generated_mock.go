@@ -17,8 +17,13 @@ import (
 
 // Mock is a scripted google-search-console connection. Script each operation through its accessor.
 type Mock struct {
-	connection searchconsole.Connection
-	listSites  *connectormock.Query[searchconsole.ListSitesInput, searchconsole.SitesPage]
+	connection           searchconsole.Connection
+	getSite              *connectormock.Query[searchconsole.GetSiteInput, searchconsole.Site]
+	querySearchAnalytics *connectormock.Query[searchconsole.QuerySearchAnalyticsInput, searchconsole.SearchAnalyticsResult]
+	listSitemaps         *connectormock.Query[searchconsole.ListSitemapsInput, searchconsole.SitemapsPage]
+	getSitemap           *connectormock.Query[searchconsole.GetSitemapInput, searchconsole.Sitemap]
+	inspectURL           *connectormock.Query[searchconsole.InspectURLInput, searchconsole.URLInspectionResult]
+	listSites            *connectormock.Query[searchconsole.ListSitesInput, searchconsole.SitesPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +31,18 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listSites: connectormock.NewQuery[searchconsole.ListSitesInput, searchconsole.SitesPage](t, searchconsole.ListSitesDefinition),
+		getSite:              connectormock.NewQuery[searchconsole.GetSiteInput, searchconsole.Site](t, searchconsole.GetSiteDefinition),
+		querySearchAnalytics: connectormock.NewQuery[searchconsole.QuerySearchAnalyticsInput, searchconsole.SearchAnalyticsResult](t, searchconsole.QuerySearchAnalyticsDefinition),
+		listSitemaps:         connectormock.NewQuery[searchconsole.ListSitemapsInput, searchconsole.SitemapsPage](t, searchconsole.ListSitemapsDefinition),
+		getSitemap:           connectormock.NewQuery[searchconsole.GetSitemapInput, searchconsole.Sitemap](t, searchconsole.GetSitemapDefinition),
+		inspectURL:           connectormock.NewQuery[searchconsole.InspectURLInput, searchconsole.URLInspectionResult](t, searchconsole.InspectURLDefinition),
+		listSites:            connectormock.NewQuery[searchconsole.ListSitesInput, searchconsole.SitesPage](t, searchconsole.ListSitesDefinition),
 	}
+	mock.getSite.Default(GetSiteDefault())
+	mock.querySearchAnalytics.Default(QuerySearchAnalyticsDefault())
+	mock.listSitemaps.Default(ListSitemapsDefault())
+	mock.getSitemap.Default(GetSitemapDefault())
+	mock.inspectURL.Default(InspectURLDefault())
 	mock.listSites.Default(ListSitesDefault())
 	connection, err := searchconsole.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google-search-console", Name: connectionName})
 	if err != nil {
@@ -40,6 +55,31 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() searchconsole.Connection { return mock.connection }
 
+// GetSite returns the getSite script.
+func (mock *Mock) GetSite() *connectormock.Query[searchconsole.GetSiteInput, searchconsole.Site] {
+	return mock.getSite
+}
+
+// QuerySearchAnalytics returns the querySearchAnalytics script.
+func (mock *Mock) QuerySearchAnalytics() *connectormock.Query[searchconsole.QuerySearchAnalyticsInput, searchconsole.SearchAnalyticsResult] {
+	return mock.querySearchAnalytics
+}
+
+// ListSitemaps returns the listSitemaps script.
+func (mock *Mock) ListSitemaps() *connectormock.Query[searchconsole.ListSitemapsInput, searchconsole.SitemapsPage] {
+	return mock.listSitemaps
+}
+
+// GetSitemap returns the getSitemap script.
+func (mock *Mock) GetSitemap() *connectormock.Query[searchconsole.GetSitemapInput, searchconsole.Sitemap] {
+	return mock.getSitemap
+}
+
+// InspectURL returns the inspectURL script.
+func (mock *Mock) InspectURL() *connectormock.Query[searchconsole.InspectURLInput, searchconsole.URLInspectionResult] {
+	return mock.inspectURL
+}
+
 // ListSites returns the listSites script.
 func (mock *Mock) ListSites() *connectormock.Query[searchconsole.ListSitesInput, searchconsole.SitesPage] {
 	return mock.listSites
@@ -47,8 +87,224 @@ func (mock *Mock) ListSites() *connectormock.Query[searchconsole.ListSitesInput,
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetSite() sdkgo.Query[searchconsole.GetSiteInput, searchconsole.Site] {
+	return operations.mock.getSite
+}
+func (operations mockOperations) QuerySearchAnalytics() sdkgo.Query[searchconsole.QuerySearchAnalyticsInput, searchconsole.SearchAnalyticsResult] {
+	return operations.mock.querySearchAnalytics
+}
+func (operations mockOperations) ListSitemaps() sdkgo.Query[searchconsole.ListSitemapsInput, searchconsole.SitemapsPage] {
+	return operations.mock.listSitemaps
+}
+func (operations mockOperations) GetSitemap() sdkgo.Query[searchconsole.GetSitemapInput, searchconsole.Sitemap] {
+	return operations.mock.getSitemap
+}
+func (operations mockOperations) InspectURL() sdkgo.Query[searchconsole.InspectURLInput, searchconsole.URLInspectionResult] {
+	return operations.mock.inspectURL
+}
 func (operations mockOperations) ListSites() sdkgo.Query[searchconsole.ListSitesInput, searchconsole.SitesPage] {
 	return operations.mock.listSites
+}
+
+// GetSiteFound selects the found branch: Google returned the property.
+func GetSiteFound(value searchconsole.Site, failure *sdkgo.Failure) connectormock.Case[searchconsole.Site] {
+	return connectormock.Branch(searchconsole.GetSiteBranchFound, value, failure)
+}
+
+// GetSiteNotFound selects the notFound branch: The property is not accessible.
+func GetSiteNotFound(value searchconsole.Site, failure *sdkgo.Failure) connectormock.Case[searchconsole.Site] {
+	return connectormock.Branch(searchconsole.GetSiteBranchNotFound, value, failure)
+}
+
+// GetSiteProviderRejected selects the providerRejected branch: Google conclusively rejected the read.
+func GetSiteProviderRejected(value searchconsole.Site, failure *sdkgo.Failure) connectormock.Case[searchconsole.Site] {
+	return connectormock.Branch(searchconsole.GetSiteBranchProviderRejected, value, failure)
+}
+
+// GetSiteInvalidResponse selects the invalidResponse branch: Google returned malformed property JSON.
+func GetSiteInvalidResponse(value searchconsole.Site, failure *sdkgo.Failure) connectormock.Case[searchconsole.Site] {
+	return connectormock.Branch(searchconsole.GetSiteBranchInvalidResponse, value, failure)
+}
+
+// GetSiteDefect selects the defect branch: Local property URL or credentials are invalid.
+func GetSiteDefect(value searchconsole.Site, failure *sdkgo.Failure) connectormock.Case[searchconsole.Site] {
+	return connectormock.Branch(searchconsole.GetSiteBranchDefect, value, failure)
+}
+
+// GetSiteRetry asks Dex to retry the getSite Step, after the delay when it is positive.
+func GetSiteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[searchconsole.Site] {
+	return connectormock.Retry[searchconsole.Site](failure, after)
+}
+
+// GetSiteFoundDefault is the manifest mock foundDefault: The example property is accessible.
+func GetSiteFoundDefault() connectormock.Case[searchconsole.Site] {
+	value := connectormock.MustDecodeOutput[searchconsole.Site](`{"siteUrl":"sc-domain:example.com","permissionLevel":"siteOwner"}`)
+	return connectormock.Branch(searchconsole.GetSiteBranchFound, value, nil)
+}
+
+// GetSiteDefault is the manifest default, foundDefault, which New installs.
+func GetSiteDefault() connectormock.Case[searchconsole.Site] { return GetSiteFoundDefault() }
+
+// QuerySearchAnalyticsQueried selects the queried branch: Google returned search performance rows.
+func QuerySearchAnalyticsQueried(value searchconsole.SearchAnalyticsResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.SearchAnalyticsResult] {
+	return connectormock.Branch(searchconsole.QuerySearchAnalyticsBranchQueried, value, failure)
+}
+
+// QuerySearchAnalyticsNotFound selects the notFound branch: The property is not accessible.
+func QuerySearchAnalyticsNotFound(value searchconsole.SearchAnalyticsResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.SearchAnalyticsResult] {
+	return connectormock.Branch(searchconsole.QuerySearchAnalyticsBranchNotFound, value, failure)
+}
+
+// QuerySearchAnalyticsProviderRejected selects the providerRejected branch: Google conclusively rejected the query.
+func QuerySearchAnalyticsProviderRejected(value searchconsole.SearchAnalyticsResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.SearchAnalyticsResult] {
+	return connectormock.Branch(searchconsole.QuerySearchAnalyticsBranchProviderRejected, value, failure)
+}
+
+// QuerySearchAnalyticsInvalidResponse selects the invalidResponse branch: Google returned malformed analytics JSON.
+func QuerySearchAnalyticsInvalidResponse(value searchconsole.SearchAnalyticsResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.SearchAnalyticsResult] {
+	return connectormock.Branch(searchconsole.QuerySearchAnalyticsBranchInvalidResponse, value, failure)
+}
+
+// QuerySearchAnalyticsDefect selects the defect branch: Local property, date, row input, or credentials are invalid.
+func QuerySearchAnalyticsDefect(value searchconsole.SearchAnalyticsResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.SearchAnalyticsResult] {
+	return connectormock.Branch(searchconsole.QuerySearchAnalyticsBranchDefect, value, failure)
+}
+
+// QuerySearchAnalyticsRetry asks Dex to retry the querySearchAnalytics Step, after the delay when it is positive.
+func QuerySearchAnalyticsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[searchconsole.SearchAnalyticsResult] {
+	return connectormock.Retry[searchconsole.SearchAnalyticsResult](failure, after)
+}
+
+// QuerySearchAnalyticsQueriedDefault is the manifest mock queriedDefault: One sample search row is available.
+func QuerySearchAnalyticsQueriedDefault() connectormock.Case[searchconsole.SearchAnalyticsResult] {
+	value := connectormock.MustDecodeOutput[searchconsole.SearchAnalyticsResult](`{"rows":[{"keys":["example"],"clicks":5,"impressions":100,"ctr":0.05,"position":3.2}],"responseAggregationType":"byProperty"}`)
+	return connectormock.Branch(searchconsole.QuerySearchAnalyticsBranchQueried, value, nil)
+}
+
+// QuerySearchAnalyticsDefault is the manifest default, queriedDefault, which New installs.
+func QuerySearchAnalyticsDefault() connectormock.Case[searchconsole.SearchAnalyticsResult] {
+	return QuerySearchAnalyticsQueriedDefault()
+}
+
+// ListSitemapsListed selects the listed branch: Google returned the sitemaps.
+func ListSitemapsListed(value searchconsole.SitemapsPage, failure *sdkgo.Failure) connectormock.Case[searchconsole.SitemapsPage] {
+	return connectormock.Branch(searchconsole.ListSitemapsBranchListed, value, failure)
+}
+
+// ListSitemapsNotFound selects the notFound branch: The property is not accessible.
+func ListSitemapsNotFound(value searchconsole.SitemapsPage, failure *sdkgo.Failure) connectormock.Case[searchconsole.SitemapsPage] {
+	return connectormock.Branch(searchconsole.ListSitemapsBranchNotFound, value, failure)
+}
+
+// ListSitemapsProviderRejected selects the providerRejected branch: Google conclusively rejected the list.
+func ListSitemapsProviderRejected(value searchconsole.SitemapsPage, failure *sdkgo.Failure) connectormock.Case[searchconsole.SitemapsPage] {
+	return connectormock.Branch(searchconsole.ListSitemapsBranchProviderRejected, value, failure)
+}
+
+// ListSitemapsInvalidResponse selects the invalidResponse branch: Google returned malformed sitemap JSON.
+func ListSitemapsInvalidResponse(value searchconsole.SitemapsPage, failure *sdkgo.Failure) connectormock.Case[searchconsole.SitemapsPage] {
+	return connectormock.Branch(searchconsole.ListSitemapsBranchInvalidResponse, value, failure)
+}
+
+// ListSitemapsDefect selects the defect branch: Local property URL or credentials are invalid.
+func ListSitemapsDefect(value searchconsole.SitemapsPage, failure *sdkgo.Failure) connectormock.Case[searchconsole.SitemapsPage] {
+	return connectormock.Branch(searchconsole.ListSitemapsBranchDefect, value, failure)
+}
+
+// ListSitemapsRetry asks Dex to retry the listSitemaps Step, after the delay when it is positive.
+func ListSitemapsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[searchconsole.SitemapsPage] {
+	return connectormock.Retry[searchconsole.SitemapsPage](failure, after)
+}
+
+// ListSitemapsListedDefault is the manifest mock listedDefault: One sitemap is submitted.
+func ListSitemapsListedDefault() connectormock.Case[searchconsole.SitemapsPage] {
+	value := connectormock.MustDecodeOutput[searchconsole.SitemapsPage](`{"sitemaps":[{"path":"https://example.com/sitemap.xml","type":"sitemap"}]}`)
+	return connectormock.Branch(searchconsole.ListSitemapsBranchListed, value, nil)
+}
+
+// ListSitemapsDefault is the manifest default, listedDefault, which New installs.
+func ListSitemapsDefault() connectormock.Case[searchconsole.SitemapsPage] {
+	return ListSitemapsListedDefault()
+}
+
+// GetSitemapFound selects the found branch: Google returned the sitemap.
+func GetSitemapFound(value searchconsole.Sitemap, failure *sdkgo.Failure) connectormock.Case[searchconsole.Sitemap] {
+	return connectormock.Branch(searchconsole.GetSitemapBranchFound, value, failure)
+}
+
+// GetSitemapNotFound selects the notFound branch: The sitemap is not submitted.
+func GetSitemapNotFound(value searchconsole.Sitemap, failure *sdkgo.Failure) connectormock.Case[searchconsole.Sitemap] {
+	return connectormock.Branch(searchconsole.GetSitemapBranchNotFound, value, failure)
+}
+
+// GetSitemapProviderRejected selects the providerRejected branch: Google conclusively rejected the read.
+func GetSitemapProviderRejected(value searchconsole.Sitemap, failure *sdkgo.Failure) connectormock.Case[searchconsole.Sitemap] {
+	return connectormock.Branch(searchconsole.GetSitemapBranchProviderRejected, value, failure)
+}
+
+// GetSitemapInvalidResponse selects the invalidResponse branch: Google returned malformed sitemap JSON.
+func GetSitemapInvalidResponse(value searchconsole.Sitemap, failure *sdkgo.Failure) connectormock.Case[searchconsole.Sitemap] {
+	return connectormock.Branch(searchconsole.GetSitemapBranchInvalidResponse, value, failure)
+}
+
+// GetSitemapDefect selects the defect branch: Local property or sitemap URL or credentials are invalid.
+func GetSitemapDefect(value searchconsole.Sitemap, failure *sdkgo.Failure) connectormock.Case[searchconsole.Sitemap] {
+	return connectormock.Branch(searchconsole.GetSitemapBranchDefect, value, failure)
+}
+
+// GetSitemapRetry asks Dex to retry the getSitemap Step, after the delay when it is positive.
+func GetSitemapRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[searchconsole.Sitemap] {
+	return connectormock.Retry[searchconsole.Sitemap](failure, after)
+}
+
+// GetSitemapFoundDefault is the manifest mock foundDefault: The sample sitemap exists.
+func GetSitemapFoundDefault() connectormock.Case[searchconsole.Sitemap] {
+	value := connectormock.MustDecodeOutput[searchconsole.Sitemap](`{"path":"https://example.com/sitemap.xml","type":"sitemap"}`)
+	return connectormock.Branch(searchconsole.GetSitemapBranchFound, value, nil)
+}
+
+// GetSitemapDefault is the manifest default, foundDefault, which New installs.
+func GetSitemapDefault() connectormock.Case[searchconsole.Sitemap] { return GetSitemapFoundDefault() }
+
+// InspectURLInspected selects the inspected branch: Google returned the indexed URL status.
+func InspectURLInspected(value searchconsole.URLInspectionResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.URLInspectionResult] {
+	return connectormock.Branch(searchconsole.InspectURLBranchInspected, value, failure)
+}
+
+// InspectURLNotFound selects the notFound branch: The property or URL is not accessible.
+func InspectURLNotFound(value searchconsole.URLInspectionResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.URLInspectionResult] {
+	return connectormock.Branch(searchconsole.InspectURLBranchNotFound, value, failure)
+}
+
+// InspectURLProviderRejected selects the providerRejected branch: Google conclusively rejected the inspection.
+func InspectURLProviderRejected(value searchconsole.URLInspectionResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.URLInspectionResult] {
+	return connectormock.Branch(searchconsole.InspectURLBranchProviderRejected, value, failure)
+}
+
+// InspectURLInvalidResponse selects the invalidResponse branch: Google returned malformed inspection JSON.
+func InspectURLInvalidResponse(value searchconsole.URLInspectionResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.URLInspectionResult] {
+	return connectormock.Branch(searchconsole.InspectURLBranchInvalidResponse, value, failure)
+}
+
+// InspectURLDefect selects the defect branch: Local property or page URL or credentials are invalid.
+func InspectURLDefect(value searchconsole.URLInspectionResult, failure *sdkgo.Failure) connectormock.Case[searchconsole.URLInspectionResult] {
+	return connectormock.Branch(searchconsole.InspectURLBranchDefect, value, failure)
+}
+
+// InspectURLRetry asks Dex to retry the inspectURL Step, after the delay when it is positive.
+func InspectURLRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[searchconsole.URLInspectionResult] {
+	return connectormock.Retry[searchconsole.URLInspectionResult](failure, after)
+}
+
+// InspectURLInspectedDefault is the manifest mock inspectedDefault: The sample page is indexed.
+func InspectURLInspectedDefault() connectormock.Case[searchconsole.URLInspectionResult] {
+	value := connectormock.MustDecodeOutput[searchconsole.URLInspectionResult](`{"indexStatusResult":{"verdict":"PASS","coverageState":"Submitted and indexed"}}`)
+	return connectormock.Branch(searchconsole.InspectURLBranchInspected, value, nil)
+}
+
+// InspectURLDefault is the manifest default, inspectedDefault, which New installs.
+func InspectURLDefault() connectormock.Case[searchconsole.URLInspectionResult] {
+	return InspectURLInspectedDefault()
 }
 
 // ListSitesListed selects the listed branch: Google returned the accessible properties.

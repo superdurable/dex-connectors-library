@@ -17,9 +17,11 @@ const (
 	// ConnectionName is the static Dex Web connection used by this Flow.
 	ConnectionName   = "heap"
 	propertyStepType = "SetHeapUserProperties"
+	trackStepType    = "TrackHeapProfileEvent"
 )
 
 var outcomeAttribute = dex.DefineAttribute[heap.UserPropertiesResult]("heap-user-properties-outcome")
+var inputAttribute = dex.DefineAttribute[heap.SetUserPropertiesInput]("heap-user-properties-input")
 
 // Flow updates one user's properties through the static Heap connection.
 type Flow struct {
@@ -35,13 +37,19 @@ func (*Flow) GetFlowType() string { return FlowType }
 
 // GetPersistenceSchema registers the acceptance Attribute.
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute, inputAttribute}}
 }
 
 // GetSteps wires the start, provider mutation, and completion Steps.
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(start{}),
+		dex.DefineStep(heap.NewTrackEventStep(heap.TrackEventStepConfig[heap.TrackEventInput]{
+			StepType: trackStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "user-properties", GroupLabel: "User properties", Explanation: "Track a profile update event with Heap's provider deduplication key."},
+			MapToOperationInput: MapToTrackEventInput, Tracked: sdkgo.GoTo(afterTrack{}),
+		})),
+		dex.DefineStep(afterTrack{}),
 		dex.DefineStep(heap.NewSetUserPropertiesStep(heap.SetUserPropertiesStepConfig[heap.SetUserPropertiesInput]{
 			StepType: propertyStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "user-properties", GroupLabel: "User properties", Explanation: "Replace selected properties for one stable Heap identity."},
@@ -53,6 +61,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 
 // MapToOperationInput preserves the typed request for the connector Step.
 func MapToOperationInput(input heap.SetUserPropertiesInput) heap.SetUserPropertiesInput { return input }
+
+// MapToTrackEventInput records an event for the same identified user.
+func MapToTrackEventInput(input heap.TrackEventInput) heap.TrackEventInput { return input }
 
 // GetRPCs provides read-only Dex Web summary and display views.
 func (flow *Flow) GetRPCs() []dex.RPCDef {
@@ -96,7 +107,25 @@ func (start) GetStepType() string { return "StartHeapUserProperties" }
 func (start) WaitFor(dex.Context, heap.SetUserPropertiesInput) (*dex.Wait, error) {
 	return dex.SkipWaitImmediately(), nil
 }
-func (start) Execute(_ dex.Context, input heap.SetUserPropertiesInput) (*dex.StepDecision, error) {
+func (start) Execute(ctx dex.Context, input heap.SetUserPropertiesInput) (*dex.StepDecision, error) {
+	if err := inputAttribute.Set(ctx, input); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[heap.TrackEventInput](trackStepType), heap.TrackEventInput{Identity: input.Identity, Event: "Profile Updated", Properties: input.Properties}), nil
+}
+
+// dex:group group-id:user-properties group-label:"User properties"
+// dex:explanation text:"Set properties after Heap accepts the profile event."
+type afterTrack struct {
+	dex.StepDefaultsNoWaitFor[heap.TrackEventResult]
+}
+
+func (afterTrack) GetStepType() string { return "AfterHeapProfileEvent" }
+func (afterTrack) Execute(ctx dex.Context, _ heap.TrackEventResult) (*dex.StepDecision, error) {
+	input, err := inputAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return dex.GoTo(sdkgo.StepRef[heap.SetUserPropertiesInput](propertyStepType), input), nil
 }
 
