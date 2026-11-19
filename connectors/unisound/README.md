@@ -9,3 +9,7 @@ Sign in at [Unisound MaaS](https://maas.unisound.com/docs/guide/quickstart), com
 Run the [example Flow](go/examples/list-system-voices/) with `{}` input. The checked-in mock returns one system voice. Live Unisound authorization and catalog behavior require a user-provided Key and have not been verified here.
 
 Python v0.1.0: [package and runnable example](python/README.md).
+
+## TypeScript
+
+`@superdurable/connector-unisound` provides `listSystemVoices` and a runnable Dex Flow in `typescript/examples/basic/`. Its conformance suite replays the Go-recorded provider scenarios.
