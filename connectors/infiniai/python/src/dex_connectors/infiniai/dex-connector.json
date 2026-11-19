@@ -1,0 +1,52 @@
+{
+  "connectorId": "infiniai",
+  "releaseTag": "connectors/infiniai/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-infiniai",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_models_step",
+      "kind": "query",
+      "operationId": "listModels",
+      "inputType": "ListModelsInput",
+      "description": "List models currently available to the tenant.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListModelsInput has no caller-supplied filters.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

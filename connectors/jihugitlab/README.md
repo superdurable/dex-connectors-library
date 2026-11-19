@@ -11,3 +11,7 @@ On [JihuLab.com](https://jihulab.com/) or your organization's HTTPS JiHu GitLab 
 ## Example
 
 The [project catalog Flow](go/examples/project-catalog/) is a runnable Worker with static Dex connection name `jihugitlab`. Its local mock uses synthetic project metadata and is verified with a real Dex Worker and Client. Live JihuLab authorization, private deployment compatibility, and provider pagination remain unverified until connected to an approved account.
+
+## Python
+
+The first Python package lives in [`python/`](python/). It implements `listMemberProjects` with Go-equivalent branches and retries. Its runnable [member-project Flow](python/examples/member_projects/) uses a static `jihugitlab` connection and a real Dex Worker/Client test with a mock provider. Live authorization has not been verified.

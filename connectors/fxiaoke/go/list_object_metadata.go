@@ -5,10 +5,10 @@ package fxiaoke
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -54,7 +54,7 @@ func (operation ListObjectMetadataOperation) Invoke(call sdkgo.Call, _ ListObjec
 	if failure != nil {
 		return *failure
 	}
-	traceID, err := newTraceID()
+	traceID, err := newTraceID(operation.client.nonceReader)
 	if err != nil {
 		return objectRetry(sdkgo.FailureAvailability, "FXiaoke request ID could not be generated", 0)
 	}
@@ -117,7 +117,7 @@ func (client *Client) getAccessToken(call sdkgo.Call, credentials Credentials) (
 	if client.tokenKey == key && client.token != "" && time.Now().Before(client.tokenValidUntil) {
 		return client.token, client.enterpriseAccount, nil
 	}
-	traceID, err := newTraceID()
+	traceID, err := newTraceID(client.nonceReader)
 	if err != nil {
 		attempt := objectRetry(sdkgo.FailureAvailability, "FXiaoke request ID could not be generated", 0)
 		return "", "", &attempt
@@ -205,9 +205,9 @@ func (client *Client) doBoundedRequest(request *http.Request) ([]byte, int, time
 	}
 	return body, response.StatusCode, retryAfter, nil
 }
-func newTraceID() (string, error) {
+func newTraceID(reader io.Reader) (string, error) {
 	var value [16]byte
-	if _, err := rand.Read(value[:]); err != nil {
+	if _, err := io.ReadFull(reader, value[:]); err != nil {
 		return "", err
 	}
 	value[6] = value[6]&0x0f | 0x40

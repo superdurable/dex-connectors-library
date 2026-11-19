@@ -8,6 +8,9 @@ metadata:
   categories: [data-search]
   version: v0.1.0
 spec:
+  languages:
+    python: {version: v0.1.0, operations: [getAccountStatus], triggers: []}
+    typescript: {version: v0.1.0, operations: [getAccountStatus], triggers: []}
   provider: istero
   codegen:
     go:

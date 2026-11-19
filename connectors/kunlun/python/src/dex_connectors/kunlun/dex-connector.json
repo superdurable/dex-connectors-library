@@ -1,0 +1,65 @@
+{
+  "connectorId": "kunlun",
+  "releaseTag": "connectors/kunlun/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-kunlun",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_task_status_step",
+      "kind": "query",
+      "operationId": "getTaskStatus",
+      "inputType": "GetTaskStatusInput",
+      "description": "Read the state and model of one existing Mureka song task.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTaskStatusInput identifies an existing Mureka song-generation task.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is the id returned by a song-generation request.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

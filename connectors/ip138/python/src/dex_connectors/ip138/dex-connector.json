@@ -1,0 +1,52 @@
+{
+  "connectorId": "ip138",
+  "releaseTag": "connectors/ip138/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-ip138",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_token_usage_step",
+      "kind": "query",
+      "operationId": "getTokenUsage",
+      "inputType": "GetTokenUsageInput",
+      "description": "Read the current-hour request count and purchased token quota.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTokenUsageInput has no input because the token identifies its own quota.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

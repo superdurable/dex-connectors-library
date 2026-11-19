@@ -5,3 +5,5 @@ This connector lists models available to the authenticated tenant through GenStu
 In the [Infini AI console](https://cloud.infini-ai.com/), click your avatar, then **Access Control → API Key Management**. Create or select a GenStudio API key, copy its complete `sk-` prefixed value, and enter it in the Dex Web connection. The key remains a Dex credential and is never included in Flow results, receipts, Attributes, or failures. Redirects are disabled.
 
 The runnable [list-models Flow](go/examples/list-models/README.md) uses the generated operation-specific Step and static `infiniai` connection. Transient HTTP and transport failures retry under Dex's default one-hour retry budget; definite authentication and request rejections select the optional `providerRejected` branch. Real GenStudio authorization and model catalog contents remain to be tested with a user-controlled connection.
+
+The [Python package](python/) implements `listModels` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.

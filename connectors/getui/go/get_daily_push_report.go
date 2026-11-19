@@ -52,7 +52,7 @@ func (GetDailyPushReportOperation) Definition() sdkgo.QueryDefinition {
 // Invoke exchanges app credentials for a token, then reads one daily report.
 func (operation GetDailyPushReportOperation) Invoke(call sdkgo.Call, input GetDailyPushReportInput) sdkgo.QueryAttempt[GetDailyPushReportOutput] {
 	date, err := time.Parse("2006-01-02", input.Date)
-	today := time.Now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
+	today := operation.client.now().In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
 	if err != nil || date.Format("2006-01-02") != input.Date || input.Date >= today {
 		return reportBranch(GetDailyPushReportBranchDefect, sdkgo.FailureValidation, "Getui report date must be a prior YYYY-MM-DD date")
 	}
@@ -129,10 +129,10 @@ func (client *Client) tokenFor(call sdkgo.Call, credentials Credentials) (string
 	client.tokenMu.Lock()
 	defer client.tokenMu.Unlock()
 	cached, exists := client.tokens[cacheKey]
-	if exists && time.Now().Add(time.Minute).Before(cached.expiresAt) {
+	if exists && client.now().Add(time.Minute).Before(cached.expiresAt) {
 		return cached.value, nil
 	}
-	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	timestamp := strconv.FormatInt(client.now().UnixMilli(), 10)
 	payload, err := json.Marshal(map[string]string{"sign": authSign(credentials.AppKey.Reveal(), timestamp, credentials.MasterSecret.Reveal()), "timestamp": timestamp, "appkey": credentials.AppKey.Reveal()})
 	if err != nil {
 		result := reportBranch(GetDailyPushReportBranchDefect, sdkgo.FailureValidation, "Getui auth request is invalid")
@@ -180,7 +180,7 @@ func (client *Client) tokenFor(call sdkgo.Call, credentials Credentials) (string
 	}
 	expireMilliseconds, err := strconv.ParseInt(wire.Data.ExpireTime, 10, 64)
 	expiry := time.UnixMilli(expireMilliseconds)
-	if err != nil || !isValidOpaqueValue(wire.Data.Token) || !time.Now().Add(time.Minute).Before(expiry) {
+	if err != nil || !isValidOpaqueValue(wire.Data.Token) || !client.now().Add(time.Minute).Before(expiry) {
 		result := reportBranch(GetDailyPushReportBranchInvalidResponse, sdkgo.FailureProtocol, "Getui returned incomplete auth token")
 		return "", &result
 	}

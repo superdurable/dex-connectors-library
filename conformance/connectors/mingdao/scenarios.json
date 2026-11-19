@@ -1,0 +1,326 @@
+{
+  "connector": "mingdao",
+  "scenarios": [
+    {
+      "callId": "e6382b98-3e6f-5390-9f6a-c1f7a9072e25",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"error_code\":1,\"data\":[{\"id\":\"sheet-123\",\"name\":\"客户表\",\"remark\":\"private remark\",\"privateRow\":\"private customer\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/app/worksheets/list",
+          "requestBody": {
+            "responseFormat": "json"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Hap-Appkey": [
+              "app-secret"
+            ],
+            "Hap-Sign": [
+              "sign-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "worksheets": [
+            {
+              "id": "sheet-123",
+              "name": "客户表"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWorksheets-listed",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "178e24ba-1e7a-5cef-851b-6fbb4ec65df1",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/app/worksheets/list",
+          "requestBody": {
+            "responseFormat": "json"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Hap-Appkey": [
+              "app-secret"
+            ],
+            "Hap-Sign": [
+              "sign-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "worksheets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWorksheets-empty",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "02856008-250e-597d-95b1-edfc8565d7d0",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"error_code\":10005,\"error_msg\":\"app-secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/app/worksheets/list",
+          "requestBody": {
+            "responseFormat": "json"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Hap-Appkey": [
+              "app-secret"
+            ],
+            "Hap-Sign": [
+              "sign-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "worksheets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWorksheets-providerRejected",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "90695d85-fdb8-519a-8870-9442cad00f51",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/app/worksheets/list",
+          "requestBody": {
+            "responseFormat": "json"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Hap-Appkey": [
+              "app-secret"
+            ],
+            "Hap-Sign": [
+              "sign-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "worksheets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWorksheets-invalidResponse",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "6a55dbed-74a3-5c41-a9e7-d6b74b064f15",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/app/worksheets/list",
+          "requestBody": {
+            "responseFormat": "json"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Hap-Appkey": [
+              "app-secret"
+            ],
+            "Hap-Sign": [
+              "sign-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWorksheets-rateLimit",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "b0014f44-4004-5621-a28b-573a3d615bfe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/app/worksheets/list",
+          "requestBody": {
+            "responseFormat": "json"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Hap-Appkey": [
+              "app-secret"
+            ],
+            "Hap-Sign": [
+              "sign-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWorksheets-serverError",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "d64f0d0c-5a36-566a-953d-3e7bd41fea7c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "worksheets": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWorksheets-defect",
+      "operation": "listWorksheets"
+    },
+    {
+      "callId": "56c05fc3-0d4f-5e52-98c5-00651c8407e8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/app/worksheets/list",
+          "requestBody": {
+            "responseFormat": "json"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Hap-Appkey": [
+              "app-secret"
+            ],
+            "Hap-Sign": [
+              "sign-secret"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listWorksheets-transport",
+      "operation": "listWorksheets"
+    }
+  ],
+  "schemaVersion": 1
+}

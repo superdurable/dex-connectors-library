@@ -7,3 +7,5 @@ Jinshuju API v1 uses an Access Token in `Authorization: Bearer <token>`. Create 
 Real Access Token authorization and Dex Web form interaction remain unverified.
 
 The [TypeScript runnable Flow](typescript/examples/basic/README.md) uses the same provider contract and Go-recorded conformance scenarios.
+
+The [Python package](python/) mirrors the Go Query and includes a [runnable Dex Worker/Client Flow](python/examples/forms_page/) and Go scenario replay. Real provider credentials and live API behavior remain unverified.

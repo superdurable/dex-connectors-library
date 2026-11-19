@@ -1,0 +1,65 @@
+{
+  "connectorId": "kf5",
+  "releaseTag": "connectors/kf5/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-kf5",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_ticket_step",
+      "kind": "query",
+      "operationId": "getTicket",
+      "inputType": "GetTicketInput",
+      "description": "Read limited status metadata for one KF5 ticket ID.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "no_data",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTicketInput identifies one ticket in the configured KF5 tenant.",
+        "properties": {
+          "ticketID": {
+            "description": "TicketID is a positive KF5 ticket identifier.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ticketID"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

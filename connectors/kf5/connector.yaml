@@ -51,6 +51,7 @@ spec:
         - Pass one positive numeric ticket ID in ticketID. Agent permission is required for GET /apiv2/tickets/{id}.json. The result omits title, description, requester, comments, and raw provider data.
         - Leave timeout and maxResponseBytes blank for their displayed defaults. Only use a tenant you administer and ticket IDs you are authorized to read.
   languages:
+    python: {version: v0.1.0, operations: [getTicket], triggers: []}
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-kf5"

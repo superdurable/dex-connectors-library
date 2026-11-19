@@ -8,4 +8,4 @@ The [official access guide](https://s.apifox.cn/739a1394-cf66-49a7-ba16-c06ffa7a
 
 In the JINGdigital management backend, open **开发平台 > 开发与集成**, create or select a development application, enable ordinary tag list access, and copy its Appid and AppSecret into the secret connection fields. Leave endpoint and limits blank for defaults. The connector requests a temporary token on each Query; neither token nor secret enters Flow state. Provider 429, 408, 5xx, transport failures, and documented service/rate codes retry. Other rejections take an optional branch.
 
-Run the [tag directory example](go/examples/tag-directory/README.md). Its synthetic mock is not live JINGdigital data. Live credentials, permissions, and response compatibility remain unverified.
+Run the [Go tag directory example](go/examples/tag-directory/README.md) or the [Python tag directory example](python/examples/tag_directory/README.md). Its synthetic mock is not live JINGdigital data. Live credentials, permissions, and response compatibility remain unverified.

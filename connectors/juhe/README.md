@@ -7,3 +7,5 @@ The API PDF documents GET and form POST, so the API key is sent in an HTTPS form
 See the [runnable Dex Flow](go/examples/current-weather/README.md). Mock tests do not verify live authorization, quota behavior, or provider responses.
 
 The [TypeScript runnable Flow](typescript/examples/basic/README.md) uses the same provider contract and Go-recorded conformance scenarios.
+
+The [Python package](python/) mirrors the Go Query and includes a [runnable Dex Worker/Client Flow](python/examples/current_weather/) and Go scenario replay. Real provider credentials and live API behavior remain unverified.

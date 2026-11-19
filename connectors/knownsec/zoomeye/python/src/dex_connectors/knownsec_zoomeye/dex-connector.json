@@ -1,0 +1,52 @@
+{
+  "connectorId": "zoomeye",
+  "releaseTag": "connectors/knownsec/zoomeye/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-knownsec-zoomeye",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_account_quota_step",
+      "kind": "query",
+      "operationId": "getAccountQuota",
+      "inputType": "GetAccountQuotaInput",
+      "description": "Read subscription plan and remaining general and ZoomEye points.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAccountQuotaInput has no arguments; the connection identifies the account.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

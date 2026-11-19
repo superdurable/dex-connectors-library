@@ -10,6 +10,7 @@ metadata:
 spec:
   provider: jisuapi
   languages:
+    python: {version: v0.1.0, operations: [listProvinces], triggers: []}
     typescript: {version: v0.1.0, package: "@superdurable/connector-jisuapi", operations: [listProvinces], triggers: []}
   codegen:
     go:

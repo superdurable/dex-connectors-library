@@ -9,3 +9,5 @@ The official product page lists 100 free calls per day for free members, with hi
 # TypeScript
 
 The TypeScript package `@superdurable/connector-jisuapi` implements `listProvinces`. Its runnable Flow is in [`typescript/examples/basic`](typescript/examples/basic); the conformance test replays Go-recorded provider responses. Live JisuAPI authorization remains unverified.
+
+The [Python package](python/) mirrors the Go Query and includes a [runnable Dex Worker/Client Flow](python/examples/provinces/) and Go scenario replay. Real provider credentials and live API behavior remain unverified.

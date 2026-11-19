@@ -10,3 +10,5 @@ Provider contract: [official developer documentation](https://api.kokoniworld.co
 # TypeScript
 
 The TypeScript package `@superdurable/connector-kokoniworld` implements `listModels`. Its runnable Flow is in [`typescript/examples/basic`](typescript/examples/basic); conformance tests replay Go-recorded provider responses. Live Kokoni World authorization remains unverified.
+
+The [Python package](python/) mirrors the Go Query and includes a [runnable Dex Worker/Client Flow](python/examples/list_models/) and Go scenario replay. Real provider credentials and live API behavior remain unverified.

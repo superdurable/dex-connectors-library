@@ -8,6 +8,8 @@ metadata:
   categories: [ai]
   version: v0.1.0
 spec:
+  languages:
+    python: {version: v0.1.0, operations: [createChatCompletion], triggers: []}
   provider: iflytek
   codegen:
     go:
