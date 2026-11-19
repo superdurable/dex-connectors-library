@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newGetRoomUserCountStep, type Connection, type GetRoomUserCountInput, type GetRoomUserCountOutput } from '@superdurable/connector-zego';
+import { newGetRoomUserCountStep, type Connection, type GetRoomUserCountInput, type GetRoomUserCountOutput } from '../../src/index.js';
 
 /** Static Dex Web connection for this example. */
 export const ConnectionName = 'zego';
