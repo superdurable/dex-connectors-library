@@ -1,0 +1,65 @@
+{
+  "connectorId": "useasy",
+  "releaseTag": "connectors/useasy/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-useasy",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListAgentsStep",
+      "kind": "query",
+      "operationId": "listAgents",
+      "inputType": "ListAgentsInput",
+      "description": "List one bounded page of agent IDs, numbers, and enabled states.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAgentsInput selects a one-based agent page; zero values use page 1 and size 20.",
+        "properties": {
+          "page": {
+            "description": "Page is the one-based page number.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of agents requested, from 1 to 100.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
