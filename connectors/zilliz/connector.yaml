@@ -8,6 +8,8 @@ metadata:
   categories: [databases-storage, ai]
   version: v0.1.0
 spec:
+  languages:
+    python: {version: v0.1.0, operations: [listClusters], triggers: []}
   provider: zilliz
   codegen:
     go:

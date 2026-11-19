@@ -7,3 +7,7 @@ This connector lists clusters accessible to a Zilliz Cloud API Key using the off
 Sign in at [Zilliz Cloud](https://cloud.zilliz.com), open organization > API Keys > + API Key, and create a customized Key with project Read-Only permission for the intended clusters. [API Key guidance](https://docs.zilliz.com/docs/manage-api-keys) explains role restrictions. Copy the Key into Dex Web Connections. Leave timeout and maximum response size blank for the displayed defaults.
 
 Run the [example Flow](go/examples/list-clusters/) with `{}` input. The checked-in mock returns one cluster. Live Zilliz authorization and cluster behavior require a user-provided Key and have not been verified here.
+
+## Python
+
+The `python/` package provides the `listClusters` Query. Run its checked-in example from `python/examples/`.
