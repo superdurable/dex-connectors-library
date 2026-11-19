@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{contactlookup.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{contactlookup.NewFlow(connection), contactlookup.NewAccountCreationFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Dynamics 365 Sales contact lookup Flow: %w", err)
 	}

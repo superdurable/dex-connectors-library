@@ -30,10 +30,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) { dexContext.heartbeat = raw })
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { dexContext.attempt = prior + int32(attempt) },
 		actions: map[string]conformanceOperationInvocation{
-			"listThreadReplies":  newConformanceQueryInvocation(t, scenario.Input, dexContext, client.ListThreadReplies(), teamsConnection),
-			"postChannelMessage": newConformanceMutationInvocation(t, scenario.Input, dexContext, client.PostChannelMessage(), teamsConnection, scenario.CallID),
-			"postThreadReply":    newConformanceMutationInvocation(t, scenario.Input, dexContext, client.PostThreadReply(), teamsConnection, scenario.CallID),
-			"postChatMessage":    newConformanceMutationInvocation(t, scenario.Input, dexContext, client.PostChatMessage(), teamsConnection, scenario.CallID),
+			"listChannels":        newConformanceQueryInvocation(t, scenario.Input, dexContext, client.ListChannels(), teamsConnection),
+			"getChannel":          newConformanceQueryInvocation(t, scenario.Input, dexContext, client.GetChannel(), teamsConnection),
+			"listChannelMessages": newConformanceQueryInvocation(t, scenario.Input, dexContext, client.ListChannelMessages(), teamsConnection),
+			"getChannelMessage":   newConformanceQueryInvocation(t, scenario.Input, dexContext, client.GetChannelMessage(), teamsConnection),
+			"listChats":           newConformanceQueryInvocation(t, scenario.Input, dexContext, client.ListChats(), teamsConnection),
+			"getChat":             newConformanceQueryInvocation(t, scenario.Input, dexContext, client.GetChat(), teamsConnection),
+			"listThreadReplies":   newConformanceQueryInvocation(t, scenario.Input, dexContext, client.ListThreadReplies(), teamsConnection),
+			"postChannelMessage":  newConformanceMutationInvocation(t, scenario.Input, dexContext, client.PostChannelMessage(), teamsConnection, scenario.CallID),
+			"postThreadReply":     newConformanceMutationInvocation(t, scenario.Input, dexContext, client.PostThreadReply(), teamsConnection, scenario.CallID),
+			"postChatMessage":     newConformanceMutationInvocation(t, scenario.Input, dexContext, client.PostChatMessage(), teamsConnection, scenario.CallID),
 		},
 	}
 }

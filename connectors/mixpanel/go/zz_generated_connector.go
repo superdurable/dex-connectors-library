@@ -21,6 +21,7 @@ const ConnectorID = "mixpanel"
 type Config struct {
 	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
 	ExportBaseURL    string        `json:"exportBaseUrl,omitempty" yaml:"exportBaseUrl,omitempty"`
+	QueryBaseURL     string        `json:"queryBaseUrl,omitempty" yaml:"queryBaseUrl,omitempty"`
 	ProjectID        int64         `json:"projectId,omitempty" yaml:"projectId,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
@@ -45,6 +46,8 @@ type Connection struct {
 type Operations interface {
 	TrackEvent() sdkgo.Mutation[TrackEventInput, EventImportResult]
 	ExportEvents() sdkgo.Query[ExportEventsInput, ExportedEvents]
+	QueryProfiles() sdkgo.Query[QueryProfilesInput, QueriedProfiles]
+	ListSavedCohorts() sdkgo.Query[ListSavedCohortsInput, SavedCohorts]
 }
 
 type clientOperations struct{ client *Client }
@@ -54,6 +57,12 @@ func (operations clientOperations) TrackEvent() sdkgo.Mutation[TrackEventInput, 
 }
 func (operations clientOperations) ExportEvents() sdkgo.Query[ExportEventsInput, ExportedEvents] {
 	return operations.client.ExportEvents()
+}
+func (operations clientOperations) QueryProfiles() sdkgo.Query[QueryProfilesInput, QueriedProfiles] {
+	return operations.client.QueryProfiles()
+}
+func (operations clientOperations) ListSavedCohorts() sdkgo.Query[ListSavedCohortsInput, SavedCohorts] {
+	return operations.client.ListSavedCohorts()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -154,6 +163,7 @@ func DefaultConfig() Config {
 	return Config{
 		BaseURL:          "https://api.mixpanel.com",
 		ExportBaseURL:    "https://data.mixpanel.com/api/2.0",
+		QueryBaseURL:     "https://mixpanel.com/api/query",
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 2097152,
 	}
@@ -166,6 +176,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.ExportBaseURL == "" {
 		config.ExportBaseURL = defaults.ExportBaseURL
+	}
+	if config.QueryBaseURL == "" {
+		config.QueryBaseURL = defaults.QueryBaseURL
 	}
 	if config.Timeout == 0 {
 		config.Timeout = defaults.Timeout
@@ -187,6 +200,12 @@ func (config Config) Validate() error {
 		parsed, err := url.Parse(config.ExportBaseURL)
 		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
 			return fmt.Errorf("configuration exportBaseUrl must be an absolute URL")
+		}
+	}
+	if config.QueryBaseURL != "" {
+		parsed, err := url.Parse(config.QueryBaseURL)
+		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
+			return fmt.Errorf("configuration queryBaseUrl must be an absolute URL")
 		}
 	}
 	if config.ProjectID < 0 {
@@ -345,6 +364,148 @@ func NewExportEventsStep[IN any](config ExportEventsStepConfig[IN]) sdkgo.QueryS
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ExportEventsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const QueryProfilesBranchQueried sdkgo.BranchID = "queried"
+const QueryProfilesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const QueryProfilesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const QueryProfilesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var QueryProfilesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "queryProfiles"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: QueryProfilesBranchQueried, Description: "Mixpanel returned matching profile identities."},
+		{ID: QueryProfilesBranchProviderRejected, Description: "Mixpanel rejected the profile query.", Optional: true},
+		{ID: QueryProfilesBranchInvalidResponse, Description: "Mixpanel returned malformed or oversized data.", Optional: true},
+		{ID: QueryProfilesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type QueryProfilesResult = sdkgo.QueryResult[QueriedProfiles]
+
+type QueryProfilesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=mixpanel"`
+	operationID                    struct{}                                           `connector:"operationId=queryProfiles"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) QueryProfilesInput                        `connector:"mapToOperationInput"`
+	Queried                        sdkgo.Target[QueryProfilesResult]                  `connector:"branch=queried"`
+	ProviderRejected               sdkgo.Target[QueryProfilesResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[QueryProfilesResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[QueryProfilesResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[QueriedProfiles]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewQueryProfilesStep[IN any](config QueryProfilesStepConfig[IN]) sdkgo.QueryStep[IN, QueryProfilesInput, QueriedProfiles] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("mixpanel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, QueryProfilesInput, QueriedProfiles]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.QueryProfiles(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[QueryProfilesResult] {
+			branches := make([]sdkgo.BranchTarget[QueryProfilesResult], 0, 4)
+			if config.Queried.HasStep() {
+				branches = append(branches, config.Queried.BranchTarget(QueryProfilesBranchQueried))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(QueryProfilesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(QueryProfilesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(QueryProfilesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSavedCohortsBranchListed sdkgo.BranchID = "listed"
+const ListSavedCohortsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSavedCohortsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSavedCohortsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSavedCohortsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSavedCohorts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSavedCohortsBranchListed, Description: "Mixpanel returned saved cohorts."},
+		{ID: ListSavedCohortsBranchProviderRejected, Description: "Mixpanel rejected the cohort query.", Optional: true},
+		{ID: ListSavedCohortsBranchInvalidResponse, Description: "Mixpanel returned malformed or oversized data.", Optional: true},
+		{ID: ListSavedCohortsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSavedCohortsResult = sdkgo.QueryResult[SavedCohorts]
+
+type ListSavedCohortsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=mixpanel"`
+	operationID                    struct{}                                        `connector:"operationId=listSavedCohorts"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSavedCohortsInput                  `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSavedCohortsResult]            `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSavedCohortsResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSavedCohortsResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSavedCohortsResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SavedCohorts]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListSavedCohortsStep[IN any](config ListSavedCohortsStepConfig[IN]) sdkgo.QueryStep[IN, ListSavedCohortsInput, SavedCohorts] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("mixpanel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSavedCohortsInput, SavedCohorts]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSavedCohorts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSavedCohortsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSavedCohortsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSavedCohortsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSavedCohortsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSavedCohortsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSavedCohortsBranchDefect))
 			}
 			return branches
 		}(),

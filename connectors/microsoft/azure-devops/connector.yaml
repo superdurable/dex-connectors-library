@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: azure-devops
   displayName: Azure DevOps
-  description: Read Azure DevOps projects and work item identity.
+  description: Read Azure DevOps projects and work items, including bounded WIQL search results.
   company: Microsoft
   categories: [developer-tools, project-management]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   languages:
     python:
@@ -54,6 +54,26 @@ spec:
         - Open user settings > Personal access tokens > New Token. Name the token, choose this organization, set an expiration, and select Project and Team (Read) and Work Items (Read) scopes for these two Queries.
         - Select Create and copy the secret PAT from the one-time display into personal_access_token. Revoke or rotate it under Personal access tokens. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: queryWorkItems
+      goName: QueryWorkItems
+      inputType: QueryWorkItemsInput
+      outputType: WorkItemIDs
+      kind: query
+      description: Query a bounded set of work item IDs in one project.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Azure DevOps returned matching work item IDs.}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure DevOps rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Azure DevOps returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The project, WIQL, page size, or credentials are invalid.", optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One matching work item ID is returned.
+          output: {ids: [144]}
     - name: listProjects
       goName: ListProjects
       inputType: ListProjectsInput

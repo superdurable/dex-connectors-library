@@ -24,6 +24,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[mixpanel.ExportedEvents](`{"events":[{"event":"Signed Up","distinctID":"member-1","time":1793232000,"insertID":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed"}]}`)
 			return err
 		}},
+		{name: "queryProfiles/queriedDefaultProfile/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[mixpanel.QueriedProfiles](`{"distinctIDs":["member-1"]}`)
+			return err
+		}},
+		{name: "listSavedCohorts/listedDefaultCohorts/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[mixpanel.SavedCohorts](`{"cohorts":[{"id":1000,"name":"Signup","count":150}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +47,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ExportEvents().Definition().Operation.OperationID != "exportEvents" {
 		t.Errorf("exportEvents mock has another definition")
+	}
+	if mock.QueryProfiles().Definition().Operation.OperationID != "queryProfiles" {
+		t.Errorf("queryProfiles mock has another definition")
+	}
+	if mock.ListSavedCohorts().Definition().Operation.OperationID != "listSavedCohorts" {
+		t.Errorf("listSavedCohorts mock has another definition")
 	}
 }

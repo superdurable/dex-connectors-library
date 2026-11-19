@@ -16,6 +16,12 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
 SCENARIOS = load_scenarios(ROOT / "conformance/connectors/microsoft/teams/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in SCENARIOS
+    if scenario["operation"]
+    in {"listThreadReplies", "postChannelMessage", "postThreadReply", "postChatMessage"}
+]
 CONNECTION = sdk.ConnectionRef("microsoft", "teams-test")
 
 

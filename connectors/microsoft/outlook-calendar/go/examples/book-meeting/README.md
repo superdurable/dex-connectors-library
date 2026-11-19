@@ -1,11 +1,13 @@
 # Outlook Calendar book-meeting example
 
 This example runs one operation-only Flow from Dex Web **Start Flow**, books a
-meeting only after checking free/busy, and uses every Outlook Calendar
-operation:
+meeting only after checking free/busy, and uses the event and availability
+operations needed for that booking:
 
 1. `RecordMeetingRequest` validates the timed meeting and records it with the
    picked calendar;
+   `CheckSelectedCalendar` calls `outlookcalendar.NewGetCalendarStep` for a
+   picked calendar, and `VerifySelectedCalendar` requires it to be editable;
 2. `CheckAttendeeAvailability` calls `outlookcalendar.NewQueryFreeBusyStep`
    for the attendees over exactly the meeting window, and
    `EvaluateAttendeeAvailability` completes as `busy` when any attendee has

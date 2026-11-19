@@ -17,9 +17,11 @@ import (
 
 // Mock is a scripted mixpanel connection. Script each operation through its accessor.
 type Mock struct {
-	connection   mixpanel.Connection
-	trackEvent   *connectormock.Mutation[mixpanel.TrackEventInput, mixpanel.EventImportResult]
-	exportEvents *connectormock.Query[mixpanel.ExportEventsInput, mixpanel.ExportedEvents]
+	connection       mixpanel.Connection
+	trackEvent       *connectormock.Mutation[mixpanel.TrackEventInput, mixpanel.EventImportResult]
+	exportEvents     *connectormock.Query[mixpanel.ExportEventsInput, mixpanel.ExportedEvents]
+	queryProfiles    *connectormock.Query[mixpanel.QueryProfilesInput, mixpanel.QueriedProfiles]
+	listSavedCohorts *connectormock.Query[mixpanel.ListSavedCohortsInput, mixpanel.SavedCohorts]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +29,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		trackEvent:   connectormock.NewMutation[mixpanel.TrackEventInput, mixpanel.EventImportResult](t, mixpanel.TrackEventDefinition),
-		exportEvents: connectormock.NewQuery[mixpanel.ExportEventsInput, mixpanel.ExportedEvents](t, mixpanel.ExportEventsDefinition),
+		trackEvent:       connectormock.NewMutation[mixpanel.TrackEventInput, mixpanel.EventImportResult](t, mixpanel.TrackEventDefinition),
+		exportEvents:     connectormock.NewQuery[mixpanel.ExportEventsInput, mixpanel.ExportedEvents](t, mixpanel.ExportEventsDefinition),
+		queryProfiles:    connectormock.NewQuery[mixpanel.QueryProfilesInput, mixpanel.QueriedProfiles](t, mixpanel.QueryProfilesDefinition),
+		listSavedCohorts: connectormock.NewQuery[mixpanel.ListSavedCohortsInput, mixpanel.SavedCohorts](t, mixpanel.ListSavedCohortsDefinition),
 	}
 	mock.trackEvent.Default(TrackEventDefault())
 	mock.exportEvents.Default(ExportEventsDefault())
+	mock.queryProfiles.Default(QueryProfilesDefault())
+	mock.listSavedCohorts.Default(ListSavedCohortsDefault())
 	connection, err := mixpanel.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "mixpanel", Name: connectionName})
 	if err != nil {
 		t.Fatalf("mixpanel mock connection: %v", err)
@@ -53,6 +59,16 @@ func (mock *Mock) ExportEvents() *connectormock.Query[mixpanel.ExportEventsInput
 	return mock.exportEvents
 }
 
+// QueryProfiles returns the queryProfiles script.
+func (mock *Mock) QueryProfiles() *connectormock.Query[mixpanel.QueryProfilesInput, mixpanel.QueriedProfiles] {
+	return mock.queryProfiles
+}
+
+// ListSavedCohorts returns the listSavedCohorts script.
+func (mock *Mock) ListSavedCohorts() *connectormock.Query[mixpanel.ListSavedCohortsInput, mixpanel.SavedCohorts] {
+	return mock.listSavedCohorts
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) TrackEvent() sdkgo.Mutation[mixpanel.TrackEventInput, mixpanel.EventImportResult] {
@@ -60,6 +76,12 @@ func (operations mockOperations) TrackEvent() sdkgo.Mutation[mixpanel.TrackEvent
 }
 func (operations mockOperations) ExportEvents() sdkgo.Query[mixpanel.ExportEventsInput, mixpanel.ExportedEvents] {
 	return operations.mock.exportEvents
+}
+func (operations mockOperations) QueryProfiles() sdkgo.Query[mixpanel.QueryProfilesInput, mixpanel.QueriedProfiles] {
+	return operations.mock.queryProfiles
+}
+func (operations mockOperations) ListSavedCohorts() sdkgo.Query[mixpanel.ListSavedCohortsInput, mixpanel.SavedCohorts] {
+	return operations.mock.listSavedCohorts
 }
 
 // TrackEventImported selects the imported branch: Mixpanel accepted the event for ingestion.
@@ -132,4 +154,76 @@ func ExportEventsExportedDefaultEvents() connectormock.Case[mixpanel.ExportedEve
 // ExportEventsDefault is the manifest default, exportedDefaultEvents, which New installs.
 func ExportEventsDefault() connectormock.Case[mixpanel.ExportedEvents] {
 	return ExportEventsExportedDefaultEvents()
+}
+
+// QueryProfilesQueried selects the queried branch: Mixpanel returned matching profile identities.
+func QueryProfilesQueried(value mixpanel.QueriedProfiles, failure *sdkgo.Failure) connectormock.Case[mixpanel.QueriedProfiles] {
+	return connectormock.Branch(mixpanel.QueryProfilesBranchQueried, value, failure)
+}
+
+// QueryProfilesProviderRejected selects the providerRejected branch: Mixpanel rejected the profile query.
+func QueryProfilesProviderRejected(value mixpanel.QueriedProfiles, failure *sdkgo.Failure) connectormock.Case[mixpanel.QueriedProfiles] {
+	return connectormock.Branch(mixpanel.QueryProfilesBranchProviderRejected, value, failure)
+}
+
+// QueryProfilesInvalidResponse selects the invalidResponse branch: Mixpanel returned malformed or oversized data.
+func QueryProfilesInvalidResponse(value mixpanel.QueriedProfiles, failure *sdkgo.Failure) connectormock.Case[mixpanel.QueriedProfiles] {
+	return connectormock.Branch(mixpanel.QueryProfilesBranchInvalidResponse, value, failure)
+}
+
+// QueryProfilesDefect selects the defect branch: Local input or credentials are invalid.
+func QueryProfilesDefect(value mixpanel.QueriedProfiles, failure *sdkgo.Failure) connectormock.Case[mixpanel.QueriedProfiles] {
+	return connectormock.Branch(mixpanel.QueryProfilesBranchDefect, value, failure)
+}
+
+// QueryProfilesRetry asks Dex to retry the queryProfiles Step, after the delay when it is positive.
+func QueryProfilesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[mixpanel.QueriedProfiles] {
+	return connectormock.Retry[mixpanel.QueriedProfiles](failure, after)
+}
+
+// QueryProfilesQueriedDefaultProfile is the manifest mock queriedDefaultProfile: Meridian member profile was found.
+func QueryProfilesQueriedDefaultProfile() connectormock.Case[mixpanel.QueriedProfiles] {
+	value := connectormock.MustDecodeOutput[mixpanel.QueriedProfiles](`{"distinctIDs":["member-1"]}`)
+	return connectormock.Branch(mixpanel.QueryProfilesBranchQueried, value, nil)
+}
+
+// QueryProfilesDefault is the manifest default, queriedDefaultProfile, which New installs.
+func QueryProfilesDefault() connectormock.Case[mixpanel.QueriedProfiles] {
+	return QueryProfilesQueriedDefaultProfile()
+}
+
+// ListSavedCohortsListed selects the listed branch: Mixpanel returned saved cohorts.
+func ListSavedCohortsListed(value mixpanel.SavedCohorts, failure *sdkgo.Failure) connectormock.Case[mixpanel.SavedCohorts] {
+	return connectormock.Branch(mixpanel.ListSavedCohortsBranchListed, value, failure)
+}
+
+// ListSavedCohortsProviderRejected selects the providerRejected branch: Mixpanel rejected the cohort query.
+func ListSavedCohortsProviderRejected(value mixpanel.SavedCohorts, failure *sdkgo.Failure) connectormock.Case[mixpanel.SavedCohorts] {
+	return connectormock.Branch(mixpanel.ListSavedCohortsBranchProviderRejected, value, failure)
+}
+
+// ListSavedCohortsInvalidResponse selects the invalidResponse branch: Mixpanel returned malformed or oversized data.
+func ListSavedCohortsInvalidResponse(value mixpanel.SavedCohorts, failure *sdkgo.Failure) connectormock.Case[mixpanel.SavedCohorts] {
+	return connectormock.Branch(mixpanel.ListSavedCohortsBranchInvalidResponse, value, failure)
+}
+
+// ListSavedCohortsDefect selects the defect branch: Local input or credentials are invalid.
+func ListSavedCohortsDefect(value mixpanel.SavedCohorts, failure *sdkgo.Failure) connectormock.Case[mixpanel.SavedCohorts] {
+	return connectormock.Branch(mixpanel.ListSavedCohortsBranchDefect, value, failure)
+}
+
+// ListSavedCohortsRetry asks Dex to retry the listSavedCohorts Step, after the delay when it is positive.
+func ListSavedCohortsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[mixpanel.SavedCohorts] {
+	return connectormock.Retry[mixpanel.SavedCohorts](failure, after)
+}
+
+// ListSavedCohortsListedDefaultCohorts is the manifest mock listedDefaultCohorts: Meridian signup cohort was listed.
+func ListSavedCohortsListedDefaultCohorts() connectormock.Case[mixpanel.SavedCohorts] {
+	value := connectormock.MustDecodeOutput[mixpanel.SavedCohorts](`{"cohorts":[{"id":1000,"name":"Signup","count":150}]}`)
+	return connectormock.Branch(mixpanel.ListSavedCohortsBranchListed, value, nil)
+}
+
+// ListSavedCohortsDefault is the manifest default, listedDefaultCohorts, which New installs.
+func ListSavedCohortsDefault() connectormock.Case[mixpanel.SavedCohorts] {
+	return ListSavedCohortsListedDefaultCohorts()
 }

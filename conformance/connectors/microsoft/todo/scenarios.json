@@ -562,6 +562,1153 @@
       },
       "name": "listTasks-transportFailure",
       "operation": "listTasks"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"sample-list-1\",\"displayName\":\"Tasks\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "displayName": "Tasks",
+          "id": "sample-list-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1"
+      },
+      "name": "getTaskList-retrieved",
+      "operation": "getTaskList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "displayName": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1"
+      },
+      "name": "getTaskList-notFound",
+      "operation": "getTaskList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "displayName": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1"
+      },
+      "name": "getTaskList-providerRejected",
+      "operation": "getTaskList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "displayName": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1"
+      },
+      "name": "getTaskList-invalidResponse",
+      "operation": "getTaskList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "displayName": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": ""
+      },
+      "name": "getTaskList-defect",
+      "operation": "getTaskList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1"
+      },
+      "name": "getTaskList-rateLimit",
+      "operation": "getTaskList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1"
+      },
+      "name": "getTaskList-serverUnavailable",
+      "operation": "getTaskList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1"
+      },
+      "name": "getTaskList-transportFailure",
+      "operation": "getTaskList"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"sample-task-1\",\"title\":\"Review request\",\"status\":\"notStarted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "id": "sample-task-1",
+          "status": "notStarted",
+          "title": "Review request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getTask-retrieved",
+      "operation": "getTask"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getTask-notFound",
+      "operation": "getTask"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getTask-providerRejected",
+      "operation": "getTask"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getTask-invalidResponse",
+      "operation": "getTask"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "",
+        "taskId": "sample-task-1"
+      },
+      "name": "getTask-defect",
+      "operation": "getTask"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getTask-rateLimit",
+      "operation": "getTask"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getTask-serverUnavailable",
+      "operation": "getTask"
+    },
+    {
+      "callId": "22222222-2222-5222-8222-222222222222",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getTask-transportFailure",
+      "operation": "getTask"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"sample-resource-1\",\"displayName\":\"Source item\",\"applicationName\":\"Example\",\"externalId\":\"item-1\",\"webUrl\":\"https://example.com/item-1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "resources": [
+            {
+              "applicationName": "Example",
+              "displayName": "Source item",
+              "externalId": "item-1",
+              "id": "sample-resource-1",
+              "webUrl": "https://example.com/item-1"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "listLinkedResources-listed",
+      "operation": "listLinkedResources"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "resources": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "listLinkedResources-notFound",
+      "operation": "listLinkedResources"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "resources": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "listLinkedResources-providerRejected",
+      "operation": "listLinkedResources"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "resources": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "listLinkedResources-invalidResponse",
+      "operation": "listLinkedResources"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "resources": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "",
+        "taskId": "sample-task-1"
+      },
+      "name": "listLinkedResources-defect",
+      "operation": "listLinkedResources"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "listLinkedResources-rateLimit",
+      "operation": "listLinkedResources"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "listLinkedResources-serverUnavailable",
+      "operation": "listLinkedResources"
+    },
+    {
+      "callId": "33333333-3333-5333-8333-333333333333",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "listLinkedResources-transportFailure",
+      "operation": "listLinkedResources"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"sample-resource-1\",\"displayName\":\"Source item\",\"applicationName\":\"Example\",\"externalId\":\"item-1\",\"webUrl\":\"https://example.com/item-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources/sample-resource-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "applicationName": "Example",
+          "displayName": "Source item",
+          "externalId": "item-1",
+          "id": "sample-resource-1",
+          "webUrl": "https://example.com/item-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "resourceId": "sample-resource-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getLinkedResource-retrieved",
+      "operation": "getLinkedResource"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources/sample-resource-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "applicationName": "",
+          "displayName": "",
+          "externalId": "",
+          "id": "",
+          "webUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "resourceId": "sample-resource-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getLinkedResource-notFound",
+      "operation": "getLinkedResource"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources/sample-resource-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "applicationName": "",
+          "displayName": "",
+          "externalId": "",
+          "id": "",
+          "webUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "resourceId": "sample-resource-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getLinkedResource-providerRejected",
+      "operation": "getLinkedResource"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources/sample-resource-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applicationName": "",
+          "displayName": "",
+          "externalId": "",
+          "id": "",
+          "webUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "resourceId": "sample-resource-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getLinkedResource-invalidResponse",
+      "operation": "getLinkedResource"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "applicationName": "",
+          "displayName": "",
+          "externalId": "",
+          "id": "",
+          "webUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "resourceId": "",
+        "taskId": "sample-task-1"
+      },
+      "name": "getLinkedResource-defect",
+      "operation": "getLinkedResource"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources/sample-resource-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "resourceId": "sample-resource-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getLinkedResource-rateLimit",
+      "operation": "getLinkedResource"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources/sample-resource-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "resourceId": "sample-resource-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getLinkedResource-serverUnavailable",
+      "operation": "getLinkedResource"
+    },
+    {
+      "callId": "44444444-4444-5444-8444-444444444444",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/todo/lists/sample-list-1/tasks/sample-task-1/linkedResources/sample-resource-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "sample-list-1",
+        "resourceId": "sample-resource-1",
+        "taskId": "sample-task-1"
+      },
+      "name": "getLinkedResource-transportFailure",
+      "operation": "getLinkedResource"
     }
   ],
   "schemaVersion": 1

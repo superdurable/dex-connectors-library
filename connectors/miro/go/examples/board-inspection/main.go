@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{boardinspection.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{boardinspection.NewFlow(connection), boardinspection.NewListBoardsFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Miro board inspection Flow: %w", err)
 	}

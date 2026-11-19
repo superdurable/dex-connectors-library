@@ -69,6 +69,7 @@ const (
 )
 
 var (
+	channelPathPattern         = regexp.MustCompile(`^/v1\.0/teams/([^/]+)/channels/([^/]+)$`)
 	channelMessagesPathPattern = regexp.MustCompile(`^/v1\.0/teams/([^/]+)/channels/([^/]+)/messages$`)
 	threadRepliesPathPattern   = regexp.MustCompile(`^/v1\.0/teams/([^/]+)/channels/([^/]+)/messages/([0-9]+)/replies$`)
 	chatMessagesPathPattern    = regexp.MustCompile(`^/v1\.0/chats/([^/]+)/messages$`)
@@ -461,6 +462,9 @@ func (provider *fakeTeams) serveHTTP(response http.ResponseWriter, request *http
 		return
 	}
 	switch {
+	case channelPathPattern.MatchString(request.URL.Path) && request.Method == http.MethodGet:
+		channelID := channelPathPattern.FindStringSubmatch(request.URL.Path)[2]
+		provider.writeJSON(response, http.StatusOK, `{"id":"`+channelID+`","displayName":"Incidents","membershipType":"standard"}`)
 	case channelMessagesPathPattern.MatchString(request.URL.Path) && request.Method == http.MethodPost:
 		provider.postRoot(response, request)
 	case channelMessagesPathPattern.MatchString(request.URL.Path) && request.Method == http.MethodGet:

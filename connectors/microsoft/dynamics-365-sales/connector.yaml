@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: microsoft-dynamics-365-sales
   displayName: Microsoft Dynamics 365 Sales
-  description: Find a Dataverse contact by email in a Dynamics 365 Sales environment.
+  description: Find Dataverse contacts and manage Dynamics 365 Sales accounts.
   company: Microsoft
   categories: [crm-sales]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: microsoft-dynamics-365-sales
   languages:
@@ -64,9 +64,89 @@ spec:
       steps:
         - In https://entra.microsoft.com open Identity > Applications > App registrations > New registration, create a single-tenant confidential application, then copy its Application (client) ID and Directory (tenant) ID from Overview. This client-credentials connection needs no redirect URI or interactive consent screen.
         - In that app open Certificates & secrets > Client secrets > New client secret, choose a lifetime, create it, and copy the secret Value once into client_secret. Rotate it here before expiry and delete the old secret in Entra after verification.
-        - In https://admin.powerplatform.microsoft.com open Environments > selected environment, copy its Environment URL, then open Settings > Users + permissions > Application users > New app user. Select the app and grant a security role with read access to the Contact table. An environment administrator must approve that access.
+        - In https://admin.powerplatform.microsoft.com open Environments > selected environment, copy its Environment URL, then open Settings > Users + permissions > Application users > New app user. Select the app and grant a security role with read access to the Contact table and read, create, write, and delete access to the Account table when using account operations. An environment administrator must approve that access.
         - In Dynamics 365 Sales open Contacts and choose the email address to find. The Flow input email is non-secret. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: Accounts
+      kind: query
+      description: List a bounded set of account identities ordered by name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Dataverse returned account identities.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The page size or connection is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One example account is listed., output: {accounts: [{accountId: 00000000-0000-0000-0000-000000000001, name: Example}]}}
+    - name: getAccount
+      goName: GetAccount
+      inputType: GetAccountInput
+      outputType: Account
+      kind: query
+      description: Read one account by its Dataverse UUID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Dataverse returned the account.}
+        - {id: missing, goName: Missing, description: The account ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The account ID or connection is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One example account was found., output: {accountId: 00000000-0000-0000-0000-000000000001, name: Example}}
+    - name: createAccount
+      goName: CreateAccount
+      inputType: CreateAccountInput
+      outputType: Account
+      kind: mutation
+      description: Create one named account with a stable call-derived UUID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Dataverse created the account.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft rejected account creation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The name or connection is invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One example account was created., output: {accountId: 00000000-0000-0000-0000-000000000001, name: Example}}
+    - name: updateAccount
+      goName: UpdateAccount
+      inputType: UpdateAccountInput
+      outputType: Account
+      kind: mutation
+      description: Replace one account's name by UUID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Dataverse updated the account name.}
+        - {id: missing, goName: Missing, description: The account ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: "The account ID, name, or connection is invalid.", optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One example account was updated., output: {accountId: 00000000-0000-0000-0000-000000000001, name: Example}}
+    - name: deleteAccount
+      goName: DeleteAccount
+      inputType: DeleteAccountInput
+      outputType: AccountDeletion
+      kind: mutation
+      description: Delete one account by UUID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Dataverse deleted the account or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The account ID or connection is invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One example account was deleted., output: {deleted: true}}
     - name: findContact
       goName: FindContact
       inputType: FindContactInput
