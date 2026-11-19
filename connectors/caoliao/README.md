@@ -11,3 +11,5 @@ Sign in at [Caoliao's Data API page](https://user.cli.im/), open **数据API > �
 The [runnable Dex Flow](go/examples/qrcode-directory/README.md) uses the static `caoliao` connection and a synthetic mock. Live provider authorization and organization visibility require a user-controlled Key and have not been verified here.
 
 The [Python package](python/README.md) implements the same `listQRCodes` Query with Go-recorded provider conformance scenarios and a runnable Dex Flow.
+
+The [TypeScript package](typescript/README.md) implements `listQRCodes` with the same Go-recorded scenarios and a [runnable Dex Flow](typescript/examples/basic/README.md). Live provider authorization remains unverified.

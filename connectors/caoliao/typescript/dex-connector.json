@@ -1,0 +1,61 @@
+{
+  "connectorId": "caoliao",
+  "releaseTag": "connectors/caoliao/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-caoliao",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListQRCodesStep",
+      "kind": "query",
+      "operationId": "listQRCodes",
+      "inputType": "ListQRCodesInput",
+      "description": "List one page of organization QR-code names and coding identifiers.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListQRCodesInput selects a bounded page of organization QR codes.",
+        "properties": {
+          "pageSize": {
+            "description": "PageSize is 1 to 100; zero uses the provider's default of 20.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the opaque token returned as NextPageToken; blank starts the first page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}
