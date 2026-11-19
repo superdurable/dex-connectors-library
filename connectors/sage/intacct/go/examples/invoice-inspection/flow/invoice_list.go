@@ -11,6 +11,8 @@ import (
 
 const listInvoicesStepType = "CallListInvoices"
 
+var invoiceListOperationAttribute = dex.DefineAttribute[string]("operation")
+
 // InvoiceListFlow lists the first page of Accounts Receivable invoice identities.
 type InvoiceListFlow struct {
 	dex.FlowDefaults
@@ -22,8 +24,10 @@ func NewInvoiceListFlow(connection sageintacct.Connection) *InvoiceListFlow {
 	return &InvoiceListFlow{connection: connection}
 }
 
-// GetPersistenceSchema declares no retained state for this one-page Flow.
-func (*InvoiceListFlow) GetPersistenceSchema() dex.PersistenceSchema { return dex.PersistenceSchema{} }
+// GetPersistenceSchema retains the operation label for Dex Web views.
+func (*InvoiceListFlow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{invoiceListOperationAttribute}}
+}
 
 // GetSteps registers the invoice list Query and result Step.
 func (flow *InvoiceListFlow) GetSteps() []dex.StepDef {
@@ -41,6 +45,23 @@ func (flow *InvoiceListFlow) GetSteps() []dex.StepDef {
 	}
 }
 
+// GetRPCs exposes the invoice list Flow's read-only Dex Web views.
+func (flow *InvoiceListFlow) GetRPCs() []dex.RPCDef {
+	return []dex.RPCDef{dex.DefineRPC(flow.GetDexSummary, nil), dex.DefineRPC(flow.GetDexDisplay, nil)}
+}
+
+// dex:field attribute-key:operation value-type:string editable:false description:"Provider operation"
+// GetDexSummary describes the invoice list Flow in Dex Web.
+func (*InvoiceListFlow) GetDexSummary(dex.Context, dex.None) (*dex.RPCResult[map[string]any], error) {
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"operation": "listInvoices"}}, nil
+}
+
+// dex:field attribute-key:operation value-type:string editable:false description:"Provider operation"
+// GetDexDisplay describes the invoice list Flow in Dex Web.
+func (*InvoiceListFlow) GetDexDisplay(dex.Context, dex.None) (*dex.RPCResult[map[string]any], error) {
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"operation": "listInvoices"}}, nil
+}
+
 func mapInvoiceListInput(input sageintacct.ListInvoicesInput) sageintacct.ListInvoicesInput {
 	return input
 }
@@ -53,7 +74,10 @@ func (startInvoiceList) WaitFor(dex.Context, sageintacct.ListInvoicesInput) (*de
 	return dex.SkipWaitImmediately(), nil
 }
 
-func (startInvoiceList) Execute(_ dex.Context, input sageintacct.ListInvoicesInput) (*dex.StepDecision, error) {
+func (startInvoiceList) Execute(ctx dex.Context, input sageintacct.ListInvoicesInput) (*dex.StepDecision, error) {
+	if err := invoiceListOperationAttribute.Set(ctx, "listInvoices"); err != nil {
+		return nil, err
+	}
 	return dex.GoTo(sdkgo.StepRef[sageintacct.ListInvoicesInput](listInvoicesStepType), input), nil
 }
 

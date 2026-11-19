@@ -48,6 +48,8 @@ func TestCapturePaymentConfirmsStateAfterDuplicateRejection(t *testing.T) {
 			require.Equal(t, int64(100), payload.Amount)
 			require.Equal(t, "INR", payload.Currency)
 			writer.WriteHeader(http.StatusBadRequest)
+			_, err := writer.Write([]byte(`{"error":{"code":"BAD_REQUEST_ERROR","description":"Payment already captured"}}`))
+			require.NoError(t, err)
 			return
 		}
 		require.Equal(t, "/api/payments/"+testPaymentID, request.URL.Path)

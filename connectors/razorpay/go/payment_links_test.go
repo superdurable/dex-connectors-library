@@ -76,6 +76,8 @@ func TestCancelPaymentLinkConfirmsAlreadyCancelled(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method == http.MethodPost {
 			writer.WriteHeader(http.StatusBadRequest)
+			_, err := writer.Write([]byte(`{"error":{"code":"BAD_REQUEST_ERROR","description":"Link already cancelled"}}`))
+			require.NoError(t, err)
 			return
 		}
 		require.Equal(t, "/api/payment_links/"+testPaymentLinkID, request.URL.Path)

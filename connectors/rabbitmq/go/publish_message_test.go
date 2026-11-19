@@ -64,3 +64,30 @@ func TestPublishMessageUnroutableAndRejected(t *testing.T) {
 		server.Close()
 	}
 }
+
+func TestPublishMessageUnknownProviderOutcomesRetry(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "conflict", status: http.StatusConflict, body: `{"error":"conflict"}`},
+		{name: "method not allowed", status: http.StatusMethodNotAllowed, body: `{"error":"method not allowed"}`},
+		{name: "empty rejection", status: http.StatusBadRequest},
+		{name: "contradictory rejection", status: http.StatusBadRequest, body: `{"routed":true}`},
+		{name: "server error", status: http.StatusInternalServerError, body: `{"error":"failed"}`},
+		{name: "malformed success", status: http.StatusOK, body: `{`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				writer.WriteHeader(testCase.status)
+				_, err := writer.Write([]byte(testCase.body))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			input := PublishMessageInput{VirtualHost: "/", Exchange: "amq.direct", RoutingKey: "work", Payload: "hello"}
+			_, err := sdkgo.RunMutation(singledispatchtest.NewContext("rabbitmq-unknown-"+testCase.name, "publish-message"), newTestClient(t, server.URL, 0).PublishMessage(), testConnection, input)
+			require.ErrorAs(t, err, new(*sdkgo.RetryError))
+		})
+	}
+}
