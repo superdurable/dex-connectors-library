@@ -39,7 +39,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		s3.WithClock(func() time.Time { return time.Date(2026, 10, 25, 9, 0, 0, 0, time.UTC) }))
 	require.NoError(t, err)
 	context := newDexContext("conformance")
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(checkpoint []byte) { context.heartbeat = checkpoint })
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
 		"listBuckets":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListBuckets(), testConnection),
 		"createBucket":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateBucket(), testConnection, scenario.CallID),
 		"deleteBucket":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteBucket(), testConnection, scenario.CallID),

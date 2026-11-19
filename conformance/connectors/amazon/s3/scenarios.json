@@ -3104,21 +3104,17 @@
           "body": "\u003cError\u003e\u003cCode\u003eNoSuchBucket\u003c/Code\u003e\u003c/Error\u003e",
           "headers": {},
           "keyMode": "absent",
-          "method": "PUT",
+          "method": "HEAD",
           "path": "/new-reports-bucket",
-          "requestBody": "\u003cCreateBucketConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"\u003e\u003cLocationConstraint\u003eeu-west-1\u003c/LocationConstraint\u003e\u003c/CreateBucketConfiguration\u003e",
           "requestHeaders": {
             "Accept-Encoding": [
               "identity"
             ],
             "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date, Signature=5ce9d8ea10cf218201ba9bb4c2cb795f4176d7801ad21c88720948a1dd7829a8"
-            ],
-            "Content-Type": [
-              "application/xml"
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=5639c9d5320ccb41ff8789e3e6d6ce9505e0b03e64d76c02e411110857f6e174"
             ],
             "X-Amz-Content-Sha256": [
-              "a2531158b25edb57200e54140cc1b12d0af943f596ea467c2fbbedcc16223cc5"
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
             ],
             "X-Amz-Date": [
               "20261025T090000Z"
@@ -3128,14 +3124,8 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "NOT_FOUND",
-        "heartbeat": {
-          "attempt": 1,
-          "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
-          "sendCount": 1,
-          "state": "claimed"
-        },
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
           "bucket": "new-reports-bucket",
           "region": "eu-west-1"
@@ -3143,7 +3133,7 @@
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
       "input": {
@@ -3761,46 +3751,28 @@
           "body": "\u003cError\u003e\u003cCode\u003eNoSuchKey\u003c/Code\u003e\u003c/Error\u003e",
           "headers": {},
           "keyMode": "absent",
-          "method": "PUT",
+          "method": "HEAD",
           "path": "/acme-archive/reports/weekly-copy.md",
           "requestHeaders": {
             "Accept-Encoding": [
               "identity"
             ],
             "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-copy-source;x-amz-date;x-amz-meta-dex-idempotency-key;x-amz-metadata-directive, Signature=b0f5ec5a7a82f6d3916fd59d0d424aa8b3aa95c16bf085455cd9a5bde6876b96"
-            ],
-            "Content-Type": [
-              "text/plain"
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=23006d63d77e145b6a15184d04bff34dcff9cbd17c38119f0f4d77e5c19debda"
             ],
             "X-Amz-Content-Sha256": [
               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
             ],
-            "X-Amz-Copy-Source": [
-              "/acme-reports/reports/weekly.md"
-            ],
             "X-Amz-Date": [
               "20261025T090000Z"
-            ],
-            "X-Amz-Meta-Dex-Idempotency-Key": [
-              "f48763d2-ce4f-56f9-8555-b5f504506ad0"
-            ],
-            "X-Amz-Metadata-Directive": [
-              "REPLACE"
             ]
           },
           "status": 404
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "NOT_FOUND",
-        "heartbeat": {
-          "attempt": 1,
-          "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
-          "sendCount": 1,
-          "state": "claimed"
-        },
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
           "destinationBucket": "acme-archive",
           "destinationKey": "reports/weekly-copy.md",
@@ -3810,7 +3782,7 @@
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
       "input": {
