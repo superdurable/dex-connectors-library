@@ -7,3 +7,7 @@ Open [Zhongke Yunxing](https://www.zhongkeyunx.com), sign in, then create an API
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "zhongkeyunxing"`. Run the worker with `go run .` from its directory, then start `ZhongkeYunxingModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [official developer documentation](https://www.zhongkeyunx.com/brand/guide.html). Real provider authorization is unverified without a customer-controlled Key.
+
+## Python
+
+The `python/` package provides the `listModels` Query. Run its checked-in example from `python/examples/`.
