@@ -46,7 +46,7 @@ func (operation GetKeyOperation) Invoke(call sdkgo.Call, input GetKeyInput) sdkg
 		return keyBranch(GetKeyBranchDefect, KeyLookup{}, sdkgo.FailureValidation, "Redis key is invalid")
 	}
 	command, _ := json.Marshal([]string{"GET", input.Key})
-	response := operation.client.readKey(call, command)
+	response := operation.client.runCommand(call, command)
 	if errors.Is(response.err, errCredential) {
 		return keyBranch(GetKeyBranchDefect, KeyLookup{}, sdkgo.FailureAuthentication, "Upstash token is unavailable or invalid")
 	}

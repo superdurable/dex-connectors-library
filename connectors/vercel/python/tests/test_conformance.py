@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/vercel/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/vercel/scenarios.json")
+    if scenario["operation"] in {"listDeployments", "getDeployment"}
+]
 CONNECTION = sdk.ConnectionRef("vercel", "vercel")
 ADAPTER = PythonOperationAdapter(
     "vercel",

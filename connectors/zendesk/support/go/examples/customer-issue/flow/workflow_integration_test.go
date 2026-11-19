@@ -389,6 +389,12 @@ func (provider *fakeZendesk) serveHTTP(response http.ResponseWriter, request *ht
 	}
 	path := strings.TrimPrefix(request.URL.Path, "/api/v2")
 	switch {
+	case request.Method == http.MethodGet && path == "/organizations/count":
+		provider.writeJSON(response, http.StatusOK, `{"count":{"value":0}}`)
+	case request.Method == http.MethodGet && path == "/users/search":
+		provider.writeJSON(response, http.StatusOK, `{"users":[],"next_page":null}`)
+	case request.Method == http.MethodGet && path == "/tickets":
+		provider.writeJSON(response, http.StatusOK, `{"tickets":[],"meta":{"has_more":false}}`)
 	case request.Method == http.MethodGet && path == "/search/export":
 		provider.searchTickets(response, request, body)
 	case request.Method == http.MethodPost && path == "/tickets":

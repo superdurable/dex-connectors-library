@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted webflow connection. Script each operation through its accessor.
 type Mock struct {
-	connection          webflow.Connection
-	listCollectionItems *connectormock.Query[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput]
-	getCollectionItem   *connectormock.Query[webflow.GetCollectionItemInput, webflow.GetCollectionItemOutput]
+	connection              webflow.Connection
+	listCollections         *connectormock.Query[webflow.ListCollectionsInput, webflow.ListCollectionsOutput]
+	getCollection           *connectormock.Query[webflow.GetCollectionInput, webflow.GetCollectionOutput]
+	listLiveCollectionItems *connectormock.Query[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput]
+	getLiveCollectionItem   *connectormock.Query[webflow.GetCollectionItemInput, webflow.GetCollectionItemOutput]
+	listCollectionItems     *connectormock.Query[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput]
+	getCollectionItem       *connectormock.Query[webflow.GetCollectionItemInput, webflow.GetCollectionItemOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +31,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listCollectionItems: connectormock.NewQuery[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput](t, webflow.ListCollectionItemsDefinition),
-		getCollectionItem:   connectormock.NewQuery[webflow.GetCollectionItemInput, webflow.GetCollectionItemOutput](t, webflow.GetCollectionItemDefinition),
+		listCollections:         connectormock.NewQuery[webflow.ListCollectionsInput, webflow.ListCollectionsOutput](t, webflow.ListCollectionsDefinition),
+		getCollection:           connectormock.NewQuery[webflow.GetCollectionInput, webflow.GetCollectionOutput](t, webflow.GetCollectionDefinition),
+		listLiveCollectionItems: connectormock.NewQuery[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput](t, webflow.ListLiveCollectionItemsDefinition),
+		getLiveCollectionItem:   connectormock.NewQuery[webflow.GetCollectionItemInput, webflow.GetCollectionItemOutput](t, webflow.GetLiveCollectionItemDefinition),
+		listCollectionItems:     connectormock.NewQuery[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput](t, webflow.ListCollectionItemsDefinition),
+		getCollectionItem:       connectormock.NewQuery[webflow.GetCollectionItemInput, webflow.GetCollectionItemOutput](t, webflow.GetCollectionItemDefinition),
 	}
+	mock.listCollections.Default(ListCollectionsDefault())
+	mock.getCollection.Default(GetCollectionDefault())
+	mock.listLiveCollectionItems.Default(ListLiveCollectionItemsDefault())
+	mock.getLiveCollectionItem.Default(GetLiveCollectionItemDefault())
 	mock.listCollectionItems.Default(ListCollectionItemsDefault())
 	mock.getCollectionItem.Default(GetCollectionItemDefault())
 	connection, err := webflow.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "webflow", Name: connectionName})
@@ -43,6 +55,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() webflow.Connection { return mock.connection }
 
+// ListCollections returns the listCollections script.
+func (mock *Mock) ListCollections() *connectormock.Query[webflow.ListCollectionsInput, webflow.ListCollectionsOutput] {
+	return mock.listCollections
+}
+
+// GetCollection returns the getCollection script.
+func (mock *Mock) GetCollection() *connectormock.Query[webflow.GetCollectionInput, webflow.GetCollectionOutput] {
+	return mock.getCollection
+}
+
+// ListLiveCollectionItems returns the listLiveCollectionItems script.
+func (mock *Mock) ListLiveCollectionItems() *connectormock.Query[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput] {
+	return mock.listLiveCollectionItems
+}
+
+// GetLiveCollectionItem returns the getLiveCollectionItem script.
+func (mock *Mock) GetLiveCollectionItem() *connectormock.Query[webflow.GetCollectionItemInput, webflow.GetCollectionItemOutput] {
+	return mock.getLiveCollectionItem
+}
+
 // ListCollectionItems returns the listCollectionItems script.
 func (mock *Mock) ListCollectionItems() *connectormock.Query[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput] {
 	return mock.listCollectionItems
@@ -55,11 +87,182 @@ func (mock *Mock) GetCollectionItem() *connectormock.Query[webflow.GetCollection
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCollections() sdkgo.Query[webflow.ListCollectionsInput, webflow.ListCollectionsOutput] {
+	return operations.mock.listCollections
+}
+func (operations mockOperations) GetCollection() sdkgo.Query[webflow.GetCollectionInput, webflow.GetCollectionOutput] {
+	return operations.mock.getCollection
+}
+func (operations mockOperations) ListLiveCollectionItems() sdkgo.Query[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput] {
+	return operations.mock.listLiveCollectionItems
+}
+func (operations mockOperations) GetLiveCollectionItem() sdkgo.Query[webflow.GetCollectionItemInput, webflow.GetCollectionItemOutput] {
+	return operations.mock.getLiveCollectionItem
+}
 func (operations mockOperations) ListCollectionItems() sdkgo.Query[webflow.ListCollectionItemsInput, webflow.ListCollectionItemsOutput] {
 	return operations.mock.listCollectionItems
 }
 func (operations mockOperations) GetCollectionItem() sdkgo.Query[webflow.GetCollectionItemInput, webflow.GetCollectionItemOutput] {
 	return operations.mock.getCollectionItem
+}
+
+// ListCollectionsListed selects the listed branch: Listed CMS collections.
+func ListCollectionsListed(value webflow.ListCollectionsOutput, failure *sdkgo.Failure) connectormock.Case[webflow.ListCollectionsOutput] {
+	return connectormock.Branch(webflow.ListCollectionsBranchListed, value, failure)
+}
+
+// ListCollectionsNotFound selects the notFound branch: The site does not exist or is not visible.
+func ListCollectionsNotFound(value webflow.ListCollectionsOutput, failure *sdkgo.Failure) connectormock.Case[webflow.ListCollectionsOutput] {
+	return connectormock.Branch(webflow.ListCollectionsBranchNotFound, value, failure)
+}
+
+// ListCollectionsProviderRejected selects the providerRejected branch: The provider rejected the request or credentials.
+func ListCollectionsProviderRejected(value webflow.ListCollectionsOutput, failure *sdkgo.Failure) connectormock.Case[webflow.ListCollectionsOutput] {
+	return connectormock.Branch(webflow.ListCollectionsBranchProviderRejected, value, failure)
+}
+
+// ListCollectionsInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func ListCollectionsInvalidResponse(value webflow.ListCollectionsOutput, failure *sdkgo.Failure) connectormock.Case[webflow.ListCollectionsOutput] {
+	return connectormock.Branch(webflow.ListCollectionsBranchInvalidResponse, value, failure)
+}
+
+// ListCollectionsDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func ListCollectionsDefect(value webflow.ListCollectionsOutput, failure *sdkgo.Failure) connectormock.Case[webflow.ListCollectionsOutput] {
+	return connectormock.Branch(webflow.ListCollectionsBranchDefect, value, failure)
+}
+
+// ListCollectionsRetry asks Dex to retry the listCollections Step, after the delay when it is positive.
+func ListCollectionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[webflow.ListCollectionsOutput] {
+	return connectormock.Retry[webflow.ListCollectionsOutput](failure, after)
+}
+
+// ListCollectionsDefaultListCollections is the manifest mock defaultListCollections: A site with one CMS collection.
+func ListCollectionsDefaultListCollections() connectormock.Case[webflow.ListCollectionsOutput] {
+	value := connectormock.MustDecodeOutput[webflow.ListCollectionsOutput](`{"data":{"collections":[{"id":"62b720ef280c7a7a3be8cabe","displayName":"Articles"}]}}`)
+	return connectormock.Branch(webflow.ListCollectionsBranchListed, value, nil)
+}
+
+// ListCollectionsDefault is the manifest default, defaultListCollections, which New installs.
+func ListCollectionsDefault() connectormock.Case[webflow.ListCollectionsOutput] {
+	return ListCollectionsDefaultListCollections()
+}
+
+// GetCollectionFound selects the found branch: Found the CMS collection.
+func GetCollectionFound(value webflow.GetCollectionOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionOutput] {
+	return connectormock.Branch(webflow.GetCollectionBranchFound, value, failure)
+}
+
+// GetCollectionNotFound selects the notFound branch: The collection does not exist or is not visible.
+func GetCollectionNotFound(value webflow.GetCollectionOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionOutput] {
+	return connectormock.Branch(webflow.GetCollectionBranchNotFound, value, failure)
+}
+
+// GetCollectionProviderRejected selects the providerRejected branch: The provider rejected the request or credentials.
+func GetCollectionProviderRejected(value webflow.GetCollectionOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionOutput] {
+	return connectormock.Branch(webflow.GetCollectionBranchProviderRejected, value, failure)
+}
+
+// GetCollectionInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func GetCollectionInvalidResponse(value webflow.GetCollectionOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionOutput] {
+	return connectormock.Branch(webflow.GetCollectionBranchInvalidResponse, value, failure)
+}
+
+// GetCollectionDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func GetCollectionDefect(value webflow.GetCollectionOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionOutput] {
+	return connectormock.Branch(webflow.GetCollectionBranchDefect, value, failure)
+}
+
+// GetCollectionRetry asks Dex to retry the getCollection Step, after the delay when it is positive.
+func GetCollectionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[webflow.GetCollectionOutput] {
+	return connectormock.Retry[webflow.GetCollectionOutput](failure, after)
+}
+
+// GetCollectionDefaultGetCollection is the manifest mock defaultGetCollection: A CMS collection schema.
+func GetCollectionDefaultGetCollection() connectormock.Case[webflow.GetCollectionOutput] {
+	value := connectormock.MustDecodeOutput[webflow.GetCollectionOutput](`{"data":{"id":"62b720ef280c7a7a3be8cabe","displayName":"Articles","fields":[]}}`)
+	return connectormock.Branch(webflow.GetCollectionBranchFound, value, nil)
+}
+
+// GetCollectionDefault is the manifest default, defaultGetCollection, which New installs.
+func GetCollectionDefault() connectormock.Case[webflow.GetCollectionOutput] {
+	return GetCollectionDefaultGetCollection()
+}
+
+// ListLiveCollectionItemsListed selects the listed branch: Listed published CMS items.
+func ListLiveCollectionItemsListed(value webflow.ListCollectionItemsOutput, failure *sdkgo.Failure) connectormock.Case[webflow.ListCollectionItemsOutput] {
+	return connectormock.Branch(webflow.ListLiveCollectionItemsBranchListed, value, failure)
+}
+
+// ListLiveCollectionItemsProviderRejected selects the providerRejected branch: The provider rejected the request or credentials.
+func ListLiveCollectionItemsProviderRejected(value webflow.ListCollectionItemsOutput, failure *sdkgo.Failure) connectormock.Case[webflow.ListCollectionItemsOutput] {
+	return connectormock.Branch(webflow.ListLiveCollectionItemsBranchProviderRejected, value, failure)
+}
+
+// ListLiveCollectionItemsInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func ListLiveCollectionItemsInvalidResponse(value webflow.ListCollectionItemsOutput, failure *sdkgo.Failure) connectormock.Case[webflow.ListCollectionItemsOutput] {
+	return connectormock.Branch(webflow.ListLiveCollectionItemsBranchInvalidResponse, value, failure)
+}
+
+// ListLiveCollectionItemsDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func ListLiveCollectionItemsDefect(value webflow.ListCollectionItemsOutput, failure *sdkgo.Failure) connectormock.Case[webflow.ListCollectionItemsOutput] {
+	return connectormock.Branch(webflow.ListLiveCollectionItemsBranchDefect, value, failure)
+}
+
+// ListLiveCollectionItemsRetry asks Dex to retry the listLiveCollectionItems Step, after the delay when it is positive.
+func ListLiveCollectionItemsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[webflow.ListCollectionItemsOutput] {
+	return connectormock.Retry[webflow.ListCollectionItemsOutput](failure, after)
+}
+
+// ListLiveCollectionItemsDefaultListLiveCollectionItems is the manifest mock defaultListLiveCollectionItems: One published CMS item.
+func ListLiveCollectionItemsDefaultListLiveCollectionItems() connectormock.Case[webflow.ListCollectionItemsOutput] {
+	value := connectormock.MustDecodeOutput[webflow.ListCollectionItemsOutput](`{"data":{"items":[{"id":"62b720ef280c7a7a3be8cabe","fieldData":{"name":"Meridian"}}],"pagination":{"total":1,"limit":100,"offset":0}}}`)
+	return connectormock.Branch(webflow.ListLiveCollectionItemsBranchListed, value, nil)
+}
+
+// ListLiveCollectionItemsDefault is the manifest default, defaultListLiveCollectionItems, which New installs.
+func ListLiveCollectionItemsDefault() connectormock.Case[webflow.ListCollectionItemsOutput] {
+	return ListLiveCollectionItemsDefaultListLiveCollectionItems()
+}
+
+// GetLiveCollectionItemFound selects the found branch: Found the published CMS item.
+func GetLiveCollectionItemFound(value webflow.GetCollectionItemOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionItemOutput] {
+	return connectormock.Branch(webflow.GetLiveCollectionItemBranchFound, value, failure)
+}
+
+// GetLiveCollectionItemNotFound selects the notFound branch: The item does not exist or is not published.
+func GetLiveCollectionItemNotFound(value webflow.GetCollectionItemOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionItemOutput] {
+	return connectormock.Branch(webflow.GetLiveCollectionItemBranchNotFound, value, failure)
+}
+
+// GetLiveCollectionItemProviderRejected selects the providerRejected branch: The provider rejected the request or credentials.
+func GetLiveCollectionItemProviderRejected(value webflow.GetCollectionItemOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionItemOutput] {
+	return connectormock.Branch(webflow.GetLiveCollectionItemBranchProviderRejected, value, failure)
+}
+
+// GetLiveCollectionItemInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func GetLiveCollectionItemInvalidResponse(value webflow.GetCollectionItemOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionItemOutput] {
+	return connectormock.Branch(webflow.GetLiveCollectionItemBranchInvalidResponse, value, failure)
+}
+
+// GetLiveCollectionItemDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func GetLiveCollectionItemDefect(value webflow.GetCollectionItemOutput, failure *sdkgo.Failure) connectormock.Case[webflow.GetCollectionItemOutput] {
+	return connectormock.Branch(webflow.GetLiveCollectionItemBranchDefect, value, failure)
+}
+
+// GetLiveCollectionItemRetry asks Dex to retry the getLiveCollectionItem Step, after the delay when it is positive.
+func GetLiveCollectionItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[webflow.GetCollectionItemOutput] {
+	return connectormock.Retry[webflow.GetCollectionItemOutput](failure, after)
+}
+
+// GetLiveCollectionItemDefaultGetLiveCollectionItem is the manifest mock defaultGetLiveCollectionItem: A published CMS item.
+func GetLiveCollectionItemDefaultGetLiveCollectionItem() connectormock.Case[webflow.GetCollectionItemOutput] {
+	value := connectormock.MustDecodeOutput[webflow.GetCollectionItemOutput](`{"data":{"id":"62b720ef280c7a7a3be8cabe","fieldData":{"name":"Meridian"}}}`)
+	return connectormock.Branch(webflow.GetLiveCollectionItemBranchFound, value, nil)
+}
+
+// GetLiveCollectionItemDefault is the manifest default, defaultGetLiveCollectionItem, which New installs.
+func GetLiveCollectionItemDefault() connectormock.Case[webflow.GetCollectionItemOutput] {
+	return GetLiveCollectionItemDefaultGetLiveCollectionItem()
 }
 
 // ListCollectionItemsListed selects the listed branch: List a page of staged CMS collection items.

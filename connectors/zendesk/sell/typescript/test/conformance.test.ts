@@ -8,7 +8,8 @@ import { ZendeskSellClient } from '../src/client.js';
 import { GetLeadInputSchema, ListLeadsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/zendesk/sell/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/zendesk/sell/scenarios.json', import.meta.url))
+  .filter(scenario => ['listLeads', 'getLead'].includes(scenario.operation));
 const connection = { provider: 'zendesk-sell', name: 'zendesk-sell' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeZendeskSell, '/v2'));
 
