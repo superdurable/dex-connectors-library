@@ -1,0 +1,52 @@
+{
+  "connectorId": "mingdao",
+  "releaseTag": "connectors/mingdao/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-mingdao",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_worksheets_step",
+      "kind": "query",
+      "operationId": "listWorksheets",
+      "inputType": "ListWorksheetsInput",
+      "description": "List worksheets in the application authorized by AppKey and Sign.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListWorksheetsInput has no provider-specific query parameters.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
