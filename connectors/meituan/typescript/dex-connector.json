@@ -1,0 +1,65 @@
+{
+  "connectorId": "meituan",
+  "releaseTag": "connectors/meituan/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-meituan",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newQueryOrderStatusStep",
+      "kind": "query",
+      "operationId": "queryOrderStatus",
+      "inputType": "QueryOrderStatusInput",
+      "description": "Query the status code and time of a known delivery order, omitting rider identity, phone, and health data.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryOrderStatusInput identifies one order from the last 90 days.",
+        "properties": {
+          "deliveryId": {
+            "description": "DeliveryID is the positive delivery activity ID used when the order was created.",
+            "type": "integer"
+          },
+          "meituanOrderId": {
+            "description": "MeituanOrderID is the provider's order ID, at most 32 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deliveryId",
+          "meituanOrderId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
