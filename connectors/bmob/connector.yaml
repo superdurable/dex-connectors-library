@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: bmob
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-bmob"
+      operations: [countClassObjects]
+      triggers: []
   codegen:
     go:
       package: bmob
