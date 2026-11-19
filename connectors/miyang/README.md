@@ -5,3 +5,5 @@
 Sign in at [Miyang Gateway](https://miyang.cn/model), open API Keys in the console, and create or copy a secret `miyang-` key into Dex Web Connections. The model-list endpoint is public, but a key can reveal internal or whitelisted models available to that account. The provider notes that `miyang/*` models are for its Alice client; use models marked `general` for other apps. Leave timeout and maxResponseBytes blank for their displayed defaults.
 
 The [runnable Dex example](go/examples/list-models/) uses a synthetic mock. Live account authorization and current model visibility have not been verified without a user-controlled provider key.
+
+The [Python listModels example](python/examples/) provides a runnable Dex Worker and local conformance replay.

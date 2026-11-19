@@ -5,3 +5,5 @@ The [Maiyun IP 定位 API](https://lts.maiyun.net/service/ip) accepts an IPv4 ad
 Sign in at [Maiyun LTS](https://lts.maiyun.net/), enable IP 定位, then open **控制台 > Token** to create an authorized Bearer Token. Store it in Dex Web Connections. Queries may consume provider quota. The token is sent only in the `Authorization` header.
 
 Run the [example Flow](go/examples/lookup-ip-location/) with its generated mock or a user-controlled connection. Pass only public IPv4 addresses you are authorized to query. Provider errors, malformed data, oversized bodies, and retryable transport failures have separate outcomes. Real provider authorization and billing have not been verified locally.
+
+The [Python lookupIPLocation example](python/examples/) provides a runnable Dex Worker and local conformance replay.

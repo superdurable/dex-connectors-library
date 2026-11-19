@@ -5,3 +5,5 @@ This connector lists the worksheets in one Mingdao HAP application through the [
 For Mingdao SaaS, the endpoint is fixed at `https://api.mingdao.com/v3/app/worksheets/list`. This first connector does not support private deployment hosts. In [Mingdao HAP](https://www.mingdao.com/), an application administrator opens the application's menu → **API开发文档** → **授权管理** → **新建授权密钥**, grants only the needed worksheet metadata access, and copies AppKey and Sign into Dex Web Connections. The [official API overview](https://help.mingdao.com/api/introduction/) documents this path and permission scope. Rotate or revoke the pair from the same authorization page.
 
 The [runnable Flow](go/examples/list-worksheets/README.md) uses the static `mingdao` connection and an operation-specific Step. Real Mingdao authorization and Dex Web form interaction remain unverified.
+
+The [Python listWorksheets example](python/examples/) provides a runnable Dex Worker and local conformance replay.
