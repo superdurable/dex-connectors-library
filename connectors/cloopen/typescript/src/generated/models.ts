@@ -31,18 +31,37 @@ export interface Credentials {
   authToken: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["account_sid", "auth_token"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["account_sid"] != null && !(typeof fields["account_sid"] === 'string')) throw new TypeError("credential account_sid has an invalid type");
-  if (fields["auth_token"] != null && !(typeof fields["auth_token"] === 'string')) throw new TypeError("credential auth_token has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["account_sid"] != null && !(typeof fields["account_sid"] === 'string')) throw new CredentialMaterialError("credential account_sid has an invalid type");
+  if (fields["auth_token"] != null && !(typeof fields["auth_token"] === 'string')) throw new CredentialMaterialError("credential auth_token has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["account_sid"]) throw new TypeError("credential account_sid is required");
+  if (!fields["account_sid"]) throw new CredentialMaterialError("credential account_sid is required");
   credentials.accountSid = new SecretString((fields["account_sid"] ?? '') as string);
-  if (!fields["auth_token"]) throw new TypeError("credential auth_token is required");
+  if (!fields["auth_token"]) throw new CredentialMaterialError("credential auth_token is required");
   credentials.authToken = new SecretString((fields["auth_token"] ?? '') as string);
   return credentials;
 }
