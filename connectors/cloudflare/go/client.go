@@ -229,9 +229,13 @@ func executeQuery[T any](client *Client, call sdkgo.Call, operation string, spec
 
 func executeMutation[T any](client *Client, call sdkgo.Call, operation string, spec requestSpec, happy, notFound, rejected, invalid, defect sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.MutationAttempt[T] {
 	var zero T
+	isExpandedOperation := operation != "purgeCacheByURLs"
 	response, localFailure, err := client.send(call, operation, spec)
 	if localFailure != nil {
 		localFailure.Operation = operation
+		if isExpandedOperation && call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureTransport, operation, "an earlier Cloudflare write remains unconfirmed"), 0)
+		}
 		return sdkgo.NewMutationBranch(defect, zero, localFailure, sdkgo.Receipt{})
 	}
 	if err != nil {
@@ -243,16 +247,20 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 		retry, after := retryFailure(response, operation)
 		return sdkgo.NewMutationRetry[T](retry, after)
 	}
-	if response.StatusCode == http.StatusNotFound && notFound != "" {
+	if !isExpandedOperation && response.StatusCode == http.StatusNotFound && notFound != "" {
 		rejectedFailure := statusFailure(response, operation)
 		return sdkgo.NewMutationBranch(notFound, zero, &rejectedFailure, sdkgo.Receipt{})
 	}
 	if response.StatusCode != http.StatusOK {
 		rejectedFailure := statusFailure(response, operation)
-		if !isDefiniteRefusalStatus(response.StatusCode) {
+		rejectionBody, rejectionError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		if rejectionError != nil || !isDefiniteRefusalStatus(response.StatusCode, rejectionBody) || isExpandedOperation && call.Context.Attempt() > 1 {
 			// Repeating a purge has the same effect, so an ambiguous answer retries.
 			rejectedFailure.Kind = sdkgo.FailureAvailability
 			return sdkgo.NewMutationRetry[T](rejectedFailure, 0)
+		}
+		if response.StatusCode == http.StatusNotFound && notFound != "" {
+			return sdkgo.NewMutationBranch(notFound, zero, &rejectedFailure, sdkgo.Receipt{})
 		}
 		return sdkgo.NewMutationBranch(rejected, zero, &rejectedFailure, sdkgo.Receipt{})
 	}
@@ -264,7 +272,10 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 		return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "cloudflare", Operation: operation, Message: "response was interrupted"}, 0)
 	}
 	if isCloudflareRejection(body) {
-		return sdkgo.NewMutationBranch(rejected, zero, failure(sdkgo.FailureProviderRejection, operation, "Cloudflare rejected the request"), sdkgo.Receipt{})
+		if !isExpandedOperation {
+			return sdkgo.NewMutationBranch(rejected, zero, failure(sdkgo.FailureProviderRejection, operation, "Cloudflare rejected the request"), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureProtocol, operation, "Cloudflare write outcome is unknown"), 0)
 	}
 	value, err := decode(body)
 	if err != nil {
@@ -274,11 +285,11 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 }
 
 // isDefiniteRefusalStatus reports a status that proves Cloudflare refused the write; any other status is unknown.
-func isDefiniteRefusalStatus(status int) bool {
+func isDefiniteRefusalStatus(status int, body []byte) bool {
 	switch status {
 	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
 		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
-		return true
+		return isCloudflareRejection(body)
 	}
 	return false
 }

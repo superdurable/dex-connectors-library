@@ -18,6 +18,7 @@ import (
 // Mock is a scripted cohere connection. Script each operation through its accessor.
 type Mock struct {
 	connection cohere.Connection
+	chat       *connectormock.Query[cohere.ChatInput, cohere.ChatOutput]
 	embed      *connectormock.Query[cohere.EmbedInput, cohere.EmbedOutput]
 	rerank     *connectormock.Query[cohere.RerankInput, cohere.RerankOutput]
 }
@@ -27,9 +28,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		chat:   connectormock.NewQuery[cohere.ChatInput, cohere.ChatOutput](t, cohere.ChatDefinition),
 		embed:  connectormock.NewQuery[cohere.EmbedInput, cohere.EmbedOutput](t, cohere.EmbedDefinition),
 		rerank: connectormock.NewQuery[cohere.RerankInput, cohere.RerankOutput](t, cohere.RerankDefinition),
 	}
+	mock.chat.Default(ChatDefault())
 	mock.embed.Default(EmbedDefault())
 	mock.rerank.Default(RerankDefault())
 	connection, err := cohere.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "cohere", Name: connectionName})
@@ -43,6 +46,9 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() cohere.Connection { return mock.connection }
 
+// Chat returns the chat script.
+func (mock *Mock) Chat() *connectormock.Query[cohere.ChatInput, cohere.ChatOutput] { return mock.chat }
+
 // Embed returns the embed script.
 func (mock *Mock) Embed() *connectormock.Query[cohere.EmbedInput, cohere.EmbedOutput] {
 	return mock.embed
@@ -55,12 +61,49 @@ func (mock *Mock) Rerank() *connectormock.Query[cohere.RerankInput, cohere.Reran
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) Chat() sdkgo.Query[cohere.ChatInput, cohere.ChatOutput] {
+	return operations.mock.chat
+}
 func (operations mockOperations) Embed() sdkgo.Query[cohere.EmbedInput, cohere.EmbedOutput] {
 	return operations.mock.embed
 }
 func (operations mockOperations) Rerank() sdkgo.Query[cohere.RerankInput, cohere.RerankOutput] {
 	return operations.mock.rerank
 }
+
+// ChatAnswered selects the answered branch: Cohere returned a complete text reply.
+func ChatAnswered(value cohere.ChatOutput, failure *sdkgo.Failure) connectormock.Case[cohere.ChatOutput] {
+	return connectormock.Branch(cohere.ChatBranchAnswered, value, failure)
+}
+
+// ChatProviderRejected selects the providerRejected branch: Cohere conclusively rejected the chat request.
+func ChatProviderRejected(value cohere.ChatOutput, failure *sdkgo.Failure) connectormock.Case[cohere.ChatOutput] {
+	return connectormock.Branch(cohere.ChatBranchProviderRejected, value, failure)
+}
+
+// ChatInvalidResponse selects the invalidResponse branch: Cohere returned malformed or oversized chat data.
+func ChatInvalidResponse(value cohere.ChatOutput, failure *sdkgo.Failure) connectormock.Case[cohere.ChatOutput] {
+	return connectormock.Branch(cohere.ChatBranchInvalidResponse, value, failure)
+}
+
+// ChatDefect selects the defect branch: Local input or connection credentials are invalid.
+func ChatDefect(value cohere.ChatOutput, failure *sdkgo.Failure) connectormock.Case[cohere.ChatOutput] {
+	return connectormock.Branch(cohere.ChatBranchDefect, value, failure)
+}
+
+// ChatRetry asks Dex to retry the chat Step, after the delay when it is positive.
+func ChatRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cohere.ChatOutput] {
+	return connectormock.Retry[cohere.ChatOutput](failure, after)
+}
+
+// ChatDefaultAnswer is the manifest mock defaultAnswer: Cohere summarizes the leading search result.
+func ChatDefaultAnswer() connectormock.Case[cohere.ChatOutput] {
+	value := connectormock.MustDecodeOutput[cohere.ChatOutput](`{"id":"chat-mock-1","text":"The release note is the best match.","finishReason":"COMPLETE"}`)
+	return connectormock.Branch(cohere.ChatBranchAnswered, value, nil)
+}
+
+// ChatDefault is the manifest default, defaultAnswer, which New installs.
+func ChatDefault() connectormock.Case[cohere.ChatOutput] { return ChatDefaultAnswer() }
 
 // EmbedEmbedded selects the embedded branch: Cohere returned one float vector per text.
 func EmbedEmbedded(value cohere.EmbedOutput, failure *sdkgo.Failure) connectormock.Case[cohere.EmbedOutput] {

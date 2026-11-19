@@ -6,6 +6,8 @@ package basecamp
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,6 +30,7 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 // Client holds immutable Basecamp settings and resolves OAuth credentials per call.
 type Client struct {
 	baseURL          string
+	apiBaseURL       string
 	maxResponseBytes int64
 	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
@@ -47,7 +50,11 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Basecamp API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	apiBaseURL, err := providerhttp.ValidateBaseURL(config.APIBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Basecamp 3 API URL: %w", err)
+	}
+	client := &Client{baseURL: baseURL, apiBaseURL: apiBaseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Basecamp client option is required")
@@ -70,6 +77,22 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.getURL(call, client.baseURL+path)
+}
+
+func (client *Client) getAccountResource(call sdkgo.Call, accountID string, path string) providerResponse {
+	return client.getURL(call, client.apiBaseURL+"/"+accountID+path)
+}
+
+func (client *Client) getURL(call sdkgo.Call, requestURL string) providerResponse {
+	return client.requestURL(call, call.Context, http.MethodGet, requestURL, nil)
+}
+
+func (client *Client) accountMutation(call sdkgo.Call, requestContext context.Context, method, accountID, path string, input any) providerResponse {
+	return client.requestURL(call, requestContext, method, client.apiBaseURL+"/"+accountID+path, input)
+}
+
+func (client *Client) requestURL(call sdkgo.Call, requestContext context.Context, method, requestURL string, input any) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -84,11 +107,24 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	var requestBody *bytes.Reader
+	if input != nil {
+		encoded, encodeErr := json.Marshal(input)
+		if encodeErr != nil {
+			return providerResponse{err: errRequest}
+		}
+		requestBody = bytes.NewReader(encoded)
+	} else {
+		requestBody = bytes.NewReader(nil)
+	}
+	request, err := http.NewRequestWithContext(requestContext, method, requestURL, requestBody)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
+	if input != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("User-Agent", "Dex Connector (support@superdurable.io)")
 	request.Header.Set("Authorization", "Bearer "+accessToken)
 	response, err := client.httpClient.Do(request)

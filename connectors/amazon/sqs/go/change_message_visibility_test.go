@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go"
-	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go/internal/sqsfake"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
 func TestAZeroVisibilityTimeoutReleasesTheMessageToTheNextReceive(t *testing.T) {
@@ -83,16 +83,17 @@ func TestARepeatedReleaseThatFindsTheMessageReleasedSelectsChanged(t *testing.T)
 	require.Equal(t, sqs.ChangeMessageVisibilityBranchReceiptHandleInvalid, first.Branch)
 	extend := release
 	extend.VisibilityTimeoutSeconds = 60
-	extended, err := runMutation(t, newDexContext("extend").nextAttempt(), client.ChangeMessageVisibility(), extend)
-	require.NoError(t, err)
-	require.Equal(t, sqs.ChangeMessageVisibilityBranchReceiptHandleInvalid, extended.Branch)
+	_, err = runMutation(t, newDexContext("extend").nextAttempt(), client.ChangeMessageVisibility(), extend)
+	requireRetry(t, err, sdkgo.FailureNotFound)
 }
 
 func TestAcknowledgementsRetryAnUnlistedStatusBecauseItsOutcomeIsUnknown(t *testing.T) {
 	queues := newFakeQueues(t)
 	client := newFakeClient(t, queues)
 	for _, status := range []int{http.StatusMethodNotAllowed, http.StatusConflict, http.StatusTooEarly, http.StatusUnavailableForLegalReasons} {
-		queues.Intercept(func(sqsfake.Request) *sqsfake.Response { return &sqsfake.Response{StatusCode: status, Code: "Unlisted"} })
+		queues.Intercept(func(sqsfake.Request) *sqsfake.Response {
+			return &sqsfake.Response{StatusCode: status, Code: "Unlisted"}
+		})
 		_, err := runMutation(t, newDexContext("delete"), client.DeleteMessage(), sqs.DeleteMessageInput{ReceiptHandle: "AQEB-handle"})
 		requireRetry(t, err, sdkgo.FailureAvailability)
 		_, err = runMutation(t, newDexContext("change"), client.ChangeMessageVisibility(), sqs.ChangeMessageVisibilityInput{ReceiptHandle: "AQEB-handle", VisibilityTimeoutSeconds: 60})

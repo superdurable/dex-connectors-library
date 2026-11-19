@@ -67,3 +67,36 @@ func TestPlaylistCuratorUsesYouTubeMocksWithRealDex(t *testing.T) {
 	require.Len(t, listCalls, 1)
 	require.Equal(t, youtube.ListPlaylistItemsInput{PlaylistID: "PLcurated123", VideoID: "AbCdEfGhI12", MaxResults: 1}, listCalls[0].Input)
 }
+
+func TestPlaylistInspectionUsesYouTubeMockWithRealDex(t *testing.T) {
+	readMock := youtubemock.New(t, ReadConnectionName)
+	flow := NewPlaylistInspectionFlow(readMock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	harness := &curatorHarness{registry: registry, cache: cache, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
+	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: harness.serverAddress})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if harness.worker != nil {
+			harness.stopWorker(t)
+		}
+		require.NoError(t, harness.client.Close())
+		require.NoError(t, cache.Close())
+	})
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := "youtube-playlist-inspection-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = harness.client.StartFlow(ctx, flow, flowID, youtube.GetPlaylistInput{PlaylistID: "PLcurated123"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var playlist youtube.Playlist
+	require.NoError(t, result.DecodeSingleOutput(&playlist))
+	require.Equal(t, "PLcurated123", playlist.ID)
+	require.Equal(t, "Compiler picks", playlist.Title)
+	require.Len(t, readMock.GetPlaylist().Calls(), 1)
+}

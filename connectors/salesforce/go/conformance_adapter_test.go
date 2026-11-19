@@ -4,6 +4,7 @@
 package salesforce_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -24,11 +25,38 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		},
 	}, salesforce.WithHTTPClient(transport))
 	require.NoError(t, err)
-	context := newDexContext("conformance")
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	context := &salesforceConformanceContext{dexContext: newDexContext("conformance"), attempt: 1}
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { context.heartbeat = value })
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
 		"queryRecords":             newConformanceQueryInvocation(t, scenario.Input, context, client.QueryRecords(), salesforceConnection),
 		"getRecord":                newConformanceQueryInvocation(t, scenario.Input, context, client.GetRecord(), salesforceConnection),
 		"upsertRecordByExternalId": newConformanceMutationInvocation(t, scenario.Input, context, client.UpsertRecordByExternalID(), salesforceConnection, scenario.CallID),
 		"updateRecord":             newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateRecord(), salesforceConnection, scenario.CallID),
+		"deleteRecord":             newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteRecord(), salesforceConnection, scenario.CallID),
+		"createRecord":             newConformanceMutationInvocation(t, scenario.Input, context, client.CreateRecord(), salesforceConnection, scenario.CallID),
 	}}
+}
+
+type salesforceConformanceContext struct {
+	*dexContext
+	attempt   int32
+	heartbeat json.RawMessage
+}
+
+func (context *salesforceConformanceContext) Attempt() int32 { return context.attempt }
+
+func (context *salesforceConformanceContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.heartbeat = encoded
+	return nil
+}
+
+func (context *salesforceConformanceContext) GetLastHeartbeatValue(destination any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, destination)
 }

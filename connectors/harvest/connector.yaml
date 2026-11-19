@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: harvest
   displayName: Harvest
-  description: Read Harvest records with a connection-owned API key.
+  description: Read and manage Harvest records with a connection-owned API key.
   company: Harvest
   categories: [productivity, project-management]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: harvest
   languages:
@@ -61,6 +61,772 @@ spec:
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "Copy the decimal account ID shown with the personal token into accountId; this ID is not secret."
   operations:
+    - name: getCompany
+      goName: GetCompany
+      inputType: GetCompanyInput
+      outputType: CompanyRecord
+      kind: query
+      description: Read the connected Harvest account's company settings.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest returned the company settings.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the company read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: Meridian company settings.
+          output: {name: Meridian, fullDomain: meridian.harvestapp.com, isActive: true, wantsTimestampTimers: false, weeklyCapacitySeconds: 144000}
+    - name: updateCompany
+      goName: UpdateCompany
+      inputType: UpdateCompanyInput
+      outputType: CompanyRecord
+      kind: mutation
+      description: Set the account's timer style or weekly capacity.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest updated company settings.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the company update., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: Meridian company settings were updated.
+          output: {name: Meridian, fullDomain: meridian.harvestapp.com, isActive: true, wantsTimestampTimers: false, weeklyCapacitySeconds: 144000}
+    - name: listClients
+      goName: ListClients
+      inputType: ListClientsInput
+      outputType: ClientPage
+      kind: query
+      description: List Harvest clients with cursor pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Harvest returned the client page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          default: true
+          description: One Meridian client.
+          output: {clients: [{id: 2001, name: Meridian, isActive: true}]}
+    - name: getClient
+      goName: GetClient
+      inputType: GetClientInput
+      outputType: ClientRecord
+      kind: query
+      description: Retrieve one Harvest client by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest returned the client.}
+        - {id: notFound, goName: NotFound, description: The client ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: The Meridian client.
+          output: {id: 2001, name: Meridian, isActive: true}
+    - name: createClient
+      goName: CreateClient
+      inputType: CreateClientInput
+      outputType: ClientRecord
+      kind: mutation
+      description: Create a Harvest client; a lost response may need confirmation in Harvest before another send.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest created the client.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted create could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian client was created.
+          output: {id: 2001, name: Meridian, isActive: true}
+    - name: updateClient
+      goName: UpdateClient
+      inputType: UpdateClientInput
+      outputType: ClientRecord
+      kind: mutation
+      description: Set selected Harvest client fields with an idempotent PATCH.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest updated the client.}
+        - {id: notFound, goName: NotFound, description: The client ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client update., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian client was updated.
+          output: {id: 2001, name: Meridian, isActive: true}
+    - name: deleteClient
+      goName: DeleteClient
+      inputType: DeleteClientInput
+      outputType: DeletedClient
+      kind: mutation
+      description: Delete a Harvest client without related projects, invoices, or estimates.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest deleted the client.}
+        - {id: notFound, goName: NotFound, description: The client ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian client was deleted.
+          output: {id: 2001}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactPage
+      kind: query
+      description: List contacts through the Harvest Client Contacts API.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Harvest confirmed the contact result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          default: true
+          description: A Meridian contact result.
+          output: {contacts: [{id: 7001, clientId: 2001, firstName: Ada, lastName: Lee, email: ada@example.com}]}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: ContactRecord
+      kind: query
+      description: Get contact through the Harvest Client Contacts API.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest confirmed the contact result.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: A Meridian contact result.
+          output: {id: 7001, clientId: 2001, firstName: Ada, lastName: Lee, email: ada@example.com}
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: ContactRecord
+      kind: mutation
+      description: Create contact through the Harvest Client Contacts API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the contact result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted contact may have been created., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian contact result.
+          output: {id: 7001, clientId: 2001, firstName: Ada, lastName: Lee, email: ada@example.com}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: ContactRecord
+      kind: mutation
+      description: Update contact through the Harvest Client Contacts API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest confirmed the contact result.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian contact result.
+          output: {id: 7001, clientId: 2001, firstName: Ada, lastName: Lee, email: ada@example.com}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: DeleteContactInput
+      outputType: DeletedContact
+      kind: mutation
+      description: Delete contact through the Harvest Client Contacts API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the contact result.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian contact result.
+          output: {id: 7001}
+    - name: listTasks
+      goName: ListTasks
+      inputType: ListTasksInput
+      outputType: TaskPage
+      kind: query
+      description: List Harvest tasks.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Harvest confirmed the task result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the task operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          default: true
+          description: A Meridian task result.
+          output: {tasks: [{id: 8001, name: Planning, isActive: true}]}
+    - name: getTask
+      goName: GetTask
+      inputType: GetTaskInput
+      outputType: TaskRecord
+      kind: query
+      description: Get a Harvest task by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest confirmed the task result.}
+        - {id: notFound, goName: NotFound, description: The task ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the task operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: A Meridian task result.
+          output: {id: 8001, name: Planning, isActive: true}
+    - name: createTask
+      goName: CreateTask
+      inputType: CreateTaskInput
+      outputType: TaskRecord
+      kind: mutation
+      description: Create a Harvest task.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the task result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the task operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted task may have been created., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian task result.
+          output: {id: 8001, name: Planning, isActive: true}
+    - name: updateTask
+      goName: UpdateTask
+      inputType: UpdateTaskInput
+      outputType: TaskRecord
+      kind: mutation
+      description: Update a Harvest task.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest confirmed the task result.}
+        - {id: notFound, goName: NotFound, description: The task ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the task operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian task result.
+          output: {id: 8001, name: Planning, isActive: true}
+    - name: deleteTask
+      goName: DeleteTask
+      inputType: DeleteTaskInput
+      outputType: DeletedTask
+      kind: mutation
+      description: Delete a Harvest task without time entries.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the task result.}
+        - {id: notFound, goName: NotFound, description: The task ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the task operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian task result.
+          output: {id: 8001}
+    - name: listInvoices
+      goName: ListInvoices
+      inputType: ListInvoicesInput
+      outputType: InvoicePage
+      kind: query
+      description: List Harvest invoices.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Harvest confirmed the invoice result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the invoice operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          default: true
+          description: A Meridian invoice result.
+          output: {invoices: [{id: 9001, clientId: 2001, number: INV-1001, subject: Planning, state: draft, amount: 100}]}
+    - name: getInvoice
+      goName: GetInvoice
+      inputType: GetInvoiceInput
+      outputType: InvoiceRecord
+      kind: query
+      description: Get a Harvest invoice by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest confirmed the invoice result.}
+        - {id: notFound, goName: NotFound, description: The invoice ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the invoice operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: A Meridian invoice result.
+          output: {id: 9001, clientId: 2001, number: INV-1001, subject: Planning, state: draft, amount: 100}
+    - name: createInvoice
+      goName: CreateInvoice
+      inputType: CreateInvoiceInput
+      outputType: InvoiceRecord
+      kind: mutation
+      description: Create a free-form Harvest invoice.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the invoice result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the invoice operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted invoice may have been created., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian invoice result.
+          output: {id: 9001, clientId: 2001, number: INV-1001, subject: Planning, state: draft, amount: 100}
+    - name: updateInvoice
+      goName: UpdateInvoice
+      inputType: UpdateInvoiceInput
+      outputType: InvoiceRecord
+      kind: mutation
+      description: Update a Harvest invoice.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest confirmed the invoice result.}
+        - {id: notFound, goName: NotFound, description: The invoice ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the invoice operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian invoice result.
+          output: {id: 9001, clientId: 2001, number: INV-1001, subject: Planning, state: draft, amount: 100}
+    - name: deleteInvoice
+      goName: DeleteInvoice
+      inputType: DeleteInvoiceInput
+      outputType: DeletedInvoice
+      kind: mutation
+      description: Delete a Harvest invoice.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the invoice result.}
+        - {id: notFound, goName: NotFound, description: The invoice ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the invoice operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian invoice result.
+          output: {id: 9001}
+    - name: listExpenses
+      goName: ListExpenses
+      inputType: ListExpensesInput
+      outputType: ExpensePage
+      kind: query
+      description: List Harvest expenses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Harvest confirmed the expense result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the expense operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          default: true
+          description: A Meridian expense result.
+          output: {expenses: [{id: 10001, projectId: 3001, categoryId: 11001, notes: Team lunch, totalCost: 45, spentDate: '2026-11-01', billable: true}]}
+    - name: getExpense
+      goName: GetExpense
+      inputType: GetExpenseInput
+      outputType: ExpenseRecord
+      kind: query
+      description: Get a Harvest expense by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest confirmed the expense result.}
+        - {id: notFound, goName: NotFound, description: The expense ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the expense operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: A Meridian expense result.
+          output: {id: 10001, projectId: 3001, categoryId: 11001, notes: Team lunch, totalCost: 45, spentDate: '2026-11-01', billable: true}
+    - name: createExpense
+      goName: CreateExpense
+      inputType: CreateExpenseInput
+      outputType: ExpenseRecord
+      kind: mutation
+      description: Create a Harvest expense.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the expense result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the expense operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted expense may have been created., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian expense result.
+          output: {id: 10001, projectId: 3001, categoryId: 11001, notes: Team lunch, totalCost: 45, spentDate: '2026-11-01', billable: true}
+    - name: updateExpense
+      goName: UpdateExpense
+      inputType: UpdateExpenseInput
+      outputType: ExpenseRecord
+      kind: mutation
+      description: Update a Harvest expense.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest confirmed the expense result.}
+        - {id: notFound, goName: NotFound, description: The expense ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the expense operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian expense result.
+          output: {id: 10001, projectId: 3001, categoryId: 11001, notes: Team lunch, totalCost: 45, spentDate: '2026-11-01', billable: true}
+    - name: deleteExpense
+      goName: DeleteExpense
+      inputType: DeleteExpenseInput
+      outputType: DeletedExpense
+      kind: mutation
+      description: Delete a Harvest expense.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the expense result.}
+        - {id: notFound, goName: NotFound, description: The expense ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the expense operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian expense result.
+          output: {id: 10001}
+    - name: listEstimates
+      goName: ListEstimates
+      inputType: ListEstimatesInput
+      outputType: EstimatePage
+      kind: query
+      description: List Harvest estimates.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Harvest confirmed the estimate result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the estimate operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          default: true
+          description: A Meridian estimate result.
+          output: {estimates: [{id: 12001, clientId: 2001, number: EST-1001, subject: Planning, state: draft, amount: 100}]}
+    - name: getEstimate
+      goName: GetEstimate
+      inputType: GetEstimateInput
+      outputType: EstimateRecord
+      kind: query
+      description: Get a Harvest estimate by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest confirmed the estimate result.}
+        - {id: notFound, goName: NotFound, description: The estimate ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the estimate operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: A Meridian estimate result.
+          output: {id: 12001, clientId: 2001, number: EST-1001, subject: Planning, state: draft, amount: 100}
+    - name: createEstimate
+      goName: CreateEstimate
+      inputType: CreateEstimateInput
+      outputType: EstimateRecord
+      kind: mutation
+      description: Create a Harvest estimate.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the estimate result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the estimate operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted estimate may have been created., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian estimate result.
+          output: {id: 12001, clientId: 2001, number: EST-1001, subject: Planning, state: draft, amount: 100}
+    - name: updateEstimate
+      goName: UpdateEstimate
+      inputType: UpdateEstimateInput
+      outputType: EstimateRecord
+      kind: mutation
+      description: Update a Harvest estimate.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest confirmed the estimate result.}
+        - {id: notFound, goName: NotFound, description: The estimate ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the estimate operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian estimate result.
+          output: {id: 12001, clientId: 2001, number: EST-1001, subject: Planning, state: draft, amount: 100}
+    - name: deleteEstimate
+      goName: DeleteEstimate
+      inputType: DeleteEstimateInput
+      outputType: DeletedEstimate
+      kind: mutation
+      description: Delete a Harvest estimate.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the estimate result.}
+        - {id: notFound, goName: NotFound, description: The estimate ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the estimate operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian estimate result.
+          output: {id: 12001}
+    - name: listUsers
+      goName: ListUsers
+      inputType: ListUsersInput
+      outputType: UserPage
+      kind: query
+      description: List users through the Harvest Users API.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Harvest confirmed the user result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          default: true
+          description: A Meridian teammate result.
+          output: {users: [{id: 6001, firstName: Ada, lastName: Lee, email: ada@example.com, isActive: true}]}
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: UserRecord
+      kind: query
+      description: Get user through the Harvest Users API.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest confirmed the user result.}
+        - {id: notFound, goName: NotFound, description: The user does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: A Meridian teammate result.
+          output: {id: 6001, firstName: Ada, lastName: Lee, email: ada@example.com, isActive: true}
+    - name: getCurrentUser
+      goName: GetCurrentUser
+      inputType: GetCurrentUserInput
+      outputType: UserRecord
+      kind: query
+      description: Get current user through the Harvest Users API.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest confirmed the user result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: A Meridian teammate result.
+          output: {id: 6001, firstName: Ada, lastName: Lee, email: ada@example.com, isActive: true}
+    - name: createUser
+      goName: CreateUser
+      inputType: CreateUserInput
+      outputType: UserRecord
+      kind: mutation
+      description: Create user through the Harvest Users API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the user result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted user invitation may have succeeded., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian teammate result.
+          output: {id: 6001, firstName: Ada, lastName: Lee, email: ada@example.com, isActive: true}
+    - name: updateUser
+      goName: UpdateUser
+      inputType: UpdateUserInput
+      outputType: UserRecord
+      kind: mutation
+      description: Update user through the Harvest Users API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest confirmed the user result.}
+        - {id: notFound, goName: NotFound, description: The user does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian teammate result.
+          output: {id: 6001, firstName: Ada, lastName: Lee, email: ada@example.com, isActive: true}
+    - name: deleteUser
+      goName: DeleteUser
+      inputType: DeleteUserInput
+      outputType: DeletedUser
+      kind: mutation
+      description: Delete user through the Harvest Users API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the user result.}
+        - {id: notFound, goName: NotFound, description: The user does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian teammate result.
+          output: {id: 6001}
     - name: listProjects
       goName: ListProjects
       inputType: ListProjectsInput
@@ -87,6 +853,228 @@ spec:
           branch: providerRejected
           description: "The connection token is invalid."
           failure: {kind: AUTHENTICATION, message: "Harvest rejected the token."}
+    - name: getTimeEntry
+      goName: GetTimeEntry
+      inputType: GetTimeEntryInput
+      outputType: TimeEntry
+      kind: query
+      description: Get time entry through the documented Harvest Time Entries API.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
+    - name: createTimeEntryByDuration
+      goName: CreateTimeEntryByDuration
+      inputType: CreateTimeEntryByDurationInput
+      outputType: TimeEntry
+      kind: mutation
+      description: Create time entry by duration through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the time-entry result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted time entry may have been created., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
+    - name: createTimeEntryByStartEnd
+      goName: CreateTimeEntryByStartEnd
+      inputType: CreateTimeEntryByStartEndInput
+      outputType: TimeEntry
+      kind: mutation
+      description: Create time entry by start end through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest confirmed the time-entry result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted time entry may have been created., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
+    - name: updateTimeEntry
+      goName: UpdateTimeEntry
+      inputType: UpdateTimeEntryInput
+      outputType: TimeEntry
+      kind: mutation
+      description: Update time entry through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
+    - name: deleteTimeEntry
+      goName: DeleteTimeEntry
+      inputType: DeleteTimeEntryInput
+      outputType: DeletedTimeEntry
+      kind: mutation
+      description: Delete time entry through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001}
+    - name: deleteTimeEntryExternalReference
+      goName: DeleteTimeEntryExternalReference
+      inputType: DeleteTimeEntryInput
+      outputType: DeletedTimeEntryExternalReference
+      kind: mutation
+      description: Delete time entry external reference through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001}
+    - name: stopTimeEntry
+      goName: StopTimeEntry
+      inputType: TimeEntryActionInput
+      outputType: TimeEntry
+      kind: mutation
+      description: Stop time entry through the documented Harvest Time Entries API.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: stopped, goName: Stopped, description: Harvest confirmed the time-entry result.}
+        - {id: notFound, goName: NotFound, description: The time entry does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the operation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: stopped
+          default: true
+          description: A Meridian time-entry result.
+          output: {id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}
+    - name: getProject
+      goName: GetProject
+      inputType: GetProjectInput
+      outputType: Project
+      kind: query
+      description: Retrieve a Harvest project by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest returned the project.}
+        - {id: notFound, goName: NotFound, description: The project ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the project read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: The Meridian project.
+          output: {id: 3001, name: Meridian Website, isActive: true}
+    - name: createProject
+      goName: CreateProject
+      inputType: CreateProjectInput
+      outputType: Project
+      kind: mutation
+      description: Create a Harvest project with a bounded resend on unknown outcomes.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest created the project.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the project creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted create could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian project was created.
+          output: {id: 3001, name: Meridian Website, isActive: true}
+    - name: updateProject
+      goName: UpdateProject
+      inputType: UpdateProjectInput
+      outputType: Project
+      kind: mutation
+      description: Set absolute fields on a Harvest project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest updated the project.}
+        - {id: notFound, goName: NotFound, description: The project ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the project update., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian project was updated.
+          output: {id: 3001, name: Meridian Website, isActive: true}
+    - name: deleteProject
+      goName: DeleteProject
+      inputType: DeleteProjectInput
+      outputType: DeletedProject
+      kind: mutation
+      description: Delete a Harvest project without tracked time or expenses.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest deleted the project.}
+        - {id: notFound, goName: NotFound, description: The project ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the project deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian project was deleted.
+          output: {id: 3001}
     - name: listTimeEntries
       goName: ListTimeEntries
       inputType: ListTimeEntriesInput

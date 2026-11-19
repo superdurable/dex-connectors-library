@@ -64,3 +64,25 @@ func TestRecordSyncUsesMockWithRealDex(t *testing.T) {
 	}, getCalls[0].Input)
 	require.Equal(t, salesforce.GetRecordBranchFound, getCalls[0].Branch)
 }
+
+func TestRecordSyncDeletesOnlyAfterRequestedReadBackWithRealDex(t *testing.T) {
+	mock := salesforcemock.New(t, ConnectionName)
+	mock.QueryRecords().Respond(salesforcemock.QueryRecordsFound(salesforce.QueryRecordsOutput{
+		Records: []salesforce.Record{{Type: "Contact", ID: "003RM000001AbcdYAC", Fields: map[string]json.RawMessage{
+			"Id": json.RawMessage(`"003RM000001AbcdYAC"`), "ERP_Id__c": json.RawMessage(`null`),
+		}}}, TotalSize: 1, IsDone: true,
+	}, nil))
+	flow, harness := newSalesforceIntegrationHarnessForConnection(t, mock.Connection())
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	run := runRecordSync(t, ctx, harness.client, flow, fmt.Sprintf("salesforce-cleanup-%d", time.Now().UnixNano()), Input{
+		MatchValue: "priya@meridian.example.com", ExternalID: "ERP-88213", Fields: map[string]string{"Title": "CTO"}, DeleteAfterReadBack: true,
+	})
+	require.Equal(t, dex.FlowCompleted, run.status, run.errorMessage)
+	require.True(t, run.outcome.WasDeleted)
+	deleteCalls := mock.DeleteRecord().Calls()
+	require.Len(t, deleteCalls, 1)
+	require.Equal(t, salesforce.DeleteRecordInput{SObjectType: "Contact", RecordID: "003RM000001AbcdYAC"}, deleteCalls[0].Input)
+	require.Equal(t, salesforce.DeleteRecordBranchDeleted, deleteCalls[0].Branch)
+}

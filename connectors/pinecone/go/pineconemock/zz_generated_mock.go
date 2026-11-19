@@ -17,9 +17,15 @@ import (
 
 // Mock is a scripted pinecone connection. Script each operation through its accessor.
 type Mock struct {
-	connection    pinecone.Connection
-	upsertVectors *connectormock.Mutation[pinecone.UpsertVectorsInput, pinecone.UpsertVectorsOutput]
-	queryVectors  *connectormock.Query[pinecone.QueryVectorsInput, pinecone.QueryVectorsOutput]
+	connection         pinecone.Connection
+	fetchVectors       *connectormock.Query[pinecone.FetchVectorsInput, pinecone.FetchedVectors]
+	listVectorIDs      *connectormock.Query[pinecone.ListVectorIDsInput, pinecone.VectorIDPage]
+	describeIndexStats *connectormock.Query[pinecone.DescribeIndexStatsInput, pinecone.IndexStats]
+	updateVector       *connectormock.Mutation[pinecone.UpdateVectorInput, pinecone.VectorAction]
+	deleteVectors      *connectormock.Mutation[pinecone.DeleteVectorsInput, pinecone.VectorAction]
+	clearNamespace     *connectormock.Mutation[pinecone.ClearNamespaceInput, pinecone.VectorAction]
+	upsertVectors      *connectormock.Mutation[pinecone.UpsertVectorsInput, pinecone.UpsertVectorsOutput]
+	queryVectors       *connectormock.Query[pinecone.QueryVectorsInput, pinecone.QueryVectorsOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +33,21 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		upsertVectors: connectormock.NewMutation[pinecone.UpsertVectorsInput, pinecone.UpsertVectorsOutput](t, pinecone.UpsertVectorsDefinition),
-		queryVectors:  connectormock.NewQuery[pinecone.QueryVectorsInput, pinecone.QueryVectorsOutput](t, pinecone.QueryVectorsDefinition),
+		fetchVectors:       connectormock.NewQuery[pinecone.FetchVectorsInput, pinecone.FetchedVectors](t, pinecone.FetchVectorsDefinition),
+		listVectorIDs:      connectormock.NewQuery[pinecone.ListVectorIDsInput, pinecone.VectorIDPage](t, pinecone.ListVectorIDsDefinition),
+		describeIndexStats: connectormock.NewQuery[pinecone.DescribeIndexStatsInput, pinecone.IndexStats](t, pinecone.DescribeIndexStatsDefinition),
+		updateVector:       connectormock.NewMutation[pinecone.UpdateVectorInput, pinecone.VectorAction](t, pinecone.UpdateVectorDefinition),
+		deleteVectors:      connectormock.NewMutation[pinecone.DeleteVectorsInput, pinecone.VectorAction](t, pinecone.DeleteVectorsDefinition),
+		clearNamespace:     connectormock.NewMutation[pinecone.ClearNamespaceInput, pinecone.VectorAction](t, pinecone.ClearNamespaceDefinition),
+		upsertVectors:      connectormock.NewMutation[pinecone.UpsertVectorsInput, pinecone.UpsertVectorsOutput](t, pinecone.UpsertVectorsDefinition),
+		queryVectors:       connectormock.NewQuery[pinecone.QueryVectorsInput, pinecone.QueryVectorsOutput](t, pinecone.QueryVectorsDefinition),
 	}
+	mock.fetchVectors.Default(FetchVectorsDefault())
+	mock.listVectorIDs.Default(ListVectorIDsDefault())
+	mock.describeIndexStats.Default(DescribeIndexStatsDefault())
+	mock.updateVector.Default(UpdateVectorDefault())
+	mock.deleteVectors.Default(DeleteVectorsDefault())
+	mock.clearNamespace.Default(ClearNamespaceDefault())
 	mock.upsertVectors.Default(UpsertVectorsDefault())
 	mock.queryVectors.Default(QueryVectorsDefault())
 	connection, err := pinecone.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "pinecone", Name: connectionName})
@@ -43,6 +61,36 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() pinecone.Connection { return mock.connection }
 
+// FetchVectors returns the fetchVectors script.
+func (mock *Mock) FetchVectors() *connectormock.Query[pinecone.FetchVectorsInput, pinecone.FetchedVectors] {
+	return mock.fetchVectors
+}
+
+// ListVectorIDs returns the listVectorIDs script.
+func (mock *Mock) ListVectorIDs() *connectormock.Query[pinecone.ListVectorIDsInput, pinecone.VectorIDPage] {
+	return mock.listVectorIDs
+}
+
+// DescribeIndexStats returns the describeIndexStats script.
+func (mock *Mock) DescribeIndexStats() *connectormock.Query[pinecone.DescribeIndexStatsInput, pinecone.IndexStats] {
+	return mock.describeIndexStats
+}
+
+// UpdateVector returns the updateVector script.
+func (mock *Mock) UpdateVector() *connectormock.Mutation[pinecone.UpdateVectorInput, pinecone.VectorAction] {
+	return mock.updateVector
+}
+
+// DeleteVectors returns the deleteVectors script.
+func (mock *Mock) DeleteVectors() *connectormock.Mutation[pinecone.DeleteVectorsInput, pinecone.VectorAction] {
+	return mock.deleteVectors
+}
+
+// ClearNamespace returns the clearNamespace script.
+func (mock *Mock) ClearNamespace() *connectormock.Mutation[pinecone.ClearNamespaceInput, pinecone.VectorAction] {
+	return mock.clearNamespace
+}
+
 // UpsertVectors returns the upsertVectors script.
 func (mock *Mock) UpsertVectors() *connectormock.Mutation[pinecone.UpsertVectorsInput, pinecone.UpsertVectorsOutput] {
 	return mock.upsertVectors
@@ -55,11 +103,245 @@ func (mock *Mock) QueryVectors() *connectormock.Query[pinecone.QueryVectorsInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) FetchVectors() sdkgo.Query[pinecone.FetchVectorsInput, pinecone.FetchedVectors] {
+	return operations.mock.fetchVectors
+}
+func (operations mockOperations) ListVectorIDs() sdkgo.Query[pinecone.ListVectorIDsInput, pinecone.VectorIDPage] {
+	return operations.mock.listVectorIDs
+}
+func (operations mockOperations) DescribeIndexStats() sdkgo.Query[pinecone.DescribeIndexStatsInput, pinecone.IndexStats] {
+	return operations.mock.describeIndexStats
+}
+func (operations mockOperations) UpdateVector() sdkgo.Mutation[pinecone.UpdateVectorInput, pinecone.VectorAction] {
+	return operations.mock.updateVector
+}
+func (operations mockOperations) DeleteVectors() sdkgo.Mutation[pinecone.DeleteVectorsInput, pinecone.VectorAction] {
+	return operations.mock.deleteVectors
+}
+func (operations mockOperations) ClearNamespace() sdkgo.Mutation[pinecone.ClearNamespaceInput, pinecone.VectorAction] {
+	return operations.mock.clearNamespace
+}
 func (operations mockOperations) UpsertVectors() sdkgo.Mutation[pinecone.UpsertVectorsInput, pinecone.UpsertVectorsOutput] {
 	return operations.mock.upsertVectors
 }
 func (operations mockOperations) QueryVectors() sdkgo.Query[pinecone.QueryVectorsInput, pinecone.QueryVectorsOutput] {
 	return operations.mock.queryVectors
+}
+
+// FetchVectorsFetched selects the fetched branch: Selected vectors were fetched.
+func FetchVectorsFetched(value pinecone.FetchedVectors, failure *sdkgo.Failure) connectormock.Case[pinecone.FetchedVectors] {
+	return connectormock.Branch(pinecone.FetchVectorsBranchFetched, value, failure)
+}
+
+// FetchVectorsProviderRejected selects the providerRejected branch: Pinecone rejected the fetch.
+func FetchVectorsProviderRejected(value pinecone.FetchedVectors, failure *sdkgo.Failure) connectormock.Case[pinecone.FetchedVectors] {
+	return connectormock.Branch(pinecone.FetchVectorsBranchProviderRejected, value, failure)
+}
+
+// FetchVectorsInvalidResponse selects the invalidResponse branch: Pinecone returned invalid JSON.
+func FetchVectorsInvalidResponse(value pinecone.FetchedVectors, failure *sdkgo.Failure) connectormock.Case[pinecone.FetchedVectors] {
+	return connectormock.Branch(pinecone.FetchVectorsBranchInvalidResponse, value, failure)
+}
+
+// FetchVectorsDefect selects the defect branch: Local input or credentials are invalid.
+func FetchVectorsDefect(value pinecone.FetchedVectors, failure *sdkgo.Failure) connectormock.Case[pinecone.FetchedVectors] {
+	return connectormock.Branch(pinecone.FetchVectorsBranchDefect, value, failure)
+}
+
+// FetchVectorsRetry asks Dex to retry the fetchVectors Step, after the delay when it is positive.
+func FetchVectorsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinecone.FetchedVectors] {
+	return connectormock.Retry[pinecone.FetchedVectors](failure, after)
+}
+
+// FetchVectorsDefaultFetch is the manifest mock defaultFetch: One sample fetched vector.
+func FetchVectorsDefaultFetch() connectormock.Case[pinecone.FetchedVectors] {
+	value := connectormock.MustDecodeOutput[pinecone.FetchedVectors](`{"vectors":[{"id":"vec-meridian","values":[0.1,0.2]}],"namespace":"example"}`)
+	return connectormock.Branch(pinecone.FetchVectorsBranchFetched, value, nil)
+}
+
+// FetchVectorsDefault is the manifest default, defaultFetch, which New installs.
+func FetchVectorsDefault() connectormock.Case[pinecone.FetchedVectors] {
+	return FetchVectorsDefaultFetch()
+}
+
+// ListVectorIDsListed selects the listed branch: Vector IDs were listed.
+func ListVectorIDsListed(value pinecone.VectorIDPage, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorIDPage] {
+	return connectormock.Branch(pinecone.ListVectorIDsBranchListed, value, failure)
+}
+
+// ListVectorIDsProviderRejected selects the providerRejected branch: Pinecone rejected the list.
+func ListVectorIDsProviderRejected(value pinecone.VectorIDPage, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorIDPage] {
+	return connectormock.Branch(pinecone.ListVectorIDsBranchProviderRejected, value, failure)
+}
+
+// ListVectorIDsInvalidResponse selects the invalidResponse branch: Pinecone returned invalid JSON.
+func ListVectorIDsInvalidResponse(value pinecone.VectorIDPage, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorIDPage] {
+	return connectormock.Branch(pinecone.ListVectorIDsBranchInvalidResponse, value, failure)
+}
+
+// ListVectorIDsDefect selects the defect branch: Local input or credentials are invalid.
+func ListVectorIDsDefect(value pinecone.VectorIDPage, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorIDPage] {
+	return connectormock.Branch(pinecone.ListVectorIDsBranchDefect, value, failure)
+}
+
+// ListVectorIDsRetry asks Dex to retry the listVectorIDs Step, after the delay when it is positive.
+func ListVectorIDsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinecone.VectorIDPage] {
+	return connectormock.Retry[pinecone.VectorIDPage](failure, after)
+}
+
+// ListVectorIDsDefaultList is the manifest mock defaultList: One sample ID page.
+func ListVectorIDsDefaultList() connectormock.Case[pinecone.VectorIDPage] {
+	value := connectormock.MustDecodeOutput[pinecone.VectorIDPage](`{"ids":["vec-meridian"],"nextToken":""}`)
+	return connectormock.Branch(pinecone.ListVectorIDsBranchListed, value, nil)
+}
+
+// ListVectorIDsDefault is the manifest default, defaultList, which New installs.
+func ListVectorIDsDefault() connectormock.Case[pinecone.VectorIDPage] {
+	return ListVectorIDsDefaultList()
+}
+
+// DescribeIndexStatsDescribed selects the described branch: Index statistics were read.
+func DescribeIndexStatsDescribed(value pinecone.IndexStats, failure *sdkgo.Failure) connectormock.Case[pinecone.IndexStats] {
+	return connectormock.Branch(pinecone.DescribeIndexStatsBranchDescribed, value, failure)
+}
+
+// DescribeIndexStatsProviderRejected selects the providerRejected branch: Pinecone rejected the read.
+func DescribeIndexStatsProviderRejected(value pinecone.IndexStats, failure *sdkgo.Failure) connectormock.Case[pinecone.IndexStats] {
+	return connectormock.Branch(pinecone.DescribeIndexStatsBranchProviderRejected, value, failure)
+}
+
+// DescribeIndexStatsInvalidResponse selects the invalidResponse branch: Pinecone returned invalid JSON.
+func DescribeIndexStatsInvalidResponse(value pinecone.IndexStats, failure *sdkgo.Failure) connectormock.Case[pinecone.IndexStats] {
+	return connectormock.Branch(pinecone.DescribeIndexStatsBranchInvalidResponse, value, failure)
+}
+
+// DescribeIndexStatsDefect selects the defect branch: Local input or credentials are invalid.
+func DescribeIndexStatsDefect(value pinecone.IndexStats, failure *sdkgo.Failure) connectormock.Case[pinecone.IndexStats] {
+	return connectormock.Branch(pinecone.DescribeIndexStatsBranchDefect, value, failure)
+}
+
+// DescribeIndexStatsRetry asks Dex to retry the describeIndexStats Step, after the delay when it is positive.
+func DescribeIndexStatsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinecone.IndexStats] {
+	return connectormock.Retry[pinecone.IndexStats](failure, after)
+}
+
+// DescribeIndexStatsDefaultStats is the manifest mock defaultStats: Sample index statistics.
+func DescribeIndexStatsDefaultStats() connectormock.Case[pinecone.IndexStats] {
+	value := connectormock.MustDecodeOutput[pinecone.IndexStats](`{"dimension":2,"totalVectorCount":1}`)
+	return connectormock.Branch(pinecone.DescribeIndexStatsBranchDescribed, value, nil)
+}
+
+// DescribeIndexStatsDefault is the manifest default, defaultStats, which New installs.
+func DescribeIndexStatsDefault() connectormock.Case[pinecone.IndexStats] {
+	return DescribeIndexStatsDefaultStats()
+}
+
+// UpdateVectorUpdated selects the updated branch: The vector was updated.
+func UpdateVectorUpdated(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.UpdateVectorBranchUpdated, value, failure)
+}
+
+// UpdateVectorProviderRejected selects the providerRejected branch: Pinecone rejected the update.
+func UpdateVectorProviderRejected(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.UpdateVectorBranchProviderRejected, value, failure)
+}
+
+// UpdateVectorInvalidResponse selects the invalidResponse branch: Pinecone returned invalid JSON.
+func UpdateVectorInvalidResponse(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.UpdateVectorBranchInvalidResponse, value, failure)
+}
+
+// UpdateVectorDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateVectorDefect(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.UpdateVectorBranchDefect, value, failure)
+}
+
+// UpdateVectorRetry asks Dex to retry the updateVector Step, after the delay when it is positive.
+func UpdateVectorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Retry[pinecone.VectorAction](failure, after)
+}
+
+// UpdateVectorDefaultUpdate is the manifest mock defaultUpdate: One sample vector was updated.
+func UpdateVectorDefaultUpdate() connectormock.Case[pinecone.VectorAction] {
+	value := connectormock.MustDecodeOutput[pinecone.VectorAction](`{"ids":["vec-meridian"],"namespace":"example"}`)
+	return connectormock.Branch(pinecone.UpdateVectorBranchUpdated, value, nil)
+}
+
+// UpdateVectorDefault is the manifest default, defaultUpdate, which New installs.
+func UpdateVectorDefault() connectormock.Case[pinecone.VectorAction] {
+	return UpdateVectorDefaultUpdate()
+}
+
+// DeleteVectorsDeleted selects the deleted branch: Selected vectors were deleted.
+func DeleteVectorsDeleted(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.DeleteVectorsBranchDeleted, value, failure)
+}
+
+// DeleteVectorsProviderRejected selects the providerRejected branch: Pinecone rejected the deletion.
+func DeleteVectorsProviderRejected(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.DeleteVectorsBranchProviderRejected, value, failure)
+}
+
+// DeleteVectorsInvalidResponse selects the invalidResponse branch: Pinecone returned invalid JSON.
+func DeleteVectorsInvalidResponse(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.DeleteVectorsBranchInvalidResponse, value, failure)
+}
+
+// DeleteVectorsDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteVectorsDefect(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.DeleteVectorsBranchDefect, value, failure)
+}
+
+// DeleteVectorsRetry asks Dex to retry the deleteVectors Step, after the delay when it is positive.
+func DeleteVectorsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Retry[pinecone.VectorAction](failure, after)
+}
+
+// DeleteVectorsDefaultDelete is the manifest mock defaultDelete: Sample vector IDs were deleted.
+func DeleteVectorsDefaultDelete() connectormock.Case[pinecone.VectorAction] {
+	value := connectormock.MustDecodeOutput[pinecone.VectorAction](`{"ids":["vec-meridian"],"namespace":"example"}`)
+	return connectormock.Branch(pinecone.DeleteVectorsBranchDeleted, value, nil)
+}
+
+// DeleteVectorsDefault is the manifest default, defaultDelete, which New installs.
+func DeleteVectorsDefault() connectormock.Case[pinecone.VectorAction] {
+	return DeleteVectorsDefaultDelete()
+}
+
+// ClearNamespaceCleared selects the cleared branch: The namespace was cleared.
+func ClearNamespaceCleared(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.ClearNamespaceBranchCleared, value, failure)
+}
+
+// ClearNamespaceProviderRejected selects the providerRejected branch: Pinecone rejected the clear.
+func ClearNamespaceProviderRejected(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.ClearNamespaceBranchProviderRejected, value, failure)
+}
+
+// ClearNamespaceInvalidResponse selects the invalidResponse branch: Pinecone returned invalid JSON.
+func ClearNamespaceInvalidResponse(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.ClearNamespaceBranchInvalidResponse, value, failure)
+}
+
+// ClearNamespaceDefect selects the defect branch: Local input or credentials are invalid.
+func ClearNamespaceDefect(value pinecone.VectorAction, failure *sdkgo.Failure) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Branch(pinecone.ClearNamespaceBranchDefect, value, failure)
+}
+
+// ClearNamespaceRetry asks Dex to retry the clearNamespace Step, after the delay when it is positive.
+func ClearNamespaceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinecone.VectorAction] {
+	return connectormock.Retry[pinecone.VectorAction](failure, after)
+}
+
+// ClearNamespaceDefaultClear is the manifest mock defaultClear: A sample namespace was cleared.
+func ClearNamespaceDefaultClear() connectormock.Case[pinecone.VectorAction] {
+	value := connectormock.MustDecodeOutput[pinecone.VectorAction](`{"namespace":"example"}`)
+	return connectormock.Branch(pinecone.ClearNamespaceBranchCleared, value, nil)
+}
+
+// ClearNamespaceDefault is the manifest default, defaultClear, which New installs.
+func ClearNamespaceDefault() connectormock.Case[pinecone.VectorAction] {
+	return ClearNamespaceDefaultClear()
 }
 
 // UpsertVectorsUpserted selects the upserted branch: Upsert vector IDs by absolute replacement in one namespace.

@@ -17,8 +17,14 @@ import (
 
 // Mock is a scripted amplitude connection. Script each operation through its accessor.
 type Mock struct {
-	connection  amplitude.Connection
-	searchUsers *connectormock.Query[amplitude.SearchUsersInput, amplitude.UserSearchPage]
+	connection          amplitude.Connection
+	queryChart          *connectormock.Query[amplitude.QueryChartInput, amplitude.ChartResult]
+	getActiveUserCounts *connectormock.Query[amplitude.ActiveUserCountsInput, amplitude.ActiveUserCounts]
+	getUserActivity     *connectormock.Query[amplitude.GetUserActivityInput, amplitude.UserActivity]
+	unsetUserProperty   *connectormock.Mutation[amplitude.UnsetUserPropertyInput, amplitude.IdentifiedUser]
+	trackEvent          *connectormock.Mutation[amplitude.TrackEventInput, amplitude.TrackedEvent]
+	identifyUser        *connectormock.Mutation[amplitude.IdentifyUserInput, amplitude.IdentifiedUser]
+	searchUsers         *connectormock.Query[amplitude.SearchUsersInput, amplitude.UserSearchPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +32,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		searchUsers: connectormock.NewQuery[amplitude.SearchUsersInput, amplitude.UserSearchPage](t, amplitude.SearchUsersDefinition),
+		queryChart:          connectormock.NewQuery[amplitude.QueryChartInput, amplitude.ChartResult](t, amplitude.QueryChartDefinition),
+		getActiveUserCounts: connectormock.NewQuery[amplitude.ActiveUserCountsInput, amplitude.ActiveUserCounts](t, amplitude.GetActiveUserCountsDefinition),
+		getUserActivity:     connectormock.NewQuery[amplitude.GetUserActivityInput, amplitude.UserActivity](t, amplitude.GetUserActivityDefinition),
+		unsetUserProperty:   connectormock.NewMutation[amplitude.UnsetUserPropertyInput, amplitude.IdentifiedUser](t, amplitude.UnsetUserPropertyDefinition),
+		trackEvent:          connectormock.NewMutation[amplitude.TrackEventInput, amplitude.TrackedEvent](t, amplitude.TrackEventDefinition),
+		identifyUser:        connectormock.NewMutation[amplitude.IdentifyUserInput, amplitude.IdentifiedUser](t, amplitude.IdentifyUserDefinition),
+		searchUsers:         connectormock.NewQuery[amplitude.SearchUsersInput, amplitude.UserSearchPage](t, amplitude.SearchUsersDefinition),
 	}
+	mock.queryChart.Default(QueryChartDefault())
+	mock.getActiveUserCounts.Default(GetActiveUserCountsDefault())
+	mock.getUserActivity.Default(GetUserActivityDefault())
+	mock.unsetUserProperty.Default(UnsetUserPropertyDefault())
+	mock.trackEvent.Default(TrackEventDefault())
+	mock.identifyUser.Default(IdentifyUserDefault())
 	mock.searchUsers.Default(SearchUsersDefault())
 	connection, err := amplitude.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amplitude", Name: connectionName})
 	if err != nil {
@@ -40,6 +58,36 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() amplitude.Connection { return mock.connection }
 
+// QueryChart returns the queryChart script.
+func (mock *Mock) QueryChart() *connectormock.Query[amplitude.QueryChartInput, amplitude.ChartResult] {
+	return mock.queryChart
+}
+
+// GetActiveUserCounts returns the getActiveUserCounts script.
+func (mock *Mock) GetActiveUserCounts() *connectormock.Query[amplitude.ActiveUserCountsInput, amplitude.ActiveUserCounts] {
+	return mock.getActiveUserCounts
+}
+
+// GetUserActivity returns the getUserActivity script.
+func (mock *Mock) GetUserActivity() *connectormock.Query[amplitude.GetUserActivityInput, amplitude.UserActivity] {
+	return mock.getUserActivity
+}
+
+// UnsetUserProperty returns the unsetUserProperty script.
+func (mock *Mock) UnsetUserProperty() *connectormock.Mutation[amplitude.UnsetUserPropertyInput, amplitude.IdentifiedUser] {
+	return mock.unsetUserProperty
+}
+
+// TrackEvent returns the trackEvent script.
+func (mock *Mock) TrackEvent() *connectormock.Mutation[amplitude.TrackEventInput, amplitude.TrackedEvent] {
+	return mock.trackEvent
+}
+
+// IdentifyUser returns the identifyUser script.
+func (mock *Mock) IdentifyUser() *connectormock.Mutation[amplitude.IdentifyUserInput, amplitude.IdentifiedUser] {
+	return mock.identifyUser
+}
+
 // SearchUsers returns the searchUsers script.
 func (mock *Mock) SearchUsers() *connectormock.Query[amplitude.SearchUsersInput, amplitude.UserSearchPage] {
 	return mock.searchUsers
@@ -47,8 +95,235 @@ func (mock *Mock) SearchUsers() *connectormock.Query[amplitude.SearchUsersInput,
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) QueryChart() sdkgo.Query[amplitude.QueryChartInput, amplitude.ChartResult] {
+	return operations.mock.queryChart
+}
+func (operations mockOperations) GetActiveUserCounts() sdkgo.Query[amplitude.ActiveUserCountsInput, amplitude.ActiveUserCounts] {
+	return operations.mock.getActiveUserCounts
+}
+func (operations mockOperations) GetUserActivity() sdkgo.Query[amplitude.GetUserActivityInput, amplitude.UserActivity] {
+	return operations.mock.getUserActivity
+}
+func (operations mockOperations) UnsetUserProperty() sdkgo.Mutation[amplitude.UnsetUserPropertyInput, amplitude.IdentifiedUser] {
+	return operations.mock.unsetUserProperty
+}
+func (operations mockOperations) TrackEvent() sdkgo.Mutation[amplitude.TrackEventInput, amplitude.TrackedEvent] {
+	return operations.mock.trackEvent
+}
+func (operations mockOperations) IdentifyUser() sdkgo.Mutation[amplitude.IdentifyUserInput, amplitude.IdentifiedUser] {
+	return operations.mock.identifyUser
+}
 func (operations mockOperations) SearchUsers() sdkgo.Query[amplitude.SearchUsersInput, amplitude.UserSearchPage] {
 	return operations.mock.searchUsers
+}
+
+// QueryChartFound selects the found branch: Amplitude returned chart results.
+func QueryChartFound(value amplitude.ChartResult, failure *sdkgo.Failure) connectormock.Case[amplitude.ChartResult] {
+	return connectormock.Branch(amplitude.QueryChartBranchFound, value, failure)
+}
+
+// QueryChartMissing selects the missing branch: The saved chart does not exist.
+func QueryChartMissing(value amplitude.ChartResult, failure *sdkgo.Failure) connectormock.Case[amplitude.ChartResult] {
+	return connectormock.Branch(amplitude.QueryChartBranchMissing, value, failure)
+}
+
+// QueryChartProviderRejected selects the providerRejected branch: Amplitude refused the chart query.
+func QueryChartProviderRejected(value amplitude.ChartResult, failure *sdkgo.Failure) connectormock.Case[amplitude.ChartResult] {
+	return connectormock.Branch(amplitude.QueryChartBranchProviderRejected, value, failure)
+}
+
+// QueryChartInvalidResponse selects the invalidResponse branch: Amplitude returned invalid chart JSON.
+func QueryChartInvalidResponse(value amplitude.ChartResult, failure *sdkgo.Failure) connectormock.Case[amplitude.ChartResult] {
+	return connectormock.Branch(amplitude.QueryChartBranchInvalidResponse, value, failure)
+}
+
+// QueryChartDefect selects the defect branch: The chart ID or credentials are invalid.
+func QueryChartDefect(value amplitude.ChartResult, failure *sdkgo.Failure) connectormock.Case[amplitude.ChartResult] {
+	return connectormock.Branch(amplitude.QueryChartBranchDefect, value, failure)
+}
+
+// QueryChartRetry asks Dex to retry the queryChart Step, after the delay when it is positive.
+func QueryChartRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[amplitude.ChartResult] {
+	return connectormock.Retry[amplitude.ChartResult](failure, after)
+}
+
+// QueryChartChartDefault is the manifest mock chartDefault: Amplitude returned one chart series.
+func QueryChartChartDefault() connectormock.Case[amplitude.ChartResult] {
+	value := connectormock.MustDecodeOutput[amplitude.ChartResult](`{"chartID":"abc123","dataJSON":"{\"series\":[[1,2]],\"xValues\":[\"2026-11-01\",\"2026-11-02\"]}"}`)
+	return connectormock.Branch(amplitude.QueryChartBranchFound, value, nil)
+}
+
+// QueryChartDefault is the manifest default, chartDefault, which New installs.
+func QueryChartDefault() connectormock.Case[amplitude.ChartResult] { return QueryChartChartDefault() }
+
+// GetActiveUserCountsCounted selects the counted branch: Amplitude returned user count series.
+func GetActiveUserCountsCounted(value amplitude.ActiveUserCounts, failure *sdkgo.Failure) connectormock.Case[amplitude.ActiveUserCounts] {
+	return connectormock.Branch(amplitude.GetActiveUserCountsBranchCounted, value, failure)
+}
+
+// GetActiveUserCountsProviderRejected selects the providerRejected branch: Amplitude refused the metric query.
+func GetActiveUserCountsProviderRejected(value amplitude.ActiveUserCounts, failure *sdkgo.Failure) connectormock.Case[amplitude.ActiveUserCounts] {
+	return connectormock.Branch(amplitude.GetActiveUserCountsBranchProviderRejected, value, failure)
+}
+
+// GetActiveUserCountsInvalidResponse selects the invalidResponse branch: Amplitude returned invalid metric JSON.
+func GetActiveUserCountsInvalidResponse(value amplitude.ActiveUserCounts, failure *sdkgo.Failure) connectormock.Case[amplitude.ActiveUserCounts] {
+	return connectormock.Branch(amplitude.GetActiveUserCountsBranchInvalidResponse, value, failure)
+}
+
+// GetActiveUserCountsDefect selects the defect branch: Dates, metric, interval, or credentials are invalid.
+func GetActiveUserCountsDefect(value amplitude.ActiveUserCounts, failure *sdkgo.Failure) connectormock.Case[amplitude.ActiveUserCounts] {
+	return connectormock.Branch(amplitude.GetActiveUserCountsBranchDefect, value, failure)
+}
+
+// GetActiveUserCountsRetry asks Dex to retry the getActiveUserCounts Step, after the delay when it is positive.
+func GetActiveUserCountsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[amplitude.ActiveUserCounts] {
+	return connectormock.Retry[amplitude.ActiveUserCounts](failure, after)
+}
+
+// GetActiveUserCountsCountsDefault is the manifest mock countsDefault: Amplitude returned two daily counts.
+func GetActiveUserCountsCountsDefault() connectormock.Case[amplitude.ActiveUserCounts] {
+	value := connectormock.MustDecodeOutput[amplitude.ActiveUserCounts](`{"startDate":"20261101","endDate":"20261102","metric":"active","intervalDays":1,"dates":["2026-11-01","2026-11-02"],"series":[[42,51]]}`)
+	return connectormock.Branch(amplitude.GetActiveUserCountsBranchCounted, value, nil)
+}
+
+// GetActiveUserCountsDefault is the manifest default, countsDefault, which New installs.
+func GetActiveUserCountsDefault() connectormock.Case[amplitude.ActiveUserCounts] {
+	return GetActiveUserCountsCountsDefault()
+}
+
+// GetUserActivityFound selects the found branch: Amplitude returned the user's activity summary.
+func GetUserActivityFound(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchFound, value, failure)
+}
+
+// GetUserActivityMissing selects the missing branch: Amplitude has no activity for this user.
+func GetUserActivityMissing(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchMissing, value, failure)
+}
+
+// GetUserActivityProviderRejected selects the providerRejected branch: Amplitude refused the activity read.
+func GetUserActivityProviderRejected(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchProviderRejected, value, failure)
+}
+
+// GetUserActivityInvalidResponse selects the invalidResponse branch: Amplitude returned invalid activity JSON.
+func GetUserActivityInvalidResponse(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchInvalidResponse, value, failure)
+}
+
+// GetUserActivityDefect selects the defect branch: The Amplitude ID or credentials are invalid.
+func GetUserActivityDefect(value amplitude.UserActivity, failure *sdkgo.Failure) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Branch(amplitude.GetUserActivityBranchDefect, value, failure)
+}
+
+// GetUserActivityRetry asks Dex to retry the getUserActivity Step, after the delay when it is positive.
+func GetUserActivityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[amplitude.UserActivity] {
+	return connectormock.Retry[amplitude.UserActivity](failure, after)
+}
+
+// GetUserActivityUserActivityDefault is the manifest mock userActivityDefault: Amplitude returned one user's counts.
+func GetUserActivityUserActivityDefault() connectormock.Case[amplitude.UserActivity] {
+	value := connectormock.MustDecodeOutput[amplitude.UserActivity](`{"amplitudeID":"12345","userID":"example-user","eventCount":142,"sessionCount":23,"returnedEvents":2}`)
+	return connectormock.Branch(amplitude.GetUserActivityBranchFound, value, nil)
+}
+
+// GetUserActivityDefault is the manifest default, userActivityDefault, which New installs.
+func GetUserActivityDefault() connectormock.Case[amplitude.UserActivity] {
+	return GetUserActivityUserActivityDefault()
+}
+
+// UnsetUserPropertyUnset selects the unset branch: Amplitude accepted the property removal.
+func UnsetUserPropertyUnset(value amplitude.IdentifiedUser, failure *sdkgo.Failure) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Branch(amplitude.UnsetUserPropertyBranchUnset, value, failure)
+}
+
+// UnsetUserPropertyProviderRejected selects the providerRejected branch: Amplitude conclusively refused the removal.
+func UnsetUserPropertyProviderRejected(value amplitude.IdentifiedUser, failure *sdkgo.Failure) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Branch(amplitude.UnsetUserPropertyBranchProviderRejected, value, failure)
+}
+
+// UnsetUserPropertyDefect selects the defect branch: The user, property, or connection is invalid.
+func UnsetUserPropertyDefect(value amplitude.IdentifiedUser, failure *sdkgo.Failure) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Branch(amplitude.UnsetUserPropertyBranchDefect, value, failure)
+}
+
+// UnsetUserPropertyRetry asks Dex to retry the unsetUserProperty Step, after the delay when it is positive.
+func UnsetUserPropertyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Retry[amplitude.IdentifiedUser](failure, after)
+}
+
+// UnsetUserPropertyUnsetDefault is the manifest mock unsetDefault: The obsolete plan property was removed.
+func UnsetUserPropertyUnsetDefault() connectormock.Case[amplitude.IdentifiedUser] {
+	value := connectormock.MustDecodeOutput[amplitude.IdentifiedUser](`{"userID":"example-user","propertyName":"oldPlan"}`)
+	return connectormock.Branch(amplitude.UnsetUserPropertyBranchUnset, value, nil)
+}
+
+// UnsetUserPropertyDefault is the manifest default, unsetDefault, which New installs.
+func UnsetUserPropertyDefault() connectormock.Case[amplitude.IdentifiedUser] {
+	return UnsetUserPropertyUnsetDefault()
+}
+
+// TrackEventTracked selects the tracked branch: Amplitude ingested the event.
+func TrackEventTracked(value amplitude.TrackedEvent, failure *sdkgo.Failure) connectormock.Case[amplitude.TrackedEvent] {
+	return connectormock.Branch(amplitude.TrackEventBranchTracked, value, failure)
+}
+
+// TrackEventProviderRejected selects the providerRejected branch: Amplitude conclusively rejected the event.
+func TrackEventProviderRejected(value amplitude.TrackedEvent, failure *sdkgo.Failure) connectormock.Case[amplitude.TrackedEvent] {
+	return connectormock.Branch(amplitude.TrackEventBranchProviderRejected, value, failure)
+}
+
+// TrackEventDefect selects the defect branch: The event or connection is invalid.
+func TrackEventDefect(value amplitude.TrackedEvent, failure *sdkgo.Failure) connectormock.Case[amplitude.TrackedEvent] {
+	return connectormock.Branch(amplitude.TrackEventBranchDefect, value, failure)
+}
+
+// TrackEventRetry asks Dex to retry the trackEvent Step, after the delay when it is positive.
+func TrackEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[amplitude.TrackedEvent] {
+	return connectormock.Retry[amplitude.TrackedEvent](failure, after)
+}
+
+// TrackEventTrackedDefault is the manifest mock trackedDefault: One purchase event was ingested.
+func TrackEventTrackedDefault() connectormock.Case[amplitude.TrackedEvent] {
+	value := connectormock.MustDecodeOutput[amplitude.TrackedEvent](`{"userID":"example-user","eventType":"purchase","insertID":"example-insert-id"}`)
+	return connectormock.Branch(amplitude.TrackEventBranchTracked, value, nil)
+}
+
+// TrackEventDefault is the manifest default, trackedDefault, which New installs.
+func TrackEventDefault() connectormock.Case[amplitude.TrackedEvent] {
+	return TrackEventTrackedDefault()
+}
+
+// IdentifyUserIdentified selects the identified branch: Amplitude accepted the property replacement.
+func IdentifyUserIdentified(value amplitude.IdentifiedUser, failure *sdkgo.Failure) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Branch(amplitude.IdentifyUserBranchIdentified, value, failure)
+}
+
+// IdentifyUserProviderRejected selects the providerRejected branch: Amplitude conclusively rejected the property update.
+func IdentifyUserProviderRejected(value amplitude.IdentifiedUser, failure *sdkgo.Failure) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Branch(amplitude.IdentifyUserBranchProviderRejected, value, failure)
+}
+
+// IdentifyUserDefect selects the defect branch: The user, property, or connection is invalid.
+func IdentifyUserDefect(value amplitude.IdentifiedUser, failure *sdkgo.Failure) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Branch(amplitude.IdentifyUserBranchDefect, value, failure)
+}
+
+// IdentifyUserRetry asks Dex to retry the identifyUser Step, after the delay when it is positive.
+func IdentifyUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[amplitude.IdentifiedUser] {
+	return connectormock.Retry[amplitude.IdentifiedUser](failure, after)
+}
+
+// IdentifyUserIdentifiedDefault is the manifest mock identifiedDefault: The plan property was set for a user.
+func IdentifyUserIdentifiedDefault() connectormock.Case[amplitude.IdentifiedUser] {
+	value := connectormock.MustDecodeOutput[amplitude.IdentifiedUser](`{"userID":"example-user","propertyName":"plan"}`)
+	return connectormock.Branch(amplitude.IdentifyUserBranchIdentified, value, nil)
+}
+
+// IdentifyUserDefault is the manifest default, identifiedDefault, which New installs.
+func IdentifyUserDefault() connectormock.Case[amplitude.IdentifiedUser] {
+	return IdentifyUserIdentifiedDefault()
 }
 
 // SearchUsersSearched selects the searched branch: Amplitude returned matching user IDs, possibly empty.

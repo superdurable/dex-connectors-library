@@ -26,3 +26,19 @@ func TestFlowIdentityAndMapping(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, pagerduty.Connection{}, mockConnection)
 }
+
+func TestUserLookupFlowIdentityAndMapping(t *testing.T) {
+	require.Equal(t, UserLookupFlowType, dex.GetFinalFlowType(NewUserLookupFlow(pagerduty.Connection{})))
+	require.Equal(t, "PrepareUserLookup", dex.GetFinalStepType[UserLookupRequest](prepareUserLookup{}))
+	require.Equal(t, "CompleteUserLookup", dex.GetFinalStepType[pagerduty.GetUserResult](completeUserLookup{}))
+	request := UserLookupRequest(pagerduty.GetUserInput{ID: "PXPGF42"})
+	require.Equal(t, "PXPGF42", pagerduty.GetUserInput(request).ID)
+}
+
+func TestIncidentUpdateFlowIdentityAndMapping(t *testing.T) {
+	require.Equal(t, IncidentUpdateFlowType, dex.GetFinalFlowType(NewIncidentUpdateFlow(pagerduty.Connection{})))
+	require.Equal(t, "PrepareIncidentUpdate", dex.GetFinalStepType[IncidentUpdateRequest](prepareIncidentUpdate{}))
+	require.Equal(t, "CompleteIncidentUpdate", dex.GetFinalStepType[pagerduty.UpdateIncidentResult](completeIncidentUpdate{}))
+	request := IncidentUpdateRequest(pagerduty.UpdateIncidentInput{ID: "P123456", Status: "acknowledged", FromUserEmail: "responder@example.com"})
+	require.Equal(t, "acknowledged", pagerduty.UpdateIncidentInput(request).Status)
+}

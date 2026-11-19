@@ -21,6 +21,42 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
+type createObjectRefreshingCredentialProvider struct{ forcedRefreshes int }
+
+func (*createObjectRefreshingCredentialProvider) Resolve(sdkgo.Call) (hubspot.Credentials, error) {
+	return hubspot.Credentials{AuthMethodID: hubspot.OAuthAuthMethodID, AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
+}
+
+func (provider *createObjectRefreshingCredentialProvider) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[hubspot.Credentials]) (hubspot.Credentials, error) {
+	return provider.Resolve(call)
+}
+
+func (provider *createObjectRefreshingCredentialProvider) ResolveAfterRejection(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[hubspot.Credentials]) (hubspot.Credentials, error) {
+	provider.forcedRefreshes++
+	return hubspot.Credentials{AuthMethodID: hubspot.OAuthAuthMethodID, AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+}
+
+func TestCreateObjectDoesNotResendWithinOneFenceAfterUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		require.Equal(t, http.MethodPost, request.Method)
+		require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+		response.WriteHeader(http.StatusUnauthorized)
+		_, _ = response.Write([]byte(`{"category":"INVALID_AUTHENTICATION","message":"denied"}`))
+	}))
+	t.Cleanup(server.Close)
+	provider := &createObjectRefreshingCredentialProvider{}
+	client, err := hubspot.New(hubspot.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunMutation(newStepDexContext("create-object-single-send"), client.CreateObject(), hubspotConnection, hubspot.CreateObjectInput{ObjectType: hubspot.ObjectTypeDeals, Properties: map[string]string{"dealname": "Renewal"}})
+	require.NoError(t, err)
+	require.Equal(t, hubspot.CreateObjectBranchProviderRejected, result.Branch)
+	require.Equal(t, 1, requests)
+	require.Zero(t, provider.forcedRefreshes)
+}
+
 func TestSearchObjectsSendsTypedFiltersAndReturnsOnePage(t *testing.T) {
 	provider := newRecordingHubSpot(t, func(response http.ResponseWriter, _ recordedRequest) {
 		writeJSON(t, response, http.StatusOK, `{"total":3,"results":[

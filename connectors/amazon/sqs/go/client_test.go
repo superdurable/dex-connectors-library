@@ -104,11 +104,11 @@ func TestErrorResponsesClassifyByCodeWithoutProviderMessageText(t *testing.T) {
 		"a KMS key the queue lacks": {response: sqsfake.Response{StatusCode: http.StatusBadRequest, Code: "KmsAccessDenied"}, branch: sqs.ReceiveMessagesBranchProviderRejected, kind: sdkgo.FailureAuthorization},
 		"too many in-flight":        {response: sqsfake.Response{StatusCode: http.StatusForbidden, Code: "OverLimit"}, branch: sqs.ReceiveMessagesBranchProviderRejected, kind: sdkgo.FailureProviderRejection, message: "too many in-flight messages"},
 		"an invalid parameter":      {response: sqsfake.Response{StatusCode: http.StatusBadRequest, Code: "InvalidParameterValue"}, branch: sqs.ReceiveMessagesBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
-		"an error without a body":   {response: sqsfake.Response{StatusCode: http.StatusBadRequest}, branch: sqs.ReceiveMessagesBranchProviderRejected, kind: sdkgo.FailureProviderRejection, message: "HTTP 400"},
+		"an error without a body":   {response: sqsfake.Response{StatusCode: http.StatusBadRequest}, retryKind: sdkgo.FailureProviderRejection},
 		"a legacy queue code only": {response: sqsfake.Response{StatusCode: http.StatusBadRequest, RawBody: []byte("not json"),
 			Header: http.Header{"X-Amzn-Query-Error": {"AWS.SimpleQueueService.NonExistentQueue;Sender"}}}, branch: sqs.ReceiveMessagesBranchProviderRejected, kind: sdkgo.FailureNotFound, message: "check queueUrl"},
 		"a code that is not a token": {response: sqsfake.Response{StatusCode: http.StatusBadRequest,
-			RawBody: []byte(`{"__type":"com.amazonaws.sqs#Not a code SENTINEL","message":"SENTINEL"}`)}, branch: sqs.ReceiveMessagesBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
+			RawBody: []byte(`{"__type":"com.amazonaws.sqs#Not a code SENTINEL","message":"SENTINEL"}`)}, retryKind: sdkgo.FailureProviderRejection},
 	} {
 		t.Run(name, func(t *testing.T) {
 			queues := newFakeQueues(t)

@@ -1,0 +1,60 @@
+{
+  "connectorId": "esign",
+  "releaseTag": "connectors/esign/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-esign",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_sign_flow_status_step",
+      "kind": "query",
+      "operationId": "getSignFlowStatus",
+      "inputType": "GetSignFlowStatusInput",
+      "description": "Read one existing signing flow's numeric status.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSignFlowStatusInput identifies an existing signing flow.",
+        "properties": {
+          "signFlowId": {
+            "description": "SignFlowID is the opaque flow ID returned by an existing eSign signing workflow.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signFlowId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

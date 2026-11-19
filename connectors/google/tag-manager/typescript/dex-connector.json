@@ -1,6 +1,6 @@
 {
   "connectorId": "google-tag-manager",
-  "releaseTag": "connectors/google/tag-manager/go/v0.2.0",
+  "releaseTag": "connectors/google/tag-manager/go/v0.3.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-tag-manager",

@@ -58,4 +58,82 @@ func TestChannelReadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "instagram", output.Service)
 	require.Equal(t, "Example Channel", output.Name)
 	require.Len(t, mock.GetChannel().Calls(), 1)
+	require.Len(t, mock.ListOrganizations().Calls(), 1)
+	require.Len(t, mock.ListIdeas().Calls(), 1)
+}
+
+func TestIdeaCreateUsesDefaultMockWithRealDex(t *testing.T) {
+	mock := buffermock.New(t, ConnectionName)
+	flow := NewIdeaFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:8801"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	flowID := "buffer-idea-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, flow, flowID, buffer.CreateIdeaInput{OrganizationID: "org-1", Title: "Sample idea", Text: "Sample text"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output buffer.IdeaProfile
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, "idea-1", output.ID)
+	require.Equal(t, "Sample idea", output.Title)
+	require.Len(t, mock.CreateIdea().Calls(), 1)
+}
+
+func TestScheduledPostUsesDefaultMockWithRealDex(t *testing.T) {
+	mock := buffermock.New(t, ConnectionName)
+	flow := NewScheduledPostFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:8801"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	flowID := "buffer-scheduled-post-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, flow, flowID, buffer.CreateScheduledPostInput{ChannelID: "channel-1", Text: "Scheduled post", DueAt: "2030-01-01T10:00:00Z", Assets: []buffer.PostAsset{{Type: "image", URL: "https://example.com/photo.jpg"}}}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output buffer.PostProfile
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, "post-2", output.ID)
+	require.Equal(t, "channel-1", output.ChannelID)
+	require.Len(t, mock.CreateScheduledPost().Calls(), 1)
 }

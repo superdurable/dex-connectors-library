@@ -55,6 +55,7 @@ func TestCompanyNewsExampleRoutesNewsAPIOutcomesWithRealDex(t *testing.T) {
 
 		requests := provider.requestsFor(company)
 		require.Len(t, requests, 1)
+		require.Len(t, provider.headlineRequestsFor(company), 1)
 		require.Equal(t, integrationAPIKey, requests[0].apiKey)
 		require.Equal(t, url.Values{
 			"q": {company}, "searchIn": {"title"}, "from": {outcome.From}, "language": {"en"},
@@ -107,6 +108,7 @@ func TestCompanyNewsExampleRoutesNewsAPIOutcomesWithRealDex(t *testing.T) {
 type newsProviderRequest struct {
 	apiKey string
 	query  url.Values
+	path   string
 }
 
 // newsProvider is a local NewsAPI. The query's first word selects the outcome.
@@ -127,16 +129,24 @@ func newNewsProvider(t *testing.T) *newsProvider {
 func (provider *newsProvider) serveHTTP(response http.ResponseWriter, request *http.Request) {
 	company := request.URL.Query().Get("q")
 	provider.mutex.Lock()
-	provider.requests = append(provider.requests, newsProviderRequest{apiKey: request.Header.Get("X-Api-Key"), query: request.URL.Query()})
+	provider.requests = append(provider.requests, newsProviderRequest{apiKey: request.Header.Get("X-Api-Key"), query: request.URL.Query(), path: request.URL.Path})
 	attempts := 0
 	for _, previous := range provider.requests {
-		if previous.query.Get("q") == company {
+		if previous.query.Get("q") == company && previous.path == "/v2/everything" {
 			attempts++
 		}
 	}
 	provider.mutex.Unlock()
-	if request.URL.Path != "/v2/everything" || request.Header.Get("X-Api-Key") != integrationAPIKey {
+	if request.Header.Get("X-Api-Key") != integrationAPIKey {
 		writeProviderResponse(response, http.StatusUnauthorized, `{"status":"error","code":"apiKeyInvalid","message":"SENTINEL"}`)
+		return
+	}
+	if request.URL.Path == "/v2/top-headlines" {
+		writeProviderResponse(response, http.StatusOK, `{"status":"ok","totalResults":0,"articles":[]}`)
+		return
+	}
+	if request.URL.Path != "/v2/everything" {
+		writeProviderResponse(response, http.StatusNotFound, `{"status":"error","code":"notFound"}`)
 		return
 	}
 	switch {
@@ -170,7 +180,19 @@ func (provider *newsProvider) requestsFor(company string) []newsProviderRequest 
 	defer provider.mutex.Unlock()
 	var matching []newsProviderRequest
 	for _, request := range provider.requests {
-		if request.query.Get("q") == company {
+		if request.query.Get("q") == company && request.path == "/v2/everything" {
+			matching = append(matching, request)
+		}
+	}
+	return matching
+}
+
+func (provider *newsProvider) headlineRequestsFor(company string) []newsProviderRequest {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	var matching []newsProviderRequest
+	for _, request := range provider.requests {
+		if request.query.Get("q") == company && request.path == "/v2/top-headlines" {
 			matching = append(matching, request)
 		}
 	}

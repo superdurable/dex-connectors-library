@@ -1,10 +1,10 @@
 # Harvest connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/harvest/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/harvest/go@v0.3.0` after this version is released.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/harvest`.
 
-`github.com/superdurable/dex-connectors-library/connectors/harvest/go` exposes read-only Dex Query Steps against Harvest's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
+`github.com/superdurable/dex-connectors-library/connectors/harvest/go` exposes Dex Query and Mutation Steps against Harvest's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
 
 ## Connection
 
@@ -20,9 +20,39 @@ The TypeScript package is [`@superdurable/connector-harvest`](typescript/README.
 | Operation | Official API reference |
 | --- | --- |
 | `listProjects` | [Harvest listProjects](https://help.getharvest.com/api-v2/projects-api/projects/projects/) |
+| `getProject`, `createProject`, `updateProject`, `deleteProject` | [Harvest Projects API](https://help.getharvest.com/api-v2/projects-api/projects/projects/) |
 | `listTimeEntries` | [Harvest listTimeEntries](https://help.getharvest.com/api-v2/timesheets-api/timesheets/time-entries/) |
+| `getTimeEntry`, `createTimeEntryByDuration`, `createTimeEntryByStartEnd`, `updateTimeEntry`, `deleteTimeEntry`, `deleteTimeEntryExternalReference`, `stopTimeEntry` | [Harvest Time Entries API](https://help.getharvest.com/api-v2/timesheets-api/timesheets/time-entries/) |
+| `listUsers`, `getUser`, `getCurrentUser`, `createUser`, `updateUser`, `deleteUser` | [Harvest Users API](https://help.getharvest.com/api-v2/users-api/users/users/) |
+| `listClients`, `getClient`, `createClient`, `updateClient`, `deleteClient` | [Harvest Clients API](https://help.getharvest.com/api-v2/clients-api/clients/clients/) |
+| `listContacts`, `getContact`, `createContact`, `updateContact`, `deleteContact` | [Harvest Contacts API](https://help.getharvest.com/api-v2/clients-api/clients/contacts/) |
+| `getCompany`, `updateCompany` | [Harvest Company API](https://help.getharvest.com/api-v2/company-api/company/company/) |
+| `listTasks`, `getTask`, `createTask`, `updateTask`, `deleteTask` | [Harvest Tasks API](https://help.getharvest.com/api-v2/tasks-api/tasks/tasks/) |
+| `listInvoices`, `getInvoice`, `createInvoice`, `updateInvoice`, `deleteInvoice` | [Harvest Invoices API](https://help.getharvest.com/api-v2/invoices-api/invoices/invoices/) |
+| `listExpenses`, `getExpense`, `createExpense`, `updateExpense`, `deleteExpense` | [Harvest Expenses API](https://help.getharvest.com/api-v2/expenses-api/expenses/expenses/) |
+| `listEstimates`, `getEstimate`, `createEstimate`, `updateEstimate`, `deleteEstimate` | [Harvest Estimates API](https://help.getharvest.com/api-v2/estimates-api/estimates/estimates/) |
 
 Each operation returns a bounded, typed response. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
+
+`createClient` is a limited-repeat Mutation with at most three sends because Harvest does not support an idempotency key and client names are not unique enough for reliable read-back. If a possible create remains unconfirmed at the cap, it selects `uncertain`; inspect Harvest before another create. `updateClient` applies absolute fields and `deleteClient` is idempotent, so unknown responses Retry safely. Each requires the connection owner's Harvest permission to manage clients.
+
+`createProject` also uses a three-send limited tier because Harvest does not deduplicate project POSTs. It reads back a returned project ID on recovery; when no ID was received, a project name alone cannot safely identify the create. `updateProject` sends absolute fields and `deleteProject` uses repeat-safe DELETE. Project writes require Administrator or Manager access to managed projects.
+
+Both completed time-entry create operations use the limited tier with at most three sends. Duration creation requires positive hours, and clock-time creation requires both start and end times, so these operations do not start a running timer. `updateTimeEntry`, both deletions, and `stopTimeEntry` use the safe tier. A repeated stop reads the entry first and confirms a stopped timer without issuing another PATCH.
+
+`createUser` sends a Harvest invitation email and uses the limited tier with at most three sends. A possible earlier invitation without a returned user ID cannot be confirmed by the create response alone; inspect Harvest Users before inviting again after `uncertain`. User updates set absolute fields, and user deletion is repeat-safe. Administrator permissions are generally required for creation and deletion; `getCurrentUser` works with the connected user's own access.
+
+`createContact` uses the limited tier with at most three sends; Harvest does not deduplicate contact POSTs. A returned contact ID permits read-back on recovery, while a lost create response can become `uncertain`. Contact updates set absolute fields and deletion is repeat-safe. The connected user needs permission to manage the owning client.
+
+`getCompany` reads account settings, and `updateCompany` sets timer style or weekly capacity in seconds with a repeat-safe PATCH. Harvest requires Administrator permissions for these endpoints.
+
+`createTask` uses the limited tier with at most three sends because Harvest does not deduplicate task POSTs. If a possible create remains unconfirmed at the cap, inspect Harvest before creating again. Task updates set absolute fields; archival uses `isActive: false`, and deletion is repeat-safe but Harvest rejects deletion when time entries exist. Task endpoints require Administrator or Manager permissions to create and edit tasks.
+
+`createInvoice` creates a free-form draft with at least one line item and uses the limited tier with at most three sends. A lost response without a returned invoice ID can select `uncertain`; inspect Harvest before creating another invoice. `updateInvoice` sets absolute header fields and `deleteInvoice` is repeat-safe. Invoice endpoints require Administrator or Manager permissions. Tracked-time imports, line-item edits, payments, messages, and beta e-invoice submission are outside these operations.
+
+`createExpense` creates a cost-based expense without a receipt and uses the limited tier with at most three sends. A lost response without a returned expense ID can select `uncertain`; inspect Harvest before creating another expense. `updateExpense` sets absolute date, cost, notes, and billable fields; `deleteExpense` is repeat-safe. Receipt upload is excluded because Harvest requires multipart file transfer. Beta approval and withdrawal endpoints are excluded.
+
+`createEstimate` creates a draft with at least one line item and uses the limited tier with at most three sends. A lost response without a returned estimate ID can select `uncertain`; inspect Harvest before creating another estimate. `updateEstimate` sets absolute header fields and `deleteEstimate` is repeat-safe. Estimate endpoints require Administrator or Manager permissions; estimate messages and line-item edits are outside these operations.
 
 ## Mocks
 
@@ -30,7 +60,7 @@ The generated `harvestmock` package includes one default Meridian answer per ope
 
 ## Example
 
-The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It lists projects, reads the first project's details, lists time entries, reads the first time-entry detail, reads the connected user, lists clients and contacts for the first client, reads company settings, and lists tasks, invoices, expenses, and estimates. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
 
 ## Live verification
 

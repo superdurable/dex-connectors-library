@@ -8,7 +8,7 @@ import { GreenhouseClient } from '../src/client.js';
 import { GetCandidateInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/greenhouse/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/greenhouse/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getCandidate');
 const connection = { provider: 'greenhouse', name: 'greenhouse' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGreenhouse, '/v3'));
 

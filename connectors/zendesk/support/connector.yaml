@@ -6,7 +6,7 @@ metadata:
   description: Search, list, read, create, update, and delete Zendesk Support tickets and manage related users and organizations.
   company: Zendesk
   categories: [customer-support]
-  version: v0.25.0
+  version: v0.26.0
 spec:
   provider: zendesk
   languages:

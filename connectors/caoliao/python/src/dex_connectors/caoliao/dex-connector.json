@@ -1,0 +1,61 @@
+{
+  "connectorId": "caoliao",
+  "releaseTag": "connectors/caoliao/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-caoliao",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_qr_codes_step",
+      "kind": "query",
+      "operationId": "listQRCodes",
+      "inputType": "ListQRCodesInput",
+      "description": "List one page of organization QR-code names and coding identifiers.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListQRCodesInput selects a bounded page of organization QR codes.",
+        "properties": {
+          "pageSize": {
+            "description": "PageSize is 1 to 100; zero uses the provider's default of 20.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the opaque token returned as NextPageToken; blank starts the first page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

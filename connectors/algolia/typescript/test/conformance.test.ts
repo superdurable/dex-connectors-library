@@ -7,7 +7,8 @@ import { ProviderTransportError, type ProviderRequest } from '@superdurable/conn
 import { Client, SaveObjectInputSchema, SearchInputSchema, type SaveObjectInput } from '../src/index.js';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/algolia/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/algolia/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'search' || scenario.operation === 'saveObject');
 const connection = { provider: 'algolia', name: 'algolia' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAlgolia, '/1'));

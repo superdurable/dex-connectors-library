@@ -17,8 +17,19 @@ import (
 
 // Mock is a scripted onespan-sign connection. Script each operation through its accessor.
 type Mock struct {
-	connection onespansign.Connection
-	getPackage *connectormock.Query[onespansign.GetPackageInput, onespansign.PackageStatus]
+	connection         onespansign.Connection
+	getPackage         *connectormock.Query[onespansign.GetPackageInput, onespansign.PackageStatus]
+	listPackages       *connectormock.Query[onespansign.ListPackagesInput, onespansign.PackagesPage]
+	createDraftPackage *connectormock.Mutation[onespansign.CreateDraftPackageInput, onespansign.CreatedPackage]
+	updatePackageName  *connectormock.Mutation[onespansign.UpdatePackageNameInput, onespansign.UpdatedPackage]
+	sendPackage        *connectormock.Mutation[onespansign.SendPackageInput, onespansign.SentPackage]
+	trashPackage       *connectormock.Mutation[onespansign.TrashPackageInput, onespansign.TrashedPackage]
+	deletePackage      *connectormock.Mutation[onespansign.DeletePackageInput, onespansign.DeletedPackage]
+	listSignerRoles    *connectormock.Query[onespansign.ListSignerRolesInput, onespansign.SignerRoleIDsPage]
+	getSignerRole      *connectormock.Query[onespansign.GetSignerRoleInput, onespansign.SignerRoleID]
+	addSigner          *connectormock.Mutation[onespansign.AddSignerInput, onespansign.SignerRoleID]
+	updateSigner       *connectormock.Mutation[onespansign.UpdateSignerInput, onespansign.SignerRoleID]
+	removeSigner       *connectormock.Mutation[onespansign.RemoveSignerInput, onespansign.SignerRoleID]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +37,31 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getPackage: connectormock.NewQuery[onespansign.GetPackageInput, onespansign.PackageStatus](t, onespansign.GetPackageDefinition),
+		getPackage:         connectormock.NewQuery[onespansign.GetPackageInput, onespansign.PackageStatus](t, onespansign.GetPackageDefinition),
+		listPackages:       connectormock.NewQuery[onespansign.ListPackagesInput, onespansign.PackagesPage](t, onespansign.ListPackagesDefinition),
+		createDraftPackage: connectormock.NewMutation[onespansign.CreateDraftPackageInput, onespansign.CreatedPackage](t, onespansign.CreateDraftPackageDefinition),
+		updatePackageName:  connectormock.NewMutation[onespansign.UpdatePackageNameInput, onespansign.UpdatedPackage](t, onespansign.UpdatePackageNameDefinition),
+		sendPackage:        connectormock.NewMutation[onespansign.SendPackageInput, onespansign.SentPackage](t, onespansign.SendPackageDefinition),
+		trashPackage:       connectormock.NewMutation[onespansign.TrashPackageInput, onespansign.TrashedPackage](t, onespansign.TrashPackageDefinition),
+		deletePackage:      connectormock.NewMutation[onespansign.DeletePackageInput, onespansign.DeletedPackage](t, onespansign.DeletePackageDefinition),
+		listSignerRoles:    connectormock.NewQuery[onespansign.ListSignerRolesInput, onespansign.SignerRoleIDsPage](t, onespansign.ListSignerRolesDefinition),
+		getSignerRole:      connectormock.NewQuery[onespansign.GetSignerRoleInput, onespansign.SignerRoleID](t, onespansign.GetSignerRoleDefinition),
+		addSigner:          connectormock.NewMutation[onespansign.AddSignerInput, onespansign.SignerRoleID](t, onespansign.AddSignerDefinition),
+		updateSigner:       connectormock.NewMutation[onespansign.UpdateSignerInput, onespansign.SignerRoleID](t, onespansign.UpdateSignerDefinition),
+		removeSigner:       connectormock.NewMutation[onespansign.RemoveSignerInput, onespansign.SignerRoleID](t, onespansign.RemoveSignerDefinition),
 	}
 	mock.getPackage.Default(GetPackageDefault())
+	mock.listPackages.Default(ListPackagesDefault())
+	mock.createDraftPackage.Default(CreateDraftPackageDefault())
+	mock.updatePackageName.Default(UpdatePackageNameDefault())
+	mock.sendPackage.Default(SendPackageDefault())
+	mock.trashPackage.Default(TrashPackageDefault())
+	mock.deletePackage.Default(DeletePackageDefault())
+	mock.listSignerRoles.Default(ListSignerRolesDefault())
+	mock.getSignerRole.Default(GetSignerRoleDefault())
+	mock.addSigner.Default(AddSignerDefault())
+	mock.updateSigner.Default(UpdateSignerDefault())
+	mock.removeSigner.Default(RemoveSignerDefault())
 	connection, err := onespansign.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "onespan-sign", Name: connectionName})
 	if err != nil {
 		t.Fatalf("onespan-sign mock connection: %v", err)
@@ -45,10 +78,98 @@ func (mock *Mock) GetPackage() *connectormock.Query[onespansign.GetPackageInput,
 	return mock.getPackage
 }
 
+// ListPackages returns the listPackages script.
+func (mock *Mock) ListPackages() *connectormock.Query[onespansign.ListPackagesInput, onespansign.PackagesPage] {
+	return mock.listPackages
+}
+
+// CreateDraftPackage returns the createDraftPackage script.
+func (mock *Mock) CreateDraftPackage() *connectormock.Mutation[onespansign.CreateDraftPackageInput, onespansign.CreatedPackage] {
+	return mock.createDraftPackage
+}
+
+// UpdatePackageName returns the updatePackageName script.
+func (mock *Mock) UpdatePackageName() *connectormock.Mutation[onespansign.UpdatePackageNameInput, onespansign.UpdatedPackage] {
+	return mock.updatePackageName
+}
+
+// SendPackage returns the sendPackage script.
+func (mock *Mock) SendPackage() *connectormock.Mutation[onespansign.SendPackageInput, onespansign.SentPackage] {
+	return mock.sendPackage
+}
+
+// TrashPackage returns the trashPackage script.
+func (mock *Mock) TrashPackage() *connectormock.Mutation[onespansign.TrashPackageInput, onespansign.TrashedPackage] {
+	return mock.trashPackage
+}
+
+// DeletePackage returns the deletePackage script.
+func (mock *Mock) DeletePackage() *connectormock.Mutation[onespansign.DeletePackageInput, onespansign.DeletedPackage] {
+	return mock.deletePackage
+}
+
+// ListSignerRoles returns the listSignerRoles script.
+func (mock *Mock) ListSignerRoles() *connectormock.Query[onespansign.ListSignerRolesInput, onespansign.SignerRoleIDsPage] {
+	return mock.listSignerRoles
+}
+
+// GetSignerRole returns the getSignerRole script.
+func (mock *Mock) GetSignerRole() *connectormock.Query[onespansign.GetSignerRoleInput, onespansign.SignerRoleID] {
+	return mock.getSignerRole
+}
+
+// AddSigner returns the addSigner script.
+func (mock *Mock) AddSigner() *connectormock.Mutation[onespansign.AddSignerInput, onespansign.SignerRoleID] {
+	return mock.addSigner
+}
+
+// UpdateSigner returns the updateSigner script.
+func (mock *Mock) UpdateSigner() *connectormock.Mutation[onespansign.UpdateSignerInput, onespansign.SignerRoleID] {
+	return mock.updateSigner
+}
+
+// RemoveSigner returns the removeSigner script.
+func (mock *Mock) RemoveSigner() *connectormock.Mutation[onespansign.RemoveSignerInput, onespansign.SignerRoleID] {
+	return mock.removeSigner
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetPackage() sdkgo.Query[onespansign.GetPackageInput, onespansign.PackageStatus] {
 	return operations.mock.getPackage
+}
+func (operations mockOperations) ListPackages() sdkgo.Query[onespansign.ListPackagesInput, onespansign.PackagesPage] {
+	return operations.mock.listPackages
+}
+func (operations mockOperations) CreateDraftPackage() sdkgo.Mutation[onespansign.CreateDraftPackageInput, onespansign.CreatedPackage] {
+	return operations.mock.createDraftPackage
+}
+func (operations mockOperations) UpdatePackageName() sdkgo.Mutation[onespansign.UpdatePackageNameInput, onespansign.UpdatedPackage] {
+	return operations.mock.updatePackageName
+}
+func (operations mockOperations) SendPackage() sdkgo.Mutation[onespansign.SendPackageInput, onespansign.SentPackage] {
+	return operations.mock.sendPackage
+}
+func (operations mockOperations) TrashPackage() sdkgo.Mutation[onespansign.TrashPackageInput, onespansign.TrashedPackage] {
+	return operations.mock.trashPackage
+}
+func (operations mockOperations) DeletePackage() sdkgo.Mutation[onespansign.DeletePackageInput, onespansign.DeletedPackage] {
+	return operations.mock.deletePackage
+}
+func (operations mockOperations) ListSignerRoles() sdkgo.Query[onespansign.ListSignerRolesInput, onespansign.SignerRoleIDsPage] {
+	return operations.mock.listSignerRoles
+}
+func (operations mockOperations) GetSignerRole() sdkgo.Query[onespansign.GetSignerRoleInput, onespansign.SignerRoleID] {
+	return operations.mock.getSignerRole
+}
+func (operations mockOperations) AddSigner() sdkgo.Mutation[onespansign.AddSignerInput, onespansign.SignerRoleID] {
+	return operations.mock.addSigner
+}
+func (operations mockOperations) UpdateSigner() sdkgo.Mutation[onespansign.UpdateSignerInput, onespansign.SignerRoleID] {
+	return operations.mock.updateSigner
+}
+func (operations mockOperations) RemoveSigner() sdkgo.Mutation[onespansign.RemoveSignerInput, onespansign.SignerRoleID] {
+	return operations.mock.removeSigner
 }
 
 // GetPackageFound selects the found branch: OneSpan Sign returned the package.
@@ -90,4 +211,433 @@ func GetPackageFoundDefault() connectormock.Case[onespansign.PackageStatus] {
 // GetPackageDefault is the manifest default, foundDefault, which New installs.
 func GetPackageDefault() connectormock.Case[onespansign.PackageStatus] {
 	return GetPackageFoundDefault()
+}
+
+// ListPackagesListed selects the listed branch: OneSpan Sign returned the package outcome.
+func ListPackagesListed(value onespansign.PackagesPage, failure *sdkgo.Failure) connectormock.Case[onespansign.PackagesPage] {
+	return connectormock.Branch(onespansign.ListPackagesBranchListed, value, failure)
+}
+
+// ListPackagesProviderRejected selects the providerRejected branch: OneSpan Sign rejected the request.
+func ListPackagesProviderRejected(value onespansign.PackagesPage, failure *sdkgo.Failure) connectormock.Case[onespansign.PackagesPage] {
+	return connectormock.Branch(onespansign.ListPackagesBranchProviderRejected, value, failure)
+}
+
+// ListPackagesInvalidResponse selects the invalidResponse branch: OneSpan Sign returned invalid package data.
+func ListPackagesInvalidResponse(value onespansign.PackagesPage, failure *sdkgo.Failure) connectormock.Case[onespansign.PackagesPage] {
+	return connectormock.Branch(onespansign.ListPackagesBranchInvalidResponse, value, failure)
+}
+
+// ListPackagesDefect selects the defect branch: Invalid input or credentials.
+func ListPackagesDefect(value onespansign.PackagesPage, failure *sdkgo.Failure) connectormock.Case[onespansign.PackagesPage] {
+	return connectormock.Branch(onespansign.ListPackagesBranchDefect, value, failure)
+}
+
+// ListPackagesRetry asks Dex to retry the listPackages Step, after the delay when it is positive.
+func ListPackagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.PackagesPage] {
+	return connectormock.Retry[onespansign.PackagesPage](failure, after)
+}
+
+// ListPackagesListedDefault is the manifest mock listedDefault: Example package outcome.
+func ListPackagesListedDefault() connectormock.Case[onespansign.PackagesPage] {
+	value := connectormock.MustDecodeOutput[onespansign.PackagesPage](`{"packages":[{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=","name":"Example agreement","status":"DRAFT"}],"count":1}`)
+	return connectormock.Branch(onespansign.ListPackagesBranchListed, value, nil)
+}
+
+// ListPackagesDefault is the manifest default, listedDefault, which New installs.
+func ListPackagesDefault() connectormock.Case[onespansign.PackagesPage] {
+	return ListPackagesListedDefault()
+}
+
+// CreateDraftPackageCreated selects the created branch: OneSpan Sign returned the package outcome.
+func CreateDraftPackageCreated(value onespansign.CreatedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.CreatedPackage] {
+	return connectormock.Branch(onespansign.CreateDraftPackageBranchCreated, value, failure)
+}
+
+// CreateDraftPackageProviderRejected selects the providerRejected branch: OneSpan Sign rejected the request.
+func CreateDraftPackageProviderRejected(value onespansign.CreatedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.CreatedPackage] {
+	return connectormock.Branch(onespansign.CreateDraftPackageBranchProviderRejected, value, failure)
+}
+
+// CreateDraftPackageDefect selects the defect branch: Invalid input or credentials.
+func CreateDraftPackageDefect(value onespansign.CreatedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.CreatedPackage] {
+	return connectormock.Branch(onespansign.CreateDraftPackageBranchDefect, value, failure)
+}
+
+// CreateDraftPackageUncertain returns an uncertain createDraftPackage outcome.
+func CreateDraftPackageUncertain(value onespansign.CreatedPackage, failure sdkgo.Failure) connectormock.Case[onespansign.CreatedPackage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDraftPackageRetry asks Dex to retry the createDraftPackage Step, after the delay when it is positive.
+func CreateDraftPackageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.CreatedPackage] {
+	return connectormock.Retry[onespansign.CreatedPackage](failure, after)
+}
+
+// CreateDraftPackageCreatedDefault is the manifest mock createdDefault: Example package outcome.
+func CreateDraftPackageCreatedDefault() connectormock.Case[onespansign.CreatedPackage] {
+	value := connectormock.MustDecodeOutput[onespansign.CreatedPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI="}`)
+	return connectormock.Branch(onespansign.CreateDraftPackageBranchCreated, value, nil)
+}
+
+// CreateDraftPackageDefault is the manifest default, createdDefault, which New installs.
+func CreateDraftPackageDefault() connectormock.Case[onespansign.CreatedPackage] {
+	return CreateDraftPackageCreatedDefault()
+}
+
+// UpdatePackageNameUpdated selects the updated branch: OneSpan Sign returned the package outcome.
+func UpdatePackageNameUpdated(value onespansign.UpdatedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.UpdatedPackage] {
+	return connectormock.Branch(onespansign.UpdatePackageNameBranchUpdated, value, failure)
+}
+
+// UpdatePackageNameNotFound selects the notFound branch: OneSpan Sign did not find the package.
+func UpdatePackageNameNotFound(value onespansign.UpdatedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.UpdatedPackage] {
+	return connectormock.Branch(onespansign.UpdatePackageNameBranchNotFound, value, failure)
+}
+
+// UpdatePackageNameProviderRejected selects the providerRejected branch: OneSpan Sign rejected the request.
+func UpdatePackageNameProviderRejected(value onespansign.UpdatedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.UpdatedPackage] {
+	return connectormock.Branch(onespansign.UpdatePackageNameBranchProviderRejected, value, failure)
+}
+
+// UpdatePackageNameInvalidResponse selects the invalidResponse branch: OneSpan Sign returned invalid package data.
+func UpdatePackageNameInvalidResponse(value onespansign.UpdatedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.UpdatedPackage] {
+	return connectormock.Branch(onespansign.UpdatePackageNameBranchInvalidResponse, value, failure)
+}
+
+// UpdatePackageNameDefect selects the defect branch: Invalid input or credentials.
+func UpdatePackageNameDefect(value onespansign.UpdatedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.UpdatedPackage] {
+	return connectormock.Branch(onespansign.UpdatePackageNameBranchDefect, value, failure)
+}
+
+// UpdatePackageNameRetry asks Dex to retry the updatePackageName Step, after the delay when it is positive.
+func UpdatePackageNameRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.UpdatedPackage] {
+	return connectormock.Retry[onespansign.UpdatedPackage](failure, after)
+}
+
+// UpdatePackageNameUpdatedDefault is the manifest mock updatedDefault: Example package outcome.
+func UpdatePackageNameUpdatedDefault() connectormock.Case[onespansign.UpdatedPackage] {
+	value := connectormock.MustDecodeOutput[onespansign.UpdatedPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=","name":"Example agreement"}`)
+	return connectormock.Branch(onespansign.UpdatePackageNameBranchUpdated, value, nil)
+}
+
+// UpdatePackageNameDefault is the manifest default, updatedDefault, which New installs.
+func UpdatePackageNameDefault() connectormock.Case[onespansign.UpdatedPackage] {
+	return UpdatePackageNameUpdatedDefault()
+}
+
+// SendPackageSent selects the sent branch: OneSpan Sign returned the package outcome.
+func SendPackageSent(value onespansign.SentPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.SentPackage] {
+	return connectormock.Branch(onespansign.SendPackageBranchSent, value, failure)
+}
+
+// SendPackageNotFound selects the notFound branch: OneSpan Sign did not find the package.
+func SendPackageNotFound(value onespansign.SentPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.SentPackage] {
+	return connectormock.Branch(onespansign.SendPackageBranchNotFound, value, failure)
+}
+
+// SendPackageProviderRejected selects the providerRejected branch: OneSpan Sign rejected the request.
+func SendPackageProviderRejected(value onespansign.SentPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.SentPackage] {
+	return connectormock.Branch(onespansign.SendPackageBranchProviderRejected, value, failure)
+}
+
+// SendPackageDefect selects the defect branch: Invalid input or credentials.
+func SendPackageDefect(value onespansign.SentPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.SentPackage] {
+	return connectormock.Branch(onespansign.SendPackageBranchDefect, value, failure)
+}
+
+// SendPackageUncertain returns an uncertain sendPackage outcome.
+func SendPackageUncertain(value onespansign.SentPackage, failure sdkgo.Failure) connectormock.Case[onespansign.SentPackage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendPackageRetry asks Dex to retry the sendPackage Step, after the delay when it is positive.
+func SendPackageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.SentPackage] {
+	return connectormock.Retry[onespansign.SentPackage](failure, after)
+}
+
+// SendPackageSentDefault is the manifest mock sentDefault: Example package outcome.
+func SendPackageSentDefault() connectormock.Case[onespansign.SentPackage] {
+	value := connectormock.MustDecodeOutput[onespansign.SentPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=","status":"SENT"}`)
+	return connectormock.Branch(onespansign.SendPackageBranchSent, value, nil)
+}
+
+// SendPackageDefault is the manifest default, sentDefault, which New installs.
+func SendPackageDefault() connectormock.Case[onespansign.SentPackage] {
+	return SendPackageSentDefault()
+}
+
+// TrashPackageTrashed selects the trashed branch: OneSpan Sign returned the package outcome.
+func TrashPackageTrashed(value onespansign.TrashedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.TrashedPackage] {
+	return connectormock.Branch(onespansign.TrashPackageBranchTrashed, value, failure)
+}
+
+// TrashPackageNotFound selects the notFound branch: OneSpan Sign did not find the package.
+func TrashPackageNotFound(value onespansign.TrashedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.TrashedPackage] {
+	return connectormock.Branch(onespansign.TrashPackageBranchNotFound, value, failure)
+}
+
+// TrashPackageProviderRejected selects the providerRejected branch: OneSpan Sign rejected the request.
+func TrashPackageProviderRejected(value onespansign.TrashedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.TrashedPackage] {
+	return connectormock.Branch(onespansign.TrashPackageBranchProviderRejected, value, failure)
+}
+
+// TrashPackageInvalidResponse selects the invalidResponse branch: OneSpan Sign returned invalid package data.
+func TrashPackageInvalidResponse(value onespansign.TrashedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.TrashedPackage] {
+	return connectormock.Branch(onespansign.TrashPackageBranchInvalidResponse, value, failure)
+}
+
+// TrashPackageDefect selects the defect branch: Invalid input or credentials.
+func TrashPackageDefect(value onespansign.TrashedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.TrashedPackage] {
+	return connectormock.Branch(onespansign.TrashPackageBranchDefect, value, failure)
+}
+
+// TrashPackageRetry asks Dex to retry the trashPackage Step, after the delay when it is positive.
+func TrashPackageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.TrashedPackage] {
+	return connectormock.Retry[onespansign.TrashedPackage](failure, after)
+}
+
+// TrashPackageTrashedDefault is the manifest mock trashedDefault: Example package outcome.
+func TrashPackageTrashedDefault() connectormock.Case[onespansign.TrashedPackage] {
+	value := connectormock.MustDecodeOutput[onespansign.TrashedPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI="}`)
+	return connectormock.Branch(onespansign.TrashPackageBranchTrashed, value, nil)
+}
+
+// TrashPackageDefault is the manifest default, trashedDefault, which New installs.
+func TrashPackageDefault() connectormock.Case[onespansign.TrashedPackage] {
+	return TrashPackageTrashedDefault()
+}
+
+// DeletePackageDeleted selects the deleted branch: OneSpan Sign returned the package outcome.
+func DeletePackageDeleted(value onespansign.DeletedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.DeletedPackage] {
+	return connectormock.Branch(onespansign.DeletePackageBranchDeleted, value, failure)
+}
+
+// DeletePackageNotFound selects the notFound branch: OneSpan Sign did not find the package.
+func DeletePackageNotFound(value onespansign.DeletedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.DeletedPackage] {
+	return connectormock.Branch(onespansign.DeletePackageBranchNotFound, value, failure)
+}
+
+// DeletePackageProviderRejected selects the providerRejected branch: OneSpan Sign rejected the request.
+func DeletePackageProviderRejected(value onespansign.DeletedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.DeletedPackage] {
+	return connectormock.Branch(onespansign.DeletePackageBranchProviderRejected, value, failure)
+}
+
+// DeletePackageInvalidResponse selects the invalidResponse branch: OneSpan Sign returned invalid package data.
+func DeletePackageInvalidResponse(value onespansign.DeletedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.DeletedPackage] {
+	return connectormock.Branch(onespansign.DeletePackageBranchInvalidResponse, value, failure)
+}
+
+// DeletePackageDefect selects the defect branch: Invalid input or credentials.
+func DeletePackageDefect(value onespansign.DeletedPackage, failure *sdkgo.Failure) connectormock.Case[onespansign.DeletedPackage] {
+	return connectormock.Branch(onespansign.DeletePackageBranchDefect, value, failure)
+}
+
+// DeletePackageRetry asks Dex to retry the deletePackage Step, after the delay when it is positive.
+func DeletePackageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.DeletedPackage] {
+	return connectormock.Retry[onespansign.DeletedPackage](failure, after)
+}
+
+// DeletePackageDeletedDefault is the manifest mock deletedDefault: Example package outcome.
+func DeletePackageDeletedDefault() connectormock.Case[onespansign.DeletedPackage] {
+	value := connectormock.MustDecodeOutput[onespansign.DeletedPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI="}`)
+	return connectormock.Branch(onespansign.DeletePackageBranchDeleted, value, nil)
+}
+
+// DeletePackageDefault is the manifest default, deletedDefault, which New installs.
+func DeletePackageDefault() connectormock.Case[onespansign.DeletedPackage] {
+	return DeletePackageDeletedDefault()
+}
+
+// ListSignerRolesListed selects the listed branch: OneSpan Sign returned the signer role outcome.
+func ListSignerRolesListed(value onespansign.SignerRoleIDsPage, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleIDsPage] {
+	return connectormock.Branch(onespansign.ListSignerRolesBranchListed, value, failure)
+}
+
+// ListSignerRolesProviderRejected selects the providerRejected branch: OneSpan Sign rejected the signer role request.
+func ListSignerRolesProviderRejected(value onespansign.SignerRoleIDsPage, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleIDsPage] {
+	return connectormock.Branch(onespansign.ListSignerRolesBranchProviderRejected, value, failure)
+}
+
+// ListSignerRolesInvalidResponse selects the invalidResponse branch: OneSpan Sign returned invalid role data.
+func ListSignerRolesInvalidResponse(value onespansign.SignerRoleIDsPage, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleIDsPage] {
+	return connectormock.Branch(onespansign.ListSignerRolesBranchInvalidResponse, value, failure)
+}
+
+// ListSignerRolesDefect selects the defect branch: Invalid input or credentials.
+func ListSignerRolesDefect(value onespansign.SignerRoleIDsPage, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleIDsPage] {
+	return connectormock.Branch(onespansign.ListSignerRolesBranchDefect, value, failure)
+}
+
+// ListSignerRolesRetry asks Dex to retry the listSignerRoles Step, after the delay when it is positive.
+func ListSignerRolesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.SignerRoleIDsPage] {
+	return connectormock.Retry[onespansign.SignerRoleIDsPage](failure, after)
+}
+
+// ListSignerRolesListedDefault is the manifest mock listedDefault: Example signer role outcome.
+func ListSignerRolesListedDefault() connectormock.Case[onespansign.SignerRoleIDsPage] {
+	value := connectormock.MustDecodeOutput[onespansign.SignerRoleIDsPage](`{"roleIds":["Signer1"]}`)
+	return connectormock.Branch(onespansign.ListSignerRolesBranchListed, value, nil)
+}
+
+// ListSignerRolesDefault is the manifest default, listedDefault, which New installs.
+func ListSignerRolesDefault() connectormock.Case[onespansign.SignerRoleIDsPage] {
+	return ListSignerRolesListedDefault()
+}
+
+// GetSignerRoleFound selects the found branch: OneSpan Sign returned the signer role outcome.
+func GetSignerRoleFound(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.GetSignerRoleBranchFound, value, failure)
+}
+
+// GetSignerRoleNotFound selects the notFound branch: OneSpan Sign did not find the signer role.
+func GetSignerRoleNotFound(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.GetSignerRoleBranchNotFound, value, failure)
+}
+
+// GetSignerRoleProviderRejected selects the providerRejected branch: OneSpan Sign rejected the signer role request.
+func GetSignerRoleProviderRejected(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.GetSignerRoleBranchProviderRejected, value, failure)
+}
+
+// GetSignerRoleInvalidResponse selects the invalidResponse branch: OneSpan Sign returned invalid role data.
+func GetSignerRoleInvalidResponse(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.GetSignerRoleBranchInvalidResponse, value, failure)
+}
+
+// GetSignerRoleDefect selects the defect branch: Invalid input or credentials.
+func GetSignerRoleDefect(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.GetSignerRoleBranchDefect, value, failure)
+}
+
+// GetSignerRoleRetry asks Dex to retry the getSignerRole Step, after the delay when it is positive.
+func GetSignerRoleRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Retry[onespansign.SignerRoleID](failure, after)
+}
+
+// GetSignerRoleFoundDefault is the manifest mock foundDefault: Example signer role outcome.
+func GetSignerRoleFoundDefault() connectormock.Case[onespansign.SignerRoleID] {
+	value := connectormock.MustDecodeOutput[onespansign.SignerRoleID](`{"roleId":"Signer1"}`)
+	return connectormock.Branch(onespansign.GetSignerRoleBranchFound, value, nil)
+}
+
+// GetSignerRoleDefault is the manifest default, foundDefault, which New installs.
+func GetSignerRoleDefault() connectormock.Case[onespansign.SignerRoleID] {
+	return GetSignerRoleFoundDefault()
+}
+
+// AddSignerAdded selects the added branch: OneSpan Sign returned the signer role outcome.
+func AddSignerAdded(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.AddSignerBranchAdded, value, failure)
+}
+
+// AddSignerProviderRejected selects the providerRejected branch: OneSpan Sign rejected the signer role request.
+func AddSignerProviderRejected(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.AddSignerBranchProviderRejected, value, failure)
+}
+
+// AddSignerDefect selects the defect branch: Invalid input or credentials.
+func AddSignerDefect(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.AddSignerBranchDefect, value, failure)
+}
+
+// AddSignerUncertain returns an uncertain addSigner outcome.
+func AddSignerUncertain(value onespansign.SignerRoleID, failure sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// AddSignerRetry asks Dex to retry the addSigner Step, after the delay when it is positive.
+func AddSignerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Retry[onespansign.SignerRoleID](failure, after)
+}
+
+// AddSignerAddedDefault is the manifest mock addedDefault: Example signer role outcome.
+func AddSignerAddedDefault() connectormock.Case[onespansign.SignerRoleID] {
+	value := connectormock.MustDecodeOutput[onespansign.SignerRoleID](`{"roleId":"Signer1"}`)
+	return connectormock.Branch(onespansign.AddSignerBranchAdded, value, nil)
+}
+
+// AddSignerDefault is the manifest default, addedDefault, which New installs.
+func AddSignerDefault() connectormock.Case[onespansign.SignerRoleID] { return AddSignerAddedDefault() }
+
+// UpdateSignerUpdated selects the updated branch: OneSpan Sign returned the signer role outcome.
+func UpdateSignerUpdated(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.UpdateSignerBranchUpdated, value, failure)
+}
+
+// UpdateSignerNotFound selects the notFound branch: OneSpan Sign did not find the signer role.
+func UpdateSignerNotFound(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.UpdateSignerBranchNotFound, value, failure)
+}
+
+// UpdateSignerProviderRejected selects the providerRejected branch: OneSpan Sign rejected the signer role request.
+func UpdateSignerProviderRejected(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.UpdateSignerBranchProviderRejected, value, failure)
+}
+
+// UpdateSignerInvalidResponse selects the invalidResponse branch: OneSpan Sign returned invalid role data.
+func UpdateSignerInvalidResponse(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.UpdateSignerBranchInvalidResponse, value, failure)
+}
+
+// UpdateSignerDefect selects the defect branch: Invalid input or credentials.
+func UpdateSignerDefect(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.UpdateSignerBranchDefect, value, failure)
+}
+
+// UpdateSignerRetry asks Dex to retry the updateSigner Step, after the delay when it is positive.
+func UpdateSignerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Retry[onespansign.SignerRoleID](failure, after)
+}
+
+// UpdateSignerUpdatedDefault is the manifest mock updatedDefault: Example signer role outcome.
+func UpdateSignerUpdatedDefault() connectormock.Case[onespansign.SignerRoleID] {
+	value := connectormock.MustDecodeOutput[onespansign.SignerRoleID](`{"roleId":"Signer1"}`)
+	return connectormock.Branch(onespansign.UpdateSignerBranchUpdated, value, nil)
+}
+
+// UpdateSignerDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSignerDefault() connectormock.Case[onespansign.SignerRoleID] {
+	return UpdateSignerUpdatedDefault()
+}
+
+// RemoveSignerRemoved selects the removed branch: OneSpan Sign returned the signer role outcome.
+func RemoveSignerRemoved(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.RemoveSignerBranchRemoved, value, failure)
+}
+
+// RemoveSignerNotFound selects the notFound branch: OneSpan Sign did not find the signer role.
+func RemoveSignerNotFound(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.RemoveSignerBranchNotFound, value, failure)
+}
+
+// RemoveSignerProviderRejected selects the providerRejected branch: OneSpan Sign rejected the signer role request.
+func RemoveSignerProviderRejected(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.RemoveSignerBranchProviderRejected, value, failure)
+}
+
+// RemoveSignerInvalidResponse selects the invalidResponse branch: OneSpan Sign returned invalid role data.
+func RemoveSignerInvalidResponse(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.RemoveSignerBranchInvalidResponse, value, failure)
+}
+
+// RemoveSignerDefect selects the defect branch: Invalid input or credentials.
+func RemoveSignerDefect(value onespansign.SignerRoleID, failure *sdkgo.Failure) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Branch(onespansign.RemoveSignerBranchDefect, value, failure)
+}
+
+// RemoveSignerRetry asks Dex to retry the removeSigner Step, after the delay when it is positive.
+func RemoveSignerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[onespansign.SignerRoleID] {
+	return connectormock.Retry[onespansign.SignerRoleID](failure, after)
+}
+
+// RemoveSignerRemovedDefault is the manifest mock removedDefault: Example signer role outcome.
+func RemoveSignerRemovedDefault() connectormock.Case[onespansign.SignerRoleID] {
+	value := connectormock.MustDecodeOutput[onespansign.SignerRoleID](`{"roleId":"Signer1"}`)
+	return connectormock.Branch(onespansign.RemoveSignerBranchRemoved, value, nil)
+}
+
+// RemoveSignerDefault is the manifest default, removedDefault, which New installs.
+func RemoveSignerDefault() connectormock.Case[onespansign.SignerRoleID] {
+	return RemoveSignerRemovedDefault()
 }

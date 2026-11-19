@@ -16,6 +16,142 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listApplicationFeedback/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.ApplicationFeedbackPage](`{"feedback":[{"id":"ba64ac47-0a10-4b67-a422-8aa031dd636c","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewId":"ac0b2c21-70a2-4c02-93ac-41d932b43af5","interviewEventId":"0f2b7d01-a67a-4cef-a82c-cd8c3b0a232f","submittedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "requestApplicationFeedback/requestedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.FeedbackRequestReceipt](`{"applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewEventId":"0f2b7d01-a67a-4cef-a82c-cd8c3b0a232f","interviewerUserId":"85b89d6e-02e5-4aca-bcc7-f4d2773a30df"}`)
+			return err
+		}},
+		{name: "submitApplicationFeedback/submittedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.FeedbackSubmissionReceipt](`{"submissionId":"183b9b59-2e49-4de6-bfc4-53ce10b9b281"}`)
+			return err
+		}},
+		{name: "listInterviews/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewPage](`{"interviews":[{"id":"ac0b2c21-70a2-4c02-93ac-41d932b43af5","title":"Technical Interview","type":"Interview","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "getInterview/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewSummary](`{"id":"ac0b2c21-70a2-4c02-93ac-41d932b43af5","title":"Technical Interview","type":"Interview","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42"}`)
+			return err
+		}},
+		{name: "listInterviewSchedules/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewSchedulePage](`{"schedules":[{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Scheduled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "getInterviewSchedule/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewScheduleSummary](`{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Scheduled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "createInterviewSchedule/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewScheduleSummary](`{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Scheduled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "cancelInterviewSchedule/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewScheduleSummary](`{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Cancelled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "cancelInterviewEvent/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewScheduleSummary](`{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Scheduled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "listApplications/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.ApplicationPage](`{"applications":[{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "getApplication/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "createApplication/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Lead","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "changeApplicationStage/changedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "transferApplication/transferredDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "setApplicationSource/setDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.ApplicationSummary](`{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "deleteApplication/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.DeletedApplication](`{"applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db"}`)
+			return err
+		}},
+		{name: "listJobs/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobPage](`{"jobs":[{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "getJob/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSummary](`{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "searchJobs/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSearchResults](`{"jobs":[{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}]}`)
+			return err
+		}},
+		{name: "createJob/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSummary](`{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "updateJobTitle/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSummary](`{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "setJobStatus/setDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.JobSummary](`{"id":"1be42b8e-cafd-4beb-8121-f4981eb20f42","title":"Software Engineer","status":"Draft","createdAt":"2024-01-01T00:00:00.000Z","updatedAt":"2024-01-15T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "listCandidateNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateNotePage](`{"notes":[{"id":"5fa61e0b-3c4d-4e5f-9a0b-1c2d3e4f5a6b","createdAt":"2024-01-15T10:30:00.000Z","isPrivate":false}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "createCandidateNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateNoteSummary](`{"id":"5fa61e0b-3c4d-4e5f-9a0b-1c2d3e4f5a6b","createdAt":"2024-01-15T10:30:00.000Z","isPrivate":false}`)
+			return err
+		}},
+		{name: "listCandidateProjects/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProjectPage](`{"projects":[{"id":"bcffca12-5b09-4a76-acf2-00a8e267b222","title":"Senior Engineers","createdAt":"2024-01-15T10:30:00.000Z","isArchived":false}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "addCandidateProject/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "removeCandidateProject/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "searchCandidates/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateSearchResults](`{"candidates":[{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}]}`)
+			return err
+		}},
+		{name: "createCandidate/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "addCandidateTag/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "removeCandidateTag/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "listCandidates/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidatePage](`{"candidates":[{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "updateCandidate/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Updated Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
 		{name: "getCandidate/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
 			return err
@@ -30,6 +166,108 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListApplicationFeedback().Definition().Operation.OperationID != "listApplicationFeedback" {
+		t.Errorf("listApplicationFeedback mock has another definition")
+	}
+	if mock.RequestApplicationFeedback().Definition().Operation.OperationID != "requestApplicationFeedback" {
+		t.Errorf("requestApplicationFeedback mock has another definition")
+	}
+	if mock.SubmitApplicationFeedback().Definition().Operation.OperationID != "submitApplicationFeedback" {
+		t.Errorf("submitApplicationFeedback mock has another definition")
+	}
+	if mock.ListInterviews().Definition().Operation.OperationID != "listInterviews" {
+		t.Errorf("listInterviews mock has another definition")
+	}
+	if mock.GetInterview().Definition().Operation.OperationID != "getInterview" {
+		t.Errorf("getInterview mock has another definition")
+	}
+	if mock.ListInterviewSchedules().Definition().Operation.OperationID != "listInterviewSchedules" {
+		t.Errorf("listInterviewSchedules mock has another definition")
+	}
+	if mock.GetInterviewSchedule().Definition().Operation.OperationID != "getInterviewSchedule" {
+		t.Errorf("getInterviewSchedule mock has another definition")
+	}
+	if mock.CreateInterviewSchedule().Definition().Operation.OperationID != "createInterviewSchedule" {
+		t.Errorf("createInterviewSchedule mock has another definition")
+	}
+	if mock.CancelInterviewSchedule().Definition().Operation.OperationID != "cancelInterviewSchedule" {
+		t.Errorf("cancelInterviewSchedule mock has another definition")
+	}
+	if mock.CancelInterviewEvent().Definition().Operation.OperationID != "cancelInterviewEvent" {
+		t.Errorf("cancelInterviewEvent mock has another definition")
+	}
+	if mock.ListApplications().Definition().Operation.OperationID != "listApplications" {
+		t.Errorf("listApplications mock has another definition")
+	}
+	if mock.GetApplication().Definition().Operation.OperationID != "getApplication" {
+		t.Errorf("getApplication mock has another definition")
+	}
+	if mock.CreateApplication().Definition().Operation.OperationID != "createApplication" {
+		t.Errorf("createApplication mock has another definition")
+	}
+	if mock.ChangeApplicationStage().Definition().Operation.OperationID != "changeApplicationStage" {
+		t.Errorf("changeApplicationStage mock has another definition")
+	}
+	if mock.TransferApplication().Definition().Operation.OperationID != "transferApplication" {
+		t.Errorf("transferApplication mock has another definition")
+	}
+	if mock.SetApplicationSource().Definition().Operation.OperationID != "setApplicationSource" {
+		t.Errorf("setApplicationSource mock has another definition")
+	}
+	if mock.DeleteApplication().Definition().Operation.OperationID != "deleteApplication" {
+		t.Errorf("deleteApplication mock has another definition")
+	}
+	if mock.ListJobs().Definition().Operation.OperationID != "listJobs" {
+		t.Errorf("listJobs mock has another definition")
+	}
+	if mock.GetJob().Definition().Operation.OperationID != "getJob" {
+		t.Errorf("getJob mock has another definition")
+	}
+	if mock.SearchJobs().Definition().Operation.OperationID != "searchJobs" {
+		t.Errorf("searchJobs mock has another definition")
+	}
+	if mock.CreateJob().Definition().Operation.OperationID != "createJob" {
+		t.Errorf("createJob mock has another definition")
+	}
+	if mock.UpdateJobTitle().Definition().Operation.OperationID != "updateJobTitle" {
+		t.Errorf("updateJobTitle mock has another definition")
+	}
+	if mock.SetJobStatus().Definition().Operation.OperationID != "setJobStatus" {
+		t.Errorf("setJobStatus mock has another definition")
+	}
+	if mock.ListCandidateNotes().Definition().Operation.OperationID != "listCandidateNotes" {
+		t.Errorf("listCandidateNotes mock has another definition")
+	}
+	if mock.CreateCandidateNote().Definition().Operation.OperationID != "createCandidateNote" {
+		t.Errorf("createCandidateNote mock has another definition")
+	}
+	if mock.ListCandidateProjects().Definition().Operation.OperationID != "listCandidateProjects" {
+		t.Errorf("listCandidateProjects mock has another definition")
+	}
+	if mock.AddCandidateProject().Definition().Operation.OperationID != "addCandidateProject" {
+		t.Errorf("addCandidateProject mock has another definition")
+	}
+	if mock.RemoveCandidateProject().Definition().Operation.OperationID != "removeCandidateProject" {
+		t.Errorf("removeCandidateProject mock has another definition")
+	}
+	if mock.SearchCandidates().Definition().Operation.OperationID != "searchCandidates" {
+		t.Errorf("searchCandidates mock has another definition")
+	}
+	if mock.CreateCandidate().Definition().Operation.OperationID != "createCandidate" {
+		t.Errorf("createCandidate mock has another definition")
+	}
+	if mock.AddCandidateTag().Definition().Operation.OperationID != "addCandidateTag" {
+		t.Errorf("addCandidateTag mock has another definition")
+	}
+	if mock.RemoveCandidateTag().Definition().Operation.OperationID != "removeCandidateTag" {
+		t.Errorf("removeCandidateTag mock has another definition")
+	}
+	if mock.ListCandidates().Definition().Operation.OperationID != "listCandidates" {
+		t.Errorf("listCandidates mock has another definition")
+	}
+	if mock.UpdateCandidate().Definition().Operation.OperationID != "updateCandidate" {
+		t.Errorf("updateCandidate mock has another definition")
+	}
 	if mock.GetCandidate().Definition().Operation.OperationID != "getCandidate" {
 		t.Errorf("getCandidate mock has another definition")
 	}

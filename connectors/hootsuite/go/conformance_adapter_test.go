@@ -33,6 +33,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			scheduleContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"getMessage": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetMessage(), reference),
+		"deleteMessage": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteMessage(), reference, scenario.CallID),
 		"listSocialProfiles": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSocialProfiles(), reference),
 		"listScheduledPosts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListScheduledPosts(), reference),
 		"schedulePost":       newConformanceMutationInvocation(t, scenario.Input, scheduleContext, client.SchedulePost(), reference, scenario.CallID),

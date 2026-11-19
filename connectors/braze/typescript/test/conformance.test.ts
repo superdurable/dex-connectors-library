@@ -8,7 +8,8 @@ import { BrazeClient } from '../src/client.js';
 import { GetUserProfileInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/braze/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/braze/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getUserProfile');
 const connection = { provider: 'braze', name: 'braze' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeBraze));
 

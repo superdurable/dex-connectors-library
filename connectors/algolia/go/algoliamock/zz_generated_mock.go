@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted algolia connection. Script each operation through its accessor.
 type Mock struct {
-	connection algolia.Connection
-	search     *connectormock.Query[algolia.SearchInput, algolia.SearchPage]
-	saveObject *connectormock.Mutation[algolia.SaveObjectInput, algolia.SavedObject]
+	connection          algolia.Connection
+	getObject           *connectormock.Query[algolia.ObjectInput, algolia.ObjectRecord]
+	listIndices         *connectormock.Query[algolia.ListIndicesInput, algolia.IndexPage]
+	search              *connectormock.Query[algolia.SearchInput, algolia.SearchPage]
+	saveObject          *connectormock.Mutation[algolia.SaveObjectInput, algolia.SavedObject]
+	partialUpdateObject *connectormock.Mutation[algolia.PartialUpdateObjectInput, algolia.SavedObject]
+	deleteObject        *connectormock.Mutation[algolia.ObjectInput, algolia.SavedObject]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +31,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		search:     connectormock.NewQuery[algolia.SearchInput, algolia.SearchPage](t, algolia.SearchDefinition),
-		saveObject: connectormock.NewMutation[algolia.SaveObjectInput, algolia.SavedObject](t, algolia.SaveObjectDefinition),
+		getObject:           connectormock.NewQuery[algolia.ObjectInput, algolia.ObjectRecord](t, algolia.GetObjectDefinition),
+		listIndices:         connectormock.NewQuery[algolia.ListIndicesInput, algolia.IndexPage](t, algolia.ListIndicesDefinition),
+		search:              connectormock.NewQuery[algolia.SearchInput, algolia.SearchPage](t, algolia.SearchDefinition),
+		saveObject:          connectormock.NewMutation[algolia.SaveObjectInput, algolia.SavedObject](t, algolia.SaveObjectDefinition),
+		partialUpdateObject: connectormock.NewMutation[algolia.PartialUpdateObjectInput, algolia.SavedObject](t, algolia.PartialUpdateObjectDefinition),
+		deleteObject:        connectormock.NewMutation[algolia.ObjectInput, algolia.SavedObject](t, algolia.DeleteObjectDefinition),
 	}
+	mock.getObject.Default(GetObjectDefault())
+	mock.listIndices.Default(ListIndicesDefault())
 	mock.search.Default(SearchDefault())
 	mock.saveObject.Default(SaveObjectDefault())
+	mock.partialUpdateObject.Default(PartialUpdateObjectDefault())
+	mock.deleteObject.Default(DeleteObjectDefault())
 	connection, err := algolia.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "algolia", Name: connectionName})
 	if err != nil {
 		t.Fatalf("algolia mock connection: %v", err)
@@ -43,6 +55,16 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() algolia.Connection { return mock.connection }
 
+// GetObject returns the getObject script.
+func (mock *Mock) GetObject() *connectormock.Query[algolia.ObjectInput, algolia.ObjectRecord] {
+	return mock.getObject
+}
+
+// ListIndices returns the listIndices script.
+func (mock *Mock) ListIndices() *connectormock.Query[algolia.ListIndicesInput, algolia.IndexPage] {
+	return mock.listIndices
+}
+
 // Search returns the search script.
 func (mock *Mock) Search() *connectormock.Query[algolia.SearchInput, algolia.SearchPage] {
 	return mock.search
@@ -53,13 +75,112 @@ func (mock *Mock) SaveObject() *connectormock.Mutation[algolia.SaveObjectInput, 
 	return mock.saveObject
 }
 
+// PartialUpdateObject returns the partialUpdateObject script.
+func (mock *Mock) PartialUpdateObject() *connectormock.Mutation[algolia.PartialUpdateObjectInput, algolia.SavedObject] {
+	return mock.partialUpdateObject
+}
+
+// DeleteObject returns the deleteObject script.
+func (mock *Mock) DeleteObject() *connectormock.Mutation[algolia.ObjectInput, algolia.SavedObject] {
+	return mock.deleteObject
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetObject() sdkgo.Query[algolia.ObjectInput, algolia.ObjectRecord] {
+	return operations.mock.getObject
+}
+func (operations mockOperations) ListIndices() sdkgo.Query[algolia.ListIndicesInput, algolia.IndexPage] {
+	return operations.mock.listIndices
+}
 func (operations mockOperations) Search() sdkgo.Query[algolia.SearchInput, algolia.SearchPage] {
 	return operations.mock.search
 }
 func (operations mockOperations) SaveObject() sdkgo.Mutation[algolia.SaveObjectInput, algolia.SavedObject] {
 	return operations.mock.saveObject
+}
+func (operations mockOperations) PartialUpdateObject() sdkgo.Mutation[algolia.PartialUpdateObjectInput, algolia.SavedObject] {
+	return operations.mock.partialUpdateObject
+}
+func (operations mockOperations) DeleteObject() sdkgo.Mutation[algolia.ObjectInput, algolia.SavedObject] {
+	return operations.mock.deleteObject
+}
+
+// GetObjectFound selects the found branch: Algolia returned the record.
+func GetObjectFound(value algolia.ObjectRecord, failure *sdkgo.Failure) connectormock.Case[algolia.ObjectRecord] {
+	return connectormock.Branch(algolia.GetObjectBranchFound, value, failure)
+}
+
+// GetObjectMissing selects the missing branch: No record has the specified object ID.
+func GetObjectMissing(value algolia.ObjectRecord, failure *sdkgo.Failure) connectormock.Case[algolia.ObjectRecord] {
+	return connectormock.Branch(algolia.GetObjectBranchMissing, value, failure)
+}
+
+// GetObjectProviderRejected selects the providerRejected branch: Algolia rejected the lookup or key.
+func GetObjectProviderRejected(value algolia.ObjectRecord, failure *sdkgo.Failure) connectormock.Case[algolia.ObjectRecord] {
+	return connectormock.Branch(algolia.GetObjectBranchProviderRejected, value, failure)
+}
+
+// GetObjectInvalidResponse selects the invalidResponse branch: Algolia returned malformed or oversized record data.
+func GetObjectInvalidResponse(value algolia.ObjectRecord, failure *sdkgo.Failure) connectormock.Case[algolia.ObjectRecord] {
+	return connectormock.Branch(algolia.GetObjectBranchInvalidResponse, value, failure)
+}
+
+// GetObjectDefect selects the defect branch: Local input or credentials are invalid.
+func GetObjectDefect(value algolia.ObjectRecord, failure *sdkgo.Failure) connectormock.Case[algolia.ObjectRecord] {
+	return connectormock.Branch(algolia.GetObjectBranchDefect, value, failure)
+}
+
+// GetObjectRetry asks Dex to retry the getObject Step, after the delay when it is positive.
+func GetObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[algolia.ObjectRecord] {
+	return connectormock.Retry[algolia.ObjectRecord](failure, after)
+}
+
+// GetObjectFoundDefaultObject is the manifest mock foundDefaultObject: Meridian notebook record exists.
+func GetObjectFoundDefaultObject() connectormock.Case[algolia.ObjectRecord] {
+	value := connectormock.MustDecodeOutput[algolia.ObjectRecord](`{"objectID":"product-1","name":"Meridian notebook"}`)
+	return connectormock.Branch(algolia.GetObjectBranchFound, value, nil)
+}
+
+// GetObjectDefault is the manifest default, foundDefaultObject, which New installs.
+func GetObjectDefault() connectormock.Case[algolia.ObjectRecord] {
+	return GetObjectFoundDefaultObject()
+}
+
+// ListIndicesListed selects the listed branch: Algolia returned an index page.
+func ListIndicesListed(value algolia.IndexPage, failure *sdkgo.Failure) connectormock.Case[algolia.IndexPage] {
+	return connectormock.Branch(algolia.ListIndicesBranchListed, value, failure)
+}
+
+// ListIndicesProviderRejected selects the providerRejected branch: Algolia rejected the listing or key.
+func ListIndicesProviderRejected(value algolia.IndexPage, failure *sdkgo.Failure) connectormock.Case[algolia.IndexPage] {
+	return connectormock.Branch(algolia.ListIndicesBranchProviderRejected, value, failure)
+}
+
+// ListIndicesInvalidResponse selects the invalidResponse branch: Algolia returned malformed or oversized index data.
+func ListIndicesInvalidResponse(value algolia.IndexPage, failure *sdkgo.Failure) connectormock.Case[algolia.IndexPage] {
+	return connectormock.Branch(algolia.ListIndicesBranchInvalidResponse, value, failure)
+}
+
+// ListIndicesDefect selects the defect branch: Local input or credentials are invalid.
+func ListIndicesDefect(value algolia.IndexPage, failure *sdkgo.Failure) connectormock.Case[algolia.IndexPage] {
+	return connectormock.Branch(algolia.ListIndicesBranchDefect, value, failure)
+}
+
+// ListIndicesRetry asks Dex to retry the listIndices Step, after the delay when it is positive.
+func ListIndicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[algolia.IndexPage] {
+	return connectormock.Retry[algolia.IndexPage](failure, after)
+}
+
+// ListIndicesListedDefaultIndices is the manifest mock listedDefaultIndices: Product index has example records.
+func ListIndicesListedDefaultIndices() connectormock.Case[algolia.IndexPage] {
+	value := connectormock.MustDecodeOutput[algolia.IndexPage](`{"items":[{"name":"products","entries":42}],"nbPages":1}`)
+	return connectormock.Branch(algolia.ListIndicesBranchListed, value, nil)
+}
+
+// ListIndicesDefault is the manifest default, listedDefaultIndices, which New installs.
+func ListIndicesDefault() connectormock.Case[algolia.IndexPage] {
+	return ListIndicesListedDefaultIndices()
 }
 
 // SearchSearched selects the searched branch: Algolia returned a hit page, possibly empty.
@@ -130,4 +251,76 @@ func SaveObjectSavedDefaultObject() connectormock.Case[algolia.SavedObject] {
 // SaveObjectDefault is the manifest default, savedDefaultObject, which New installs.
 func SaveObjectDefault() connectormock.Case[algolia.SavedObject] {
 	return SaveObjectSavedDefaultObject()
+}
+
+// PartialUpdateObjectUpdated selects the updated branch: Algolia queued the attribute update.
+func PartialUpdateObjectUpdated(value algolia.SavedObject, failure *sdkgo.Failure) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Branch(algolia.PartialUpdateObjectBranchUpdated, value, failure)
+}
+
+// PartialUpdateObjectProviderRejected selects the providerRejected branch: Algolia rejected the update or key.
+func PartialUpdateObjectProviderRejected(value algolia.SavedObject, failure *sdkgo.Failure) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Branch(algolia.PartialUpdateObjectBranchProviderRejected, value, failure)
+}
+
+// PartialUpdateObjectInvalidResponse selects the invalidResponse branch: Algolia returned malformed or oversized task data.
+func PartialUpdateObjectInvalidResponse(value algolia.SavedObject, failure *sdkgo.Failure) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Branch(algolia.PartialUpdateObjectBranchInvalidResponse, value, failure)
+}
+
+// PartialUpdateObjectDefect selects the defect branch: Local input or credentials are invalid.
+func PartialUpdateObjectDefect(value algolia.SavedObject, failure *sdkgo.Failure) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Branch(algolia.PartialUpdateObjectBranchDefect, value, failure)
+}
+
+// PartialUpdateObjectRetry asks Dex to retry the partialUpdateObject Step, after the delay when it is positive.
+func PartialUpdateObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Retry[algolia.SavedObject](failure, after)
+}
+
+// PartialUpdateObjectUpdatedDefaultObject is the manifest mock updatedDefaultObject: One record update is queued.
+func PartialUpdateObjectUpdatedDefaultObject() connectormock.Case[algolia.SavedObject] {
+	value := connectormock.MustDecodeOutput[algolia.SavedObject](`{"objectID":"product-1","taskID":1514562690002}`)
+	return connectormock.Branch(algolia.PartialUpdateObjectBranchUpdated, value, nil)
+}
+
+// PartialUpdateObjectDefault is the manifest default, updatedDefaultObject, which New installs.
+func PartialUpdateObjectDefault() connectormock.Case[algolia.SavedObject] {
+	return PartialUpdateObjectUpdatedDefaultObject()
+}
+
+// DeleteObjectDeleted selects the deleted branch: Algolia queued the deletion task.
+func DeleteObjectDeleted(value algolia.SavedObject, failure *sdkgo.Failure) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Branch(algolia.DeleteObjectBranchDeleted, value, failure)
+}
+
+// DeleteObjectProviderRejected selects the providerRejected branch: Algolia rejected the deletion or key.
+func DeleteObjectProviderRejected(value algolia.SavedObject, failure *sdkgo.Failure) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Branch(algolia.DeleteObjectBranchProviderRejected, value, failure)
+}
+
+// DeleteObjectInvalidResponse selects the invalidResponse branch: Algolia returned malformed or oversized task data.
+func DeleteObjectInvalidResponse(value algolia.SavedObject, failure *sdkgo.Failure) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Branch(algolia.DeleteObjectBranchInvalidResponse, value, failure)
+}
+
+// DeleteObjectDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteObjectDefect(value algolia.SavedObject, failure *sdkgo.Failure) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Branch(algolia.DeleteObjectBranchDefect, value, failure)
+}
+
+// DeleteObjectRetry asks Dex to retry the deleteObject Step, after the delay when it is positive.
+func DeleteObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[algolia.SavedObject] {
+	return connectormock.Retry[algolia.SavedObject](failure, after)
+}
+
+// DeleteObjectDeletedDefaultObject is the manifest mock deletedDefaultObject: One record deletion is queued.
+func DeleteObjectDeletedDefaultObject() connectormock.Case[algolia.SavedObject] {
+	value := connectormock.MustDecodeOutput[algolia.SavedObject](`{"objectID":"product-1","taskID":1514562690003}`)
+	return connectormock.Branch(algolia.DeleteObjectBranchDeleted, value, nil)
+}
+
+// DeleteObjectDefault is the manifest default, deletedDefaultObject, which New installs.
+func DeleteObjectDefault() connectormock.Case[algolia.SavedObject] {
+	return DeleteObjectDeletedDefaultObject()
 }

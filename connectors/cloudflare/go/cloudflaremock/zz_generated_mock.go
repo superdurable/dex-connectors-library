@@ -18,8 +18,14 @@ import (
 // Mock is a scripted cloudflare connection. Script each operation through its accessor.
 type Mock struct {
 	connection       cloudflare.Connection
+	createDNSRecord  *connectormock.Mutation[cloudflare.CreateDNSRecordInput, cloudflare.DNSRecord]
 	listZones        *connectormock.Query[cloudflare.ListZonesInput, cloudflare.ZonesPage]
 	purgeCacheByURLs *connectormock.Mutation[cloudflare.PurgeCacheByURLsInput, cloudflare.CachePurge]
+	purgeEntireCache *connectormock.Mutation[cloudflare.PurgeEntireCacheInput, cloudflare.CachePurge]
+	listDNSRecords   *connectormock.Query[cloudflare.ListDNSRecordsInput, cloudflare.DNSRecordsPage]
+	getDNSRecord     *connectormock.Query[cloudflare.GetDNSRecordInput, cloudflare.DNSRecord]
+	updateDNSRecord  *connectormock.Mutation[cloudflare.UpdateDNSRecordInput, cloudflare.DNSRecord]
+	deleteDNSRecord  *connectormock.Mutation[cloudflare.DeleteDNSRecordInput, cloudflare.DeletedDNSRecord]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +33,23 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createDNSRecord:  connectormock.NewMutation[cloudflare.CreateDNSRecordInput, cloudflare.DNSRecord](t, cloudflare.CreateDNSRecordDefinition),
 		listZones:        connectormock.NewQuery[cloudflare.ListZonesInput, cloudflare.ZonesPage](t, cloudflare.ListZonesDefinition),
 		purgeCacheByURLs: connectormock.NewMutation[cloudflare.PurgeCacheByURLsInput, cloudflare.CachePurge](t, cloudflare.PurgeCacheByURLsDefinition),
+		purgeEntireCache: connectormock.NewMutation[cloudflare.PurgeEntireCacheInput, cloudflare.CachePurge](t, cloudflare.PurgeEntireCacheDefinition),
+		listDNSRecords:   connectormock.NewQuery[cloudflare.ListDNSRecordsInput, cloudflare.DNSRecordsPage](t, cloudflare.ListDNSRecordsDefinition),
+		getDNSRecord:     connectormock.NewQuery[cloudflare.GetDNSRecordInput, cloudflare.DNSRecord](t, cloudflare.GetDNSRecordDefinition),
+		updateDNSRecord:  connectormock.NewMutation[cloudflare.UpdateDNSRecordInput, cloudflare.DNSRecord](t, cloudflare.UpdateDNSRecordDefinition),
+		deleteDNSRecord:  connectormock.NewMutation[cloudflare.DeleteDNSRecordInput, cloudflare.DeletedDNSRecord](t, cloudflare.DeleteDNSRecordDefinition),
 	}
+	mock.createDNSRecord.Default(CreateDNSRecordDefault())
 	mock.listZones.Default(ListZonesDefault())
 	mock.purgeCacheByURLs.Default(PurgeCacheByURLsDefault())
+	mock.purgeEntireCache.Default(PurgeEntireCacheDefault())
+	mock.listDNSRecords.Default(ListDNSRecordsDefault())
+	mock.getDNSRecord.Default(GetDNSRecordDefault())
+	mock.updateDNSRecord.Default(UpdateDNSRecordDefault())
+	mock.deleteDNSRecord.Default(DeleteDNSRecordDefault())
 	connection, err := cloudflare.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "cloudflare", Name: connectionName})
 	if err != nil {
 		t.Fatalf("cloudflare mock connection: %v", err)
@@ -43,6 +61,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() cloudflare.Connection { return mock.connection }
 
+// CreateDNSRecord returns the createDNSRecord script.
+func (mock *Mock) CreateDNSRecord() *connectormock.Mutation[cloudflare.CreateDNSRecordInput, cloudflare.DNSRecord] {
+	return mock.createDNSRecord
+}
+
 // ListZones returns the listZones script.
 func (mock *Mock) ListZones() *connectormock.Query[cloudflare.ListZonesInput, cloudflare.ZonesPage] {
 	return mock.listZones
@@ -53,13 +76,92 @@ func (mock *Mock) PurgeCacheByURLs() *connectormock.Mutation[cloudflare.PurgeCac
 	return mock.purgeCacheByURLs
 }
 
+// PurgeEntireCache returns the purgeEntireCache script.
+func (mock *Mock) PurgeEntireCache() *connectormock.Mutation[cloudflare.PurgeEntireCacheInput, cloudflare.CachePurge] {
+	return mock.purgeEntireCache
+}
+
+// ListDNSRecords returns the listDNSRecords script.
+func (mock *Mock) ListDNSRecords() *connectormock.Query[cloudflare.ListDNSRecordsInput, cloudflare.DNSRecordsPage] {
+	return mock.listDNSRecords
+}
+
+// GetDNSRecord returns the getDNSRecord script.
+func (mock *Mock) GetDNSRecord() *connectormock.Query[cloudflare.GetDNSRecordInput, cloudflare.DNSRecord] {
+	return mock.getDNSRecord
+}
+
+// UpdateDNSRecord returns the updateDNSRecord script.
+func (mock *Mock) UpdateDNSRecord() *connectormock.Mutation[cloudflare.UpdateDNSRecordInput, cloudflare.DNSRecord] {
+	return mock.updateDNSRecord
+}
+
+// DeleteDNSRecord returns the deleteDNSRecord script.
+func (mock *Mock) DeleteDNSRecord() *connectormock.Mutation[cloudflare.DeleteDNSRecordInput, cloudflare.DeletedDNSRecord] {
+	return mock.deleteDNSRecord
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateDNSRecord() sdkgo.Mutation[cloudflare.CreateDNSRecordInput, cloudflare.DNSRecord] {
+	return operations.mock.createDNSRecord
+}
 func (operations mockOperations) ListZones() sdkgo.Query[cloudflare.ListZonesInput, cloudflare.ZonesPage] {
 	return operations.mock.listZones
 }
 func (operations mockOperations) PurgeCacheByURLs() sdkgo.Mutation[cloudflare.PurgeCacheByURLsInput, cloudflare.CachePurge] {
 	return operations.mock.purgeCacheByURLs
+}
+func (operations mockOperations) PurgeEntireCache() sdkgo.Mutation[cloudflare.PurgeEntireCacheInput, cloudflare.CachePurge] {
+	return operations.mock.purgeEntireCache
+}
+func (operations mockOperations) ListDNSRecords() sdkgo.Query[cloudflare.ListDNSRecordsInput, cloudflare.DNSRecordsPage] {
+	return operations.mock.listDNSRecords
+}
+func (operations mockOperations) GetDNSRecord() sdkgo.Query[cloudflare.GetDNSRecordInput, cloudflare.DNSRecord] {
+	return operations.mock.getDNSRecord
+}
+func (operations mockOperations) UpdateDNSRecord() sdkgo.Mutation[cloudflare.UpdateDNSRecordInput, cloudflare.DNSRecord] {
+	return operations.mock.updateDNSRecord
+}
+func (operations mockOperations) DeleteDNSRecord() sdkgo.Mutation[cloudflare.DeleteDNSRecordInput, cloudflare.DeletedDNSRecord] {
+	return operations.mock.deleteDNSRecord
+}
+
+// CreateDNSRecordCreated selects the created branch: Cloudflare returned the created DNS record.
+func CreateDNSRecordCreated(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.CreateDNSRecordBranchCreated, value, failure)
+}
+
+// CreateDNSRecordProviderRejected selects the providerRejected branch: Cloudflare conclusively rejected creation.
+func CreateDNSRecordProviderRejected(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.CreateDNSRecordBranchProviderRejected, value, failure)
+}
+
+// CreateDNSRecordUncertain returns an uncertain createDNSRecord outcome.
+func CreateDNSRecordUncertain(value cloudflare.DNSRecord, failure sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDNSRecordDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateDNSRecordDefect(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.CreateDNSRecordBranchDefect, value, failure)
+}
+
+// CreateDNSRecordRetry asks Dex to retry the createDNSRecord Step, after the delay when it is positive.
+func CreateDNSRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Retry[cloudflare.DNSRecord](failure, after)
+}
+
+// CreateDNSRecordCreatedDefault is the manifest mock createdDefault: Meridian A record was created.
+func CreateDNSRecordCreatedDefault() connectormock.Case[cloudflare.DNSRecord] {
+	value := connectormock.MustDecodeOutput[cloudflare.DNSRecord](`{"id":"dns-created-meridian","type":"A","name":"new.meridian.example","content":"192.0.2.30","ttl":3600,"proxied":false}`)
+	return connectormock.Branch(cloudflare.CreateDNSRecordBranchCreated, value, nil)
+}
+
+// CreateDNSRecordDefault is the manifest default, createdDefault, which New installs.
+func CreateDNSRecordDefault() connectormock.Case[cloudflare.DNSRecord] {
+	return CreateDNSRecordCreatedDefault()
 }
 
 // ListZonesListed selects the listed branch: List the first page of Cloudflare zones.
@@ -135,4 +237,209 @@ func PurgeCacheByURLsPurgedDefault() connectormock.Case[cloudflare.CachePurge] {
 // PurgeCacheByURLsDefault is the manifest default, purgedDefault, which New installs.
 func PurgeCacheByURLsDefault() connectormock.Case[cloudflare.CachePurge] {
 	return PurgeCacheByURLsPurgedDefault()
+}
+
+// PurgeEntireCachePurged selects the purged branch: Cloudflare accepted the zone-wide purge.
+func PurgeEntireCachePurged(value cloudflare.CachePurge, failure *sdkgo.Failure) connectormock.Case[cloudflare.CachePurge] {
+	return connectormock.Branch(cloudflare.PurgeEntireCacheBranchPurged, value, failure)
+}
+
+// PurgeEntireCacheNotFound selects the notFound branch: The zone does not exist or is inaccessible.
+func PurgeEntireCacheNotFound(value cloudflare.CachePurge, failure *sdkgo.Failure) connectormock.Case[cloudflare.CachePurge] {
+	return connectormock.Branch(cloudflare.PurgeEntireCacheBranchNotFound, value, failure)
+}
+
+// PurgeEntireCacheProviderRejected selects the providerRejected branch: Cloudflare conclusively rejected the purge.
+func PurgeEntireCacheProviderRejected(value cloudflare.CachePurge, failure *sdkgo.Failure) connectormock.Case[cloudflare.CachePurge] {
+	return connectormock.Branch(cloudflare.PurgeEntireCacheBranchProviderRejected, value, failure)
+}
+
+// PurgeEntireCacheInvalidResponse selects the invalidResponse branch: Cloudflare returned malformed or oversized JSON.
+func PurgeEntireCacheInvalidResponse(value cloudflare.CachePurge, failure *sdkgo.Failure) connectormock.Case[cloudflare.CachePurge] {
+	return connectormock.Branch(cloudflare.PurgeEntireCacheBranchInvalidResponse, value, failure)
+}
+
+// PurgeEntireCacheDefect selects the defect branch: Local input or connection credentials are invalid.
+func PurgeEntireCacheDefect(value cloudflare.CachePurge, failure *sdkgo.Failure) connectormock.Case[cloudflare.CachePurge] {
+	return connectormock.Branch(cloudflare.PurgeEntireCacheBranchDefect, value, failure)
+}
+
+// PurgeEntireCacheRetry asks Dex to retry the purgeEntireCache Step, after the delay when it is positive.
+func PurgeEntireCacheRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudflare.CachePurge] {
+	return connectormock.Retry[cloudflare.CachePurge](failure, after)
+}
+
+// PurgeEntireCachePurgedDefault is the manifest mock purgedDefault: Meridian zone cache was purged.
+func PurgeEntireCachePurgedDefault() connectormock.Case[cloudflare.CachePurge] {
+	value := connectormock.MustDecodeOutput[cloudflare.CachePurge](`{"success":true,"result":{"id":"purge-meridian"}}`)
+	return connectormock.Branch(cloudflare.PurgeEntireCacheBranchPurged, value, nil)
+}
+
+// PurgeEntireCacheDefault is the manifest default, purgedDefault, which New installs.
+func PurgeEntireCacheDefault() connectormock.Case[cloudflare.CachePurge] {
+	return PurgeEntireCachePurgedDefault()
+}
+
+// ListDNSRecordsListed selects the listed branch: Cloudflare returned the DNS record page.
+func ListDNSRecordsListed(value cloudflare.DNSRecordsPage, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecordsPage] {
+	return connectormock.Branch(cloudflare.ListDNSRecordsBranchListed, value, failure)
+}
+
+// ListDNSRecordsNotFound selects the notFound branch: The zone does not exist or is inaccessible.
+func ListDNSRecordsNotFound(value cloudflare.DNSRecordsPage, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecordsPage] {
+	return connectormock.Branch(cloudflare.ListDNSRecordsBranchNotFound, value, failure)
+}
+
+// ListDNSRecordsProviderRejected selects the providerRejected branch: Cloudflare conclusively rejected the read.
+func ListDNSRecordsProviderRejected(value cloudflare.DNSRecordsPage, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecordsPage] {
+	return connectormock.Branch(cloudflare.ListDNSRecordsBranchProviderRejected, value, failure)
+}
+
+// ListDNSRecordsInvalidResponse selects the invalidResponse branch: Cloudflare returned malformed or oversized JSON.
+func ListDNSRecordsInvalidResponse(value cloudflare.DNSRecordsPage, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecordsPage] {
+	return connectormock.Branch(cloudflare.ListDNSRecordsBranchInvalidResponse, value, failure)
+}
+
+// ListDNSRecordsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListDNSRecordsDefect(value cloudflare.DNSRecordsPage, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecordsPage] {
+	return connectormock.Branch(cloudflare.ListDNSRecordsBranchDefect, value, failure)
+}
+
+// ListDNSRecordsRetry asks Dex to retry the listDNSRecords Step, after the delay when it is positive.
+func ListDNSRecordsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudflare.DNSRecordsPage] {
+	return connectormock.Retry[cloudflare.DNSRecordsPage](failure, after)
+}
+
+// ListDNSRecordsListedDefault is the manifest mock listedDefault: Meridian has one A record.
+func ListDNSRecordsListedDefault() connectormock.Case[cloudflare.DNSRecordsPage] {
+	value := connectormock.MustDecodeOutput[cloudflare.DNSRecordsPage](`{"records":[{"id":"dns-meridian","type":"A","name":"meridian.example","content":"192.0.2.10","ttl":3600,"proxied":false}],"page":1,"totalPages":1}`)
+	return connectormock.Branch(cloudflare.ListDNSRecordsBranchListed, value, nil)
+}
+
+// ListDNSRecordsDefault is the manifest default, listedDefault, which New installs.
+func ListDNSRecordsDefault() connectormock.Case[cloudflare.DNSRecordsPage] {
+	return ListDNSRecordsListedDefault()
+}
+
+// GetDNSRecordFound selects the found branch: Cloudflare returned the DNS record.
+func GetDNSRecordFound(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.GetDNSRecordBranchFound, value, failure)
+}
+
+// GetDNSRecordNotFound selects the notFound branch: The DNS record does not exist.
+func GetDNSRecordNotFound(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.GetDNSRecordBranchNotFound, value, failure)
+}
+
+// GetDNSRecordProviderRejected selects the providerRejected branch: Cloudflare conclusively rejected the read.
+func GetDNSRecordProviderRejected(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.GetDNSRecordBranchProviderRejected, value, failure)
+}
+
+// GetDNSRecordInvalidResponse selects the invalidResponse branch: Cloudflare returned malformed or oversized JSON.
+func GetDNSRecordInvalidResponse(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.GetDNSRecordBranchInvalidResponse, value, failure)
+}
+
+// GetDNSRecordDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetDNSRecordDefect(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.GetDNSRecordBranchDefect, value, failure)
+}
+
+// GetDNSRecordRetry asks Dex to retry the getDNSRecord Step, after the delay when it is positive.
+func GetDNSRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Retry[cloudflare.DNSRecord](failure, after)
+}
+
+// GetDNSRecordFoundDefault is the manifest mock foundDefault: Meridian A record is returned.
+func GetDNSRecordFoundDefault() connectormock.Case[cloudflare.DNSRecord] {
+	value := connectormock.MustDecodeOutput[cloudflare.DNSRecord](`{"id":"dns-meridian","type":"A","name":"meridian.example","content":"192.0.2.10","ttl":3600,"proxied":false}`)
+	return connectormock.Branch(cloudflare.GetDNSRecordBranchFound, value, nil)
+}
+
+// GetDNSRecordDefault is the manifest default, foundDefault, which New installs.
+func GetDNSRecordDefault() connectormock.Case[cloudflare.DNSRecord] {
+	return GetDNSRecordFoundDefault()
+}
+
+// UpdateDNSRecordUpdated selects the updated branch: Cloudflare returned the updated DNS record.
+func UpdateDNSRecordUpdated(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.UpdateDNSRecordBranchUpdated, value, failure)
+}
+
+// UpdateDNSRecordNotFound selects the notFound branch: The DNS record does not exist.
+func UpdateDNSRecordNotFound(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.UpdateDNSRecordBranchNotFound, value, failure)
+}
+
+// UpdateDNSRecordProviderRejected selects the providerRejected branch: Cloudflare conclusively rejected the update.
+func UpdateDNSRecordProviderRejected(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.UpdateDNSRecordBranchProviderRejected, value, failure)
+}
+
+// UpdateDNSRecordInvalidResponse selects the invalidResponse branch: Cloudflare returned malformed or oversized JSON.
+func UpdateDNSRecordInvalidResponse(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.UpdateDNSRecordBranchInvalidResponse, value, failure)
+}
+
+// UpdateDNSRecordDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateDNSRecordDefect(value cloudflare.DNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Branch(cloudflare.UpdateDNSRecordBranchDefect, value, failure)
+}
+
+// UpdateDNSRecordRetry asks Dex to retry the updateDNSRecord Step, after the delay when it is positive.
+func UpdateDNSRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudflare.DNSRecord] {
+	return connectormock.Retry[cloudflare.DNSRecord](failure, after)
+}
+
+// UpdateDNSRecordUpdatedDefault is the manifest mock updatedDefault: Meridian A record was overwritten.
+func UpdateDNSRecordUpdatedDefault() connectormock.Case[cloudflare.DNSRecord] {
+	value := connectormock.MustDecodeOutput[cloudflare.DNSRecord](`{"id":"dns-meridian","type":"A","name":"meridian.example","content":"192.0.2.20","ttl":3600,"proxied":false}`)
+	return connectormock.Branch(cloudflare.UpdateDNSRecordBranchUpdated, value, nil)
+}
+
+// UpdateDNSRecordDefault is the manifest default, updatedDefault, which New installs.
+func UpdateDNSRecordDefault() connectormock.Case[cloudflare.DNSRecord] {
+	return UpdateDNSRecordUpdatedDefault()
+}
+
+// DeleteDNSRecordDeleted selects the deleted branch: Cloudflare confirmed the DNS record is absent.
+func DeleteDNSRecordDeleted(value cloudflare.DeletedDNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DeletedDNSRecord] {
+	return connectormock.Branch(cloudflare.DeleteDNSRecordBranchDeleted, value, failure)
+}
+
+// DeleteDNSRecordNotFound selects the notFound branch: The DNS record was already absent.
+func DeleteDNSRecordNotFound(value cloudflare.DeletedDNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DeletedDNSRecord] {
+	return connectormock.Branch(cloudflare.DeleteDNSRecordBranchNotFound, value, failure)
+}
+
+// DeleteDNSRecordProviderRejected selects the providerRejected branch: Cloudflare conclusively rejected the deletion.
+func DeleteDNSRecordProviderRejected(value cloudflare.DeletedDNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DeletedDNSRecord] {
+	return connectormock.Branch(cloudflare.DeleteDNSRecordBranchProviderRejected, value, failure)
+}
+
+// DeleteDNSRecordInvalidResponse selects the invalidResponse branch: Cloudflare returned malformed or oversized JSON.
+func DeleteDNSRecordInvalidResponse(value cloudflare.DeletedDNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DeletedDNSRecord] {
+	return connectormock.Branch(cloudflare.DeleteDNSRecordBranchInvalidResponse, value, failure)
+}
+
+// DeleteDNSRecordDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteDNSRecordDefect(value cloudflare.DeletedDNSRecord, failure *sdkgo.Failure) connectormock.Case[cloudflare.DeletedDNSRecord] {
+	return connectormock.Branch(cloudflare.DeleteDNSRecordBranchDefect, value, failure)
+}
+
+// DeleteDNSRecordRetry asks Dex to retry the deleteDNSRecord Step, after the delay when it is positive.
+func DeleteDNSRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudflare.DeletedDNSRecord] {
+	return connectormock.Retry[cloudflare.DeletedDNSRecord](failure, after)
+}
+
+// DeleteDNSRecordDeletedDefault is the manifest mock deletedDefault: Meridian A record was deleted.
+func DeleteDNSRecordDeletedDefault() connectormock.Case[cloudflare.DeletedDNSRecord] {
+	value := connectormock.MustDecodeOutput[cloudflare.DeletedDNSRecord](`{"id":"dns-meridian"}`)
+	return connectormock.Branch(cloudflare.DeleteDNSRecordBranchDeleted, value, nil)
+}
+
+// DeleteDNSRecordDefault is the manifest default, deletedDefault, which New installs.
+func DeleteDNSRecordDefault() connectormock.Case[cloudflare.DeletedDNSRecord] {
+	return DeleteDNSRecordDeletedDefault()
 }

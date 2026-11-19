@@ -8,7 +8,7 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { CloudflareClient } from '../src/client.js';
 import { ListZonesInputSchema, PurgeCacheByURLsInputSchema, type PurgeCacheByURLsInput, type CachePurge } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/cloudflare/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/cloudflare/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'listZones' || scenario.operation === 'purgeCacheByURLs');
 const connection = { provider: 'cloudflare', name: 'cloudflare' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeCloudflare));

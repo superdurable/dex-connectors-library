@@ -1,6 +1,6 @@
 {
   "connectorId": "buffer",
-  "releaseTag": "connectors/buffer/go/v0.1.0",
+  "releaseTag": "connectors/buffer/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-buffer",

@@ -1,6 +1,6 @@
 # Zendesk Support Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.26.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zendesk/support`.
 
@@ -49,7 +49,7 @@ attempt sends the same Idempotency-Key. `updateTicket` keeps six attempts
 within five minutes because comment reconciliation scans only the latest audit
 page, and uses the default `limited` tier with three sends.
 
-Release v0.25.0 (Python and TypeScript v0.3.0) retries an invalid, oversized,
+Release v0.26.0 (Python and TypeScript v0.3.0) retries an invalid, oversized,
 or credential-reflecting answer to `createTicket` under the same
 Idempotency-Key. `createTicket` still declares `invalidResponse` so existing
 wiring compiles, but never selects it. The same release adds the optional

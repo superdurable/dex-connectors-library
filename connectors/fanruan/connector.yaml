@@ -9,6 +9,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: fanruan
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listAppsPage]
+      triggers: []
   codegen:
     go:
       package: fanruan

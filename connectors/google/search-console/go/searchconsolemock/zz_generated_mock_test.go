@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getSite/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[searchconsole.Site](`{"siteUrl":"sc-domain:example.com","permissionLevel":"siteOwner"}`)
+			return err
+		}},
+		{name: "querySearchAnalytics/queriedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[searchconsole.SearchAnalyticsResult](`{"rows":[{"keys":["example"],"clicks":5,"impressions":100,"ctr":0.05,"position":3.2}],"responseAggregationType":"byProperty"}`)
+			return err
+		}},
+		{name: "listSitemaps/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[searchconsole.SitemapsPage](`{"sitemaps":[{"path":"https://example.com/sitemap.xml","type":"sitemap"}]}`)
+			return err
+		}},
+		{name: "getSitemap/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[searchconsole.Sitemap](`{"path":"https://example.com/sitemap.xml","type":"sitemap"}`)
+			return err
+		}},
+		{name: "inspectURL/inspectedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[searchconsole.URLInspectionResult](`{"indexStatusResult":{"verdict":"PASS","coverageState":"Submitted and indexed"}}`)
+			return err
+		}},
 		{name: "listSites/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[searchconsole.SitesPage](`{"sites":[{"siteUrl":"sc-domain:example.com","permissionLevel":"siteOwner"}]}`)
 			return err
@@ -30,6 +50,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetSite().Definition().Operation.OperationID != "getSite" {
+		t.Errorf("getSite mock has another definition")
+	}
+	if mock.QuerySearchAnalytics().Definition().Operation.OperationID != "querySearchAnalytics" {
+		t.Errorf("querySearchAnalytics mock has another definition")
+	}
+	if mock.ListSitemaps().Definition().Operation.OperationID != "listSitemaps" {
+		t.Errorf("listSitemaps mock has another definition")
+	}
+	if mock.GetSitemap().Definition().Operation.OperationID != "getSitemap" {
+		t.Errorf("getSitemap mock has another definition")
+	}
+	if mock.InspectURL().Definition().Operation.OperationID != "inspectURL" {
+		t.Errorf("inspectURL mock has another definition")
+	}
 	if mock.ListSites().Definition().Operation.OperationID != "listSites" {
 		t.Errorf("listSites mock has another definition")
 	}

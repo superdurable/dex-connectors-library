@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Paddle Billing API root as an absolute HTTPS URL. Blank uses the displayed Sandbox endpoint. For Live use https://api.paddle.com; override only for the matching environment or a trusted local test gateway. */
   baseUrl?: string;
-  /** Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow transaction reads. Runtime value in milliseconds. */
+  /** Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow Billing operations. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete transaction response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large transactions. */
+  /** Maximum complete Billing API response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large pages or transactions. */
   maxResponseBytes?: number;
 }
 
@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read, copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown; blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl. */
+  /** Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read/write, subscription.read/write, customer.read/write, discount.read/write, product.read/write, and price.read/write for Go management operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl. */
   apiKey: SecretString;
 }
 

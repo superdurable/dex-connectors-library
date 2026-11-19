@@ -14,10 +14,16 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/cohere/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/cohere/scenarios.json")
+    if scenario["operation"] in {"embed", "rerank"}
+]
 CONNECTION = sdk.ConnectionRef("cohere", "cohere")
 ADAPTER = conformance.PythonOperationAdapter(
-    "cohere", CONNECTION, cohere,
+    "cohere",
+    CONNECTION,
+    cohere,
     lambda client, _: cohere.Client(
         cohere.Config(base_url="http://127.0.0.1"),
         conformance.static_credentials(CONNECTION, cohere.Credentials(sdk.SecretString("test-secret-key"))),

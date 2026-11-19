@@ -89,7 +89,7 @@ func (operation ChangeMessageVisibilityOperation) Invoke(call sdkgo.Call, input 
 		return sdkgo.NewMutationBranch(ChangeMessageVisibilityBranchChanged, changed, nil, receipt)
 	}
 	if classified != nil {
-		return mutationAttemptForFailure(*classified, receipt, ChangeMessageVisibilityBranchReceiptHandleInvalid,
+		return mutationAttemptForFailure(call, *classified, receipt, ChangeMessageVisibilityBranchReceiptHandleInvalid,
 			ChangeMessageVisibilityBranchProviderRejected, ChangeMessageVisibilityBranchDefect, changed)
 	}
 	changed.VisibleAfter = receipt.ObservedAt.Add(time.Duration(input.VisibilityTimeoutSeconds) * time.Second)

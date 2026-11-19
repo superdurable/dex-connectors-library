@@ -59,11 +59,15 @@ func TestLookupUsesMockDefaultWithRealDex(t *testing.T) {
 	result, err := client.WaitForFlow(contextWithDeadline, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	var output netlify.SitesPage
+	var output netlify.Site
 	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, "site-meridian", output.ID)
 	calls := mock.ListSites().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, request, calls[0].Input)
 	require.Equal(t, netlify.ListSitesBranchListed, calls[0].Branch)
 	require.Equal(t, flowID, calls[0].FlowID)
+	siteCalls := mock.GetSite().Calls()
+	require.Len(t, siteCalls, 1)
+	require.Equal(t, "site-meridian", siteCalls[0].Input.SiteID)
 }

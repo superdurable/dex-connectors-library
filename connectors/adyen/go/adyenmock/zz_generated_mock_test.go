@@ -16,6 +16,42 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "lookupCardBrandsByBIN/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.CardBrands](`{"brands":[{"type":"visa","supported":true}]}`)
+			return err
+		}},
+		{name: "capturePayment/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
+		{name: "cancelPayment/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
+		{name: "refundPayment/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
+		{name: "reversePayment/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
+		{name: "updateAuthorisedAmount/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
+		{name: "listPaymentMethods/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentMethodPage](`{"methods":[{"type":"scheme","name":"Cards"},{"type":"ideal","name":"iDEAL"}]}`)
+			return err
+		}},
+		{name: "createPaymentLink/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.CreatedPaymentLink](`{"id":"PL50C5F751CED39G71","status":"active","currencyCode":"EUR","amountMinorUnits":1200,"url":"https://test.adyen.link/PL50C5F751CED39G71"}`)
+			return err
+		}},
+		{name: "expirePaymentLink/expiredDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentLinkStatus](`{"id":"PL50C5F751CED39G71","status":"expired","currencyCode":"EUR"}`)
+			return err
+		}},
 		{name: "getPaymentLink/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[adyen.PaymentLinkStatus](`{"id":"PL50C5F751CED39G71","status":"completed","currencyCode":"EUR"}`)
 			return err
@@ -30,6 +66,33 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.LookupCardBrandsByBIN().Definition().Operation.OperationID != "lookupCardBrandsByBIN" {
+		t.Errorf("lookupCardBrandsByBIN mock has another definition")
+	}
+	if mock.CapturePayment().Definition().Operation.OperationID != "capturePayment" {
+		t.Errorf("capturePayment mock has another definition")
+	}
+	if mock.CancelPayment().Definition().Operation.OperationID != "cancelPayment" {
+		t.Errorf("cancelPayment mock has another definition")
+	}
+	if mock.RefundPayment().Definition().Operation.OperationID != "refundPayment" {
+		t.Errorf("refundPayment mock has another definition")
+	}
+	if mock.ReversePayment().Definition().Operation.OperationID != "reversePayment" {
+		t.Errorf("reversePayment mock has another definition")
+	}
+	if mock.UpdateAuthorisedAmount().Definition().Operation.OperationID != "updateAuthorisedAmount" {
+		t.Errorf("updateAuthorisedAmount mock has another definition")
+	}
+	if mock.ListPaymentMethods().Definition().Operation.OperationID != "listPaymentMethods" {
+		t.Errorf("listPaymentMethods mock has another definition")
+	}
+	if mock.CreatePaymentLink().Definition().Operation.OperationID != "createPaymentLink" {
+		t.Errorf("createPaymentLink mock has another definition")
+	}
+	if mock.ExpirePaymentLink().Definition().Operation.OperationID != "expirePaymentLink" {
+		t.Errorf("expirePaymentLink mock has another definition")
+	}
 	if mock.GetPaymentLink().Definition().Operation.OperationID != "getPaymentLink" {
 		t.Errorf("getPaymentLink mock has another definition")
 	}

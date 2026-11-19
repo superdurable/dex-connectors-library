@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: greenhouse
   displayName: Greenhouse
-  description: Read selected candidate profile fields through Harvest v3.
+  description: Read selected candidate profile fields and paginated lists through Harvest v3.
   company: Greenhouse
   categories: [hr-recruiting]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: greenhouse
   languages:
@@ -33,12 +33,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one candidate read as a positive Go duration. Blank uses the displayed default; increase only for slow reads.
+        description: Maximum duration of one candidate request as a positive Go duration. Blank uses the displayed default; increase only for slow reads.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete candidate response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually large responses.
+        description: Maximum complete candidate response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually large list pages.
         default: 1048576
   auth:
     refreshable: true
@@ -77,6 +77,26 @@ spec:
         - {credential: access_token, source: access_token}
       terminalErrorCodes: [invalid_client, unauthorized_client, invalid_scope]
   operations:
+    - name: listCandidates
+      goName: ListCandidates
+      inputType: ListCandidatesInput
+      outputType: CandidateProfilesPage
+      kind: query
+      description: Read one page of candidate IDs and names, with an opaque cursor for the next page.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Greenhouse returned a candidate page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Greenhouse conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Greenhouse returned malformed or oversized page data., optional: true}
+        - {id: defect, goName: Defect, description: Page settings or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample candidate page is returned.
+          output: {candidates: [{id: 53883394, firstName: Sample, lastName: Candidate}], nextCursor: ''}
     - name: getCandidate
       goName: GetCandidate
       inputType: GetCandidateInput

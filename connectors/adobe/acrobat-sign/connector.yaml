@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: adobe-acrobat-sign
   displayName: Adobe Acrobat Sign
-  description: Read an agreement's name and status through Acrobat Sign REST API v6.
+  description: Read agreement pages and status, set visibility, cancel active agreements, and create signing reminders through Acrobat Sign REST API v6.
   company: Adobe
   categories: [files-documents]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: adobe-acrobat-sign
   languages:
@@ -48,14 +48,47 @@ spec:
         goName: IntegrationKey
         type: secretString
         required: true
-        description: Secret opaque Acrobat Sign integration key from Personal Preferences > Access Tokens after creating one at Acrobat Sign API > API Information > Integration Key with agreement_read scope. Paste the complete key; blank prevents calls. Dex sends it only as a Bearer credential.
+        description: Secret opaque Acrobat Sign integration key from Personal Preferences > Access Tokens after creating one at Acrobat Sign API > API Information > Integration Key with agreement_read scope, plus agreement_write for updateAgreementVisibility, cancelAgreement, or createAgreementReminder. Paste the complete key; blank prevents calls. Dex sends it only as a Bearer credential.
     guide:
       startURL: https://secure.adobesign.com/account/echosignApi
       steps:
-        - Sign in to an Acrobat Sign Enterprise account, open Acrobat Sign API > API Information > Integration Key, and create a key with agreement_read scope at the needed account or user access level. If the link is absent, ask Acrobat Sign support to enable integration keys. The key inherits the creator's permissions.
+        - Sign in to an Acrobat Sign Enterprise account, open Acrobat Sign API > API Information > Integration Key, and create a key with agreement_read scope at the needed account or user access level. Add agreement_write only if using updateAgreementVisibility, cancelAgreement, or createAgreementReminder. If the link is absent, ask Acrobat Sign support to enable integration keys. The key inherits the creator's permissions.
         - Open Personal Preferences > Access Tokens, select the new key, then Integration Key to reveal and copy its complete opaque value into secret integration_key in Dex Web. Revoke it from the same Access Tokens page. Never put it in the Flow input or logs.
         - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The connector resolves the account-specific apiAccessPoint automatically. Find an agreement's non-secret ID in Acrobat Sign or the create-agreement API response and enter it as agreementId; blank is invalid.
   operations:
+    - name: createAgreementReminder
+      goName: CreateAgreementReminder
+      inputType: CreateAgreementReminderInput
+      outputType: CreatedAgreementReminder
+      kind: mutation
+      description: Schedule one immediate reminder for specified participant IDs with bounded duplicate sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
+      branches:
+        - {id: created, goName: Created, description: Acrobat Sign created the reminder.}
+        - {id: providerRejected, goName: ProviderRejected, description: Acrobat Sign conclusively rejected the reminder., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The reminder may have been created but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The agreement or participant IDs are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A sample reminder was created., output: {reminderId: SAMPLE_REMINDER_ID}}
+    - name: cancelAgreement
+      goName: CancelAgreement
+      inputType: CancelAgreementInput
+      outputType: CancelledAgreement
+      kind: mutation
+      description: Cancel an active agreement, reading status first to converge an already-cancelled agreement.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: cancelled, goName: Cancelled, description: The agreement is cancelled or was already cancelled.}
+        - {id: notFound, goName: NotFound, description: Acrobat Sign did not expose the agreement., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Acrobat Sign refused cancellation of this agreement., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Acrobat Sign returned malformed or unsafe metadata., optional: true}
+        - {id: defect, goName: Defect, description: The agreement ID or connection is invalid., optional: true}
+      mocks:
+        - {name: cancelledDefault, branch: cancelled, default: true, description: A sample agreement was cancelled., output: {agreementId: 3AAABLblqZNOTREALAGREEMENTID5_BjiH, status: CANCELLED}}
     - name: getAgreement
       goName: GetAgreement
       inputType: GetAgreementInput
@@ -77,3 +110,44 @@ spec:
           default: true
           description: One example signed agreement is returned.
           output: {id: 3AAABLblqZNOTREALAGREEMENTID5_BjiH, name: Example agreement, status: SIGNED}
+    - name: listAgreements
+      goName: ListAgreements
+      inputType: ListAgreementsInput
+      outputType: AgreementPage
+      kind: query
+      description: List one cursor page of agreement IDs, names, and statuses without participants or documents.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Acrobat Sign returned the agreement page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Acrobat Sign conclusively rejected discovery or listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Acrobat Sign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example agreement is listed.
+          output: {agreements: [{id: 3AAABLblqZNOTREALAGREEMENTID5_BjiH, name: Example agreement, status: SIGNED}], nextCursor: ''}
+    - name: updateAgreementVisibility
+      goName: UpdateAgreementVisibility
+      inputType: UpdateAgreementVisibilityInput
+      outputType: AgreementVisibility
+      kind: mutation
+      description: Show or hide one agreement in the caller's agreement list without deleting documents.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Acrobat Sign set the requested agreement visibility.}
+        - {id: notFound, goName: NotFound, description: Acrobat Sign did not expose the agreement., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Acrobat Sign conclusively rejected the visibility change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Acrobat Sign returned an unsafe discovery response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One example agreement is shown.
+          output: {agreementId: 3AAABLblqZNOTREALAGREEMENTID5_BjiH, visibility: SHOW}

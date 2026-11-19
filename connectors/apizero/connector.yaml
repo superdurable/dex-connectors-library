@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: apizero
+  languages:
+    typescript: {version: v0.1.0, operations: [getAccountInfo], triggers: []}
   codegen:
     go:
       package: apizero

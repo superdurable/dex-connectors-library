@@ -18,12 +18,15 @@ import (
 
 type providerTestContext struct{ dex.Context }
 
-func (providerTestContext) FlowID() string              { return "provider-test" }
-func (providerTestContext) StepExecutionID() string     { return "provider-step" }
-func (providerTestContext) Deadline() (time.Time, bool) { return time.Time{}, false }
-func (providerTestContext) Done() <-chan struct{}       { return nil }
-func (providerTestContext) Err() error                  { return nil }
-func (providerTestContext) Value(key any) any           { return context.Background().Value(key) }
+func (providerTestContext) FlowID() string                          { return "provider-test" }
+func (providerTestContext) StepExecutionID() string                 { return "provider-step" }
+func (providerTestContext) Deadline() (time.Time, bool)             { return time.Time{}, false }
+func (providerTestContext) Done() <-chan struct{}                   { return nil }
+func (providerTestContext) Err() error                              { return nil }
+func (providerTestContext) Value(key any) any                       { return context.Background().Value(key) }
+func (providerTestContext) Attempt() int32                          { return 1 }
+func (providerTestContext) RecordHeartbeat(any) error               { return nil }
+func (providerTestContext) GetLastHeartbeatValue(any) (bool, error) { return false, nil }
 
 var testConnection = sdkgo.ConnectionRef{Provider: "postmark", Name: "postmark"}
 

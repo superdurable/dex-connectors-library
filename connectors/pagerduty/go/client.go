@@ -72,6 +72,80 @@ type IncidentPage struct {
 	More bool `json:"more"`
 }
 
+// ListIncidentNotesInput identifies the incident whose notes are requested.
+type ListIncidentNotesInput struct {
+	// IncidentID is the PagerDuty incident identifier.
+	IncidentID string `json:"incidentId"`
+}
+
+// IncidentNote is a note recorded on an incident.
+type IncidentNote struct {
+	// ID is the PagerDuty note identifier.
+	ID string `json:"id"`
+	// Content is the note text.
+	Content string `json:"content"`
+	// CreatedAt is the provider timestamp.
+	CreatedAt string `json:"created_at"`
+}
+
+// IncidentNotes contains notes on one incident.
+type IncidentNotes struct {
+	// Notes is the ordered set returned by PagerDuty.
+	Notes []IncidentNote `json:"notes"`
+}
+
+// ListLogEntriesInput chooses one account log page.
+type ListLogEntriesInput struct {
+	// Limit is the page size from 1 through 100; zero selects 25.
+	Limit int `json:"limit,omitempty"`
+	// Offset is the zero-based page offset.
+	Offset int `json:"offset,omitempty"`
+}
+
+// GetLogEntryInput identifies a PagerDuty log entry.
+type GetLogEntryInput struct {
+	// ID is the log entry identifier.
+	ID string `json:"id"`
+}
+
+// LogEntry contains selected incident audit fields.
+type LogEntry struct {
+	// ID is the log entry identifier.
+	ID string `json:"id"`
+	// Type identifies the event category.
+	Type string `json:"type"`
+	// Summary describes the event.
+	Summary string `json:"summary"`
+}
+
+// LogEntryPage is one page of account log entries.
+type LogEntryPage struct {
+	// LogEntries contains the returned entries.
+	LogEntries []LogEntry `json:"log_entries"`
+	// Limit is the page size.
+	Limit int `json:"limit"`
+	// Offset is the zero-based page offset.
+	Offset int `json:"offset"`
+	// More reports whether another page exists.
+	More bool `json:"more"`
+}
+
+// GetUserInput identifies a PagerDuty user.
+type GetUserInput struct {
+	// ID is the user identifier.
+	ID string `json:"id"`
+}
+
+// User contains selected PagerDuty profile fields.
+type User struct {
+	// ID is the user identifier.
+	ID string `json:"id"`
+	// Name is the display name.
+	Name string `json:"name"`
+	// Email is the account email address.
+	Email string `json:"email"`
+}
+
 // ListIncidentsOperation invokes PagerDuty's listIncidents endpoint.
 type ListIncidentsOperation struct {
 	client *Client
@@ -87,6 +161,32 @@ type GetIncidentOperation struct {
 
 // Definition returns the generated getIncident contract.
 func (GetIncidentOperation) Definition() sdkgo.QueryDefinition { return GetIncidentDefinition }
+
+// ListIncidentNotesOperation reads notes for one incident.
+type ListIncidentNotesOperation struct{ client *Client }
+
+// Definition returns the generated listIncidentNotes contract.
+func (ListIncidentNotesOperation) Definition() sdkgo.QueryDefinition {
+	return ListIncidentNotesDefinition
+}
+
+// ListLogEntriesOperation reads a page of account log entries.
+type ListLogEntriesOperation struct{ client *Client }
+
+// Definition returns the generated listLogEntries contract.
+func (ListLogEntriesOperation) Definition() sdkgo.QueryDefinition { return ListLogEntriesDefinition }
+
+// GetLogEntryOperation reads one log entry.
+type GetLogEntryOperation struct{ client *Client }
+
+// Definition returns the generated getLogEntry contract.
+func (GetLogEntryOperation) Definition() sdkgo.QueryDefinition { return GetLogEntryDefinition }
+
+// GetUserOperation reads one user profile.
+type GetUserOperation struct{ client *Client }
+
+// Definition returns the generated getUser contract.
+func (GetUserOperation) Definition() sdkgo.QueryDefinition { return GetUserDefinition }
 
 // New validates configuration without a network call. Zero settings use manifest defaults.
 func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
@@ -114,6 +214,22 @@ func (client *Client) ListIncidents() ListIncidentsOperation { return ListIncide
 
 // GetIncident binds getIncident to this client.
 func (client *Client) GetIncident() GetIncidentOperation { return GetIncidentOperation{client} }
+
+// ListIncidentNotes binds listIncidentNotes to this client.
+func (client *Client) ListIncidentNotes() ListIncidentNotesOperation {
+	return ListIncidentNotesOperation{client}
+}
+
+// ListLogEntries binds listLogEntries to this client.
+func (client *Client) ListLogEntries() ListLogEntriesOperation {
+	return ListLogEntriesOperation{client}
+}
+
+// GetLogEntry binds getLogEntry to this client.
+func (client *Client) GetLogEntry() GetLogEntryOperation { return GetLogEntryOperation{client} }
+
+// GetUser binds getUser to this client.
+func (client *Client) GetUser() GetUserOperation { return GetUserOperation{client} }
 
 // Invoke runs this provider operation.
 func (operation ListIncidentsOperation) Invoke(call sdkgo.Call, input ListIncidentsInput) sdkgo.QueryAttempt[IncidentPage] {
@@ -148,6 +264,74 @@ func (operation GetIncidentOperation) Invoke(call sdkgo.Call, input GetIncidentI
 			err = fmt.Errorf("incident missing")
 		}
 		return envelope.Incident, err
+	})
+}
+
+// Invoke lists notes for one incident.
+func (operation ListIncidentNotesOperation) Invoke(call sdkgo.Call, input ListIncidentNotesInput) sdkgo.QueryAttempt[IncidentNotes] {
+	if strings.TrimSpace(input.IncidentID) == "" {
+		return queryFailure[IncidentNotes]("listIncidentNotes", ListIncidentNotesBranchDefect, sdkgo.FailureValidation, "incident ID is required")
+	}
+	return runQuery(operation.client, call, "listIncidentNotes", "/incidents/"+url.PathEscape(input.IncidentID)+"/notes", ListIncidentNotesBranchListed, ListIncidentNotesBranchNotFound, ListIncidentNotesBranchProviderRejected, ListIncidentNotesBranchInvalidResponse, ListIncidentNotesBranchDefect, func(body []byte) (IncidentNotes, error) {
+		var notes IncidentNotes
+		err := json.Unmarshal(body, &notes)
+		if err == nil && notes.Notes == nil {
+			err = fmt.Errorf("notes missing")
+		}
+		return notes, err
+	})
+}
+
+// Invoke lists one page of log entries.
+func (operation ListLogEntriesOperation) Invoke(call sdkgo.Call, input ListLogEntriesInput) sdkgo.QueryAttempt[LogEntryPage] {
+	if input.Limit == 0 {
+		input.Limit = 25
+	}
+	if input.Limit < 1 || input.Limit > 100 || input.Offset < 0 {
+		return queryFailure[LogEntryPage]("listLogEntries", ListLogEntriesBranchDefect, sdkgo.FailureValidation, "limit must be 1–100 and offset nonnegative")
+	}
+	query := url.Values{"limit": {strconv.Itoa(input.Limit)}, "offset": {strconv.Itoa(input.Offset)}}
+	return runQuery(operation.client, call, "listLogEntries", "/log_entries?"+query.Encode(), ListLogEntriesBranchListed, "", ListLogEntriesBranchProviderRejected, ListLogEntriesBranchInvalidResponse, ListLogEntriesBranchDefect, func(body []byte) (LogEntryPage, error) {
+		var page LogEntryPage
+		err := json.Unmarshal(body, &page)
+		if err == nil && page.LogEntries == nil {
+			err = fmt.Errorf("log entries missing")
+		}
+		return page, err
+	})
+}
+
+// Invoke reads one log entry.
+func (operation GetLogEntryOperation) Invoke(call sdkgo.Call, input GetLogEntryInput) sdkgo.QueryAttempt[LogEntry] {
+	if strings.TrimSpace(input.ID) == "" {
+		return queryFailure[LogEntry]("getLogEntry", GetLogEntryBranchDefect, sdkgo.FailureValidation, "log entry ID is required")
+	}
+	return runQuery(operation.client, call, "getLogEntry", "/log_entries/"+url.PathEscape(input.ID), GetLogEntryBranchFound, GetLogEntryBranchNotFound, GetLogEntryBranchProviderRejected, GetLogEntryBranchInvalidResponse, GetLogEntryBranchDefect, func(body []byte) (LogEntry, error) {
+		var envelope struct {
+			LogEntry LogEntry `json:"log_entry"`
+		}
+		err := json.Unmarshal(body, &envelope)
+		if err == nil && envelope.LogEntry.ID == "" {
+			err = fmt.Errorf("log entry missing")
+		}
+		return envelope.LogEntry, err
+	})
+}
+
+// Invoke reads one user profile.
+func (operation GetUserOperation) Invoke(call sdkgo.Call, input GetUserInput) sdkgo.QueryAttempt[User] {
+	if strings.TrimSpace(input.ID) == "" {
+		return queryFailure[User]("getUser", GetUserBranchDefect, sdkgo.FailureValidation, "user ID is required")
+	}
+	return runQuery(operation.client, call, "getUser", "/users/"+url.PathEscape(input.ID), GetUserBranchFound, GetUserBranchNotFound, GetUserBranchProviderRejected, GetUserBranchInvalidResponse, GetUserBranchDefect, func(body []byte) (User, error) {
+		var envelope struct {
+			User User `json:"user"`
+		}
+		err := json.Unmarshal(body, &envelope)
+		if err == nil && envelope.User.ID == "" {
+			err = fmt.Errorf("user missing")
+		}
+		return envelope.User, err
 	})
 }
 
@@ -222,33 +406,35 @@ func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path
 	}
 	// Closing the response cannot change a completed provider write.
 	defer func() { _ = response.Body.Close() }()
+	content, bodyError := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	switch {
 	case response.StatusCode == http.StatusTooManyRequests:
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureRateLimit, "provider rate limited the request"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
-	case response.StatusCode == http.StatusConflict:
-		conflict, _ := providerhttp.ReadBoundedBody(response.Body, providerhttp.MaxErrorBodyBytes)
-		names := providerhttp.ReadErrorTokens(conflict, []string{"/name"})
-		if len(names) == 1 && names[0] == "invalid_idempotent_request" {
-			return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "idempotency key was used for a different request")
-		}
-		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is processing the same request"), 0)
-	case response.StatusCode == http.StatusNotFound && notFound != "":
+	case response.StatusCode == http.StatusNotFound && notFound != "" && bodyError == nil && isDefinitePagerDutyRefusal(response.StatusCode, content):
 		return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "provider resource was not found")
 	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted:
-		return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
+		if bodyError == nil && isDefinitePagerDutyRefusal(response.StatusCode, content) {
+			return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureTransport, "provider write outcome is unknown"), 0)
 	}
-	content, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return mutationFailure[T](operation, invalid, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit")
+	if errors.Is(bodyError, providerhttp.ErrBodyTooLarge) {
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
-	if err != nil {
+	if bodyError != nil {
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider response was interrupted"), 0)
+	}
+	var successEnvelope struct {
+		Error json.RawMessage `json:"error"`
+	}
+	if json.Unmarshal(content, &successEnvelope) == nil && len(successEnvelope.Error) > 0 && string(successEnvelope.Error) != "null" {
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureProtocol, "provider returned a contradictory write response"), 0)
 	}
 	value, err := decode(content)
 	if err != nil {
-		return mutationFailure[T](operation, invalid, sdkgo.FailureProtocol, "provider response is incomplete or malformed")
+		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureProtocol, "provider response is incomplete or malformed"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, value, nil, sdkgo.Receipt{})
 }
@@ -258,6 +444,24 @@ func queryFailure[T any](operation string, branch sdkgo.BranchID, kind sdkgo.Fai
 	failure := newFailure(operation, kind, message)
 	return sdkgo.NewQueryBranch(branch, zero, &failure, sdkgo.Receipt{})
 }
+func isDefinitePagerDutyRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var envelope struct {
+		Incident json.RawMessage `json:"incident"`
+		Note     json.RawMessage `json:"note"`
+		Error    struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(body, &envelope) == nil && len(envelope.Incident) == 0 && len(envelope.Note) == 0 && strings.TrimSpace(envelope.Error.Message) != ""
+}
+
 func mutationFailure[T any](operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[T] {
 	var zero T
 	failure := newFailure(operation, kind, message)

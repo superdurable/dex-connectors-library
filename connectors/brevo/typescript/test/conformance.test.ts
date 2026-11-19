@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { BrevoClient } from '../src/client.js';
 import { CreateOrUpdateContactInputSchema, GetContactInputSchema, type CreateOrUpdateContactInput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/brevo/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/brevo/scenarios.json', import.meta.url))
+  .filter(scenario => ['createOrUpdateContact', 'getContact'].includes(scenario.operation));
 const connection = { provider: 'brevo', name: 'brevo' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeBrevo));

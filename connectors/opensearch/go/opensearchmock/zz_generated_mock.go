@@ -21,6 +21,7 @@ type Mock struct {
 	indexDocument   *connectormock.Mutation[opensearch.IndexDocumentInput, opensearch.IndexedDocument]
 	deleteDocument  *connectormock.Mutation[opensearch.DeleteDocumentInput, opensearch.DeletedDocument]
 	searchDocuments *connectormock.Query[opensearch.SearchDocumentsInput, opensearch.SearchPage]
+	getDocument     *connectormock.Query[opensearch.GetDocumentInput, opensearch.RetrievedDocument]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,10 +32,12 @@ func New(t testing.TB, connectionName string) *Mock {
 		indexDocument:   connectormock.NewMutation[opensearch.IndexDocumentInput, opensearch.IndexedDocument](t, opensearch.IndexDocumentDefinition),
 		deleteDocument:  connectormock.NewMutation[opensearch.DeleteDocumentInput, opensearch.DeletedDocument](t, opensearch.DeleteDocumentDefinition),
 		searchDocuments: connectormock.NewQuery[opensearch.SearchDocumentsInput, opensearch.SearchPage](t, opensearch.SearchDocumentsDefinition),
+		getDocument:     connectormock.NewQuery[opensearch.GetDocumentInput, opensearch.RetrievedDocument](t, opensearch.GetDocumentDefinition),
 	}
 	mock.indexDocument.Default(IndexDocumentDefault())
 	mock.deleteDocument.Default(DeleteDocumentDefault())
 	mock.searchDocuments.Default(SearchDocumentsDefault())
+	mock.getDocument.Default(GetDocumentDefault())
 	connection, err := opensearch.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "opensearch", Name: connectionName})
 	if err != nil {
 		t.Fatalf("opensearch mock connection: %v", err)
@@ -61,6 +64,11 @@ func (mock *Mock) SearchDocuments() *connectormock.Query[opensearch.SearchDocume
 	return mock.searchDocuments
 }
 
+// GetDocument returns the getDocument script.
+func (mock *Mock) GetDocument() *connectormock.Query[opensearch.GetDocumentInput, opensearch.RetrievedDocument] {
+	return mock.getDocument
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) IndexDocument() sdkgo.Mutation[opensearch.IndexDocumentInput, opensearch.IndexedDocument] {
@@ -71,6 +79,9 @@ func (operations mockOperations) DeleteDocument() sdkgo.Mutation[opensearch.Dele
 }
 func (operations mockOperations) SearchDocuments() sdkgo.Query[opensearch.SearchDocumentsInput, opensearch.SearchPage] {
 	return operations.mock.searchDocuments
+}
+func (operations mockOperations) GetDocument() sdkgo.Query[opensearch.GetDocumentInput, opensearch.RetrievedDocument] {
+	return operations.mock.getDocument
 }
 
 // IndexDocumentIndexed selects the indexed branch: OpenSearch stored the requested document at the stable ID.
@@ -179,4 +190,50 @@ func SearchDocumentsMatchingDocument() connectormock.Case[opensearch.SearchPage]
 // SearchDocumentsDefault is the manifest default, matchingDocument, which New installs.
 func SearchDocumentsDefault() connectormock.Case[opensearch.SearchPage] {
 	return SearchDocumentsMatchingDocument()
+}
+
+// GetDocumentFound selects the found branch: OpenSearch returned the document.
+func GetDocumentFound(value opensearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.RetrievedDocument] {
+	return connectormock.Branch(opensearch.GetDocumentBranchFound, value, failure)
+}
+
+// GetDocumentNotFound selects the notFound branch: The document does not exist.
+func GetDocumentNotFound(value opensearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.RetrievedDocument] {
+	return connectormock.Branch(opensearch.GetDocumentBranchNotFound, value, failure)
+}
+
+// GetDocumentIndexNotFound selects the indexNotFound branch: The index does not exist.
+func GetDocumentIndexNotFound(value opensearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.RetrievedDocument] {
+	return connectormock.Branch(opensearch.GetDocumentBranchIndexNotFound, value, failure)
+}
+
+// GetDocumentProviderRejected selects the providerRejected branch: OpenSearch denied retrieval.
+func GetDocumentProviderRejected(value opensearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.RetrievedDocument] {
+	return connectormock.Branch(opensearch.GetDocumentBranchProviderRejected, value, failure)
+}
+
+// GetDocumentInvalidResponse selects the invalidResponse branch: OpenSearch returned invalid document data.
+func GetDocumentInvalidResponse(value opensearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.RetrievedDocument] {
+	return connectormock.Branch(opensearch.GetDocumentBranchInvalidResponse, value, failure)
+}
+
+// GetDocumentDefect selects the defect branch: Index, document ID, or credentials are invalid.
+func GetDocumentDefect(value opensearch.RetrievedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.RetrievedDocument] {
+	return connectormock.Branch(opensearch.GetDocumentBranchDefect, value, failure)
+}
+
+// GetDocumentRetry asks Dex to retry the getDocument Step, after the delay when it is positive.
+func GetDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[opensearch.RetrievedDocument] {
+	return connectormock.Retry[opensearch.RetrievedDocument](failure, after)
+}
+
+// GetDocumentProductFound is the manifest mock productFound: A product document is returned by stable ID.
+func GetDocumentProductFound() connectormock.Case[opensearch.RetrievedDocument] {
+	value := connectormock.MustDecodeOutput[opensearch.RetrievedDocument](`{"index":"products","id":"sku-42","source":{"title":"Meridian","category":"release"},"version":1}`)
+	return connectormock.Branch(opensearch.GetDocumentBranchFound, value, nil)
+}
+
+// GetDocumentDefault is the manifest default, productFound, which New installs.
+func GetDocumentDefault() connectormock.Case[opensearch.RetrievedDocument] {
+	return GetDocumentProductFound()
 }
