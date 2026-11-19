@@ -56,7 +56,7 @@ mkdir -p /tmp/xero-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/xero/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/xero/go \
-  --version v0.25.0 --tag connectors/xero/go/v0.25.0 \
+  --version v0.25.1 --tag connectors/xero/go/v0.25.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/xero-release/connector-release.json \
   --digest-output /tmp/xero-release/connector-release.json.sha256
@@ -146,9 +146,9 @@ request, and replays it:
 - a missing contact fails the Flow on the unwired `notFound` branch without
   writing;
 - a minute limit waits for `Retry-After`;
-- the daily limit, a validation rejection, and a cached 500 each fail the
-  Flow through an unwired optional branch after one request, without Xero's
-  message text;
+- the daily limit, a validation rejection, and a 500, which Xero caches under
+  the key, each fail the Flow through an unwired optional branch after one
+  request, without Xero's message text;
 - an OAuth connection sends the tenant of the named organisation, read once
   from `/connections`;
 - an invalid email fails the Flow before any Xero request.

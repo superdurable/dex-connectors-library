@@ -90,9 +90,8 @@ func TestUpdateIssueRetriesAvailabilityFailuresAndReportsUnusableAnswers(t *test
 	unusable := newRecordingLinear(t, func(response http.ResponseWriter, _ recordedRequest, _ int) {
 		writeData(t, response, map[string]any{"issueUpdate": map[string]any{"success": true, "issue": map[string]any{"id": "x"}}})
 	})
-	result, err := runMutation("unusable", newAPIKeyClient(t, unusable.URL).UpdateIssue(), linear.UpdateIssueInput{IssueID: testIssueID, StateID: testStateID})
-	require.NoError(t, err)
-	require.Equal(t, linear.UpdateIssueBranchInvalidResponse, result.Branch)
+	_, err = runMutation("unusable", newAPIKeyClient(t, unusable.URL).UpdateIssue(), linear.UpdateIssueInput{IssueID: testIssueID, StateID: testStateID})
+	requireRetry(t, err, sdkgo.FailureProtocol, 0)
 }
 
 func TestUpdateIssueRejectsInvalidInputWithoutARequest(t *testing.T) {

@@ -1,10 +1,10 @@
 {
   "connectorId": "zendesk-support",
-  "releaseTag": "connectors/zendesk/support/go/v0.24.0",
+  "releaseTag": "connectors/zendesk/support/go/v0.25.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-zendesk-support",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "factories": [
     {
@@ -155,7 +155,7 @@
       "kind": "mutation",
       "operationId": "createTicket",
       "inputType": "CreateTicketInput",
-      "description": "Create one ticket with its first comment under a Zendesk Idempotency-Key derived from the Step, so a retried or re-dispatched Step returns the same ticket.",
+      "description": "Create one ticket with its first comment under a Zendesk Idempotency-Key derived from the Step, so a retried or re-dispatched Step returns the same ticket. An unknown outcome, including an invalid or oversized answer, repeats the identical keyed request.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -294,7 +294,7 @@
       "kind": "mutation",
       "operationId": "updateTicket",
       "inputType": "UpdateTicketInput",
-      "description": "Change the status, priority, assignee, group, or tags of one ticket and optionally add one public reply or internal note, applied at most once per Step.",
+      "description": "Change the status, priority, assignee, group, or tags of one ticket and optionally add one public reply or internal note. Every attempt rereads the ticket and its latest audit page and finds an earlier attempt's change by its audit metadata. An unknown write outcome retries, also on the last allowed send, so the next attempt reads back first; an unconfirmed write is resent below the send cap and selects uncertain at it. A write Zendesk answered with 2xx is never resent: an unusable 2xx saves the ticket ID and is read back in the same attempt, and later attempts only read back. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and count every possible send.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -325,6 +325,11 @@
         {
           "id": "invalidResponse",
           "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
           "optional": true
         },
         {

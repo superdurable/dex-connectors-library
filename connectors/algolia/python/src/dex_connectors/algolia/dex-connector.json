@@ -1,10 +1,10 @@
 {
   "connectorId": "algolia",
-  "releaseTag": "connectors/algolia/go/v0.3.0",
+  "releaseTag": "connectors/algolia/go/v0.3.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-algolia",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {

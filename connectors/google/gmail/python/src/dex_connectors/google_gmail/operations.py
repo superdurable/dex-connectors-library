@@ -30,7 +30,7 @@ from .provider import (
     ProviderTransportError,
     decode_message,
 )
-from .send import SendExecution, SendService
+from .send import _PERMANENT_CREDENTIAL_ERRORS, SendExecution, SendService
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -86,7 +86,15 @@ class GetMessageOperation:
             )
         try:
             credential = await self._provider.resolve_credentials(call)
-        except Exception:
+        except Exception as error:
+            if not isinstance(error, _PERMANENT_CREDENTIAL_ERRORS):
+                return QueryAttempt.retry(
+                    _failure(
+                        "getMessage",
+                        FailureKind.AVAILABILITY,
+                        "Gmail credentials are temporarily unavailable",
+                    )
+                )
             return QueryAttempt.branch_result(
                 "defect",
                 Message(),

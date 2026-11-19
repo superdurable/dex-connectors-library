@@ -49,7 +49,8 @@ async def test_duplicate_create_receipt_comes_from_read_back() -> None:
     scenario["exchanges"][1]["headers"] = {"X-Goog-Request-Id": "post-request"}
     scenario["exchanges"][2]["headers"] = {"X-Goog-Request-Id": "read-request"}
     recorder = ExchangeRecorder(scenario, scenario["callId"], "/calendar/v3")
-    context = HeartbeatContext(scenario.get("priorHeartbeat"), scenario.get("fixedClock"), scenario["name"])
+    context = HeartbeatContext(scenario.get("priorHeartbeat"), scenario.get("fixedClock"), scenario["name"],
+                               scenario["callId"])
     attempt = await ADAPTER.invoke(scenario, recorder, context)
     recorder.assert_complete()
     assert attempt.receipt is not None

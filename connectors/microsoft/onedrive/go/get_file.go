@@ -38,7 +38,10 @@ func (operation GetFileOperation) Invoke(call sdkgo.Call, input GetFileInput) sd
 	if err := validateDriveAndFolderIDs(input.DriveID, input.ItemID); err != nil || input.ItemID == "" {
 		return sdkgo.NewQueryBranch(GetFileBranchDefect, DriveItem{}, graphFailurePointer(sdkgo.FailureValidation, getFileOperationID, "itemId must be a Microsoft Graph item ID or root, and driveId a drive ID or blank"), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, getFileOperationID, input.DriveID)
+	credential, failure, isRetryable := client.resolveCredential(call, getFileOperationID, input.DriveID)
+	if isRetryable {
+		return sdkgo.NewQueryRetry[DriveItem](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetFileBranchDefect, DriveItem{}, failure, sdkgo.Receipt{})
 	}

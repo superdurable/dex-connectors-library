@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -66,6 +67,14 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 }
 
 var errCredential = errors.New("Google Cloud Storage credential unavailable")
+
+// isTerminalCredentialError reports a resolve failure that only reconnection repairs; any other one is transient.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 var errRequest = errors.New("Google Cloud Storage request failed")
 var errRedirect = errors.New("Google Cloud Storage redirect was unsafe")
 
@@ -79,7 +88,7 @@ type providerResponse struct {
 
 func (client *Client) request(call sdkgo.Call, path string, media bool) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if sdkgo.IsReauthorizationRequired(err) {
+	if isTerminalCredentialError(err) {
 		return providerResponse{err: errCredential}
 	}
 	if err != nil {

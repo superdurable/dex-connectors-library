@@ -1,0 +1,243 @@
+{
+  "connector": "agora",
+  "scenarios": [
+    {
+      "callId": "a07de48a-6f68-4933-b912-2dc48b44092a",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"count\":1,\"list\":[{\"start_ts\":1735035893,\"status\":\"RUNNING\",\"agent_id\":\"agent-123\"}]},\"meta\":{\"cursor\":\"next\",\"total\":2},\"status\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/conversational-ai-agent/v2/projects/1234567890abcdef1234567890abcdef/agents",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y3VzdG9tZXItaWQ6Y3VzdG9tZXItc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "agents": [
+            {
+              "agentId": "agent-123",
+              "startTimestamp": 1735035893,
+              "status": "RUNNING"
+            }
+          ],
+          "count": 1,
+          "cursor": "next",
+          "total": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRunningAgents-listed",
+      "operation": "listRunningAgents"
+    },
+    {
+      "callId": "ea07a86d-f819-460d-9523-46f54262e829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/conversational-ai-agent/v2/projects/1234567890abcdef1234567890abcdef/agents",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y3VzdG9tZXItaWQ6Y3VzdG9tZXItc2VjcmV0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "agents": [],
+          "count": 0,
+          "cursor": "",
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRunningAgents-providerRejected",
+      "operation": "listRunningAgents"
+    },
+    {
+      "callId": "82e916d9-72ac-468e-9a6f-bbfa2d68fdb1",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"data\":{\"count\":2,\"list\":[]},\"meta\":{\"total\":2}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/conversational-ai-agent/v2/projects/1234567890abcdef1234567890abcdef/agents",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y3VzdG9tZXItaWQ6Y3VzdG9tZXItc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "agents": [],
+          "count": 0,
+          "cursor": "",
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRunningAgents-invalidResponse",
+      "operation": "listRunningAgents"
+    },
+    {
+      "callId": "24aa7d08-a013-4e25-8e47-cd405952a8ca",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "agents": [],
+          "count": 0,
+          "cursor": "",
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRunningAgents-defect",
+      "operation": "listRunningAgents"
+    },
+    {
+      "callId": "9d44f877-0fb4-4a66-8d8a-14b30d45c749",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/conversational-ai-agent/v2/projects/1234567890abcdef1234567890abcdef/agents",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y3VzdG9tZXItaWQ6Y3VzdG9tZXItc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRunningAgents-rateLimit",
+      "operation": "listRunningAgents"
+    },
+    {
+      "callId": "f36bacdb-a11c-47c0-aecd-477829b6d32a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/conversational-ai-agent/v2/projects/1234567890abcdef1234567890abcdef/agents",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y3VzdG9tZXItaWQ6Y3VzdG9tZXItc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRunningAgents-unavailable",
+      "operation": "listRunningAgents"
+    },
+    {
+      "callId": "39379bdf-3412-4a38-a492-c46de71889e0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/conversational-ai-agent/v2/projects/1234567890abcdef1234567890abcdef/agents",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y3VzdG9tZXItaWQ6Y3VzdG9tZXItc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listRunningAgents-transportFailure",
+      "operation": "listRunningAgents"
+    }
+  ],
+  "schemaVersion": 1
+}

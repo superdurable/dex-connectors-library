@@ -6,6 +6,7 @@ import asyncio
 import base64
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -20,6 +21,7 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig import ObjectNotFoundError
 from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
@@ -50,6 +52,7 @@ _TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 # Keeps a ticketChanged poll loop inside Freshdesk's per-minute Tickets List sublimit.
 _MINIMUM_POLL_INTERVAL_SECONDS = 10
 _DEFAULT_POLL_INTERVAL_SECONDS = 60
+_MAXIMUM_PROVIDER_ID = 2**63 - 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +65,24 @@ class Exchange:
     headers: httpx.Headers | None = None
     body: bytes = b""
     retry_after: float = 0
+    # A non-2xx body exceeded maxResponseBytes or reflected the credential, so it cannot prove a refusal.
+    is_body_incomplete: bool = False
+    # A created object's id in a non-2xx body, which means acceptance.
+    body_provider_id: int = 0
+
+
+def accepted_provider_id(body: bytes) -> int:
+    """Return the positive top-level integer id of a response body, or 0 when it has none."""
+    try:
+        document = json.loads(body)
+    except (ValueError, TypeError):
+        return 0
+    if not isinstance(document, dict):
+        return 0
+    provider_id = document.get("id")
+    if type(provider_id) is not int or not 1 <= provider_id <= _MAXIMUM_PROVIDER_ID:
+        return 0
+    return provider_id
 
 
 class Client:
@@ -134,7 +155,7 @@ class Client:
         try:
             credentials = await self.credentials.resolve(call)
         except (
-            LookupError,
+            ObjectNotFoundError,
             ReauthorizationRequiredError,
             ConnectionNotSelectedError,
             CredentialBrokerRejectedError,
@@ -144,7 +165,18 @@ class Client:
                 self.failure(operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"),
                 False,
             )
-        except Exception:
+        except Exception as error:
+            # Imported here because the generated connection module imports this module.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return (
+                    "",
+                    self.failure(
+                        operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
+                    ),
+                    False,
+                )
             return (
                 "",
                 self.failure(
@@ -179,8 +211,15 @@ class Client:
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
         write_budget: float | None = None,
+        deadline: datetime | None = None,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
-        """Send one request and classify its observed provider result."""
+        """Send one request and classify its observed provider result.
+
+        `deadline` replaces the Step deadline, such as a fence's write deadline.
+        `on_response_status` receives the HTTP status as soon as the headers arrive, so a
+        caller whose Fence cancels the body read still knows it.
+        """
         try:
             url = self._endpoint + path
             if query:
@@ -197,7 +236,8 @@ class Client:
                 "defect",
                 self.failure(operation, FailureKind.LOCAL_DEFECT, "Freshdesk request could not be built"),
             )
-        deadline = getattr(call.context, "deadline", None)
+        if deadline is None:
+            deadline = getattr(call.context, "deadline", None)
         remaining = (deadline - datetime.now(UTC)).total_seconds() if deadline is not None else None
         minimum_request_time = write_budget if write_budget is not None else 2.0
         if remaining is not None and remaining <= 1 + minimum_request_time:
@@ -220,9 +260,15 @@ class Client:
                 "defect",
                 self.failure(operation, FailureKind.LOCAL_DEFECT, "Freshdesk request could not be built"),
             )
+        # Response metadata survives a later body failure, so an accepted write is never resent.
+        observed_status: int = 0
+        observed_headers: httpx.Headers | None = None
         try:
             async with asyncio.timeout(remaining - 1 if remaining is not None else None):
                 response, trace = await send_traced(self._client, request)
+                observed_status, observed_headers = response.status_code, response.headers
+                if on_response_status is not None:
+                    on_response_status(observed_status)
                 try:
                     contents = await read_bounded_body(response, self.config.max_response_bytes)
                     exchange = Exchange(
@@ -257,6 +303,13 @@ class Client:
             return self._classify_status(operation, key, exchange)
         except ProviderTransportError as error:
             not_sent = getattr(error, "provably_not_sent", False)
+            if error.status_code or observed_status:
+                return Exchange(
+                    "unavailable",
+                    self.failure(operation, FailureKind.TRANSPORT, "Freshdesk response could not be read"),
+                    error.status_code or observed_status,
+                    error.headers or observed_headers,
+                )
             message = (
                 "Freshdesk could not be reached; no request was sent"
                 if not_sent
@@ -274,6 +327,13 @@ class Client:
                 ),
             )
         except Exception:
+            if observed_status:
+                return Exchange(
+                    "unavailable",
+                    self.failure(operation, FailureKind.TRANSPORT, "Freshdesk response could not be read"),
+                    observed_status,
+                    observed_headers,
+                )
             return Exchange(
                 "unavailable",
                 self.failure(
@@ -329,7 +389,14 @@ class Client:
             parse_retry_after(exchange.headers.get("Retry-After", ""), self._now()) if exchange.headers else 0
         )
         return Exchange(
-            outcome, self.failure(operation, kind, message), status, exchange.headers, retry_after=delay
+            outcome,
+            self.failure(operation, kind, message),
+            status,
+            exchange.headers,
+            retry_after=delay,
+            # A credential-reflecting refusal body is untrusted, so it cannot prove a refusal either.
+            is_body_incomplete=exchange.outcome == "invalid" or (bool(key) and key.encode() in exchange.body),
+            body_provider_id=accepted_provider_id(exchange.body),
         )
 
     def receipt(self, call: Call, exchange: Exchange | None = None, object_id: int = 0) -> Receipt:

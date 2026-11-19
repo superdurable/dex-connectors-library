@@ -53,7 +53,7 @@ export interface UploadFileStepConfig<StepInput, OperationInput = UploadFileInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Box conclusively rejected the replacement. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Box returned malformed or oversized file metadata. */
+  /** Retained for compatibility and no longer selected: malformed or oversized file metadata now retries. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input or connection credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Non-secret Gorgias helpdesk subdomain: the acme in https://acme.gorgias.com. Sign in to your helpdesk from https://www.gorgias.com/login, open Settings > Account > REST API as https://docs.gorgias.com/en-US/rest-api-208286 describes, and copy the part between https:// and .gorgias.com from the Base API URL. Enter lowercase letters, digits, and hyphens only, without https://, .gorgias.com, or /api/. Required: every API request is sent to https://{domain}.gorgias.com/api/. */
   domain: string;
-  /** Maximum complete Gorgias API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket messages carry unusually large HTML bodies. An oversized response selects invalidResponse, or is reconciled and may select uncertain for a write. */
+  /** Maximum complete Gorgias API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket messages carry unusually large HTML bodies. An oversized response selects invalidResponse for a Query, retries updateTicket, or is reconciled and may select uncertain for a created ticket or message. */
   maxResponseBytes?: number;
   /** Delay between ticketChanged Trigger polls of Gorgias's event log, GET /api/events, as a Go duration of at least 10s such as 30s or 2m. Leave blank to keep the displayed interval. A quiet poll makes one request, and every request counts against the account's limit of 40 API-key requests per 20-second window that the connector's Steps and other integrations share; lower it only when ticket events must start Flows sooner. Takes effect when the Worker restarts. Runtime value in milliseconds. */
   pollIntervalMs?: number;
@@ -65,18 +65,37 @@ export interface Credentials {
   email: string;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["api_key", "email"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
-  if (fields["email"] != null && !(typeof fields["email"] === 'string')) throw new TypeError("credential email has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new CredentialMaterialError("credential api_key has an invalid type");
+  if (fields["email"] != null && !(typeof fields["email"] === 'string')) throw new CredentialMaterialError("credential email has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["email"]) throw new TypeError("credential email is required");
+  if (!fields["email"]) throw new CredentialMaterialError("credential email is required");
   credentials.email = (fields["email"] ?? '') as string;
-  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  if (!fields["api_key"]) throw new CredentialMaterialError("credential api_key is required");
   credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
   return credentials;
 }

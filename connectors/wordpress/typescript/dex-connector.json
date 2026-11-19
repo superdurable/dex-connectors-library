@@ -1,10 +1,10 @@
 {
   "connectorId": "wordpress",
-  "releaseTag": "connectors/wordpress/go/v0.1.0",
+  "releaseTag": "connectors/wordpress/go/v0.1.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-wordpress",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -12,7 +12,7 @@
       "kind": "mutation",
       "operationId": "createPost",
       "inputType": "CreatePostInput",
-      "description": "Create one draft or published post. If WordPress does not confirm the outcome, inspect Posts before creating another.",
+      "description": "Create one draft or published post. An unknown outcome resends up to the send cap, so Posts may show a duplicate.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

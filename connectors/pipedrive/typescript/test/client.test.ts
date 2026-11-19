@@ -2,11 +2,19 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { PipedriveClient, validatePipedriveEndpoint } from '../src/client.js';
 import { loadScenarios, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
-import type { Credentials } from '../src/generated/models.js';
+import { decodeCredentials, type Credentials } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const connection = { provider: 'pipedrive', name: 'pipedrive-crm' };
 const scenario = loadScenarios(new URL('../../../../conformance/connectors/pipedrive/scenarios.json', import.meta.url)).find(item => item.operation === 'getObject') as Scenario;
@@ -45,6 +53,21 @@ it('classifies unavailable credential storage as retry and malformed material as
   const invalid = await malformed.getObject().invoke(call(), { objectType: 'deals', objectId: '301' });
   expect(invalid.kind).toBe('branch');
   if (invalid.kind === 'branch') expect(invalid.branch).toBe('defect');
+});
+
+it.each([
+  ['broker unavailable', new CredentialBrokerUnavailableError(), 'retry', undefined],
+  ['static not configured', new Error('connection is not configured'), 'retry', undefined],
+  ['reauthorization', new ReauthorizationRequiredError(), 'branch', 'providerRejected'],
+  ['object not found', new ObjectNotFoundError(), 'branch', 'defect'],
+  ['connection not selected', new ConnectionNotSelectedError(), 'branch', 'defect'],
+  ['broker rejected', new CredentialBrokerRejectedError(), 'branch', 'defect'],
+  ['malformed stored material', sdkWrappedMaterialError(), 'branch', 'defect'],
+])('classifies a %s credential failure', async (_name, error, kind, branch) => {
+  const client = new PipedriveClient({}, source(async () => { throw error; }), { send: async () => { throw new Error('no request may be sent'); } });
+  const attempt = await client.getObject().invoke(call(), { objectType: 'deals', objectId: '301' });
+  expect(attempt.kind).toBe(kind);
+  if (attempt.kind === 'branch') expect(attempt.branch).toBe(branch);
 });
 
 it('retries an address refusal before provider dispatch', async () => {

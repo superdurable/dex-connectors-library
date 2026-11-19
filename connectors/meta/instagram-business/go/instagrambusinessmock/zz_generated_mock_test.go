@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getAccount/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[instagrambusiness.InstagramAccount](`{"id":"17800000000000001","username":"example_business","mediaCount":1}`)
+			return err
+		}},
+		{name: "getMedia/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[instagrambusiness.InstagramMedia](`{"id":"17900000000000001","caption":"Hello","mediaType":"IMAGE","timestamp":"2026-11-08T10:00:00+0000","permalink":"https://www.instagram.com/p/example/"}`)
+			return err
+		}},
 		{name: "listMedia/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[instagrambusiness.MediaListPage](`{"media":[{"id":"17900000000000001","caption":"Hello","mediaType":"IMAGE","timestamp":"2026-11-08T10:00:00+0000","permalink":"https://www.instagram.com/p/example/"}],"nextCursor":""}`)
 			return err
@@ -30,6 +38,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetAccount().Definition().Operation.OperationID != "getAccount" {
+		t.Errorf("getAccount mock has another definition")
+	}
+	if mock.GetMedia().Definition().Operation.OperationID != "getMedia" {
+		t.Errorf("getMedia mock has another definition")
+	}
 	if mock.ListMedia().Definition().Operation.OperationID != "listMedia" {
 		t.Errorf("listMedia mock has another definition")
 	}

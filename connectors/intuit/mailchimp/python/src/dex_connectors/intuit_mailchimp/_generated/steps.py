@@ -141,6 +141,8 @@ def new_upsert_member_step(
     defect: dex.StepTarget[MutationResult[UpsertMemberOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpsertMemberOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpsertMemberInput, UpsertMemberOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Mailchimp Step connection name must match its connection reference")
@@ -192,6 +194,8 @@ def new_update_member_tags_step(
     defect: dex.StepTarget[MutationResult[UpdateMemberTagsOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateMemberTagsOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateMemberTagsInput, UpdateMemberTagsOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Mailchimp Step connection name must match its connection reference")

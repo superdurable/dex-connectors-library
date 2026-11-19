@@ -6,8 +6,9 @@
 // updateTicket changes ticket fields and tags so that a repeated attempt writes
 // nothing twice, and createTicket and addNote create a ticket or add one internal
 // note or public email reply. Gorgias documents no idempotency key, so those two
-// resend only after Gorgias provably did not apply a request and otherwise look the
-// write up by the external ID they set. The ticketChanged poll Trigger starts a
+// send under the SDK single-dispatch fence and the manifest send cap: after an
+// unknown outcome they look the write up by the external ID they set, resend while
+// the cap allows, and select uncertain at the cap. The ticketChanged poll Trigger starts a
 // Flow for each ticket event in the account's event log; see
 // NewProjectTicketTriggerRunner.
 //
@@ -33,6 +34,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -120,6 +122,19 @@ type gorgiasResponse struct {
 	body         []byte
 	requestID    string
 	apiCallLimit string
+	// isBodyTooLarge marks a body over maxResponseBytes, which was not read, so it cannot prove a refusal.
+	isBodyTooLarge bool
+	// isBodyReflectingCredential marks a body that contains the API key, so it cannot prove a refusal.
+	isBodyReflectingCredential bool
+	// object holds the top-level object fields of a readable body, kept after the body is cleared.
+	object gorgiasObjectMarker
+}
+
+// gorgiasObjectMarker is the identity a response body names: a write answer that carries one was accepted.
+type gorgiasObjectMarker struct {
+	ID         int64   `json:"id"`
+	ExternalID *string `json:"external_id"`
+	TicketID   int64   `json:"ticket_id"`
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Gorgias request that each operation maps to a branch.
@@ -216,13 +231,30 @@ func (client *Client) UpdateTicket() UpdateTicketOperation {
 // AddNote returns the addNote Mutation bound to this client.
 func (client *Client) AddNote() AddNoteOperation { return AddNoteOperation{client: client} }
 
-// resolveCredentials returns header-safe credentials, or a safe defect Failure.
-func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {
+// resolveCredentials returns header-safe credentials for a Query, or a safe Failure and whether it is terminal.
+// A terminal failure selects defect; any other one is retried, because nothing reached Gorgias.
+func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
+	return client.resolveWriteCredentials(call, operation)
+}
+
+// resolveWriteCredentials returns header-safe credentials, or a safe Failure and whether it is terminal:
+// revoked, unselected, or unusable credentials rather than ones that could not be read this time.
+func (client *Client) resolveWriteCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
-		return Credentials{}, gorgiasFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable")
+	switch {
+	case err != nil && !isTerminalCredentialError(err):
+		return Credentials{}, gorgiasFailurePointer(sdkgo.FailureAvailability, operation, "connection credentials could not be read"), false
+	case err != nil || validateResolvedCredentials(credentials) != nil:
+		return Credentials{}, gorgiasFailurePointer(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), true
 	}
-	return credentials, nil
+	return credentials, nil, false
+}
+
+// isTerminalCredentialError reports a credential failure that another attempt cannot repair.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // exchange sends one authenticated request under the Step context of call.
@@ -259,6 +291,11 @@ func (client *Client) exchangeWithContext(ctx context.Context, credentials Crede
 		return gorgiasExchange{outcome: exchangeUnavailable, response: response, failure: gorgiasFailure(sdkgo.FailureTransport, operation, "Gorgias response could not be read")}
 	}
 	response.body = body
+	response.isBodyTooLarge = readErr != nil
+	if json.Unmarshal(body, &response.object) != nil {
+		// A body that is not one well-typed JSON object names no object.
+		response.object = gorgiasObjectMarker{}
+	}
 	if isSuccess {
 		if bytes.Contains(body, []byte(credentials.APIKey.Reveal())) {
 			response.body = nil
@@ -266,6 +303,8 @@ func (client *Client) exchangeWithContext(ctx context.Context, credentials Crede
 		}
 		return gorgiasExchange{outcome: exchangeSucceeded, response: response}
 	}
+	apiKey := credentials.APIKey.Reveal()
+	response.isBodyReflectingCredential = apiKey != "" && bytes.Contains(body, []byte(apiKey))
 	return client.classifyFailureStatus(response, credentials, operation)
 }
 

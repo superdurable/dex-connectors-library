@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Customer.io App API HTTPS root. Blank uses the displayed US-region default; override with https://api-eu.customer.io for an EU workspace. Do not include path, query, or credentials. */
   baseUrl?: string;
-  /** Maximum duration of one customer lookup as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
+  /** Maximum duration of one App API request as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete customer-lookup JSON response in bytes as a positive integer. Blank uses the displayed default; increase if an email has many matching profiles. */
+  /** Maximum complete App API JSON response in bytes as a positive integer. Blank uses the displayed default; increase for large customer or campaign responses. */
   maxResponseBytes?: number;
 }
 
@@ -25,19 +25,38 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret App API private key from Customer.io > Settings > API Credentials > App API > Create API Key. Copy the complete sk_ key or existing App API key, not its label; blank prevents calls. Dex sends it only as a Bearer credential. */
+  /** Secret App API private key from Customer.io > Settings > API Credentials > App API > Create API Key. Copy the complete sk_ key or existing App API key with profile and campaign read access, not its label; blank prevents calls. Dex sends it only as a Bearer credential. */
   privateKey: SecretString;
+}
+
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
 }
 
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["privateKey"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["privateKey"] != null && !(typeof fields["privateKey"] === 'string')) throw new TypeError("credential privateKey has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["privateKey"] != null && !(typeof fields["privateKey"] === 'string')) throw new CredentialMaterialError("credential privateKey has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["privateKey"]) throw new TypeError("credential privateKey is required");
+  if (!fields["privateKey"]) throw new CredentialMaterialError("credential privateKey is required");
   credentials.privateKey = new SecretString((fields["privateKey"] ?? '') as string);
   return credentials;
 }

@@ -814,6 +814,31 @@ class ComponentReleaseTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "dex-connector.json must be at"):
             release.verify_language_artifacts("python", "dex-connector-newsapi", "v0.1.0", [wheel, sdist])
 
+    def test_numeric_connector_python_import_package_and_artifacts(self) -> None:
+        package = self.repository / "connectors/365api/python"
+        self.assertEqual(
+            release.language_connector_manifest_path(package, "python"),
+            package / "src/dex_connectors/_365api/dex-connector.json",
+        )
+        wheel = self.repository / "dex_connector_365api-0.1.0-py3-none-any.whl"
+        sdist = self.repository / "dex_connector_365api-0.1.0.tar.gz"
+        metadata = b"Name: dex-connector-365api\nVersion: 0.1.0\n"
+        connector_manifest = json.dumps({
+            "releaseTag": "connectors/365api/go/v0.1.0",
+            "package": {"ecosystem": "pypi", "name": "dex-connector-365api", "version": "0.1.0"},
+        }).encode("utf-8")
+        with zipfile.ZipFile(wheel, "w") as archive:
+            archive.writestr("dex_connector_365api-0.1.0.dist-info/METADATA", metadata)
+            archive.writestr("dex_connectors/_365api/dex-connector.json", connector_manifest)
+        with tarfile.open(sdist, "w:gz") as archive:
+            member = tarfile.TarInfo("dex_connector_365api-0.1.0/PKG-INFO")
+            member.size = len(metadata)
+            archive.addfile(member, io.BytesIO(metadata))
+            member = tarfile.TarInfo("dex_connector_365api-0.1.0/src/dex_connectors/_365api/dex-connector.json")
+            member.size = len(connector_manifest)
+            archive.addfile(member, io.BytesIO(connector_manifest))
+        release.verify_language_artifacts("python", "dex-connector-365api", "v0.1.0", [wheel, sdist])
+
     def test_candidate_build_stamps_packaged_manifest_version(self) -> None:
         for language, relative_path, expected in (
             ("python", "src/dex_connectors/newsapi/dex-connector.json", "0.1.0rc2"),

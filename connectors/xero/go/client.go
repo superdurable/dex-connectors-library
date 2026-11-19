@@ -42,6 +42,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -194,9 +195,9 @@ const (
 	exchangeRetry
 	exchangeRejected
 	exchangeDailyLimit
-	// exchangeInvalid is an unusable 2xx: invalidResponse for a read, uncertain for a mutation.
+	// exchangeInvalid is an unusable 2xx: invalidResponse for a read, Retry for a keyed mutation.
 	exchangeInvalid
-	// exchangeServerError is HTTP 500, which Xero caches under an idempotency key: Retry for a read, uncertain for a mutation.
+	// exchangeServerError is HTTP 500: Retry for a read, uncertain for a keyed mutation, whose key replays it.
 	exchangeServerError
 	exchangeDefect
 )
@@ -334,17 +335,28 @@ func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, 
 func (client *Client) resolveCredentials(ctx context.Context, call sdkgo.Call, operation string) (Credentials, *xeroExchange) {
 	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, &xeroExchange{outcome: exchangeRejected,
 			failure: xeroFailure(sdkgo.FailureAuthentication, operation, "Xero authorization must be renewed: reconnect the app or replace the client secret")}
 	case errors.Is(err, errCredentialRefreshUnavailable):
 		return Credentials{}, &xeroExchange{outcome: exchangeRetry,
 			failure: xeroFailure(sdkgo.FailureAvailability, operation, "Xero access token request is temporarily unavailable")}
+	case err != nil && !isTerminalCredentialError(err):
+		// Nothing reached Xero, so every attempt retries instead of selecting defect or uncertain.
+		return Credentials{}, &xeroExchange{outcome: exchangeRetry,
+			failure: xeroFailure(sdkgo.FailureAvailability, operation, "Xero connection credentials are temporarily unavailable; nothing was sent")}
 	case err != nil || validateResolvedCredentials(credentials) != nil:
 		return Credentials{}, &xeroExchange{outcome: exchangeDefect,
 			failure: xeroFailure(sdkgo.FailureAuthentication, operation, "Xero connection credentials are unavailable")}
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // resolveTenant returns the Xero-Tenant-Id an OAuth connection sends; a Custom Connection sends none.
@@ -638,21 +650,55 @@ type mutationBranches struct {
 	defect            sdkgo.BranchID
 }
 
-// mutationAttemptForExchange retries what the key replays and reports a cached 500 or unusable answer as uncertain.
-func mutationAttemptForExchange[OUT any](result xeroExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
+// mutationAttemptForExchange retries every unknown outcome, including an unusable answer, under the key. A 500
+// selects uncertain because Xero caches it under the key, so every resend would replay the same 500.
+// On a later attempt, which may follow a created write, a local failure or a credential refusal selects
+// uncertain: Xero checks credentials before it replays the keyed answer, so they cannot prove nothing was written.
+func mutationAttemptForExchange[OUT any](call sdkgo.Call, result xeroExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
+	hasPossibleEarlierSend := call.Context != nil && call.Context.Attempt() > 1
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[OUT]{}, false
-	case exchangeRetry:
+	case exchangeRetry, exchangeInvalid:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
-	case exchangeServerError, exchangeInvalid:
+	case exchangeServerError:
+		// Xero caches a 500 under the key and replays it, so no resend can learn the outcome.
 		return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
 	case exchangeDailyLimit:
 		return sdkgo.NewMutationBranch(branches.dailyLimitReached, requested, &result.failure, receipt), true
 	case exchangeDefect:
+		if hasPossibleEarlierSend {
+			return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
+		}
 		return sdkgo.NewMutationBranch(branches.defect, requested, &result.failure, receipt), true
+	case exchangeRejected:
+		if status := result.response.statusCode; status >= 300 && !isDefiniteRefusalStatus(status) {
+			// A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
+			return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+		}
+		if hasPossibleEarlierSend && isCredentialFailure(result.failure.Kind) {
+			return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
+		}
+		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &result.failure, receipt), true
 	default:
 		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &result.failure, receipt), true
+	}
+}
+
+// isCredentialFailure reports a 401, a 403, or a revoked grant, which Xero answers before reading the key.
+func isCredentialFailure(kind sdkgo.FailureKind) bool {
+	return kind == sdkgo.FailureAuthentication || kind == sdkgo.FailureAuthorization
+}
+
+// isDefiniteRefusalStatus lists the statuses that prove a write was refused; 409, 501, 3xx, and others are unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
 	}
 }
 

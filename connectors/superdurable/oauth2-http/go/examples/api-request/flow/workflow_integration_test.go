@@ -105,6 +105,44 @@ func TestAPIRequestExampleRetriesAThrottledRequestAfterTheServersDelayWithRealDe
 	require.GreaterOrEqual(t, attempts[1].Sub(attempts[0]), 900*time.Millisecond, "Dex honored Retry-After")
 }
 
+// TestAPIRequestExampleSendsAnOrderOnceWithRealDex runs the postNonIdempotent Step under the sync fence.
+func TestAPIRequestExampleSendsAnOrderOnceWithRealDex(t *testing.T) {
+	server := newAuthorizationServer(t)
+	flow, harness := newAPIRequestHarness(t, server)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := "oauth2-http-api-request-order-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+	_, err := harness.client.StartFlow(ctx, flow, flowID, Input{Path: "/orders", OrderBody: `{"item":"gear"}`}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+
+	result := waitForTerminalFlow(t, ctx, harness.client, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var report Report
+	require.NoError(t, result.DecodeSingleOutput(&report))
+	require.Equal(t, http.StatusCreated, report.StatusCode)
+	require.JSONEq(t, `{"id":"order-1"}`, report.Body)
+	require.Len(t, server.bearerTokens("/orders"), 1)
+}
+
+// TestAPIRequestExampleNeverResendsAnOrderWithAnUnknownOutcomeWithRealDex fails the Flow on the unwired
+// uncertain branch after one POST.
+func TestAPIRequestExampleNeverResendsAnOrderWithAnUnknownOutcomeWithRealDex(t *testing.T) {
+	server := newAuthorizationServer(t)
+	flow, harness := newAPIRequestHarness(t, server)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := "oauth2-http-api-request-order-unknown-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+	_, err := harness.client.StartFlow(ctx, flow, flowID, Input{Path: "/orders-unavailable", OrderBody: `{"item":"gear"}`}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+
+	result := waitForTerminalFlow(t, ctx, harness.client, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Len(t, server.bearerTokens("/orders-unavailable"), 1, "a possibly processed POST is never sent again")
+}
+
 // TestAPIRequestExampleFailsAnUnwiredDefectWithRealDex shows the unwired optional defect branch failing the Flow.
 func TestAPIRequestExampleFailsAnUnwiredDefectWithRealDex(t *testing.T) {
 	server := newAuthorizationServer(t)
@@ -200,6 +238,13 @@ func (server *authorizationServer) serveAPI(response http.ResponseWriter, reques
 	case request.URL.Path == "/userinfo" || request.URL.Path == "/throttled":
 		response.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(response, `{"sub":"user-1","preferred_username":"alice"}`)
+	case request.Method == http.MethodPost && request.URL.Path == "/orders":
+		response.Header().Set("Content-Type", "application/json")
+		response.WriteHeader(http.StatusCreated)
+		_, _ = io.WriteString(response, `{"id":"order-1"}`)
+	case request.Method == http.MethodPost && request.URL.Path == "/orders-unavailable":
+		// A 502 after the POST arrived does not prove the order was refused.
+		response.WriteHeader(http.StatusBadGateway)
 	default:
 		http.NotFound(response, request)
 	}

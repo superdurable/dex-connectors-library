@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { GetIssueOperation, ListIssuesOperation, UpdateIssueStatusOperation } from './operations.js';
 
 const defaultBaseURL = 'https://sentry.io/api/0';
@@ -48,13 +49,16 @@ export class SentryClient {
 
   /** Send one request and classify Go-compatible provider failures. */
   async exchange(call: Call, operation: string, method: 'GET' | 'PUT', path: string, body?: Uint8Array, hasNotFoundBranch = false): Promise<SentryExchange> {
-    let token: string;
+    let resolved: Credentials;
     try {
-      const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(resolved.apiKey instanceof SecretString)) throw new TypeError('invalid credential');
-      token = resolved.apiKey.reveal();
-      if (!token.trim() || !isHeaderSafeCredential(token)) throw new TypeError('invalid credential');
-    } catch { return this.failure(operation, 'defect', 'AUTHENTICATION', 'connection credentials or request are invalid'); }
+      resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      if (isTerminalCredentialError(error)) return this.failure(operation, 'defect', 'AUTHENTICATION', 'connection credentials or request are invalid');
+      return this.failure(operation, 'retry', 'AVAILABILITY', 'connection credentials could not be read, so nothing was sent');
+    }
+    if (!(resolved?.apiKey instanceof SecretString)) return this.failure(operation, 'defect', 'AUTHENTICATION', 'connection credentials or request are invalid');
+    const token = resolved.apiKey.reveal();
+    if (!token.trim() || !isHeaderSafeCredential(token)) return this.failure(operation, 'defect', 'AUTHENTICATION', 'connection credentials or request are invalid');
     let response: ProviderResponse;
     try {
       response = await this.send({
@@ -69,9 +73,9 @@ export class SentryClient {
         const retryAfter = parseRetryAfter(header({ status: status ?? 0, headers: error.headers ?? {}, body: new Uint8Array() }, 'retry-after'), this.now());
         if (status === 429) return this.failure(operation, 'retry', 'RATE_LIMIT', 'provider rate limited the request', retryAfter);
         if (status === 408 || (status !== undefined && status >= 500)) return this.failure(operation, 'retry', 'AVAILABILITY', 'provider is temporarily unavailable', retryAfter);
-        if (method === 'PUT' && status === 409) return this.failure(operation, 'retry', 'AVAILABILITY', 'provider is processing the same request');
         if (status === 404 && hasNotFoundBranch) return this.failure(operation, 'notFound', 'NOT_FOUND', 'provider resource was not found');
-        if (status !== undefined && (method === 'GET' ? status !== 200 : ![200, 201, 202].includes(status))) return this.failure(operation, 'providerRejected', 'PROVIDER_REJECTION', `provider rejected the request with HTTP ${status}`);
+        if (status !== undefined && (method === 'GET' ? status !== 200 : ![200, 201, 202].includes(status))) return this.rejectedOrUnknown(operation, method, status);
+        if (method === 'PUT') return this.failure(operation, 'retry', 'RESPONSE_TOO_LARGE', 'provider response exceeded the configured limit');
         return this.failure(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'provider response exceeded the configured limit');
       }
       return this.failure(operation, 'retry', 'AVAILABILITY', 'provider request failed');
@@ -80,14 +84,15 @@ export class SentryClient {
     const retryAfter = parseRetryAfter(header(response, 'retry-after'), this.now());
     if (status === 429) return this.failure(operation, 'retry', 'RATE_LIMIT', 'provider rate limited the request', retryAfter);
     if (status === 408 || status >= 500) return this.failure(operation, 'retry', 'AVAILABILITY', 'provider is temporarily unavailable', retryAfter);
-    if (method === 'PUT' && status === 409) {
-      const name = readConflictName(response.body);
-      if (name === 'invalid_idempotent_request') return this.failure(operation, 'providerRejected', 'PROVIDER_REJECTION', 'idempotency key was used for a different request');
-      return this.failure(operation, 'retry', 'AVAILABILITY', 'provider is processing the same request');
-    }
     if (status === 404 && hasNotFoundBranch) return this.failure(operation, 'notFound', 'NOT_FOUND', 'provider resource was not found');
-    if (method === 'GET' ? status !== 200 : ![200, 201, 202].includes(status)) return this.failure(operation, 'providerRejected', 'PROVIDER_REJECTION', `provider rejected the request with HTTP ${status}`);
+    if (method === 'GET' ? status !== 200 : ![200, 201, 202].includes(status)) return this.rejectedOrUnknown(operation, method, status);
     return { body: response.body };
+  }
+
+  /** Select providerRejected for a definite refusal; the safe PUT retries every other answer, including 409. */
+  private rejectedOrUnknown(operation: string, method: 'GET' | 'PUT', status: number): SentryExchange {
+    if (method === 'PUT' && !definiteRefusalStatuses.has(status)) return this.failure(operation, 'retry', 'AVAILABILITY', `provider answered HTTP ${status}, so the outcome is unknown`);
+    return this.failure(operation, 'providerRejected', 'PROVIDER_REJECTION', `provider rejected the request with HTTP ${status}`);
   }
 
   private failure(operation: string, branch: Exclude<SentryExchange, { body: Uint8Array }>['branch'], kind: Failure['kind'], message: string, retryAfterMs = 0): SentryExchange {
@@ -95,14 +100,15 @@ export class SentryClient {
   }
 }
 
+/** Report a credential resolution failure that no retry fixes; every other error is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError
+    || isCredentialMaterialError(error);
+}
+
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
 function header(response: ProviderResponse, name: string): string {
   const value = response.headers[name];
   return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
-}
-function readConflictName(body: Uint8Array): string {
-  try {
-    const value: unknown = JSON.parse(Buffer.from(body).toString('utf8'));
-    if (value && typeof value === 'object' && 'name' in value && typeof value.name === 'string') return value.name;
-  } catch { /* Malformed error bodies do not establish a definite conflict. */ }
-  return '';
 }

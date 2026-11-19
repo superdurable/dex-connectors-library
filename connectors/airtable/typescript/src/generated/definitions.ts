@@ -86,7 +86,7 @@ export const UpsertRecordsBranch = {
 export const UpsertRecordsBranchUpserted = UpsertRecordsBranch.Upserted;
 /** Airtable conclusively rejected the upsert, such as several existing records matching one merge key, an invalid cell value, a computed merge field, a missing scope, or a rejected token. */
 export const UpsertRecordsBranchProviderRejected = UpsertRecordsBranch.ProviderRejected;
-/** Airtable applied or rejected the upsert but returned an invalid or oversized response. */
+/** Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe. */
 export const UpsertRecordsBranchInvalidResponse = UpsertRecordsBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpsertRecordsBranchDefect = UpsertRecordsBranch.Defect;
@@ -96,12 +96,11 @@ export const UpsertRecordsDefinition: MutationDefinition = {
   branches: [
     { id: "upserted", description: "Airtable created each record without a match and updated each record that matched." },
     { id: "providerRejected", description: "Airtable conclusively rejected the upsert, such as several existing records matching one merge key, an invalid cell value, a computed merge field, a missing scope, or a rejected token.", optional: true },
-    { id: "invalidResponse", description: "Airtable applied or rejected the upsert but returned an invalid or oversized response.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized upsert response now retries, because repeating the upsert is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for upsertRecords. */
 export const UpsertRecordsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -120,7 +119,7 @@ export const UpdateRecordsBranchUpdated = UpdateRecordsBranch.Updated;
 export const UpdateRecordsBranchNotFound = UpdateRecordsBranch.NotFound;
 /** Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token. */
 export const UpdateRecordsBranchProviderRejected = UpdateRecordsBranch.ProviderRejected;
-/** Airtable applied or rejected the update but returned an invalid or oversized response. */
+/** Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because repeating absolute values is safe. */
 export const UpdateRecordsBranchInvalidResponse = UpdateRecordsBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateRecordsBranchDefect = UpdateRecordsBranch.Defect;
@@ -131,12 +130,11 @@ export const UpdateRecordsDefinition: MutationDefinition = {
     { id: "updated", description: "Airtable updated every record and returned it." },
     { id: "notFound", description: "A record ID does not exist in the table.", optional: true },
     { id: "providerRejected", description: "Airtable conclusively rejected the update, such as an invalid cell value, a computed field, a missing scope, or a rejected token.", optional: true },
-    { id: "invalidResponse", description: "Airtable applied or rejected the update but returned an invalid or oversized response.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized update response now retries, because repeating absolute values is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateRecords. */
 export const UpdateRecordsMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

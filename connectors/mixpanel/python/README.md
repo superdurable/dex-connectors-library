@@ -1,6 +1,6 @@
 # Mixpanel connector for Python
 
-Install with `pip install dex-connector-mixpanel==0.1.0`. The package requires
+Install with `pip install dex-connector-mixpanel==0.1.1`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest operations `trackEvent` (Mutation) and `exportEvents` (Query) with the
 same branches, defaults, and failure classification as the Go module.
@@ -24,6 +24,8 @@ distinct ID, time, and insert ID. Raw exports may contain duplicates.
 
 Both operations retry on 408, 409, 429, 5xx, and transport failures; 401 and
 403 select `providerRejected` with authentication and authorization kinds.
+`trackEvent` is declared `repeatOnUnknown: safe`, so it also retries any other
+status that is not a definite refusal and a malformed or oversized confirmation.
 
 ## Authorization
 

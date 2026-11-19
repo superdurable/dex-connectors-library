@@ -249,8 +249,8 @@ async def _decode_stream(
     raise EOFError("OpenAI response stream ended without completion")
 
 
-def new_responses_wire_format() -> WireFormat:
-    """Return the OpenAI Responses dialect."""
+def new_responses_wire_format(provider_name: str = "openai") -> WireFormat:
+    """Return the OpenAI Responses dialect that names provider_name in every Failure and Receipt."""
     rules = tuple(
         ErrorRule(429, token, quota_exhausted_outcome())
         for token in (
@@ -271,7 +271,7 @@ def new_responses_wire_format() -> WireFormat:
         ErrorRule(0, "rate_limit_exceeded", retry_outcome(FailureKind.RATE_LIMIT)),
     )
     return WireFormat(
-        "openai",
+        provider_name,
         ModelIDRule.BODY,
         RequestFeatures(True, True, True, True, True),
         CredentialHeader("Authorization", "Bearer "),

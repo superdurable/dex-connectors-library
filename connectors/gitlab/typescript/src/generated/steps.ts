@@ -81,7 +81,7 @@ export interface UpdateIssueLabelsStepConfig<StepInput, OperationInput = UpdateI
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** The provider rejected the request. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The provider returned malformed or oversized JSON. */
+  /** Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because replacing the complete label set again is safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input or connection credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -20,7 +21,6 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/callstate"
 	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/testconnectors"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const differentCallText = "the idempotency key was used for a different call; nothing was sent"
@@ -128,7 +128,7 @@ func TestARemappedToolNameIsADifferentCallUnlessTheExpectedIdentityNamesTheRecor
 	require.Equal(t, 1, harness.provider.NoteRequests())
 }
 
-func TestAnIdempotentWriteThatMayHaveAppliedNeverEndsRejected(t *testing.T) {
+func TestAListedRejectedBranchAfterAnEarlierSendStaysRejected(t *testing.T) {
 	harness := newTestHarness(t, harnessOptions{})
 	harness.provider.Script("saveRecord",
 		testconnectors.ScriptedResponse{IsEffectAppliedFirst: true, Status: http.StatusServiceUnavailable},
@@ -136,12 +136,13 @@ func TestAnIdempotentWriteThatMayHaveAppliedNeverEndsRejected(t *testing.T) {
 	)
 	harness.provider.Script("readRecord", testconnectors.ScriptedResponse{Status: http.StatusNotFound})
 	result := harness.mustCallResult("example-notes_save_record", map[string]any{"name": "a", "value": "1"}, "flow/turn/applied-then-rejected")
-	require.Equal(t, outcomeUnknown, result.outcome(), "attempt 1 applied before its retryable answer, so attempt 2's rejection proves nothing")
-	require.Contains(t, result.text(), "an earlier attempt may have applied it")
+	// Dex Agents classify by the selected branch only; the connector owns repeat safety.
+	require.Equal(t, outcomeRejected, result.outcome(), result.text())
+	require.NotContains(t, result.text(), "nothing was sent")
 	require.Equal(t, 1, harness.provider.AppliedRecordWrites(saveRecordIdempotencyKey("flow/turn/applied-then-rejected")))
 }
 
-func TestPossiblyAppliedOverridesALaterNotSentProof(t *testing.T) {
+func TestAnUnsettledCallIsRejectedOnlyWhenNoAttemptInvokedTheOperation(t *testing.T) {
 	store, err := callstate.Open(filepath.Join(t.TempDir(), "state"), time.Now)
 	require.NoError(t, err)
 	executor := newToolCallExecutor(store, newFakeClock(), executorConfig{serverVersion: "test", callTimeBudget: time.Minute, callStateRetention: 720 * time.Hour, maxResultBytes: 65536, maximumInlineAttempts: 3}, slog.New(slog.NewTextHandler(io.Discard, nil)), func(context.Context) *ToolSet { return &ToolSet{} }, nil)
@@ -150,37 +151,46 @@ func TestPossiblyAppliedOverridesALaterNotSentProof(t *testing.T) {
 		isPossiblyApplied bool
 		expectedOutcome   string
 	}{
-		{"never applied", false, outcomeRejected},
-		{"an earlier attempt may have applied", true, outcomeUnknown},
+		{"never invoked", false, outcomeRejected},
+		{"an earlier attempt invoked the operation", true, outcomeUnknown},
 	} {
-		for _, finish := range []string{"checkpoint", "retryLater"} {
-			key := "flow/turn/" + testCase.name + "/" + finish
-			call := &toolCall{executor: executor, stateKey: callstate.StateKey(key)}
-			lock, err := store.Lock(t.Context(), call.stateKey)
-			require.NoError(t, err)
-			record := notSentRecord(call.stateKey, testCase.isPossiblyApplied)
-			require.NoError(t, lock.Write(&record))
-			var answer callAnswer
-			if finish == "checkpoint" {
-				answer = call.finalizeFromCheckpoint(lock, &record, "it reached 3 attempts")
-			} else {
-				answer = call.finalizeRetryLater(lock, &record, "RATE_LIMIT: slow down")
-			}
-			require.NoError(t, lock.Release())
-			require.Equal(t, testCase.expectedOutcome, answer.result.Meta[metaKeyOutcome], testCase.name+" "+finish)
-		}
+		key := "flow/turn/" + testCase.name
+		call := &toolCall{executor: executor, stateKey: callstate.StateKey(key)}
+		lock, err := store.Lock(t.Context(), call.stateKey)
+		require.NoError(t, err)
+		record := runningRecord(call.stateKey, testCase.isPossiblyApplied)
+		require.NoError(t, lock.Write(&record))
+		answer := call.finalizeWithoutOutcome(lock, &record, "it reached 3 attempts")
+		require.NoError(t, lock.Release())
+		require.Equal(t, testCase.expectedOutcome, answer.result.Meta[metaKeyOutcome], testCase.name)
+	}
+
+	for _, testCase := range []struct {
+		isPossiblyApplied bool
+		expectedOutcome   any
+	}{
+		{false, outcomeRejected},
+		{true, nil},
+	} {
+		call := &toolCall{executor: executor, name: "example-notes_save_record", stateKey: callstate.StateKey(fmt.Sprintf("flow/turn/invalid/%t", testCase.isPossiblyApplied))}
+		lock, err := store.Lock(t.Context(), call.stateKey)
+		require.NoError(t, err)
+		record := runningRecord(call.stateKey, testCase.isPossiblyApplied)
+		require.NoError(t, lock.Write(&record))
+		answer := call.finishWriteAttemptWithoutBranch(lock, &record, nil, sdkgo.AgentToolAttempt{}, sdkgo.ErrAgentToolArgumentsInvalid)
+		require.NoError(t, lock.Release())
+		require.True(t, answer.result.IsError)
+		require.Equal(t, testCase.expectedOutcome, answer.result.Meta[metaKeyOutcome], "invalid arguments after an earlier send fail without claiming nothing took effect")
+		require.Contains(t, answer.result.Content[0].Text, "invalid arguments")
 	}
 
 	retry := sdkgo.AgentToolAttempt{Outcome: sdkgo.AgentToolAttemptRetry, HasInvokedOperation: true}
-	provenNotSent := notSentRecord(callstate.StateKey("k"), false)
-	require.False(t, attemptMayHaveApplied(retry, nil, &provenNotSent), "a notSent checkpoint of this attempt proves no send")
-	claimed := provenNotSent
-	claimed.Checkpoint = json.RawMessage(`{"callId":"call-1","attempt":3,"state":"canResend"}`)
-	require.True(t, attemptMayHaveApplied(retry, nil, &claimed), "canResend follows a claim")
-	require.False(t, attemptMayHaveApplied(sdkgo.AgentToolAttempt{Outcome: sdkgo.AgentToolAttemptRejected, HasInvokedOperation: true}, nil, &claimed))
-	require.True(t, attemptMayHaveApplied(sdkgo.AgentToolAttempt{Outcome: sdkgo.AgentToolAttemptUnknown}, nil, &claimed))
-	require.True(t, attemptMayHaveApplied(sdkgo.AgentToolAttempt{HasInvokedOperation: true}, sdkgo.ErrAgentToolPanicked, &claimed))
-	require.False(t, attemptMayHaveApplied(sdkgo.AgentToolAttempt{}, sdkgo.ErrAgentToolPanicked, &claimed))
+	require.True(t, attemptMayHaveApplied(retry, nil), "a Retry after Invoke may have sent")
+	require.False(t, attemptMayHaveApplied(sdkgo.AgentToolAttempt{Outcome: sdkgo.AgentToolAttemptRetry}, nil), "a Retry before Invoke sent nothing")
+	require.False(t, attemptMayHaveApplied(sdkgo.AgentToolAttempt{Outcome: sdkgo.AgentToolAttemptRejected, HasInvokedOperation: true}, nil))
+	require.True(t, attemptMayHaveApplied(sdkgo.AgentToolAttempt{Outcome: sdkgo.AgentToolAttemptUnknown}, nil))
+	require.True(t, attemptMayHaveApplied(sdkgo.AgentToolAttempt{HasInvokedOperation: true}, sdkgo.ErrAgentToolPanicked))
+	require.False(t, attemptMayHaveApplied(sdkgo.AgentToolAttempt{}, sdkgo.ErrAgentToolPanicked))
 }
 
 func TestARetryWindowThatPassesDuringTheDelayStopsAnotherSend(t *testing.T) {
@@ -269,16 +279,14 @@ func recordFilePath(stateDirectory string, key string) string {
 	return filepath.Join(stateDirectory, "calls", "v1", stateKey[:2], stateKey+".json")
 }
 
-func notSentRecord(stateKey string, isPossiblyApplied bool) callstate.Record {
-	marker, err := json.Marshal(singledispatch.Marker{CallID: "call-1", Attempt: 3, State: singledispatch.StateNotSent})
-	if err != nil {
-		panic(err)
-	}
+// runningRecord's checkpoint is opaque connector state; the server never reads it.
+func runningRecord(stateKey string, isPossiblyApplied bool) callstate.Record {
+	checkpoint := json.RawMessage(`{"connectorState":"notSent"}`)
 	request := callstate.Request{ConnectorID: "example-notes", OperationID: "saveRecord", ConnectionName: "work", ProjectIdentity: "file:/p", ArgumentsDigest: strings.Repeat("a", 64)}
 	first := time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC)
 	return callstate.Record{
 		SchemaVersion: callstate.FormatVersion, StateKey: stateKey, Request: request, RequestDigest: request.Digest(),
 		Effect: sdkgo.AgentToolEffectIdempotentWrite, CallID: "call-1", ConnectionTarget: "sha256:" + strings.Repeat("c", 64), FirstAttemptAt: first, RetryWindowEndsAt: first.Add(time.Hour),
-		Attempt: 3, Checkpoint: marker, PossiblyApplied: isPossiblyApplied, Status: callstate.StatusRunning, ServerVersion: "test",
+		Attempt: 3, Checkpoint: checkpoint, PossiblyApplied: isPossiblyApplied, Status: callstate.StatusRunning, ServerVersion: "test",
 	}
 }

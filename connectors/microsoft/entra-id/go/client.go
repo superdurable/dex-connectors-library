@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -248,12 +249,24 @@ func (client *Client) RemoveUserFromGroup() RemoveUserFromGroupOperation {
 	return RemoveUserFromGroupOperation{client: client}
 }
 
-func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (Credentials, *sdkgo.Failure) {
+// resolveCredential returns a failure when no usable credential resolved; isRetryable reports a
+// failure that isTerminalCredentialError does not name, which a later attempt may clear.
+func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (credential Credentials, failure *sdkgo.Failure, isRetryable bool) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credential) != nil {
-		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable")
+	if err != nil && !isTerminalCredentialError(err) {
+		return Credentials{}, failurePointer(sdkgo.FailureAvailability, operationID, "connection credentials are temporarily unavailable; nothing was sent"), true
 	}
-	return credential, nil
+	if err != nil || validateResolvedCredentials(credential) != nil {
+		return Credentials{}, failurePointer(sdkgo.FailureAuthentication, operationID, "connection credentials are unavailable"), false
+	}
+	return credential, nil, false
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // readUser performs one user read with the bounded property selection.
@@ -319,10 +332,27 @@ func (client *Client) classifyFailureStatus(operationID string, response graphRe
 		return graphExchange{outcome: exchangeNotFound, response: response, failure: graphFailure(sdkgo.FailureNotFound, operationID, describeCode("resource was not found", code))}
 	case response.status == http.StatusBadRequest:
 		return graphExchange{outcome: exchangeBadRequest, response: response, failure: graphFailure(sdkgo.FailureValidation, operationID, describeCode("provider rejected the request with HTTP 400", code))}
-	default:
+	case isDefiniteRefusalStatus(response.status):
 		message := describeCode(fmt.Sprintf("provider rejected the request with HTTP %d", response.status), code)
 		return graphExchange{outcome: exchangeRejected, response: response, failure: graphFailure(statusFailureKind(response.status), operationID, message)}
+	default:
+		return client.retryExchange(operationID, response, sdkgo.FailureAvailability, describeCode(fmt.Sprintf("provider answered HTTP %d, which leaves the outcome unknown", response.status), code))
 	}
+}
+
+// isDefiniteRefusalStatus reports the remaining statuses that prove Microsoft Graph refused the request.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusUnauthorized, http.StatusForbidden, http.StatusLengthRequired, http.StatusRequestEntityTooLarge,
+		http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+// hasPossibleEarlierAttempt reports a later attempt, whose predecessor may have sent the write.
+func hasPossibleEarlierAttempt(call sdkgo.Call) bool {
+	return call.Context != nil && call.Context.Attempt() > 1
 }
 
 // retryExchange asks Dex to retry after Microsoft's Retry-After delay, capped at one hour.
@@ -383,9 +413,9 @@ func (client *Client) send(call sdkgo.Call, credential *Credentials, request gra
 			return response, &graphRequestError{kind: sdkgo.FailureResponseTooLarge, message: "provider response exceeds the configured limit"}
 		}
 		if isOversized {
-			// An oversized error body carries no usable code, so the status alone classifies it.
+			// An oversized error body may hide acceptance or a retryable code, so the outcome is unknown.
 			response.body = nil
-			readErr = nil
+			return response, &graphRequestError{kind: sdkgo.FailureTransport, message: "provider error response exceeds the configured limit"}
 		}
 		if readErr != nil || closeErr != nil {
 			return response, &graphRequestError{kind: sdkgo.FailureTransport, message: "provider response could not be read"}
@@ -503,8 +533,9 @@ func queryAttemptFromExchange[T any](client *Client, call sdkgo.Call, exchange g
 }
 
 // mutationAttemptFromExchange converts a failed exchange into a Mutation Retry or the operation's branch.
+// Every write is safe to repeat, so an unusable response retries instead of selecting invalidResponse.
 func mutationAttemptFromExchange[T any](client *Client, call sdkgo.Call, exchange graphExchange, branches failureBranches) sdkgo.MutationAttempt[T] {
-	if exchange.outcome == exchangeRetry {
+	if exchange.outcome == exchangeRetry || exchange.outcome == exchangeInvalidResponse {
 		return sdkgo.NewMutationRetry[T](exchange.failure, exchange.retryAfter)
 	}
 	var zero T

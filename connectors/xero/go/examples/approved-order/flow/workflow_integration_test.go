@@ -291,6 +291,8 @@ func TestInternalErrorOnCreateEndsUncertainWithoutResendingWithRealDex(t *testin
 	result := harness.waitForFlow(t, harness.startOrder(t, "internal-error", integrationOrder()))
 	require.Equal(t, dex.FlowFailed, result.Status, "the unwired optional uncertain branch fails the Flow")
 	require.Equal(t, 1, provider.count("createInvoice"), "Xero caches a 500 under the key, so the Step does not resend")
+	require.Zero(t, provider.count("replay"))
+	require.Zero(t, provider.invoiceCount())
 	require.Zero(t, provider.count("recordPayment"))
 	t.Logf("uncertain create failure: %s", result.ErrorMessage)
 }

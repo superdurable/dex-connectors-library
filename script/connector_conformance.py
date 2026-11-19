@@ -39,6 +39,7 @@ MUTATION_SHARED_SELECTION_FILES = frozenset({
 # Root-module package and embed directories of connectorctl; a test checks them against go list -deps.
 OPERATION_DISCOVERY_SOURCE_DIRECTORIES = ("cmd/connectorctl", "internal", "schema")
 OPERATION_DISCOVERY_MODULE_FILES = frozenset({"go.mod", "go.sum"})
+SAFE_MUTATION_UNREACHABLE_BRANCHES = frozenset({"uncertain", "invalidResponse"})
 _CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$")
 
 
@@ -350,6 +351,8 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
                 observed_server_errors.add(operation)
         elif branch not in declared_operations[operation]["branches"]:
             raise ValueError(f"{scenario['name']} names undeclared branch {branch}")
+        elif branch in declared_operations[operation].get("retiredBranches", []):
+            raise ValueError(f"{scenario['name']} selects retired branch {branch}; unmark it or fix the connector")
         if not expected["retry"] and "output" not in expected:
             raise ValueError(f"{scenario['name']} has no recorded output")
         if expected["uncertain"]:
@@ -360,7 +363,9 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
             raise ValueError(f"{fixture.relative_to(ROOT)} lacks {operation} transport failure coverage")
         if operation not in observed_rate_limits or operation not in observed_server_errors:
             raise ValueError(f"{fixture.relative_to(ROOT)} lacks {operation} separate 429 and 5xx Retry coverage")
-        if "uncertain" in declaration["branches"] and operation not in observed_uncertainty:
+        if ("uncertain" in declaration["branches"] and not declaration.get("isSafeToRepeat")
+                and "uncertain" not in declaration.get("retiredBranches", [])
+                and operation not in observed_uncertainty):
             raise ValueError(f"{fixture.relative_to(ROOT)} lacks {operation} uncertainty coverage")
     for language, package_file, runner_path in (
         ("python", "pyproject.toml", "tests/test_conformance.py"),
@@ -377,7 +382,13 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
             cwd=ROOT, env={**os.environ, "GOWORK": "off"}, text=True,
         )
         for operation in json.loads(capability_output)["operations"]:
-            missing = set(declared_operations[operation]["branches"]) - observed_branches.get(operation, set())
+            required = set(declared_operations[operation]["branches"])
+            if declared_operations[operation].get("isSafeToRepeat"):
+                # A safe Mutation retries unknown outcomes, so these branches may stay declared yet unreachable.
+                required -= SAFE_MUTATION_UNREACHABLE_BRANCHES
+            # A retired branch stays declared for compatibility, but the connector no longer selects it.
+            required -= set(declared_operations[operation].get("retiredBranches", []))
+            missing = required - observed_branches.get(operation, set())
             if missing:
                 raise ValueError(f"{fixture.relative_to(ROOT)} lacks {operation} branches: {sorted(missing)}")
     go_test = connector / "go/zz_generated_conformance_test.go"

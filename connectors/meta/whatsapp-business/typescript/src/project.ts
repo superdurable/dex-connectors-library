@@ -6,7 +6,7 @@ import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
 import { WhatsAppBusinessClient } from './client.js';
 import { newProjectConnection as generatedProjectConnection } from './generated/connection.js';
-import type { Config, Credentials } from './generated/models.js';
+import { CredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 
 /** Open one named WhatsApp Business connection from Dex project configuration. */
 export function newProjectConnection(project: LoadedProject, connectionName: string) {
@@ -23,7 +23,7 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     const credentials: CredentialProvider<Credentials> = {
       async resolve(_call, signal) {
         const privateFields = await loadedProject.resolveCredential('whatsapp-business', name, signal);
-        if (typeof privateFields.access_token !== 'string') throw new TypeError('WhatsApp Business system-user token is unavailable');
+        if (typeof privateFields.access_token !== 'string') throw new CredentialMaterialError('WhatsApp Business system-user token is unavailable');
         return { accessToken: new SecretString(privateFields.access_token) };
       },
     };

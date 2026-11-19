@@ -5,7 +5,7 @@ ACH Checkout Session creation, Checkout Session and PaymentIntent reads, and
 refund creation. Install the released package with:
 
 ```sh
-pip install dex-connector-stripe==0.2.0
+pip install dex-connector-stripe==0.2.1
 ```
 
 Use the `dex_connectors.stripe` import package. The connector requires Python
@@ -52,12 +52,18 @@ Checkout mutations return `created`, `providerRejected`, `uncertain`,
 `invalidResponse`, or `defect`. Queries return `found`, `notFound`,
 `providerRejected`, `invalidResponse`, or `defect`. Refund creation returns
 `refunded`, `providerRejected`, `uncertain`, `invalidResponse`, or `defect`.
-Transient failures request a Dex retry. All writes send the stable Call ID as
-Stripe's `Idempotency-Key`. Refunds also write it to
-`metadata[dex_call_id]`, then search at most three refund pages after an
-unconfirmed server response. Reconcile an `uncertain` outcome before making a
-new request with a new key. Keep any application retry override at most 23
-hours because Stripe retains idempotency keys for at least 24 hours.
+All writes send the stable Call ID as Stripe's `Idempotency-Key` and are
+`repeatOnUnknown: safe`. Only HTTP 400, 401, 403, 404, 411, 413, 414, 415, or
+422, or a 402 with a Stripe error, selects `providerRejected`; every unknown
+outcome (any 409, any 5xx, or any other status) requests a Dex retry with the
+same key. A 5xx that Stripe marks `Idempotent-Replayed: true` selects
+`uncertain`, and so does an oversized or malformed success, because Stripe
+accepted the write and a resend under the same key would only replay them;
+writes no longer select `invalidResponse`. An oversized error response to a
+write is an unknown outcome and retries with the same key. Refunds also write
+the Call ID to `metadata[dex_call_id]` and search at most three refund pages
+before retrying or, after a replayed 5xx, selecting `uncertain`. Keep any application retry override at most 23 hours because Stripe
+retains idempotency keys for at least 24 hours.
 
 `stripemock.Mock` exposes all five operations with the happy path scenario
 from `connector.yaml` as the default. Its named scenario functions cover

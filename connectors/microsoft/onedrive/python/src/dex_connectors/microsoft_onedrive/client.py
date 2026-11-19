@@ -16,12 +16,15 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
+    ReauthorizationRequiredError,
     Receipt,
     RejectedCredentialRefreshingProvider,
     resolve_credential,
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -39,6 +42,14 @@ from ._generated.config import Credentials as Credentials
 from ._generated.refresh import AUTHORIZATION, CREDENTIAL_FIELDS
 from ._generated.timestamps import parse_go_datetime
 from .models import DriveItem, ItemIdentity
+
+# Only these credential failures need a person; every other one retries.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 
 if TYPE_CHECKING:
     from .operations import (
@@ -223,6 +234,7 @@ class Exchange:
     error: str = ""
     request_id: str = ""
     credentials: Credentials | None = None
+    is_error_body_incomplete: bool = False
 
 
 class Client:
@@ -296,9 +308,31 @@ class Client:
     async def resolve_credentials(
         self, call: Call, operation: str, drive_id: str
     ) -> tuple[Credentials | None, Failure | None]:
-        """Resolve current token with generated refresh and enforce app-only drive selection."""
+        """Resolve current token with generated refresh and enforce app-only drive selection.
+
+        A credential failure that is not terminal returns an AVAILABILITY failure, which the
+        caller retries; every other failure is terminal.
+        """
         try:
             credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
+        except _TERMINAL_CREDENTIAL_ERRORS:
+            return None, graph_failure(
+                FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
+            )
+        except Exception as error:
+            # The generated connection module imports this one, so import its predicate lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return None, graph_failure(
+                    FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
+                )
+            return None, graph_failure(
+                FailureKind.AVAILABILITY,
+                operation,
+                "connection credentials are temporarily unavailable; nothing was sent",
+            )
+        try:
             token = credentials.access_token.reveal() if credentials.access_token else ""
             if not is_header_safe_credential(token) or credentials.auth_method_id not in (
                 "",
@@ -386,6 +420,7 @@ class Client:
             response_headers = response.headers
             request_id = response_headers.get("request-id", "")
             maximum = max(limit if limit is not None else self.max_response_bytes, 65536)
+            is_error_body_incomplete = False
             try:
                 content = await read_bounded_body(response, maximum)
                 if 200 <= status < 300 and len(content) > (
@@ -395,7 +430,7 @@ class Client:
             except BodyTooLargeError:
                 if 200 <= status < 300:
                     return Exchange(status, response_headers, error="tooLarge", request_id=request_id)
-                content = b""
+                content, is_error_body_incomplete = b"", True
             except ProviderTransportError:
                 return Exchange(status, response_headers, error="read", request_id=request_id)
             if (
@@ -405,14 +440,25 @@ class Client:
                 or not isinstance(self.credentials, RejectedCredentialRefreshingProvider)
             ):
                 return Exchange(
-                    status, response_headers, content, request_id=request_id, credentials=credentials
+                    status,
+                    response_headers,
+                    content,
+                    request_id=request_id,
+                    credentials=credentials,
+                    is_error_body_incomplete=is_error_body_incomplete,
                 )
             try:
                 credentials = await resolve_credential_after_rejection(
                     self.credentials, call, self.refresh_driver
                 )
             except Exception:
-                return Exchange(status, response_headers, content, request_id=request_id)
+                return Exchange(
+                    status,
+                    response_headers,
+                    content,
+                    request_id=request_id,
+                    is_error_body_incomplete=is_error_body_incomplete,
+                )
         return Exchange(error="defect")
 
     def failed_read(

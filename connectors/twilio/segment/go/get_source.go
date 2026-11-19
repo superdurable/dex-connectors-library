@@ -98,8 +98,8 @@ func decodeSource(body []byte, requestedSourceID string) (SourceProfile, error) 
 	var wire struct {
 		Data struct {
 			Source struct {
-				ID   string `json:"id"`
-				Slug string `json:"slug"`
+				ID   string  `json:"id"`
+				Slug string  `json:"slug"`
 				Name *string `json:"name"`
 			} `json:"source"`
 		} `json:"data"`

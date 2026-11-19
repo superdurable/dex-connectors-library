@@ -1,6 +1,6 @@
 # Freshdesk Python connector
 
-Install `dex-connector-freshworks-freshdesk==0.2.0`. The package implements
+Install `dex-connector-freshworks-freshdesk==0.2.1`. The package implements
 `searchTickets`, `getTicket`, `createTicket`, `updateTicket`, and `addNote` with
 operation-specific Step factories, and the `ticketChanged` poll Trigger. It requires
 `dex-connectors-sdk>=0.12.0`, the release with the durable poll Trigger kit.
@@ -67,8 +67,10 @@ object keys in sorted order instead of Go's struct order.
 
 The checked-in [search example](examples/search_tickets/README.md) and
 [ticket change example](examples/ticket_changed/README.md) run through a Dex Worker.
-The 48 Go-recorded provider scenarios cover the five operations, including retries,
-uncertainty, and heartbeat checkpoints. They are replayed by
+The 65 Go-recorded provider scenarios cover the five operations, including retries,
+resends below the send cap, uncertainty at the cap, read-back of an accepted or
+checkpointed ticket or conversation ID, and single-dispatch fence checkpoints.
+They are replayed by
 `uv run pytest tests/test_conformance.py`. The search example's integration test uses
 a real local Dex stack with the generated mock; the ticket change example's
 integration tests poll a stateful ticket-list fake into a real Dex Worker and cover

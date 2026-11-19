@@ -4,8 +4,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
-from datetime import timedelta
+from collections.abc import Coroutine
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from dex_connectors.sdk import (
@@ -21,6 +24,7 @@ from dex_connectors.sdk import (
 )
 from dex_connectors.sdk.singledispatch import (
     CheckpointError,
+    Decision,
     DecisionKind,
     DispatchNotAllowedError,
     Fence,
@@ -117,11 +121,12 @@ def _mutation_exchange(
     if exchange.outcome == "succeeded":
         return None
     assert exchange.failure is not None
-    if exchange.is_retryable_read:
+    # An earlier attempt's PUT may have applied, so only a definite refusal selects a branch.
+    is_unknown_refusal = exchange.outcome in {"rejected", "not_found"} and not _is_definite_refusal(exchange)
+    if exchange.is_retryable_read or exchange.outcome == "invalid" or is_unknown_refusal:
         return MutationAttempt.retry(exchange.failure, exchange.retry_after_seconds)
     branch = {
         "not_found": definitions.NOT_FOUND,
-        "invalid": definitions.INVALID_RESPONSE,
         "defect": definitions.DEFECT,
     }.get(exchange.outcome, definitions.PROVIDER_REJECTED)
     return MutationAttempt.branch_result(
@@ -479,8 +484,13 @@ class UpdateConversationOperation:
                 reamaze_failure(FailureKind.VALIDATION, operation, str(error)),
             )
         try:
-            credentials = await self.client.resolve_credentials(call)
+            credentials = await self.client.resolve_write_credentials(call)
         except (CredentialsUnavailableError, CredentialsUnusableError) as error:
+            is_later_attempt = call.context is not None and call.context.attempt > 1
+            if isinstance(error, CredentialsUnusableError) and is_later_attempt:
+                # defect would hide a change an earlier attempt may have sent; repeating it is safe.
+                unusable = reamaze_failure(FailureKind.AUTHENTICATION, operation, str(error))
+                return MutationAttempt.retry(unusable)
             return _mutation_credentials_error(operation, error, _zero_output(operation))
         path = conversation_path(input.conversation_id)
         read = await self.client.exchange(call, credentials, operation, "GET", path)
@@ -492,15 +502,13 @@ class UpdateConversationOperation:
         try:
             current = decode_conversation_body(read.body, input.conversation_id)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                definitions.INVALID_RESPONSE,
-                _zero_output(operation),
-                self.client.receipt(call, read, input.conversation_id),
+            # An earlier attempt's PUT may have applied, and repeating this safe write is harmless.
+            return MutationAttempt.retry(
                 reamaze_failure(
                     FailureKind.PROTOCOL,
                     operation,
                     "Re:amaze returned an invalid conversation: " + str(error),
-                ),
+                )
             )
         current_output = UpdateConversationOutput(current)
         change = _plan_conversation_change(input, current)
@@ -513,6 +521,7 @@ class UpdateConversationOperation:
         write = await self.client.exchange(
             call, credentials, operation, "PUT", path, payload={"conversation": change}
         )
+        # The PUT sets final values, so an unknown outcome, including an oversized answer, repeats it.
         classified = _mutation_exchange(
             self.client, call, operation, write, current_output, object_id=input.conversation_id
         )
@@ -521,15 +530,13 @@ class UpdateConversationOperation:
         try:
             updated = decode_conversation_body(write.body, input.conversation_id)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                definitions.INVALID_RESPONSE,
-                current_output,
-                self.client.receipt(call, write, input.conversation_id),
+            return MutationAttempt.retry(
                 reamaze_failure(
                     FailureKind.PROTOCOL,
                     operation,
-                    "Re:amaze returned an invalid updated conversation: " + str(error),
-                ),
+                    "Re:amaze accepted the change but returned an invalid updated conversation: "
+                    + str(error),
+                )
             )
         return MutationAttempt.branch_result(
             definitions.UPDATED,
@@ -564,9 +571,116 @@ _UNCERTAIN_NOT_FOUND = (
 )
 
 
-async def _fenced_credential_error(
-    fence: Fence, operation: str, error: Exception, value: Any
+def _needs_read_back(decision: Decision) -> bool:
+    """Report that an earlier attempt may have sent, including SEND_ALLOWED after a canResend."""
+    return (
+        decision.kind != DecisionKind.SEND_ALLOWED
+        or decision.prior_send_upper_bound > 0
+        or bool(decision.marker and decision.marker.provider_id)
+    )
+
+
+def _permits_resend_after_read_back(call: Call, decision: Decision) -> bool:
+    """Report whether a read-back that proved the write absent may send again now."""
+    return (
+        decision.kind != DecisionKind.READ_BACK_REQUIRED
+        and not (decision.marker and decision.marker.provider_id)
+        and decision.prior_send_upper_bound < call.max_sends
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class _ReadBack:
+    """A read-back attempt; `is_absent` means the read succeeded and shows no record with the Step's key."""
+
+    attempt: MutationAttempt[Any]
+    is_absent: bool = False
+
+
+def _accepted_write_attempt(
+    read_back: _ReadBack, value: Any, receipt: Receipt, *, is_provider_id_saved: bool
 ) -> MutationAttempt[Any]:
+    """Map the read-back of a write Re:amaze accepted with a 2xx, which is never resent.
+
+    A transient read-back retries only when a saved provider ID forces every later attempt to read back.
+    """
+    attempt = read_back.attempt
+    if attempt.kind == "retry" and not is_provider_id_saved:
+        assert attempt.failure is not None
+        return MutationAttempt.uncertain(value, attempt.failure, receipt)
+    return attempt
+
+
+def _is_success_status(observed_statuses: list[int]) -> bool:
+    """Report that the dispatch saw 2xx headers, so Re:amaze accepted the write."""
+    return bool(observed_statuses) and 200 <= observed_statuses[0] < 300
+
+
+def _write_window_cut_accepted_body(operation: str, status: int) -> Exchange:
+    """Return the unusable accepted exchange of a 2xx whose body the fence write window cut off."""
+    return Exchange(
+        "unavailable",
+        reamaze_failure(
+            FailureKind.TRANSPORT,
+            operation,
+            "Re:amaze accepted the write, but its answer did not arrive within the write window",
+        ),
+        status=status,
+    )
+
+
+# Matches Go's reconciliationContext, which ends a read-back one second before the attempt deadline.
+_READ_BACK_DEADLINE_MARGIN = timedelta(seconds=1)
+
+
+async def _read_back_before_deadline(
+    call: Call, operation: str, read_back: Coroutine[Any, Any, _ReadBack], value: Any, receipt: Receipt
+) -> _ReadBack:
+    """Finish an accepted write's read-back before the attempt deadline, or report it as transient."""
+    deadline = call.context.deadline if call.context is not None else None
+    if deadline is None:
+        return await read_back
+    remaining = (deadline - _READ_BACK_DEADLINE_MARGIN - datetime.now(UTC)).total_seconds()
+    try:
+        return await asyncio.wait_for(read_back, max(remaining, 0))
+    except TimeoutError:
+        failure = reamaze_failure(
+            FailureKind.TRANSPORT,
+            operation,
+            "Re:amaze accepted the write, but reading it back did not finish before the attempt deadline",
+        )
+        return _ReadBack(MutationAttempt.retry(failure))
+
+
+async def _fenced_credential_error(
+    fence: Fence,
+    decision: Decision,
+    client: Client,
+    call: Call,
+    operation: str,
+    error: Exception,
+    value: Any,
+    object_id: str,
+) -> MutationAttempt[Any]:
+    """Map a credential failure before dispatch; after a possible earlier send it records nothing."""
+    if _needs_read_back(decision):
+        if isinstance(error, CredentialsUnavailableError):
+            return MutationAttempt.retry(
+                reamaze_failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "connection credentials could not be loaded to read back an earlier write",
+                )
+            )
+        return MutationAttempt.uncertain(
+            value,
+            reamaze_failure(
+                FailureKind.AUTHENTICATION,
+                operation,
+                "the earlier write cannot be read back; reconnect the connection in Dex Web",
+            ),
+            client.receipt(call, Exchange(""), object_id),
+        )
     try:
         await fence.record_not_sent()
     except Exception:
@@ -585,8 +699,22 @@ async def _fenced_credential_error(
     return _mutation_credentials_error(operation, error, value)
 
 
+# Only these statuses prove Re:amaze applied nothing; any other non-2xx answer may have been applied.
+DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+
+
+def _is_definite_refusal(exchange: Exchange) -> bool:
+    """Report a listed refusal status whose body was read whole, which proves nothing applied."""
+    return (
+        exchange.outcome in {"rejected", "not_found"}
+        and exchange.status in DEFINITE_REFUSAL_STATUSES
+        and not exchange.has_oversized_body
+    )
+
+
 async def _fenced_exchange_result(
     fence: Fence,
+    is_first_send: bool,
     client: Client,
     call: Call,
     operation: str,
@@ -596,6 +724,7 @@ async def _fenced_exchange_result(
     object_id: str = "",
     has_not_found: bool = False,
 ) -> MutationAttempt[Any] | None:
+    """Map a sent write; any outcome but a definite refusal retries, and the next attempt reads back."""
     if exchange.outcome == "succeeded":
         return None
     assert exchange.failure is not None
@@ -604,25 +733,39 @@ async def _fenced_exchange_result(
         try:
             await fence.record_can_resend()
         except Exception:
-            return MutationAttempt.retry(
-                reamaze_failure(
-                    FailureKind.AVAILABILITY, operation, "retry checkpoint could not be recorded"
-                ),
-                exchange.retry_after_seconds,
-            )
+            pass  # A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
     if exchange.is_retryable_read:
         return MutationAttempt.retry(exchange.failure, exchange.retry_after_seconds)
-    if exchange.outcome == "invalid":
-        return MutationAttempt.uncertain(value, exchange.failure, receipt)
-    if exchange.outcome == "not_found":
-        branch = definitions.NOT_FOUND if has_not_found else definitions.PROVIDER_REJECTED
-    elif exchange.outcome == "defect":
+    if exchange.outcome == "defect":
+        # The request could not be built; after a possible earlier send this selects uncertain.
         branch = definitions.DEFECT
-    elif exchange.status == 409:
-        return MutationAttempt.retry(exchange.failure)
+    elif _is_definite_refusal(exchange):
+        is_not_found = exchange.outcome == "not_found" and has_not_found
+        branch = definitions.NOT_FOUND if is_not_found else definitions.PROVIDER_REJECTED
     else:
-        branch = definitions.PROVIDER_REJECTED
-    return MutationAttempt.branch_result(branch, value, receipt, exchange.failure)
+        # A 3xx, 409, unlisted status, or refusal with an unread oversized body may follow an applied write.
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after_seconds)
+    if not is_first_send:
+        return MutationAttempt.uncertain(value, exchange.failure, receipt)
+    try:
+        await fence.record_can_resend()
+    except Exception:
+        return MutationAttempt.retry(
+            reamaze_failure(FailureKind.AVAILABILITY, operation, "refusal checkpoint could not be recorded")
+        )
+    return MutationAttempt.branch_result(
+        branch, value, _empty_receipt() if branch == definitions.DEFECT else receipt, exchange.failure
+    )
+
+
+def _accepted_conversation_id(body: bytes) -> str:
+    """Return a valid slug from an accepted answer that did not decode, or blank."""
+    try:
+        document = parse_document(body)
+    except ValueError:
+        return ""
+    slug = document.get("slug") if isinstance(document, dict) else None
+    return slug if isinstance(slug, str) and _CONVERSATION_ID.fullmatch(slug) else ""
 
 
 def _dispatch_key(call: Call) -> str:
@@ -703,7 +846,7 @@ class CreateConversationOperation:
                 reamaze_failure(FailureKind.VALIDATION, operation, str(error)),
             )
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
         except ValueError as error:
             return MutationAttempt.branch_result(
                 definitions.DEFECT,
@@ -713,41 +856,31 @@ class CreateConversationOperation:
             )
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                zero,
-                reamaze_failure(FailureKind.TRANSPORT, operation, "dispatch checkpoint cannot be trusted"),
-                self.client.receipt(call, Exchange("")),
+            # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+            return MutationAttempt.retry(
+                reamaze_failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "dispatch checkpoint could not be read; nothing was sent in this attempt",
+                )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            try:
-                credentials = await self.client.resolve_credentials(call)
-            except CredentialsUnavailableError:
-                return MutationAttempt.retry(
-                    reamaze_failure(
-                        FailureKind.AVAILABILITY,
-                        operation,
-                        "connection credentials could not be loaded to read back an earlier write",
-                    )
-                )
-            except CredentialsUnusableError:
-                return MutationAttempt.uncertain(
-                    zero,
-                    reamaze_failure(
-                        FailureKind.AUTHENTICATION,
-                        operation,
-                        "the earlier write cannot be read back; reconnect the connection in Dex Web",
-                    ),
-                    self.client.receipt(
-                        call, Exchange(""), decision.marker.provider_id if decision.marker else ""
-                    ),
-                )
-            if decision.marker and decision.marker.provider_id:
-                return await self._confirm_candidate(call, credentials, decision.marker.provider_id)
-            return await self._reconcile(call, credentials)
+        provider_id = decision.marker.provider_id if decision.marker else ""
         try:
-            credentials = await self.client.resolve_credentials(call)
+            credentials = await self.client.resolve_write_credentials(call)
         except (CredentialsUnavailableError, CredentialsUnusableError) as error:
-            return await _fenced_credential_error(fence, operation, error, zero)
+            return await _fenced_credential_error(
+                fence, decision, self.client, call, operation, error, zero, provider_id
+            )
+        if _needs_read_back(decision):
+            # A saved conversation ID proves Re:amaze created it, so it is read back and never resent.
+            if provider_id:
+                return (await self._confirm_candidate(call, credentials, provider_id)).attempt
+            read_back = await self._reconcile(call, credentials)
+            if not read_back.is_absent or not _permits_resend_after_read_back(call, decision):
+                return read_back.attempt
+            # The read-back found no conversation with the key, so this attempt resends below the cap.
+        is_first_send = decision.prior_send_upper_bound == 0
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _: self.client.exchange(
@@ -757,9 +890,11 @@ class CreateConversationOperation:
                     "POST",
                     "/conversations",
                     payload=_create_payload(input, _dispatch_key(call)),
+                    on_response_status=observed_statuses.append,
                 )
             )
-        except (CheckpointError, InsufficientAttemptTimeError):
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            # Dispatch refused before sending, so nothing reached Re:amaze in this attempt.
             return MutationAttempt.retry(
                 reamaze_failure(
                     FailureKind.AVAILABILITY,
@@ -767,23 +902,29 @@ class CreateConversationOperation:
                     "write was not sent before the attempt deadline or checkpoint",
                 )
             )
-        except (DispatchNotAllowedError, TimeoutError):
-            return MutationAttempt.uncertain(
-                zero,
-                reamaze_failure(
-                    FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
-                ),
-                _empty_receipt(),
-            )
+        except TimeoutError:
+            if not _is_success_status(observed_statuses):
+                # The claim stays, so the next attempt counts this send and reads back first.
+                return MutationAttempt.retry(
+                    reamaze_failure(
+                        FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
+                    )
+                )
+            exchange = _write_window_cut_accepted_body(operation, observed_statuses[0])
+        # A 2xx whose body could not be read or used still created the conversation.
         if 200 <= exchange.status < 300 and exchange.outcome != "succeeded":
-            return await self._reconcile(call, credentials)
-        classified = await _fenced_exchange_result(fence, self.client, call, operation, exchange, zero)
+            return await self._reconcile_accepted(call, fence, credentials, "")
+        classified = await _fenced_exchange_result(
+            fence, is_first_send, self.client, call, operation, exchange, zero
+        )
         if classified is not None:
             return classified
         try:
             conversation = decode_conversation_body(exchange.body)
         except ValueError:
-            return await self._reconcile(call, credentials)
+            return await self._reconcile_accepted(
+                call, fence, credentials, _accepted_conversation_id(exchange.body)
+            )
         try:
             await fence.record_provider_id(conversation.id)
         except Exception:
@@ -794,7 +935,38 @@ class CreateConversationOperation:
             self.client.receipt(call, exchange, conversation.id),
         )
 
-    async def _reconcile(self, call: Call, credentials: Any) -> MutationAttempt[CreateConversationOutput]:
+    async def _reconcile_accepted(
+        self, call: Call, fence: Fence, credentials: Any, conversation_id: str
+    ) -> MutationAttempt[CreateConversationOutput]:
+        """Never resend an accepted create: confirm it now, by its slug when named, or select uncertain."""
+        operation = "createConversation"
+        zero = _zero_output(operation)
+        if not conversation_id:
+            receipt = self.client.receipt(call, Exchange(""))
+            return _accepted_write_attempt(
+                await _read_back_before_deadline(
+                    call, operation, self._reconcile(call, credentials), zero, receipt
+                ),
+                zero,
+                receipt,
+                is_provider_id_saved=False,
+            )
+        try:
+            await fence.record_provider_id(conversation_id)
+            is_provider_id_saved = True
+        except Exception:
+            is_provider_id_saved = False
+        receipt = self.client.receipt(call, Exchange(""), conversation_id)
+        return _accepted_write_attempt(
+            await _read_back_before_deadline(
+                call, operation, self._confirm_candidate(call, credentials, conversation_id), zero, receipt
+            ),
+            zero,
+            receipt,
+            is_provider_id_saved=is_provider_id_saved,
+        )
+
+    async def _reconcile(self, call: Call, credentials: Any) -> _ReadBack:
         operation, key = "createConversation", _dispatch_key(call)
         zero = _zero_output(operation)
         exchange = await self.client.exchange(
@@ -807,7 +979,7 @@ class CreateConversationOperation:
         )
         classified = _reconciliation_result(self.client, call, operation, exchange, zero)
         if classified is not None:
-            return classified
+            return _ReadBack(classified)
         try:
             document = parse_document(exchange.body)
             from .decoding import validate_page
@@ -822,70 +994,82 @@ class CreateConversationOperation:
                     candidate = item["slug"]
                 if isinstance(data, dict) and data.get("dex_dispatch_key") == key:
                     conversation = decode_conversation(item)
-                    return MutationAttempt.branch_result(
-                        definitions.CREATED,
-                        CreateConversationOutput(conversation, True),
-                        self.client.receipt(call, exchange, conversation.id),
+                    return _ReadBack(
+                        MutationAttempt.branch_result(
+                            definitions.CREATED,
+                            CreateConversationOutput(conversation, True),
+                            self.client.receipt(call, exchange, conversation.id),
+                        )
                     )
         except ValueError as error:
-            return MutationAttempt.uncertain(
-                zero,
-                reamaze_failure(
-                    FailureKind.PROTOCOL,
-                    operation,
-                    (
-                        "an earlier attempt of this Step sent the request, and the "
-                        "conversation list read back is invalid: "
-                    )
-                    + str(error),
-                ),
-                self.client.receipt(call, exchange),
+            return _ReadBack(
+                MutationAttempt.uncertain(
+                    zero,
+                    reamaze_failure(
+                        FailureKind.PROTOCOL,
+                        operation,
+                        (
+                            "an earlier attempt of this Step sent the request, and the "
+                            "conversation list read back is invalid: "
+                        )
+                        + str(error),
+                    ),
+                    self.client.receipt(call, exchange),
+                )
             )
         if candidate:
             return await self._confirm_candidate(call, credentials, candidate)
-        return MutationAttempt.uncertain(
-            zero,
-            reamaze_failure(FailureKind.TRANSPORT, operation, _UNCERTAIN_NOT_FOUND),
-            self.client.receipt(call, exchange),
+        return _ReadBack(
+            MutationAttempt.uncertain(
+                zero,
+                reamaze_failure(FailureKind.TRANSPORT, operation, _UNCERTAIN_NOT_FOUND),
+                self.client.receipt(call, exchange),
+            ),
+            is_absent=True,
         )
 
-    async def _confirm_candidate(
-        self, call: Call, credentials: Any, slug: str
-    ) -> MutationAttempt[CreateConversationOutput]:
+    async def _confirm_candidate(self, call: Call, credentials: Any, slug: str) -> _ReadBack:
         operation, zero = "createConversation", _zero_output("createConversation")
         exchange = await self.client.exchange(call, credentials, operation, "GET", conversation_path(slug))
         classified = _reconciliation_result(self.client, call, operation, exchange, zero, slug)
         if classified is not None:
-            return classified
+            return _ReadBack(classified)
         try:
             document = parse_document(exchange.body)
             if not isinstance(document, dict) or (document.get("data") or {}).get(
                 "dex_dispatch_key"
             ) != _dispatch_key(call):
-                return MutationAttempt.uncertain(
-                    zero,
-                    reamaze_failure(FailureKind.TRANSPORT, operation, _UNCERTAIN_NOT_FOUND),
-                    self.client.receipt(call, exchange, slug),
+                return _ReadBack(
+                    MutationAttempt.uncertain(
+                        zero,
+                        reamaze_failure(FailureKind.TRANSPORT, operation, _UNCERTAIN_NOT_FOUND),
+                        self.client.receipt(call, exchange, slug),
+                    ),
+                    is_absent=True,
                 )
             conversation = decode_conversation(document, expected_id=slug)
         except ValueError as error:
-            return MutationAttempt.uncertain(
-                zero,
-                reamaze_failure(
-                    FailureKind.PROTOCOL,
-                    operation,
-                    (
-                        "an earlier attempt of this Step sent the request, and the "
-                        "conversation read back is invalid: "
-                    )
-                    + str(error),
-                ),
+            return _ReadBack(
+                MutationAttempt.uncertain(
+                    zero,
+                    reamaze_failure(
+                        FailureKind.PROTOCOL,
+                        operation,
+                        (
+                            "an earlier attempt of this Step sent the request, and the "
+                            "conversation read back is invalid: "
+                        )
+                        + str(error),
+                    ),
+                    self.client.receipt(call, exchange, slug),
+                )
+            )
+        return _ReadBack(
+            MutationAttempt.branch_result(
+                definitions.CREATED,
+                CreateConversationOutput(conversation, True),
                 self.client.receipt(call, exchange, slug),
             )
-        return MutationAttempt.branch_result(
-            definitions.CREATED,
-            CreateConversationOutput(conversation, True),
-            self.client.receipt(call, exchange, slug),
         )
 
 
@@ -935,7 +1119,7 @@ class ReplyToConversationOperation:
                 reamaze_failure(FailureKind.VALIDATION, operation, str(error)),
             )
         try:
-            fence = Fence(call, timedelta(seconds=30))
+            fence = Fence(call, timedelta(seconds=30), max_sends=call.max_sends)
         except ValueError as error:
             return MutationAttempt.branch_result(
                 definitions.DEFECT,
@@ -945,37 +1129,26 @@ class ReplyToConversationOperation:
             )
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
-            return MutationAttempt.uncertain(
-                zero,
-                reamaze_failure(FailureKind.TRANSPORT, operation, "dispatch checkpoint cannot be trusted"),
-                self.client.receipt(call, Exchange("")),
+            # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+            return MutationAttempt.retry(
+                reamaze_failure(
+                    FailureKind.AVAILABILITY,
+                    operation,
+                    "dispatch checkpoint could not be read; nothing was sent in this attempt",
+                )
             )
-        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
-            try:
-                credentials = await self.client.resolve_credentials(call)
-            except CredentialsUnavailableError:
-                return MutationAttempt.retry(
-                    reamaze_failure(
-                        FailureKind.AVAILABILITY,
-                        operation,
-                        "connection credentials could not be loaded to read back an earlier write",
-                    )
-                )
-            except CredentialsUnusableError:
-                return MutationAttempt.uncertain(
-                    zero,
-                    reamaze_failure(
-                        FailureKind.AUTHENTICATION,
-                        operation,
-                        "the earlier write cannot be read back; reconnect the connection in Dex Web",
-                    ),
-                    self.client.receipt(call, Exchange(""), input.conversation_id),
-                )
-            return await self._reconcile(call, credentials, input)
         try:
-            credentials = await self.client.resolve_credentials(call)
+            credentials = await self.client.resolve_write_credentials(call)
         except (CredentialsUnavailableError, CredentialsUnusableError) as error:
-            return await _fenced_credential_error(fence, operation, error, zero)
+            return await _fenced_credential_error(
+                fence, decision, self.client, call, operation, error, zero, input.conversation_id
+            )
+        if _needs_read_back(decision):
+            read_back = await self._reconcile(call, credentials, input)
+            if not read_back.is_absent or not _permits_resend_after_read_back(call, decision):
+                return read_back.attempt
+            # The read-back found no message with the origin_id, so this attempt resends below the cap.
+        is_first_send = decision.prior_send_upper_bound == 0
         message: dict[str, object] = {
             "body": input.text,
             "visibility": 1 if input.is_internal_note else 0,
@@ -985,6 +1158,7 @@ class ReplyToConversationOperation:
             message["suppress_notifications"] = True
         if input.should_suppress_auto_resolve:
             message["suppress_autoresolve"] = True
+        observed_statuses: list[int] = []
         try:
             exchange = await fence.dispatch(
                 lambda _: self.client.exchange(
@@ -994,9 +1168,11 @@ class ReplyToConversationOperation:
                     "POST",
                     conversation_path(input.conversation_id) + "/messages",
                     payload={"message": message},
+                    on_response_status=observed_statuses.append,
                 )
             )
-        except (CheckpointError, InsufficientAttemptTimeError):
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            # Dispatch refused before sending, so nothing reached Re:amaze in this attempt.
             return MutationAttempt.retry(
                 reamaze_failure(
                     FailureKind.AVAILABILITY,
@@ -1004,18 +1180,29 @@ class ReplyToConversationOperation:
                     "write was not sent before the attempt deadline or checkpoint",
                 )
             )
-        except (DispatchNotAllowedError, TimeoutError):
-            return MutationAttempt.uncertain(
-                zero,
-                reamaze_failure(
-                    FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
-                ),
-                _empty_receipt(),
-            )
+        except TimeoutError:
+            if not _is_success_status(observed_statuses):
+                # The claim stays, so the next attempt counts this send and reads back first.
+                return MutationAttempt.retry(
+                    reamaze_failure(
+                        FailureKind.TRANSPORT, operation, "write dispatch outcome could not be confirmed"
+                    )
+                )
+            exchange = _write_window_cut_accepted_body(operation, observed_statuses[0])
+        accepted_receipt = self.client.receipt(call, Exchange(""), input.conversation_id)
+        # A 2xx whose body could not be read or used still added the message, so it is never resent.
         if 200 <= exchange.status < 300 and exchange.outcome != "succeeded":
-            return await self._reconcile(call, credentials, input)
+            return _accepted_write_attempt(
+                await _read_back_before_deadline(
+                    call, operation, self._reconcile(call, credentials, input), zero, accepted_receipt
+                ),
+                zero,
+                accepted_receipt,
+                is_provider_id_saved=False,
+            )
         classified = await _fenced_exchange_result(
             fence,
+            is_first_send,
             self.client,
             call,
             operation,
@@ -1039,16 +1226,21 @@ class ReplyToConversationOperation:
                 raise ValueError("response is for another conversation")
             decoded = decode_message(document)
         except ValueError:
-            return await self._reconcile(call, credentials, input)
+            return _accepted_write_attempt(
+                await _read_back_before_deadline(
+                    call, operation, self._reconcile(call, credentials, input), zero, accepted_receipt
+                ),
+                zero,
+                accepted_receipt,
+                is_provider_id_saved=False,
+            )
         return MutationAttempt.branch_result(
             definitions.REPLIED,
             ConversationReply(input.conversation_id, message=decoded),
             self.client.receipt(call, exchange, input.conversation_id),
         )
 
-    async def _reconcile(
-        self, call: Call, credentials: Any, input: ReplyToConversationInput
-    ) -> MutationAttempt[ConversationReply]:
+    async def _reconcile(self, call: Call, credentials: Any, input: ReplyToConversationInput) -> _ReadBack:
         operation, zero = "replyToConversation", _zero_output("replyToConversation", input.conversation_id)
         exchange = await self.client.exchange(
             call,
@@ -1062,32 +1254,39 @@ class ReplyToConversationOperation:
             self.client, call, operation, exchange, zero, input.conversation_id
         )
         if classified is not None:
-            return classified
+            return _ReadBack(classified)
         try:
             messages, _, _ = decode_message_page(exchange.body)
         except ValueError as error:
-            return MutationAttempt.uncertain(
-                zero,
-                reamaze_failure(
-                    FailureKind.PROTOCOL,
-                    operation,
-                    (
-                        "an earlier attempt of this Step sent the message, and the "
-                        "message page read back is invalid: "
-                    )
-                    + str(error),
-                ),
-                self.client.receipt(call, exchange, input.conversation_id),
+            return _ReadBack(
+                MutationAttempt.uncertain(
+                    zero,
+                    reamaze_failure(
+                        FailureKind.PROTOCOL,
+                        operation,
+                        (
+                            "an earlier attempt of this Step sent the message, and the "
+                            "message page read back is invalid: "
+                        )
+                        + str(error),
+                    ),
+                    self.client.receipt(call, exchange, input.conversation_id),
+                )
             )
         for message in messages:
             if message.origin_id == _dispatch_key(call):
-                return MutationAttempt.branch_result(
-                    definitions.REPLIED,
-                    ConversationReply(input.conversation_id, message=message, was_already_applied=True),
-                    self.client.receipt(call, exchange, input.conversation_id),
+                return _ReadBack(
+                    MutationAttempt.branch_result(
+                        definitions.REPLIED,
+                        ConversationReply(input.conversation_id, message=message, was_already_applied=True),
+                        self.client.receipt(call, exchange, input.conversation_id),
+                    )
                 )
-        return MutationAttempt.uncertain(
-            zero,
-            reamaze_failure(FailureKind.TRANSPORT, operation, _UNCERTAIN_NOT_FOUND),
-            self.client.receipt(call, exchange, input.conversation_id),
+        return _ReadBack(
+            MutationAttempt.uncertain(
+                zero,
+                reamaze_failure(FailureKind.TRANSPORT, operation, _UNCERTAIN_NOT_FOUND),
+                self.client.receipt(call, exchange, input.conversation_id),
+            ),
+            is_absent=True,
         )

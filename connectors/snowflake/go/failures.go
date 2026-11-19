@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -37,6 +38,21 @@ type credentialError struct{ message string }
 
 // Error returns the safe description.
 func (err *credentialError) Error() string { return err.message }
+
+// credentialUnavailableError reports a transient credential failure; nothing was sent.
+type credentialUnavailableError struct{}
+
+// Error returns a safe description.
+func (*credentialUnavailableError) Error() string {
+	return "Snowflake connection credentials are temporarily unavailable; nothing was sent"
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
 
 // transportError reports that no complete HTTP response was received; it never repeats a URL or header.
 type transportError struct{}
@@ -71,12 +87,13 @@ type classifiedFailure struct {
 	message     string
 	retryAfter  time.Duration
 	status      statementStatus
+	httpStatus  int
 }
 
 // classifyUnsuccessfulResponse maps a status code outside the operation's success codes; body is at most a bounded prefix.
 func classifyUnsuccessfulResponse(response *http.Response, body []byte, now time.Time) classifiedFailure {
 	status := decodeStatementStatus(body)
-	failure := classifiedFailure{disposition: dispositionRejected, kind: sdkgo.FailureProviderRejection, status: status}
+	failure := classifiedFailure{disposition: dispositionRejected, kind: sdkgo.FailureProviderRejection, status: status, httpStatus: response.StatusCode}
 	switch code := response.StatusCode; {
 	case code == http.StatusTooManyRequests:
 		failure.disposition, failure.kind = dispositionRetry, sdkgo.FailureRateLimit
@@ -107,6 +124,20 @@ func classifyUnsuccessfulResponse(response *http.Response, body []byte, now time
 	case response.StatusCode >= 300 && response.StatusCode < 400:
 		failure.message += "; the connector never follows redirects, so check accountIdentifier"
 	}
+	return failure
+}
+
+// retryUnknownWriteRefusal turns a refusal whose HTTP status does not prove one into Retry, for the safe writes.
+func retryUnknownWriteRefusal(failure classifiedFailure) classifiedFailure {
+	if failure.disposition != dispositionRejected {
+		return failure
+	}
+	switch failure.httpStatus {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return failure
+	}
+	failure.disposition, failure.kind = dispositionRetry, sdkgo.FailureAvailability
 	return failure
 }
 
@@ -168,6 +199,31 @@ func readErrorBody(response *http.Response) []byte {
 	return body
 }
 
+// maxWriteErrorBodyBytes matches the Python port's bound for a non-200 body.
+const maxWriteErrorBodyBytes = 1 << 20
+
+// readWriteErrorBody reads a status or error body and reports whether it was read in full within the bound.
+func readWriteErrorBody(response *http.Response) ([]byte, bool) {
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxWriteErrorBodyBytes+1))
+	if err != nil {
+		return nil, false
+	}
+	if len(body) > maxWriteErrorBodyBytes {
+		return body[:maxWriteErrorBodyBytes], false
+	}
+	return body, true
+}
+
+// retryIncompleteWriteRefusal makes a refusal whose body was unreadable or oversized an unknown outcome.
+func retryIncompleteWriteRefusal(failure classifiedFailure, isBodyComplete bool) classifiedFailure {
+	if isBodyComplete || failure.disposition != dispositionRejected {
+		return failure
+	}
+	failure.disposition, failure.kind = dispositionRetry, sdkgo.FailureAvailability
+	failure.message += "; the error body could not be read in full"
+	return failure
+}
+
 func transportFailure() classifiedFailure {
 	return classifiedFailure{disposition: dispositionRetry, kind: sdkgo.FailureTransport, message: (&transportError{}).Error()}
 }
@@ -178,6 +234,10 @@ func invalidResponseFailure(message string) classifiedFailure {
 
 // requestFailure classifies an error from Client.send, which happens before any response was read.
 func requestFailure(err error) classifiedFailure {
+	var unavailable *credentialUnavailableError
+	if errors.As(err, &unavailable) {
+		return classifiedFailure{disposition: dispositionRetry, kind: sdkgo.FailureAvailability, message: unavailable.Error()}
+	}
 	var credentials *credentialError
 	if errors.As(err, &credentials) {
 		return classifiedFailure{disposition: dispositionDefect, kind: sdkgo.FailureAuthentication, message: credentials.Error()}

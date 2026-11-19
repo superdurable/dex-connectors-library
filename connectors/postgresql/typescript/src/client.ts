@@ -4,10 +4,11 @@
 import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import pg, { type Client as PgClient } from 'pg';
-import type { Call, CredentialProvider, ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
-import { ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
-import type { ClassifiedFailure } from './failures.js';
+import { ReauthorizationRequiredError, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
+import { ExecuteStatementNonIdempotentOperation, ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
+import { TransientCredentialError, type ClassifiedFailure } from './failures.js';
 
 /** Injectable native driver factory for deterministic connector tests. */
 export interface PostgreSQLClientOptions {
@@ -58,14 +59,23 @@ export class PostgreSQLClient {
   /** Bind the read-only query operation. */
   query(): QueryRowsOperation { return new QueryRowsOperation(this); }
 
-  /** Bind the transactional write operation. */
+  /** Bind the repeat-safe transactional write operation. */
   execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
 
-  /** Resolve the current password outside Flow state and open one native connection, bounded by the call signal. */
+  /** Bind the fenced transactional write operation, which never runs its statement twice. */
+  executeNonIdempotent(): ExecuteStatementNonIdempotentOperation { return new ExecuteStatementNonIdempotentOperation(this); }
+
+  /**
+   * Resolve the current password outside Flow state and open one native connection, bounded by the call signal.
+   * Returns null for a terminal credential failure or an empty password, and throws TransientCredentialError for any other credential failure.
+   */
   async connect(call: Call, signal?: AbortSignal): Promise<PgClient | null> {
     let password: string;
     try { password = (await this.credentials.resolve(call)).password.reveal(); }
-    catch { return null; }
+    catch (error) {
+      if (!isTerminalCredentialError(error)) throw new TransientCredentialError();
+      return null;
+    }
     if (!password) return null;
     const settings = this.configuration;
     const rootCertificate = process.env.PGSSLROOTCERT;
@@ -93,6 +103,12 @@ export class PostgreSQLClient {
     if (failure?.sqlState) metadata.sqlState = failure.sqlState;
     return { callId: call.id, ...(call.idempotencyKey ? { idempotencyKey: call.idempotencyKey } : {}), provider: 'postgresql', observedAt: this.now().toISOString(), ...(Object.keys(metadata).length ? { metadata } : {}) };
   }
+}
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
 }
 
 function hasControlCharacter(value: string): boolean { return [...value].some(character => { const code = character.codePointAt(0) ?? 0; return code < 32 || code === 127; }); }

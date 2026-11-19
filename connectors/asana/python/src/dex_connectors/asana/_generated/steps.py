@@ -194,6 +194,8 @@ def new_update_task_step(
     defect: dex.StepTarget[MutationResult[UpdateTaskOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateTaskOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateTaskInput, UpdateTaskOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Asana Step connection name must match its connection reference")

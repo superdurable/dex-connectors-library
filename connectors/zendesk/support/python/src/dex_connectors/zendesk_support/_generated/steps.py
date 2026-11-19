@@ -138,6 +138,8 @@ def new_create_ticket_step(
     defect: dex.StepTarget[MutationResult[CreateTicketOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[CreateTicketOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, CreateTicketInput, CreateTicketOutput]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Zendesk Support Step connection name must match its connection reference")
@@ -187,6 +189,7 @@ def new_update_ticket_step(
     conflict: dex.StepTarget[MutationResult[UpdateTicketOutput]] | None = None,
     provider_rejected: dex.StepTarget[MutationResult[UpdateTicketOutput]] | None = None,
     invalid_response: dex.StepTarget[MutationResult[UpdateTicketOutput]] | None = None,
+    uncertain: dex.StepTarget[MutationResult[UpdateTicketOutput]] | None = None,
     defect: dex.StepTarget[MutationResult[UpdateTicketOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateTicketOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
@@ -213,6 +216,8 @@ def new_update_ticket_step(
         branches["providerRejected"] = provider_rejected
     if invalid_response is not None:
         branches["invalidResponse"] = invalid_response
+    if uncertain is not None:
+        branches["uncertain"] = uncertain
     if defect is not None:
         branches["defect"] = defect
     return MutationStep(

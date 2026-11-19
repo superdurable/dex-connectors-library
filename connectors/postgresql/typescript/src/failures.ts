@@ -4,8 +4,13 @@
 import type { Failure } from '@superdurable/connectors-sdk';
 import pg from 'pg';
 
+/** A credential failure that a later attempt may resolve; nothing was sent. */
+export class TransientCredentialError extends Error {
+  constructor() { super('PostgreSQL connection credentials are temporarily unavailable'); this.name = 'TransientCredentialError'; }
+}
+
 export type Phase = 'connect' | 'BEGIN' | 'the statement' | 'COMMIT';
-export type Disposition = 'retry' | 'rejected' | 'uncertain' | 'invalidResponse' | 'defect';
+export type Disposition = 'retry' | 'rejected' | 'uncertain' | 'invalidResponse' | 'defect' | 'limitExceeded';
 export interface ClassifiedFailure { disposition: Disposition; kind: Failure['kind']; message: string; sqlState?: string }
 
 const conditionNames: Record<string, string> = {
@@ -29,6 +34,7 @@ function errorFields(error: unknown): Record<string, unknown> {
 }
 
 export function classifyFailure(error: unknown, phase: Phase): ClassifiedFailure {
+  if (error instanceof TransientCredentialError) return { disposition: 'retry', kind: 'AVAILABILITY', message: 'PostgreSQL connection credentials are temporarily unavailable, so nothing was sent' };
   const fields = errorFields(error);
   const code = typeof fields.code === 'string' ? fields.code : '';
   if (error instanceof pg.DatabaseError && /^[A-Z0-9]{5}$/.test(code)) {
@@ -36,7 +42,8 @@ export function classifyFailure(error: unknown, phase: Phase): ClassifiedFailure
     const description = name ? `${code} (${name})` : code;
     let disposition: Disposition = 'rejected';
     let kind: Failure['kind'] = 'PROVIDER_REJECTION';
-    if (phase === 'COMMIT' && !code.startsWith('23') && !code.startsWith('40')) {
+    // SQLSTATE 40003 (statement_completion_unknown) is the one rollback-class code that proves nothing.
+    if (phase === 'COMMIT' && (code === '40003' || (!code.startsWith('23') && !code.startsWith('40')))) {
       return { disposition: 'uncertain', kind: 'AVAILABILITY', sqlState: code, message: `PostgreSQL returned SQLSTATE ${description} while committing, so whether the transaction committed is unknown` };
     }
     if (['40001', '40P01', '55P03'].includes(code)) { disposition = 'retry'; kind = 'CONFLICT'; }

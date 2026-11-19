@@ -81,6 +81,7 @@ export const CreateMessageBranch = {
   NotFound: "notFound",
   ProviderRejected: "providerRejected",
   InvalidResponse: "invalidResponse",
+  Uncertain: "uncertain",
   Defect: "defect",
 } as const;
 /** Discord created the message, or returned the message an earlier attempt created with the same nonce. */
@@ -89,8 +90,10 @@ export const CreateMessageBranchCreated = CreateMessageBranch.Created;
 export const CreateMessageBranchNotFound = CreateMessageBranch.NotFound;
 /** Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token. */
 export const CreateMessageBranchProviderRejected = CreateMessageBranch.ProviderRejected;
-/** Discord applied or rejected the message but returned an invalid or oversized response. */
+/** Kept for compatibility and no longer selected: an invalid or oversized 2xx answer proves Discord created the message, so createMessage reads it back by its message ID or selects uncertain. */
 export const CreateMessageBranchInvalidResponse = CreateMessageBranch.InvalidResponse;
+/** Discord may have created the message, or accepted it but could not confirm it by read-back, and no further send is allowed; check the channel before sending again. */
+export const CreateMessageBranchUncertain = CreateMessageBranch.Uncertain;
 /** Local input, connection configuration, or credentials are invalid. */
 export const CreateMessageBranchDefect = CreateMessageBranch.Defect;
 /** Manifest definition for createMessage. */
@@ -100,10 +103,13 @@ export const CreateMessageDefinition: MutationDefinition = {
     { id: "created", description: "Discord created the message, or returned the message an earlier attempt created with the same nonce." },
     { id: "notFound", description: "Discord knows no channel with the ID.", optional: true },
     { id: "providerRejected", description: "Discord conclusively rejected the message, such as a missing Send Messages permission, invalid content, or a rejected token.", optional: true },
-    { id: "invalidResponse", description: "Discord applied or rejected the message but returned an invalid or oversized response.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized 2xx answer proves Discord created the message, so createMessage reads it back by its message ID or selects uncertain.", optional: true },
+    { id: "uncertain", description: "Discord may have created the message, or accepted it but could not confirm it by read-back, and no further send is allowed; check the channel before sending again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or credentials are invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createMessage. */
 export const CreateMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -133,6 +139,7 @@ export const AddReactionDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or credentials are invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for addReaction. */
 export const AddReactionMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

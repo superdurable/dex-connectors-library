@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -181,12 +182,14 @@ type writeOutcome uint8
 const (
 	// writeAccepted is a 2xx whose body was read in full.
 	writeAccepted writeOutcome = iota + 1
-	// writeNotApplied is a 429 or an undispatched request: Confluence cannot have written.
+	// writeNotApplied is a 429, a 503, or an undispatched request: Confluence cannot have written.
 	writeNotApplied
 	writeNotFound
 	writeRejected
-	// writeAmbiguous may have been applied: a lost response, 3xx, 408, 5xx, or an unusable 2xx body.
+	// writeAmbiguous may have been applied: a lost response, 3xx, 408, or a 5xx other than 503.
 	writeAmbiguous
+	// writeAcceptedUnreadable is a 2xx whose body broke, overflowed, or reflected the credential.
+	writeAcceptedUnreadable
 	writeDefect
 )
 
@@ -267,6 +270,10 @@ func (client *Client) AddComment() AddCommentOperation { return AddCommentOperat
 func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sessionFailure) {
 	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil && !isTerminalCredentialError(err) {
+		cancel()
+		return nil, nil, &sessionFailure{isRetryable: true, failure: newFailure(operationID, sdkgo.FailureAvailability, "Confluence connection credentials could not be read, so nothing was sent")}
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		cancel()
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Confluence connection credentials are unavailable; reconnect the connection")}
@@ -474,18 +481,24 @@ func (client *Client) classifyWrite(operationID string, subject string, result e
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureTransport, "Confluence accepted the "+subject+" but its response was interrupted")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureTransport, "Confluence accepted the "+subject+" but its response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Confluence accepted the "+subject+" but its response exceeds the configured size limit")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Confluence accepted the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureProtocol, "Confluence accepted the "+subject+" but its response contains credential material")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureProtocol, "Confluence accepted the "+subject+" but its response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeNotApplied, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Confluence rate limited the "+subject+" before writing it")}
+	case response.statusCode == http.StatusServiceUnavailable:
+		return writeClassification{outcome: writeNotApplied, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Confluence was unavailable, so no "+subject+" was written")}
+	case response.hasBodyReadFailed || response.isBodyTooLarge:
+		// A refusal status proves nothing without its full body, so the outcome is unknown.
+		return writeClassification{outcome: writeAmbiguous, failure: newFailure(operationID, sdkgo.FailureTransport,
+			fmt.Sprintf("Confluence %s outcome is unknown after HTTP %d with an unreadable body", subject, response.statusCode))}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode)}
-	case isConclusiveRejectionStatus(response.statusCode):
+	case isDefiniteWriteRefusalStatus(response.statusCode):
 		return writeClassification{outcome: writeRejected, failure: rejectionFailure(operationID, subject, response.statusCode)}
 	default:
 		return writeClassification{outcome: writeAmbiguous, retryAfter: client.retryAfter(response),
@@ -536,9 +549,23 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408 and 429: Confluence refused before changing anything.
-func isConclusiveRejectionStatus(statusCode int) bool {
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout && statusCode != http.StatusTooManyRequests
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as broker outages, may pass.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+// isDefiniteWriteRefusalStatus reports a status proving Confluence refused a write; others leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 // hasConfluenceScope recognizes classic and granular Confluence scopes, such as read:page:confluence.

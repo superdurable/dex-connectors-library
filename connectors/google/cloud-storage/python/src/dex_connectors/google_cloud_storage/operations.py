@@ -253,6 +253,10 @@ class DownloadObjectOperation:
         )
 
 
+# Only these statuses prove Google refused the request; any other one is unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
 class UploadObjectOperation:
     """Create one object only if its name is absent."""
 
@@ -311,9 +315,14 @@ class UploadObjectOperation:
             )
         if exchange.error:
             return self._retry(FailureKind.TRANSPORT, "Google Cloud Storage upload failed")
-        if exchange.status not in (200, 201):
+        if exchange.status not in (200, 201) and exchange.status in _DEFINITE_REFUSAL_STATUSES:
             return self._failure(
                 "providerRejected", FailureKind.PROVIDER_REJECTION, f"Google rejected HTTP {exchange.status}"
+            )
+        if exchange.status not in (200, 201):
+            return self._retry(
+                FailureKind.AVAILABILITY,
+                f"Google answered HTTP {exchange.status}, which leaves the upload unknown",
             )
         object_value = _object(_document(exchange.body), input.name)
         if object_value is None:
@@ -352,6 +361,10 @@ class UploadObjectOperation:
             return self._retry(
                 FailureKind.AVAILABILITY, "existing object could not be confirmed", media.retry_after
             )
+        # After an earlier attempt, the unreadable object may be this Step's upload.
+        is_later_attempt = call.context is not None and call.context.attempt > 1
+        if media.status != 200 and (media.status not in _DEFINITE_REFUSAL_STATUSES or is_later_attempt):
+            return self._retry(FailureKind.AVAILABILITY, "existing object could not be confirmed")
         if media.status != 200:
             return self._failure(
                 "providerRejected", FailureKind.PROVIDER_REJECTION, "Google denied object confirmation"

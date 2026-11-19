@@ -1,8 +1,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type Receipt } from '@superdurable/connectors-sdk';
-import { gorgiasFailure, isBareEmail, type Exchange, type GorgiasClient } from './client.js';
+import { definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type Receipt } from '@superdurable/connectors-sdk';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, newFence, type Decision, type Fence } from '@superdurable/connectors-sdk/singledispatch';
+import { gorgiasFailure, isBareEmail, type CredentialResolution, type Exchange, type GorgiasClient } from './client.js';
 import { AddNoteDefinition, CreateTicketDefinition, FindCustomerByEmailDefinition, GetTicketDefinition, SearchTicketsDefinition, UpdateTicketDefinition } from './generated/definitions.js';
 import { emptyAddNoteOutput, emptyCreateTicketOutput, emptyCustomerMatches, emptySearchTicketsOutput, emptyTicketDetails, emptyUpdateTicketOutput } from './generated/mock.js';
 import type { AddNoteInput, AddNoteOutput, CreateTicketInput, CreateTicketOutput, Credentials, CustomerMatches, FindCustomerByEmailInput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, Ticket, TicketDetails, TicketMessage, UpdateTicketInput, UpdateTicketOutput } from './generated/models.js';
@@ -13,14 +14,14 @@ function queryFailure<T>(client: GorgiasClient, call: Call, result: Exchange, ou
   const branch = result.outcome === 'invalid' ? 'invalidResponse' : result.outcome === 'defect' ? 'defect' : result.outcome === 'notFound' ? notFoundBranch : 'providerRejected';
   return newQueryBranch(branch, output, client.receipt(call, result, objectID), result.failure);
 }
+/** A terminal Query credential failure selects defect; any other one retries, since nothing reached Gorgias. */
+function credentialFailure<T>(resolved: CredentialResolution, output: T): QueryAttempt<T> {
+  return resolved.isTerminal ? newQueryBranch('defect', output, {} as Receipt, resolved.failure) : newQueryRetry(resolved.failure!);
+}
 function mutationFailure<T>(client: GorgiasClient, call: Call, result: Exchange, output: T, notFoundBranch = 'providerRejected', objectID = 0, invalidBranch = 'invalidResponse'): MutationAttempt<T> {
   if (['rateLimited', 'notSent', 'unavailable'].includes(result.outcome)) return newMutationRetry(result.failure!, result.retryAfterMs);
   const branch = result.outcome === 'invalid' ? invalidBranch : result.outcome === 'defect' ? 'defect' : result.outcome === 'notFound' ? notFoundBranch : 'providerRejected';
   return newMutationBranch(branch, output, client.receipt(call, result, objectID), result.failure);
-}
-function unsentRequestAttempt<T>(client: GorgiasClient, call: Call, result: Exchange, output: T, notFoundBranch = 'providerRejected', objectID = 0): MutationAttempt<T> {
-  if (result.outcome === 'invalid') return newMutationRetry(result.failure!, result.retryAfterMs);
-  return mutationFailure(client, call, result, output, notFoundBranch, objectID);
 }
 function defect<T>(operation: string, output: T, error: unknown, isMutation: false): QueryAttempt<T>;
 function defect<T>(operation: string, output: T, error: unknown, isMutation: true): MutationAttempt<T>;
@@ -74,7 +75,7 @@ export class SearchTicketsOperation implements Query<SearchTicketsInput, SearchT
       if (input.updatedSince && (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(input.updatedSince) || Number.isNaN(Date.parse(input.updatedSince)))) throw new TypeError('invalid updatedSince');
     } catch (error) { return defect('searchTickets', emptySearchTicketsOutput, error, false); }
     const resolved = await this.client.resolveCredentials(call, 'searchTickets');
-    if (!resolved.credentials) return newQueryBranch('defect', emptySearchTicketsOutput, {} as Receipt, resolved.failure);
+    if (!resolved.credentials) return credentialFailure(resolved, emptySearchTicketsOutput);
     let requesterID = input.requesterId ?? 0;
     if (input.requesterEmail) {
       const lookup = await this.client.exchange(call, resolved.credentials, 'searchTickets', 'GET', '/customers', queryString({ email: input.requesterEmail, limit: 10 }));
@@ -103,7 +104,7 @@ export class GetTicketOperation implements Query<GetTicketInput, TicketDetails> 
     try { requireID(input.ticketId, 'ticketId'); if (!Number.isInteger(input.latestMessageLimit ?? 0) || (input.latestMessageLimit ?? 0) < 0 || (input.latestMessageLimit ?? 0) > 20) throw new TypeError('latestMessageLimit must be 1 to 20 or zero'); }
     catch (error) { return defect('getTicket', emptyTicketDetails, error, false); }
     const resolved = await this.client.resolveCredentials(call, 'getTicket');
-    if (!resolved.credentials) return newQueryBranch('defect', emptyTicketDetails, {} as Receipt, resolved.failure);
+    if (!resolved.credentials) return credentialFailure(resolved, emptyTicketDetails);
     const result = await this.client.exchange(call, resolved.credentials, 'getTicket', 'GET', `/tickets/${input.ticketId}`);
     if (result.outcome !== 'succeeded') return queryFailure(this.client, call, result, emptyTicketDetails, 'notFound', input.ticketId);
     try { return newQueryBranch('found', decodeDetails(result.response!.body, input), this.client.receipt(call, result, input.ticketId)); }
@@ -119,7 +120,7 @@ export class FindCustomerByEmailOperation implements Query<FindCustomerByEmailIn
   async invoke(call: Call, input: FindCustomerByEmailInput): Promise<QueryAttempt<CustomerMatches>> {
     if (!isBareEmail(input.email)) return defect('findCustomerByEmail', emptyCustomerMatches, new TypeError('email must be one bare email address'), false);
     const resolved = await this.client.resolveCredentials(call, 'findCustomerByEmail');
-    if (!resolved.credentials) return newQueryBranch('defect', emptyCustomerMatches, {} as Receipt, resolved.failure);
+    if (!resolved.credentials) return credentialFailure(resolved, emptyCustomerMatches);
     const result = await this.client.exchange(call, resolved.credentials, 'findCustomerByEmail', 'GET', '/customers', queryString({ email: input.email, limit: 10 }));
     if (result.outcome !== 'succeeded') return queryFailure(this.client, call, result, emptyCustomerMatches);
     try {
@@ -130,36 +131,121 @@ export class FindCustomerByEmailOperation implements Query<FindCustomerByEmailIn
 }
 
 function html(text: string): string { return text.replace(/\r\n/g, '\n').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&#34;').replaceAll("'", '&#39;').replaceAll('\n', '<br>'); }
-function hasEarlierDispatch(call: Call): boolean {
-  try { return call.context.hasLastHeartbeatValue() && call.context.getLastHeartbeatValue() !== null; }
-  catch { return true; }
-}
-async function recordDispatch(call: Call): Promise<boolean> {
-  try { await call.context.recordHeartbeat({ gorgiasDispatchedCallId: call.id }); return true; }
-  catch { return false; }
-}
-async function releaseDispatch(call: Call): Promise<void> { try { await call.context.recordHeartbeat(undefined); } catch { /* A retained marker safely forces read-back. */ } }
+/** Only these statuses prove Gorgias applied nothing; any other non-2xx answer may follow an applied write. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+const retryOutcomes = new Set<Exchange['outcome']>(['rateLimited', 'notSent', 'unavailable']);
+
 function reconcileDelay(delay: number, minimum: number): number { return Math.min(60_000, Math.max(delay, minimum)); }
-async function reconcile<T>(call: Call, failure: Failure, output: T, receipt: Receipt, delay = 0, uncertainFailure = failure): Promise<MutationAttempt<T>> {
-  if (call.context.attempt < 4 && await recordDispatch(call)) return newMutationRetry(failure, reconcileDelay(delay, 15_000));
-  return newMutationUncertain(output, uncertainFailure, receipt);
+function isConclusiveWriteFailure(result: Exchange): boolean {
+  return result.outcome === 'defect' || ((result.outcome === 'notFound' || result.outcome === 'rejected') && isDefiniteRefusal(result));
 }
-async function reconcileCredentialFailure<T>(call: Call, failure: Failure, output: T, operation: string): Promise<MutationAttempt<T>> {
-  const uncertainFailure = gorgiasFailure(failure.kind, operation, 'an earlier attempt of this Step sent the request and the connection credentials are unavailable to confirm it, so it is not sent again');
-  return reconcile(call, failure, output, {} as Receipt, 0, uncertainFailure);
+/** A refusal status whose body was read, which proves Gorgias applied nothing. */
+function isDefiniteRefusal(result: Exchange): boolean { return definiteRefusalStatuses.has(result.response?.status ?? 0) && !result.bodyTooLarge && !result.bodyReflectsCredential; }
+/** A 3xx is Gorgias's documented answer for a merged ticket, which ends an update on any attempt. */
+function isMergedTicketRedirect(result: Exchange): boolean { const status = result.response?.status ?? 0; return result.outcome === 'rejected' && status >= 300 && status < 400; }
+/** A 2xx, or any answer naming a created object: Gorgias applied the write. */
+function isAcceptedWrite(result: Exchange): boolean {
+  const status = result.response?.status ?? 0;
+  return (status >= 200 && status < 300) || (result.object?.id ?? 0) > 0;
 }
-async function reconcileLookupFailure<T>(call: Call, result: Exchange, output: T, receipt: Receipt, operation: string): Promise<MutationAttempt<T>> {
+/** The ID an accepted answer names for this Step's write; zero when it names none or another object. */
+function acceptedObjectID(result: Exchange, externalID: string, ticketID = 0): number {
+  const object = result.object ?? { id: 0, externalId: '', ticketId: 0 };
+  const isOtherExternalID = object.externalId !== '' && object.externalId !== externalID;
+  const isOtherTicket = ticketID !== 0 && object.ticketId !== 0 && object.ticketId !== ticketID;
+  return object.id < 1 || isOtherExternalID || isOtherTicket ? 0 : object.id;
+}
+
+/** A fence decision that lets this attempt read back and send, with its send-cap facts. */
+class WritePermit {
+  /** Bind the fence and its decision. */ constructor(readonly fence: Fence, readonly decision: Decision) {}
+  /** The Gorgias ID an earlier attempt checkpointed after Gorgias accepted the write, or empty. */ get savedProviderId(): string { return this.decision.marker?.providerId ?? ''; }
+  /** An earlier attempt may have sent, so Gorgias is searched first and nothing is refused. */
+  get hasPossibleEarlierSend(): boolean { return this.decision.kind !== 'sendAllowed' || (this.decision.priorSendUpperBound ?? 0) > 0 || this.savedProviderId !== ''; }
+  /** Room under the cap and no saved ID proving Gorgias accepted a send. */ get canSendAfterUnconfirmedReadBack(): boolean { return this.decision.kind !== 'readBackRequired' && !this.savedProviderId; }
+  /** The saved provider ID as a number, or zero when it is unreadable. */
+  savedProviderNumber(): number { return /^[0-9]+$/.test(this.savedProviderId) && Number.isSafeInteger(Number(this.savedProviderId)) ? Number(this.savedProviderId) : 0; }
+}
+
+/** Start the SDK fence under the manifest send cap; an attempt ends this attempt before any request. */
+function beginWrite<T>(call: Call, operation: string, definition: MutationDefinition, output: T): WritePermit | MutationAttempt<T> {
+  let fence: Fence;
+  try { fence = newFence(call, definition.stepDefaults.executeMethodTimeoutMs ?? 30_000, { maxSends: definitionMaxSends(definition) }); }
+  catch { return newMutationBranch('defect', output, {} as Receipt, gorgiasFailure('LOCAL_DEFECT', operation, 'single-dispatch fence could not start')); }
+  const decision = fence.decide();
+  // FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+  if (decision.kind === 'failClosed') return newMutationRetry(gorgiasFailure('AVAILABILITY', operation, 'the dispatch checkpoint could not be read; nothing was sent in this attempt'));
+  return new WritePermit(fence, decision);
+}
+/** Map unusable credentials before any send; after a possible earlier send nothing is recorded, a transient failure retries, and a terminal one selects uncertain. */
+async function credentialFailureAttempt<T>(permit: WritePermit, operation: string, failure: Failure, isTerminal: boolean, output: T): Promise<MutationAttempt<T>> {
+  if (permit.hasPossibleEarlierSend) {
+    // notSent would hide the earlier possible send, so nothing is recorded.
+    if (!isTerminal) return newMutationRetry(gorgiasFailure('AVAILABILITY', operation, 'connection credentials could not be read; nothing was sent in this attempt'));
+    return newMutationUncertain(output, gorgiasFailure(failure.kind, operation, 'an earlier attempt of this Step may have sent the request and the connection credentials are unusable to read it back; reconnect the connection'), {} as Receipt);
+  }
+  try { await permit.fence.recordNotSent(); } catch { return newMutationRetry(gorgiasFailure('AVAILABILITY', operation, 'Dex did not record the not-sent checkpoint')); }
+  if (!isTerminal) return newMutationRetry(failure);
+  return newMutationBranch('defect', output, {} as Receipt, failure);
+}
+/** Map an external-ID lookup; undefined means this attempt may send. Only a readable answer permits a resend: a refused lookup, such as a missing ticket or an auth error, selects uncertain. */
+function readBackAttempt<T>(permit: WritePermit, result: Exchange, found: MutationAttempt<T> | undefined, receipt: Receipt, operation: string, resource: string, output: T): MutationAttempt<T> | undefined {
+  if (result.outcome === 'succeeded' && found) return found;
+  if (retryOutcomes.has(result.outcome)) return newMutationRetry(result.failure!, reconcileDelay(result.retryAfterMs, 15_000));
+  if ((result.outcome === 'succeeded' || result.outcome === 'invalid') && permit.canSendAfterUnconfirmedReadBack) return undefined;
+  const failure = result.outcome === 'succeeded'
+    ? gorgiasFailure('TRANSPORT', operation, `earlier attempts of this Step may have sent the request, the send cap is reached, and Gorgias shows no ${resource} with its external ID`)
+    : gorgiasFailure(result.failure!.kind, operation, `earlier attempts of this Step may have sent the request, and Gorgias could not confirm it: ${result.failure!.message}`);
+  return newMutationUncertain(output, failure, receipt);
+}
+/** Map the read-back of a write Gorgias accepted; it never permits a resend. A transient failure retries only when the provider ID is checkpointed, so the next attempt reads back by it. */
+function acceptedWriteAttempt<T>(isProviderIDSaved: boolean, result: Exchange, found: MutationAttempt<T> | undefined, receipt: Receipt, operation: string, resource: string, output: T): MutationAttempt<T> {
+  if (result.outcome === 'succeeded' && found) return found;
+  if (isProviderIDSaved && retryOutcomes.has(result.outcome)) return newMutationRetry(result.failure!, reconcileDelay(result.retryAfterMs, 15_000));
+  const failure = result.outcome === 'succeeded'
+    ? gorgiasFailure('PROTOCOL', operation, `Gorgias accepted the request, but reading the ${resource} back did not confirm it`)
+    : gorgiasFailure(result.failure!.kind, operation, `Gorgias accepted the request, but the ${resource} could not be read back: ${result.failure!.message}`);
+  return newMutationUncertain(output, failure, receipt);
+}
+async function preSendRetry<T>(permit: WritePermit, failure: Failure, retryAfterMs: number): Promise<MutationAttempt<T>> {
+  // A lost notSent leaves no marker, so the next attempt reads back before it sends.
+  if (!permit.hasPossibleEarlierSend) { try { await permit.fence.recordNotSent(); } catch { /* counted as a possible send */ } }
+  return newMutationRetry(failure, retryAfterMs);
+}
+/** Dispatch one POST under the fence; a refused dispatch returns its Retry attempt. */
+async function sendWrite<T>(permit: WritePermit, client: GorgiasClient, call: Call, credentials: Credentials, operation: string, path: string, payload: unknown): Promise<Exchange | MutationAttempt<T>> {
+  try { return await permit.fence.dispatch(signal => client.exchange(call, credentials, operation, 'POST', path, undefined, payload, signal)); }
+  catch (error) {
+    // Dispatch refused before sending, so nothing reached Gorgias in this attempt.
+    if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || error instanceof AggregateError) return newMutationRetry(gorgiasFailure('AVAILABILITY', operation, 'Dex did not record the dispatch checkpoint or too little attempt time remained; nothing was sent'));
+    // The claim stays, so the next attempt counts this send and reads back first.
+    return newMutationRetry(gorgiasFailure('TRANSPORT', operation, 'Gorgias request failed before a response arrived'), 2_000);
+  }
+}
+/** Map a sent write; undefined means Gorgias accepted it, even with an unusable answer. Any outcome but a definite refusal retries, and the next attempt reads back. */
+async function writeAttempt<T>(permit: WritePermit, result: Exchange, receipt: Receipt, output: T, notFoundBranch: string): Promise<MutationAttempt<T> | undefined> {
+  if (isAcceptedWrite(result)) return undefined;
   const failure = result.failure!;
-  const uncertainFailure = gorgiasFailure(failure.kind, operation, `an earlier attempt of this Step sent the request and Gorgias could not confirm it, so it is not sent again: ${failure.message}`);
-  if (['rateLimited', 'notSent', 'unavailable', 'invalid'].includes(result.outcome)) return reconcile(call, failure, output, receipt, result.retryAfterMs, uncertainFailure);
-  return newMutationUncertain(output, uncertainFailure, receipt);
+  if (result.outcome === 'rateLimited' || result.outcome === 'notSent' || (result.outcome === 'unavailable' && result.response?.status === 503)) {
+    // A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
+    try { await permit.fence.recordCanResend(); } catch { /* counted as a possible send */ }
+    return newMutationRetry(failure, result.retryAfterMs);
+  }
+  let branch = '';
+  if (result.outcome === 'notFound' && isDefiniteRefusal(result)) branch = notFoundBranch;
+  // The request was never built; after a possible earlier send this selects uncertain.
+  else if (result.outcome === 'defect') { branch = 'defect'; receipt = {} as Receipt; }
+  else if (result.outcome === 'rejected' && isDefiniteRefusal(result)) branch = 'providerRejected';
+  // A 3xx, 408, 409, other 5xx, unlisted status, or unread refusal body may follow an applied write.
+  if (!branch) return newMutationRetry(failure, reconcileDelay(result.retryAfterMs, 2_000));
+  if (permit.hasPossibleEarlierSend) return newMutationUncertain(output, failure, receipt);
+  try { await permit.fence.recordCanResend(); } catch { return newMutationRetry(gorgiasFailure('AVAILABILITY', failure.operation, 'Dex did not record the refusal checkpoint')); }
+  return newMutationBranch(branch, output, receipt, failure);
 }
-async function sendOutcome<T>(call: Call, result: Exchange, client: GorgiasClient, output: T, notFoundBranch = 'providerRejected'): Promise<MutationAttempt<T> | undefined> {
-  if (result.outcome === 'succeeded') return undefined;
-  if (result.outcome === 'rateLimited' || result.outcome === 'notSent') { await releaseDispatch(call); return newMutationRetry(result.failure!, result.retryAfterMs); }
-  if (result.outcome === 'unavailable' || result.outcome === 'invalid') return newMutationRetry(result.failure!, reconcileDelay(result.retryAfterMs, 2_000));
-  if (result.outcome === 'defect') await releaseDispatch(call);
-  return mutationFailure(client, call, result, output, notFoundBranch);
+function isExchange<T>(value: Exchange | MutationAttempt<T>): value is Exchange { return 'outcome' in value; }
+/** Checkpoint the accepted provider ID and report whether Dex saved it. */
+async function recordAcceptedWrite(permit: WritePermit, providerID: number): Promise<boolean> {
+  try { await permit.fence.recordProviderId(String(providerID)); return true; } catch { return false; }
 }
 
 /** Create one ticket and reconcile uncertain sends by external ID. */
@@ -177,16 +263,19 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
       if (input.status) validateStatus(input.status); if (input.priority) validatePriority(input.priority);
       validateTags(input.tags, 'tags'); optionalID(input.assigneeUserId, 'assigneeUserId'); optionalID(input.assigneeTeamId, 'assigneeTeamId');
     } catch (error) { return defect('createTicket', emptyCreateTicketOutput, error, true); }
-    const earlier = hasEarlierDispatch(call);
-    const resolved = await this.client.resolveCredentials(call, 'createTicket');
-    if (!resolved.credentials) return earlier ? reconcileCredentialFailure(call, resolved.failure!, emptyCreateTicketOutput, 'createTicket') : newMutationBranch('defect', emptyCreateTicketOutput, {} as Receipt, resolved.failure);
-    if (earlier || call.context.attempt > 1) {
+    const permit = beginWrite(call, 'createTicket', CreateTicketDefinition, emptyCreateTicketOutput);
+    if (!(permit instanceof WritePermit)) return permit;
+    const resolved = await this.client.resolveWriteCredentials(call, 'createTicket');
+    if (!resolved.credentials) return credentialFailureAttempt(permit, 'createTicket', resolved.failure!, resolved.isTerminal ?? true, emptyCreateTicketOutput);
+    // Gorgias accepted an earlier attempt's ticket, so it is read back by ID and never sent again.
+    if (permit.savedProviderId) return this.confirmTicket(call, resolved.credentials, permit.savedProviderNumber(), true, true);
+    if (permit.hasPossibleEarlierSend) {
       const lookup = await this.lookup(call, resolved.credentials);
-      if (lookup.result.outcome !== 'succeeded') return earlier ? reconcileLookupFailure(call, lookup.result, emptyCreateTicketOutput, lookup.receipt, 'createTicket') : unsentRequestAttempt(this.client, call, lookup.result, emptyCreateTicketOutput);
-      if (lookup.ticket) return newMutationBranch('created', { ticket: lookup.ticket, wasCreatedByEarlierAttempt: true }, lookup.receipt);
-      if (earlier) return reconcile(call, gorgiasFailure('TRANSPORT', 'createTicket', 'an earlier attempt of this Step sent the request and Gorgias shows no ticket with its external ID, so it is not sent again'), emptyCreateTicketOutput, lookup.receipt);
+      const found = lookup.ticket ? newMutationBranch('created', { ticket: lookup.ticket, wasCreatedByEarlierAttempt: true }, lookup.receipt) : undefined;
+      const readBack = readBackAttempt(permit, lookup.result, found, lookup.receipt, 'createTicket', 'ticket', emptyCreateTicketOutput);
+      if (readBack) return readBack;
+      // Gorgias shows no ticket with the external ID, so this attempt resends below the cap.
     }
-    if (!await recordDispatch(call)) return newMutationRetry(gorgiasFailure('AVAILABILITY', 'createTicket', 'Dex did not record the dispatch checkpoint; nothing was sent'), 0);
     const requester = { email: input.requester.email, ...(input.requester.name ? { name: input.requester.name } : {}) };
     const payload = {
       customer: requester, subject: input.subject, channel: 'api', via: 'api', from_agent: false,
@@ -197,11 +286,38 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
       external_id: call.idempotencyKey,
       messages: [{ channel: 'api', via: 'api', from_agent: false, sender: requester, subject: input.subject, body_text: input.description, body_html: html(input.description), stripped_text: input.description }],
     };
-    const result = await this.client.exchange(call, resolved.credentials, 'createTicket', 'POST', '/tickets', undefined, payload);
-    const terminal = await sendOutcome(call, result, this.client, emptyCreateTicketOutput);
+    const result = await sendWrite<CreateTicketOutput>(permit, this.client, call, resolved.credentials, 'createTicket', '/tickets', payload);
+    if (!isExchange(result)) return result;
+    const terminal = await writeAttempt(permit, result, this.client.receipt(call, result), emptyCreateTicketOutput, 'providerRejected');
     if (terminal) return terminal;
-    try { return newMutationBranch('created', { ticket: decodeTicket(objectBody(result.response!.body)) }, this.client.receipt(call, result)); }
-    catch (error) { return newMutationRetry(gorgiasFailure('PROTOCOL', 'createTicket', `Gorgias accepted the ticket but returned an invalid ticket: ${String(error)}`), 2_000); }
+    let ticket: Ticket | undefined;
+    if (result.outcome === 'succeeded') { try { ticket = decodeTicket(objectBody(result.response!.body)); } catch { ticket = undefined; } }
+    if (!ticket) return this.confirmAcceptedTicket(call, resolved.credentials, permit, result);
+    // The answer already proves acceptance, so a lost checkpoint changes nothing.
+    await recordAcceptedWrite(permit, ticket.id);
+    return newMutationBranch('created', { ticket }, this.client.receipt(call, result));
+  }
+  /** Read back a ticket Gorgias accepted with an unusable answer, by ID when the answer names this Step's ticket, otherwise once by external ID; it never resends. */
+  private async confirmAcceptedTicket(call: Call, credentials: Credentials, permit: WritePermit, result: Exchange): Promise<MutationAttempt<CreateTicketOutput>> {
+    const ticketID = acceptedObjectID(result, call.idempotencyKey ?? '');
+    if (ticketID) return this.confirmTicket(call, credentials, ticketID, await recordAcceptedWrite(permit, ticketID), false);
+    const lookup = await this.lookup(call, credentials);
+    const found = lookup.ticket ? newMutationBranch('created', { ticket: lookup.ticket }, lookup.receipt) : undefined;
+    return acceptedWriteAttempt(false, lookup.result, found, lookup.receipt, 'createTicket', 'ticket', emptyCreateTicketOutput);
+  }
+  /** Read GET /api/tickets/{id} and confirm it is this Step's ticket by its external ID. */
+  private async confirmTicket(call: Call, credentials: Credentials, ticketID: number, isProviderIDSaved: boolean, wasCreatedByEarlierAttempt: boolean): Promise<MutationAttempt<CreateTicketOutput>> {
+    if (ticketID < 1) return newMutationUncertain(emptyCreateTicketOutput, gorgiasFailure('PROTOCOL', 'createTicket', 'Gorgias accepted the ticket, but the checkpointed ticket ID is unreadable'), {} as Receipt);
+    const result = await this.client.exchange(call, credentials, 'createTicket', 'GET', `/tickets/${ticketID}`);
+    const receipt = this.client.receipt(call, result, ticketID);
+    let found: MutationAttempt<CreateTicketOutput> | undefined;
+    if (result.outcome === 'succeeded') {
+      try {
+        const ticket = decodeTicket(objectBody(result.response!.body));
+        if (ticket.id === ticketID && ticket.externalId === call.idempotencyKey) found = newMutationBranch('created', { ticket, ...(wasCreatedByEarlierAttempt ? { wasCreatedByEarlierAttempt } : {}) }, receipt);
+      } catch { /* An unreadable ticket does not confirm the write. */ }
+    }
+    return acceptedWriteAttempt(isProviderIDSaved, result, found, receipt, 'createTicket', 'ticket', emptyCreateTicketOutput);
   }
   private async lookup(call: Call, credentials: Credentials): Promise<{ result: Exchange; receipt: Receipt; ticket?: Ticket }> {
     const result = await this.client.exchange(call, credentials, 'createTicket', 'GET', '/tickets', queryString({ external_id: call.idempotencyKey, limit: 5 }));
@@ -234,14 +350,17 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
       if (input.addTags?.some(tag => input.removeTags?.includes(tag))) throw new TypeError('tag is in both addTags and removeTags');
       if (!input.status && !input.priority && !input.assigneeUserId && !input.assigneeTeamId && !input.addTags?.length && !input.removeTags?.length) throw new TypeError('at least one change is required');
     } catch (error) { return defect('updateTicket', emptyUpdateTicketOutput, error, true); }
-    const resolved = await this.client.resolveCredentials(call, 'updateTicket');
+    const resolved = await this.client.resolveWriteCredentials(call, 'updateTicket');
+    // defect would hide a change an earlier attempt may have sent; repeating it is safe.
+    if (!resolved.credentials && (resolved.isTerminal === false || call.context.attempt > 1)) return newMutationRetry(resolved.failure!);
     if (!resolved.credentials) return newMutationBranch('defect', emptyUpdateTicketOutput, {} as Receipt, resolved.failure);
     const ticketID = input.ticketId;
     const read = await this.client.exchange(call, resolved.credentials, 'updateTicket', 'GET', `/tickets/${ticketID}`);
-    if (read.outcome !== 'succeeded') return mutationFailure(this.client, call, read, emptyUpdateTicketOutput, 'notFound', ticketID);
+    // An earlier attempt's write may have applied, so only a definite refusal or a merged ticket selects a branch.
+    if (read.outcome !== 'succeeded') return isConclusiveWriteFailure(read) || isMergedTicketRedirect(read) ? mutationFailure(this.client, call, read, emptyUpdateTicketOutput, 'notFound', ticketID) : newMutationRetry(read.failure!, read.retryAfterMs);
     let current: Ticket;
     try { current = decodeTicket(objectBody(read.response!.body)); if (current.id !== ticketID) throw new TypeError('ticket response is for another ticket'); }
-    catch (error) { return protocol(this.client, call, 'updateTicket', emptyUpdateTicketOutput, read, 'Gorgias returned an invalid ticket', error, true); }
+    catch (error) { return newMutationRetry(gorgiasFailure('PROTOCOL', 'updateTicket', `Gorgias returned an invalid ticket: ${error instanceof Error ? error.message : 'invalid response'}`)); }
     const fields: Record<string, unknown> = {};
     if (input.status && input.status !== current.status) fields.status = input.status;
     if (input.priority && input.priority !== current.priority) fields.priority = input.priority;
@@ -258,8 +377,10 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     for (const write of writes) {
       const result = await this.client.exchange(call, resolved.credentials, 'updateTicket', write.method, write.path, undefined, write.payload);
       if (result.outcome !== 'succeeded') {
+        // After a possible write, only a definite refusal selects a branch; anything else retries the change.
+        if (!isConclusiveWriteFailure(result)) return newMutationRetry(result.failure!, result.retryAfterMs);
         let output: UpdateTicketOutput = { ticket: current };
-        if (hasAppliedWrite && !['rateLimited', 'notSent', 'unavailable'].includes(result.outcome)) {
+        if (hasAppliedWrite) {
           const reread = await this.client.exchange(call, resolved.credentials, 'updateTicket', 'GET', `/tickets/${ticketID}`);
           if (reread.outcome === 'succeeded') { try { output = { ticket: decodeTicket(objectBody(reread.response!.body)) }; } catch { /* The earlier valid ticket remains safe to return. */ } }
         }
@@ -271,13 +392,16 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
           const ticket = decodeTicket(objectBody(result.response!.body));
           if (ticket.id !== ticketID) throw new TypeError('updated ticket ID differs');
           return newMutationBranch('updated', { ticket }, this.client.receipt(call, result, ticketID));
-        } catch (error) { return protocol(this.client, call, 'updateTicket', { ticket: current }, result, 'Gorgias returned an invalid updated ticket', error, true); }
+        } catch (error) {
+          // The PUT sets final values, so an unusable answer repeats it.
+          return newMutationRetry(gorgiasFailure('PROTOCOL', 'updateTicket', `Gorgias accepted the change but returned an invalid updated ticket: ${error instanceof Error ? error.message : 'invalid response'}`));
+        }
       }
     }
     const reread = await this.client.exchange(call, resolved.credentials, 'updateTicket', 'GET', `/tickets/${ticketID}`);
-    if (reread.outcome !== 'succeeded') return mutationFailure(this.client, call, reread, { ticket: current }, 'notFound', ticketID);
+    if (reread.outcome !== 'succeeded') return isConclusiveWriteFailure(reread) ? mutationFailure(this.client, call, reread, { ticket: current }, 'notFound', ticketID) : newMutationRetry(reread.failure!, reread.retryAfterMs);
     try { return newMutationBranch('updated', { ticket: decodeTicket(objectBody(reread.response!.body)) }, this.client.receipt(call, undefined, ticketID)); }
-    catch (error) { return protocol(this.client, call, 'updateTicket', { ticket: current }, reread, 'Gorgias returned an invalid ticket', error, true); }
+    catch (error) { return newMutationRetry(gorgiasFailure('PROTOCOL', 'updateTicket', `Gorgias returned an invalid ticket after the change: ${error instanceof Error ? error.message : 'invalid response'}`)); }
   }
 }
 
@@ -312,6 +436,12 @@ function replyRoute(ticketWire: Record<string, unknown>): { supportAddress: stri
   return { supportAddress, customerAddress: address(messageSource(newestCustomer)?.from), subject: rawSubject.toLowerCase().startsWith('re:') ? rawSubject : `Re: ${rawSubject}`, integrationID };
 }
 
+/** Select branch on a first send; after a possible earlier send, select uncertain. */
+function replyRouteFailure(permit: WritePermit, branch: string, failure: Failure, receipt: Receipt): MutationAttempt<AddNoteOutput> {
+  if (permit.hasPossibleEarlierSend) return newMutationUncertain(emptyAddNoteOutput, gorgiasFailure(failure.kind, 'addNote', `an earlier attempt of this Step may have sent the reply, and the ticket could not be read to route it again: ${failure.message}`), receipt);
+  return newMutationBranch(branch, emptyAddNoteOutput, receipt, failure);
+}
+
 /** Add one internal note or routed email reply with read-back recovery. */
 export class AddNoteOperation implements Mutation<AddNoteInput, AddNoteOutput> {
   /** Bind a client. */ constructor(private readonly client: GorgiasClient) {}
@@ -321,46 +451,74 @@ export class AddNoteOperation implements Mutation<AddNoteInput, AddNoteOutput> {
   async invoke(call: Call, input: AddNoteInput): Promise<MutationAttempt<AddNoteOutput>> {
     try { requireID(input.ticketId, 'ticketId'); requireText(input.body, 'body'); }
     catch (error) { return defect('addNote', emptyAddNoteOutput, error, true); }
-    const earlier = hasEarlierDispatch(call);
-    const resolved = await this.client.resolveCredentials(call, 'addNote');
-    if (!resolved.credentials) return earlier ? reconcileCredentialFailure(call, resolved.failure!, emptyAddNoteOutput, 'addNote') : newMutationBranch('defect', emptyAddNoteOutput, {} as Receipt, resolved.failure);
-    if (earlier || call.context.attempt > 1) {
+    const permit = beginWrite(call, 'addNote', AddNoteDefinition, emptyAddNoteOutput);
+    if (!(permit instanceof WritePermit)) return permit;
+    const resolved = await this.client.resolveWriteCredentials(call, 'addNote');
+    if (!resolved.credentials) return credentialFailureAttempt(permit, 'addNote', resolved.failure!, resolved.isTerminal ?? true, emptyAddNoteOutput);
+    // Gorgias accepted an earlier attempt's message, so it is read back by ID and never sent again.
+    if (permit.savedProviderId) return this.confirmMessage(call, resolved.credentials, input.ticketId, permit.savedProviderNumber(), true, true);
+    if (permit.hasPossibleEarlierSend) {
       const lookup = await this.lookup(call, resolved.credentials, input.ticketId);
-      if (lookup.result.outcome !== 'succeeded') return earlier ? reconcileLookupFailure(call, lookup.result, emptyAddNoteOutput, lookup.receipt, 'addNote') : unsentRequestAttempt(this.client, call, lookup.result, emptyAddNoteOutput, 'notFound', input.ticketId);
-      if (lookup.message) return newMutationBranch('added', { message: lookup.message, wasCreatedByEarlierAttempt: true }, lookup.receipt);
-      if (earlier) return reconcile(call, gorgiasFailure('TRANSPORT', 'addNote', 'an earlier attempt of this Step sent the request and Gorgias shows no message with its external ID, so it is not sent again'), emptyAddNoteOutput, lookup.receipt);
+      const found = lookup.message ? newMutationBranch('added', { message: lookup.message, wasCreatedByEarlierAttempt: true }, lookup.receipt) : undefined;
+      const readBack = readBackAttempt(permit, lookup.result, found, lookup.receipt, 'addNote', 'message', emptyAddNoteOutput);
+      if (readBack) return readBack;
+      // The ticket shows no message with the external ID, so this attempt resends below the cap.
     }
     const payload: Record<string, unknown> = { channel: 'internal-note', via: 'api', from_agent: true, public: false, sender: { email: resolved.credentials.email }, body_text: input.body, body_html: html(input.body), external_id: call.idempotencyKey };
     if (input.isPublicReply) {
       const read = await this.client.exchange(call, resolved.credentials, 'addNote', 'GET', `/tickets/${input.ticketId}`);
-      if (read.outcome !== 'succeeded') return mutationFailure(this.client, call, read, emptyAddNoteOutput, 'notFound', input.ticketId, 'providerRejected');
+      const readReceipt = this.client.receipt(call, read, input.ticketId);
+      if (retryOutcomes.has(read.outcome)) return preSendRetry(permit, read.failure!, read.retryAfterMs);
+      if (read.outcome !== 'succeeded') return replyRouteFailure(permit, read.outcome === 'notFound' ? 'notFound' : read.outcome === 'defect' ? 'defect' : 'providerRejected', read.failure!, readReceipt);
       let ticketWire: Record<string, unknown>;
       try {
         ticketWire = objectBody(read.response!.body);
         const ticket = decodeTicket(ticketWire);
         if (ticket.id !== input.ticketId) throw new TypeError('ticket response is for another ticket');
-      } catch (error) { return protocol(this.client, call, 'addNote', emptyAddNoteOutput, read, 'Gorgias returned an invalid ticket, so the reply could not be routed', error, true, 'providerRejected'); }
+      } catch (error) { return replyRouteFailure(permit, 'providerRejected', gorgiasFailure('PROTOCOL', 'addNote', `Gorgias returned an invalid ticket, so the reply could not be routed: ${error instanceof Error ? error.message : 'invalid response'}`), readReceipt); }
       try {
         const route = replyRoute(ticketWire);
         payload.channel = 'email'; payload.public = true; payload.subject = route.subject;
         if (route.integrationID) payload.integration_id = route.integrationID;
         payload.receiver = { email: route.customerAddress };
         payload.source = { type: 'email', from: { address: route.supportAddress }, to: [{ address: route.customerAddress }] };
-      } catch (error) { return newMutationBranch('providerRejected', emptyAddNoteOutput, this.client.receipt(call, read, input.ticketId), gorgiasFailure('VALIDATION', 'addNote', error instanceof Error ? error.message : 'Gorgias could not route the reply')); }
+      } catch (error) { return replyRouteFailure(permit, 'providerRejected', gorgiasFailure('VALIDATION', 'addNote', error instanceof Error ? error.message : 'Gorgias could not route the reply'), readReceipt); }
     }
-    if (!await recordDispatch(call)) return newMutationRetry(gorgiasFailure('AVAILABILITY', 'addNote', 'Dex did not record the dispatch checkpoint; nothing was sent'), 0);
-    const result = await this.client.exchange(call, resolved.credentials, 'addNote', 'POST', `/tickets/${input.ticketId}/messages`, undefined, payload);
-    const terminal = await sendOutcome(call, result, this.client, emptyAddNoteOutput, 'notFound');
+    const result = await sendWrite<AddNoteOutput>(permit, this.client, call, resolved.credentials, 'addNote', `/tickets/${input.ticketId}/messages`, payload);
+    if (!isExchange(result)) return result;
+    const terminal = await writeAttempt(permit, result, this.client.receipt(call, result), emptyAddNoteOutput, 'notFound');
     if (terminal) return terminal;
-    try {
-      const message = decodeMessage(objectBody(result.response!.body));
-      if (message.ticketId && message.ticketId !== input.ticketId) throw new TypeError('message response is for another ticket');
-      if (message.externalId && message.externalId !== call.idempotencyKey) throw new TypeError('message response is another message');
-      message.ticketId = input.ticketId;
-      return newMutationBranch('added', { message }, this.client.receipt(call, result, message.id));
-    } catch (error) { return newMutationRetry(gorgiasFailure('PROTOCOL', 'addNote', `Gorgias accepted the message but returned an invalid message: ${String(error)}`), 2_000); }
+    let message: TicketMessage | undefined;
+    if (result.outcome === 'succeeded') {
+      try {
+        message = decodeMessage(objectBody(result.response!.body));
+        if (message.ticketId && message.ticketId !== input.ticketId) throw new TypeError('message response is for another ticket');
+        if (message.externalId && message.externalId !== call.idempotencyKey) throw new TypeError('message response is another message');
+        message.ticketId = input.ticketId;
+      } catch { message = undefined; }
+    }
+    if (!message) return this.confirmAcceptedMessage(call, resolved.credentials, input.ticketId, permit, result);
+    // The answer already proves acceptance, so a lost checkpoint changes nothing.
+    await recordAcceptedWrite(permit, message.id);
+    return newMutationBranch('added', { message }, this.client.receipt(call, result, message.id));
   }
-  private async lookup(call: Call, credentials: Credentials, ticketID: number): Promise<{ result: Exchange; receipt: Receipt; message?: TicketMessage }> {
+  /** Read back a message Gorgias accepted with an unusable answer, by ID when the answer names this Step's message, otherwise once by external ID; it never resends. */
+  private async confirmAcceptedMessage(call: Call, credentials: Credentials, ticketID: number, permit: WritePermit, result: Exchange): Promise<MutationAttempt<AddNoteOutput>> {
+    const messageID = acceptedObjectID(result, call.idempotencyKey ?? '', ticketID);
+    if (messageID) return this.confirmMessage(call, credentials, ticketID, messageID, await recordAcceptedWrite(permit, messageID), false);
+    const lookup = await this.lookup(call, credentials, ticketID);
+    const found = lookup.message ? newMutationBranch('added', { message: lookup.message }, lookup.receipt) : undefined;
+    return acceptedWriteAttempt(false, lookup.result, found, lookup.receipt, 'addNote', 'message', emptyAddNoteOutput);
+  }
+  /** Read the ticket and confirm the message with messageID carries this Step's external ID. */
+  private async confirmMessage(call: Call, credentials: Credentials, ticketID: number, messageID: number, isProviderIDSaved: boolean, wasCreatedByEarlierAttempt: boolean): Promise<MutationAttempt<AddNoteOutput>> {
+    if (messageID < 1) return newMutationUncertain(emptyAddNoteOutput, gorgiasFailure('PROTOCOL', 'addNote', 'Gorgias accepted the message, but the checkpointed message ID is unreadable'), {} as Receipt);
+    const lookup = await this.lookup(call, credentials, ticketID, messageID);
+    const found = lookup.message ? newMutationBranch('added', { message: lookup.message, ...(wasCreatedByEarlierAttempt ? { wasCreatedByEarlierAttempt } : {}) }, lookup.receipt) : undefined;
+    return acceptedWriteAttempt(isProviderIDSaved, lookup.result, found, lookup.receipt, 'addNote', 'message', emptyAddNoteOutput);
+  }
+  /** Find this Step's message among the ticket's messages by external ID and, when messageID is positive, by ID. */
+  private async lookup(call: Call, credentials: Credentials, ticketID: number, messageID = 0): Promise<{ result: Exchange; receipt: Receipt; message?: TicketMessage }> {
     const result = await this.client.exchange(call, credentials, 'addNote', 'GET', `/tickets/${ticketID}`);
     const receipt = this.client.receipt(call, result, ticketID);
     if (result.outcome !== 'succeeded') return { result, receipt };
@@ -368,7 +526,7 @@ export class AddNoteOperation implements Mutation<AddNoteInput, AddNoteOutput> {
       const ticketWire = objectBody(result.response!.body);
       if (decodeTicket(ticketWire).id !== ticketID) throw new TypeError('ticket response is for another ticket');
       for (const wire of messageList(ticketWire)) {
-        if (wire.external_id !== call.idempotencyKey) continue;
+        if (wire.external_id !== call.idempotencyKey || (messageID > 0 && wire.id !== messageID)) continue;
         try { const message = decodeMessage(wire); message.ticketId = ticketID; return { result, receipt: this.client.receipt(call, result, message.id), message }; }
         catch { /* Keep looking for a valid message with this external ID. */ }
       }

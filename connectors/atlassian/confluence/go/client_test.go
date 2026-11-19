@@ -4,6 +4,8 @@
 package confluence_test
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -179,12 +182,34 @@ func TestRateLimitedReadRetriesAfterRetryAfter(t *testing.T) {
 
 func TestUnavailableCredentialsSelectDefectWithoutAProviderRequest(t *testing.T) {
 	provider := newRecordingConfluence(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
-	client, err := confluence.New(confluence.Config{CloudID: testCloudID, Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[confluence.Credentials]{})
+	client, err := confluence.New(confluence.Config{CloudID: testCloudID, Endpoint: provider.URL}, failingConfluenceCredentials{sdkgo.ErrReauthorizationRequired})
 	require.NoError(t, err)
 	result, err := sdkgo.RunMutation(newTestDexContext("no-credentials"), client.CreatePage(), confluenceConnection, validCreatePageInput())
 	require.NoError(t, err)
 	require.Equal(t, confluence.CreatePageBranchDefect, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+}
+
+func TestTransientCredentialFailuresRetryWithoutAProviderRequest(t *testing.T) {
+	provider := newRecordingConfluence(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+	for name, cause := range map[string]error{
+		"broker unavailable": fmt.Errorf("resolve: %w", projectconfig.ErrCredentialBrokerUnavailable),
+		"untyped store read": errors.New("project object read failed"),
+		"not configured":     errors.New("connection is not configured"),
+		"not refreshed":      projectconfig.ErrRejectedCredentialNotRefreshed,
+	} {
+		client, err := confluence.New(confluence.Config{CloudID: testCloudID, Endpoint: provider.URL}, failingConfluenceCredentials{cause})
+		require.NoError(t, err)
+		_, err = sdkgo.RunMutation(newTestDexContext("transient-create"), client.CreatePage(), confluenceConnection, validCreatePageInput())
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		_, err = sdkgo.RunQuery(newTestDexContext("transient-read"), client.GetPage(), confluenceConnection, confluence.GetPageInput{PageID: testPolicyPageID})
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		ctx := newTestDexContext("transient-comment")
+		_, err = sdkgo.RunMutation(ctx, client.AddComment(), confluenceConnection, confluence.AddCommentInput{PageID: testPolicyPageID, Body: "Approved."})
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		require.True(t, ctx.hasHeartbeat(), name+": a first send records notSent")
+		require.Contains(t, string(ctx.heartbeat), `"notSent"`, name)
+	}
 }
 
 func TestRedirectsAreNeverFollowed(t *testing.T) {

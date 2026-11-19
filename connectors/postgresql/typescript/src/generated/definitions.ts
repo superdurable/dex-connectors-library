@@ -57,7 +57,7 @@ export const ExecuteStatementBranchCompleted = ExecuteStatementBranch.Completed;
 export const ExecuteStatementBranchLimitExceeded = ExecuteStatementBranch.LimitExceeded;
 /** PostgreSQL conclusively refused the connection, statement, or commit, such as a constraint violation, a syntax error, or a permission error; nothing was written. */
 export const ExecuteStatementBranchProviderRejected = ExecuteStatementBranch.ProviderRejected;
-/** The connection failed after COMMIT was sent, so whether PostgreSQL committed the write is unknown. */
+/** Retained for identity stability and never selected: a COMMIT with an unknown outcome is retried, because execute statements must be repeat-safe. */
 export const ExecuteStatementBranchUncertain = ExecuteStatementBranch.Uncertain;
 /** PostgreSQL returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written. */
 export const ExecuteStatementBranchInvalidResponse = ExecuteStatementBranch.InvalidResponse;
@@ -70,11 +70,50 @@ export const ExecuteStatementDefinition: MutationDefinition = {
     { id: "completed", description: "PostgreSQL committed the statement's transaction; the Result holds the command, rows affected, and any RETURNING rows." },
     { id: "limitExceeded", description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", optional: true },
     { id: "providerRejected", description: "PostgreSQL conclusively refused the connection, statement, or commit, such as a constraint violation, a syntax error, or a permission error; nothing was written.", optional: true },
-    { id: "uncertain", description: "The connection failed after COMMIT was sent, so whether PostgreSQL committed the write is unknown.", optional: true },
+    { id: "uncertain", description: "Retained for identity stability and never selected: a COMMIT with an unknown outcome is retried, because execute statements must be repeat-safe.", optional: true },
     { id: "invalidResponse", description: "PostgreSQL returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for execute. */
 export const ExecuteStatementMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
+
+/** Branch IDs for executeNonIdempotent. */
+export const ExecuteStatementNonIdempotentBranch = {
+  Completed: "completed",
+  LimitExceeded: "limitExceeded",
+  ProviderRejected: "providerRejected",
+  Uncertain: "uncertain",
+  InvalidResponse: "invalidResponse",
+  Defect: "defect",
+} as const;
+/** PostgreSQL committed the statement's transaction; the Result holds the command, rows affected, and any RETURNING rows. */
+export const ExecuteStatementNonIdempotentBranchCompleted = ExecuteStatementNonIdempotentBranch.Completed;
+/** The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written. */
+export const ExecuteStatementNonIdempotentBranchLimitExceeded = ExecuteStatementNonIdempotentBranch.LimitExceeded;
+/** PostgreSQL conclusively refused the connection, statement, or commit, such as a constraint violation, a syntax error, or a permission error; nothing was written. */
+export const ExecuteStatementNonIdempotentBranchProviderRejected = ExecuteStatementNonIdempotentBranch.ProviderRejected;
+/** COMMIT may have reached PostgreSQL, in this or an earlier attempt, and its outcome is unknown; the connector never runs the statement again, so inspect the database before writing again. */
+export const ExecuteStatementNonIdempotentBranchUncertain = ExecuteStatementNonIdempotentBranch.Uncertain;
+/** PostgreSQL returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written. */
+export const ExecuteStatementNonIdempotentBranchInvalidResponse = ExecuteStatementNonIdempotentBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
+export const ExecuteStatementNonIdempotentBranchDefect = ExecuteStatementNonIdempotentBranch.Defect;
+/** Manifest definition for executeNonIdempotent. */
+export const ExecuteStatementNonIdempotentDefinition: MutationDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "executeNonIdempotent" },
+  branches: [
+    { id: "completed", description: "PostgreSQL committed the statement's transaction; the Result holds the command, rows affected, and any RETURNING rows." },
+    { id: "limitExceeded", description: "The statement affected more rows than maxRowsAffected, or its RETURNING rows exceeded maxRows or maxResponseBytes, so the connector rolled back and nothing was written.", optional: true },
+    { id: "providerRejected", description: "PostgreSQL conclusively refused the connection, statement, or commit, such as a constraint violation, a syntax error, or a permission error; nothing was written.", optional: true },
+    { id: "uncertain", description: "COMMIT may have reached PostgreSQL, in this or an earlier attempt, and its outcome is unknown; the connector never runs the statement again, so inspect the database before writing again.", optional: true },
+    { id: "invalidResponse", description: "PostgreSQL returned a value the connector cannot decode under its documented type mapping; the connector rolled back and nothing was written.", optional: true },
+    { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "unsafe",
+};
+/** Manifest metadata for executeNonIdempotent. */
+export const ExecuteStatementNonIdempotentMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

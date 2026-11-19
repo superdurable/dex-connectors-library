@@ -6,7 +6,7 @@ metadata:
   description: Find, read, upsert, and update Zoho CRM records such as contacts, accounts, and deals in the connection's Zoho data center, list records changed since a watermark, and read a module's fields and picklist values, keeping Zoho CRM's own field names and stages.
   company: Zoho
   categories: [crm-sales]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: zoho
   codegen:
@@ -17,7 +17,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete Zoho CRM API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a module has unusually many fields or records carry long text. An oversized response selects invalidResponse and is never partly read."
+        description: "Maximum complete Zoho CRM API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when a module has unusually many fields or records carry long text. An oversized response is never partly read; a read selects invalidResponse and a write retries."
         required: false
         default: 4194304
   auth:
@@ -287,12 +287,12 @@ spec:
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-zoho-crm'
       operations: [findRecords, getRecord, listModifiedRecords, listModuleFields, upsertRecord, updateRecord]
       triggers: []
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-zoho-crm
       timestampFormat: rfc3339Nano
       operations: [findRecords, getRecord, listModifiedRecords, upsertRecord, updateRecord, listModuleFields]
@@ -408,6 +408,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeat finds the record an earlier attempt wrote by its duplicate-check value and updates it.
+        repeatOnUnknown: safe
       mocks:
         - name: acmeContact
           branch: upserted
@@ -452,6 +454,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeated update sets the same absolute field values on the same record ID.
+        repeatOnUnknown: safe
       mocks:
         - name: advancedRenewalDeal
           branch: updated

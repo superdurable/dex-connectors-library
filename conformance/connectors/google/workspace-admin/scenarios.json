@@ -708,6 +708,69 @@
       "operation": "createUser"
     },
     {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23ced",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"conditionNotMet\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hr-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 412
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hr-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hr-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-unlisted-status-retries",
+      "operation": "createUser"
+    },
+    {
       "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
       "exchanges": [],
       "expected": {
@@ -2269,30 +2332,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "user": {
-            "changePasswordAtNextLogin": false,
-            "id": "",
-            "isAdmin": false,
-            "isArchived": false,
-            "isDelegatedAdmin": false,
-            "isEnforcedIn2Sv": false,
-            "isEnrolledIn2Sv": false,
-            "isMailboxSetup": false,
-            "isSuspended": false,
-            "name": {
-              "familyName": "",
-              "givenName": ""
-            },
-            "orgUnitPath": "",
-            "primaryEmail": ""
-          },
-          "wasAlreadyCreated": false
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2306,7 +2349,7 @@
         "recoveryEmail": "recovery@example.com",
         "recoveryPhone": "+16506661212"
       },
-      "name": "createUser-invalid-response",
+      "name": "createUser-unusable-read-back-retries",
       "operation": "createUser"
     },
     {
@@ -2458,32 +2501,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "aliases": [
-            "a@example.com"
-          ],
-          "changePasswordAtNextLogin": false,
-          "customerId": "C123",
-          "id": "1001",
-          "isAdmin": false,
-          "isArchived": false,
-          "isDelegatedAdmin": false,
-          "isEnforcedIn2Sv": false,
-          "isEnrolledIn2Sv": false,
-          "isMailboxSetup": false,
-          "isSuspended": false,
-          "name": {
-            "familyName": "Lovelace",
-            "fullName": "Ada Lovelace",
-            "givenName": "Ada"
-          },
-          "orgUnitPath": "/Engineering",
-          "primaryEmail": "ada@example.com"
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2491,7 +2512,7 @@
       "input": {
         "userKey": "ada@example.com"
       },
-      "name": "suspendUser-unchanged",
+      "name": "suspendUser-contradicting-success-retries",
       "operation": "suspendUser"
     },
     {
@@ -2521,27 +2542,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "changePasswordAtNextLogin": false,
-          "id": "",
-          "isAdmin": false,
-          "isArchived": false,
-          "isDelegatedAdmin": false,
-          "isEnforcedIn2Sv": false,
-          "isEnrolledIn2Sv": false,
-          "isMailboxSetup": false,
-          "isSuspended": false,
-          "name": {
-            "familyName": "",
-            "givenName": ""
-          },
-          "orgUnitPath": "",
-          "primaryEmail": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2549,7 +2553,7 @@
       "input": {
         "userKey": "ada@example.com"
       },
-      "name": "suspendUser-invalid-response",
+      "name": "suspendUser-unusable-response-retries",
       "operation": "suspendUser"
     },
     {
@@ -2700,33 +2704,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "aliases": [
-            "a@example.com"
-          ],
-          "changePasswordAtNextLogin": false,
-          "customerId": "C123",
-          "id": "1001",
-          "isAdmin": false,
-          "isArchived": false,
-          "isDelegatedAdmin": false,
-          "isEnforcedIn2Sv": false,
-          "isEnrolledIn2Sv": false,
-          "isMailboxSetup": false,
-          "isSuspended": true,
-          "name": {
-            "familyName": "Lovelace",
-            "fullName": "Ada Lovelace",
-            "givenName": "Ada"
-          },
-          "orgUnitPath": "/Engineering",
-          "primaryEmail": "ada@example.com",
-          "suspensionReason": "ADMIN"
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2734,7 +2715,7 @@
       "input": {
         "userKey": "ada@example.com"
       },
-      "name": "unsuspendUser-unchanged",
+      "name": "unsuspendUser-contradicting-success-retries",
       "operation": "unsuspendUser"
     },
     {
@@ -2764,27 +2745,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "changePasswordAtNextLogin": false,
-          "id": "",
-          "isAdmin": false,
-          "isArchived": false,
-          "isDelegatedAdmin": false,
-          "isEnforcedIn2Sv": false,
-          "isEnrolledIn2Sv": false,
-          "isMailboxSetup": false,
-          "isSuspended": false,
-          "name": {
-            "familyName": "",
-            "givenName": ""
-          },
-          "orgUnitPath": "",
-          "primaryEmail": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2792,7 +2756,7 @@
       "input": {
         "userKey": "ada@example.com"
       },
-      "name": "unsuspendUser-invalid-response",
+      "name": "unsuspendUser-unusable-response-retries",
       "operation": "unsuspendUser"
     },
     {
@@ -3017,18 +2981,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "membership": {
-            "groupKey": "",
-            "memberId": "",
-            "role": ""
-          },
-          "wasAlreadyMember": false
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3038,7 +2994,7 @@
         "memberEmail": "ada@example.com",
         "role": "MANAGER"
       },
-      "name": "addUserToGroup-invalid-response",
+      "name": "addUserToGroup-unusable-read-back-retries",
       "operation": "addUserToGroup"
     },
     {
@@ -3248,15 +3204,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "groupKey": "",
-          "memberKey": "",
-          "wasAlreadyRemoved": false
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3265,7 +3216,7 @@
         "groupKey": "engineering@example.com",
         "memberKey": "ada@example.com"
       },
-      "name": "removeUserFromGroup-invalid-response",
+      "name": "removeUserFromGroup-unusable-group-check-retries",
       "operation": "removeUserFromGroup"
     },
     {

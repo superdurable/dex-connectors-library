@@ -1,6 +1,6 @@
 # Xero Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/xero/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/xero/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/xero`.
 
@@ -18,8 +18,8 @@ operation-specific Dex Step factories:
 | `xero.NewFindContactByEmailStep` | Query | `found` | `notFound`, `ambiguous`, `providerRejected`, `dailyLimitReached`, `invalidResponse`, `defect` |
 | `xero.NewGetInvoiceStep` | Query | `found` | `notFound`, `providerRejected`, `dailyLimitReached`, `invalidResponse`, `defect` |
 | `xero.NewListInvoicesStep` | Query | `listed` | `providerRejected`, `dailyLimitReached`, `invalidResponse`, `defect` |
-| `xero.NewCreateInvoiceStep` | Mutation | `created` | `providerRejected`, `dailyLimitReached`, `uncertain`, `defect` |
-| `xero.NewRecordPaymentStep` | Mutation | `recorded` | `providerRejected`, `dailyLimitReached`, `uncertain`, `defect` |
+| `xero.NewCreateInvoiceStep` | Mutation | `created` | `providerRejected`, `dailyLimitReached`, `uncertain` (a cached 500, or a credential or local failure on a later attempt), `defect` |
+| `xero.NewRecordPaymentStep` | Mutation | `recorded` | `providerRejected`, `dailyLimitReached`, `uncertain` (a cached 500, or a credential or local failure on a later attempt), `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
@@ -246,11 +246,25 @@ same key and body:
 - a lost response, a timeout, a 429 other than the daily limit, or a 502,
   503, or 504 is retried with the identical request, and Xero replays the
   first invoice or payment;
-- a 500 selects `uncertain` without a retry: Xero caches an internal error
-  under the key, so retrying cannot change the outcome, and the write may have
-  partly run. Read back with `listInvoices` by reference, or `getInvoice`,
+- an accepted 2xx that cannot be decoded is an unknown outcome and is retried
+  with the identical request too;
+- a 500 selects `uncertain` after one request: Xero caches the 500 under the
+  key and replays it to every resend, so retrying can never learn whether the
+  write happened. Read back with `listInvoices` by reference, or `getInvoice`,
   before writing again with a new Step execution;
-- an accepted 2xx that cannot be decoded also selects `uncertain`;
+- on a later attempt, which may follow a created write, a 401, a 403, a
+  revoked grant, or unusable connection credentials select `uncertain`
+  instead of `providerRejected` or `defect`: Xero checks credentials before
+  it replays the keyed answer, so they cannot prove that nothing was written.
+  Read back with `listInvoices` by reference before writing again. Other
+  definite refusals, such as a 400 or a 422, are replayed under the key and
+  keep `providerRejected`;
+- a credential that resolves to unusable material, or a resolve failure that
+  needs a person (reauthorization, a missing or unselected connection, or a
+  broker refusal), is terminal; every other resolve failure, such as an
+  unavailable token endpoint or credential broker, a timeout, or a connection
+  that is not configured yet, retries on every attempt, because nothing
+  reached Xero;
 - the four-minute retry window plus the 30-second Execute timeout stays
   inside the six-minute key lifetime, because a repeat after expiry would be
   processed as new.
@@ -289,15 +303,17 @@ errors, such as
 | 401 | `providerRejected`, `AUTHENTICATION`, after one token refresh and resend only when the stored token has expired |
 | 403 | `providerRejected`, `AUTHORIZATION`; an OAuth tenant is read again next time |
 | 404 | `notFound` where declared, otherwise `providerRejected` |
-| 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed |
+| 3xx | `providerRejected`, `PROTOCOL`, for a read; Retry under the same Idempotency-Key for a write; redirects are never followed |
 | 429 daily | `dailyLimitReached`, `QUOTA_EXHAUSTED` |
 | 429 other | Retry after `Retry-After` |
-| 500 | Retry for a read; `uncertain` for a write |
+| 500 | Retry for a read; `uncertain`, `AVAILABILITY`, for a write, because Xero replays the cached 500 under the same Idempotency-Key |
 | 408, 502, 503, 504, transport failure | Retry |
-| 501, other 4xx | `providerRejected` |
-| oversized, malformed, or credential-reflecting 2xx | `invalidResponse`, or `uncertain` for a write |
+| 409, 501, other 4xx except 411, 413, 414, 415, and 422 | `providerRejected` for a read; Retry under the same Idempotency-Key for a write, because the status does not prove Xero refused it |
+| 411, 413, 414, 415, 422 | `providerRejected` |
+| oversized, malformed, or credential-reflecting 2xx | `invalidResponse` for a read; Retry under the same Idempotency-Key for a write |
 | rejected client, grant, or scope at the token endpoint | `providerRejected`, `AUTHENTICATION` |
-| invalid input or connection configuration | `defect`, with no request |
+| unavailable token endpoint or credential broker, or any other transient resolve failure | Retry on every attempt, `AVAILABILITY`, with no request |
+| invalid input, unusable credential material, or a missing, unselected, or broker-rejected connection | `defect`, with no request |
 
 ## invoiceChanged Trigger
 
@@ -415,7 +431,7 @@ This snippet comes from
 ## TypeScript package
 
 The [TypeScript package](typescript/README.md) implements all six operations and
-the `invoiceChanged` Trigger at `@superdurable/connector-xero` version `0.2.0`, on
+the `invoiceChanged` Trigger at `@superdurable/connector-xero` version `0.2.1`, on
 the TypeScript poll Trigger kit of `@superdurable/connectors-sdk` `0.12.0`. Its
 cursor documents and Trigger inbox payloads match Go's, so Go and TypeScript
 replicas share a binding's cursor and inbox. The
@@ -480,7 +496,7 @@ become visible after its `UpdatedDateUTC`.
 
 ## Python package
 
-`connectors/xero/python` publishes `dex-connector-xero` v0.2.0 with all six
+`connectors/xero/python` publishes `dex-connector-xero` v0.2.1 with all six
 operations and the `invoiceChanged` Trigger on the Python poll Trigger kit
 (`dex-connectors-sdk>=0.12.0`). Its cursor documents and Trigger inbox
 payloads match Go's byte for byte, so Go and Python replicas share a binding's

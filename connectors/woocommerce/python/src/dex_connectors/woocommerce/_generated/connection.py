@@ -71,6 +71,22 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.woocommerce.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored WooCommerce credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 class _ProjectCredentialSource:
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
@@ -80,19 +96,19 @@ class _ProjectCredentialSource:
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
-            raise ValueError("WooCommerce stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("WooCommerce stored credential does not match the connector credential fields")
         if set(material) - set(('consumer_key', 'consumer_secret')):
-            raise ValueError("WooCommerce stored credential does not match the connector credential fields")
+            raise CredentialMaterialError("WooCommerce stored credential does not match the connector credential fields")
         consumer_key = material.get("consumer_key")
         if consumer_key is not None and not (isinstance(consumer_key, str)):
-            raise ValueError("WooCommerce credential consumer_key has an invalid type")
+            raise CredentialMaterialError("WooCommerce credential consumer_key has an invalid type")
         consumer_secret = material.get("consumer_secret")
         if consumer_secret is not None and not (isinstance(consumer_secret, str)):
-            raise ValueError("WooCommerce credential consumer_secret has an invalid type")
+            raise CredentialMaterialError("WooCommerce credential consumer_secret has an invalid type")
         if not consumer_key:
-            raise ValueError("WooCommerce credential consumer_key is required")
+            raise CredentialMaterialError("WooCommerce credential consumer_key is required")
         if not consumer_secret:
-            raise ValueError("WooCommerce credential consumer_secret is required")
+            raise CredentialMaterialError("WooCommerce credential consumer_secret is required")
         return Credentials(SecretString(consumer_key), SecretString(consumer_secret))
 
 

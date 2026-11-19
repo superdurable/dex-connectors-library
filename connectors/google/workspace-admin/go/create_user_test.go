@@ -171,17 +171,65 @@ func TestCreateUserRetriesAnUnusableSuccessAndRejectsConclusiveErrors(t *testing
 		if index == 0 {
 			return http.StatusOK, map[string]any{"primaryEmail": "someone-else@example.com", "id": "1"}, true
 		}
-		return http.StatusPreconditionFailed, googleError(http.StatusPreconditionFailed, "conditionNotMet"), true
+		if index == 1 {
+			return http.StatusPreconditionFailed, googleError(http.StatusPreconditionFailed, "conditionNotMet"), true
+		}
+		return http.StatusForbidden, googleError(http.StatusForbidden, "forbidden"), true
 	})
 	client := newTestClient(t, directory.URL)
 
 	_, err := sdkgo.RunMutation(newTestDexContext("unusable"), client.CreateUser(), testConnection, validCreateUserInput())
 	require.Equal(t, sdkgo.FailureProtocol, requireRetry(t, err).Kind)
+	_, err = sdkgo.RunMutation(newTestDexContext("unlisted"), client.CreateUser(), testConnection, validCreateUserInput())
+	require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind, "HTTP 412 is not a definite refusal")
 	rejected, err := sdkgo.RunMutation(newTestDexContext("rejected"), client.CreateUser(), testConnection, validCreateUserInput())
 	require.NoError(t, err)
 	require.Equal(t, workspaceadmin.CreateUserBranchProviderRejected, rejected.Branch)
-	require.Equal(t, sdkgo.FailureConflict, rejected.Failure.Kind)
-	require.Equal(t, "provider rejected the request with HTTP 412 (conditionNotMet)", rejected.Failure.Message)
+	require.Equal(t, sdkgo.FailureAuthorization, rejected.Failure.Kind)
+	require.Equal(t, "provider rejected the request with HTTP 403 (forbidden)", rejected.Failure.Message)
+}
+
+func TestCreateUserReadsBackARefusalAfterAnEarlierAttempt(t *testing.T) {
+	directory := newFakeDirectory(t)
+	directory.seedUser("ada.lovelace@example.com", []any{map[string]any{"type": "custom", "customType": "dexIdempotencyKey", "value": "step-call-key"}})
+	directory.setIntercept(func(request recordedRequest, _ int) (int, any, bool) {
+		if request.method == http.MethodPost {
+			return http.StatusForbidden, googleError(http.StatusForbidden, "forbidden"), true
+		}
+		return 0, nil, false
+	})
+	client := newTestClient(t, directory.URL)
+	input := validCreateUserInput()
+	input.ProvisioningKey = "step-call-key"
+
+	first, err := sdkgo.RunMutation(newTestDexContext("refused-first"), client.CreateUser(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, workspaceadmin.CreateUserBranchProviderRejected, first.Branch, "a first attempt's refusal is definite")
+
+	later := newTestDexContext("refused-later")
+	later.attempt = 2
+	confirmed, err := sdkgo.RunMutation(later, client.CreateUser(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, workspaceadmin.CreateUserBranchCreated, confirmed.Branch, "the earlier attempt created this Step's account")
+	require.True(t, confirmed.Value.WasAlreadyCreated)
+	require.Equal(t, 1, directory.userCount())
+}
+
+func TestCreateUserKeepsWaitingForAConflictingAddressAfterAnEarlierAttempt(t *testing.T) {
+	directory := newFakeDirectory(t)
+	directory.setIntercept(func(request recordedRequest, _ int) (int, any, bool) {
+		if request.method == http.MethodPost {
+			return http.StatusConflict, googleError(http.StatusConflict, "duplicate"), true
+		}
+		return 0, nil, false
+	})
+	client := newTestClient(t, directory.URL)
+	later := newTestDexContext("conflict-after-send")
+	later.firstAttemptAt = time.Now().Add(-2 * time.Minute)
+	later.attempt = 2
+
+	_, err := sdkgo.RunMutation(later, client.CreateUser(), testConnection, validCreateUserInput())
+	require.Equal(t, sdkgo.FailureAvailability, requireRetry(t, err).Kind, "the unreadable account may be this Step's")
 }
 
 func TestCreateUserRejectsInvalidInputBeforeAnyRequest(t *testing.T) {

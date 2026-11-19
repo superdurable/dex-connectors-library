@@ -129,20 +129,20 @@ export class CreateInvoiceOperation implements Mutation<CreateInvoiceInput, Crea
     try { payload = createInvoicePayload(input); } catch (error) { return defectMutation('createInvoice', requested, error); }
     const result = await this.client.exchange(call, 'createInvoice', { method: 'PUT', path: '/Invoices', query: { unitdp: '4' }, payload, isMutation: true });
     const receipt = this.client.receipt(call, result);
-    if (result.outcome !== 'succeeded') return mutationExchange(result, requested, receipt);
+    if (result.outcome !== 'succeeded') return mutationExchange(call, result, requested, receipt);
     let wire: Record<string, unknown>;
     try { wire = singleResource(result.response!.body, 'Invoices'); }
-    catch (error) { return uncertainMutation('createInvoice', requested, receipt, 'Xero accepted the invoice but returned an unusable invoice: ', error); }
+    catch (error) { return retryUnusableMutation('createInvoice','Xero accepted the invoice but returned an unusable invoice: ', error); }
     let validationCount: number;
     let hasErrors: boolean;
     try { hasErrors = boolField(wire, 'HasErrors'); validationCount = arrayField(wire, 'ValidationErrors').length; arrayField(wire, 'Warnings'); }
-    catch (error) { return uncertainMutation('createInvoice', requested, receipt, 'Xero accepted the invoice but returned an unusable invoice: ', error); }
+    catch (error) { return retryUnusableMutation('createInvoice','Xero accepted the invoice but returned an unusable invoice: ', error); }
     if (hasErrors || validationCount) return newMutationBranch('providerRejected', requested, receipt, failure('VALIDATION', 'createInvoice', `Xero rejected the invoice${validationCount ? ` [${validationCount} validation error${validationCount === 1 ? '' : 's'}]` : ''}`));
     try {
       const invoice = decodeInvoice(wire);
       const output: CreateInvoiceOutput = { invoice, ...requested.reference ? { reference: requested.reference } : {}, ...arrayField(wire, 'Warnings').length ? { warningCount: arrayField(wire, 'Warnings').length } : {} };
       return newMutationBranch('created', output, { ...receipt, providerObjectId: invoice.invoiceId });
-    } catch (error) { return uncertainMutation('createInvoice', requested, receipt, 'Xero accepted the invoice but returned an unusable invoice: ', error); }
+    } catch (error) { return retryUnusableMutation('createInvoice','Xero accepted the invoice but returned an unusable invoice: ', error); }
   }
 }
 
@@ -158,21 +158,21 @@ export class RecordPaymentOperation implements Mutation<RecordPaymentInput, Reco
     try { payload = recordPaymentPayload(input); } catch (error) { return defectMutation('recordPayment', requested, error); }
     const result = await this.client.exchange(call, 'recordPayment', { method: 'PUT', path: '/Payments', payload, isMutation: true });
     const receipt = this.client.receipt(call, result);
-    if (result.outcome !== 'succeeded') return mutationExchange(result, requested, receipt);
+    if (result.outcome !== 'succeeded') return mutationExchange(call, result, requested, receipt);
     let wire: Record<string, unknown>;
     try { wire = singleResource(result.response!.body, 'Payments'); }
-    catch (error) { return uncertainMutation('recordPayment', requested, receipt, 'Xero accepted the payment but returned an unusable payment: ', error); }
+    catch (error) { return retryUnusableMutation('recordPayment','Xero accepted the payment but returned an unusable payment: ', error); }
     let validationCount: number;
     let hasErrors: boolean;
     try { hasErrors = boolField(wire, 'HasValidationErrors'); validationCount = arrayField(wire, 'ValidationErrors').length; arrayField(wire, 'Warnings'); }
-    catch (error) { return uncertainMutation('recordPayment', requested, receipt, 'Xero accepted the payment but returned an unusable payment: ', error); }
+    catch (error) { return retryUnusableMutation('recordPayment','Xero accepted the payment but returned an unusable payment: ', error); }
     if (hasErrors || validationCount) return newMutationBranch('providerRejected', requested, receipt, failure('VALIDATION', 'recordPayment', `Xero rejected the payment${validationCount ? ` [${validationCount} validation error${validationCount === 1 ? '' : 's'}]` : ''}`));
     try {
       const payment = decodePayment(wire);
       if (payment.invoice.invoiceId && payment.invoice.invoiceId !== requested.invoiceId) throw new Error('payment applies to another invoice');
       const output: RecordPaymentOutput = { payment, invoiceId: requested.invoiceId, ...arrayField(wire, 'Warnings').length ? { warningCount: arrayField(wire, 'Warnings').length } : {} };
       return newMutationBranch('recorded', output, { ...receipt, providerObjectId: payment.paymentId });
-    } catch (error) { return uncertainMutation('recordPayment', requested, receipt, 'Xero accepted the payment but returned an unusable payment: ', error); }
+    } catch (error) { return retryUnusableMutation('recordPayment','Xero accepted the payment but returned an unusable payment: ', error); }
   }
 }
 
@@ -215,15 +215,26 @@ function errorMessage(error: unknown): string { return error instanceof Error ? 
 function defectQuery<T>(operation: string, zero: T, error: unknown): QueryAttempt<T> { return newQueryBranch('defect', zero, {}, failure('VALIDATION', operation, errorMessage(error))); }
 function defectMutation<T>(operation: string, zero: T, error: unknown): MutationAttempt<T> { return newMutationBranch('defect', zero, {}, failure('VALIDATION', operation, errorMessage(error))); }
 function invalidQuery<T>(operation: string, zero: T, receipt: ReceiptDraft, prefix: string, error: unknown): QueryAttempt<T> { return newQueryBranch('invalidResponse', zero, receipt, failure('PROTOCOL', operation, prefix + errorMessage(error))); }
-function uncertainMutation<T>(operation: string, zero: T, receipt: ReceiptDraft, prefix: string, error: unknown): MutationAttempt<T> { return newMutationUncertain(zero, failure('PROTOCOL', operation, prefix + errorMessage(error)), receipt); }
+/** An unusable accepted answer is unknown; the key makes the identical resend safe. */
+function retryUnusableMutation<T>(operation: string, prefix: string, error: unknown): MutationAttempt<T> { return newMutationRetry(failure('PROTOCOL', operation, prefix + errorMessage(error))); }
 function queryExchange<T>(result: XeroExchange, zero: T, receipt: ReceiptDraft, hasNotFound = false): QueryAttempt<T> {
   if (result.outcome === 'retry' || result.outcome === 'serverError') return newQueryRetry(result.failure!, result.retryAfterMs);
   const branch = result.outcome === 'notFound' ? (hasNotFound ? 'notFound' : 'providerRejected') : result.outcome === 'dailyLimit' ? 'dailyLimitReached' : result.outcome === 'invalid' ? 'invalidResponse' : result.outcome === 'defect' ? 'defect' : 'providerRejected';
   return newQueryBranch(branch, zero, receipt, result.failure);
 }
-function mutationExchange<T>(result: XeroExchange, zero: T, receipt: ReceiptDraft): MutationAttempt<T> {
-  if (result.outcome === 'retry') return newMutationRetry(result.failure!, result.retryAfterMs);
-  if (result.outcome === 'serverError' || result.outcome === 'invalid') return newMutationUncertain(zero, result.failure!, receipt);
+/** Statuses that prove a write was refused; 409, 501, 3xx, and other statuses are unknown. */
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+function mutationExchange<T>(call: Call, result: XeroExchange, zero: T, receipt: ReceiptDraft): MutationAttempt<T> {
+  // Xero caches a 500 under the key and replays it, so no resend can learn the outcome.
+  if (result.outcome === 'serverError') return newMutationUncertain(zero, result.failure!, receipt);
+  // An unusable answer is unknown; the key makes the identical resend safe.
+  if (result.outcome === 'retry' || result.outcome === 'invalid') return newMutationRetry(result.failure!, result.retryAfterMs);
+  const status = result.response?.status ?? 0;
+  // A 409, 501, 3xx, or other unlisted status does not prove a refusal; the key makes the repeat safe.
+  if (result.outcome === 'rejected' && status >= 300 && !definiteRefusalStatuses.has(status)) return newMutationRetry(result.failure!, result.retryAfterMs);
+  // Xero checks credentials before replaying the keyed answer, so after a possible send they prove nothing.
+  const isCredentialFailure = result.failure?.kind === 'AUTHENTICATION' || result.failure?.kind === 'AUTHORIZATION';
+  if (call.context.attempt > 1 && (result.outcome === 'defect' || (result.outcome === 'rejected' && isCredentialFailure))) return newMutationUncertain(zero, result.failure!, receipt);
   return newMutationBranch(result.outcome === 'dailyLimit' ? 'dailyLimitReached' : result.outcome === 'defect' ? 'defect' : 'providerRejected', zero, receipt, result.failure);
 }
 

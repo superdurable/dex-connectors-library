@@ -18,6 +18,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // ApplicationMessageType selects how WeCom renders an application message.
@@ -99,81 +100,151 @@ var (
 	groupIDPattern = regexp.MustCompile(`^[1-9][0-9]{0,9}$`)
 )
 
-// Invoke sends one message. Every attempt sends byte-identical JSON with enable_duplicate_check,
-// so WeCom suppresses a repeat of an accepted send and an unconfirmed attempt can safely retry
-// until DuplicateCheckResendCutoff after the first attempt; a later attempt selects uncertain.
+// Invoke sends one message under a single-dispatch fence. Every attempt sends byte-identical JSON
+// with enable_duplicate_check, so WeCom should suppress a repeat of an accepted send. Because that
+// suppression is unconfirmed, an unknown outcome resends only while possible sends stay below
+// call.MaxSends() and before DuplicateCheckResendCutoff, and otherwise selects uncertain.
 func (operation SendApplicationMessageOperation) Invoke(call sdkgo.Call, input SendApplicationMessageInput) sdkgo.MutationAttempt[SentApplicationMessage] {
 	if message := validateApplicationInput(input); message != "" {
 		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureValidation, message)
 	}
+	fence, err := singledispatch.NewFence(call, SendApplicationMessageDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom dispatch fence is unavailable")
+	}
+	decision := fence.Decide()
+	if decision.Kind != singledispatch.FailClosed && decision.Marker.ProviderID != "" {
+		return newSentFromAcceptedMarker(decision.Marker.ProviderID)
+	}
+	switch decision.Kind {
+	case singledispatch.FailClosed:
+		return retryApplicationSend(sdkgo.FailureAvailability, "WeCom dispatch checkpoint is unreadable; nothing was sent in this attempt")
+	case singledispatch.ReadBackRequired:
+		return uncertainApplicationSend(sdkgo.FailureTransport, "an earlier attempt may have delivered the message and the send cap is reached; check with the recipients before sending again")
+	}
+	send := applicationSend{
+		fence:     fence,
+		operation: operation,
+		// This attempt's send would be the last one the cap allows when no further send remains.
+		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
+		// An earlier send may have delivered, so a refusal of this resend cannot prove nothing changed.
+		hasPossibleEarlierSend: decision.MaximumPriorSends > 0,
+	}
 	// The first attempt starts no later than any earlier send, so this elapsed time never understates the window used.
-	if call.Context.Attempt() > 1 && !operation.client.now().Before(call.Context.FirstAttemptAt().Add(DuplicateCheckResendCutoff)) {
-		failure := newFailure("sendApplicationMessage", sdkgo.FailureTransport, "an earlier attempt may have delivered the message and WeCom's four-hour duplicate check would no longer suppress a resend; check with the recipients before sending again")
-		return sdkgo.NewMutationUncertain(SentApplicationMessage{}, failure, sdkgo.Receipt{})
+	if send.hasPossibleEarlierSend && !operation.client.now().Before(call.Context.FirstAttemptAt().Add(DuplicateCheckResendCutoff)) {
+		return uncertainApplicationSend(sdkgo.FailureTransport, "an earlier attempt may have delivered the message and WeCom's four-hour duplicate check would no longer suppress a resend; check with the recipients before sending again")
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return send.retryBeforeSending(newFailure("sendApplicationMessage", sdkgo.FailureAuthentication, "WeCom application credentials are temporarily unavailable; nothing was sent in this attempt"))
+	}
 	if err != nil || credentials.Validate() != nil {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureAuthentication, "WeCom application credentials are unavailable")
+		return send.localFailure(sdkgo.FailureAuthentication, "WeCom application credentials are unavailable")
 	}
 	if credentials.AuthMethodID != applicationAuthMethodID {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureValidation, "sendApplicationMessage needs a connection that uses the application method")
+		return send.localFailure(sdkgo.FailureValidation, "sendApplicationMessage needs a connection that uses the application method")
 	}
 	corpSecret := credentials.CorpSecret.Reveal()
 	if !corpIDPattern.MatchString(credentials.CorpID) || !agentIDPattern.MatchString(credentials.AgentID) || !providerhttp.IsHeaderSafeCredential(corpSecret) {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureAuthentication, "corp_id, agent_id, or corp_secret has an invalid format")
+		return send.localFailure(sdkgo.FailureAuthentication, "corp_id, agent_id, or corp_secret has an invalid format")
 	}
 	agentID, err := strconv.ParseInt(credentials.AgentID, 10, 64)
 	if err != nil {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureAuthentication, "agent_id must be a positive decimal integer")
+		return send.localFailure(sdkgo.FailureAuthentication, "agent_id must be a positive decimal integer")
 	}
 	body, err := json.Marshal(newApplicationRequest(input, agentID))
 	if err != nil {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom application message could not be encoded")
+		return send.localFailure(sdkgo.FailureLocalDefect, "WeCom application message could not be encoded")
 	}
 	tokenKey := newAccessTokenCacheKey(credentials.CorpID, corpSecret)
 	token := operation.client.accessTokens.resolve(call.Context, operation.client, "sendApplicationMessage", tokenKey, corpSecret)
 	switch {
 	case token.shouldRetry:
-		return sdkgo.NewMutationRetry[SentApplicationMessage](token.failure, 0)
+		return send.retryBeforeSending(token.failure)
 	case token.isLocalDefect:
-		return sdkgo.NewMutationBranch(SendApplicationMessageBranchDefect, SentApplicationMessage{}, &token.failure, sdkgo.Receipt{})
+		return send.localFailure(token.failure.Kind, token.failure.Message)
 	case token.isRejected:
-		return sdkgo.NewMutationBranch(SendApplicationMessageBranchProviderRejected, SentApplicationMessage{}, &token.failure, sdkgo.Receipt{})
+		// Repeating a refused secret can block the caller IP, so it is never retried.
+		return send.localFailureWithBranch(SendApplicationMessageBranchProviderRejected, token.failure.Kind, token.failure.Message)
 	}
 	endpoint := operation.client.baseURL + "/cgi-bin/message/send?" + url.Values{"access_token": {token.token}}.Encode()
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		return rejectedApplicationSend(SendApplicationMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom application message request could not be built")
+		return send.localFailure(sdkgo.FailureLocalDefect, "WeCom application message request could not be built")
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json")
-	response, err := operation.client.httpClient.Do(request)
-	if err != nil {
-		// The error embeds the request URL, which carries the access token, so only a fixed message is kept.
-		return retryApplicationSend(sdkgo.FailureTransport, "WeCom application message request failed")
+	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+		return send.localFailure(sdkgo.FailureLocalDefect, "WeCom application message request is invalid")
 	}
-	// Closing the response cannot change the provider outcome already received.
-	defer func() { _ = response.Body.Close() }()
-	return operation.classifyResponse(call.Context, response, tokenKey, token.token)
+	exchange, err := operation.client.dispatchFencedWrite(fence, request)
+	if err != nil {
+		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
+			return retryApplicationSend(sdkgo.FailureTransport, "WeCom application message was not started")
+		}
+		// The error embeds the request URL, which carries the access token, so only fixed messages are kept.
+		if exchange.isUnsentDialFailure {
+			// A lost canResend checkpoint leaves the claim, which the next attempt counts as a send.
+			_ = fence.RecordCanResend()
+			return retryApplicationSend(sdkgo.FailureTransport, "WeCom could not be reached before sending")
+		}
+		return send.resendOrSelectUncertain(sdkgo.FailureTransport, "WeCom application message outcome is unknown")
+	}
+	return send.classifyResponse(call.Context, exchange, tokenKey, token.token)
 }
 
-func (operation SendApplicationMessageOperation) classifyResponse(ctx context.Context, response *http.Response, tokenKey accessTokenCacheKey, accessToken string) sdkgo.MutationAttempt[SentApplicationMessage] {
-	if response.StatusCode == http.StatusTooManyRequests {
-		return retryApplicationSend(sdkgo.FailureRateLimit, "WeCom rate limited the application message")
+// applicationSend holds one attempt's fence and its send-cap decision.
+type applicationSend struct {
+	fence                   *singledispatch.Fence
+	operation               SendApplicationMessageOperation
+	canResendUnknownOutcome bool
+	hasPossibleEarlierSend  bool
+}
+
+func (send applicationSend) classifyResponse(ctx context.Context, exchange fencedExchange, tokenKey accessTokenCacheKey, accessToken string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	if exchange.statusCode == http.StatusTooManyRequests || exchange.statusCode == http.StatusServiceUnavailable {
+		kind := sdkgo.FailureAvailability
+		if exchange.statusCode == http.StatusTooManyRequests {
+			kind = sdkgo.FailureRateLimit
+		}
+		return send.retryUnprocessed(kind, "WeCom did not process the application message")
 	}
-	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
-		return retryApplicationSend(sdkgo.FailureAvailability, "WeCom application message service is unavailable")
+	if isDefiniteRefusalStatus(exchange.statusCode) {
+		if !exchange.isReadableRefusal() {
+			// An unreadable or oversized refusal body, or one reporting a msgid, cannot prove nothing was sent.
+			return send.resendOrSelectUncertain(sdkgo.FailureProtocol, "WeCom application message outcome is unknown after HTTP "+strconv.Itoa(exchange.statusCode))
+		}
+		return send.rejectOrSelectUncertain(sdkgo.FailureProviderRejection, "WeCom rejected the application message with HTTP "+strconv.Itoa(exchange.statusCode))
 	}
-	if response.StatusCode != http.StatusOK {
-		return rejectedApplicationSend(SendApplicationMessageBranchProviderRejected, sdkgo.FailureProviderRejection, "WeCom rejected the application message with HTTP "+strconv.Itoa(response.StatusCode))
+	if !isSuccessStatus(exchange.statusCode) {
+		return send.resendOrSelectUncertain(sdkgo.FailureAvailability, "WeCom application message outcome is unknown after HTTP "+strconv.Itoa(exchange.statusCode))
 	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return retryApplicationSend(sdkgo.FailureResponseTooLarge, "WeCom application message response exceeded maxResponseBytes")
+	if exchange.isBrokenSuccessBody() {
+		// WeCom answered 2xx before the body broke, so the message may be delivered and is never resent.
+		return uncertainApplicationSend(sdkgo.FailureTransport, "WeCom answered the application message, but its response body broke; check with the recipients before sending again")
 	}
-	if err != nil {
-		return retryApplicationSend(sdkgo.FailureTransport, "WeCom application message response was interrupted")
+	if exchange.bodyErr != nil {
+		return send.resendOrSelectUncertain(sdkgo.FailureResponseTooLarge, "WeCom application message response exceeded maxResponseBytes")
 	}
+	errcode, ok := decodeProviderEnvelope(exchange.body, nil)
+	if !ok {
+		return send.resendOrSelectUncertain(sdkgo.FailureProtocol, "WeCom application message response is malformed")
+	}
+	switch {
+	case errcode == errcodeSuccess:
+		return send.acceptedResponse(exchange.body)
+	case errcode == errcodeInvalidAccessToken || errcode == errcodeExpiredAccessToken || errcode == errcodeMissingAccessToken:
+		// WeCom may revoke a token before its reported expiry; the next attempt fetches a new one.
+		send.operation.client.accessTokens.invalidate(ctx, tokenKey, accessToken)
+		return send.retryUnprocessed(failureKindForErrcode(errcode), rejectionMessage("WeCom rejected the cached access token", errcode))
+	case isRetryableErrcode(errcode):
+		return send.retryUnprocessed(failureKindForErrcode(errcode), rejectionMessage("WeCom deferred the application message", errcode))
+	}
+	return send.rejectOrSelectUncertain(failureKindForErrcode(errcode), rejectionMessage("WeCom rejected the application message", errcode))
+}
+
+// acceptedResponse builds the sent result of errcode 0 and checkpoints the acceptance first.
+func (send applicationSend) acceptedResponse(body []byte) sdkgo.MutationAttempt[SentApplicationMessage] {
 	var sendResponse struct {
 		InvalidUsers    string `json:"invaliduser"`
 		InvalidParties  string `json:"invalidparty"`
@@ -181,27 +252,96 @@ func (operation SendApplicationMessageOperation) classifyResponse(ctx context.Co
 		UnlicensedUsers string `json:"unlicenseduser"`
 		MessageID       string `json:"msgid"`
 	}
-	errcode, ok := decodeProviderEnvelope(body, &sendResponse)
-	if !ok {
-		return retryApplicationSend(sdkgo.FailureProtocol, "WeCom application message response is malformed")
+	if json.Unmarshal(body, &sendResponse) != nil {
+		// WeCom accepted the message, so a resend could deliver it twice.
+		return uncertainApplicationSend(sdkgo.FailureProtocol, "WeCom accepted the application message, but its response fields are malformed; check with the recipients before sending again")
 	}
-	switch {
-	case errcode == errcodeSuccess:
-		return sdkgo.NewMutationBranch(SendApplicationMessageBranchSent, SentApplicationMessage{
-			MessageID:            sendResponse.MessageID,
-			InvalidUserIDs:       splitWeComList(sendResponse.InvalidUsers),
-			InvalidDepartmentIDs: splitWeComList(sendResponse.InvalidParties),
-			InvalidTagIDs:        splitWeComList(sendResponse.InvalidTags),
-			UnlicensedUserIDs:    splitWeComList(sendResponse.UnlicensedUsers),
-		}, nil, sdkgo.Receipt{})
-	case errcode == errcodeInvalidAccessToken || errcode == errcodeExpiredAccessToken || errcode == errcodeMissingAccessToken:
-		// WeCom may revoke a token before its reported expiry; the next attempt fetches a new one.
-		operation.client.accessTokens.invalidate(ctx, tokenKey, accessToken)
-		return retryApplicationSend(failureKindForErrcode(errcode), rejectionMessage("WeCom rejected the cached access token", errcode))
-	case isRetryableErrcode(errcode):
-		return retryApplicationSend(failureKindForErrcode(errcode), rejectionMessage("WeCom deferred the application message", errcode))
+	acceptedMarker := applicationAcceptedMarker
+	if messageIDPattern.MatchString(sendResponse.MessageID) {
+		acceptedMarker = sendResponse.MessageID
 	}
-	return rejectedApplicationSend(SendApplicationMessageBranchProviderRejected, failureKindForErrcode(errcode), rejectionMessage("WeCom rejected the application message", errcode))
+	// A lost acceptance checkpoint leaves the claim, which a later attempt counts as a send.
+	_ = send.fence.RecordProviderID(acceptedMarker)
+	return sdkgo.NewMutationBranch(SendApplicationMessageBranchSent, SentApplicationMessage{
+		MessageID:            sendResponse.MessageID,
+		InvalidUserIDs:       splitWeComList(sendResponse.InvalidUsers),
+		InvalidDepartmentIDs: splitWeComList(sendResponse.InvalidParties),
+		InvalidTagIDs:        splitWeComList(sendResponse.InvalidTags),
+		UnlicensedUserIDs:    splitWeComList(sendResponse.UnlicensedUsers),
+	}, nil, sdkgo.Receipt{})
+}
+
+// applicationAcceptedMarker is the checkpoint provider ID of an accepted send whose msgid is absent or unusual.
+const applicationAcceptedMarker = "errcode-0"
+
+// messageIDPattern bounds a msgid kept in the dispatch checkpoint.
+var messageIDPattern = regexp.MustCompile(`^[A-Za-z0-9_=+/-]{1,128}$`)
+
+// newSentFromAcceptedMarker confirms a send an earlier attempt checkpointed. The skipped-recipient
+// lists were not checkpointed, so they are empty.
+func newSentFromAcceptedMarker(acceptedMarker string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	sent := SentApplicationMessage{InvalidUserIDs: []string{}, InvalidDepartmentIDs: []string{}, InvalidTagIDs: []string{}, UnlicensedUserIDs: []string{}}
+	if acceptedMarker != applicationAcceptedMarker {
+		sent.MessageID = acceptedMarker
+	}
+	return sdkgo.NewMutationBranch(SendApplicationMessageBranchSent, sent, nil, sdkgo.Receipt{})
+}
+
+// retryUnprocessed retries a send WeCom reported it did not process, so it is not counted.
+func (send applicationSend) retryUnprocessed(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	// A lost canResend checkpoint leaves the claim, which the next attempt counts as a send.
+	_ = send.fence.RecordCanResend()
+	return retryApplicationSend(kind, message)
+}
+
+// resendOrSelectUncertain retries a possibly delivered send while the send cap allows another send.
+func (send applicationSend) resendOrSelectUncertain(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	if send.canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return retryApplicationSend(kind, message)
+	}
+	return uncertainApplicationSend(kind, message+"; the send cap is reached, so check with the recipients before sending again")
+}
+
+// rejectOrSelectUncertain selects providerRejected only when no earlier send of this call may have delivered.
+func (send applicationSend) rejectOrSelectUncertain(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	if send.hasPossibleEarlierSend {
+		// A refusal of this attempt cannot prove an earlier attempt delivered nothing.
+		return uncertainApplicationSend(kind, message+"; an earlier attempt may have delivered the message")
+	}
+	// The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+	_ = send.fence.RecordCanResend()
+	return rejectedApplicationSend(SendApplicationMessageBranchProviderRejected, kind, message)
+}
+
+// retryBeforeSending retries a transient failure that stopped this attempt before it sent.
+func (send applicationSend) retryBeforeSending(failure sdkgo.Failure) sdkgo.MutationAttempt[SentApplicationMessage] {
+	if !send.hasPossibleEarlierSend {
+		// A lost notSent checkpoint leaves the previous marker, which permits the same send.
+		_ = send.fence.RecordNotSent()
+	}
+	// After a possible earlier send, notSent would hide it, so nothing is recorded.
+	return sdkgo.NewMutationRetry[SentApplicationMessage](failure, 0)
+}
+
+// localFailure selects defect before any possible send and uncertain after one.
+func (send applicationSend) localFailure(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	return send.localFailureWithBranch(SendApplicationMessageBranchDefect, kind, message)
+}
+
+// localFailureWithBranch selects branch for a terminal failure before this attempt sent anything.
+func (send applicationSend) localFailureWithBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	if send.hasPossibleEarlierSend {
+		// notSent would hide the earlier possible send, so nothing is recorded.
+		return uncertainApplicationSend(kind, message+"; an earlier attempt may have delivered the message")
+	}
+	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+	_ = send.fence.RecordNotSent()
+	return rejectedApplicationSend(branch, kind, message)
+}
+
+func uncertainApplicationSend(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentApplicationMessage] {
+	return sdkgo.NewMutationUncertain(SentApplicationMessage{}, newFailure("sendApplicationMessage", kind, message), sdkgo.Receipt{})
 }
 
 // validateApplicationInput returns a safe message describing the first invalid field, or "".

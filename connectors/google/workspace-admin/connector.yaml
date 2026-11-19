@@ -6,17 +6,17 @@ metadata:
   description: Read and list Google Workspace user accounts, create, suspend, and restore them, and add or remove group members through the Admin SDK Directory API, converging instead of duplicating when a Step repeats.
   company: Google
   categories: [security-identity]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: google
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-google-workspace-admin
       operations: [getUser, listUsers, createUser, suspendUser, unsuspendUser, addUserToGroup, removeUserFromGroup]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-google-workspace-admin"
       operations: [getUser, listUsers, createUser, suspendUser, unsuspendUser, addUserToGroup, removeUserFromGroup]
       triggers: []
@@ -34,7 +34,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete Admin SDK Directory API response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 500 accounts are larger. Blank keeps the limit, and an oversized response selects invalidResponse.
+        description: Maximum complete Admin SDK Directory API response in bytes; enter a positive integer only to change the safety limit, for example when listUsers pages of up to 500 accounts are larger. Blank keeps the limit; an oversized response selects invalidResponse on a read and retries a write.
         required: false
         default: 4194304
       - name: listUsersPageSize
@@ -225,6 +225,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The address is unique and the account carries the creation key, so a resend's 409 reads back this Step's account.
+        repeatOnUnknown: safe
       mocks:
         - name: adaCreated
           branch: created
@@ -256,6 +258,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The update sets the absolute suspended flag, so a repeat leaves the same account.
+        repeatOnUnknown: safe
       mocks:
         - name: adaSuspended
           branch: suspended
@@ -287,6 +291,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The update sets the absolute suspended flag, so a repeat leaves the same account.
+        repeatOnUnknown: safe
       mocks:
         - name: adaUnsuspended
           branch: unsuspended
@@ -318,6 +324,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A direct membership is unique per group and account, so a resend's 409 reads back the same membership.
+        repeatOnUnknown: safe
       mocks:
         - name: adaJoinedEngineering
           branch: added
@@ -349,6 +357,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A repeated delete gets a 404 that the group check turns into removed, so it cannot remove anything else.
+        repeatOnUnknown: safe
       mocks:
         - name: adaLeftEngineering
           branch: removed

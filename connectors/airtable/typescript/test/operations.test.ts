@@ -3,7 +3,10 @@
 
 import { expect, it } from 'vitest';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { AirtableClient } from '../src/client.js';
+import { CredentialMaterialError } from '../src/generated/models.js';
 
 const input = { baseId: 'appRefundBase0001', tableIdOrName: 'tblPolicies000001' };
 const call = {
@@ -24,6 +27,57 @@ it('routes revoked connection credentials to providerRejected before HTTP', asyn
     expect(attempt.branch).toBe('providerRejected');
     expect(attempt.failure?.kind).toBe('AUTHENTICATION');
   }
+  expect(requestCount).toBe(0);
+});
+
+it.each([409, 501, 302, 418])('retries a write answered with HTTP %i, which does not prove a refusal', async status => {
+  const client = new AirtableClient({}, { resolve: async () => ({ personalAccessToken: new SecretString('patTESTtoken.0123456789abcdef') }) }, {
+    send: async () => ({ status, headers: {}, body: Buffer.from('{"error":{"type":"UNKNOWN"}}', 'utf8') }),
+  });
+  const update = await client.updateRecords().invoke(call, { ...input, records: [{ id: 'recPolicyStandard', fields: { Status: 'done' } }] });
+  expect(update.kind).toBe('retry');
+  const upsert = await client.upsertRecords().invoke(call, { ...input, fieldsToMergeOn: ['Case ID'], records: [{ fields: { 'Case ID': 'case-1' } }] });
+  expect(upsert.kind).toBe('retry');
+});
+
+it.each([
+  ['an inconsistent answer', async () => ({ status: 200, headers: {}, body: Buffer.from('{"records":[]}', 'utf8') })],
+  ['an oversized answer', async () => { throw new BodyTooLargeError(200, {}); }],
+])('retries a repeat-safe write for %s', async (_name, send) => {
+  const client = new AirtableClient({}, { resolve: async () => ({ personalAccessToken: new SecretString('patTESTtoken.0123456789abcdef') }) }, { send });
+  const update = await client.updateRecords().invoke(call, { ...input, records: [{ id: 'recPolicyStandard', fields: { Status: 'done' } }] });
+  expect(update.kind).toBe('retry');
+  const upsert = await client.upsertRecords().invoke(call, { ...input, fieldsToMergeOn: ['Case ID'], records: [{ fields: { 'Case ID': 'case-1' } }] });
+  expect(upsert.kind).toBe('retry');
+});
+
+it.each([
+  ['broker unavailable', new CredentialBrokerUnavailableError()],
+  ['static not configured', new Error('connection is not configured')],
+  ['unlisted error', new RangeError('credential store hiccup')],
+])('retries a write whose credentials are temporarily unavailable: %s', async (_name, error) => {
+  const client = new AirtableClient({}, { resolve: async () => { throw error; } }, {
+    send: async () => { throw new Error('unexpected request'); },
+  });
+  const update = await client.updateRecords().invoke(call, { ...input, records: [{ id: 'recPolicyStandard', fields: { Status: 'done' } }] });
+  expect(update.kind).toBe('retry');
+});
+
+it.each([
+  ['reauthorization', new ReauthorizationRequiredError(), 'providerRejected'],
+  ['object not found', new ObjectNotFoundError(), 'defect'],
+  ['connection not selected', new ConnectionNotSelectedError(), 'defect'],
+  ['broker rejected', new CredentialBrokerRejectedError(), 'defect'],
+  ['malformed stored material', new CredentialMaterialError('stored credential does not match the connector credential fields'), 'defect'],
+  ['SDK decoding failure', new TypeError('project credential decoding failed'), 'defect'],
+])('selects a terminal branch for a terminal credential failure: %s', async (_name, error, branch) => {
+  let requestCount = 0;
+  const client = new AirtableClient({}, { resolve: async () => { throw error; } }, {
+    send: async () => { requestCount++; throw new Error('unexpected request'); },
+  });
+  const update = await client.updateRecords().invoke(call, { ...input, records: [{ id: 'recPolicyStandard', fields: { Status: 'done' } }] });
+  expect(update.kind).toBe('branch');
+  if (update.kind === 'branch') expect(update.branch).toBe(branch);
   expect(requestCount).toBe(0);
 });
 

@@ -36,6 +36,10 @@ if TYPE_CHECKING:
         UpdateValuesOperation,
     )
 
+class InvalidCredentialMaterialError(ValueError):
+    """Resolved credential material fails the local checks a Graph request needs."""
+
+
 _GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 _GUID = re.compile(r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$")
 _PATH_SAFE = "-._~$&+=:@"
@@ -82,8 +86,10 @@ class GraphResponse:
 class GraphTransportError(OSError):
     """A Graph request failed before a complete response was received."""
 
-    def __init__(self, is_request_built: bool = True) -> None:
+    def __init__(self, is_request_built: bool = True, status: int = 0) -> None:
         self.is_request_built = is_request_built
+        # The response status when headers arrived before the body failed, otherwise 0.
+        self.status = status
         super().__init__("Microsoft Graph request failed or its response could not be read")
 
 
@@ -165,13 +171,23 @@ class Client:
             or credential.access_token is None
             or not is_header_safe_credential(credential.access_token.reveal())
         ):
-            raise ValueError("connection credentials are unavailable")
+            raise InvalidCredentialMaterialError("connection credentials are unavailable")
         return credential
 
     async def request(
-        self, call: Call, credential: Credentials, method: str, target: str, body: bytes | None = None
+        self,
+        call: Call,
+        credential: Credentials,
+        method: str,
+        target: str,
+        body: bytes | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> GraphResponse:
-        """Send one request and refresh once after a rejected access token."""
+        """Send one request and refresh once after a rejected access token.
+
+        `observed_statuses` receives each response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Graph answered.
+        """
         if self._local_provider_url:
             target = self._local_provider_url + target.removeprefix("https://graph.microsoft.com")
         for attempt in range(2):
@@ -190,6 +206,11 @@ class Client:
                 raise GraphTransportError(False) from None
             try:
                 response = await self.http_client.send(request, stream=True, follow_redirects=False)
+            except (httpx.HTTPError, OSError):
+                raise GraphTransportError() from None
+            if observed_statuses is not None:
+                observed_statuses.append(response.status_code)
+            try:
                 limit = max(self.config.max_response_bytes, 64 * 1024)
                 collected = bytearray()
                 try:
@@ -201,7 +222,7 @@ class Client:
                     await response.aclose()
                 content = bytes(collected)
             except (httpx.HTTPError, OSError):
-                raise GraphTransportError() from None
+                raise GraphTransportError(status=response.status_code) from None
             if (
                 response.status_code == 401
                 and attempt == 0

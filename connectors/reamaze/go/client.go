@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -122,6 +123,8 @@ type reamazeResponse struct {
 	header     http.Header
 	body       []byte
 	requestID  string
+	// hasOversizedBody marks a non-2xx answer whose body exceeded maxResponseBytes, or reflected the credential.
+	hasOversizedBody bool
 }
 
 // exchangeOutcome is the provider-neutral meaning of one Re:amaze request that each operation maps to a branch.
@@ -229,9 +232,20 @@ func (client *Client) FindContactByEmail() FindContactByEmailOperation {
 
 // resolveCredentials returns a header-safe email and token; errReamazeCredentialsUnavailable marks a read that may recover.
 func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
+	return client.doResolveCredentials(call)
+}
+
+// resolveWriteCredentials resolves credentials for a Mutation. A revoked or unselected connection is
+// unusable, because another attempt cannot repair it: a write selects defect before any send and
+// uncertain after one.
+func (client *Client) resolveWriteCredentials(call sdkgo.Call) (Credentials, error) {
+	return client.doResolveCredentials(call)
+}
+
+func (client *Client) doResolveCredentials(call sdkgo.Call) (Credentials, error) {
 	credentials, err := client.credentials.Resolve(call)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case err != nil && isTerminalCredentialError(err):
 		return Credentials{}, errReamazeCredentialsUnusable
 	case err != nil:
 		return Credentials{}, errReamazeCredentialsUnavailable
@@ -239,6 +253,13 @@ func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 		return Credentials{}, errReamazeCredentialsUnusable
 	}
 	return credentials, nil
+}
+
+// isTerminalCredentialError reports a credential failure that another attempt cannot repair.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.
@@ -280,7 +301,8 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 	}
 	body, readErr := providerhttp.ReadBoundedBody(httpResponse.Body, client.maxResponseBytes)
 	closeErr := httpResponse.Body.Close()
-	response := reamazeResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header, requestID: safeRequestID(httpResponse.Header)}
+	response := reamazeResponse{statusCode: httpResponse.StatusCode, header: httpResponse.Header, requestID: safeRequestID(httpResponse.Header),
+		hasOversizedBody: errors.Is(readErr, providerhttp.ErrBodyTooLarge)}
 	isSuccess := httpResponse.StatusCode >= 200 && httpResponse.StatusCode < 300
 	switch {
 	case errors.Is(readErr, providerhttp.ErrBodyTooLarge) && isSuccess:
@@ -294,6 +316,10 @@ func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operati
 		}
 		response.body = body
 		return reamazeExchange{outcome: exchangeSucceeded, response: response}
+	}
+	if token := credentials.APIToken.Reveal(); token != "" && bytes.Contains(body, []byte(token)) {
+		// A credential-reflecting refusal is untrusted, so it cannot prove a refusal either.
+		response.hasOversizedBody = true
 	}
 	return client.classifyFailureStatus(response, operation)
 }

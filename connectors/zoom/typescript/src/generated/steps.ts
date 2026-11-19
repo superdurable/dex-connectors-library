@@ -74,11 +74,11 @@ export interface CreateMeetingStepConfig<StepInput, OperationInput = CreateMeeti
   connectionName: string;
   /** Zoom created the meeting and returned its ID and join URL. */
   created: StepTarget<MutationResult<OperationOutput>>;
-  /** Zoom conclusively rejected the meeting, including a documented daily-limit 429 or a user who cannot host; nothing was created. */
+  /** Zoom conclusively rejected the first send, including a documented daily-limit 429 or a user who cannot host; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was dispatched but its outcome cannot be confirmed; the meeting may exist and must not be created again automatically. */
+  /** Zoom may have created the meeting, but the send cap was reached, a resend was refused or found invalid credentials, Zoom accepted it without a usable meeting ID, or a returned meeting ID could not be read back; check the user's meetings before creating it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid before any send. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 
@@ -108,11 +108,14 @@ export interface UpdateMeetingStepConfig<StepInput, OperationInput = UpdateMeeti
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateMeeting Step from a named connection. */
 export function newUpdateMeetingStep<StepInput, OperationInput = UpdateMeetingInput, OperationOutput = UpdatedMeeting>(configuration: UpdateMeetingStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateMeeting(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

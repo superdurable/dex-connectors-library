@@ -58,14 +58,25 @@ func (operation CancelStatementOperation) Invoke(call sdkgo.Call, input CancelSt
 		return cancelAttemptForFailure(requestFailure(err), sdkgo.Receipt{})
 	}
 	defer response.Body.Close()
-	body := readErrorBody(response)
+	body, isBodyComplete := readWriteErrorBody(response)
 	if response.StatusCode == http.StatusOK {
 		status := decodeStatementStatus(body)
 		cancellation := StatementCancellation{StatementHandle: input.StatementHandle}
 		return sdkgo.NewMutationBranch(CancelStatementBranchCanceled, cancellation, nil, client.receipt(call, input.StatementHandle, status))
 	}
-	failure := classifyUnsuccessfulResponse(response, body, client.now())
-	return cancelAttemptForFailure(failure, client.receipt(call, input.StatementHandle, failure.status))
+	failure := retryIncompleteWriteRefusal(retryUnknownWriteRefusal(classifyUnsuccessfulResponse(response, body, client.now())), isBodyComplete)
+	receipt := client.receipt(call, input.StatementHandle, failure.status)
+	if isRepeatedCancelOfStoppedStatement(call, failure) {
+		// An earlier attempt may have canceled it; canceled already allows a statement that finished first.
+		return sdkgo.NewMutationBranch(CancelStatementBranchCanceled, StatementCancellation{StatementHandle: input.StatementHandle}, nil, receipt)
+	}
+	return cancelAttemptForFailure(failure, receipt)
+}
+
+// isRepeatedCancelOfStoppedStatement reports a 422 for a known handle on an attempt after a possible earlier cancel.
+func isRepeatedCancelOfStoppedStatement(call sdkgo.Call, failure classifiedFailure) bool {
+	return call.Context.Attempt() > 1 && failure.disposition == dispositionRejected &&
+		failure.httpStatus == http.StatusUnprocessableEntity && failure.status.Code != statementNotFoundCode
 }
 
 func cancelAttemptForFailure(failure classifiedFailure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[StatementCancellation] {

@@ -1,10 +1,17 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { OAuthAuthMethodID } from './models.js';
+
+/** Report a credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
 
 /** Injectable HTTP sender used by local replay tests. */
 export type ExcelTransport = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -86,17 +93,27 @@ export class GraphClient {
     this.#credentials = credentials; this.#refreshDriver = refreshDriver; this.#transport = transport; this.#endpoint = endpoint; this.#now = now;
   }
 
-  /** Resolve current credentials outside the Flow state. */
+  /**
+   * Resolve current credentials outside the Flow state. Throws ReauthorizationRequiredError for a
+   * terminal credential failure or invalid material, and a TypeError for every other failure, which
+   * a later attempt may clear.
+   */
   async credentials(call: Call): Promise<Credentials> {
-    try {
-      const credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal);
-      if (credentials.authMethodId !== OAuthAuthMethodID || !isHeaderSafeCredential(credentials.accessToken.reveal())) throw new TypeError();
-      return credentials;
-    } catch { throw new TypeError('connection credentials are unavailable'); }
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); }
+    catch (error) {
+      if (isTerminalCredentialError(error)) throw new ReauthorizationRequiredError();
+      throw new TypeError('connection credentials are temporarily unavailable');
+    }
+    if (credentials.authMethodId !== OAuthAuthMethodID || !isHeaderSafeCredential(credentials.accessToken.reveal())) throw new ReauthorizationRequiredError();
+    return credentials;
   }
 
-  /** Send one Graph request and at most one forced refresh after a 401. */
-  async request(call: Call, credentials: Credentials, method: string, path: string, body?: unknown): Promise<GraphResult> {
+  /**
+   * Send one Graph request and at most one forced refresh after a 401. `signal`, such as the
+   * single-dispatch write window, replaces the Step cancellation signal when given.
+   */
+  async request(call: Call, credentials: Credentials, method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<GraphResult> {
     let current = credentials;
     for (let attempt = 0; attempt < 2; attempt++) {
       let status = 0;
@@ -106,7 +123,7 @@ export class GraphClient {
         headers: { Authorization: `Bearer ${current.accessToken.reveal()}`, Accept: 'application/json', ...(encoded ? { 'Content-Type': 'application/json' } : {}) },
         ...(encoded ? { body: encoded } : {}), maxResponseBytes: Math.max(this.maxResponseBytes, 65_536),
         addressPolicy: this.#endpoint.startsWith('http://') ? 'privateNetworkHTTP' : 'publicHTTPS', timeoutMs: 20_000,
-        signal: call.context.cancellationSignal,
+        signal: signal ?? call.context.cancellationSignal,
         onResponseChunk: (_chunk, responseStatus, responseHeaders) => { status = responseStatus; headers = responseHeaders; },
       };
       let result: GraphResult;
@@ -116,7 +133,11 @@ export class GraphClient {
       } catch (error) {
         if (error instanceof BodyTooLargeError) {
           result = { status: error.status ?? status, headers: error.headers ?? headers, body: new Uint8Array(), tooLarge: (error.status ?? status) >= 200 && (error.status ?? status) < 300, transportFailure: false, credentials: current };
-        } else result = { status, headers, body: new Uint8Array(), tooLarge: false, transportFailure: true, credentials: current };
+        } else {
+          // Keep a status that arrived before the body failed: a 2xx write was accepted.
+          const arrived = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error : undefined;
+          result = { status: arrived?.status ?? status, headers: arrived?.headers ?? headers, body: new Uint8Array(), tooLarge: false, transportFailure: true, credentials: current };
+        }
       }
       if (result.status !== 401 || attempt !== 0 || !('resolveAfterRejection' in this.#credentials)) return result;
       try {

@@ -17,7 +17,7 @@ export interface TrackEventStepConfig<StepInput, OperationInput = TrackEventInpu
   imported: StepTarget<MutationResult<OperationOutput>>;
   /** Mixpanel rejected the event or credentials. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Mixpanel returned malformed or oversized data. */
+  /** Kept for compatibility and no longer selected: a malformed or oversized import confirmation now retries, because the $insert_id makes a resend safe. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input or credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

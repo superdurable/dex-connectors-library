@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-supabase",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Supabase REST operations for Dex Flows",
   "repository": {
     "type": "git",

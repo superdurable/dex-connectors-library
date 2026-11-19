@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { GetUserOperation, ListUsersOperation, CreateUserOperation, DisableUserOperation, EnableUserOperation, RevokeSignInSessionsOperation, AddUserToGroupOperation, RemoveUserFromGroupOperation } from './operations.js';
 
 const graphURL = 'https://graph.microsoft.com/v1.0';
@@ -72,8 +73,18 @@ export class EntraClient {
 
   /** Use generated grant rules for initial resolution and one rejected-token renewal. */
   async resolve(call: Call): Promise<Credentials | undefined> {
-    try { const credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); return validCredentials(credentials) ? credentials : undefined; }
-    catch { return undefined; }
+    return (await this.resolveCredentialOutcome(call)).credentials;
+  }
+
+  /**
+   * Resolve credentials and report whether a failure is retryable: every failure except reauthorization,
+   * a missing or unselected connection, a broker refusal, and invalid credential material.
+   */
+  async resolveCredentialOutcome(call: Call): Promise<{ credentials?: Credentials; isRetryable: boolean }> {
+    let credentials: Credentials;
+    try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); }
+    catch (error) { return { isRetryable: !isTerminalCredentialError(error) }; }
+    return validCredentials(credentials) ? { credentials, isRetryable: false } : { isRetryable: false };
   }
 
   /** Read a bounded user projection. */
@@ -103,7 +114,8 @@ export class EntraClient {
         if (error instanceof BodyTooLargeError && status > 0) {
           const boundedResponse: ProviderResponse = { status, headers: error.headers ?? {}, body: new Uint8Array() };
           if (status >= 200 && status < 300) return this.failed('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds the configured limit', boundedResponse);
-          return this.classify(operation, boundedResponse);
+          // An oversized error body may hide acceptance or a retryable code.
+          return this.failed('retry', operation, 'TRANSPORT', 'provider error response exceeds the configured limit', boundedResponse);
         }
         return this.failed('retry', operation, 'TRANSPORT', 'provider is unavailable');
       }
@@ -139,7 +151,8 @@ export class EntraClient {
     if (response.status === 408 || response.status >= 500 && response.status !== 501 || response.status === 409 && code === 'Directory_ConcurrencyViolation') return this.failed('retry', operation, 'AVAILABILITY', describe(response.status === 409 ? 'provider reported a concurrent directory change' : 'provider is temporarily unavailable'), response, parseRetryAfter(header(response, 'retry-after'), this.#now()));
     if (response.status === 404) return this.failed('notFound', operation, 'NOT_FOUND', describe('resource was not found'), response);
     if (response.status === 400) return this.failed('badRequest', operation, 'VALIDATION', describe('provider rejected the request with HTTP 400'), response);
-    const kind: Failure['kind'] = response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : response.status === 409 || response.status === 412 ? 'CONFLICT' : 'PROVIDER_REJECTION';
+    if (!definiteRefusalStatuses.has(response.status)) return this.failed('retry', operation, 'AVAILABILITY', describe(`provider answered HTTP ${response.status}, which leaves the outcome unknown`), response, parseRetryAfter(header(response, 'retry-after'), this.#now()));
+    const kind: Failure['kind'] = response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
     return this.failed('rejected', operation, kind, describe(`provider rejected the request with HTTP ${response.status}`), response);
   }
 
@@ -160,6 +173,15 @@ function replaceUnpairedSurrogates(value: string): string { return Array.from(va
 
 /** Keep '$'-prefixed user names in Graph's quoted path form. */
 export function userPath(key: string): string { return key.startsWith('$') ? `/users('${pathEscape(key.replaceAll("'", "''"))}')` : `/users/${pathEscape(key)}`; }
+
+/** Report a credential failure no later attempt resolves without a person. */
+/** The remaining statuses that prove Microsoft Graph refused the request; any other one is unknown. */
+const definiteRefusalStatuses = new Set([401, 403, 411, 413, 414, 415, 422]);
+
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
 
 function validCredentials(credentials: Credentials): boolean {
   return !!credentials.accessToken && isHeaderSafeCredential(credentials.accessToken.reveal()) && (!credentials.authMethodId || credentials.authMethodId === 'entra-app-only' || credentials.authMethodId === 'microsoft-oauth');

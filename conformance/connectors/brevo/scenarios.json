@@ -189,14 +189,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "created": false,
-          "email": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -207,7 +203,7 @@
         },
         "email": "member@meridian.example"
       },
-      "name": "upsert-invalid-response",
+      "name": "upsert-invalid-response-retries",
       "operation": "createOrUpdateContact"
     },
     {

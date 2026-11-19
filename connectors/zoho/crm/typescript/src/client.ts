@@ -45,9 +45,12 @@ function queryFailure<Output>(http: ZohoHTTPClient, call: Call, result: Exchange
 function mutationFailure<Output>(http: ZohoHTTPClient, call: Call, result: Exchange, value: Output, recordId: string, hasNotFound: boolean, isSessionFailure = false): MutationAttempt<Output> | undefined {
   if (result.outcome === 'success') return undefined;
   if (result.outcome === 'retry') return newMutationRetry(result.failure!, result.retryAfterMs);
+  // Both writes are safe to repeat, so an unusable or ambiguous answer retries.
+  if (result.outcome === 'invalid') return newMutationRetry(result.failure!);
+  if (result.status >= 300 && ![400, 401, 403, 404, 411, 413, 414, 415, 422].includes(result.status))
+    return newMutationRetry(crmFailure('AVAILABILITY', result.failure?.operation ?? '', `Zoho CRM answered with HTTP ${result.status}`));
   let branch: string;
-  if (result.outcome === 'invalid') branch = 'invalidResponse';
-  else if (result.outcome === 'defect') branch = 'defect';
+  if (result.outcome === 'defect') branch = 'defect';
   else if (result.summary.code === 'DUPLICATE_DATA') branch = 'conflict';
   else if (hasNotFound && isMissingRecord(result.summary)) branch = 'notFound';
   else if (isSessionFailure || ['OAUTH_SCOPE_MISMATCH', 'NO_PERMISSION', 'AUTHORIZATION_FAILED', 'INVALID_MODULE', 'NOT_SUPPORTED', 'INVALID_URL_PATTERN', 'INVALID_REQUEST_METHOD'].includes(result.summary.code) || (result.status >= 300 && result.status !== 400 && result.status !== 422)) branch = 'providerRejected';
@@ -217,7 +220,7 @@ export class ZohoClient implements Operations {
       const failed = mutationFailure(http, call, exchange, rejected, input.recordId, true);
       if (failed) return failed;
       const receipt = http.receipt(call, exchange, input.recordId);
-      if (written!.id !== input.recordId) return newMutationBranch('invalidResponse', { module: input.module }, receipt, crmFailure('PROTOCOL', 'updateRecord', 'Zoho CRM reported a write to a record other than the one requested'));
+      if (written!.id !== input.recordId) return newMutationRetry(crmFailure('PROTOCOL', 'updateRecord', 'Zoho CRM reported a write to a record other than the one requested'));
       return newMutationBranch('updated', { module: input.module, id: written!.id, ...(written!.modifiedAt ? { modifiedAt: written!.modifiedAt } : {}) }, receipt);
     } };
   }

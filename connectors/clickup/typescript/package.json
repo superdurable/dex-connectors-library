@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-clickup",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "ClickUp task operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -44,8 +44,8 @@
     "example:task:start": "npm run build && tsx examples/get-task/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.1",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

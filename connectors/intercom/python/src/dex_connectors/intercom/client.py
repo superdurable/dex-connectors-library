@@ -19,8 +19,14 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
+    ReauthorizationRequiredError,
     Receipt,
     TriggerLogger,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
 )
 from dex_connectors.sdk.providerhttp import (
     is_header_safe_credential,
@@ -60,6 +66,51 @@ class Exchange:
     failure: Failure | None = None
     retry_after: timedelta = timedelta()
     request_id: str = ""
+    # status is the HTTP status, or 0 when no response arrived.
+    status: int = 0
+    # is_body_oversized means the body exceeded max_response_bytes, so only its first bytes were kept.
+    is_body_oversized: bool = False
+    # is_credential_echoed means a non-2xx body contained the access token, so it cannot be trusted.
+    is_credential_echoed: bool = False
+
+    def has_success_status(self) -> bool:
+        """Report a 2xx, which proves Intercom accepted a write even when its body is unusable."""
+        return 200 <= self.status < 300
+
+    def with_untrusted_refusal_as_unknown(self, operation: str) -> Exchange:
+        """Treat a refusal whose body was too large to inspect, or echoed the token, as unknown."""
+        if self.outcome not in ("rejected", "notFound"):
+            return self
+        if self.is_body_oversized:
+            kind = FailureKind.RESPONSE_TOO_LARGE
+            reason = "a body larger than maxResponseBytes"
+        elif self.is_credential_echoed:
+            kind = FailureKind.PROTOCOL
+            reason = "a body that reflected the connection credential"
+        else:
+            return self
+        return Exchange(
+            "unconfirmed",
+            failure=Failure(
+                kind,
+                "intercom",
+                operation,
+                f"Intercom answered HTTP {self.status} with {reason}, so the outcome is unknown",
+            ),
+            request_id=self.request_id,
+            status=self.status,
+            is_body_oversized=self.is_body_oversized,
+            is_credential_echoed=self.is_credential_echoed,
+        )
+
+
+@dataclass(frozen=True)
+class CredentialProblem:
+    """A safe credential Failure and whether a later attempt may resolve it."""
+
+    failure: Failure
+    # is_transient means the credential provider failed for a reason other than unusable credentials.
+    is_transient: bool
 
 
 class Client:
@@ -169,15 +220,41 @@ class Client:
         self, call: Call, operation: str
     ) -> tuple[Credentials | None, Failure | None]:
         """Resolve and validate the access token for one attempt."""
+        credentials, problem = await self.resolve_write_credentials(call, operation)
+        return credentials, problem.failure if problem else None
+
+    async def resolve_write_credentials(
+        self, call: Call, operation: str
+    ) -> tuple[Credentials | None, CredentialProblem | None]:
+        """Resolve the access token; an unusable or revoked token is terminal, a lookup failure transient."""
         try:
             credentials = await self.credentials.resolve(call)
-            if not is_header_safe_credential(credentials.access_token.reveal()):
-                raise ValueError("invalid token")
-            return credentials, None
-        except (ValueError, LookupError, OSError, AttributeError, TypeError):
-            return None, self.failure(
-                operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"
-            )
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ):
+            return None, self._credential_problem(operation, is_transient=False)
+        except Exception as error:
+            # The generated connection module imports this module, so import it lazily.
+            from ._generated.connection import is_credential_material_error
+
+            is_transient = not is_credential_material_error(error)
+            return None, self._credential_problem(operation, is_transient=is_transient)
+        try:
+            is_usable = is_header_safe_credential(credentials.access_token.reveal())
+        except (AttributeError, TypeError):
+            is_usable = False
+        if not is_usable:
+            return None, self._credential_problem(operation, is_transient=False)
+        return credentials, None
+
+    def _credential_problem(self, operation: str, is_transient: bool) -> CredentialProblem:
+        return CredentialProblem(
+            self.failure(operation, FailureKind.AUTHENTICATION, "connection credentials are unavailable"),
+            is_transient,
+        )
 
     async def exchange(
         self,
@@ -188,8 +265,13 @@ class Client:
         path: str,
         payload: Any = None,
         query: dict[str, str] | None = None,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
-        """Send once; classify status separately from each operation's retry policy."""
+        """Send once; classify status separately from each operation's retry policy.
+
+        on_response_status receives the HTTP status as soon as the headers arrive, so a caller
+        cancelled while the body is read still knows whether Intercom accepted the request.
+        """
         try:
             headers = {
                 "Authorization": "Bearer " + credentials.access_token.reveal(),
@@ -230,7 +312,10 @@ class Client:
                     operation, FailureKind.TRANSPORT, "Intercom request failed before a response arrived"
                 ),
             )
+        status = response.status_code
         try:
+            if on_response_status is not None:
+                on_response_status(status)
             chunks = bytearray()
             async for chunk in response.aiter_bytes(chunk_size=min(self.max_response_bytes + 1, 65536)):
                 remaining = self.max_response_bytes + 1 - len(chunks)
@@ -239,13 +324,14 @@ class Client:
                     break
             body = bytes(chunks)
         except httpx.HTTPError:
+            # The status stays, so a write Intercom accepted with a 2xx is never resent.
             return Exchange(
                 "unconfirmed",
                 failure=self.failure(operation, FailureKind.TRANSPORT, "Intercom response could not be read"),
+                status=status,
             )
         finally:
             await response.aclose()
-        status = response.status_code
         if 200 <= status < 300:
             if len(body) > self.max_response_bytes:
                 return Exchange(
@@ -255,6 +341,7 @@ class Client:
                         FailureKind.RESPONSE_TOO_LARGE,
                         "Intercom response exceeds the configured maxResponseBytes limit",
                     ),
+                    status=status,
                 )
             if credentials.access_token.reveal().encode() in body:
                 return Exchange(
@@ -264,8 +351,12 @@ class Client:
                         FailureKind.PROTOCOL,
                         "Intercom response reflected the connection credential",
                     ),
+                    status=status,
                 )
-            return Exchange("succeeded", body=body)
+            return Exchange("succeeded", body=body, status=status)
+        is_body_oversized = len(body) > self.max_response_bytes
+        access_token = credentials.access_token.reveal().encode()
+        is_credential_echoed = bool(access_token) and access_token in body
         body = body[: self.max_response_bytes]
         summary, request_id = _error_summary(body)
 
@@ -295,6 +386,7 @@ class Client:
                 ),
                 retry_after=min(retry_after, timedelta(minutes=1)),
                 request_id=request_id,
+                status=status,
             )
         if status == 408 or status >= 500:
             return Exchange(
@@ -305,6 +397,7 @@ class Client:
                     with_summary(f"Intercom could not complete the request (HTTP {status})"),
                 ),
                 request_id=request_id,
+                status=status,
             )
         if status in (404, 410):
             return Exchange(
@@ -315,6 +408,9 @@ class Client:
                     with_summary(f"Intercom found no such resource (HTTP {status})"),
                 ),
                 request_id=request_id,
+                status=status,
+                is_body_oversized=is_body_oversized,
+                is_credential_echoed=is_credential_echoed,
             )
         if 300 <= status < 400:
             kind = FailureKind.PROTOCOL
@@ -333,7 +429,14 @@ class Client:
                 422: FailureKind.VALIDATION,
             }.get(status, FailureKind.PROVIDER_REJECTION)
             message = with_summary(f"Intercom rejected the request (HTTP {status})")
-        return Exchange("rejected", failure=self.failure(operation, kind, message), request_id=request_id)
+        return Exchange(
+            "rejected",
+            failure=self.failure(operation, kind, message),
+            request_id=request_id,
+            status=status,
+            is_body_oversized=is_body_oversized,
+            is_credential_echoed=is_credential_echoed,
+        )
 
     async def read_conversation(
         self, call: Call, credentials: Credentials, operation: str, conversation_id: str

@@ -60,7 +60,10 @@ func (operation UpdatePagePropertiesOperation) Invoke(call sdkgo.Call, input Upd
 		return sdkgo.NewMutationBranch(UpdatePagePropertiesBranchDefect, UpdatePagePropertiesOutput{},
 			validationFailure(updatePagePropertiesOperationID, err), sdkgo.Receipt{})
 	}
-	session, cancel, sessionFailure := client.startSession(call, updatePagePropertiesOperationID, writeOperationDeadline)
+	session, cancel, sessionFailure, isCredentialFailureTransient := client.startSessionWithCredentialStatus(call, updatePagePropertiesOperationID, writeOperationDeadline)
+	if sessionFailure != nil && isCredentialFailureTransient {
+		return sdkgo.NewMutationRetry[UpdatePagePropertiesOutput](*sessionFailure, 0)
+	}
 	if sessionFailure != nil {
 		return sdkgo.NewMutationBranch(UpdatePagePropertiesBranchDefect, UpdatePagePropertiesOutput{}, sessionFailure, sdkgo.Receipt{})
 	}
@@ -85,8 +88,8 @@ func (operation UpdatePagePropertiesOperation) Invoke(call sdkgo.Call, input Upd
 	}
 	page, err := decodePageBody(result.response.body)
 	if err != nil || page.ID != pageID {
-		return sdkgo.NewMutationBranch(UpdatePagePropertiesBranchInvalidResponse, UpdatePagePropertiesOutput{},
-			failurePointer(updatePagePropertiesOperationID, sdkgo.FailureProtocol, "Notion applied the page update but returned an unusable page"), receipt)
+		// Repeating the absolute update is safe, so an unusable accepted response retries.
+		return sdkgo.NewMutationRetry[UpdatePagePropertiesOutput](newFailure(updatePagePropertiesOperationID, sdkgo.FailureProtocol, "Notion applied the page update but returned an unusable page"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdatePagePropertiesBranchUpdated, UpdatePagePropertiesOutput{Page: page}, nil, receipt)
 }

@@ -45,7 +45,7 @@ export interface UpsertRowsStepConfig<StepInput, OperationInput = UpsertRowsInpu
   upserted: StepTarget<MutationResult<OperationOutput>>;
   /** The provider conclusively rejected the request or credentials. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The provider returned malformed or oversized JSON. */
+  /** Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, configuration, or credentials are invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

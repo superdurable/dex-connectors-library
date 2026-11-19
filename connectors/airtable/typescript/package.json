@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-airtable",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Airtable record operations and the recordChanged poll Trigger for Dex Flows",
   "repository": {
     "type": "git",

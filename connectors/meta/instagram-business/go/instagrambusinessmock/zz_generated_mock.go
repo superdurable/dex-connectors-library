@@ -18,6 +18,8 @@ import (
 // Mock is a scripted instagram-business connection. Script each operation through its accessor.
 type Mock struct {
 	connection instagrambusiness.Connection
+	getAccount *connectormock.Query[instagrambusiness.GetAccountInput, instagrambusiness.InstagramAccount]
+	getMedia   *connectormock.Query[instagrambusiness.GetMediaInput, instagrambusiness.InstagramMedia]
 	listMedia  *connectormock.Query[instagrambusiness.ListMediaInput, instagrambusiness.MediaListPage]
 }
 
@@ -26,8 +28,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listMedia: connectormock.NewQuery[instagrambusiness.ListMediaInput, instagrambusiness.MediaListPage](t, instagrambusiness.ListMediaDefinition),
+		getAccount: connectormock.NewQuery[instagrambusiness.GetAccountInput, instagrambusiness.InstagramAccount](t, instagrambusiness.GetAccountDefinition),
+		getMedia:   connectormock.NewQuery[instagrambusiness.GetMediaInput, instagrambusiness.InstagramMedia](t, instagrambusiness.GetMediaDefinition),
+		listMedia:  connectormock.NewQuery[instagrambusiness.ListMediaInput, instagrambusiness.MediaListPage](t, instagrambusiness.ListMediaDefinition),
 	}
+	mock.getAccount.Default(GetAccountDefault())
+	mock.getMedia.Default(GetMediaDefault())
 	mock.listMedia.Default(ListMediaDefault())
 	connection, err := instagrambusiness.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "instagram-business", Name: connectionName})
 	if err != nil {
@@ -40,6 +46,16 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() instagrambusiness.Connection { return mock.connection }
 
+// GetAccount returns the getAccount script.
+func (mock *Mock) GetAccount() *connectormock.Query[instagrambusiness.GetAccountInput, instagrambusiness.InstagramAccount] {
+	return mock.getAccount
+}
+
+// GetMedia returns the getMedia script.
+func (mock *Mock) GetMedia() *connectormock.Query[instagrambusiness.GetMediaInput, instagrambusiness.InstagramMedia] {
+	return mock.getMedia
+}
+
 // ListMedia returns the listMedia script.
 func (mock *Mock) ListMedia() *connectormock.Query[instagrambusiness.ListMediaInput, instagrambusiness.MediaListPage] {
 	return mock.listMedia
@@ -47,8 +63,96 @@ func (mock *Mock) ListMedia() *connectormock.Query[instagrambusiness.ListMediaIn
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetAccount() sdkgo.Query[instagrambusiness.GetAccountInput, instagrambusiness.InstagramAccount] {
+	return operations.mock.getAccount
+}
+func (operations mockOperations) GetMedia() sdkgo.Query[instagrambusiness.GetMediaInput, instagrambusiness.InstagramMedia] {
+	return operations.mock.getMedia
+}
 func (operations mockOperations) ListMedia() sdkgo.Query[instagrambusiness.ListMediaInput, instagrambusiness.MediaListPage] {
 	return operations.mock.listMedia
+}
+
+// GetAccountFound selects the found branch: Meta returned the account.
+func GetAccountFound(value instagrambusiness.InstagramAccount, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramAccount] {
+	return connectormock.Branch(instagrambusiness.GetAccountBranchFound, value, failure)
+}
+
+// GetAccountNotFound selects the notFound branch: The account is missing or inaccessible.
+func GetAccountNotFound(value instagrambusiness.InstagramAccount, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramAccount] {
+	return connectormock.Branch(instagrambusiness.GetAccountBranchNotFound, value, failure)
+}
+
+// GetAccountProviderRejected selects the providerRejected branch: Meta definitively rejected the lookup.
+func GetAccountProviderRejected(value instagrambusiness.InstagramAccount, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramAccount] {
+	return connectormock.Branch(instagrambusiness.GetAccountBranchProviderRejected, value, failure)
+}
+
+// GetAccountInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+func GetAccountInvalidResponse(value instagrambusiness.InstagramAccount, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramAccount] {
+	return connectormock.Branch(instagrambusiness.GetAccountBranchInvalidResponse, value, failure)
+}
+
+// GetAccountDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetAccountDefect(value instagrambusiness.InstagramAccount, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramAccount] {
+	return connectormock.Branch(instagrambusiness.GetAccountBranchDefect, value, failure)
+}
+
+// GetAccountRetry asks Dex to retry the getAccount Step, after the delay when it is positive.
+func GetAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[instagrambusiness.InstagramAccount] {
+	return connectormock.Retry[instagrambusiness.InstagramAccount](failure, after)
+}
+
+// GetAccountFoundDefault is the manifest mock foundDefault: A professional Instagram account is available.
+func GetAccountFoundDefault() connectormock.Case[instagrambusiness.InstagramAccount] {
+	value := connectormock.MustDecodeOutput[instagrambusiness.InstagramAccount](`{"id":"17800000000000001","username":"example_business","mediaCount":1}`)
+	return connectormock.Branch(instagrambusiness.GetAccountBranchFound, value, nil)
+}
+
+// GetAccountDefault is the manifest default, foundDefault, which New installs.
+func GetAccountDefault() connectormock.Case[instagrambusiness.InstagramAccount] {
+	return GetAccountFoundDefault()
+}
+
+// GetMediaFound selects the found branch: Meta returned the media object.
+func GetMediaFound(value instagrambusiness.InstagramMedia, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramMedia] {
+	return connectormock.Branch(instagrambusiness.GetMediaBranchFound, value, failure)
+}
+
+// GetMediaNotFound selects the notFound branch: The media is missing or inaccessible.
+func GetMediaNotFound(value instagrambusiness.InstagramMedia, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramMedia] {
+	return connectormock.Branch(instagrambusiness.GetMediaBranchNotFound, value, failure)
+}
+
+// GetMediaProviderRejected selects the providerRejected branch: Meta definitively rejected the lookup.
+func GetMediaProviderRejected(value instagrambusiness.InstagramMedia, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramMedia] {
+	return connectormock.Branch(instagrambusiness.GetMediaBranchProviderRejected, value, failure)
+}
+
+// GetMediaInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+func GetMediaInvalidResponse(value instagrambusiness.InstagramMedia, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramMedia] {
+	return connectormock.Branch(instagrambusiness.GetMediaBranchInvalidResponse, value, failure)
+}
+
+// GetMediaDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetMediaDefect(value instagrambusiness.InstagramMedia, failure *sdkgo.Failure) connectormock.Case[instagrambusiness.InstagramMedia] {
+	return connectormock.Branch(instagrambusiness.GetMediaBranchDefect, value, failure)
+}
+
+// GetMediaRetry asks Dex to retry the getMedia Step, after the delay when it is positive.
+func GetMediaRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[instagrambusiness.InstagramMedia] {
+	return connectormock.Retry[instagrambusiness.InstagramMedia](failure, after)
+}
+
+// GetMediaFoundDefault is the manifest mock foundDefault: One example Instagram image is available.
+func GetMediaFoundDefault() connectormock.Case[instagrambusiness.InstagramMedia] {
+	value := connectormock.MustDecodeOutput[instagrambusiness.InstagramMedia](`{"id":"17900000000000001","caption":"Hello","mediaType":"IMAGE","timestamp":"2026-11-08T10:00:00+0000","permalink":"https://www.instagram.com/p/example/"}`)
+	return connectormock.Branch(instagrambusiness.GetMediaBranchFound, value, nil)
+}
+
+// GetMediaDefault is the manifest default, foundDefault, which New installs.
+func GetMediaDefault() connectormock.Case[instagrambusiness.InstagramMedia] {
+	return GetMediaFoundDefault()
 }
 
 // ListMediaListed selects the listed branch: Meta returned one media page.

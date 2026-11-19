@@ -345,7 +345,7 @@ func UpdateTicketProviderRejected(value jiraservicemanagement.UpdateTicketOutput
 	return connectormock.Branch(jiraservicemanagement.UpdateTicketBranchProviderRejected, value, failure)
 }
 
-// UpdateTicketInvalidResponse selects the invalidResponse branch: Jira returned an invalid or oversized issue.
+// UpdateTicketInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry.
 func UpdateTicketInvalidResponse(value jiraservicemanagement.UpdateTicketOutput, failure *sdkgo.Failure) connectormock.Case[jiraservicemanagement.UpdateTicketOutput] {
 	return connectormock.Branch(jiraservicemanagement.UpdateTicketBranchInvalidResponse, value, failure)
 }
@@ -399,7 +399,7 @@ func TransitionTicketNotFound(value jiraservicemanagement.TransitionTicketOutput
 	return connectormock.Branch(jiraservicemanagement.TransitionTicketBranchNotFound, value, failure)
 }
 
-// TransitionTicketTransitionUnavailable selects the transitionUnavailable branch: No available transition from the request's current status matches, or several do; the Value lists the current status and the available transitions.
+// TransitionTicketTransitionUnavailable selects the transitionUnavailable branch: No available transition from the request's current status matches, or several do, or on a retry the request is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.
 func TransitionTicketTransitionUnavailable(value jiraservicemanagement.TransitionTicketOutput, failure *sdkgo.Failure) connectormock.Case[jiraservicemanagement.TransitionTicketOutput] {
 	return connectormock.Branch(jiraservicemanagement.TransitionTicketBranchTransitionUnavailable, value, failure)
 }
@@ -409,7 +409,7 @@ func TransitionTicketProviderRejected(value jiraservicemanagement.TransitionTick
 	return connectormock.Branch(jiraservicemanagement.TransitionTicketBranchProviderRejected, value, failure)
 }
 
-// TransitionTicketInvalidResponse selects the invalidResponse branch: Jira returned an invalid or oversized issue or transition list.
+// TransitionTicketInvalidResponse selects the invalidResponse branch: No longer selected. An invalid or oversized issue or transition list proves nothing about the request, so the Step retries; the branch stays declared for compatibility.
 func TransitionTicketInvalidResponse(value jiraservicemanagement.TransitionTicketOutput, failure *sdkgo.Failure) connectormock.Case[jiraservicemanagement.TransitionTicketOutput] {
 	return connectormock.Branch(jiraservicemanagement.TransitionTicketBranchInvalidResponse, value, failure)
 }

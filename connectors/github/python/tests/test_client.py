@@ -10,12 +10,20 @@ from dex_connectors.sdk import (
     ConnectionRef,
     IdempotencyKey,
     OperationRef,
+    ReauthorizationRequiredError,
     SecretString,
     StaticCredentialProvider,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.github import Client, Config, Credentials, ListPullRequestFilesInput
 from dex_connectors.github.client import _path_escape, _query
+from dex_connectors.github.connection import CredentialMaterialError, decode_credentials
 from dex_connectors.github.operations import _time, _url
 
 
@@ -93,6 +101,73 @@ async def test_request_uses_configured_timeout() -> None:
         )
     assert result.branch == "notFound"
     assert observed == [0.25]
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the error the SDK project provider raises after the generated decoder refuses material."""
+    try:
+        try:
+            decode_credentials({"unknown": "value"})
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("malformed material decoded")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "kind"),
+    [
+        (CredentialBrokerUnavailableError("broker"), "retry"),
+        (ConnectionError("network"), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+        (ReauthorizationRequiredError(), "branch"),
+        (ObjectNotFoundError("connection"), "branch"),
+        (ConnectionNotSelectedError("connection"), "branch"),
+        (CredentialBrokerRejectedError("broker"), "branch"),
+        (_sdk_wrapped_material_error(), "branch"),
+    ],
+    ids=[
+        "broker unavailable",
+        "network",
+        "unlisted",
+        "reauthorize",
+        "not found",
+        "not selected",
+        "broker rejected",
+        "malformed material",
+    ],
+)
+async def test_query_classifies_credential_failures(error: Exception, kind: str) -> None:
+    """Only a terminal credential failure selects defect; every other one retries without a request."""
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(500)
+
+    connection = ConnectionRef("github", "github")
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as transport:
+        client = Client(Config(), _FailingCredentials(error), transport)  # type: ignore[arg-type]
+        call = Call(
+            CallID("call-1"), connection, OperationRef("github", "listPullRequestFiles"), IdempotencyKey("")
+        )
+        result = await client.list_pull_request_files().invoke(
+            call, ListPullRequestFilesInput("octocat", "repo", 1)
+        )
+    assert result.kind == kind
+    if kind == "branch":
+        assert result.branch == "defect"
+    assert requests == []
 
 
 @pytest.mark.parametrize(

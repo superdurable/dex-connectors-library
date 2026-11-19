@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -248,12 +249,17 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 	}
 	if response.StatusCode != http.StatusOK {
 		rejectedFailure := statusFailure(response, operation)
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			// Repeating a purge has the same effect, so an ambiguous answer retries.
+			rejectedFailure.Kind = sdkgo.FailureAvailability
+			return sdkgo.NewMutationRetry[T](rejectedFailure, 0)
+		}
 		return sdkgo.NewMutationBranch(rejected, zero, &rejectedFailure, sdkgo.Receipt{})
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if err != nil {
 		if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-			return sdkgo.NewMutationBranch(invalid, zero, failure(sdkgo.FailureResponseTooLarge, operation, "response exceeded the configured limit"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureResponseTooLarge, operation, "response exceeded the configured limit"), 0)
 		}
 		return sdkgo.NewMutationRetry[T](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "cloudflare", Operation: operation, Message: "response was interrupted"}, 0)
 	}
@@ -262,13 +268,36 @@ func executeMutation[T any](client *Client, call sdkgo.Call, operation string, s
 	}
 	value, err := decode(body)
 	if err != nil {
-		return sdkgo.NewMutationBranch(invalid, zero, failure(sdkgo.FailureProtocol, operation, "response was malformed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[T](*failure(sdkgo.FailureProtocol, operation, "response was malformed"), 0)
 	}
 	return sdkgo.NewMutationBranch(happy, value, nil, sdkgo.Receipt{})
 }
 
+// isDefiniteRefusalStatus reports a status that proves Cloudflare refused the write; any other status is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+var errCredentialsUnavailable = errors.New("cloudflare connection credentials are temporarily unavailable")
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) (*http.Response, *sdkgo.Failure, error) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		// A transient credential failure sent nothing, so the caller returns Retry.
+		return nil, nil, errCredentialsUnavailable
+	}
 	if err != nil {
 		return nil, failure(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), nil
 	}

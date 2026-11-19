@@ -1,4 +1,4 @@
-.PHONY: check download-root-go-modules test test-common test-common-repository-checks test-common-sdkgo test-common-root-go test-common-python-scripts test-common-typescript-conformance test-connectors-mcp test-connectors-mcp-example test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-python-connectors-latest-sdk test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check download-root-go-modules test test-common test-common-repository-checks test-common-sdkgo test-common-root-go test-common-python-scripts test-common-typescript-conformance test-connectors-mcp test-connectors-mcp-example test-conformance test-connector-conformance test-connectors check-connector-generation test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-python-connectors-latest-sdk test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -56,7 +56,7 @@ test-common-root-go:
 	GOWORK=off go vet ./...
 
 test-common-python-scripts:
-	python3 -m unittest script/release/component_release_test.py script/release/connectors_mcp_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/ci_summary_test.py script/set_mtimes_from_git_objects_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py script/python_latest_sdk_test.py script/go_download_retry_test.py
+	python3 -m unittest script/release/component_release_test.py script/release/connectors_mcp_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/ci_summary_test.py script/ci_local_verification_test.py script/set_mtimes_from_git_objects_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py script/python_latest_sdk_test.py script/go_download_retry_test.py
 
 test-common-typescript-conformance:
 	npm ci --prefix connectors/stripe/typescript
@@ -106,6 +106,17 @@ test-connectors: download-root-go-modules
 		(cd "$$module/go" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...) || exit 1; \
 		GOWORK=off go run ./cmd/connectorctl validate "$$module/connector.yaml" || exit 1; \
 		GOWORK=off go run ./cmd/connectorctl generate --check "$$module/connector.yaml" || exit 1; \
+	done
+
+# The manifest and generated-code checks of test-connectors, unsharded, for runs that skip the connector shards.
+check-connector-generation: download-root-go-modules
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
+	build_directory="$$(mktemp -d)" || exit 1; \
+	trap 'rm -rf "$$build_directory"' EXIT; \
+	GOWORK=off go build -o "$$build_directory/connectorctl" ./cmd/connectorctl || exit 1; \
+	for module in $$directories; do \
+		"$$build_directory/connectorctl" validate "$$module/connector.yaml" || exit 1; \
+		"$$build_directory/connectorctl" generate --check "$$module/connector.yaml" || exit 1; \
 	done
 
 test-sdkpython:

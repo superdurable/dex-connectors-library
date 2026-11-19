@@ -127,16 +127,30 @@ func (operation SetUserPropertiesOperation) Invoke(call sdkgo.Call, input SetUse
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 		return propertiesRetry(sdkgo.FailureAvailability, "Heap is temporarily unavailable", retryAfter)
 	}
+	if response.StatusCode != http.StatusOK && !isDefiniteRefusalStatus(response.StatusCode) {
+		// Properties overwrite absolute values, so an unknown answer retries.
+		return propertiesRetry(sdkgo.FailureAvailability, "Heap answered HTTP "+strconv.Itoa(response.StatusCode)+", so the outcome is unknown", retryAfter)
+	}
 	if response.StatusCode != http.StatusOK {
 		return propertiesBranch(SetUserPropertiesBranchProviderRejected, sdkgo.FailureProviderRejection, "Heap rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	if _, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes); err != nil {
 		if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-			return propertiesBranch(SetUserPropertiesBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Heap confirmation exceeded the limit")
+			return propertiesRetry(sdkgo.FailureResponseTooLarge, "Heap confirmation exceeded the limit", 0)
 		}
 		return propertiesRetry(sdkgo.FailureTransport, "Heap confirmation was interrupted", 0)
 	}
 	return sdkgo.NewMutationBranch(SetUserPropertiesBranchAccepted, UserPropertiesResult{Accepted: true}, nil, sdkgo.Receipt{})
+}
+
+// isDefiniteRefusalStatus reports a status that proves Heap refused the update.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func validAppID(appID string) bool {

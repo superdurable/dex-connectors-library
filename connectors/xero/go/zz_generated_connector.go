@@ -692,8 +692,8 @@ var CreateInvoiceDefinition = sdkgo.MutationDefinition{
 		{ID: CreateInvoiceBranchCreated, Description: "Xero created the invoice, or returned the invoice this Step already created, with its number and totals."},
 		{ID: CreateInvoiceBranchProviderRejected, Description: "Xero conclusively rejected the invoice, such as an unknown contact or account code, a locked period, a plan's invoice limit, or a missing scope; nothing was created.", Optional: true},
 		{ID: CreateInvoiceBranchDailyLimitReached, Description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was created; the Receipt carries retryAfterSeconds.", Optional: true},
-		{ID: CreateInvoiceBranchUncertain, Description: "Xero may have created the invoice but answered with an internal error, which it caches under the key, or with an unusable invoice; read it back by reference before creating again.", Optional: true},
-		{ID: CreateInvoiceBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: CreateInvoiceBranchUncertain, Description: "Xero answered HTTP 500, which it caches under the key and replays to every resend, or, on a later attempt that may follow a created invoice, Xero refused the credentials or the connection became unusable; the outcome cannot be confirmed, so read back with listInvoices by reference. An unusable invoice repeats the identical keyed request instead.", Optional: true},
+		{ID: CreateInvoiceBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid on the Step's first attempt.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -722,6 +722,8 @@ type CreateInvoiceStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateInvoiceResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateInvoiceOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateInvoiceStep[IN any](config CreateInvoiceStepConfig[IN]) sdkgo.MutationStep[IN, CreateInvoiceInput, CreateInvoiceOutput] {
@@ -772,8 +774,8 @@ var RecordPaymentDefinition = sdkgo.MutationDefinition{
 		{ID: RecordPaymentBranchRecorded, Description: "Xero recorded the payment, or returned the payment this Step already recorded, with the invoice's remaining amount due."},
 		{ID: RecordPaymentBranchProviderRejected, Description: "Xero conclusively rejected the payment, such as an amount above the amount due, an invoice that is not approved, an account that cannot take payments, or a locked period; nothing was recorded.", Optional: true},
 		{ID: RecordPaymentBranchDailyLimitReached, Description: "Xero's daily API limit for the organisation is exhausted before the request ran, so nothing was recorded; the Receipt carries retryAfterSeconds.", Optional: true},
-		{ID: RecordPaymentBranchUncertain, Description: "Xero may have recorded the payment but answered with an internal error, which it caches under the key, or with an unusable payment; read the invoice back before paying again.", Optional: true},
-		{ID: RecordPaymentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: RecordPaymentBranchUncertain, Description: "Xero answered HTTP 500, which it caches under the key and replays to every resend, or, on a later attempt that may follow a recorded payment, Xero refused the credentials or the connection became unusable; the outcome cannot be confirmed, so read the invoice back with getInvoice. An unusable payment repeats the identical keyed request instead.", Optional: true},
+		{ID: RecordPaymentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid on the Step's first attempt.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -802,6 +804,8 @@ type RecordPaymentStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[RecordPaymentResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RecordPaymentOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewRecordPaymentStep[IN any](config RecordPaymentStepConfig[IN]) sdkgo.MutationStep[IN, RecordPaymentInput, RecordPaymentOutput] {

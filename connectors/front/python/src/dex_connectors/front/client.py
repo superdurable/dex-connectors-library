@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: MIT
 """Bounded Front HTTP client and provider response decoding."""
 
+import asyncio
 import json
 import math
 import re
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlsplit
@@ -48,6 +50,8 @@ _ID = {
     "comment": re.compile(r"com_[A-Za-z0-9]{1,40}\Z"),
 }
 _PAGE_TOKEN = re.compile(r"[A-Za-z0-9._~-]{1,1000}\Z")
+# Ends a deadline-bound exchange before the Fence cancels it, so a received status is kept.
+_DEADLINE_MARGIN_SECONDS = 0.5
 _COMPANY_HOST = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.api\.frontapp\.com\Z")
 
 
@@ -71,6 +75,8 @@ class Exchange:
     body: bytes = b""
     error: Failure | None = None
     retry_after: float = 0
+    # A non-2xx body that was oversized, unreadable, or reflected the token; it cannot rule out acceptance.
+    is_error_body_unreadable: bool = False
 
     @property
     def retryable(self) -> bool:
@@ -169,8 +175,22 @@ class Client:
         *,
         parameters: dict[str, str] | None = None,
         payload: Any = None,
+        deadline: datetime | None = None,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
-        """Send one request with redirects disabled and classify status before reading errors."""
+        """Send one request with redirects disabled and classify status before reading errors.
+
+        A `deadline`, such as a Fence write window, ends the exchange shortly before it, keeping
+        any 2xx status already received. `on_response_status` receives the HTTP status as soon
+        as the headers arrive, so a caller whose Fence cancels the body read still knows it.
+        """
+        stop_at = (
+            None
+            if deadline is None
+            else asyncio.get_running_loop().time()
+            + (deadline - datetime.now(UTC)).total_seconds()
+            - _DEADLINE_MARGIN_SECONDS
+        )
         headers = {"Authorization": "Bearer " + credentials.api_token.reveal(), "Accept": "application/json"}
         if payload is not None:
             headers["Content-Type"] = "application/json"
@@ -188,7 +208,17 @@ class Client:
                 error=failure(FailureKind.LOCAL_DEFECT, operation, "Front request could not be built"),
             )
         try:
-            response, _ = await send_traced(self.http_client, request)
+            async with asyncio.timeout_at(stop_at):
+                response, _ = await send_traced(self.http_client, request)
+        except TimeoutError:
+            return Exchange(
+                "unconfirmed",
+                error=failure(
+                    FailureKind.TRANSPORT,
+                    operation,
+                    "the Front request may have been sent, but no answer arrived",
+                ),
+            )
         except ProviderTransportError as error:
             if error.provably_not_sent:
                 return Exchange(
@@ -206,12 +236,16 @@ class Client:
                 ),
             )
         status = response.status_code
+        if on_response_status is not None:
+            on_response_status(status)
         response_headers = response.headers.copy()
         is_success = 200 <= status < 300
+        is_error_body_unreadable = False
         try:
-            body = await read_bounded_body(
-                response, self.max_response_bytes if is_success else MAX_ERROR_BODY_BYTES
-            )
+            async with asyncio.timeout_at(stop_at):
+                body = await read_bounded_body(
+                    response, self.max_response_bytes if is_success else MAX_ERROR_BODY_BYTES
+                )
         except BodyTooLargeError:
             if is_success:
                 return Exchange(
@@ -224,16 +258,17 @@ class Client:
                         "the Front response exceeds the configured maxResponseBytes",
                     ),
                 )
-            body = b""
-        except ProviderTransportError:
+            body, is_error_body_unreadable = b"", True
+        except (ProviderTransportError, TimeoutError):
             if is_success:
+                # The status survives, so a write Front accepted is never resent.
                 return Exchange(
                     "unconfirmed",
                     status,
                     response_headers,
                     error=failure(FailureKind.TRANSPORT, operation, "the Front response could not be read"),
                 )
-            body = b""
+            body, is_error_body_unreadable = b"", True
         if is_success:
             if credentials.api_token.reveal().encode() in body:
                 return Exchange(
@@ -245,6 +280,19 @@ class Client:
                     ),
                 )
             return Exchange("succeeded", status, response_headers, body)
+        token = credentials.api_token.reveal().encode()
+        if token and token in body:
+            # A token-reflecting refusal is untrusted, so it cannot rule out acceptance either.
+            is_error_body_unreadable = True
+        return replace(
+            self._classify_failure_status(operation, status, response_headers),
+            is_error_body_unreadable=is_error_body_unreadable,
+        )
+
+    def _classify_failure_status(
+        self, operation: str, status: int, response_headers: httpx.Headers
+    ) -> Exchange:
+        """Map a non-2xx answer by its status alone; Front's error body is never read."""
         if status == 429:
             delay = parse_retry_after(response_headers.get("Retry-After", ""), datetime.now(UTC))
             if not delay:

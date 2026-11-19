@@ -107,7 +107,7 @@ export interface CreateTicketStepConfig<StepInput, OperationInput = CreateTicket
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Jira Service Management conclusively rejected the request, such as a missing required field, an unknown request type or customer, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request was sent but its outcome cannot be confirmed, so the customer request may exist; the connector never resends it. */
+  /** The send cap is reached, or Jira Service Management accepted the request without a usable reference, and the outcome cannot be confirmed, so the customer request may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -137,15 +137,18 @@ export interface UpdateTicketStepConfig<StepInput, OperationInput = UpdateTicket
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the change, such as an unknown priority, a field missing from the edit screen, or missing Edit Issues permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Jira returned an invalid or oversized issue. */
+  /** Kept for compatibility and no longer selected: an invalid or oversized issue returns Retry. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateTicket Step from a named connection. */
 export function newUpdateTicketStep<StepInput, OperationInput = UpdateTicketInput, OperationOutput = UpdateTicketOutput>(configuration: UpdateTicketStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateTicket(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -166,19 +169,22 @@ export interface TransitionTicketStepConfig<StepInput, OperationInput = Transiti
   transitioned: StepTarget<MutationResult<OperationOutput>>;
   /** The issue does not exist or the connection cannot browse it. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** No available transition from the request's current status matches, or several do; the Value lists the current status and the available transitions. */
+  /** No available transition from the request's current status matches, or several do, or on a retry the request is in neither the recorded source nor destination status; the Value lists the current status and the available transitions. */
   transitionUnavailable?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the transition, such as a required transition screen field or missing permission. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Jira returned an invalid or oversized issue or transition list. */
+  /** No longer selected. An invalid or oversized issue or transition list proves nothing about the request, so the Step retries; the branch stays declared for compatibility. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the transitionTicket Step from a named connection. */
 export function newTransitionTicketStep<StepInput, OperationInput = TransitionTicketInput, OperationOutput = TransitionTicketOutput>(configuration: TransitionTicketStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, transitioned, notFound, transitionUnavailable, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, transitioned, notFound, transitionUnavailable, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.transitionTicket(), connection: connection.reference, branches: [
     goToBranch("transitioned", transitioned),
@@ -202,7 +208,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira Service Management conclusively rejected the comment, such as missing Add Comments permission; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The comment was sent but its outcome cannot be confirmed, so it may exist; the connector never resends it. */
+  /** The send cap is reached, or Jira Service Management accepted the comment without a usable ID, and the outcome cannot be confirmed, so the comment may exist; the connector does not send it again. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

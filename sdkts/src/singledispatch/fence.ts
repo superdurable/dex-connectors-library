@@ -5,6 +5,7 @@ import type { AsyncContext } from '@superdurable/dex';
 import type { Call } from '../credentials.js';
 import { MaximumMaxSends, isValidMaxSends } from '../operation.js';
 import { CallIDSchema } from '../types.js';
+import { recordStepCheckpoint, stepCheckpointFor } from './checkpoint.js';
 import { decideDispatch, type Decision, type Marker, type MarkerState } from './index.js';
 
 /** The current attempt has no permission to send another provider write. */
@@ -26,9 +27,17 @@ export interface FenceOptions {
   maxSends?: number;
 }
 
-/** One-attempt fence for a non-idempotent provider write. Construct once per Step attempt. */
+/**
+ * One-attempt fence for a non-idempotent provider write. Construct once per call and Step attempt.
+ *
+ * One Step may run Fences for several call IDs, also concurrently. Every heartbeat holds one marker
+ * per call ID the Step attempt knows, shared even across copies of this SDK, so the Fences do not
+ * lose each other's entries. The heartbeat format is internal to the connector SDKs and may change;
+ * hosts must not parse it.
+ */
 export class Fence {
   readonly #context: AsyncContext;
+  readonly #checkpoint: ReturnType<typeof stepCheckpointFor>;
   readonly #call: Call;
   readonly #writeDeadline: number;
   readonly #minimumRequestTime: number;
@@ -51,6 +60,7 @@ export class Fence {
     this.#maxSends = operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
     this.#call = call;
     this.#context = call.context;
+    this.#checkpoint = stepCheckpointFor(call.context);
     const now = Date.now();
     const remaining = this.#context.deadline ? this.#context.deadline.getTime() - now : executeTimeoutMs;
     const budget = Math.max(0, Math.min(executeTimeoutMs, remaining));
@@ -58,18 +68,12 @@ export class Fence {
     this.#minimumRequestTime = budget / 10;
   }
 
-  /** Decide before resolving credentials or performing any provider lookup. */
+  /** Decide from this call's prior checkpoint entry before resolving credentials or performing any provider lookup. */
   decide(): Decision {
     if (this.#decision) return this.#decision;
     let last: unknown;
     try {
-      if (this.#context.hasLastHeartbeatValue()) {
-        last = this.#context.getLastHeartbeatValue();
-        if (last === undefined || last === null) {
-          this.#decision = { kind: 'failClosed', error: new TypeError('invalid single-dispatch checkpoint') };
-          return this.#decision;
-        }
-      }
+      if (this.#context.hasLastHeartbeatValue()) last = this.#context.getLastHeartbeatValue();
     } catch (error) {
       this.#decision = decideDispatch(this.#call.id, this.#context.attempt, undefined, error instanceof Error ? error : new Error('heartbeat checkpoint is unreadable'), this.#maxSends);
       return this.#decision;
@@ -82,8 +86,8 @@ export class Fence {
    * Record the claim before sending once; repeat it during a long request.
    *
    * Allowed once after a `sendAllowed` or `readBackThenResendAllowed` decision. Under the latter,
-   * call it only after read-back did not confirm success. With a cap of at least 2, the claim
-   * records the decision's `priorSendUpperBound` plus one as `sendCount`. A short write window
+   * call it only after read-back did not confirm success. Whatever the cap, the claim records
+   * the decision's `priorSendUpperBound` plus one as `sendCount`. A short write window
    * records `notSent` only after `sendAllowed`.
    */
   async dispatch<Result>(send: (signal: AbortSignal) => Promise<Result> | Result): Promise<Result> {
@@ -98,12 +102,12 @@ export class Fence {
       throw new InsufficientTimeError();
     }
     this.#hasDispatched = true;
-    const claim = this.#checkpoint('claimed', this.#priorSendUpperBound() + 1);
+    const claim = this.#attemptMarker('claimed', this.#priorSendUpperBound() + 1);
     try { await this.#record(claim); }
     catch {
       this.#hasPreSendRetry = true;
       if (this.#decision?.kind === 'sendAllowed') {
-        try { await this.#context.recordHeartbeat(this.#checkpoint('notSent', this.#priorSendUpperBound())); }
+        try { await recordStepCheckpoint(this.#context, this.#checkpoint, this.#attemptMarker('notSent', this.#priorSendUpperBound())); }
         catch { /* A failed best-effort proof never grants a send in this attempt. */ }
       }
       throw new CheckpointError();
@@ -118,7 +122,7 @@ export class Fence {
       if (this.#marker?.state !== 'claimed' || this.#marker.providerId) return;
       pendingHeartbeat = pendingHeartbeat.then(async () => {
         if (this.#marker?.state === 'claimed' && !this.#marker.providerId) {
-          try { await this.#context.recordHeartbeat(claim); }
+          try { await recordStepCheckpoint(this.#context, this.#checkpoint, claim); }
           catch { /* Repetition is best effort; a failed claim cannot authorize another send. */ }
         }
       });
@@ -144,23 +148,32 @@ export class Fence {
   async recordNotSent(): Promise<void> {
     if (this.#decision?.kind !== 'sendAllowed' || this.#hasDispatched || this.#hasPreSendRetry) throw new DispatchNotAllowedError();
     this.#hasPreSendRetry = true;
-    await this.#record(this.#checkpoint('notSent', this.#priorSendUpperBound()));
+    await this.#record(this.#attemptMarker('notSent', this.#priorSendUpperBound()));
   }
 
   /** Checkpoint positive evidence that this attempt's request was not processed, so it is not counted. */
   async recordCanResend(): Promise<void> {
     if (!this.#hasSendFinished || this.#hasTerminalRecordPending || this.#marker?.state !== 'claimed' || this.#marker.providerId) throw new DispatchNotAllowedError();
     this.#hasTerminalRecordPending = true;
-    try { await this.#record(this.#checkpoint('canResend', this.#priorSendUpperBound())); }
+    try { await this.#record(this.#attemptMarker('canResend', this.#priorSendUpperBound())); }
     finally { this.#hasTerminalRecordPending = false; }
   }
 
-  /** Checkpoint an accepted provider resource, with its claim's send count, for read-back after a lost response. */
+  /**
+   * Checkpoint an accepted provider resource, with its claim's send count, for read-back after a lost response.
+   *
+   * When the heartbeat fails, the error propagates, but the provider ID stays in the Step attempt's
+   * checkpoint, so a later heartbeat of any Fence in the Step carries it, and `recordCanResend` is refused.
+   */
   async recordProviderId(providerId: string): Promise<void> {
     if (!this.#hasSendFinished || this.#hasTerminalRecordPending || this.#marker?.state !== 'claimed' || !providerId) throw new DispatchNotAllowedError();
     this.#hasTerminalRecordPending = true;
-    try { await this.#record(this.#checkpoint('claimed', this.#priorSendUpperBound() + 1, providerId)); }
-    finally { this.#hasTerminalRecordPending = false; }
+    const accepted = this.#attemptMarker('claimed', this.#priorSendUpperBound() + 1, providerId);
+    try { await recordStepCheckpoint(this.#context, this.#checkpoint, accepted, true); }
+    finally {
+      this.#marker = accepted;
+      this.#hasTerminalRecordPending = false;
+    }
   }
 
   #isSendDecision(): boolean {
@@ -169,14 +182,12 @@ export class Fence {
 
   #priorSendUpperBound(): number { return this.#decision?.priorSendUpperBound ?? 0; }
 
-  /** A cap of 1 writes the earlier marker bytes so existing recordings and payloads stay valid. */
-  #checkpoint(state: MarkerState, sendCount: number, providerId?: string): Marker {
-    const isSendCountRecorded = this.#maxSends >= 2 && sendCount > 0;
-    return { callId: this.#call.id, attempt: this.#context.attempt, state, ...(providerId ? { providerId } : {}), ...(isSendCountRecorded ? { sendCount } : {}) };
+  #attemptMarker(state: MarkerState, sendCount: number, providerId?: string): Marker {
+    return { callId: this.#call.id, attempt: this.#context.attempt, state, ...(providerId ? { providerId } : {}), sendCount };
   }
 
   async #record(marker: Marker): Promise<void> {
-    await this.#context.recordHeartbeat(marker);
+    await recordStepCheckpoint(this.#context, this.#checkpoint, marker);
     this.#marker = marker;
   }
 }

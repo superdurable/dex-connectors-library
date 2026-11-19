@@ -279,7 +279,7 @@ func UpdateIssueProviderRejected(value linear.UpdateIssueOutput, failure *sdkgo.
 	return connectormock.Branch(linear.UpdateIssueBranchProviderRejected, value, failure)
 }
 
-// UpdateIssueInvalidResponse selects the invalidResponse branch: Linear returned an invalid or oversized issue, so the change may have been applied; repeating the Step is safe.
+// UpdateIssueInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized issue after the change now retries, because repeating the absolute update is safe.
 func UpdateIssueInvalidResponse(value linear.UpdateIssueOutput, failure *sdkgo.Failure) connectormock.Case[linear.UpdateIssueOutput] {
 	return connectormock.Branch(linear.UpdateIssueBranchInvalidResponse, value, failure)
 }

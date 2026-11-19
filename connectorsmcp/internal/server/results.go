@@ -39,8 +39,9 @@ const (
 	resultSucceeded resultOutcome = "succeeded"
 	// resultRejected sets outcome rejected: nothing took effect, Dex records failed.
 	resultRejected resultOutcome = "rejected"
-	// resultFailed is an isError result without the outcome key: a read
-	// failed, Dex records failed. Dex reserves other outcome values.
+	// resultFailed is an isError result without the outcome key: the call
+	// failed without claiming that nothing took effect, Dex records failed.
+	// Dex reserves other outcome values.
 	resultFailed resultOutcome = "failed"
 	// resultUnknown sets outcome unknown: Dex records outcome_unknown and never re-issues.
 	resultUnknown resultOutcome = "unknown"
@@ -87,12 +88,47 @@ func newSuccessResult(value json.RawMessage, branch sdkgo.BranchID, maxResultByt
 	return result
 }
 
+// classifyAttemptByBranch replaces the SDK's Outcome, which may read the Fence,
+// with the branch-only classification Dex Agents use.
+func classifyAttemptByBranch(metadata sdkgo.AgentToolMetadata, attempt sdkgo.AgentToolAttempt, runErr error) sdkgo.AgentToolAttempt {
+	if runErr != nil || attempt.Outcome == sdkgo.AgentToolAttemptRetry {
+		return attempt
+	}
+	attempt.Outcome = classifyBranchOutcome(metadata, attempt.Branch)
+	return attempt
+}
+
+// classifyBranchOutcome: uncertain is unknown, required succeeds, listed takes
+// its listing, anything else failed.
+func classifyBranchOutcome(metadata sdkgo.AgentToolMetadata, branch sdkgo.BranchID) sdkgo.AgentToolAttemptOutcome {
+	if branch == sdkgo.UncertainBranchID {
+		return sdkgo.AgentToolAttemptUnknown
+	}
+	if branch != sdkgo.DefectBranchID && isRequiredBranch(metadata.Branches, branch) {
+		return sdkgo.AgentToolAttemptSucceeded
+	}
+	switch metadata.BranchOutcomes[branch] {
+	case sdkgo.AgentBranchOutcomeRejected:
+		return sdkgo.AgentToolAttemptRejected
+	case sdkgo.AgentBranchOutcomeUnknown:
+		return sdkgo.AgentToolAttemptUnknown
+	default:
+		return sdkgo.AgentToolAttemptFailed
+	}
+}
+
+func isRequiredBranch(branches []sdkgo.BranchDefinition, branch sdkgo.BranchID) bool {
+	for _, candidate := range branches {
+		if candidate.ID == branch {
+			return !candidate.Optional
+		}
+	}
+	return false
+}
+
 // branchResult maps a classified attempt that selected a branch.
 func branchResult(binding *toolBinding, attempt sdkgo.AgentToolAttempt, maxResultBytes int) toolResult {
-	detail := string(attempt.Branch)
-	if attempt.Failure != nil {
-		detail += ": " + string(attempt.Failure.Kind) + ": " + attempt.Failure.Message
-	}
+	detail := branchDetail(attempt)
 	switch attempt.Outcome {
 	case sdkgo.AgentToolAttemptSucceeded:
 		return newSuccessResult(attempt.Value, attempt.Branch, maxResultBytes)
@@ -103,6 +139,15 @@ func branchResult(binding *toolBinding, attempt sdkgo.AgentToolAttempt, maxResul
 	default:
 		return newErrorResult(resultUnknown, binding.operationLabel()+" may have taken effect ("+detail+"); do not repeat it", attempt.Branch)
 	}
+}
+
+// branchDetail is the branch ID with the connector's failure kind and message.
+func branchDetail(attempt sdkgo.AgentToolAttempt) string {
+	detail := string(attempt.Branch)
+	if attempt.Failure != nil {
+		detail += ": " + string(attempt.Failure.Kind) + ": " + attempt.Failure.Message
+	}
+	return detail
 }
 
 // truncateUTF8 cuts text to at most limit bytes on a character boundary.

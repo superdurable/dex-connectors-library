@@ -88,3 +88,20 @@ func TestSaveObjectRejectsReservedObjectIDBeforeDispatch(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, SaveObjectBranchDefect, result.Branch)
 }
+
+func TestSaveObjectRetriesUnknownOutcomesBecauseAReplacementConverges(t *testing.T) {
+	for _, answer := range []struct {
+		status int
+		body   string
+	}{{http.StatusMethodNotAllowed, `{}`}, {http.StatusTooEarly, `{}`}, {http.StatusOK, `{"objectID":"other","taskID":1}`}, {http.StatusOK, `not json`}} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(answer.status)
+			_, err := fmt.Fprint(w, answer.body)
+			require.NoError(t, err)
+		}))
+		_, err := sdkgo.RunMutation(providerContext{}, newProviderClient(t, server.URL).SaveObject(), testConnection, SaveObjectInput{IndexName: "products", ObjectID: "product-1", Attributes: map[string]string{"name": "Meridian notebook"}})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "HTTP %d %s retries", answer.status, answer.body)
+		server.Close()
+	}
+}

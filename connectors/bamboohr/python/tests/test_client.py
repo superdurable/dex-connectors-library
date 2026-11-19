@@ -8,9 +8,15 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    FailureKind,
     OperationRef,
+    ReauthorizationRequiredError,
     SecretString,
     StaticCredentialProvider,
+)
+from dex_connectors.sdk.projectconfig import (
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
 )
 
 from dex_connectors.bamboohr import (
@@ -19,7 +25,9 @@ from dex_connectors.bamboohr import (
     Credentials,
     GetEmployeeInput,
     ListTimeOffRequestsInput,
+    UpdateEmployeeInput,
 )
+from dex_connectors.bamboohr._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("bamboohr", "bamboohr-test")
 
@@ -92,6 +100,60 @@ async def test_oversized_error_body_does_not_extract_partial_code() -> None:
 
 
 @pytest.mark.asyncio
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+def _sdk_decoding_failure() -> ValueError:
+    """Return the error the SDK project provider raises when the generated decoder rejects material."""
+    try:
+        try:
+            raise CredentialMaterialError("BambooHR credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected_kind"),
+    [
+        (RuntimeError("store unavailable"), "retry"),
+        (ValueError("connection is not configured"), "retry"),
+        (CredentialBrokerUnavailableError("credential broker is unavailable"), "retry"),
+        (ReauthorizationRequiredError(), "branch"),
+        (CredentialBrokerRejectedError(), "branch"),
+        (CredentialMaterialError("BambooHR stored credential does not match"), "branch"),
+        (_sdk_decoding_failure(), "branch"),
+    ],
+)
+async def test_query_retries_transient_credentials_and_selects_defect_for_terminal_ones(
+    error: Exception, expected_kind: str
+) -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no request may be sent")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        client = Client(Config("acme"), _FailingCredentials(error), http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(
+            CallID("0f6b3c1e-4b7a-5c3d-9e2f-1a2b3c4d5e6f"),
+            CONNECTION,
+            OperationRef("bamboohr", "getEmployee"),
+        )
+        result = await client.get_employee().invoke(call, GetEmployeeInput("123", ("firstName",)))
+    assert result.kind == expected_kind
+    assert result.failure is not None
+    if expected_kind == "retry":
+        assert result.failure.kind == FailureKind.AVAILABILITY
+    else:
+        assert result.branch == "defect" and result.failure.kind == FailureKind.AUTHENTICATION
+
+
 async def test_reflected_key_selects_invalid_response_without_persisting_key() -> None:
     """A provider echo must never enter a Dex result or failure message."""
     key = "inert-test-key"
@@ -114,6 +176,93 @@ async def test_reflected_key_selects_invalid_response_without_persisting_key() -
         assert result.branch == "invalidResponse"
         assert result.failure is not None and key not in result.failure.message
         assert result.value is not None and key not in repr(result.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("read_back", "expected_kind"),
+    [(httpx.Response(200, json={"id": "999"}), "retry"), (httpx.Response(404, json={}), "retry")],
+)
+async def test_update_read_back_after_accepted_write_never_selects_a_failure_branch(
+    read_back: httpx.Response, expected_kind: str
+) -> None:
+    """After BambooHR accepted the write, every failed read-back retries the safe absolute write."""
+    answers = [httpx.Response(200, json={"id": "123", "firstName": "Sam"}), httpx.Response(200), read_back]
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        return answers.pop(0)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
+        client = Client(Config("acme"), credentials, http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(
+            CallID("472485d6-a578-50af-a4d2-124cf93b188f"),
+            CONNECTION,
+            OperationRef("bamboohr", "updateEmployee"),
+        )
+        result = await client.update_employee().invoke(call, UpdateEmployeeInput("123", {"firstName": "Ava"}))
+        assert result.kind == expected_kind
+        assert answers == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "first_read",
+    [
+        httpx.Response(200, content=b'{"id":'),
+        httpx.Response(200, json={"id": "123", "firstName": "a" * 64}),
+        httpx.Response(200, json={"id": "123", "firstName": "inert-key"}),
+        httpx.Response(403, json={"error": "inert-key"}),
+        httpx.Response(404, content=b"x" * 64),
+        httpx.Response(409, json={}),
+        httpx.Response(302, json={}),
+    ],
+    ids=["unparseable", "oversized", "echo-2xx", "echo-403", "oversized-404", "unlisted-409", "unlisted-302"],
+)
+async def test_update_retries_an_unknown_pre_write_read(first_read: httpx.Response) -> None:
+    """Only a readable allowlisted refusal or a 404 selects a branch before the write."""
+    answers = [first_read]
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        return answers.pop(0)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
+        client = Client(Config("acme", max_response_bytes=60), credentials, http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(
+            CallID("472485d6-a578-50af-a4d2-124cf93b188f"),
+            CONNECTION,
+            OperationRef("bamboohr", "updateEmployee"),
+        )
+        result = await client.update_employee().invoke(call, UpdateEmployeeInput("123", {"firstName": "Ava"}))
+        assert result.kind == "retry"
+        assert result.failure is not None
+        assert "inert-key" not in result.failure.message
+        assert answers == []
+
+
+@pytest.mark.asyncio
+async def test_update_retries_a_write_refusal_that_echoes_the_credential() -> None:
+    """A refusal body that echoes the key proves nothing about the write."""
+    answers = [
+        httpx.Response(200, json={"id": "123", "firstName": "Sam"}),
+        httpx.Response(400, json={"e": "inert-key"}),
+    ]
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        return answers.pop(0)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        credentials = StaticCredentialProvider({CONNECTION: Credentials(SecretString("inert-key"))})
+        client = Client(Config("acme"), credentials, http_client, "http://127.0.0.1:22180/api/v1")
+        call = Call(
+            CallID("472485d6-a578-50af-a4d2-124cf93b188f"),
+            CONNECTION,
+            OperationRef("bamboohr", "updateEmployee"),
+        )
+        result = await client.update_employee().invoke(call, UpdateEmployeeInput("123", {"firstName": "Ava"}))
+        assert result.kind == "retry"
+        assert answers == []
 
 
 @pytest.mark.asyncio

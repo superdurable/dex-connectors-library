@@ -331,11 +331,43 @@ func ticketEnvelopeJSON(id int64, status string, tags []string) string {
 
 type zendeskDexContext struct {
 	context.Context
-	step string
+	step              string
+	attempt           int32
+	previousHeartbeat json.RawMessage
+	recordedHeartbeat json.RawMessage
 }
 
 func newZendeskDexContext(step string) *zendeskDexContext {
-	return &zendeskDexContext{Context: context.Background(), step: step}
+	return &zendeskDexContext{Context: context.Background(), step: step, attempt: 1}
+}
+
+// advanceAttempt starts the next attempt of the same Step execution, which sees the latest heartbeat of any attempt.
+func (context *zendeskDexContext) advanceAttempt() {
+	if context.recordedHeartbeat != nil {
+		context.previousHeartbeat = context.recordedHeartbeat
+	}
+	context.recordedHeartbeat = nil
+	context.attempt++
+}
+
+func (context *zendeskDexContext) RecordHeartbeat(value any) error {
+	if value == nil {
+		context.recordedHeartbeat = nil
+		return nil
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.recordedHeartbeat = encoded
+	return nil
+}
+
+func (context *zendeskDexContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if context.previousHeartbeat == nil {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.previousHeartbeat, target)
 }
 func (*zendeskDexContext) FlowID() string                                  { return "zendesk-flow" }
 func (*zendeskDexContext) RunID() string                                   { return "run" }
@@ -344,12 +376,10 @@ func (context *zendeskDexContext) StepExecutionID() string                 { ret
 func (*zendeskDexContext) FromStepExecutionID() string                     { return "" }
 func (*zendeskDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
 func (*zendeskDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*zendeskDexContext) Attempt() int32                                  { return 1 }
+func (context *zendeskDexContext) Attempt() int32                          { return context.attempt }
 func (*zendeskDexContext) HasTimerFired() bool                             { return false }
 func (*zendeskDexContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*zendeskDexContext) WaitForMethodFailed() bool                       { return false }
-func (*zendeskDexContext) RecordHeartbeat(any) error                       { return nil }
-func (*zendeskDexContext) GetLastHeartbeatValue(any) (bool, error)         { return false, nil }
 func (*zendeskDexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*zendeskDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }
 func (*zendeskDexContext) RecordEvent(string, any) error                   { return nil }

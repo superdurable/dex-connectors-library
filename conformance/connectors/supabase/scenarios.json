@@ -578,13 +578,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "data": null
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -599,7 +596,7 @@
         ],
         "table": "projects"
       },
-      "name": "upsertRows-invalid-response",
+      "name": "upsertRows-invalid-response-retries",
       "operation": "upsertRows"
     },
     {

@@ -4,8 +4,17 @@
 import pg, { type Client as PgClient } from 'pg';
 import Cursor from 'pg-cursor';
 import { describe, expect, it, vi } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
 import { PostgreSQLClient } from '../src/client.js';
+import { decodeCredentials } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 
 const call = { id: '00000000-0000-4000-8000-000000000001', idempotencyKey: '00000000-0000-4000-8000-000000000001' } as Call;
 const configuration = { host: '127.0.0.1', database: 'app', user: 'dex_app', sslMode: 'disable' };
@@ -176,12 +185,12 @@ describe('PostgreSQL operations', () => {
     expect(queries.at(-1)?.text).toBe('COMMIT');
   });
 
-  it('rolls back a row-limit breach and treats a lost COMMIT as uncertain', async () => {
+  it('rolls back a row-limit breach and retries a lost COMMIT because execute is repeat-safe', async () => {
     const limited = fakeClient({ command: 'UPDATE', rowCount: 2, rows: [] });
     expect(await limited.client.execute().invoke(call, { statement: 'UPDATE ledger SET amount = 1', maxRowsAffected: 1 })).toMatchObject({ kind: 'branch', branch: 'limitExceeded', failure: { kind: 'CONFLICT' } });
     expect(limited.queries.some(query => query.text === 'COMMIT')).toBe(false);
-    const uncertain = fakeClient({ command: 'INSERT' }, { COMMIT: new Error('socket closed') });
-    expect(await uncertain.client.execute().invoke(call, { statement: 'INSERT INTO ledger VALUES (1)' })).toMatchObject({ kind: 'uncertain', failure: { kind: 'TRANSPORT' } });
+    const unknown = fakeClient({ command: 'INSERT' }, { COMMIT: new Error('socket closed') });
+    expect(await unknown.client.execute().invoke(call, { statement: 'INSERT INTO ledger VALUES (1)' })).toMatchObject({ kind: 'retry', failure: { kind: 'TRANSPORT' } });
     const commitError = new pg.DatabaseError('secret', 0, 'error');
     commitError.code = '23505';
     commitError.constraint = 'ledger_pkey';
@@ -202,7 +211,7 @@ describe('PostgreSQL operations', () => {
     expect(queries.some(query => query.text === 'COMMIT')).toBe(false);
   });
 
-  it('bounds a blackholed COMMIT and reports its outcome as uncertain', async () => {
+  it('bounds a blackholed COMMIT and retries its unknown outcome', async () => {
     const { driver } = fakeClient({ command: 'INSERT', rows: [] });
     const original = driver.query;
     let rejectCommit: ((error: Error) => void) | undefined;
@@ -216,7 +225,7 @@ describe('PostgreSQL operations', () => {
     try {
       const attempt = client.execute().invoke(call, { statement: 'INSERT INTO ledger VALUES (1)' });
       await vi.runAllTimersAsync();
-      expect(await attempt).toMatchObject({ kind: 'uncertain', failure: { kind: 'TRANSPORT' } });
+      expect(await attempt).toMatchObject({ kind: 'retry', failure: { kind: 'TRANSPORT' } });
     } finally { vi.useRealTimers(); }
   });
 
@@ -225,5 +234,170 @@ describe('PostgreSQL operations', () => {
     expect(await client.execute().invoke(call, { statement: '/* comment */ COMMIT' })).toMatchObject({ kind: 'branch', branch: 'defect' });
     expect(await client.execute().invoke(call, { statement: 'INSERT INTO t VALUES ($1)', idempotencyKeyPlaceholder: 2 })).toMatchObject({ kind: 'branch', branch: 'defect' });
     expect(driver.connect).not.toHaveBeenCalled();
+  });
+});
+
+/** Keeps the last heartbeat across Execute attempts like Dex does. */
+class AttemptContext {
+  attempt = 1;
+  marker: { state?: string } | undefined;
+  readError: Error | undefined;
+  readonly runId = 'run';
+  readonly flowId = 'non-idempotent-flow';
+  readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
+  readonly deadline = new Date(Date.now() + 30_000);
+  readonly cancellationSignal = new AbortController().signal;
+  hasLastHeartbeatValue(): boolean { if (this.readError) throw this.readError; return this.marker !== undefined; }
+  getLastHeartbeatValue(): unknown { return this.marker; }
+  async recordHeartbeat(value: unknown): Promise<void> { this.marker = value as { state?: string }; }
+}
+
+const balanceInput = { statement: 'UPDATE balances SET amount = amount + $1::numeric WHERE account_id = $2', parameters: ['25.00', 'acct_1'] };
+const fencedCall = (context: AttemptContext): Call => ({ ...call, operation: { connectorId: 'postgresql', operationId: 'executeNonIdempotent' }, context } as unknown as Call);
+const commitCount = (queries: Array<{ text: string }>): number => queries.filter(query => query.text === 'COMMIT').length;
+
+function serverError(code: string): pg.DatabaseError {
+  const error = new pg.DatabaseError('secret server text', 0, 'error');
+  error.code = code;
+  return error;
+}
+
+describe('PostgreSQL executeNonIdempotent', () => {
+  it('declares the unsafe sync tier next to the safe execute tier', async () => {
+    const { ExecuteStatementDefinition, ExecuteStatementNonIdempotentDefinition } = await import('../src/generated/definitions.js');
+    expect(ExecuteStatementDefinition.repeatOnUnknown).toBe('safe');
+    expect(ExecuteStatementNonIdempotentDefinition).toMatchObject({ repeatOnUnknown: 'unsafe', stepDefaults: { executeDurability: 'sync' } });
+  });
+
+  it('claims before COMMIT and commits once', async () => {
+    const { client, queries } = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] });
+    const context = new AttemptContext();
+    expect(await client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'branch', branch: 'completed', value: { rowsAffected: 1 } });
+    expect(context.marker?.state).toBe('claimed');
+    expect(commitCount(queries)).toBe(1);
+  });
+
+  it.each([
+    ['connection lost', new Error('socket closed')],
+    ['backend terminated', serverError('57P01')],
+    ['completion unknown', serverError('40003')],
+    ['driver AggregateError', new AggregateError([new Error('socket closed')], 'driver failure')],
+  ])('selects uncertain after a %s COMMIT and never runs the statement again', async (_name, commitError) => {
+    const { client, driver } = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] }, { COMMIT: commitError });
+    const context = new AttemptContext();
+    expect(await client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain', failure: { operation: 'executeNonIdempotent' } });
+    context.attempt = 2;
+    driver.connect.mockClear();
+    expect(await client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(driver.connect).not.toHaveBeenCalled();
+  });
+
+  it('resends only after a proven rollback', async () => {
+    const errors: Record<string, unknown> = { COMMIT: serverError('40001') };
+    const serialization = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] }, errors);
+    const context = new AttemptContext();
+    expect(await serialization.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry' });
+    expect(context.marker?.state).toBe('canResend');
+    delete errors.COMMIT;
+    context.attempt = 2;
+    expect(await serialization.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'branch', branch: 'completed' });
+    expect(commitCount(serialization.queries)).toBe(2);
+
+    const lost = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] }, { [balanceInput.statement]: new Error('dropped before COMMIT') });
+    const lostContext = new AttemptContext();
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(lostContext), balanceInput)).toMatchObject({ kind: 'retry' });
+    expect(commitCount(lost.queries)).toBe(0);
+    expect(lostContext.marker?.state).toBe('notSent');
+  });
+
+  it('never records notSent after a possible earlier COMMIT', async () => {
+    const lost = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] }, { [balanceInput.statement]: new Error('dropped before COMMIT') });
+    const context = new AttemptContext();
+    // A canResend marker that still counts one possibly effective send keeps a send allowed.
+    const seeded = { callId: fencedCall(context).id, attempt: 2, state: 'canResend', sendCount: 1 };
+    context.marker = seeded;
+    context.attempt = 3;
+    // A transient failure returns Retry; the attempt after it still treats the earlier send as possible.
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry' });
+    expect(commitCount(lost.queries)).toBe(0);
+    expect(context.marker).toBe(seeded);
+    context.attempt = 4;
+    lost.driver.connect.mockClear();
+    expect(await lost.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(lost.driver.connect).not.toHaveBeenCalled();
+
+    const refused = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] }, { [balanceInput.statement]: serverError('23514') });
+    const refusedContext = new AttemptContext();
+    refusedContext.marker = seeded;
+    refusedContext.attempt = 3;
+    expect(await refused.client.executeNonIdempotent().invoke(fencedCall(refusedContext), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    expect(commitCount(refused.queries)).toBe(0);
+    expect(refusedContext.marker).toBe(seeded);
+  });
+
+  it('returns Retry and records notSent when the credential broker is temporarily unavailable', async () => {
+    const { driver } = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] });
+    const unavailable = new PostgreSQLClient(configuration, { resolve: async () => { throw new CredentialBrokerUnavailableError(); } }, { createDriver: () => driver as unknown as PgClient });
+    expect(await unavailable.query().invoke(call, { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(await unavailable.execute().invoke(call, balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    const context = new AttemptContext();
+    expect(await unavailable.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(context.marker?.state).toBe('notSent');
+    expect(driver.connect).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['reauthorization required', new ReauthorizationRequiredError(), true],
+    ['connection object not found', new ObjectNotFoundError(), true],
+    ['connection not selected', new ConnectionNotSelectedError(), true],
+    ['credential broker rejected', new CredentialBrokerRejectedError(), true],
+    ['malformed stored material', sdkWrappedMaterialError(), true],
+    ['credential broker unavailable', new CredentialBrokerUnavailableError(), false],
+    ['static connection not configured', new Error('connection is not configured'), false],
+    ['rejected credential not refreshed', new RejectedCredentialNotRefreshedError(), false],
+    ['unlisted error', new TypeError('unlisted'), false],
+  ])('classifies a %s credential failure before and after a possible COMMIT', async (_name, credentialFailure, isTerminal) => {
+    const { driver } = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] });
+    const failing = new PostgreSQLClient(configuration, { resolve: async () => { throw credentialFailure; } }, { createDriver: () => driver as unknown as PgClient });
+    const firstExpected = isTerminal ? { kind: 'branch', branch: 'defect' } : { kind: 'retry', failure: { kind: 'AVAILABILITY' } };
+    expect(await failing.execute().invoke(call, balanceInput)).toMatchObject(firstExpected);
+    const context = new AttemptContext();
+    expect(await failing.executeNonIdempotent().invoke(fencedCall(context), balanceInput)).toMatchObject(firstExpected);
+    expect(context.marker?.state).toBe('notSent');
+    const later = new AttemptContext();
+    later.marker = { callId: fencedCall(later).id, attempt: 2, state: 'canResend', sendCount: 1 } as { state?: string };
+    later.attempt = 3;
+    expect(await failing.executeNonIdempotent().invoke(fencedCall(later), balanceInput)).toMatchObject({ kind: isTerminal ? 'uncertain' : 'retry' });
+    expect(driver.connect).not.toHaveBeenCalled();
+  });
+
+  it('selects uncertain after a lost Worker and retries an unreadable checkpoint without connecting', async () => {
+    const { client, driver } = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] });
+    const afterLostWorker = new AttemptContext();
+    afterLostWorker.attempt = 2;
+    expect(await client.executeNonIdempotent().invoke(fencedCall(afterLostWorker), balanceInput)).toMatchObject({ kind: 'uncertain' });
+    const unreadable = new AttemptContext();
+    unreadable.readError = new Error('heartbeat store unavailable');
+    expect(await client.executeNonIdempotent().invoke(fencedCall(unreadable), balanceInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(driver.connect).not.toHaveBeenCalled();
+  });
+
+  it('rejects a definite refusal without committing', async () => {
+    const rejected = fakeClient({ command: 'UPDATE' }, { [balanceInput.statement]: serverError('23514') });
+    const context = new AttemptContext();
+    const result = await rejected.client.executeNonIdempotent().invoke(fencedCall(context), balanceInput);
+    expect(result).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'CONFLICT' } });
+    expect(JSON.stringify(result)).not.toContain('secret');
+    expect(commitCount(rejected.queries)).toBe(0);
+    expect(context.marker?.state).toBe('notSent');
+
+    const deferred = fakeClient({ command: 'UPDATE', rowCount: 1, rows: [] }, { COMMIT: serverError('23505') });
+    const deferredContext = new AttemptContext();
+    expect(await deferred.client.executeNonIdempotent().invoke(fencedCall(deferredContext), balanceInput)).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+    expect(deferredContext.marker?.state).toBe('canResend');
+
+    const limited = fakeClient({ command: 'UPDATE', rowCount: 3, rows: [] });
+    expect(await limited.client.executeNonIdempotent().invoke(fencedCall(new AttemptContext()), { ...balanceInput, maxRowsAffected: 1 })).toMatchObject({ kind: 'branch', branch: 'limitExceeded' });
+    expect(await limited.client.executeNonIdempotent().invoke(fencedCall(new AttemptContext()), { statement: 'COMMIT' })).toMatchObject({ kind: 'branch', branch: 'defect' });
   });
 });

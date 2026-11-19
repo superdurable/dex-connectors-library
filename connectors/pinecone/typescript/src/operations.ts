@@ -33,9 +33,15 @@ export class UpsertVectorsOperation implements Mutation<UpsertVectorsInput, Upse
       })),
     };
     const result = await this.client.exchange(call, 'upsertVectors', '/vectors/upsert', requestBody);
-    if ('outcome' in result) return mutationOutcome(result.outcome);
+    if ('outcome' in result) {
+      // A repeated upsert replaces the same vector IDs, so an unknown outcome retries.
+      const { disposition, status } = result.outcome;
+      if (disposition === 'invalidResponse' || (disposition === 'providerRejected' && ![400, 401, 403, 404, 411, 413, 414, 415, 422].includes(status ?? 0)))
+        return newMutationRetry(result.outcome.failure);
+      return mutationOutcome(result.outcome);
+    }
     if (!isObject(result.body) || !('upsertedCount' in result.body) || !Number.isInteger(result.body.upsertedCount) || (result.body.upsertedCount as number) < 0 || (result.body.upsertedCount as number) > vectors.length) {
-      return mutationFailure('invalidResponse', 'PROTOCOL', 'provider returned an invalid count');
+      return newMutationRetry({ kind: 'PROTOCOL', provider: 'pinecone', operation: 'upsertVectors', message: 'provider returned an invalid count' });
     }
     return newMutationBranch('upserted', { upsertedCount: result.body.upsertedCount as number }, {});
   }

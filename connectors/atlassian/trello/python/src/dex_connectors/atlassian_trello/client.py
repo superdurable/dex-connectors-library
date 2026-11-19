@@ -10,7 +10,16 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -133,7 +142,7 @@ class Client:
             is_header_safe_credential(value) and not any(character in value for character in '"\\,')
             for value in (credentials.api_key.reveal(), credentials.token.reveal())
         ):
-            raise ValueError("Trello connection credentials are unavailable")
+            raise _InvalidCredentialsError("Trello connection credentials are unavailable")
         return credentials
 
     async def request(
@@ -143,8 +152,12 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> ProviderResponse:
-        """Send one authenticated request without following redirects or persisting secrets."""
+        """Send one authenticated request without following redirects or persisting secrets.
+
+        ``observed_statuses`` receives the status once headers arrive, before the body is read.
+        """
         api_key, token = credentials.api_key.reveal(), credentials.token.reveal()
         headers = {
             "Authorization": f'OAuth oauth_consumer_key="{api_key}", oauth_token="{token}"',
@@ -156,6 +169,8 @@ class Client:
             method, self.endpoint + path, params=query, json=payload, headers=headers
         )
         response, _ = await send_traced(self.http_client, request)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         try:
             body = await read_bounded_body(
                 response,
@@ -185,6 +200,42 @@ class Client:
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Create a persistable failure without response bodies or secrets."""
     return Failure(kind, "trello", operation, message)
+
+
+class _InvalidCredentialsError(ValueError):
+    """Resolved Trello credential material that fails the local header checks."""
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential failure no retry fixes; others, such as broker outages, may pass."""
+    # Imported here because the generated connection module imports this module.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            _InvalidCredentialsError,
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
+
+
+def credential_failure(operation: str, error: BaseException) -> Failure:
+    """Describe a credential failure; a transient one names its retry."""
+    if is_terminal_credential_error(error):
+        return failure(
+            operation,
+            FailureKind.AUTHENTICATION,
+            "Trello connection credentials are unavailable; save an API key and a token for the connection",
+        )
+    return failure(
+        operation,
+        FailureKind.AVAILABILITY,
+        "Trello connection credentials could not be read, so nothing was sent",
+    )
 
 
 def trello_id(value: str, field: str) -> str:
@@ -333,6 +384,10 @@ def decode_card(value: object, detail: bool) -> Card:
     )
 
 
+DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses proving Trello refused a write; any other status leaves its outcome unknown."""
+
+
 def classify_response(
     operation: str, subject: str, response: ProviderResponse, *, write: bool = False, repeatable: bool = False
 ) -> tuple[str, Failure | None, float]:
@@ -351,7 +406,7 @@ def classify_response(
         if 200 <= status < 300:
             if response.interrupted:
                 return (
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.TRANSPORT,
@@ -361,7 +416,7 @@ def classify_response(
                 )
             if response.oversized:
                 return (
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.RESPONSE_TOO_LARGE,
@@ -371,7 +426,7 @@ def classify_response(
                 )
             if response.reflects_secret:
                 return (
-                    "uncertain",
+                    "acceptedUnreadable",
                     failure(
                         operation,
                         FailureKind.PROTOCOL,
@@ -385,6 +440,17 @@ def classify_response(
                 "retry",
                 failure(operation, FailureKind.AVAILABILITY, f"Trello {subject} is temporarily unavailable"),
                 delay,
+            )
+        if response.interrupted or response.oversized:
+            # A refusal status proves nothing without its full body, so the outcome is unknown.
+            return (
+                "uncertain",
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Trello {subject} outcome is unknown after HTTP {status} with an unreadable body",
+                ),
+                0,
             )
         if status == 404:
             return (
@@ -404,7 +470,7 @@ def classify_response(
                 ),
                 0,
             )
-        if status < 400 or status >= 500 or status == 408:
+        if status not in DEFINITE_WRITE_REFUSAL_STATUSES:
             return (
                 "uncertain",
                 failure(
@@ -415,6 +481,17 @@ def classify_response(
                 0,
             )
     else:
+        if repeatable and not 200 <= status < 300 and (response.interrupted or response.oversized):
+            return (
+                "retry",
+                failure(
+                    operation,
+                    FailureKind.TRANSPORT,
+                    f"Trello {subject} outcome is unknown after HTTP {status} with an unreadable body, "
+                    "so the update is sent again",
+                ),
+                delay,
+            )
         if status == 404:
             return (
                 "notFound",
@@ -444,7 +521,7 @@ def classify_response(
                 )
             if response.oversized:
                 return (
-                    "invalidResponse",
+                    "retry" if repeatable else "invalidResponse",
                     failure(
                         operation,
                         FailureKind.RESPONSE_TOO_LARGE,
@@ -454,7 +531,7 @@ def classify_response(
                 )
             if response.reflects_secret:
                 return (
-                    "invalidResponse",
+                    "retry" if repeatable else "invalidResponse",
                     failure(
                         operation,
                         FailureKind.PROTOCOL,
@@ -463,6 +540,17 @@ def classify_response(
                     0,
                 )
             return "accepted", None, 0
+        if repeatable and status not in DEFINITE_WRITE_REFUSAL_STATUSES:
+            # Resending absolute values changes nothing, so an unknown outcome retries.
+            return (
+                "retry",
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    f"Trello {subject} outcome is unknown after HTTP {status}, so the update is sent again",
+                ),
+                delay,
+            )
         if status < 400 or status >= 500:
             return (
                 "invalidResponse",

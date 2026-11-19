@@ -65,6 +65,7 @@ spec:
       idempotency: required
       branches:
         - {id: granted, goName: Granted, description: credit granted}
+        - {id: uncertain, goName: Uncertain, description: credit may have been granted, optional: true}
         - {id: defect, goName: Defect, description: local defect, optional: true}
       progress: [text, structured]
       execution: *execution
@@ -190,6 +191,324 @@ func TestManifestJSONSchemaChecksRepeatOnUnknown(t *testing.T) {
 	}
 	for _, fields := range []string{`,"repeatOnUnknown":"always"`, `,"maxSends":1`, `,"maxSends":11`, `,"repeatOnUnknown":"safe","maxSends":3`, `,"repeatOnUnknown":"unsafe","maxSends":3`} {
 		require.Error(t, compiled.Validate(execution(fields)), fields)
+	}
+}
+
+func TestManifestJSONSchemaChecksRetiredBranches(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition struct {
+		Definitions map[string]any `json:"$defs"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	const resource = "https://connectors.dex.dev/branch.schema.json"
+	require.NoError(t, compiler.AddResource(resource, definition.Definitions["branch"]))
+	compiled, err := compiler.Compile(resource)
+	require.NoError(t, err)
+	branch := func(fields string) any {
+		var document any
+		require.NoError(t, json.Unmarshal([]byte(`{"goName":"Branch","description":"A branch."`+fields+`}`), &document))
+		return document
+	}
+	for _, fields := range []string{
+		`,"id":"invalidResponse","optional":true`,
+		`,"id":"invalidResponse","optional":true,"retired":false`,
+		`,"id":"invalidResponse","optional":true,"retired":true,"retiredReason":"An accepted write selects uncertain instead."`,
+		`,"id":"defect","optional":true`,
+	} {
+		require.NoError(t, compiled.Validate(branch(fields)), fields)
+	}
+	for _, fields := range []string{
+		`,"id":"invalidResponse","optional":true,"retired":true`,
+		`,"id":"invalidResponse","retired":true,"retiredReason":"Selects uncertain instead."`,
+		`,"id":"invalidResponse","optional":true,"retired":true,"retiredReason":" "`,
+		`,"id":"invalidResponse","optional":true,"retiredReason":"Selects uncertain instead."`,
+		`,"id":"defect","optional":true,"retired":true,"retiredReason":"Never selected."`,
+	} {
+		require.Error(t, compiled.Validate(branch(fields)), fields)
+	}
+}
+
+func TestManifestValidationChecksRetiredBranches(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		branch  schema.OperationBranch
+		problem string
+	}{
+		"retired optional branch": {branch: schema.OperationBranch{ID: "invalidResponse", GoName: "InvalidResponse", Description: "Kept for compatibility.",
+			Optional: true, Retired: true, RetiredReason: "An accepted write selects uncertain instead."}},
+		"retired required branch": {branch: schema.OperationBranch{ID: "invalidResponse", GoName: "InvalidResponse", Description: "Kept for compatibility.",
+			Retired: true, RetiredReason: "Selects uncertain instead."}, problem: "retired branch invalidResponse must be optional, not defect, and state a retiredReason"},
+		"retired without reason": {branch: schema.OperationBranch{ID: "invalidResponse", GoName: "InvalidResponse", Description: "Kept for compatibility.",
+			Optional: true, Retired: true, RetiredReason: " "}, problem: "retired branch invalidResponse must be optional, not defect, and state a retiredReason"},
+		"reason without retired": {branch: schema.OperationBranch{ID: "invalidResponse", GoName: "InvalidResponse", Description: "Kept for compatibility.",
+			Optional: true, RetiredReason: "Selects uncertain instead."}, problem: "branch invalidResponse has a retiredReason but is not retired"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			manifest.Spec.Operations[0].Branches = append(manifest.Spec.Operations[0].Branches, testCase.branch)
+			if testCase.problem == "" {
+				require.NoError(t, manifest.Validate())
+				return
+			}
+			require.ErrorContains(t, manifest.Validate(), testCase.problem)
+		})
+	}
+	file, err := os.Open("testdata/api-key-methods.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	for index, branch := range manifest.Spec.Operations[0].Branches {
+		if branch.ID == "defect" {
+			manifest.Spec.Operations[0].Branches[index].Retired = true
+			manifest.Spec.Operations[0].Branches[index].RetiredReason = "Never selected."
+		}
+	}
+	require.ErrorContains(t, manifest.Validate(), "retired branch defect must be optional, not defect, and state a retiredReason")
+}
+
+func TestManifestValidationKeepsUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	const problem = "the uncertain branch of a limited or unsafe mutation cannot be retired"
+	retiredUncertain := schema.OperationBranch{ID: "uncertain", GoName: "Uncertain", Description: "The write may have happened.",
+		Optional: true, Retired: true, RetiredReason: "Never selected."}
+	for name, testCase := range map[string]struct {
+		repeatOnUnknown string
+		agentRetry      string
+		isRejected      bool
+	}{
+		"explicit limited":              {repeatOnUnknown: schema.RepeatOnUnknownLimited, isRejected: true},
+		"explicit unsafe":               {repeatOnUnknown: schema.RepeatOnUnknownUnsafe, isRejected: true},
+		"omitted defaults to limited":   {isRejected: true},
+		"omitted with safe agent retry": {agentRetry: schema.OperationAgentRetrySafe},
+		"explicit safe":                 {repeatOnUnknown: schema.RepeatOnUnknownSafe},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			operation := &manifest.Spec.Operations[0]
+			operation.Kind = "mutation"
+			operation.Idempotency = "required"
+			operation.Execution.RepeatOnUnknown = testCase.repeatOnUnknown
+			if testCase.agentRetry != "" {
+				operation.Agent = &schema.OperationAgent{Retry: testCase.agentRetry}
+			}
+			operation.Branches = append(operation.Branches, retiredUncertain)
+			err = manifest.Validate()
+			if testCase.isRejected {
+				require.ErrorContains(t, err, problem)
+				return
+			}
+			if err != nil {
+				require.NotContains(t, err.Error(), problem)
+			}
+		})
+	}
+}
+
+func TestManifestJSONSchemaKeepsUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition any
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	const resource = "https://connectors.dex.dev/connector-manifest.schema.json"
+	require.NoError(t, compiler.AddResource(resource, definition))
+	compiled, err := compiler.Compile(resource + "#/$defs/operation")
+	require.NoError(t, err)
+	operation := func(uncertain, execution, agent string) any {
+		var document any
+		require.NoError(t, json.Unmarshal([]byte(`{"name":"createThing","goName":"CreateThing","inputType":"CreateThingInput","outputType":"CreateThingOutput",`+
+			`"kind":"mutation","description":"Create one thing.","idempotency":"required",`+
+			`"branches":[{"id":"created","goName":"Created","description":"Created."},{"id":"defect","goName":"Defect","description":"Invalid.","optional":true},`+
+			`{"id":"uncertain","goName":"Uncertain","description":"The write may have happened.","optional":true`+uncertain+`}],`+
+			`"execution":{"executeMethodTimeout":"30s","durability":"async"`+execution+`}`+agent+`}`), &document))
+		return document
+	}
+	const retired = `,"retired":true,"retiredReason":"Never selected."`
+	const safeAgent = `,"agent":{"exposed":true,"retry":"safe"}`
+	for _, testCase := range []struct{ name, uncertain, execution, agent string }{
+		{"selectable uncertain", "", "", ""},
+		{"explicit safe", retired, `,"repeatOnUnknown":"safe"`, ""},
+		{"omitted with safe agent retry", retired, "", safeAgent},
+	} {
+		require.NoError(t, compiled.Validate(operation(testCase.uncertain, testCase.execution, testCase.agent)), testCase.name)
+	}
+	for _, testCase := range []struct{ name, execution, agent string }{
+		{"explicit limited", `,"repeatOnUnknown":"limited"`, ""},
+		{"explicit unsafe", `,"repeatOnUnknown":"unsafe"`, ""},
+		{"omitted defaults to limited", "", ""},
+		{"explicit limited with safe agent retry", `,"repeatOnUnknown":"limited"`, safeAgent},
+	} {
+		require.Error(t, compiled.Validate(operation(retired, testCase.execution, testCase.agent)), testCase.name)
+	}
+}
+
+func TestManifestValidationRequiresUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	const problem = "a limited or unsafe mutation must declare an uncertain branch"
+	for name, testCase := range map[string]struct {
+		kind            string
+		repeatOnUnknown string
+		agentRetry      string
+		hasUncertain    bool
+		isRejected      bool
+	}{
+		"explicit limited":              {kind: "mutation", repeatOnUnknown: schema.RepeatOnUnknownLimited, isRejected: true},
+		"explicit unsafe":               {kind: "mutation", repeatOnUnknown: schema.RepeatOnUnknownUnsafe, isRejected: true},
+		"omitted defaults to limited":   {kind: "mutation", isRejected: true},
+		"limited with uncertain":        {kind: "mutation", repeatOnUnknown: schema.RepeatOnUnknownLimited, hasUncertain: true},
+		"unsafe with uncertain":         {kind: "mutation", repeatOnUnknown: schema.RepeatOnUnknownUnsafe, hasUncertain: true},
+		"omitted with safe agent retry": {kind: "mutation", agentRetry: schema.OperationAgentRetrySafe},
+		"explicit safe":                 {kind: "mutation", repeatOnUnknown: schema.RepeatOnUnknownSafe},
+		"query":                         {kind: "query"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			operation := &manifest.Spec.Operations[0]
+			operation.Kind = testCase.kind
+			if testCase.kind == "mutation" {
+				operation.Idempotency = "required"
+			}
+			operation.Execution.RepeatOnUnknown = testCase.repeatOnUnknown
+			if testCase.agentRetry != "" {
+				operation.Agent = &schema.OperationAgent{Retry: testCase.agentRetry}
+			}
+			if testCase.hasUncertain {
+				operation.Branches = append(operation.Branches, schema.OperationBranch{ID: "uncertain", GoName: "Uncertain",
+					Description: "The write may have happened.", Optional: true})
+			}
+			err = manifest.Validate()
+			if testCase.isRejected {
+				require.ErrorContains(t, err, problem)
+				return
+			}
+			if err != nil {
+				require.NotContains(t, err.Error(), problem)
+			}
+		})
+	}
+}
+
+func TestManifestJSONSchemaRequiresUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition any
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	const resource = "https://connectors.dex.dev/connector-manifest.schema.json"
+	require.NoError(t, compiler.AddResource(resource, definition))
+	compiled, err := compiler.Compile(resource + "#/$defs/operation")
+	require.NoError(t, err)
+	operationWithoutUncertain := func(execution, agent string) any {
+		var document any
+		require.NoError(t, json.Unmarshal([]byte(`{"name":"createThing","goName":"CreateThing","inputType":"CreateThingInput","outputType":"CreateThingOutput",`+
+			`"kind":"mutation","description":"Create one thing.","idempotency":"required",`+
+			`"branches":[{"id":"created","goName":"Created","description":"Created."},{"id":"defect","goName":"Defect","description":"Invalid.","optional":true}],`+
+			`"execution":{"executeMethodTimeout":"30s","durability":"async"`+execution+`}`+agent+`}`), &document))
+		return document
+	}
+	const safeAgent = `,"agent":{"exposed":true,"retry":"safe"}`
+	require.NoError(t, compiled.Validate(operationWithoutUncertain(`,"repeatOnUnknown":"safe"`, "")), "explicit safe")
+	require.NoError(t, compiled.Validate(operationWithoutUncertain("", safeAgent)), "omitted with safe agent retry")
+	for _, testCase := range []struct{ name, execution string }{
+		{"explicit limited", `,"repeatOnUnknown":"limited"`},
+		{"explicit unsafe", `,"repeatOnUnknown":"unsafe"`},
+		{"omitted defaults to limited", ""},
+	} {
+		require.Error(t, compiled.Validate(operationWithoutUncertain(testCase.execution, "")), testCase.name)
+	}
+}
+
+func TestManifestValidationRequiresOptionalUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	const problem = "the uncertain branch of a limited or unsafe mutation must be optional"
+	for name, testCase := range map[string]struct {
+		repeatOnUnknown     string
+		agentRetry          string
+		isUncertainOptional bool
+		isRejected          bool
+	}{
+		"required uncertain of explicit limited":   {repeatOnUnknown: schema.RepeatOnUnknownLimited, isRejected: true},
+		"required uncertain of explicit unsafe":    {repeatOnUnknown: schema.RepeatOnUnknownUnsafe, isRejected: true},
+		"required uncertain of omitted limited":    {isRejected: true},
+		"optional uncertain of explicit limited":   {repeatOnUnknown: schema.RepeatOnUnknownLimited, isUncertainOptional: true},
+		"optional uncertain of explicit unsafe":    {repeatOnUnknown: schema.RepeatOnUnknownUnsafe, isUncertainOptional: true},
+		"required uncertain of explicit safe":      {repeatOnUnknown: schema.RepeatOnUnknownSafe},
+		"required uncertain with safe agent retry": {agentRetry: schema.OperationAgentRetrySafe},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			operation := &manifest.Spec.Operations[0]
+			operation.Kind, operation.Idempotency = "mutation", "required"
+			operation.Execution.RepeatOnUnknown = testCase.repeatOnUnknown
+			if testCase.agentRetry != "" {
+				operation.Agent = &schema.OperationAgent{Retry: testCase.agentRetry}
+			}
+			operation.Branches = append(operation.Branches, schema.OperationBranch{ID: "uncertain", GoName: "Uncertain",
+				Description: "The write may have happened.", Optional: testCase.isUncertainOptional})
+			err = manifest.Validate()
+			if testCase.isRejected {
+				require.ErrorContains(t, err, problem)
+				return
+			}
+			if err != nil {
+				require.NotContains(t, err.Error(), problem)
+			}
+		})
+	}
+}
+
+func TestManifestJSONSchemaRequiresOptionalUncertainOfLimitedAndUnsafeMutations(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition any
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	const resource = "https://connectors.dex.dev/connector-manifest.schema.json"
+	require.NoError(t, compiler.AddResource(resource, definition))
+	compiled, err := compiler.Compile(resource + "#/$defs/operation")
+	require.NoError(t, err)
+	operation := func(uncertainOptional, execution, agent string) any {
+		var document any
+		require.NoError(t, json.Unmarshal([]byte(`{"name":"createThing","goName":"CreateThing","inputType":"CreateThingInput","outputType":"CreateThingOutput",`+
+			`"kind":"mutation","description":"Create one thing.","idempotency":"required",`+
+			`"branches":[{"id":"created","goName":"Created","description":"Created."},{"id":"defect","goName":"Defect","description":"Invalid.","optional":true},`+
+			`{"id":"uncertain","goName":"Uncertain","description":"The write may have happened."`+uncertainOptional+`}],`+
+			`"execution":{"executeMethodTimeout":"30s","durability":"async"`+execution+`}`+agent+`}`), &document))
+		return document
+	}
+	const optional = `,"optional":true`
+	const notOptional = `,"optional":false`
+	const safeAgent = `,"agent":{"exposed":true,"retry":"safe"}`
+	for _, testCase := range []struct{ name, uncertainOptional, execution, agent string }{
+		{"optional uncertain of omitted limited", optional, "", ""},
+		{"optional uncertain of explicit unsafe", optional, `,"repeatOnUnknown":"unsafe"`, ""},
+		{"required uncertain of explicit safe", "", `,"repeatOnUnknown":"safe"`, ""},
+		{"required uncertain with safe agent retry", "", "", safeAgent},
+	} {
+		require.NoError(t, compiled.Validate(operation(testCase.uncertainOptional, testCase.execution, testCase.agent)), testCase.name)
+	}
+	for _, testCase := range []struct{ name, uncertainOptional, execution string }{
+		{"omitted optional of explicit limited", "", `,"repeatOnUnknown":"limited"`},
+		{"false optional of explicit limited", notOptional, `,"repeatOnUnknown":"limited"`},
+		{"omitted optional of explicit unsafe", "", `,"repeatOnUnknown":"unsafe"`},
+		{"omitted optional of omitted limited", "", ""},
+	} {
+		require.Error(t, compiled.Validate(operation(testCase.uncertainOptional, testCase.execution, "")), testCase.name)
 	}
 }
 
@@ -383,6 +702,8 @@ func TestRepeatOnUnknownValidationAndDefaults(t *testing.T) {
 			operation.Kind, operation.Idempotency = testCase.kind, "none"
 			if testCase.kind == "mutation" {
 				operation.Idempotency = "required"
+				operation.Branches = append(operation.Branches, schema.OperationBranch{ID: "uncertain", GoName: "Uncertain",
+					Description: "The write may have happened.", Optional: true})
 			}
 			operation.Execution.RepeatOnUnknown, operation.Execution.MaxSends = testCase.repeatOnUnknown, testCase.maxSends
 			operation.Agent = testCase.agent

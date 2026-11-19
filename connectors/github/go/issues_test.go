@@ -6,6 +6,7 @@ package github_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -22,6 +23,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/github/go"
 	"github.com/superdurable/dex-connectors-library/connectors/github/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -435,6 +437,67 @@ func TestCreateIssueRetriesUnprocessedWritesWithoutReadBack(t *testing.T) {
 	}
 }
 
+func TestCreateIssueReadsBackAfterA429ThatFollowedAnUnknownSend(t *testing.T) {
+	provider := newIssueProvider(t, answer502WithoutStoring, answer429)
+	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
+	ctx := singledispatchtest.NewContext("issues-flow", "unknown-then-429")
+	for attempt := 1; attempt < 3; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+		require.Error(t, err)
+		ctx.AdvanceAttempt()
+	}
+	require.Equal(t, singledispatch.StateCanResend, lastMarker(t, ctx).State)
+	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	require.NoError(t, err)
+	require.Equal(t, github.CreateIssueBranchCreated, result.Branch, result.Failure)
+	require.Equal(t, 3, provider.count("GET /user"), "the first send may have created the issue, so attempt 3 reads back first")
+	require.Equal(t, 3, provider.count("POST"))
+}
+
+func TestCreateIssueRetriesATransientCredentialFailureAfterAPossibleSend(t *testing.T) {
+	provider := newIssueProvider(t, answer502WithoutStoring)
+	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
+	ctx := singledispatchtest.NewContext("issues-flow", "transient-credentials")
+	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	require.Error(t, err)
+	ctx.AdvanceAttempt()
+	for _, test := range []struct {
+		err         error
+		isUncertain bool
+	}{
+		{err: projectconfig.ErrCredentialBrokerUnavailable},
+		{err: errors.New("connection is not configured")},
+		{err: errors.New("credential store hiccup")},
+		{err: sdkgo.ErrReauthorizationRequired, isUncertain: true},
+		{err: projectconfig.ErrReauthorizationRequired, isUncertain: true},
+		{err: projectconfig.ErrObjectNotFound, isUncertain: true},
+		{err: projectconfig.ErrConnectionNotSelected, isUncertain: true},
+		{err: projectconfig.ErrCredentialBrokerRejected, isUncertain: true},
+	} {
+		failing, err := github.New(github.Config{BaseURL: provider.URL}, credentialErrorSource{test.err})
+		require.NoError(t, err)
+		result, err := sdkgo.RunMutation(ctx, failing.CreateIssue(), githubConnection, bugReportInput())
+		if test.isUncertain {
+			require.NoError(t, err)
+			require.Equal(t, github.CreateIssueBranchUncertain, result.Branch)
+		} else {
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		}
+	}
+	require.Equal(t, 1, provider.count("POST"))
+}
+
+type credentialErrorSource struct{ err error }
+
+func (source credentialErrorSource) Resolve(sdkgo.Call) (github.Credentials, error) {
+	return github.Credentials{}, source.err
+}
+
+func (source credentialErrorSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[github.Credentials]) (github.Credentials, error) {
+	return source.Resolve(call)
+}
+
 func TestCreateIssueRetriesAProvablyUndispatchedRequest(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -477,14 +540,15 @@ func TestCreateIssueClassifiesConclusiveRejections(t *testing.T) {
 	}{
 		{behavior: answer403, branch: github.CreateIssueBranchInsufficientScope, kind: sdkgo.FailureAuthorization},
 		{behavior: answer404, branch: github.CreateIssueBranchNotFound, kind: sdkgo.FailureNotFound},
-		{behavior: answer410, branch: github.CreateIssueBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
 		{behavior: answer422, branch: github.CreateIssueBranchProviderRejected, kind: sdkgo.FailureValidation},
 	} {
 		t.Run(string(test.behavior), func(t *testing.T) {
 			provider := newIssueProvider(t, test.behavior)
 			client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
-			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("issues-flow", "rejected"), client.CreateIssue(), githubConnection, bugReportInput())
+			ctx := singledispatchtest.NewContext("issues-flow", "rejected")
+			result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
 			require.NoError(t, err)
+			require.Equal(t, singledispatch.StateCanResend, lastMarker(t, ctx).State, "a definite refusal records canResend")
 			require.Equal(t, test.branch, result.Branch)
 			require.Equal(t, test.kind, result.Failure.Kind)
 			require.NotContains(t, result.Failure.Message, providerBodySentinel)
@@ -493,6 +557,28 @@ func TestCreateIssueClassifiesConclusiveRejections(t *testing.T) {
 			requireRedacted(t, result)
 		})
 	}
+}
+
+func TestCreateIssueTreatsAnUnreadableRefusalBodyAsUnknown(t *testing.T) {
+	provider := newIssueProvider(t, answerInterrupted422)
+	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
+	ctx := singledispatchtest.NewContext("issues-flow", "unreadable-refusal")
+	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unreadable 422 body does not prove a refusal")
+	require.Equal(t, singledispatch.StateClaimed, lastMarker(t, ctx).State, "the send stays counted, with no canResend")
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	require.NoError(t, err)
+	require.Equal(t, github.CreateIssueBranchCreated, result.Branch, result.Failure)
+	require.Equal(t, 2, provider.count("POST"))
+
+	atCap := newIssueProvider(t, answerInterrupted422)
+	atCapClient := newIssueClient(t, atCap.URL, github.RepositoryAuthMethodID)
+	result, err = sdkgo.RunMutation(singledispatchtest.NewContext("issues-flow", "unreadable-refusal-cap"), atCapClient.CreateIssue(), githubConnection, bugReportInput(), sdkgo.WithMaxSends(1))
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Equal(t, 1, atCap.count("POST"))
 }
 
 func TestCreateIssueNeverResendsAnAcceptedIssueWithAnUnusableAnswer(t *testing.T) {
@@ -543,16 +629,25 @@ func TestCreateIssueSelectsUncertainWhenReadBackCannotVerify(t *testing.T) {
 	require.Equal(t, 1, provider.count("POST"), "a repository the connection can no longer read is not written")
 }
 
-func TestCreateIssueFailsClosedOnAForeignCheckpoint(t *testing.T) {
+func TestCreateIssueRetriesWithoutSendingOnAnUnreadableCheckpoint(t *testing.T) {
 	provider := newIssueProvider(t)
 	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
-	ctx := singledispatchtest.NewContext("issues-flow", "foreign")
-	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "another-call", Attempt: 1, State: singledispatch.StateNotSent}))
+	ctx := singledispatchtest.NewContext("issues-flow", "unreadable")
 	ctx.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	ctx.SetReadError(errors.New("heartbeat unavailable"))
+	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), githubConnection, bugReportInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "FailClosed never selects a terminal branch")
 	require.Zero(t, provider.count("POST")+provider.count("GET"))
+}
+
+func TestCreateIssueTreatsAnUnlistedStatusAsUnknown(t *testing.T) {
+	provider := newIssueProvider(t, answer410)
+	client := newIssueClient(t, provider.URL, github.RepositoryAuthMethodID)
+	_, err := sdkgo.RunMutation(singledispatchtest.NewContext("issues-flow", "gone"), client.CreateIssue(), githubConnection, bugReportInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "a 410 does not prove a refusal, so the send is reconciled and resent below the cap")
+	require.Equal(t, 1, provider.count("POST"))
 }
 
 func TestCreateIssueValidatesInputBeforeProviderAccess(t *testing.T) {
@@ -612,9 +707,7 @@ func lastMarker(t *testing.T, ctx *singledispatchtest.Context) singledispatch.Ma
 	t.Helper()
 	heartbeats := ctx.Heartbeats()
 	require.NotEmpty(t, heartbeats)
-	var marker singledispatch.Marker
-	require.NoError(t, json.Unmarshal(heartbeats[len(heartbeats)-1], &marker))
-	return marker
+	return decodeRecordedMarker(t, heartbeats[len(heartbeats)-1])
 }
 
 func timePointer(value time.Time) *time.Time { return &value }
@@ -666,6 +759,7 @@ const (
 	answer404                       issueWriteBehavior = "answer 404"
 	answer410                       issueWriteBehavior = "answer 410"
 	answer422                       issueWriteBehavior = "answer 422"
+	answerInterrupted422            issueWriteBehavior = "answer 422 with an interrupted body"
 )
 
 type sentIssue struct {
@@ -783,6 +877,11 @@ func (provider *issueProvider) serveCreate(response http.ResponseWriter, request
 	case answer422:
 		response.WriteHeader(http.StatusUnprocessableEntity)
 		_, _ = io.WriteString(response, `{"message":"Validation Failed","errors":[{"value":"`+providerBodySentinel+`"}]}`)
+	case answerInterrupted422:
+		// A declared length the handler never fills makes the server cut the body.
+		response.Header().Set("Content-Length", "4096")
+		response.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = io.WriteString(response, `{"message":"Validation`)
 	}
 }
 

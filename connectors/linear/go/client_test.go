@@ -4,6 +4,8 @@
 package linear_test
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/linear/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func TestPersonalAPIKeyIsSentRawAndEveryRequestIsANamedGraphQLPost(t *testing.T) {
@@ -74,8 +77,10 @@ func TestErrorsMapToBranchesWithoutLinearText(t *testing.T) {
 		{name: "internal error", status: 500, body: linearError("INTERNAL_SERVER_ERROR", "internal error"), isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "bare 502", status: 502, body: "<html>bad gateway</html>", isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "bare 400", status: 400, body: `{}`, branch: linear.GetIssueBranchDefect, kind: sdkgo.FailureProtocol},
-		{name: "redirect", status: 302, body: ``, branch: linear.GetIssueBranchProviderRejected, kind: sdkgo.FailureProtocol},
-		{name: "unknown code", status: 200, body: linearError("SOMETHING_NEW", "unrecognized"), branch: linear.GetIssueBranchProviderRejected, kind: sdkgo.FailureProviderRejection, messagePart: "[SOMETHING_NEW]"},
+		{name: "redirect", status: 302, body: ``, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "unlisted status", status: 425, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "unknown code", status: 200, body: linearError("SOMETHING_NEW", "unrecognized"), isRetry: true, kind: sdkgo.FailureAvailability, messagePart: "[SOMETHING_NEW]"},
+		{name: "unknown code with 422", status: 422, body: linearError("SOMETHING_NEW", "unrecognized"), branch: linear.GetIssueBranchProviderRejected, kind: sdkgo.FailureProviderRejection, messagePart: "[SOMETHING_NEW]"},
 		{name: "malformed 2xx", status: 200, body: `not json`, branch: linear.GetIssueBranchInvalidResponse, kind: sdkgo.FailureProtocol},
 		{name: "reflected key", status: 200, body: `{"data":{"issues":{"nodes":[]}},"echo":"` + testAPIKey + `"}`, branch: linear.GetIssueBranchInvalidResponse, kind: sdkgo.FailureProtocol},
 	}
@@ -145,5 +150,46 @@ func TestUnusableCredentialsSelectDefectWithoutARequest(t *testing.T) {
 	require.Equal(t, linear.GetIssueBranchDefect, result.Branch)
 	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
 	require.NotContains(t, result.Failure.Message, "key with spaces")
+	require.Zero(t, provider.requestCount())
+}
+
+// failingLinearCredentials fails every resolution with one error.
+type failingLinearCredentials struct{ err error }
+
+func (credentials failingLinearCredentials) Resolve(sdkgo.Call) (linear.Credentials, error) {
+	return linear.Credentials{}, credentials.err
+}
+
+func (credentials failingLinearCredentials) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[linear.Credentials]) (linear.Credentials, error) {
+	return credentials.Resolve(call)
+}
+
+func TestCredentialResolveErrorsUseTheSharedTerminalSet(t *testing.T) {
+	provider := newRecordingLinear(t, func(http.ResponseWriter, recordedRequest, int) { t.Error("no request may be sent") })
+	for name, test := range map[string]struct {
+		err        error
+		isTerminal bool
+	}{
+		"project reauthorization": {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":        {projectconfig.ErrObjectNotFound, true},
+		"connection not selected": {projectconfig.ErrConnectionNotSelected, true},
+		"broker rejected":         {projectconfig.ErrCredentialBrokerRejected, true},
+		"broker unavailable":      {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"not configured":          {errors.New("connection is not configured"), false},
+		"unlisted":                {errors.New("unlisted credential store error"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client := newLinearClient(t, provider.URL, failingLinearCredentials{test.err})
+			result, err := runQuery("credential-"+name, client.GetIssue(), linear.GetIssueInput{IssueID: testIssueID})
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, linear.GetIssueBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+		})
+	}
 	require.Zero(t, provider.requestCount())
 }

@@ -10,16 +10,24 @@ Flow started from Dex Web **Start Flow**:
 3. `InsertRefund` uses `execute` to run an `INSERT ... ON CONFLICT
    (idempotency_key) DO NOTHING ... RETURNING`. The connector binds the Step
    execution's idempotency key as `$4`, and `MaxRowsAffected` is one.
-4. `CompleteRefundRecording` completes with `recorded` and the returned row.
-5. When the insert selects `uncertain`, or a replay of the same Step
-   execution inserted nothing, `FindRefundByIdempotencyKey` reads the row back
-   by that key. `CompleteReconciledRefund` completes with `wasReconciled` when
-   the row exists. Otherwise it fails the Flow for review instead of inserting
-   again.
+   `execute` is repeat-safe, so a `COMMIT` with an unknown outcome returns
+   Retry and Dex sends the same `INSERT` again with the same key.
+4. `CompleteRefundRecording` records `recorded` and the returned row.
+5. When a replay of the same Step execution inserted nothing,
+   `FindRefundByIdempotencyKey` reads the row back by that key.
+   `CompleteReconciledRefund` records `wasReconciled` when the row exists.
+   Otherwise it fails the Flow for review instead of inserting again.
+6. `AddRefundToDailyTotal` uses `executeNonIdempotent` to add the refund to
+   today's UTC total in `refund_daily_totals`. Running it twice would count
+   the refund twice, so the connector commits it at most once.
+7. `CompleteDailyTotal` completes with the refund and `dailyTotalUsd`.
 
 The ledger's `order_id` unique constraint admits one refund per order across
 Flows. A second Flow that races past the duplicate check fails at
-`InsertRefund` with `providerRejected` (SQLSTATE 23505). The other optional
+`InsertRefund` with `providerRejected` (SQLSTATE 23505). When the daily
+total's `COMMIT` outcome is unknown, `AddRefundToDailyTotal` selects
+`uncertain`, which is not wired, so the Flow fails for review. Inspect
+`refund_daily_totals` before correcting it by hand. The other optional
 branches, `limitExceeded`, `truncated`, `invalidResponse`, and `defect`, are
 not wired and fail the Flow.
 
@@ -31,7 +39,8 @@ needs:
 ```bash
 psql "host=db.example.com dbname=app user=app_owner sslmode=require" -f examples/record-refund/schema.sql
 psql "host=db.example.com dbname=app user=app_owner sslmode=require" \
-  -c "GRANT SELECT, INSERT ON refund_ledger TO dex_app"
+  -c "GRANT SELECT, INSERT ON refund_ledger TO dex_app" \
+  -c "GRANT INSERT, UPDATE ON refund_daily_totals TO dex_app"
 ```
 
 ## Run locally
@@ -51,7 +60,7 @@ repository root:
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/postgresql/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/postgresql/go \
-  --version v0.23.0 --tag connectors/postgresql/go/v0.23.0 \
+  --version v0.24.0 --tag connectors/postgresql/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/postgresql-refund/release/connector-release.json \
   --digest-output /tmp/postgresql-refund/release/connector-release.json.sha256
@@ -82,7 +91,7 @@ In **Start Flow**, choose `PostgreSQLRecordRefund`. Start it with a unique Flow 
 
 The Flow completes with `status: recorded` and the ledger row, with
 `refund_id` as a string, `amount_usd` as the exact string `"250.00"`, and
-`recorded_at` in RFC 3339 UTC. Start another Flow with the same `orderId` to
+`recorded_at` in RFC 3339 UTC, plus `dailyTotalUsd`, today's refunded total. Start another Flow with the same `orderId` to
 see `alreadyRecorded` without a second row. **Display** shows the request and
 outcome Attributes. Confirm the side effect with a bounded read-back:
 
@@ -103,8 +112,11 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 The integration suite runs the Flow on a real Dex Worker against the scripted
 PostgreSQL server. It covers:
 
-- a new refund and a duplicate order;
-- a `COMMIT` whose reply was dropped, once after it applied and once before;
+- a new refund, its daily total, and a duplicate order;
+- an `INSERT` `COMMIT` whose reply was dropped, once after it applied and
+  once before, each retried with the same key;
+- a daily-total `COMMIT` whose reply was dropped, which selects `uncertain`
+  and is never sent again;
 - a write lost before `COMMIT` and retried with the same key;
 - an `INSERT` committed before its Worker is lost and dispatched again with the
   same key, which still writes one row;

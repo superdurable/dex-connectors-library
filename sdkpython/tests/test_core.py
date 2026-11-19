@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, cast
 
+import dex
 import pytest
 
 from dex_connectors.sdk import (
@@ -33,6 +34,7 @@ from dex_connectors.sdk import (
     StepDefaults,
     default_connector_step_execute_retry_policy,
     derive_call_id,
+    derive_step_call_id,
 )
 from dex_connectors.sdk.credentials import CredentialRefreshResult, CredentialRefreshState
 from dex_connectors.sdk.projectconfig.models import Scope, SnapshotRef
@@ -107,6 +109,28 @@ def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:
         == identity["differentOperationCallId"]
     )
     assert identity["providerKey"] == f"sample/{derived}"
+    operation = OperationRef(source["connectorId"], source["operationId"])
+    assert [
+        derive_call_id(source["flowId"], source["stepExecutionId"], operation, occurrence=n)
+        for n in (1, 2, 3)
+    ] == identity["occurrenceCallIds"]
+    class StepContext:
+        """Weakly referenceable Dex identity, as a real Step context is."""
+
+        def __init__(self) -> None:
+            self.flow_id = source["flowId"]
+            self.step_execution_id = source["stepExecutionId"]
+            self.attempt = 1
+
+    context = StepContext()
+    step_context = cast(dex.AsyncContext, context)
+    assert [derive_step_call_id(step_context, operation) for _ in range(3)] == (
+        identity["occurrenceCallIds"]
+    )
+    context.attempt = 2
+    assert derive_step_call_id(step_context, operation) == derived, "each attempt restarts the count"
+    with pytest.raises(ValueError, match="occurrence"):
+        derive_call_id(source["flowId"], source["stepExecutionId"], operation, occurrence=0)
     assert (
         Receipt.from_wire(identity["fallbackCompletedReceipt"]).to_wire()
         == identity["fallbackCompletedReceipt"]

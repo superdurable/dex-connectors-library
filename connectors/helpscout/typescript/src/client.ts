@@ -3,9 +3,16 @@
 
 import { resolveCredential, resolveCredentialAfterRejection, ReauthorizationRequiredError, type Call, type CredentialRefreshDriver, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+
+/** A credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError
+    || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { SearchConversationsOperation, GetConversationOperation, ReplyToConversationOperation, UpdateConversationOperation, FindCustomerByEmailOperation } from './operations.js';
 
 const apiBaseURL = 'https://api.helpscout.net';
@@ -29,8 +36,11 @@ export interface HelpScoutWebhookSettings {
 
 /** One response or sanitized transport failure from the Help Scout API. */
 export type HelpScoutExchange =
-  | { response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean }
-  | { error: unknown; status?: number; headers?: ProviderResponse['headers'] };
+  | {
+      response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean;
+      /** A write's non-2xx body exceeded MaxErrorBodyBytes, so a refusal status is not conclusive. */ isErrorBodyIncomplete?: boolean;
+    }
+  | { error: unknown; status?: number; headers?: ProviderResponse['headers']; isNotBuilt?: boolean };
 
 /** Resolve the renewable credential before a provider request. */
 export type CredentialResolution =
@@ -80,7 +90,7 @@ export class HelpScoutClient {
       if (!isHeaderSafeCredential(token)) return { kind: 'terminal', message: 'the Help Scout access token is blank or contains characters a header cannot carry' };
       return { kind: 'resolved', credentials, token };
     } catch (error) {
-      if (error instanceof ReauthorizationRequiredError) return { kind: 'terminal', message: "Help Scout rejected the App ID or App Secret; save the app's current credentials in Dex Web Connections" };
+      if (isTerminalCredentialError(error)) return { kind: 'terminal', message: "Help Scout rejected the App ID or App Secret; save the app's current credentials in Dex Web Connections" };
       return { kind: 'retry', message: 'the Help Scout access token could not be loaded or obtained yet' };
     }
   }
@@ -92,29 +102,58 @@ export class HelpScoutClient {
     return this.exchangeWithToken(call, credential.token, method, path, query, payload, allowRefresh);
   }
 
-  /** Send with a token already resolved for a multi-request operation. */
-  async exchangeWithToken(call: Call, accessToken: string, method: string, path: string, query?: Readonly<Record<string, string>>, payload?: unknown, allowRefresh = true, requestTimeoutMs = 25_000): Promise<HelpScoutExchange> {
+  /** Read before a write, reading a refusal body in full as a write does, because the answer decides the write. */
+  async exchangePreWriteLookup(call: Call, path: string): Promise<HelpScoutExchange | CredentialResolution> {
+    const credential = await this.resolveCredentials(call);
+    if (credential.kind !== 'resolved') return credential;
+    return this.exchangeWithToken(call, credential.token, 'GET', path, undefined, undefined, true, undefined, undefined, true);
+  }
+
+  /**
+   * Send with a token already resolved for a multi-request operation. `signal`, when given, replaces the
+   * Step cancellation signal, such as a Fence write-window signal that also follows Step cancellation.
+   * `isPreWriteLookup` reads a GET's error body in full, as a write does, so truncation and read failures stay visible.
+   */
+  async exchangeWithToken(call: Call, accessToken: string, method: string, path: string, query?: Readonly<Record<string, string>>, payload?: unknown, allowRefresh = true, requestTimeoutMs = 25_000, signal?: AbortSignal, isPreWriteLookup = false): Promise<HelpScoutExchange> {
     const encodedQuery = query ? Object.entries(query).sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(([name, value]) => `${goQueryEscape(name)}=${goQueryEscape(value)}`).join('&') : '';
     const url = `${apiBaseURL}${path}${encodedQuery ? `?${encodedQuery}` : ''}`;
     let body: Uint8Array | undefined;
     try { if (payload !== undefined) body = Buffer.from(JSON.stringify(payload)); }
-    catch { return { error: new TypeError('Help Scout request could not be built') }; }
+    catch { return { error: new TypeError('Help Scout request could not be built'), isNotBuilt: true }; }
     let token = accessToken;
+    // A write's error body must be read in full, so its truncation and read failures stay visible.
+    const isWrite = method !== 'GET' || isPreWriteLookup;
     for (let attempt = 0; attempt < 2; attempt++) {
       const request: ProviderRequest = {
         url, method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json; charset=UTF-8' } : {}) },
-        ...(body ? { body } : {}), maxResponseBytes: this.#maxResponseBytes, maxErrorResponseBytes: MaxErrorBodyBytes,
-        ignoreErrorBodyReadFailure: true, addressPolicy: 'publicHTTPS', timeoutMs: requestTimeoutMs,
-        signal: call.context.cancellationSignal,
+        ...(body ? { body } : {}), maxResponseBytes: this.#maxResponseBytes,
+        ...(isWrite ? {} : { maxErrorResponseBytes: MaxErrorBodyBytes, ignoreErrorBodyReadFailure: true }),
+        addressPolicy: 'publicHTTPS', timeoutMs: requestTimeoutMs,
+        signal: signal ?? call.context.cancellationSignal,
       };
-      let exchange: { response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean };
+      let exchange: Extract<HelpScoutExchange, { response: ProviderResponse }>;
       let observedStatus = 0;
       let observedHeaders: ProviderResponse['headers'] = {};
-      request.onResponseChunk = (_chunk, status, headers) => { observedStatus = status; observedHeaders = headers; };
-      try { exchange = { response: await this.#send(request), accessToken: token }; }
-      catch (error) {
-        if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers) exchange = { response: { status: error.status, headers: error.headers, body: new Uint8Array() }, accessToken: token, ...(error.status >= 200 && error.status < 300 ? { isTooLarge: true as const } : {}) };
-        else return { error, status: observedStatus, headers: observedHeaders };
+      let errorBodyBytes = 0;
+      let isErrorBodyIncomplete = false;
+      request.onResponseChunk = (chunk, status, headers) => {
+        observedStatus = status; observedHeaders = headers;
+        if (!isWrite || (status >= 200 && status < 300)) return;
+        errorBodyBytes += chunk.length;
+        if (errorBodyBytes <= MaxErrorBodyBytes) return;
+        isErrorBodyIncomplete = true;
+        return false;
+      };
+      try {
+        exchange = { response: await this.#send(request), accessToken: token };
+        if (isErrorBodyIncomplete) exchange.isErrorBodyIncomplete = true;
+      } catch (error) {
+        const isErrorStatus = error instanceof BodyTooLargeError && error.status !== undefined && (error.status < 200 || error.status >= 300);
+        if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers) exchange = { response: { status: error.status, headers: error.headers, body: new Uint8Array() }, accessToken: token, ...(error.status >= 200 && error.status < 300 ? { isTooLarge: true as const } : {}), ...(isErrorStatus ? { isErrorBodyIncomplete: true } : {}) };
+        else if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status) {
+          // The status arrived before the body broke, so a 2xx write was accepted.
+          return { error, status: error.status, headers: error.headers ?? observedHeaders };
+        } else return { error, status: observedStatus, headers: observedHeaders };
       }
       if (exchange.response.status >= 200 && exchange.response.status < 300 && token && Buffer.from(exchange.response.body).includes(Buffer.from(token))) return { ...exchange, isMalformed: true };
       if (exchange.response.status !== 401 || !allowRefresh || attempt > 0 || !('resolveAfterRejection' in this.#credentials)) return exchange;

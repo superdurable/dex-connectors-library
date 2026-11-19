@@ -3,10 +3,13 @@
 
 // Package mysql connects Dex applications to MySQL and MariaDB databases.
 //
-// The connector exposes two operations. QueryRows runs one parameterized
+// The connector exposes three operations. QueryRows runs one parameterized
 // statement inside a read-only transaction and returns bounded rows.
-// ExecuteStatement runs one parameterized write statement in its own
-// transaction and reports the rows it affected. Both bind values only through
+// ExecuteStatement runs one parameterized, repeat-safe write statement in its
+// own transaction and reports the rows it affected; an unknown COMMIT outcome
+// runs it again. ExecuteStatementNonIdempotent runs a write that must not run
+// twice, commits it at most once, and selects uncertain when a COMMIT outcome
+// is unknown. All bind values only through
 // positional ? placeholders as server-side prepared-statement parameters, and
 // map every result column to a JSON value without losing precision.
 //
@@ -32,6 +35,7 @@ import (
 
 	mysqldriver "github.com/go-sql-driver/mysql"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const (
@@ -159,9 +163,15 @@ func (client *Client) QueryRows() QueryRowsOperation {
 	return QueryRowsOperation{client: client}
 }
 
-// ExecuteStatement returns the transactional write operation bound to this client.
+// ExecuteStatement returns the repeat-safe transactional write operation bound to this client.
 func (client *Client) ExecuteStatement() ExecuteStatementOperation {
 	return ExecuteStatementOperation{client: client}
+}
+
+// ExecuteStatementNonIdempotent returns the fenced transactional write operation, which never
+// runs its statement twice, bound to this client.
+func (client *Client) ExecuteStatementNonIdempotent() ExecuteStatementNonIdempotentOperation {
+	return ExecuteStatementNonIdempotentOperation{client: client}
 }
 
 // newCallContext bounds the whole call so it returns a classified attempt before Dex's Execute timeout.
@@ -169,12 +179,29 @@ func (client *Client) newCallContext(call sdkgo.Call) (context.Context, context.
 	return context.WithTimeout(call.Context, client.connectTimeout+client.statementTimeout+commitAllowance)
 }
 
-func (client *Client) resolvePassword(call sdkgo.Call) (string, bool) {
+// resolvePassword returns the password, or the failure to report before connecting: defect for a
+// terminal credential failure or an empty password, Retry for any other credential failure.
+func (client *Client) resolvePassword(call sdkgo.Call) (string, classifiedFailure, bool) {
 	credentials, err := client.credentials.Resolve(call)
-	if err != nil || credentials.Password.Reveal() == "" {
-		return "", false
+	if err != nil && !isTerminalCredentialError(err) {
+		return "", classifiedFailure{
+			disposition: dispositionRetry, kind: sdkgo.FailureAvailability,
+			message: "MySQL connection credentials are temporarily unavailable, so nothing was sent",
+		}, false
 	}
-	return credentials.Password.Reveal(), true
+	if err != nil || credentials.Password.Reveal() == "" {
+		return "", classifiedFailure{
+			disposition: dispositionDefect, kind: sdkgo.FailureAuthentication, message: "MySQL connection credentials are unavailable",
+		}, false
+	}
+	return credentials.Password.Reveal(), classifiedFailure{}, true
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // openSession connects, reads the session identity, and pins the session settings the type mapping depends on.

@@ -16,6 +16,58 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listGuildMembers/listGuildMembersDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.GuildMemberPage](`{"members":[{"userId":"400000000000000001","nickname":"releasebot","roleIds":[]}]}`)
+			return err
+		}},
+		{name: "banGuildMember/banGuildMemberDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001"}`)
+			return err
+		}},
+		{name: "kickGuildMember/kickGuildMemberDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001"}`)
+			return err
+		}},
+		{name: "addGuildMemberRole/addGuildMemberRoleDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001","roleId":"500000000000000001"}`)
+			return err
+		}},
+		{name: "removeGuildMemberRole/removeGuildMemberRoleDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001","roleId":"500000000000000001"}`)
+			return err
+		}},
+		{name: "timeoutGuildMember/timeoutGuildMemberDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001","timeoutUntil":"2026-11-18T12:00:00Z"}`)
+			return err
+		}},
+		{name: "unbanGuildMember/unbanGuildMemberDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.GuildMemberChange](`{"guildId":"200000000000000001","userId":"400000000000000001"}`)
+			return err
+		}},
+		{name: "listGuildChannels/announcementChannels/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.GuildChannels](`{"channels":[{"id":"100000000000000003","type":0,"guildId":"200000000000000001","name":"dex-updates","topic":"Dex updates"}]}`)
+			return err
+		}},
+		{name: "createGuildChannel/createdTextChannel/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.Channel](`{"id":"100000000000000003","type":0,"guildId":"200000000000000001","name":"dex-updates","topic":"Dex updates"}`)
+			return err
+		}},
+		{name: "updateChannel/updatedTextChannel/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.Channel](`{"id":"100000000000000003","type":0,"guildId":"200000000000000001","name":"dex-updates","topic":"Dex updates"}`)
+			return err
+		}},
+		{name: "deleteChannel/deletedTextChannel/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.Channel](`{"id":"100000000000000003","type":0,"guildId":"200000000000000001","name":"dex-updates","topic":"Dex updates"}`)
+			return err
+		}},
+		{name: "getMessage/announcementMessage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.Message](`{"id":"300000000000000001","channelId":"100000000000000001","author":{"id":"400000000000000001","username":"releasebot","isBot":true},"content":"Release today @everyone","timestamp":"2026-10-26T12:00:00Z","type":0}`)
+			return err
+		}},
+		{name: "deleteMessage/deletedAnnouncement/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[discord.DeletedMessage](`{"channelId":"100000000000000001","messageId":"300000000000000001"}`)
+			return err
+		}},
 		{name: "getChannel/announcementChannel/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[discord.Channel](`{"id":"100000000000000001","type":0,"guildId":"200000000000000001","name":"announcements","topic":"Release news"}`)
 			return err
@@ -42,6 +94,45 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListGuildMembers().Definition().Operation.OperationID != "listGuildMembers" {
+		t.Errorf("listGuildMembers mock has another definition")
+	}
+	if mock.BanGuildMember().Definition().Operation.OperationID != "banGuildMember" {
+		t.Errorf("banGuildMember mock has another definition")
+	}
+	if mock.KickGuildMember().Definition().Operation.OperationID != "kickGuildMember" {
+		t.Errorf("kickGuildMember mock has another definition")
+	}
+	if mock.AddGuildMemberRole().Definition().Operation.OperationID != "addGuildMemberRole" {
+		t.Errorf("addGuildMemberRole mock has another definition")
+	}
+	if mock.RemoveGuildMemberRole().Definition().Operation.OperationID != "removeGuildMemberRole" {
+		t.Errorf("removeGuildMemberRole mock has another definition")
+	}
+	if mock.TimeoutGuildMember().Definition().Operation.OperationID != "timeoutGuildMember" {
+		t.Errorf("timeoutGuildMember mock has another definition")
+	}
+	if mock.UnbanGuildMember().Definition().Operation.OperationID != "unbanGuildMember" {
+		t.Errorf("unbanGuildMember mock has another definition")
+	}
+	if mock.ListGuildChannels().Definition().Operation.OperationID != "listGuildChannels" {
+		t.Errorf("listGuildChannels mock has another definition")
+	}
+	if mock.CreateGuildChannel().Definition().Operation.OperationID != "createGuildChannel" {
+		t.Errorf("createGuildChannel mock has another definition")
+	}
+	if mock.UpdateChannel().Definition().Operation.OperationID != "updateChannel" {
+		t.Errorf("updateChannel mock has another definition")
+	}
+	if mock.DeleteChannel().Definition().Operation.OperationID != "deleteChannel" {
+		t.Errorf("deleteChannel mock has another definition")
+	}
+	if mock.GetMessage().Definition().Operation.OperationID != "getMessage" {
+		t.Errorf("getMessage mock has another definition")
+	}
+	if mock.DeleteMessage().Definition().Operation.OperationID != "deleteMessage" {
+		t.Errorf("deleteMessage mock has another definition")
+	}
 	if mock.GetChannel().Definition().Operation.OperationID != "getChannel" {
 		t.Errorf("getChannel mock has another definition")
 	}

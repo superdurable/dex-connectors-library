@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/internal/conformancefixture"
+	"github.com/superdurable/dex-connectors-library/sdkgo/internal/testsupport"
 )
 
 func TestConformanceFixtures(t *testing.T) {
@@ -52,7 +53,20 @@ func TestConformanceFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	occurrenceContext := testsupport.NewDexContext("flow-42", "step-execution-7")
+	occurrenceCallIDs := make([]CallID, 0, 3)
+	for range 3 {
+		occurrenceCall, err := newCall(occurrenceContext, call.Operation, call.Connection)
+		if err != nil {
+			t.Fatal(err)
+		}
+		occurrenceCallIDs = append(occurrenceCallIDs, occurrenceCall.ID)
+	}
+	if occurrenceCallIDs[0] != callID {
+		t.Fatalf("first occurrence changed its call ID: %s", occurrenceCallIDs[0])
+	}
 	conformancefixture.Check(t, "identity.json", map[string]any{
+		"occurrenceCallIds":        occurrenceCallIDs,
 		"source":                   map[string]string{"flowId": "flow-42", "stepExecutionId": "step-execution-7", "connectorId": "sample", "operationId": "createItem"},
 		"derivedCall":              call,
 		"differentStepCallId":      deriveCallID("flow-42", "step-execution-8", call.Operation),

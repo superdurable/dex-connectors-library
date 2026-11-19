@@ -225,7 +225,7 @@ export function updateConversationProviderRejectedFailure(): Case<UpdateConversa
 /** Manifest scenario invalidResponseFailure for updateConversation. */
 export function updateConversationInvalidResponseFailure(): Case<UpdateConversationOutput> {
   const value = emptyUpdateConversationOutput;
-  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "updateConversation", message: "Hiver returned malformed conversation JSON during read-back after accepting the change." });
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "updateConversation", message: "Hiver returned an invalid user search page: response has no data object" });
 }
 
 /** Script the added branch. */

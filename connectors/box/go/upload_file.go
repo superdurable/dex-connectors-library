@@ -64,8 +64,9 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	}
 	digestBytes := sha1.Sum(content)
 	digest := strings.ToUpper(hex.EncodeToString(digestBytes[:]))
+	isLaterAttempt := call.Context != nil && call.Context.Attempt() > 1
 	existingResponse := operation.client.getFileMetadata(call, input.FileID)
-	existing, attempt, shouldContinue := classifyInitialFileMetadata(existingResponse, input.FileID)
+	existing, attempt, shouldContinue := classifyInitialFileMetadata(existingResponse, input.FileID, isLaterAttempt)
 	if !shouldContinue {
 		return attempt
 	}
@@ -74,7 +75,7 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	}
 	response := operation.client.upload(call, input.FileID, existing.Name, content)
 	if errors.Is(response.err, errCredential) && !response.requestSent {
-		return uploadFailure(UploadFileBranchDefect, sdkgo.FailureAuthentication, "Box credentials are unavailable or invalid")
+		return credentialFailure(isLaterAttempt)
 	}
 	if errors.Is(response.err, errRefresh) {
 		return uploadRetry(sdkgo.FailureAvailability, "Box credentials could not be refreshed", 0)
@@ -88,13 +89,11 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return uploadRetry(sdkgo.FailureAvailability, "Box upload is temporarily unavailable", response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
-		return uploadFailure(UploadFileBranchNotFound, sdkgo.FailureNotFound, "Box did not find the file")
+	if isDefiniteBoxRefusal(response) {
+		return refusal(response.status)
 	}
+	// Any other answer, such as 409, 3xx, or an unreadable error body, is unknown: read back below.
 	isAccepted := response.status == http.StatusOK || response.status == http.StatusCreated
-	if response.status != 0 && !isAccepted {
-		return uploadFailure(UploadFileBranchProviderRejected, sdkgo.FailureProviderRejection, "Box rejected HTTP "+strconv.Itoa(response.status))
-	}
 	if isAccepted && response.err == nil {
 		var wire struct {
 			Entries []fileMetadata `json:"entries"`
@@ -113,9 +112,13 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	return uploadRetry(sdkgo.FailureTransport, "Box replacement could not be confirmed by read-back", readback.retryAfter)
 }
 
-func classifyInitialFileMetadata(response fileResponse, fileID string) (fileMetadata, sdkgo.MutationAttempt[UploadedFile], bool) {
+// classifyInitialFileMetadata selects a branch only for a definite answer; anything unknown returns Retry.
+func classifyInitialFileMetadata(response fileResponse, fileID string, isLaterAttempt bool) (fileMetadata, sdkgo.MutationAttempt[UploadedFile], bool) {
+	if errors.Is(response.err, errCredential) && response.status == 0 {
+		return fileMetadata{}, credentialFailure(isLaterAttempt), false
+	}
 	if errors.Is(response.err, errCredential) {
-		return fileMetadata{}, uploadFailure(UploadFileBranchDefect, sdkgo.FailureAuthentication, "Box credentials are unavailable or invalid"), false
+		return fileMetadata{}, uploadRetry(sdkgo.FailureProtocol, "Box metadata echoed the access token", response.retryAfter), false
 	}
 	if errors.Is(response.err, errRefresh) {
 		return fileMetadata{}, uploadRetry(sdkgo.FailureAvailability, "Box credentials could not be refreshed", 0), false
@@ -129,23 +132,60 @@ func classifyInitialFileMetadata(response fileResponse, fileID string) (fileMeta
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return fileMetadata{}, uploadRetry(sdkgo.FailureAvailability, "Box metadata is temporarily unavailable", response.retryAfter), false
 	}
-	if response.status == http.StatusNotFound {
-		return fileMetadata{}, uploadFailure(UploadFileBranchNotFound, sdkgo.FailureNotFound, "Box did not find the file"), false
+	if isDefiniteBoxRefusal(response) {
+		return fileMetadata{}, refusal(response.status), false
 	}
 	if response.status != http.StatusOK {
-		return fileMetadata{}, uploadFailure(UploadFileBranchProviderRejected, sdkgo.FailureProviderRejection, "Box rejected HTTP "+strconv.Itoa(response.status)), false
+		return fileMetadata{}, uploadRetry(sdkgo.FailureProtocol, "Box answered metadata lookup with unexpected HTTP "+strconv.Itoa(response.status), response.retryAfter), false
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return fileMetadata{}, uploadFailure(UploadFileBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Box metadata exceeds the configured limit"), false
+		return fileMetadata{}, uploadRetry(sdkgo.FailureResponseTooLarge, "Box metadata exceeds the configured limit", 0), false
 	}
 	if response.err != nil {
 		return fileMetadata{}, uploadRetry(sdkgo.FailureTransport, "Box metadata response was interrupted", 0), false
 	}
 	metadata, valid := decodeFileMetadata(response.body, fileID)
 	if !valid {
-		return fileMetadata{}, uploadFailure(UploadFileBranchInvalidResponse, sdkgo.FailureProtocol, "Box returned invalid file metadata"), false
+		return fileMetadata{}, uploadRetry(sdkgo.FailureProtocol, "Box returned invalid file metadata", 0), false
 	}
 	return metadata, sdkgo.MutationAttempt[UploadedFile]{}, true
+}
+
+// credentialFailure keeps defect for the first attempt; a later one may follow an applied upload, so it retries.
+func credentialFailure(isLaterAttempt bool) sdkgo.MutationAttempt[UploadedFile] {
+	if isLaterAttempt {
+		return uploadRetry(sdkgo.FailureAuthentication, "Box credentials are unavailable or invalid after a possible earlier upload", 0)
+	}
+	return uploadFailure(UploadFileBranchDefect, sdkgo.FailureAuthentication, "Box credentials are unavailable or invalid")
+}
+
+// isDefiniteBoxRefusal reports an allowlisted refusal status whose fully read body describes no file.
+func isDefiniteBoxRefusal(response fileResponse) bool {
+	if response.err != nil {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var wire struct {
+		Type    string          `json:"type"`
+		Entries json.RawMessage `json:"entries"`
+	}
+	if json.Unmarshal(response.body, &wire) != nil {
+		return true
+	}
+	return wire.Type != "file" && (len(wire.Entries) == 0 || string(wire.Entries) == "null")
+}
+
+func refusal(status int) sdkgo.MutationAttempt[UploadedFile] {
+	if status == http.StatusNotFound {
+		return uploadFailure(UploadFileBranchNotFound, sdkgo.FailureNotFound, "Box did not find the file")
+	}
+	return uploadFailure(UploadFileBranchProviderRejected, sdkgo.FailureProviderRejection, "Box rejected HTTP "+strconv.Itoa(status))
 }
 
 func uploaded(metadata fileMetadata) sdkgo.MutationAttempt[UploadedFile] {

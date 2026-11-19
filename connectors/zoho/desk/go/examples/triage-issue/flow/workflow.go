@@ -200,7 +200,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: openIssueTicketStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "zoho-desk", GroupLabel: "Zoho Desk",
-				Explanation: "Open a ticket with the customer's message and priority, sending the request at most once.",
+				Explanation: "Open a ticket with the customer's message and priority, resending an unknown outcome only within the send cap.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateTicketInput,
 			Created: sdkgo.GoTo(recordOpenedTicket{}),
@@ -210,7 +210,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: addTriageCommentStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "zoho-desk", GroupLabel: "Zoho Desk",
-				Explanation: "Add one private triage comment, sending the request at most once.",
+				Explanation: "Add one private triage comment, resending an unknown outcome only within the send cap.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
 			Added: sdkgo.GoTo(completeTriage{}),

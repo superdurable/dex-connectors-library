@@ -1,9 +1,30 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, SecretString, type Call, type CredentialProvider, type Failure, type MutationAttempt, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type MutationAttempt, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, Credentials } from './generated/models.js';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
+
+/** A credential failure no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError
+    || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
+
+// Typeform documents 402 as a plan without the feature, a definite refusal.
+const definiteRefusalStatuses = new Set([400, 401, 402, 403, 404, 411, 413, 414, 415, 422]);
+
+/** An allowlisted refusal status whose fully read body does not carry a stored webhook. */
+function isDefiniteRefusal(status: number, body: Uint8Array): boolean {
+  if (!definiteRefusalStatuses.has(status)) return false;
+  try {
+    const document = JSON.parse(Buffer.from(body).toString('utf8')) as unknown;
+    if (!document || typeof document !== 'object' || Array.isArray(document)) return true;
+    const id = (document as { id?: unknown }).id;
+    return id === undefined || id === null || id === '';
+  } catch { return true; }
+}
 import { GetFormOperation, ListFormsOperation, ListResponsesOperation, UpsertWebhookOperation } from './operations.js';
 
 const hosts: Record<string, string> = { us: 'https://api.typeform.com', eu: 'https://api.eu.typeform.com', newEu: 'https://api.typeform.eu' };
@@ -44,14 +65,32 @@ export class TypeformClient {
   async resolve(call: Call, operation: string): Promise<{ credentials: Credentials } | { outcome: ExchangeFailure }> {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
-    catch { return { outcome: { retry: true, failure: this.failure(operation, 'AVAILABILITY', 'the Typeform connection could not be loaded yet') } }; }
+    catch (error) {
+      // A later upsertWebhook attempt retries: defect would hide a PUT an earlier attempt may have sent.
+      if (isTerminalCredentialError(error) && !(operation === 'upsertWebhook' && call.context.attempt > 1)) {
+        return { outcome: { branch: 'defect', failure: this.failure(operation, 'AUTHENTICATION', 'the Typeform connection needs reauthorization or is no longer available; reconnect it') } };
+      }
+      return { outcome: { retry: true, failure: this.failure(operation, 'AVAILABILITY', 'the Typeform connection could not be loaded yet') } };
+    }
     if (!(credentials.accessToken instanceof SecretString) || !isHeaderSafeCredential(credentials.accessToken.reveal())) {
       return { outcome: { branch: 'defect', failure: this.failure(operation, 'AUTHENTICATION', 'the Typeform access token is blank or contains characters a header cannot carry') } };
     }
     return { credentials };
   }
-  /** Send one request and classify the response without reading an error body past the SDK bound. */
-  async exchange(call: Call, operation: string, credentials: Credentials, method: string, path: string, body?: unknown): Promise<{ response: ProviderResponse } | { outcome: ExchangeFailure }> {
+  /**
+   * Send one request and classify the response without reading an error body past the SDK bound.
+   * With isIdempotentWrite, any answer short of a definite refusal returns Retry, so the PUT repeats.
+   */
+  async exchange(call: Call, operation: string, credentials: Credentials, method: string, path: string, body?: unknown, isIdempotentWrite = false): Promise<{ response: ProviderResponse } | { outcome: ExchangeFailure }> {
+    const result = await this.doExchange(call, operation, credentials, method, path, body);
+    if (!isIdempotentWrite || !('outcome' in result) || result.outcome.retry || result.outcome.branch === 'defect' || result.isDefiniteRefusal) return result;
+    return { outcome: this.unsettledWrite(operation) };
+  }
+  /** Retry an idempotent write whose answer did not settle its effect. */
+  unsettledWrite(operation: string): ExchangeFailure {
+    return { retry: true, failure: this.failure(operation, 'PROTOCOL', "Typeform's answer did not confirm the webhook PUT, so the idempotent PUT is repeated") };
+  }
+  private async doExchange(call: Call, operation: string, credentials: Credentials, method: string, path: string, body?: unknown): Promise<{ response: ProviderResponse } | { outcome: ExchangeFailure; isDefiniteRefusal?: boolean }> {
     let encoded: Uint8Array | undefined;
     try { if (body !== undefined) encoded = Buffer.from(JSON.stringify(body)); }
     catch { return { outcome: { branch: 'defect', failure: this.failure(operation, 'LOCAL_DEFECT', 'Typeform request could not be built') } }; }
@@ -69,7 +108,7 @@ export class TypeformClient {
       return { outcome: { retry: true, failure: this.failure(operation, 'TRANSPORT', 'Typeform could not be reached or its answer was lost') } };
     }
     if (response.status >= 200 && response.status < 300) return { response };
-    return { outcome: this.classifyStatus(operation, response.status, response.headers, response.body) };
+    return { outcome: this.classifyStatus(operation, response.status, response.headers, response.body), isDefiniteRefusal: isDefiniteRefusal(response.status, response.body) };
   }
   /** Produce the same provider object receipt as Go after a provider answer. */
   receipt(call: Call, objectID: string): ReceiptDraft {

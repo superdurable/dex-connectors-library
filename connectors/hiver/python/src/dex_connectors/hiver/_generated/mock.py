@@ -197,7 +197,7 @@ def update_conversation_provider_rejected_failure() -> Case[UpdateConversationOu
 setattr(update_conversation_provider_rejected_failure, '__module__', "dex_connectors.hiver.hivermock")
 
 def update_conversation_invalid_response_failure() -> Case[UpdateConversationOutput]:
-    return Case.branch_result(INVALID_RESPONSE, UpdateConversationOutput(conversation=Conversation(status='')), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "updateConversation", "Hiver returned malformed conversation JSON during read-back after accepting the change."))
+    return Case.branch_result(INVALID_RESPONSE, UpdateConversationOutput(conversation=Conversation(status='')), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "updateConversation", "Hiver returned an invalid user search page: response has no data object"))
 
 setattr(update_conversation_invalid_response_failure, '__module__', "dex_connectors.hiver.hivermock")
 

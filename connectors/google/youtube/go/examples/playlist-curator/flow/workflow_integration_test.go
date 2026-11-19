@@ -73,17 +73,18 @@ func TestPlaylistCuratorAddsOnceWithRealDex(t *testing.T) {
 	})
 
 	for _, test := range []struct{ name, playlistPrefix string }{
-		{"HTTP 500", "PLLagging"},
-		{"HTTP 503", "PLLaggingUnavailable"},
+		// An ambiguous 500 counts toward the send cap.
+		{"ambiguous HTTP 500", "PLLagging"},
+		// A 503 records canResend and is not counted, as a 429 is.
+		{"refused HTTP 503", "PLLaggingUnavailable"},
 	} {
-		t.Run("an ambiguous "+test.name+" insert with a lagging listing ends uncertain without a second insert", func(t *testing.T) {
+		t.Run("a "+test.name+" insert with a lagging listing is resent below the send cap", func(t *testing.T) {
 			playlistID := test.playlistPrefix + runID
 			flowID := "youtube-curator-lagging-" + strings.ToLower(strings.ReplaceAll(test.name, " ", "-")) + "-" + runID
 			result := harness.runFlow(t, ctx, flow, flowID, CurationRequest{Channel: integrationChannelID, Query: "release", PlaylistID: playlistID})
-			// The example wires only added, so the selected uncertain branch fails the Flow.
-			require.Equal(t, dex.FlowFailed, result.Status)
-			require.Contains(t, result.ErrorMessage, "uncertain")
-			require.Equal(t, 1, provider.insertsFor(playlistID))
+			// The lagging listing hides the first insert, so the retry inserts again and YouTube confirms it.
+			require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+			require.Equal(t, 2, provider.insertsFor(playlistID))
 		})
 	}
 

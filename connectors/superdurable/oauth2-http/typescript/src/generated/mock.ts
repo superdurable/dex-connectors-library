@@ -4,9 +4,9 @@
 
 import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { SendRequestInput, SendRequestOutput } from './models.js';
-import { SendRequestInputSchema, SendRequestOutputSchema } from './models.js';
-import { ProviderID, ConnectorID, SendRequestDefinition } from './definitions.js';
+import type { SendRequestInput, SendRequestOutput, PostNonIdempotentInput } from './models.js';
+import { SendRequestInputSchema, SendRequestOutputSchema, PostNonIdempotentInputSchema } from './models.js';
+import { ProviderID, ConnectorID, SendRequestDefinition, PostNonIdempotentDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for SendRequestInput in scripted cases. */
@@ -15,6 +15,9 @@ export const emptySendRequestInput: SendRequestInput = SendRequestInputSchema.pa
 /** Go zero value for SendRequestOutput in scripted cases. */
 export const emptySendRequestOutput: SendRequestOutput = SendRequestOutputSchema.parse({
   "statusCode": 0,
+});
+/** Go zero value for PostNonIdempotentInput in scripted cases. */
+export const emptyPostNonIdempotentInput: PostNonIdempotentInput = PostNonIdempotentInputSchema.parse({
 });
 
 /** Script the completed branch. */
@@ -46,8 +49,7 @@ export function sendRequestAuthorizationExpired(): Case<SendRequestOutput> {
 }
 /** Manifest scenario connectionLost for sendRequest. */
 export function sendRequestConnectionLost(): Case<SendRequestOutput> {
-  const value = emptySendRequestOutput;
-  return uncertainCase(value, { kind: "TRANSPORT", provider: ConnectorID, operation: "sendRequest", message: "The connection closed before the API answered." });
+  return retryCase({ kind: "TRANSPORT", provider: ConnectorID, operation: "sendRequest", message: "The connection closed before the API answered." });
 }
 /** Manifest scenario invalidPath for sendRequest. */
 export function sendRequestInvalidPath(): Case<SendRequestOutput> {
@@ -59,19 +61,60 @@ export function sendRequestThrottled(): Case<SendRequestOutput> {
   return retryCase({ kind: "RATE_LIMIT", provider: ConnectorID, operation: "sendRequest", message: "The API answered HTTP 429." }, 2000);
 }
 
+/** Script the completed branch. */
+export function postNonIdempotentCompleted(value: SendRequestOutput, failure?: Failure): Case<SendRequestOutput> { return branchCase("completed", value, failure); }
+/** Script the rejected branch. */
+export function postNonIdempotentRejected(value: SendRequestOutput, failure?: Failure): Case<SendRequestOutput> { return branchCase("rejected", value, failure); }
+/** Script the defect branch. */
+export function postNonIdempotentDefect(value: SendRequestOutput, failure?: Failure): Case<SendRequestOutput> { return branchCase("defect", value, failure); }
+/** Script a safe retry of postNonIdempotent. */
+export function postNonIdempotentRetry(failure: Failure, retryAfterMs = 0): Case<SendRequestOutput> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain postNonIdempotent attempt. */
+export function postNonIdempotentUncertain(value: SendRequestOutput, failure: Failure): Case<SendRequestOutput> { return uncertainCase(value, failure); }
+/** Manifest scenario createdOrder for postNonIdempotent. */
+export function postNonIdempotentCreatedOrder(): Case<SendRequestOutput> {
+  const value = SendRequestOutputSchema.parse({"body":"{\"id\":\"order-1\",\"status\":\"created\"}","contentType":"application/json","statusCode":201});
+  return branchCase("completed", value);
+}
+/** Default postNonIdempotent scenario. */
+export function postNonIdempotentDefault(): Case<SendRequestOutput> { return postNonIdempotentCreatedOrder(); }
+/** Manifest scenario invalidOrder for postNonIdempotent. */
+export function postNonIdempotentInvalidOrder(): Case<SendRequestOutput> {
+  const value = SendRequestOutputSchema.parse({"body":"{\"error\":\"invalid_order\"}","contentType":"application/json","statusCode":422});
+  return branchCase("rejected", value, { kind: "VALIDATION", provider: ConnectorID, operation: "postNonIdempotent", message: "The API answered HTTP 422." });
+}
+/** Manifest scenario connectionLost for postNonIdempotent. */
+export function postNonIdempotentConnectionLost(): Case<SendRequestOutput> {
+  const value = emptySendRequestOutput;
+  return uncertainCase(value, { kind: "TRANSPORT", provider: ConnectorID, operation: "postNonIdempotent", message: "The connection closed before the API answered." });
+}
+/** Manifest scenario invalidPath for postNonIdempotent. */
+export function postNonIdempotentInvalidPath(): Case<SendRequestOutput> {
+  const value = emptySendRequestOutput;
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "postNonIdempotent", message: "The request path must start with a slash." });
+}
+/** Manifest scenario throttled for postNonIdempotent. */
+export function postNonIdempotentThrottled(): Case<SendRequestOutput> {
+  return retryCase({ kind: "RATE_LIMIT", provider: ConnectorID, operation: "postNonIdempotent", message: "The API answered HTTP 429." }, 2000);
+}
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #sendRequest: MockMutation<SendRequestInput, SendRequestOutput>;
+  readonly #postNonIdempotent: MockMutation<PostNonIdempotentInput, SendRequestOutput>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#sendRequest = newMutation<SendRequestInput, SendRequestOutput>(SendRequestDefinition).default(sendRequestDefault());
+    this.#postNonIdempotent = newMutation<PostNonIdempotentInput, SendRequestOutput>(PostNonIdempotentDefinition).default(postNonIdempotentDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
   sendRequest(): MockMutation<SendRequestInput, SendRequestOutput> { return this.#sendRequest; }
+  postNonIdempotent(): MockMutation<PostNonIdempotentInput, SendRequestOutput> { return this.#postNonIdempotent; }
   assertNoFailures(): void {
     this.#sendRequest.assertNoFailures();
+    this.#postNonIdempotent.assertNoFailures();
   }
 }

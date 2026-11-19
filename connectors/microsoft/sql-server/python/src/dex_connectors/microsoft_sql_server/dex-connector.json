@@ -1,10 +1,10 @@
 {
   "connectorId": "microsoft-sql-server",
-  "releaseTag": "connectors/microsoft/sql-server/go/v0.23.0",
+  "releaseTag": "connectors/microsoft/sql-server/go/v0.24.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-microsoft-sql-server",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -71,7 +71,83 @@
       "kind": "mutation",
       "operationId": "execute",
       "inputType": "ExecuteStatementInput",
-      "description": "Run one parameterized INSERT, UPDATE, DELETE, or MERGE in its own transaction and return its rows affected and any bounded OUTPUT rows.",
+      "description": "Run one parameterized, repeat-safe INSERT, UPDATE, DELETE, or MERGE in its own transaction and return its rows affected and any bounded OUTPUT rows.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "limitExceeded",
+          "field": "limit_exceeded",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ExecuteStatementInput is one parameterized write statement.",
+        "properties": {
+          "idempotencyKeyPlaceholder": {
+            "description": "IdempotencyKeyPlaceholder, when non-zero, is the number n of the @pn placeholder that receives this Step execution's idempotency key. It must equal len(Parameters)+1, so the key is always the last placeholder. The key is a 36-character lowercase UUID, bound as nvarchar, that stays the same across every retry and Worker replacement of one Step execution; it is also returned in the Result's Receipt.",
+            "type": "integer"
+          },
+          "maxRowsAffected": {
+            "description": "MaxRowsAffected, when set, is the most rows the statement may affect. A statement that affects more is rolled back and selects limitExceeded, which guards against a missing WHERE clause. Nil applies no limit; zero allows only a statement that changes nothing.",
+            "type": "integer"
+          },
+          "parameters": {
+            "description": "Parameters binds @p1 through @pN in order, with the same value rules as QueryRowsInput.",
+            "items": {},
+            "type": "array"
+          },
+          "returnsOutputRows": {
+            "description": "ReturnsOutputRows declares that the statement has an OUTPUT clause that returns rows to the client. The connector then returns those rows, bounded by maxRows and maxResponseBytes, and counts them as the rows affected. Leave it false for a statement without OUTPUT, or whose OUTPUT clause only writes INTO a table; OUTPUT rows of such a statement are discarded.",
+            "type": "boolean"
+          },
+          "statement": {
+            "description": "Statement is one SQL statement written as a constant in application code, such as \"INSERT INTO dbo.refunds (order_id, amount) VALUES (@p1, CAST(@p2 AS decimal(12, 2)))\". Values belong in Parameters: the connector never formats them into SQL text, and it cannot detect a statement built by concatenating untrusted input. Only statements that start with INSERT, UPDATE, DELETE, MERGE, or WITH are accepted. A MERGE must end with a semicolon.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "statement"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_execute_non_idempotent_step",
+      "kind": "mutation",
+      "operationId": "executeNonIdempotent",
+      "inputType": "ExecuteStatementInput",
+      "description": "Run one parameterized INSERT, UPDATE, DELETE, or MERGE that must not run twice, such as a relative balance update, in its own transaction; an unconfirmed COMMIT selects uncertain instead of running it again.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

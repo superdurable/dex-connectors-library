@@ -13,7 +13,15 @@ import dex_connectors.intercom as intercom
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
-from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
+from connector_scenarios import (  # noqa: E402
+    HeartbeatContext,
+    PythonOperationAdapter,
+    load_scenarios,
+    replay,
+)
+
+# The reply read-back bounds parts by the first attempt; Go's conformance context starts it at Unix second 1.
+HeartbeatContext.first_attempt_at = datetime.fromtimestamp(1, UTC)  # type: ignore[attr-defined]
 
 SCENARIOS = load_scenarios(ROOT / "conformance/connectors/intercom/scenarios.json")
 CONNECTION = sdk.ConnectionRef("intercom", "intercom-test")

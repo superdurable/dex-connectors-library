@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
@@ -63,6 +64,7 @@ var (
 	errCalendlyResponseMalformed = errors.New("Calendly returned a malformed response")
 
 	errCalendlyReauthorizationRequired = errors.New("the Calendly connection needs reauthorization; authorize it again in Dex Web Connectors")
+	errCalendlyConnectionUnusable      = errors.New("the Calendly connection is missing, not selected, or refused by the credential broker; check it in Dex Web Connections")
 	errCalendlyCredentialsUnavailable  = errors.New("the Calendly access token could not be loaded or refreshed yet")
 	errCalendlyAccessTokenUnusable     = errors.New("the Calendly access token is blank or contains characters a header cannot carry")
 )
@@ -114,6 +116,9 @@ type calendlyResponse struct {
 	statusCode int
 	header     http.Header
 	body       []byte
+
+	// isErrorBodyIncomplete marks a non-2xx body that broke or exceeded the error limit; it proves no refusal.
+	isErrorBodyIncomplete bool
 }
 
 // schedulingLinkDispatchObservation proves a failed connection never supplied a socket to the write.
@@ -228,8 +233,11 @@ func (client *Client) CreateWebhookSubscription() CreateWebhookSubscriptionOpera
 func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired):
 		return Credentials{}, errCalendlyReauthorizationRequired
+	case errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected):
+		return Credentials{}, errCalendlyConnectionUnusable
 	case err != nil:
 		return Credentials{}, errCalendlyCredentialsUnavailable
 	case !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()):
@@ -317,7 +325,9 @@ func (client *Client) sendCalendlyRequestOnce(
 	result := calendlyResponse{statusCode: response.StatusCode, header: response.Header.Clone()}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		// Only the error title is read, so a truncated or unreadable error body keeps its status.
-		result.body, _ = io.ReadAll(io.LimitReader(response.Body, providerhttp.MaxErrorBodyBytes))
+		errorBody, readErr := io.ReadAll(io.LimitReader(response.Body, providerhttp.MaxErrorBodyBytes+1))
+		result.isErrorBodyIncomplete = readErr != nil || int64(len(errorBody)) > providerhttp.MaxErrorBodyBytes
+		result.body = errorBody[:min(int64(len(errorBody)), providerhttp.MaxErrorBodyBytes)]
 		return result, nil
 	}
 	result.body, err = providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
@@ -402,6 +412,23 @@ func (client *Client) classifyCalendlyFailure(operationID string, response calen
 		return calendlyOutcome{failure: calendlyFailure(operationID, sdkgo.FailureProviderRejection,
 			fmt.Sprintf("Calendly rejected the request with HTTP %d", status))}
 	}
+}
+
+// isDefiniteRefusalStatus reports a status that proves Calendly refused a write; any other
+// failure status leaves the write's outcome unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+// isDefiniteWriteRefusal reports a definite refusal status whose error body was read in full.
+func isDefiniteWriteRefusal(response calendlyResponse) bool {
+	return isDefiniteRefusalStatus(response.statusCode) && !response.isErrorBodyIncomplete
 }
 
 // isCalendlyInsufficientScope matches the documented InsufficientScopeError title exactly.

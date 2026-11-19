@@ -5,6 +5,7 @@ package asana_test
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
 	"net/url"
@@ -94,11 +95,13 @@ func TestCreateTaskClassifiesPostOutcomesWithoutResendingAmbiguousWrites(t *test
 		{name: "invalid assignee", status: http.StatusBadRequest, body: `{"errors":[{"message":"assignee: SENTINEL Not a recognized ID"}]}`, branch: asana.CreateTaskBranchProviderRejected, kind: sdkgo.FailureValidation},
 		{name: "unknown project", status: http.StatusNotFound, body: `{"errors":[{"message":"SENTINEL project: Unknown object"}]}`, branch: asana.CreateTaskBranchProviderRejected, kind: sdkgo.FailureNotFound},
 		{name: "permission", status: http.StatusForbidden, body: `{"errors":[{"message":"SENTINEL Forbidden"}]}`, branch: asana.CreateTaskBranchProviderRejected, kind: sdkgo.FailureAuthorization},
-		{name: "premium field", status: http.StatusPaymentRequired, body: `{"errors":[{"message":"SENTINEL premium only"}]}`, branch: asana.CreateTaskBranchProviderRejected, kind: sdkgo.FailureAuthorization},
 		{name: "rate limit", status: http.StatusTooManyRequests, body: `{"errors":[{"message":"SENTINEL"}]}`, isRetry: true, kind: sdkgo.FailureRateLimit},
-		{name: "server error", status: http.StatusInternalServerError, body: `{"errors":[{"message":"SENTINEL","phrase":"6 sad squid snuggle softly"}]}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: `{}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
-		{name: "redirect", status: http.StatusFound, body: `{}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureAvailability},
+		// Unknown outcomes, including an unlisted 4xx, resend on the next attempt below the send cap.
+		{name: "premium field", status: http.StatusPaymentRequired, body: `{"errors":[{"message":"SENTINEL premium only"}]}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "server error", status: http.StatusInternalServerError, body: `{"errors":[{"message":"SENTINEL","phrase":"6 sad squid snuggle softly"}]}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		{name: "redirect", status: http.StatusFound, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
+		// Asana accepted the task without a usable ID, so it is never sent again.
 		{name: "unusable created body", status: http.StatusCreated, body: `{"data":{"gid":"SENTINEL"}}`, branch: asana.CreateTaskBranchUncertain, kind: sdkgo.FailureProtocol},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -123,16 +126,28 @@ func TestCreateTaskClassifiesPostOutcomesWithoutResendingAmbiguousWrites(t *test
 	}
 }
 
-func TestCreateTaskTimeoutAfterDispatchIsUncertain(t *testing.T) {
+func TestCreateTaskTimeoutAfterDispatchResendsUpToTheSendCap(t *testing.T) {
 	provider := newRecordingAsana(t, func(_ http.ResponseWriter, request *http.Request, _ int) {
 		<-request.Context().Done()
 	})
 	client := newAsanaClient(t, provider.URL, asana.WithHTTPClient(&http.Client{Timeout: 200 * time.Millisecond}))
-	result, err := sdkgo.RunMutation(newAsanaDexContext("create-timeout"), client.CreateTask(), asanaConnection, validCreateTaskInput())
+	var previous json.RawMessage
+	for attempt := int32(1); attempt < asana.CreateTaskDefinition.MaxSends; attempt++ {
+		stepContext := newReplayAsanaDexContext("create-timeout", attempt, previous)
+		_, err := sdkgo.RunMutation(stepContext, client.CreateTask(), asanaConnection, validCreateTaskInput())
+		requireRetry(t, err, sdkgo.FailureTransport)
+		previous = stepContext.lastHeartbeat()
+	}
+	atCap := newReplayAsanaDexContext("create-timeout", asana.CreateTaskDefinition.MaxSends, previous)
+	result, err := sdkgo.RunMutation(atCap, client.CreateTask(), asanaConnection, validCreateTaskInput())
 	require.NoError(t, err)
 	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch)
 	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, int(asana.CreateTaskDefinition.MaxSends), provider.requestCount())
+	result, err = sdkgo.RunMutation(newReplayAsanaDexContext("create-timeout", asana.CreateTaskDefinition.MaxSends+1, atCap.lastHeartbeat()), client.CreateTask(), asanaConnection, validCreateTaskInput())
+	require.NoError(t, err)
+	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, int(asana.CreateTaskDefinition.MaxSends), provider.requestCount(), "the send cap forbids another POST")
 }
 
 func TestCreateTask503RetriesWithCheckpointAndAcceptedTaskIsReadBack(t *testing.T) {
@@ -164,7 +179,7 @@ func TestCreateTask503RetriesWithCheckpointAndAcceptedTaskIsReadBack(t *testing.
 	require.Equal(t, 3, provider.requestCount())
 }
 
-func TestCreateTaskLostAcceptedIDCheckpointNeverResends(t *testing.T) {
+func TestCreateTaskLostAcceptedIDCheckpointCountsTheSend(t *testing.T) {
 	provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusCreated, createdTaskBody)
 	})
@@ -175,30 +190,33 @@ func TestCreateTaskLostAcceptedIDCheckpointNeverResends(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, asana.CreateTaskBranchCreated, result.Branch)
 	second := newReplayAsanaDexContext("create-lost-id", 2, first.lastHeartbeat())
-	result, err = sdkgo.RunMutation(second, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	result, err = sdkgo.RunMutation(second, client.CreateTask(), asanaConnection, validCreateTaskInput(), sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
-	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch, "a send cap of 1 never resends after a lost ID")
 	require.Equal(t, 1, provider.requestCount())
-	missing := newReplayAsanaDexContext("create-lost-id", 2, nil)
+	missing := newReplayAsanaDexContext("create-lost-id", asana.CreateTaskDefinition.MaxSends+1, nil)
 	result, err = sdkgo.RunMutation(missing, client.CreateTask(), asanaConnection, validCreateTaskInput())
 	require.NoError(t, err)
-	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch)
+	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch, "without a checkpoint, each earlier attempt counts as a send")
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestCreateTaskStaleRetryCheckpointNeverResends(t *testing.T) {
-	provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
+func TestCreateTaskRefusalOfAResendIsUncertain(t *testing.T) {
+	provider := newRecordingAsana(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusBadGateway, `{}`)
+			return
+		}
+		writeJSON(t, response, http.StatusBadRequest, `{"errors":[{"message":"SENTINEL"}]}`)
 	})
 	client := newAsanaClient(t, provider.URL)
-	first := newReplayAsanaDexContext("create-stale-retry", 1, nil)
+	first := newReplayAsanaDexContext("create-resend-refused", 1, nil)
 	_, err := sdkgo.RunMutation(first, client.CreateTask(), asanaConnection, validCreateTaskInput())
 	requireRetry(t, err, sdkgo.FailureAvailability)
-	stale := newReplayAsanaDexContext("create-stale-retry", 3, first.lastHeartbeat())
-	result, err := sdkgo.RunMutation(stale, client.CreateTask(), asanaConnection, validCreateTaskInput())
+	result, err := sdkgo.RunMutation(newReplayAsanaDexContext("create-resend-refused", 2, first.lastHeartbeat()), client.CreateTask(), asanaConnection, validCreateTaskInput())
 	require.NoError(t, err)
-	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, asana.CreateTaskBranchUncertain, result.Branch, "the first POST may have created the task")
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestCreateTaskDoesNotDispatchWithShortPositiveSendWindow(t *testing.T) {

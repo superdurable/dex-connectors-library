@@ -42,7 +42,8 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 		{"create-service-unavailable", "deletedAndVerified", dex.FlowCompleted, 2, 1},
 		{"delete-retry", "deletedAndVerified", dex.FlowCompleted, 1, 2},
 		{"multi-page", "deletedAndVerified", dex.FlowCompleted, 1, 1},
-		{"create-uncertain", "", dex.FlowFailed, 1, 0},
+		// Every lost create response resends the same request ID until the send cap of 3, then uncertain fails.
+		{"create-uncertain", "", dex.FlowFailed, 3, 0},
 		{"create-answer-incomplete", "deletedAndVerified", dex.FlowCompleted, 1, 1},
 		{"invalid-input", "", dex.FlowFailed, 0, 0},
 	} {
@@ -111,7 +112,10 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 				require.NotContains(t, result.ErrorMessage, integrationToken)
 				require.Zero(t, provider.reads)
 				require.Zero(t, provider.updates)
-				require.Equal(t, 1, provider.createdTasks)
+				require.Equal(t, 3, provider.createdTasks)
+				for _, requestID := range provider.requestIDs {
+					require.Equal(t, provider.requestIDs[0], requestID)
+				}
 			}
 			if scenario.name == "multi-page" {
 				require.Equal(t, 2, provider.lists)
@@ -158,8 +162,8 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 		{"missing", "", dex.FlowFailed, 1, 0, 0, false, "notFound"},
 		{"invalid-response", "", dex.FlowFailed, 1, 0, 0, false, "invalidResponse"},
 		{"post-update-read-missing", "", dex.FlowFailed, 2, 1, 0, false, "notFound"},
-		{"update-answer-inactive", "", dex.FlowFailed, 2, 1, 0, false, "notFound"},
-		{"update-read-back-forbidden", "", dex.FlowFailed, 2, 1, 0, false, "providerRejected"},
+		{"update-answer-inactive", "", dex.FlowFailed, 2, 2, 0, false, "notFound"},
+		{"update-read-back-forbidden", "", dex.FlowFailed, 2, 2, 0, false, "providerRejected"},
 		{"post-update-read-rejected", "", dex.FlowFailed, 2, 1, 0, false, "providerRejected"},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -334,8 +338,13 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 			w.WriteHeader(429)
 			return
 		}
-		if provider.scenario == "rejected" {
+		if provider.scenario == "rejected" || provider.scenario == "update-read-back-forbidden" && provider.updates == 2 {
 			w.WriteHeader(403)
+			return
+		}
+		// The read-back never selects a failure; the repeated update answers definitively.
+		if provider.scenario == "update-answer-inactive" && provider.updates == 2 {
+			w.WriteHeader(404)
 			return
 		}
 		if provider.scenario == "write-unapplied-503" && provider.updates == 1 {

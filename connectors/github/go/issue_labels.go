@@ -70,7 +70,10 @@ func (operation ReplaceIssueLabelsOperation) Invoke(call sdkgo.Call, input Repla
 	if failure != nil {
 		return sdkgo.NewMutationBranch(ReplaceIssueLabelsBranchDefect, requested, failure, sdkgo.Receipt{})
 	}
-	credential, failure := operation.client.resolveCredential(call, replaceIssueLabelsOperationID)
+	credential, failure, isTerminalCredential := operation.client.resolveCredentialWithTerminality(call, replaceIssueLabelsOperationID)
+	if failure != nil && !isTerminalCredential {
+		return sdkgo.NewMutationRetry[ReplacedIssueLabels](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(ReplaceIssueLabelsBranchDefect, requested, failure, sdkgo.Receipt{})
 	}
@@ -85,13 +88,15 @@ func (operation ReplaceIssueLabelsOperation) Invoke(call sdkgo.Call, input Repla
 	path := issuesPath(owner, repository) + "/" + strconv.Itoa(input.IssueNumber) + "/labels"
 	response, err := operation.client.sendRequest(call, &credential, http.MethodPut, path, nil, payload)
 	if err != nil {
+		// The absolute replacement is repeat-safe, so an oversized or lost answer retries.
 		if errors.Is(err, errResponseTooLarge) {
-			return issueLabelsBranch(ReplaceIssueLabelsBranchInvalidResponse, requested, sdkgo.FailureResponseTooLarge, "GitHub response exceeds the configured size limit", receipt(response))
+			return sdkgo.NewMutationRetry[ReplacedIssueLabels](providerFailure(replaceIssueLabelsOperationID, sdkgo.FailureResponseTooLarge, "GitHub response exceeds the configured size limit"), 0)
 		}
 		return sdkgo.NewMutationRetry[ReplacedIssueLabels](providerFailure(replaceIssueLabelsOperationID, sdkgo.FailureTransport, "GitHub issue labels update did not complete"), 0)
 	}
 	if terminal := operation.client.classify(replaceIssueLabelsOperationID, response, issueLabelsResponseBranches()); terminal != nil {
-		if terminal.isRetryable {
+		// The absolute replacement is repeat-safe, so a status that does not prove a refusal, such as 410, retries.
+		if terminal.isRetryable || !isDefiniteRefusalStatus(response.statusCode) {
 			return sdkgo.NewMutationRetry[ReplacedIssueLabels](terminal.failure, terminal.delay)
 		}
 		if terminal.branch == ReplaceIssueLabelsBranchProviderRejected {
@@ -102,7 +107,7 @@ func (operation ReplaceIssueLabelsOperation) Invoke(call sdkgo.Call, input Repla
 	}
 	var providerLabels []githubLabel
 	if decodeJSON(response.body, &providerLabels) != nil || providerLabels == nil || len(providerLabels) > maximumIssueLabels {
-		return issueLabelsBranch(ReplaceIssueLabelsBranchInvalidResponse, requested, sdkgo.FailureProtocol, "GitHub returned an invalid label list", receipt(response))
+		return sdkgo.NewMutationRetry[ReplacedIssueLabels](providerFailure(replaceIssueLabelsOperationID, sdkgo.FailureProtocol, "GitHub returned an invalid label list"), 0)
 	}
 	names := make([]string, 0, len(providerLabels))
 	for _, label := range providerLabels {

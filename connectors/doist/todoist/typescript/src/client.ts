@@ -4,8 +4,8 @@
 import { createHash } from 'node:crypto';
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import type { Config, Credentials, Task, ListTasksInput, TaskPage } from './generated/models.js';
+import { AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { isCredentialMaterialError, type Config, type Credentials, type Task, type ListTasksInput, type TaskPage } from './generated/models.js';
 import { CreateTaskOperation, DeleteTaskOperation, GetTaskOperation, ListTasksOperation, UpdateTaskOperation } from './operations.js';
 
 const publicBaseURL = 'https://api.todoist.com/api/v1';
@@ -13,6 +13,8 @@ const taskIDPattern = /^[A-Za-z0-9_-]{1,128}$/;
 export const emptyTask: Task = { id: '', projectId: '', content: '', description: '', isCompleted: false };
 export const emptyPage: TaskPage = { tasks: [] };
 export const isTaskID = (value: string): boolean => taskIDPattern.test(value);
+/** Statuses proving Todoist refused a write; any other status leaves its outcome unknown. */
+export const definiteWriteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 export const isValidUTF8 = (value: string): boolean => !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value);
 
 /** Injectable HTTP sender for bounded provider requests. */
@@ -80,7 +82,7 @@ export class TodoistClient {
       }
       return { ...budget, token: credentials.apiToken.reveal() };
     } catch (error) {
-      if (error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError) {
+      if (error instanceof ReauthorizationRequiredError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || error instanceof ObjectNotFoundError || isCredentialMaterialError(error)) {
         return { ...budget, failure: localFailure(operation, 'AUTHENTICATION', 'connection credentials are missing or need reauthorization') };
       }
       return { ...budget, failure: { ...baseExchange(), failure: todoistFailure(operation, 'AVAILABILITY', 'connection credentials could not be read, so the request was not sent'), isTransient: true, isUndispatched: true } };
@@ -100,8 +102,11 @@ export class TodoistClient {
     }
   }
 
-  /** Send one bounded HTTP request without forwarding credentials on redirects. */
-  async request(call: Call, attempt: TodoistAttempt, operation: string, method: string, endpoint: string, payload?: Uint8Array, requestID = '', write = false): Promise<TodoistExchange> {
+  /**
+   * Send one bounded HTTP request without forwarding credentials on redirects.
+   * `signal` defaults to the Step cancellation; a fenced write passes the Fence write-window signal.
+   */
+  async request(call: Call, attempt: TodoistAttempt, operation: string, method: string, endpoint: string, payload?: Uint8Array, requestID = '', write = false, signal: AbortSignal = call.context.cancellationSignal): Promise<TodoistExchange> {
     const deadline = write ? attempt.writeDeadline : attempt.attemptDeadline;
     const remaining = deadline - this.now().getTime();
     if (attempt.minimumRequestMs <= 0 || remaining < attempt.minimumRequestMs) return { ...baseExchange(), failure: todoistFailure(operation, 'AVAILABILITY', 'too little attempt time remained, so the request was not sent'), isTransient: true, isUndispatched: true };
@@ -112,7 +117,7 @@ export class TodoistClient {
     let response: ProviderResponse;
     try {
       response = await this.send({ url: this.baseURL + endpoint, method, headers, ...(payload ? { body: payload } : {}), maxResponseBytes: this.maxResponseBytes,
-        addressPolicy: this.baseURL === publicBaseURL ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs: Math.max(1, Math.min(this.requestTimeoutMs, Math.floor(remaining))), signal: call.context.cancellationSignal });
+        addressPolicy: this.baseURL === publicBaseURL ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs: Math.max(1, Math.min(this.requestTimeoutMs, Math.floor(remaining))), signal });
     } catch (error) {
       if (error instanceof AddressRefusal) return localFailure(operation, 'LOCAL_DEFECT', 'Todoist request could not be built');
       if (error instanceof BodyTooLargeError) {
@@ -121,6 +126,13 @@ export class TodoistClient {
         if (status < 200 || status >= 300) return classifyHTTPFailure(operation, { status, headers: error.headers ?? {}, body: new Uint8Array() }, this.now());
         return { ...baseExchange(status), failure: todoistFailure(operation, 'RESPONSE_TOO_LARGE', 'Todoist response was interrupted or exceeded the response limit') };
       }
+      const status = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status ?? 0 : 0;
+      if (status >= 200 && status < 300) {
+        // Keep the status: Todoist accepted the write, so a create is never resent.
+        if (method === 'DELETE') return baseExchange(status);
+        return { ...baseExchange(status), failure: todoistFailure(operation, 'PROTOCOL', 'Todoist response was interrupted or exceeded the response limit'), isTransient: true };
+      }
+      if (status > 0) return classifyHTTPFailure(operation, { status, headers: (error as ProviderTransportError | ProviderStalledError).headers ?? {}, body: new Uint8Array() }, this.now());
       const isUndispatched = error instanceof ProviderTransportError && error.isProvablyNotSent;
       return { ...baseExchange(), failure: todoistFailure(operation, 'TRANSPORT', isUndispatched ? 'Todoist could not be reached, so the request was not sent' : 'Todoist request did not return a complete response'), isTransient: true, isUndispatched };
     }

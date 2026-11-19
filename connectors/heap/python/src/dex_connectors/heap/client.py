@@ -34,6 +34,8 @@ from ._generated.config import Config as Config
 from ._generated.definitions import SET_USER_PROPERTIES_DEFINITION
 from .models import SetUserPropertiesInput, UserPropertiesResult
 
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
 
 def _failure(kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "heap", "setUserProperties", message)
@@ -158,6 +160,10 @@ class SetUserPropertiesOperation:
                 return MutationAttempt.retry(
                     _failure(FailureKind.AVAILABILITY, "Heap is temporarily unavailable"), retry_after
                 )
+            if status != 200 and status not in _DEFINITE_REFUSAL_STATUSES:
+                # Properties overwrite absolute values, so an unknown answer retries.
+                message = f"Heap answered HTTP {status}, so the outcome is unknown"
+                return MutationAttempt.retry(_failure(FailureKind.AVAILABILITY, message), retry_after)
             if status != 200:
                 return _branch(
                     "providerRejected", FailureKind.PROVIDER_REJECTION, f"Heap rejected HTTP {status}"
@@ -165,8 +171,8 @@ class SetUserPropertiesOperation:
             try:
                 await read_bounded_body(response, self.client.max_response_bytes)
             except BodyTooLargeError:
-                return _branch(
-                    "invalidResponse", FailureKind.RESPONSE_TOO_LARGE, "Heap confirmation exceeded the limit"
+                return MutationAttempt.retry(
+                    _failure(FailureKind.RESPONSE_TOO_LARGE, "Heap confirmation exceeded the limit")
                 )
             except ProviderTransportError:
                 return MutationAttempt.retry(

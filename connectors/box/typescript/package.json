@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-box",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Box file operations for Dex TypeScript Flows",
   "license": "MIT",
   "repository": {

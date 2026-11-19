@@ -24,8 +24,9 @@ every monday.com operation to handle a recurring work request:
    completes with the outcome.
 
 The `uncertain` branches of the create and update are unwired. When monday.com
-accepted a write but answered unusably, the Flow fails with an error naming
-the branch with no target. Other optional branches are also unwired and fail the Flow, such as a rejected column value,
+identified a write but answered unusably, or the outcome stays unknown after
+the send cap of three, the Flow fails with an error naming the branch with no
+target. Other optional branches are also unwired and fail the Flow, such as a rejected column value,
 a missing board, an invalid response, or a local defect.
 
 ## Generate the Flow Definition
@@ -55,7 +56,7 @@ mkdir -p /tmp/monday-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/monday/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/monday/go \
-  --version v0.25.0 --tag connectors/monday/go/v0.25.0 \
+  --version v0.25.1 --tag connectors/monday/go/v0.25.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/monday-release/connector-release.json \
   --digest-output /tmp/monday-release/connector-release.json.sha256
@@ -129,11 +130,11 @@ duplicate with `409 IDEMPOTENCY_CONFLICT`, and replays a finished one with
   board, and a look-alike name;
 - a first page of completed same-name items leads to the cursor's second page;
 - a healthy create and update each use one dispatch; an update replayed after Worker loss leaves one item and one update;
-- a lost create response fails closed through `uncertain` after one request;
-- a Worker lost while monday.com holds the create is replaced; the new attempt fails closed through `uncertain` without resending;
+- a lost create response is resent under the same key and monday.com's replay completes the Flow with one item;
+- a Worker lost while monday.com holds the create is replaced; the new attempt resends under the same key and receives the replay, leaving one item;
 - a complexity-limited create waits for `retry_in_seconds` and creates one
   item;
-- an unusable create answer fails through the unwired `uncertain` branch and is never resent;
+- a create answer without an item ID is resent up to the cap of three, then fails through the unwired `uncertain` branch;
 - a rejected column value fails the Flow through the unwired
   `providerRejected` branch without monday.com's message text;
 - an invalid due date fails the Flow before any monday.com request.

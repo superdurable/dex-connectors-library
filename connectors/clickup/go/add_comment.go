@@ -72,69 +72,67 @@ type taskCommentsWire struct {
 func (AddCommentOperation) Definition() sdkgo.MutationDefinition { return AddCommentDefinition }
 
 // IdempotencyKey uses the stable connector Call ID. ClickUp documents no idempotency key, so the key
-// only correlates the Receipt; duplicate protection comes from a Dex heartbeat checkpoint instead.
+// only correlates the Receipt; a Dex heartbeat checkpoint counts each send of the comment instead.
 func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke records a dispatch checkpoint and then sends POST /task/{task_id}/comment. An attempt that
-// finds the checkpoint never sends: it reads the task's newest comments and reports the one comment with
-// the same text added since the dispatch, or selects uncertain. Only a 429 or a connection that never
-// opened clears the checkpoint for a resend. Dex accepts the checkpoint when the Worker writes it to its
-// stream, so a Worker lost before Dex stored it could still send the comment twice.
+// Invoke sends POST /task/{task_id}/comment behind the shared single-dispatch fence. An attempt after a
+// possible earlier send first reads the task's comments: the one with the saved comment ID when ClickUp
+// returned one, otherwise those with the same text added since the Step's first attempt. It reports one
+// match, selects uncertain for several, and otherwise resends while possible sends stay within the send
+// cap, selecting uncertain at the cap.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	output := AddCommentOutput{TaskID: input.TaskID}
 	if err := validateAddCommentInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, output, clickupFailurePointer(sdkgo.FailureValidation, addCommentOperation, err.Error()), sdkgo.Receipt{})
 	}
+	write, attempt, isDecided := startFencedWrite(call, AddCommentDefinition, addCommentOperation, output, AddCommentBranchDefect)
+	if isDecided {
+		return attempt
+	}
 	credentials, failure := operation.client.resolveCredentials(call, addCommentOperation)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(AddCommentBranchDefect, output, failure, sdkgo.Receipt{})
+		return credentialFailureAttempt(write, addCommentOperation, *failure, output, AddCommentBranchDefect)
 	}
-	var marker writeDispatchMarker
-	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
-	if err != nil || isMarkerFound {
-		return operation.reconcileEarlierDispatch(call, credentials, input, marker)
+	if write.needsReadBack() {
+		if attempt, isDecided := operation.reconcileEarlierComment(call, credentials, input, write); isDecided {
+			return attempt
+		}
 	}
-	if err := call.Context.RecordHeartbeat(writeDispatchMarker{DispatchedCallID: call.ID, DispatchedAtMilliseconds: operation.client.now().UnixMilli()}); err != nil {
-		return sdkgo.NewMutationRetry[AddCommentOutput](clickupFailure(sdkgo.FailureAvailability, addCommentOperation,
-			"Dex did not record the dispatch checkpoint; nothing was sent"), 0)
-	}
-	result := operation.client.exchange(call.Context, credentials, addCommentOperation, clickupRequest{
+	result, attempt, isDecided := dispatchFencedWrite(write, operation.client, credentials, addCommentOperation, clickupRequest{
 		method: http.MethodPost, path: taskPath(input.TaskID) + "/comment",
 		payload: addCommentWire{CommentText: input.Text, NotifyAll: input.IsCreatorNotified},
-	})
+	}, output, AddCommentBranchDefect)
+	if isDecided {
+		return attempt
+	}
 	receipt := operation.client.receipt(call, input.TaskID)
-	switch result.outcome {
-	case exchangeSucceeded:
-	case exchangeNotSent, exchangeRateLimited:
-		releaseWriteDispatch(call)
-		return sdkgo.NewMutationRetry[AddCommentOutput](result.failure, result.retryAfter)
-	case exchangeUnconfirmed, exchangeInvalid:
-		// The checkpoint stays, so the next attempt reads the comments instead of resending.
-		return sdkgo.NewMutationRetry[AddCommentOutput](result.failure, result.retryAfter)
-	case exchangeNotFound:
-		return sdkgo.NewMutationBranch(AddCommentBranchNotFound, output, &result.failure, receipt)
-	case exchangeDefect:
-		releaseWriteDispatch(call)
-		return sdkgo.NewMutationBranch(AddCommentBranchDefect, output, &result.failure, receipt)
-	default:
-		return sdkgo.NewMutationBranch(AddCommentBranchProviderRejected, output, &result.failure, receipt)
+	if result.classifyWrite() != writeAccepted {
+		return attemptForUnacceptedWrite(write, addCommentOperation, result, output, receipt, singleDispatchBranches{
+			notFound: AddCommentBranchNotFound, providerRejected: AddCommentBranchProviderRejected, defect: AddCommentBranchDefect,
+		})
 	}
 	var created createdCommentWire
 	if err := json.Unmarshal(result.response.body, &created); err != nil || !taskIDPattern.MatchString(string(created.ID)) {
-		return sdkgo.NewMutationRetry[AddCommentOutput](clickupFailure(sdkgo.FailureProtocol, addCommentOperation,
-			"ClickUp accepted the comment but returned no valid comment ID, so the next attempt reads the comments back"), 0)
+		providerID := string(created.ID)
+		if !taskIDPattern.MatchString(providerID) {
+			providerID = ""
+		}
+		return retryAcceptedReadBackOrSelectUncertain(write, addCommentOperation, providerID, output,
+			"ClickUp accepted the comment but returned an invalid comment", receipt)
 	}
+	recordAcceptedWrite(write, string(created.ID))
 	output.CommentID, output.CreatedAt = string(created.ID), created.Date.timePointer()
 	receipt.Metadata = map[string]string{"commentId": output.CommentID}
 	return sdkgo.NewMutationBranch(AddCommentBranchAdded, output, nil, receipt)
 }
 
-// reconcileEarlierDispatch never sends: it reports the earlier attempt's comment found on the task, or uncertain.
-func (operation AddCommentOperation) reconcileEarlierDispatch(
-	call sdkgo.Call, credentials Credentials, input AddCommentInput, marker writeDispatchMarker,
-) sdkgo.MutationAttempt[AddCommentOutput] {
+// reconcileEarlierComment never sends. It decides the attempt unless read-back confirmed nothing and the
+// fence still permits a resend.
+func (operation AddCommentOperation) reconcileEarlierComment(
+	call sdkgo.Call, credentials Credentials, input AddCommentInput, write *fencedWrite,
+) (sdkgo.MutationAttempt[AddCommentOutput], bool) {
 	output := AddCommentOutput{TaskID: input.TaskID}
 	result := operation.client.exchange(call.Context, credentials, addCommentOperation, clickupRequest{
 		method: http.MethodGet, path: taskPath(input.TaskID) + "/comment",
@@ -143,40 +141,54 @@ func (operation AddCommentOperation) reconcileEarlierDispatch(
 	switch {
 	case result.outcome == exchangeSucceeded:
 	case result.isRetryableRead():
-		return sdkgo.NewMutationRetry[AddCommentOutput](result.failure, result.retryAfter)
+		return sdkgo.NewMutationRetry[AddCommentOutput](result.failure, result.retryAfter), true
 	case result.outcome == exchangeNotFound:
-		return sdkgo.NewMutationBranch(AddCommentBranchNotFound, output, &result.failure, receipt)
-	default:
+		// An earlier send may have added the comment before the task became unreadable.
 		return sdkgo.NewMutationUncertain(output, clickupFailure(result.failure.Kind, addCommentOperation,
-			"an earlier attempt of this Step sent the comment, and the task's comments could not be read back: "+result.failure.Message), receipt)
+			"an earlier attempt of this Step may have added the comment, and the task can no longer be read back, so it is not sent again: "+result.failure.Message), receipt), true
+	default:
+		return commentReadBackMissing(write, output, receipt, result.failure)
 	}
 	var comments taskCommentsWire
 	if err := json.Unmarshal(result.response.body, &comments); err != nil || comments.Comments == nil {
-		return sdkgo.NewMutationUncertain(output, clickupFailure(sdkgo.FailureProtocol, addCommentOperation,
-			"an earlier attempt of this Step sent the comment, and the comments read back are invalid"), receipt)
+		return commentReadBackMissing(write, output, receipt, clickupFailure(sdkgo.FailureProtocol, addCommentOperation, "the comments read back are invalid"))
 	}
-	since := time.Time{}
-	if marker.DispatchedAtMilliseconds > 0 {
-		since = time.UnixMilli(marker.DispatchedAtMilliseconds).Add(-writeReconciliationSkew)
-	}
+	providerID := write.decision.Marker.ProviderID
+	since := readBackCreatedSince(call)
 	wanted := commentComparisonText(input.Text)
 	matchCount := 0
 	for _, comment := range comments.Comments {
 		createdAt := comment.Date.timePointer()
-		if commentComparisonText(comment.CommentText) != wanted || (!since.IsZero() && (createdAt == nil || createdAt.Before(since))) {
-			continue
+		isMatch := string(comment.ID) == providerID
+		if providerID == "" {
+			isMatch = commentComparisonText(comment.CommentText) == wanted && (since.IsZero() || (createdAt != nil && !createdAt.Before(since)))
 		}
-		matchCount++
-		output.CommentID, output.CreatedAt = string(comment.ID), createdAt
+		if isMatch {
+			matchCount++
+			output.CommentID, output.CreatedAt = string(comment.ID), createdAt
+		}
 	}
-	if matchCount != 1 || !taskIDPattern.MatchString(output.CommentID) {
+	switch {
+	case matchCount > 1:
 		return sdkgo.NewMutationUncertain(AddCommentOutput{TaskID: input.TaskID}, clickupFailure(sdkgo.FailureTransport, addCommentOperation, fmt.Sprintf(
 			"an earlier attempt of this Step sent the comment without a confirmed outcome, and the task shows %d matching comments since, so it is not sent again",
-			matchCount)), receipt)
+			matchCount)), receipt), true
+	case matchCount == 0 || !taskIDPattern.MatchString(output.CommentID):
+		return commentReadBackMissing(write, AddCommentOutput{TaskID: input.TaskID}, receipt,
+			clickupFailure(sdkgo.FailureTransport, addCommentOperation, "the task shows no matching comment"))
 	}
 	output.WasAlreadyApplied = true
 	receipt.Metadata = map[string]string{"commentId": output.CommentID}
-	return sdkgo.NewMutationBranch(AddCommentBranchAdded, output, nil, receipt)
+	return sdkgo.NewMutationBranch(AddCommentBranchAdded, output, nil, receipt), true
+}
+
+// commentReadBackMissing permits a resend when the fence allows one, and otherwise selects uncertain.
+func commentReadBackMissing(write *fencedWrite, output AddCommentOutput, receipt sdkgo.Receipt, failure sdkgo.Failure) (sdkgo.MutationAttempt[AddCommentOutput], bool) {
+	if write.canResendAfterMissingReadBack() {
+		return sdkgo.MutationAttempt[AddCommentOutput]{}, false
+	}
+	return sdkgo.NewMutationUncertain(output, clickupFailure(failure.Kind, addCommentOperation,
+		"earlier attempts of this Step sent the comment up to the send cap or were accepted, and read-back cannot confirm the comment, so it is not sent again: "+failure.Message), receipt), true
 }
 
 func validateAddCommentInput(input AddCommentInput) error {

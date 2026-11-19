@@ -12,7 +12,16 @@ from typing import Any
 from urllib.parse import quote, urlsplit
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -29,6 +38,19 @@ from dex_connectors.sdk.providerhttp import (
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 from .models import User
+
+# Only these credential failures need a person; every other one retries.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+
+
+class _TransientCredentialError(Exception):
+    """A credential failure that a later attempt may clear; nothing was sent."""
+
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 USER_SELECT = (
@@ -185,8 +207,22 @@ class Client:
         return RemoveUserFromGroupOperation(self)
 
     async def resolve_credentials(self, call: Call) -> Credentials:
-        """Resolve a current Graph access token through the generated source."""
-        credential = await self.credentials.resolve(call)
+        """Resolve a current Graph access token through the generated source.
+
+        Raises _TransientCredentialError for every credential failure that is not terminal, and
+        ValueError for invalid credential material.
+        """
+        try:
+            credential = await self.credentials.resolve(call)
+        except _TERMINAL_CREDENTIAL_ERRORS:
+            raise
+        except Exception as error:
+            # The generated connection module imports this one, so the predicate loads lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                raise ValueError("Microsoft Entra ID stored credential is malformed") from None
+            raise _TransientCredentialError() from error
         if not isinstance(credential, Credentials) or not is_header_safe_credential(
             credential.access_token.reveal()
         ):
@@ -268,8 +304,17 @@ class Client:
                             "provider response exceeds the configured limit",
                         ),
                     )
-                response = httpx.Response(error.status_code, headers=error.headers)
-                body = b""
+                # An oversized error body may hide acceptance or a retryable code.
+                return Exchange(
+                    "retry",
+                    error.status_code,
+                    error.headers,
+                    failure=failure(
+                        operation,
+                        FailureKind.TRANSPORT,
+                        "provider error response exceeds the configured limit",
+                    ),
+                )
             except ProviderTransportError:
                 return Exchange(
                     "retry", failure=failure(operation, FailureKind.TRANSPORT, "provider is unavailable")
@@ -377,11 +422,23 @@ def classify(operation: str, status: int, headers: httpx.Headers, body: bytes, n
                 operation, FailureKind.VALIDATION, "provider rejected the request with HTTP 400" + suffix
             ),
         )
+    if status not in (401, 403, 411, 413, 414, 415, 422):
+        # Only these remaining statuses prove Graph refused the request.
+        return Exchange(
+            "retry",
+            status,
+            headers,
+            body,
+            failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                f"provider answered HTTP {status}, which leaves the outcome unknown" + suffix,
+            ),
+            parse_retry_after(headers.get("Retry-After", ""), now),
+        )
     kind = {
         401: FailureKind.AUTHENTICATION,
         403: FailureKind.AUTHORIZATION,
-        409: FailureKind.CONFLICT,
-        412: FailureKind.CONFLICT,
     }.get(status, FailureKind.PROVIDER_REJECTION)
     return Exchange(
         "rejected",

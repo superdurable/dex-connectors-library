@@ -1,10 +1,10 @@
 {
   "connectorId": "jira",
-  "releaseTag": "connectors/atlassian/jira/go/v0.25.0",
+  "releaseTag": "connectors/atlassian/jira/go/v0.25.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-atlassian-jira",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -211,7 +211,7 @@
       "kind": "mutation",
       "operationId": "createIssue",
       "inputType": "CreateIssueInput",
-      "description": "Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted issue.",
+      "description": "Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee. A synchronous single-dispatch fence counts each send, and an unknown outcome is read back by a Call ID property before a resend within the send cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -291,7 +291,7 @@
       "kind": "mutation",
       "operationId": "transitionIssue",
       "inputType": "TransitionIssueInput",
-      "description": "Move one issue through its workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the issue has already made.",
+      "description": "Move one issue through its workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the issue has already made. Before sending, the Step checkpoints the chosen transition ID and its source and destination statuses. A retried attempt never selects again; it rereads the issue, succeeds when it is in the recorded destination, sends the recorded transition again only while the issue is still in the recorded source, and selects transitionUnavailable without sending when someone else moved the issue. Only a complete 404 or definite refusal of the issue read selects a branch; any other read returns Retry.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -335,7 +335,7 @@
         "description": "TransitionIssueInput selects one workflow transition. Set at least one of TransitionID, TransitionName, and DestinationStatusName; every one that is set must match the same available transition.",
         "properties": {
           "destinationStatusName": {
-            "description": "DestinationStatusName is the status the transition leads to, such as In Progress, compared without case. When the issue is already in it, no transition is performed. Set it whenever the destination is known: a retried Step then recognizes a transition Jira already made.",
+            "description": "DestinationStatusName is the status the transition leads to, such as In Progress, compared without case. When the issue is already in it, no transition is performed.",
             "type": "string"
           },
           "issueIdOrKey": {
@@ -366,7 +366,7 @@
       "kind": "mutation",
       "operationId": "addComment",
       "inputType": "AddCommentInput",
-      "description": "Add one plain-text comment, converted to Atlassian Document Format, to an issue. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted comment.",
+      "description": "Add one plain-text comment, converted to Atlassian Document Format, to an issue. A synchronous single-dispatch fence counts each send, and an unknown outcome is read back by a Call ID property before a resend within the send cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

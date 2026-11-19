@@ -256,7 +256,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: createRequestCardStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "trello", GroupLabel: "Trello",
-				Explanation: "Create the card in the approved list once; an unknown outcome is reconciled, never created again automatically.",
+				Explanation: "Create the card in the approved list; an unknown outcome is resent up to the send cap, then reconciled by an operator.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateCardInput,
 			Created: sdkgo.GoTo(recordCreatedCard{}),
@@ -292,7 +292,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: commentOnRequestCardStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "trello", GroupLabel: "Trello",
-				Explanation: "Add the approval comment once; an unknown outcome fails the Flow without resending.",
+				Explanation: "Add the approval comment; an unknown outcome is resent up to the send cap, then fails the Flow.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
 			Added: sdkgo.GoTo(recordApprovalComment{}),

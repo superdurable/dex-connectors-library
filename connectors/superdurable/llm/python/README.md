@@ -2,7 +2,10 @@
 
 `dex-connector-superdurable-llm` exposes the provider-neutral `generateText`
 Dex Query for OpenAI, Claude, Gemini, Qwen, DeepSeek, Meta, Mistral, Kimi,
-xAI, and OpenAI-compatible gateways. Its public request and response types
+xAI, OpenAI-compatible gateways on Chat Completions or the Responses API
+(`openai_compatible_api`), and Anthropic-compatible Messages gateways, and
+validates `models` and `model_context_window_tokens` as the Go connector does.
+Its public request and response types
 reuse the released Connector SDK text generation contract. The connection's
 provider chooses the HTTP dialect and model default. See the
 [connector README](../README.md#connection) for provider keys, regions,

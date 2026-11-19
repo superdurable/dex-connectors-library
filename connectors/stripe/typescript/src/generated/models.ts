@@ -44,7 +44,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 export interface Config {
   /** Stripe API base URL; leave blank for Stripe's public v1 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway. */
   endpoint?: string;
-  /** Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized successful responses select invalidResponse; an oversized error response is classified by its status. */
+  /** Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. An oversized successful read selects invalidResponse and an oversized successful write selects uncertain; an oversized error response to a read is classified by its status, and to a write is an unknown outcome resent under the same idempotency key. */
   maxResponseBytes?: number;
   /** Maximum raw signed webhook request body in bytes; enter a positive integer only to change the safety limit. Larger bodies are rejected before signature verification. */
   webhookMaxBodyBytes?: number;
@@ -70,28 +70,47 @@ export interface Credentials {
   webhookSecret?: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the selected authorization method. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["auth_method", "secret_key", "webhook_secret"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["secret_key"] != null && !(typeof fields["secret_key"] === 'string')) throw new TypeError("credential secret_key has an invalid type");
-  if (fields["webhook_secret"] != null && !(typeof fields["webhook_secret"] === 'string')) throw new TypeError("credential webhook_secret has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["secret_key"] != null && !(typeof fields["secret_key"] === 'string')) throw new CredentialMaterialError("credential secret_key has an invalid type");
+  if (fields["webhook_secret"] != null && !(typeof fields["webhook_secret"] === 'string')) throw new CredentialMaterialError("credential webhook_secret has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
-  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  if (typeof selectedMethod !== 'string') throw new CredentialMaterialError('credential auth_method is invalid');
   const method = selectedMethod || "api-key-with-webhook";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "api-key-with-webhook") {
-    if (!fields["secret_key"]) throw new TypeError("credential secret_key is required");
+    if (!fields["secret_key"]) throw new CredentialMaterialError("credential secret_key is required");
     if (fields["secret_key"]) credentials.secretKey = new SecretString(fields["secret_key"] as string);
-    if (!fields["webhook_secret"]) throw new TypeError("credential webhook_secret is required");
+    if (!fields["webhook_secret"]) throw new CredentialMaterialError("credential webhook_secret is required");
     if (fields["webhook_secret"]) credentials.webhookSecret = new SecretString(fields["webhook_secret"] as string);
   } else if (method === "api-key-only") {
-    if (!fields["secret_key"]) throw new TypeError("credential secret_key is required");
+    if (!fields["secret_key"]) throw new CredentialMaterialError("credential secret_key is required");
     if (fields["secret_key"]) credentials.secretKey = new SecretString(fields["secret_key"] as string);
   } else {
-    throw new TypeError('credential auth_method is invalid');
+    throw new CredentialMaterialError('credential auth_method is invalid');
   }
   return credentials;
 }

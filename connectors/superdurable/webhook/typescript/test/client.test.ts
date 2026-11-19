@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ConflictError, ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ExchangePendingError, ObjectNotFoundError, OutcomeUnknownError, RefreshFailedError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { WebhookClient } from '../src/client.js';
 
@@ -21,11 +21,21 @@ it('retries broker outages and fails missing credentials', async () => {
   const retry = await unavailable.sendEvent().invoke(call, input);
   expect(retry.kind).toBe('retry');
   expect(retry.failure?.kind).toBe('AVAILABILITY');
-  const missing = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, { resolve: async () => { throw new Error('secret'); } });
-  const defect = await missing.sendEvent().invoke(call, input);
-  expect(defect.kind).toBe('branch');
-  if (defect.kind === 'branch') expect(defect.branch).toBe('defect');
-  expect(defect.failure?.kind).toBe('AUTHENTICATION');
+  for (const transient of [new ExchangePendingError(), new RefreshFailedError(), new OutcomeUnknownError(), new ConflictError(), new Error('connection is not configured'), new RangeError('unlisted'), new TypeError('fetch failed')]) {
+    const client = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, { resolve: async () => { throw transient; } });
+    const attempt = await client.sendEvent().invoke(call, input);
+    expect(attempt.kind, transient.name).toBe('retry');
+  }
+  for (const terminal of [new ReauthorizationRequiredError(), new ObjectNotFoundError(), new ConnectionNotSelectedError(), new CredentialBrokerRejectedError()]) {
+    const missing = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, { resolve: async () => { throw terminal; } });
+    const defect = await missing.sendEvent().invoke(call, input);
+    expect(defect.kind, terminal.name).toBe('branch');
+    if (defect.kind === 'branch') expect(defect.branch).toBe('defect');
+    expect(defect.failure?.kind).toBe('AUTHENTICATION');
+  }
+  const blank = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, { resolve: async () => ({ signingSecret: new SecretString('') }) });
+  const blankAttempt = await blank.sendEvent().invoke(call, input);
+  expect(blankAttempt.kind === 'branch' ? blankAttempt.branch : blankAttempt.kind).toBe('defect');
 });
 
 it('classifies unsent requests and lost responses separately', async () => {
@@ -83,4 +93,27 @@ it.each([
   }
   expect(attempt.failure?.kind).toBe(failureKind);
   if (retryAfterMs !== undefined && attempt.kind === 'retry') expect(attempt.retryAfterMs).toBe(retryAfterMs);
+});
+
+it.each([302, 405, 410, 412, 418])('retries HTTP %i as an unknown outcome', async status => {
+  const client = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, {
+    resolve: async () => ({ signingSecret: new SecretString('test-secret') }),
+  }, { send: async () => ({ status, headers: {}, body: new Uint8Array() }) });
+  const attempt = await client.sendEvent().invoke(call, input);
+  expect(attempt.kind).toBe('retry');
+  expect(attempt.failure?.kind).toBe('PROTOCOL');
+});
+
+it('retries a refusal or a local failure on a later attempt', async () => {
+  const laterCall = { ...call, context: { ...call.context, attempt: 2 } } as unknown as Call;
+  let sends = 0;
+  const refusing = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, {
+    resolve: async () => ({ signingSecret: new SecretString('test-secret') }),
+  }, { send: async () => { sends += 1; return { status: 422, headers: {}, body: new Uint8Array() }; } });
+  expect((await refusing.sendEvent().invoke(laterCall, input)).kind).toBe('retry');
+  const missing = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, { resolve: async () => { throw new ConnectionNotSelectedError(); } });
+  const local = await missing.sendEvent().invoke(laterCall, input);
+  expect(local.kind).toBe('retry');
+  expect(local.failure?.kind).toBe('AUTHENTICATION');
+  expect(sends).toBe(1);
 });

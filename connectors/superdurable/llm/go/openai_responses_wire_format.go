@@ -38,8 +38,14 @@ var responsesErrorTokenPointers = []string{"/error/type", "/error/code"}
 // generateText pipeline, as documented at
 // https://developers.openai.com/api/reference/resources/responses/methods/create.
 func newOpenAIResponsesWireFormat(*Config) (textgen.WireFormat, error) {
+	return responsesWireFormatFor(ProviderOpenai), nil
+}
+
+// responsesWireFormatFor returns the Responses API wire format that names provider in every Failure and Receipt.
+// An openai-compatible gateway keeps OpenAI's model family rules, which send every field for an unlisted model.
+func responsesWireFormatFor(provider Provider) textgen.WireFormat {
 	return textgen.WireFormat{
-		ProviderName: string(ProviderOpenai),
+		ProviderName: string(provider),
 		ModelIDRule:  textgen.ModelIDRuleBody,
 		Features: textgen.RequestFeatures{
 			SupportsInstructions: true, SupportsStructuredOutput: true, SupportsMaxOutputTokens: true,
@@ -76,7 +82,7 @@ func newOpenAIResponsesWireFormat(*Config) (textgen.WireFormat, error) {
 		ErrorTokenPointers: responsesErrorTokenPointers,
 		RequestIDHeaders:   []string{"x-request-id"},
 		RateLimitHeaders:   openAIRateLimitHeaders,
-	}, nil
+	}
 }
 
 func rulesForResponsesModel(model string) textgen.ModelRequestRules {

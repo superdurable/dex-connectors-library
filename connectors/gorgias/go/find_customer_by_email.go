@@ -54,7 +54,10 @@ func (operation FindCustomerByEmailOperation) Invoke(call sdkgo.Call, input Find
 		return sdkgo.NewQueryBranch(FindCustomerByEmailBranchDefect, CustomerMatches{}, gorgiasFailurePointer(sdkgo.FailureValidation, findCustomerByEmailOperation,
 			"email must be one bare email address such as jane@example.com"), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, findCustomerByEmailOperation)
+	credentials, failure, isTerminal := operation.client.resolveCredentials(call, findCustomerByEmailOperation)
+	if failure != nil && !isTerminal {
+		return sdkgo.NewQueryRetry[CustomerMatches](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(FindCustomerByEmailBranchDefect, CustomerMatches{}, failure, sdkgo.Receipt{})
 	}

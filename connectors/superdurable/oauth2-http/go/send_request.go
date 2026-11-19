@@ -15,11 +15,13 @@ import (
 	"regexp"
 	"strings"
 	"sync/atomic"
+	"time"
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -83,21 +85,29 @@ func (SendRequestOperation) IdempotencyKey(callID sdkgo.CallID, _ SendRequestInp
 }
 
 // Invoke sends the request once with the access token, and again after a 401 once the token has been
-// renewed. A 2xx selects completed, and a redirect, a 4xx other than 408 and 429, or an authorization the
-// server will no longer renew selects rejected. A 408 or 429, a request that never left this process, and
-// a failed GET, HEAD, or OPTIONS return Retry. A POST, PUT, PATCH, or DELETE that was written but got no
-// usable answer selects uncertain.
+// renewed. A 2xx selects completed, and a redirect of a GET, HEAD, or OPTIONS request, a definite
+// refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or an authorization the server will no
+// longer renew selects rejected. Every other outcome, including a redirect of a POST, PUT, PATCH, or
+// DELETE, a lost connection, a 5xx, and any other status, returns Retry, so the request is sent again;
+// so does a temporarily unavailable credential source. On a later attempt of a POST, PUT, PATCH, or
+// DELETE, which may follow a processed write, a definite refusal or a terminal credential or address
+// failure selects uncertain instead of rejected or defect.
 func (operation SendRequestOperation) Invoke(call sdkgo.Call, input SendRequestInput) sdkgo.MutationAttempt[SendRequestOutput] {
 	client := operation.client
-	request, err := client.planRequest(input)
+	operationName := SendRequestDefinition.Operation.OperationID
+	request, err := client.planRequest(operationName, input)
 	if err != nil {
-		return sendRequestBranch(SendRequestBranchDefect, SendRequestOutput{}, sdkgo.FailureValidation, err.Error(), sdkgo.Receipt{})
+		return operationBranch(operationName, SendRequestBranchDefect, sdkgo.FailureValidation, err.Error(), SendRequestOutput{}, sdkgo.Receipt{})
 	}
 	ctx, cancel := context.WithTimeout(call.Context, operationTimeout)
 	defer cancel()
 	credentials, err := sdkgo.ResolveCredential(ctx, client.credentials, call, client.refreshDriver)
-	if attempt, isFailed := operation.credentialFailure(ctx, err, credentials); isFailed {
-		return attempt
+	if problem := classifyCredentialResolution(ctx, err, credentials); problem.isFailed() {
+		if problem.isTerminal() && hasPossibleEarlierWrite(call, request) {
+			return operation.uncertainWithoutSending(call, sdkgo.FailureAuthentication,
+				"an earlier attempt may have sent the request, and the connection's credentials cannot send it now")
+		}
+		return problem.attempt(operationName, SendRequestBranchRejected, SendRequestBranchDefect)
 	}
 	answer := client.exchange(ctx, call, request, credentials)
 	usedTokens := []string{credentials.AccessToken.Reveal()}
@@ -111,27 +121,72 @@ func (operation SendRequestOperation) Invoke(call sdkgo.Call, input SendRequestI
 	return operation.attemptFor(call, request, answer, usedTokens)
 }
 
-// credentialFailure maps a failed credential resolution to its attempt. It reports isFailed false when
-// the credentials are usable.
-func (operation SendRequestOperation) credentialFailure(
-	ctx context.Context, err error, credentials Credentials,
-) (sdkgo.MutationAttempt[SendRequestOutput], bool) {
+// credentialProblem classifies a credential resolution before any API request.
+type credentialProblem struct {
+	kind credentialProblemKind
+	// refusal is the token endpoint address refusal for credentialAddressRefused.
+	refusal *providerhttp.AddressRefusal
+}
+
+type credentialProblemKind uint8
+
+const (
+	credentialUsable credentialProblemKind = iota
+	// credentialAddressRefused means the token endpoint resolves to a refused address.
+	credentialAddressRefused
+	// credentialReauthorizationRequired means the server will no longer renew the authorization.
+	credentialReauthorizationRequired
+	// credentialTemporarilyUnavailable means the refresh may succeed on a later attempt.
+	credentialTemporarilyUnavailable
+	// credentialUnusable means the stored credentials are missing or invalid.
+	credentialUnusable
+)
+
+// classifyCredentialResolution maps the result of resolving the connection's credentials.
+func classifyCredentialResolution(ctx context.Context, err error, credentials Credentials) credentialProblem {
 	var refusal *providerhttp.AddressRefusal
 	switch {
 	case errors.As(err, &refusal):
-		return sendRequestBranch(SendRequestBranchDefect, SendRequestOutput{}, sdkgo.FailureValidation,
-			describeRefusal("tokenEndpoint", refusal), sdkgo.Receipt{}), true
-	case sdkgo.IsReauthorizationRequired(err):
-		return sendRequestBranch(SendRequestBranchRejected, SendRequestOutput{}, sdkgo.FailureAuthentication,
-			"the OAuth authorization must be renewed in Dex Web Connections", sdkgo.Receipt{}), true
-	case errors.Is(err, errCredentialRefreshUnavailable), errors.Is(err, projectconfig.ErrRefreshFailed), ctx.Err() != nil:
-		return sdkgo.NewMutationRetry[SendRequestOutput](sendRequestFailure(sdkgo.FailureAvailability,
-			"the OAuth access token could not be refreshed now"), 0), true
+		return credentialProblem{kind: credentialAddressRefused, refusal: refusal}
+	case sdkgo.IsReauthorizationRequired(err), errors.Is(err, projectconfig.ErrReauthorizationRequired):
+		return credentialProblem{kind: credentialReauthorizationRequired}
+	case errors.Is(err, errCredentialRefreshUnavailable), err != nil && !isTerminalCredentialError(err), ctx.Err() != nil:
+		return credentialProblem{kind: credentialTemporarilyUnavailable}
 	case err != nil || credentials.Validate() != nil:
-		return sendRequestBranch(SendRequestBranchDefect, SendRequestOutput{}, sdkgo.FailureAuthentication,
-			"the connection's credentials are unavailable or unusable", sdkgo.Receipt{}), true
+		return credentialProblem{kind: credentialUnusable}
 	}
-	return sdkgo.MutationAttempt[SendRequestOutput]{}, false
+	return credentialProblem{kind: credentialUsable}
+}
+
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
+func (problem credentialProblem) isFailed() bool { return problem.kind != credentialUsable }
+
+// isTerminal reports a problem that selects a branch instead of returning Retry.
+func (problem credentialProblem) isTerminal() bool {
+	return problem.isFailed() && problem.kind != credentialTemporarilyUnavailable
+}
+
+// attempt returns the attempt for a failed resolution, using operationName's rejected and defect branches.
+func (problem credentialProblem) attempt(operationName string, rejected sdkgo.BranchID, defect sdkgo.BranchID) sdkgo.MutationAttempt[SendRequestOutput] {
+	switch problem.kind {
+	case credentialAddressRefused:
+		return operationBranch(operationName, defect, sdkgo.FailureValidation, describeRefusal("tokenEndpoint", problem.refusal), SendRequestOutput{}, sdkgo.Receipt{})
+	case credentialReauthorizationRequired:
+		return operationBranch(operationName, rejected, sdkgo.FailureAuthentication,
+			"the OAuth authorization must be renewed in Dex Web Connections", SendRequestOutput{}, sdkgo.Receipt{})
+	case credentialTemporarilyUnavailable:
+		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureAvailability,
+			"the OAuth access token could not be refreshed now"), 0)
+	default:
+		return operationBranch(operationName, defect, sdkgo.FailureAuthentication,
+			"the connection's credentials are unavailable or unusable", SendRequestOutput{}, sdkgo.Receipt{})
+	}
 }
 
 // httpExchange is one request and its answer, before any branch is chosen.
@@ -175,6 +230,11 @@ func (client *Client) exchange(ctx context.Context, call sdkgo.Call, request pla
 	if request.idempotencyKeyHeader != "" {
 		httpRequest.Header.Set(request.idempotencyKeyHeader, string(call.IdempotencyKey))
 	}
+	if request.isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return httpExchange{err: errors.New("the request could not be prepared for single dispatch")}
+		}
+	}
 	response, err := client.httpClient.Do(httpRequest)
 	if err != nil {
 		var refusal *providerhttp.AddressRefusal
@@ -196,44 +256,95 @@ func (client *Client) exchange(ctx context.Context, call sdkgo.Call, request pla
 }
 
 // attemptFor chooses the branch for one finished exchange.
-func (operation SendRequestOperation) attemptFor(
-	call sdkgo.Call, request plannedRequest, answer httpExchange, usedTokens []string,
-) sdkgo.MutationAttempt[SendRequestOutput] {
+func (operation SendRequestOperation) attemptFor(call sdkgo.Call, request plannedRequest, answer httpExchange, usedTokens []string) sdkgo.MutationAttempt[SendRequestOutput] {
 	client := operation.client
-	receipt := sdkgo.Receipt{
+	operationName := SendRequestDefinition.Operation.OperationID
+	receipt := client.receipt(call, answer)
+	output := responseOutput(answer, usedTokens)
+	status := answer.statusCode
+	retryAfter := client.retryAfter(answer)
+	switch {
+	case answer.refusal != nil && hasPossibleEarlierWrite(call, request):
+		return operation.uncertainWithoutSending(call, sdkgo.FailureValidation,
+			"an earlier attempt may have sent the request, and "+describeRefusal("apiBaseUrl", answer.refusal))
+	case answer.refusal != nil:
+		return operationBranch(operationName, SendRequestBranchDefect, sdkgo.FailureValidation,
+			describeRefusal("apiBaseUrl", answer.refusal), SendRequestOutput{}, sdkgo.Receipt{})
+	case answer.err != nil && !answer.isDispatched:
+		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureAvailability,
+			"the API could not be reached; no request was sent"), 0)
+	case answer.err != nil:
+		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureTransport,
+			"the request was sent but the API did not answer completely"), 0)
+	case status >= 200 && status < 300:
+		return sdkgo.NewMutationBranch(SendRequestBranchCompleted, output, nil, receipt)
+	case status >= 300 && status < 400 && isWriteMethod(request.method):
+		// A redirect, such as 303 See Other, may follow a processed write, so the write is sent again.
+		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureProtocol,
+			fmt.Sprintf("the API answered HTTP %d to a %s, which does not prove the request was refused", status, request.method)), retryAfter)
+	case isDefiniteRefusal(status) && hasPossibleEarlierWrite(call, request):
+		// The refusal may answer the repeat of a write that an earlier attempt already applied.
+		failure := operationFailure(operationName, rejectionFailureKind(status),
+			fmt.Sprintf("the API answered HTTP %d to a repeated %s, which an earlier attempt may have applied", status, request.method))
+		return sdkgo.NewMutationUncertain(output, failure, receipt)
+	case status >= 300 && status < 400, isDefiniteRefusal(status):
+		// The connector never follows a redirect, so a redirect is reported like a refusal.
+		failure := operationFailure(operationName, rejectionFailureKind(status), fmt.Sprintf("the API answered HTTP %d", status))
+		return sdkgo.NewMutationBranch(SendRequestBranchRejected, output, &failure, receipt)
+	case status == http.StatusRequestTimeout || status == http.StatusTooManyRequests:
+		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureRateLimit,
+			fmt.Sprintf("the API answered HTTP %d", status)), retryAfter)
+	case status >= 500:
+		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureAvailability,
+			fmt.Sprintf("the API answered HTTP %d", status)), retryAfter)
+	default:
+		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, rejectionFailureKind(status),
+			fmt.Sprintf("the API answered HTTP %d, which does not prove the request was refused", status)), retryAfter)
+	}
+}
+
+// hasPossibleEarlierWrite reports a write method on a later attempt, which may follow a processed write.
+func hasPossibleEarlierWrite(call sdkgo.Call, request plannedRequest) bool {
+	return isWriteMethod(request.method) && call.Context != nil && call.Context.Attempt() > 1
+}
+
+// uncertainWithoutSending selects uncertain for a later write attempt that a terminal local failure stops.
+func (operation SendRequestOperation) uncertainWithoutSending(call sdkgo.Call, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SendRequestOutput] {
+	return sdkgo.NewMutationUncertain(SendRequestOutput{},
+		operationFailure(SendRequestDefinition.Operation.OperationID, kind, message), operation.client.receipt(call, httpExchange{}))
+}
+
+// receipt records the Call identity and the API's request ID for one exchange.
+func (client *Client) receipt(call sdkgo.Call, answer httpExchange) sdkgo.Receipt {
+	return sdkgo.Receipt{
 		CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: ConnectorID,
 		ProviderRequestID: safeRequestID(answer.header), ObservedAt: client.now().UTC(),
 	}
-	output := responseOutput(answer, usedTokens)
-	status := answer.statusCode
-	switch {
-	case answer.refusal != nil:
-		return sendRequestBranch(SendRequestBranchDefect, SendRequestOutput{}, sdkgo.FailureValidation,
-			describeRefusal("apiBaseUrl", answer.refusal), sdkgo.Receipt{})
-	case answer.err != nil && !answer.isDispatched:
-		return sdkgo.NewMutationRetry[SendRequestOutput](sendRequestFailure(sdkgo.FailureAvailability,
-			"the API could not be reached; no request was sent"), 0)
-	case answer.err != nil && request.isSafeToRepeat():
-		return sdkgo.NewMutationRetry[SendRequestOutput](sendRequestFailure(sdkgo.FailureTransport,
-			"the API did not answer the "+request.method+" request"), 0)
-	case answer.err != nil:
-		return sdkgo.NewMutationUncertain(output, sendRequestFailure(sdkgo.FailureTransport,
-			"the request was sent but the API did not answer completely"), receipt)
-	case status >= 200 && status < 300:
-		return sdkgo.NewMutationBranch(SendRequestBranchCompleted, output, nil, receipt)
-	case status == http.StatusRequestTimeout || status == http.StatusTooManyRequests:
-		return sdkgo.NewMutationRetry[SendRequestOutput](sendRequestFailure(sdkgo.FailureRateLimit,
-			fmt.Sprintf("the API answered HTTP %d", status)), providerhttp.ParseRetryAfter(answer.header.Get("Retry-After"), client.now()))
-	case status >= 500 && request.isSafeToRepeat():
-		return sdkgo.NewMutationRetry[SendRequestOutput](sendRequestFailure(sdkgo.FailureAvailability,
-			fmt.Sprintf("the API answered HTTP %d", status)), providerhttp.ParseRetryAfter(answer.header.Get("Retry-After"), client.now()))
-	case status >= 500:
-		return sdkgo.NewMutationUncertain(output, sendRequestFailure(sdkgo.FailureAvailability,
-			fmt.Sprintf("the API answered HTTP %d after the request was sent", status)), receipt)
-	default:
-		failure := sendRequestFailure(rejectionFailureKind(status), fmt.Sprintf("the API answered HTTP %d", status))
-		return sdkgo.NewMutationBranch(SendRequestBranchRejected, output, &failure, receipt)
+}
+
+// retryAfter returns the delay the answer's Retry-After header asks for, or zero.
+func (client *Client) retryAfter(answer httpExchange) time.Duration {
+	return providerhttp.ParseRetryAfter(answer.header.Get("Retry-After"), client.now())
+}
+
+// isWriteMethod reports a method that may change server state: POST, PUT, PATCH, or DELETE.
+func isWriteMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return false
 	}
+	return true
+}
+
+// isDefiniteRefusal reports a status that proves the API refused the request without processing it.
+func isDefiniteRefusal(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 // responseOutput turns an answer into the Result value: the access tokens are redacted from the body, and
@@ -302,10 +413,10 @@ func rejectionFailureKind(status int) sdkgo.FailureKind {
 	}
 }
 
-// sendRequestBranch returns a branch attempt that carries a failure.
-func sendRequestBranch(
-	branch sdkgo.BranchID, output SendRequestOutput, kind sdkgo.FailureKind, message string, receipt sdkgo.Receipt,
+// operationBranch returns a branch attempt of operationName that carries a failure.
+func operationBranch(
+	operationName string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string, output SendRequestOutput, receipt sdkgo.Receipt,
 ) sdkgo.MutationAttempt[SendRequestOutput] {
-	failure := sendRequestFailure(kind, message)
+	failure := operationFailure(operationName, kind, message)
 	return sdkgo.NewMutationBranch(branch, output, &failure, receipt)
 }

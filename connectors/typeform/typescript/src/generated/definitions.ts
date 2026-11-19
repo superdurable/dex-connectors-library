@@ -118,7 +118,7 @@ export const UpsertWebhookBranchUpserted = UpsertWebhookBranch.Upserted;
 export const UpsertWebhookBranchNotFound = UpsertWebhookBranch.NotFound;
 /** Typeform conclusively rejected the webhook, such as a URL that is not HTTPS, a plan without webhooks, or a token without the webhooks:write scope. */
 export const UpsertWebhookBranchProviderRejected = UpsertWebhookBranch.ProviderRejected;
-/** Typeform answered 2xx with a malformed or oversized body, so it may have stored the webhook without this Result describing it. */
+/** Retained for compatibility and no longer selected: a malformed or oversized 2xx body now retries the idempotent PUT. */
 export const UpsertWebhookBranchInvalidResponse = UpsertWebhookBranch.InvalidResponse;
 /** Local input, connection configuration such as a blank webhook_secret, or connector definition is invalid. */
 export const UpsertWebhookBranchDefect = UpsertWebhookBranch.Defect;
@@ -129,7 +129,7 @@ export const UpsertWebhookDefinition: MutationDefinition = {
     { id: "upserted", description: "Typeform stored the webhook for this form and tag with the requested URL and enabled state." },
     { id: "notFound", description: "The form does not exist or the token's account does not own it.", optional: true },
     { id: "providerRejected", description: "Typeform conclusively rejected the webhook, such as a URL that is not HTTPS, a plan without webhooks, or a token without the webhooks:write scope.", optional: true },
-    { id: "invalidResponse", description: "Typeform answered 2xx with a malformed or oversized body, so it may have stored the webhook without this Result describing it.", optional: true },
+    { id: "invalidResponse", description: "Retained for compatibility and no longer selected: a malformed or oversized 2xx body now retries the idempotent PUT.", optional: true },
     { id: "defect", description: "Local input, connection configuration such as a blank webhook_secret, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

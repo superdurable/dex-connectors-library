@@ -5,6 +5,7 @@ package notion_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,6 +51,10 @@ func TestUpdatePagePropertiesRetriesEveryAmbiguousOutcome(t *testing.T) {
 		{"gateway timeout", http.StatusGatewayTimeout, notionError(504, "gateway_timeout"), sdkgo.FailureAvailability},
 		{"conflict", http.StatusConflict, notionError(409, "conflict_error"), sdkgo.FailureConflict},
 		{"rate limited", http.StatusTooManyRequests, notionError(429, "rate_limited"), sdkgo.FailureRateLimit},
+		{"unlisted 4xx", http.StatusNotAcceptable, notionError(406, "not_acceptable"), sdkgo.FailureAvailability},
+		{"redirect", http.StatusMultipleChoices, notionError(300, "redirect"), sdkgo.FailureAvailability},
+		{"another page returned", http.StatusOK, pageJSON("6e8a0324-5f70-4192-a3b4-556677889900", "Other"), sdkgo.FailureProtocol},
+		{"oversized refusal", http.StatusBadRequest, `{"object":"error","status":400,"code":"validation_error","message":"` + strings.Repeat("x", 70000) + `"}`, sdkgo.FailureTransport},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
@@ -81,7 +86,6 @@ func TestUpdatePagePropertiesMapsConclusiveOutcomes(t *testing.T) {
 		{"unshared page", http.StatusNotFound, notionError(404, "object_not_found"), notion.UpdatePagePropertiesBranchNotFound},
 		{"wrong property type", http.StatusBadRequest, notionError(400, "validation_error"), notion.UpdatePagePropertiesBranchProviderRejected},
 		{"missing capability", http.StatusForbidden, notionError(403, "restricted_resource"), notion.UpdatePagePropertiesBranchProviderRejected},
-		{"another page returned", http.StatusOK, pageJSON("6e8a0324-5f70-4192-a3b4-556677889900", "Other"), notion.UpdatePagePropertiesBranchInvalidResponse},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingNotion(t, func(response http.ResponseWriter, _ *http.Request, _ int) {

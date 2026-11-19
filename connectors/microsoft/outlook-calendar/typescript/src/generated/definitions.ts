@@ -81,25 +81,31 @@ export const CreateEventBranch = {
   ProviderRejected: "providerRejected",
   InvalidResponse: "invalidResponse",
   Defect: "defect",
+  Uncertain: "uncertain",
 } as const;
 /** The event that carries the Step's idempotency key exists. */
 export const CreateEventBranchCreated = CreateEventBranch.Created;
 /** Microsoft Graph conclusively rejected the event. */
 export const CreateEventBranchProviderRejected = CreateEventBranch.ProviderRejected;
-/** Microsoft Graph returned an invalid or oversized event response. */
+/** The marker lookup before any send returned a malformed or oversized answer, so nothing was sent; an unusable POST answer is read back or selects uncertain instead. */
 export const CreateEventBranchInvalidResponse = CreateEventBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateEventBranchDefect = CreateEventBranch.Defect;
+/** An earlier send may have created the event, the marker lookup cannot confirm it, and the send cap allows no further POST. */
+export const CreateEventBranchUncertain = CreateEventBranch.Uncertain;
 /** Manifest definition for createEvent. */
 export const CreateEventDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "createEvent" },
   branches: [
     { id: "created", description: "The event that carries the Step's idempotency key exists." },
     { id: "providerRejected", description: "Microsoft Graph conclusively rejected the event.", optional: true },
-    { id: "invalidResponse", description: "Microsoft Graph returned an invalid or oversized event response.", optional: true },
+    { id: "invalidResponse", description: "The marker lookup before any send returned a malformed or oversized answer, so nothing was sent; an unusable POST answer is read back or selects uncertain instead.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
+    { id: "uncertain", description: "An earlier send may have created the event, the marker lookup cannot confirm it, and the send cap allows no further POST.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createEvent. */
 export const CreateEventMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
@@ -118,7 +124,7 @@ export const UpdateEventBranchUpdated = UpdateEventBranch.Updated;
 export const UpdateEventBranchNotFound = UpdateEventBranch.NotFound;
 /** Microsoft Graph conclusively rejected the event change. */
 export const UpdateEventBranchProviderRejected = UpdateEventBranch.ProviderRejected;
-/** Microsoft Graph returned an invalid or oversized event response. */
+/** Retained for compatibility and no longer selected: an invalid or oversized response now retries from the read. */
 export const UpdateEventBranchInvalidResponse = UpdateEventBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateEventBranchDefect = UpdateEventBranch.Defect;
@@ -129,10 +135,11 @@ export const UpdateEventDefinition: MutationDefinition = {
     { id: "updated", description: "The event holds the requested values." },
     { id: "notFound", description: "The event does not exist, is cancelled, or is not visible to the connection.", optional: true },
     { id: "providerRejected", description: "Microsoft Graph conclusively rejected the event change.", optional: true },
-    { id: "invalidResponse", description: "Microsoft Graph returned an invalid or oversized event response.", optional: true },
+    { id: "invalidResponse", description: "Retained for compatibility and no longer selected: an invalid or oversized response now retries from the read.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateEvent. */
 export const UpdateEventMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

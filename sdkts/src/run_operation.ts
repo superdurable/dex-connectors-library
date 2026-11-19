@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { beginRunningMutation } from './call_occurrence.js';
 import { FailureSchema, RetryError, type Failure } from './errors.js';
 import type { Call } from './credentials.js';
 import { validateMutationDefinition, validateQueryDefinition, type Mutation, type MutationDefinition, type Query, type QueryDefinition } from './operation.js';
@@ -17,13 +18,30 @@ export async function runQuery<Input, Output>(operation: Query<Input, Output>, c
   return resultFromAttempt(definition, call, attempt, 'query');
 }
 
-/** Invoke a mutation once with its stable key and validate the classified outcome. */
+/**
+ * Invoke a mutation once with its stable key and validate the classified outcome.
+ *
+ * Concurrent calls of the same operation in one Step attempt are unsupported: a call that starts
+ * while an earlier one is still running selects `defect` without invoking the operation, so it
+ * never sends. The refused call keeps the occurrence `createCall` gave it, so later call IDs follow
+ * construction order, never which calls overlapped.
+ */
 export async function runMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input): Promise<MutationResult<Output>> {
   if (!operation) return defectResult<Output>(undefined, call, 'connector mutation is required');
   const definition = operation.definition();
   try { validateMutationDefinition(definition); } catch (error) { return defectResult(definition, call, `invalid mutation definition: ${safeErrorMessage(error)}`); }
   const invalidCall = validateCall(call, definition.operation);
   if (invalidCall) return defectResult(definition, call, invalidCall);
+  if (!call.context) return runValidatedMutation(operation, definition, call, input);
+  const endRunning = beginRunningMutation(call.context, definition.operation);
+  if (!endRunning) {
+    return defectResult(definition, call, `concurrent calls of connector operation ${definition.operation.connectorId} ${definition.operation.operationId} in one Step are not supported; an earlier call of it is still running, so this call was not sent`);
+  }
+  try { return await runValidatedMutation(operation, definition, call, input); }
+  finally { endRunning(); }
+}
+
+async function runValidatedMutation<Input, Output>(operation: Mutation<Input, Output>, definition: MutationDefinition, call: Call, input: Input): Promise<MutationResult<Output>> {
   const chosenKey = operation.idempotencyKey(call.id, input) || call.id;
   if (!chosenKey.trim()) return defectResult(definition, call, 'mutation returned an invalid idempotency key');
   const mutationCall: Call = { ...call, context: call.context, idempotencyKey: chosenKey };

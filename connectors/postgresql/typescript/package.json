@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-postgresql",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "PostgreSQL connector for Dex TypeScript applications",
   "repository": {
@@ -47,7 +47,7 @@
     "example:refund:start": "npm run build && tsx examples/record-refund/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "pg": "^8.16.0",
     "pg-cursor": "^2.22.1",

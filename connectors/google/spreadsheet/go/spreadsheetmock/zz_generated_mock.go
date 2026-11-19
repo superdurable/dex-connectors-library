@@ -193,7 +193,7 @@ func UpsertRowUpserted(value spreadsheet.UpsertRowOutput, failure *sdkgo.Failure
 	return connectormock.Branch(spreadsheet.UpsertRowBranchUpserted, value, failure)
 }
 
-// UpsertRowConflict selects the conflict branch: Existing duplicate key rows prevent a safe write.
+// UpsertRowConflict selects the conflict branch: Existing duplicate key rows prevent a safe write before any append of this Step.
 func UpsertRowConflict(value spreadsheet.UpsertRowOutput, failure *sdkgo.Failure) connectormock.Case[spreadsheet.UpsertRowOutput] {
 	return connectormock.Branch(spreadsheet.UpsertRowBranchConflict, value, failure)
 }

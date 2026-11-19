@@ -40,12 +40,44 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListModels() sdkgo.Query[ListModelsInput, ModelsList]
+	ListHistoryItems() sdkgo.Query[ListHistoryItemsInput, HistoryItemsPage]
+	GetHistoryItem() sdkgo.Query[HistoryItemIdentityInput, HistoryItemMetadata]
+	DeleteHistoryItem() sdkgo.Mutation[HistoryItemIdentityInput, DeletedHistoryItem]
+	GetVoice() sdkgo.Query[GetVoiceInput, Voice]
+	EditVoiceMetadata() sdkgo.Mutation[EditVoiceMetadataInput, EditedVoiceMetadata]
+	DeleteVoice() sdkgo.Mutation[GetVoiceInput, DeletedVoice]
+	UpdateVoiceSettings() sdkgo.Mutation[UpdateVoiceSettingsInput, UpdatedVoiceSettings]
 	ListVoices() sdkgo.Query[ListVoicesInput, ListVoicesOutput]
 	CreateSpeech() sdkgo.Query[CreateSpeechInput, CreateSpeechOutput]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListModels() sdkgo.Query[ListModelsInput, ModelsList] {
+	return operations.client.ListModels()
+}
+func (operations clientOperations) ListHistoryItems() sdkgo.Query[ListHistoryItemsInput, HistoryItemsPage] {
+	return operations.client.ListHistoryItems()
+}
+func (operations clientOperations) GetHistoryItem() sdkgo.Query[HistoryItemIdentityInput, HistoryItemMetadata] {
+	return operations.client.GetHistoryItem()
+}
+func (operations clientOperations) DeleteHistoryItem() sdkgo.Mutation[HistoryItemIdentityInput, DeletedHistoryItem] {
+	return operations.client.DeleteHistoryItem()
+}
+func (operations clientOperations) GetVoice() sdkgo.Query[GetVoiceInput, Voice] {
+	return operations.client.GetVoice()
+}
+func (operations clientOperations) EditVoiceMetadata() sdkgo.Mutation[EditVoiceMetadataInput, EditedVoiceMetadata] {
+	return operations.client.EditVoiceMetadata()
+}
+func (operations clientOperations) DeleteVoice() sdkgo.Mutation[GetVoiceInput, DeletedVoice] {
+	return operations.client.DeleteVoice()
+}
+func (operations clientOperations) UpdateVoiceSettings() sdkgo.Mutation[UpdateVoiceSettingsInput, UpdatedVoiceSettings] {
+	return operations.client.UpdateVoiceSettings()
+}
 func (operations clientOperations) ListVoices() sdkgo.Query[ListVoicesInput, ListVoicesOutput] {
 	return operations.client.ListVoices()
 }
@@ -188,6 +220,592 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListModelsBranchListed sdkgo.BranchID = "listed"
+const ListModelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListModelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListModelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListModelsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listModels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListModelsBranchListed, Description: "ElevenLabs returned available models."},
+		{ID: ListModelsBranchProviderRejected, Description: "ElevenLabs rejected model listing.", Optional: true},
+		{ID: ListModelsBranchInvalidResponse, Description: "ElevenLabs returned invalid model data.", Optional: true},
+		{ID: ListModelsBranchDefect, Description: "Credentials are unavailable or invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListModelsResult = sdkgo.QueryResult[ModelsList]
+
+type ListModelsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=elevenlabs"`
+	operationID                    struct{}                                      `connector:"operationId=listModels"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListModelsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListModelsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListModelsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListModelsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListModelsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ModelsList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListModelsStep[IN any](config ListModelsStepConfig[IN]) sdkgo.QueryStep[IN, ListModelsInput, ModelsList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListModelsInput, ModelsList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListModels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListModelsResult] {
+			branches := make([]sdkgo.BranchTarget[ListModelsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListModelsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListModelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListModelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListModelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListHistoryItemsBranchListed sdkgo.BranchID = "listed"
+const ListHistoryItemsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListHistoryItemsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListHistoryItemsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListHistoryItemsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listHistoryItems"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListHistoryItemsBranchListed, Description: "ElevenLabs returned a history page."},
+		{ID: ListHistoryItemsBranchProviderRejected, Description: "ElevenLabs rejected history listing.", Optional: true},
+		{ID: ListHistoryItemsBranchInvalidResponse, Description: "ElevenLabs returned invalid history data.", Optional: true},
+		{ID: ListHistoryItemsBranchDefect, Description: "History filters or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListHistoryItemsResult = sdkgo.QueryResult[HistoryItemsPage]
+
+type ListHistoryItemsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=elevenlabs"`
+	operationID                    struct{}                                            `connector:"operationId=listHistoryItems"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListHistoryItemsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListHistoryItemsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListHistoryItemsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListHistoryItemsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListHistoryItemsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[HistoryItemsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewListHistoryItemsStep[IN any](config ListHistoryItemsStepConfig[IN]) sdkgo.QueryStep[IN, ListHistoryItemsInput, HistoryItemsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListHistoryItemsInput, HistoryItemsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListHistoryItems(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListHistoryItemsResult] {
+			branches := make([]sdkgo.BranchTarget[ListHistoryItemsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListHistoryItemsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListHistoryItemsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListHistoryItemsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListHistoryItemsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetHistoryItemBranchFound sdkgo.BranchID = "found"
+const GetHistoryItemBranchNotFound sdkgo.BranchID = "notFound"
+const GetHistoryItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetHistoryItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetHistoryItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetHistoryItemDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getHistoryItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetHistoryItemBranchFound, Description: "ElevenLabs returned the generated item."},
+		{ID: GetHistoryItemBranchNotFound, Description: "The generated item is unavailable.", Optional: true},
+		{ID: GetHistoryItemBranchProviderRejected, Description: "ElevenLabs rejected item retrieval.", Optional: true},
+		{ID: GetHistoryItemBranchInvalidResponse, Description: "ElevenLabs returned invalid item data.", Optional: true},
+		{ID: GetHistoryItemBranchDefect, Description: "History item ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetHistoryItemResult = sdkgo.QueryResult[HistoryItemMetadata]
+
+type GetHistoryItemStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=elevenlabs"`
+	operationID                    struct{}                                               `connector:"operationId=getHistoryItem"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) HistoryItemIdentityInput                      `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetHistoryItemResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetHistoryItemResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetHistoryItemResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetHistoryItemResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetHistoryItemResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[HistoryItemMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewGetHistoryItemStep[IN any](config GetHistoryItemStepConfig[IN]) sdkgo.QueryStep[IN, HistoryItemIdentityInput, HistoryItemMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, HistoryItemIdentityInput, HistoryItemMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetHistoryItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetHistoryItemResult] {
+			branches := make([]sdkgo.BranchTarget[GetHistoryItemResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetHistoryItemBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetHistoryItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetHistoryItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetHistoryItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetHistoryItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteHistoryItemBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteHistoryItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteHistoryItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteHistoryItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteHistoryItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteHistoryItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteHistoryItemBranchDeleted, Description: "The generated item is absent."},
+		{ID: DeleteHistoryItemBranchProviderRejected, Description: "ElevenLabs rejected deletion.", Optional: true},
+		{ID: DeleteHistoryItemBranchInvalidResponse, Description: "ElevenLabs returned an invalid deletion confirmation.", Optional: true},
+		{ID: DeleteHistoryItemBranchDefect, Description: "History item ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteHistoryItemResult = sdkgo.MutationResult[DeletedHistoryItem]
+
+type DeleteHistoryItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=elevenlabs"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteHistoryItem"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) HistoryItemIdentityInput                        `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteHistoryItemResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteHistoryItemResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteHistoryItemResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteHistoryItemResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedHistoryItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteHistoryItemStep[IN any](config DeleteHistoryItemStepConfig[IN]) sdkgo.MutationStep[IN, HistoryItemIdentityInput, DeletedHistoryItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, HistoryItemIdentityInput, DeletedHistoryItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteHistoryItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteHistoryItemResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteHistoryItemResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteHistoryItemBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteHistoryItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteHistoryItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteHistoryItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetVoiceBranchFound sdkgo.BranchID = "found"
+const GetVoiceBranchNotFound sdkgo.BranchID = "notFound"
+const GetVoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetVoiceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetVoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetVoiceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getVoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetVoiceBranchFound, Description: "ElevenLabs returned the requested voice."},
+		{ID: GetVoiceBranchNotFound, Description: "The voice does not exist.", Optional: true},
+		{ID: GetVoiceBranchProviderRejected, Description: "ElevenLabs conclusively rejected the read.", Optional: true},
+		{ID: GetVoiceBranchInvalidResponse, Description: "ElevenLabs returned malformed or oversized voice data.", Optional: true},
+		{ID: GetVoiceBranchDefect, Description: "Local voice ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetVoiceResult = sdkgo.QueryResult[Voice]
+
+type GetVoiceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=elevenlabs"`
+	operationID                    struct{}                                 `connector:"operationId=getVoice"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetVoiceInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetVoiceResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetVoiceResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetVoiceResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetVoiceResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetVoiceResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Voice]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetVoiceStep[IN any](config GetVoiceStepConfig[IN]) sdkgo.QueryStep[IN, GetVoiceInput, Voice] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetVoiceInput, Voice]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetVoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetVoiceResult] {
+			branches := make([]sdkgo.BranchTarget[GetVoiceResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetVoiceBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetVoiceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetVoiceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetVoiceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetVoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const EditVoiceMetadataBranchEdited sdkgo.BranchID = "edited"
+const EditVoiceMetadataBranchNotFound sdkgo.BranchID = "notFound"
+const EditVoiceMetadataBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const EditVoiceMetadataBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const EditVoiceMetadataBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var EditVoiceMetadataDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "editVoiceMetadata"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: EditVoiceMetadataBranchEdited, Description: "ElevenLabs accepted the voice metadata edit."},
+		{ID: EditVoiceMetadataBranchNotFound, Description: "The voice is unavailable.", Optional: true},
+		{ID: EditVoiceMetadataBranchProviderRejected, Description: "ElevenLabs rejected the metadata edit.", Optional: true},
+		{ID: EditVoiceMetadataBranchInvalidResponse, Description: "ElevenLabs returned an invalid edit confirmation.", Optional: true},
+		{ID: EditVoiceMetadataBranchDefect, Description: "Voice ID and metadata or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type EditVoiceMetadataResult = sdkgo.MutationResult[EditedVoiceMetadata]
+
+type EditVoiceMetadataStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=elevenlabs"`
+	operationID                       struct{}                                                  `connector:"operationId=editVoiceMetadata"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) EditVoiceMetadataInput                           `connector:"mapToOperationInput"`
+	Edited                            sdkgo.Target[EditVoiceMetadataResult]                     `connector:"branch=edited"`
+	NotFound                          sdkgo.Target[EditVoiceMetadataResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[EditVoiceMetadataResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[EditVoiceMetadataResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[EditVoiceMetadataResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EditedVoiceMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewEditVoiceMetadataStep[IN any](config EditVoiceMetadataStepConfig[IN]) sdkgo.MutationStep[IN, EditVoiceMetadataInput, EditedVoiceMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, EditVoiceMetadataInput, EditedVoiceMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.EditVoiceMetadata(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[EditVoiceMetadataResult] {
+			branches := make([]sdkgo.BranchTarget[EditVoiceMetadataResult], 0, 5)
+			if config.Edited.HasStep() {
+				branches = append(branches, config.Edited.BranchTarget(EditVoiceMetadataBranchEdited))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(EditVoiceMetadataBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(EditVoiceMetadataBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(EditVoiceMetadataBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(EditVoiceMetadataBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteVoiceBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteVoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteVoiceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteVoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteVoiceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteVoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteVoiceBranchDeleted, Description: "The voice is absent."},
+		{ID: DeleteVoiceBranchProviderRejected, Description: "ElevenLabs rejected voice deletion.", Optional: true},
+		{ID: DeleteVoiceBranchInvalidResponse, Description: "ElevenLabs returned an invalid deletion confirmation.", Optional: true},
+		{ID: DeleteVoiceBranchDefect, Description: "Voice ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteVoiceResult = sdkgo.MutationResult[DeletedVoice]
+
+type DeleteVoiceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=elevenlabs"`
+	operationID                       struct{}                                           `connector:"operationId=deleteVoice"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetVoiceInput                             `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteVoiceResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteVoiceResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteVoiceResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteVoiceResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedVoice]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteVoiceStep[IN any](config DeleteVoiceStepConfig[IN]) sdkgo.MutationStep[IN, GetVoiceInput, DeletedVoice] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetVoiceInput, DeletedVoice]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteVoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteVoiceResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteVoiceResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteVoiceBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteVoiceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteVoiceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteVoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateVoiceSettingsBranchUpdated sdkgo.BranchID = "updated"
+const UpdateVoiceSettingsBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateVoiceSettingsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateVoiceSettingsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateVoiceSettingsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateVoiceSettings"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateVoiceSettingsBranchUpdated, Description: "ElevenLabs confirmed the voice settings replacement."},
+		{ID: UpdateVoiceSettingsBranchNotFound, Description: "The voice does not exist.", Optional: true},
+		{ID: UpdateVoiceSettingsBranchProviderRejected, Description: "ElevenLabs conclusively rejected the settings.", Optional: true},
+		{ID: UpdateVoiceSettingsBranchDefect, Description: "Local settings or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateVoiceSettingsResult = sdkgo.MutationResult[UpdatedVoiceSettings]
+
+type UpdateVoiceSettingsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=elevenlabs"`
+	operationID                       struct{}                                                   `connector:"operationId=updateVoiceSettings"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateVoiceSettingsInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateVoiceSettingsResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateVoiceSettingsResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateVoiceSettingsResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateVoiceSettingsResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedVoiceSettings]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateVoiceSettingsStep[IN any](config UpdateVoiceSettingsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateVoiceSettingsInput, UpdatedVoiceSettings] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateVoiceSettingsInput, UpdatedVoiceSettings]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateVoiceSettings(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateVoiceSettingsResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateVoiceSettingsResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateVoiceSettingsBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateVoiceSettingsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateVoiceSettingsBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateVoiceSettingsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListVoicesBranchListed sdkgo.BranchID = "listed"

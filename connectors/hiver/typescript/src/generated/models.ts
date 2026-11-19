@@ -42,7 +42,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Largest Hiver API response body, in bytes, that one request reads; a larger response selects invalidResponse, or uncertain for addNote and createSharedDraft. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example for conversation pages that list unusually many messages. */
+  /** Largest Hiver API response body, in bytes, that one request reads; a larger read response selects invalidResponse, and a larger write answer repeats the write within its send cap. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example for conversation pages that list unusually many messages. */
   maxResponseBytes?: number;
   /** Shortest time, in milliseconds, between two Hiver API requests from this connection in one Worker. Hiver limits every account to one request per second and answers 429 above it, as https://developer.hiverhq.com/hiver-api describes. Leave blank to keep the displayed spacing. Enter an integer from 1 to 60000: a larger value leaves room for other integrations on the same account, and a smaller one only makes sense after Hiver support has raised your account's rate limit. */
   requestIntervalMilliseconds?: number;
@@ -66,15 +66,34 @@ export interface Credentials {
   apiKey: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["api_key"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new CredentialMaterialError("credential api_key has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  if (!fields["api_key"]) throw new CredentialMaterialError("credential api_key is required");
   credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
   return credentials;
 }

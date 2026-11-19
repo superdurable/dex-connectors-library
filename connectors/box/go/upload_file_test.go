@@ -4,7 +4,9 @@
 package box
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 const helloDigest = "F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0"
@@ -214,7 +217,11 @@ func TestUploadFileInitialMetadataBranches(t *testing.T) {
 	}{
 		{"not-found", http.StatusNotFound, `{"code":"not_found"}`, UploadFileBranchNotFound},
 		{"forbidden", http.StatusForbidden, `{"code":"forbidden"}`, UploadFileBranchProviderRejected},
-		{"malformed", http.StatusOK, `{"id":"12345"}`, UploadFileBranchInvalidResponse},
+		// Unknown pre-write answers retry, because the write is safe and the read is not definite.
+		{"malformed", http.StatusOK, `{"id":"12345"}`, ""},
+		{"conflict", http.StatusConflict, `{"code":"conflict"}`, ""},
+		{"redirect", http.StatusMultipleChoices, `{}`, ""},
+		{"forbidden-with-file", http.StatusForbidden, metadataJSON(oldDigest), ""},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			var postCount atomic.Int32
@@ -229,9 +236,98 @@ func TestUploadFileInitialMetadataBranches(t *testing.T) {
 			}))
 			defer server.Close()
 			result, err := sdkgo.RunMutation(queryContext{}, uploadClient(t, server.URL).UploadFile(), testConnection, UploadFileInput{FileID: "12345", ContentBase64: "SGVsbG8="})
+			if testCase.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, testCase.branch, result.Branch)
+			}
+			require.Zero(t, postCount.Load())
+		})
+	}
+}
+
+func TestUploadFileClassifiesUploadAnswers(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		status int
+		body   string
+		branch sdkgo.BranchID
+	}{
+		{"definite refusal", http.StatusForbidden, `{"type":"error","code":"access_denied"}`, UploadFileBranchProviderRejected},
+		{"definite not found", http.StatusNotFound, `{"type":"error","code":"not_found"}`, UploadFileBranchNotFound},
+		// An unlisted status or a refusal describing the file reads back once, then retries.
+		{"conflict", http.StatusConflict, `{"type":"error","code":"conflict"}`, ""},
+		{"precondition failed", http.StatusPreconditionFailed, `{"type":"error"}`, ""},
+		{"refusal carrying the file", http.StatusBadRequest, `{"entries":[` + metadataJSON(helloDigest) + `]}`, ""},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			var postCount, getCount atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodPost {
+					postCount.Add(1)
+					writer.WriteHeader(testCase.status)
+					_, _ = writer.Write([]byte(testCase.body))
+					return
+				}
+				getCount.Add(1)
+				_, _ = writer.Write([]byte(metadataJSON(oldDigest)))
+			}))
+			defer server.Close()
+			result, err := sdkgo.RunMutation(queryContext{}, uploadClient(t, server.URL).UploadFile(), testConnection, UploadFileInput{FileID: "12345", ContentBase64: "SGVsbG8="})
+			require.EqualValues(t, 1, postCount.Load())
+			if testCase.branch == "" {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.EqualValues(t, 2, getCount.Load(), "an unknown answer reads back before retrying")
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, testCase.branch, result.Branch)
-			require.Zero(t, postCount.Load())
+			require.EqualValues(t, 1, getCount.Load())
+		})
+	}
+}
+
+type failingCredentialSource struct{ resolveErr error }
+
+func (source failingCredentialSource) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, source.resolveErr
+}
+
+func (source failingCredentialSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestUploadFileClassifiesCredentialFailures(t *testing.T) {
+	for name, testCase := range map[string]struct {
+		resolveErr error
+		isTerminal bool
+	}{
+		"broker unavailable":            {projectconfig.ErrCredentialBrokerUnavailable, false},
+		"static not configured":         {errors.New("connection is not configured"), false},
+		"unlisted error":                {errors.New("credential store hiccup"), false},
+		"sdk reauthorization":           {sdkgo.NewReauthorizationRequiredError(nil), true},
+		"projectconfig reauthorization": {projectconfig.ErrReauthorizationRequired, true},
+		"object not found":              {projectconfig.ErrObjectNotFound, true},
+		"connection not selected":       {projectconfig.ErrConnectionNotSelected, true},
+		"broker rejected":               {projectconfig.ErrCredentialBrokerRejected, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, err := New(Config{BaseURL: "http://127.0.0.1:1", UploadBaseURL: "http://127.0.0.1:1", MaxUploadBytes: 8}, failingCredentialSource{resolveErr: testCase.resolveErr})
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(queryContext{}, client.UploadFile(), testConnection, UploadFileInput{FileID: "12345", ContentBase64: "SGVsbG8="})
+			var retry *sdkgo.RetryError
+			// A later attempt may follow an applied upload, so even a terminal failure retries.
+			_, laterErr := sdkgo.RunMutation(queryContext{attempt: 2}, client.UploadFile(), testConnection, UploadFileInput{FileID: "12345", ContentBase64: "SGVsbG8="})
+			require.ErrorAs(t, laterErr, &retry)
+			if testCase.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, UploadFileBranchDefect, result.Branch)
+				return
+			}
+			require.ErrorAs(t, err, &retry)
 		})
 	}
 }

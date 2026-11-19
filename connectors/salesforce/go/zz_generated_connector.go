@@ -630,6 +630,8 @@ type UpsertRecordByExternalIDStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpsertRecordByExternalIDResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpsertRecordByExternalIDOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                     `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpsertRecordByExternalIDStep[IN any](config UpsertRecordByExternalIDStepConfig[IN]) sdkgo.MutationStep[IN, UpsertRecordByExternalIDInput, UpsertRecordByExternalIDOutput] {
@@ -710,6 +712,8 @@ type UpdateRecordStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateRecordResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateRecordOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateRecordStep[IN any](config UpdateRecordStepConfig[IN]) sdkgo.MutationStep[IN, UpdateRecordInput, UpdateRecordOutput] {

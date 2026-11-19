@@ -15,8 +15,12 @@ import {
   type ModelListing,
 } from "@superdurable/dex-connectors-react";
 
-import { loadProviderModels, validateLLMModelID, type LLMProvider, type LLMRegion } from "./model-selection.js";
+import { readSavedStringList, readSettingLines, validateModelListSettings } from "./model-list-settings.js";
+import { isCustomEndpointProvider, loadProviderModels, validateLLMModelID, type LLMProvider, type LLMRegion } from "./model-selection.js";
 import { findLLMProviderSetup, llmProviderSetups, type LLMProviderSetup } from "./provider-catalog.js";
+
+/** OpenAICompatibleAPI is one value of the connection's openaiCompatibleApi field. */
+type OpenAICompatibleAPI = "chat-completions" | "responses";
 
 const apiKeyField = "api_key";
 const otherModelOption = "__other_model__";
@@ -58,6 +62,9 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
   const [region, setRegion] = useState<LLMRegion>(readSavedRegion(saved.region));
   const [workspaceId, setWorkspaceId] = useState(typeof saved.anthropicWorkspaceId === "string" ? saved.anthropicWorkspaceId : "");
   const [baseURL, setBaseURL] = useState(typeof saved.baseUrl === "string" ? saved.baseUrl : "");
+  const [openAICompatibleAPI, setOpenAICompatibleAPI] = useState<OpenAICompatibleAPI>(readSavedOpenAICompatibleAPI(saved.openaiCompatibleApi));
+  const [modelsText, setModelsText] = useState(readSavedStringList(saved.models));
+  const [contextWindowsText, setContextWindowsText] = useState(readSavedStringList(saved.modelContextWindowTokens));
   const [apiKey, setAPIKey] = useState("");
   const [listedKey, setListedKey] = useState("");
   const [model, setModel] = useState(typeof saved.model === "string" ? saved.model.trim() : "");
@@ -78,7 +85,7 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
   }, [typedKey]);
 
   useEffect(() => {
-    if (provider === "openai-compatible") {
+    if (isCustomEndpointProvider(provider)) {
       // The host cannot run a setup command against the configured URL, so never send its key for model discovery.
       loadProviderModels(client, provider, region).then((listing) => setListState({status: "loaded", listing}));
       return undefined;
@@ -103,11 +110,15 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
   const hiddenModelCount = listedModels.filter((option) => option.isHiddenByDefault).length;
   const isModelListed = model === "" || listedModels.some((option) => option.id === model);
   const showsModelIDEntry = isEnteringModelID || (listState.status !== "loading" && !isModelListed);
-  const modelProblem = model === "" && provider === "openai-compatible" ? "Enter a model ID from your gateway." :
+  const modelProblem = model === "" && isCustomEndpointProvider(provider) ? "Enter a model ID from your gateway." :
     model === "" || isModelListed ? undefined : validateLLMModelID(model);
-  const baseURLProblem = provider === "openai-compatible" ? validateCustomBaseURL(baseURL) : undefined;
+  const baseURLProblem = isCustomEndpointProvider(provider) ? validateCustomBaseURL(provider, baseURL) : undefined;
+  const offeredModels = readSettingLines(modelsText);
+  const contextWindows = readSettingLines(contextWindowsText);
+  const modelListProblem = setup ? validateModelListSettings(offeredModels, contextWindows, model || setup.defaultModel) : undefined;
   const keyProblem = provider !== "" && typedKey === "" && !canKeepSavedKey ? `Enter the ${setup?.label} API key.` : undefined;
-  const canSave = provider !== "" && keyProblem === undefined && modelProblem === undefined && baseURLProblem === undefined && saveState.status !== "saving";
+  const canSave = provider !== "" && keyProblem === undefined && modelProblem === undefined && baseURLProblem === undefined &&
+    modelListProblem === undefined && saveState.status !== "saving";
 
   const chooseProvider = (next: string) => {
     const nextSetup = findLLMProviderSetup(next);
@@ -117,7 +128,11 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
     setProvider(nextSetup?.provider ?? "");
     setRegion(nextSetup?.provider === savedSetup?.provider ? readSavedRegion(saved.region) : "global");
     setModel(nextSetup?.provider === savedSetup?.provider && typeof saved.model === "string" ? saved.model.trim() : "");
-    setBaseURL(nextSetup?.provider === savedSetup?.provider && typeof saved.baseUrl === "string" ? saved.baseUrl : "");
+    const isSavedProvider = nextSetup?.provider === savedSetup?.provider;
+    setBaseURL(isSavedProvider && typeof saved.baseUrl === "string" ? saved.baseUrl : "");
+    setOpenAICompatibleAPI(isSavedProvider ? readSavedOpenAICompatibleAPI(saved.openaiCompatibleApi) : "chat-completions");
+    setModelsText(isSavedProvider ? readSavedStringList(saved.models) : "");
+    setContextWindowsText(isSavedProvider ? readSavedStringList(saved.modelContextWindowTokens) : "");
     setEnteringModelID(false);
     setSaveState({status: "idle"});
   };
@@ -134,7 +149,9 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
     if (!setup) return;
     setSaveState({status: "saving"});
     saveConnectorConnection(client, {
-      configuration: connectionConfiguration(setup, region, model, workspaceId, baseURL, saved),
+      configuration: connectionConfiguration(setup, {
+        region, model, workspaceId, baseURL, openAICompatibleAPI, models: offeredModels, contextWindows,
+      }, saved),
       credentials: typedKey === "" ? {} : {[apiKeyField]: typedKey},
       keepCredentialFields: typedKey === "" && canKeepSavedKey ? [apiKeyField] : [],
     }).then(
@@ -173,13 +190,28 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
         <input onChange={(event) => setWorkspaceId(event.target.value)} placeholder="wrkspc_…" spellCheck={false} type="text" value={workspaceId}/>
       </StudioField>}
       {setup.provider === "openai-compatible" && <StudioField
-        hint="From your gateway's API documentation or administrator: enter the HTTPS API base URL ending in /v1, such as https://example.com/v1. Local loopback HTTP is allowed for testing. The connector appends /chat/completions. No key belongs in this URL; blank prevents saving."
+        hint="From your gateway's API documentation or administrator: enter the HTTPS API base URL ending in /v1, such as https://example.com/v1. Local loopback HTTP is allowed for testing. The connector appends /chat/completions, or /responses for the Responses API. No key belongs in this URL; blank prevents saving."
         label="Base URL"
       >
         <input onChange={(event) => setBaseURL(event.target.value)} placeholder="https://example.com/v1" spellCheck={false} type="url" value={baseURL}/>
       </StudioField>}
+      {setup.provider === "anthropic-compatible" && <StudioField
+        hint="From your gateway's API documentation: the Anthropic base URL it gives for ANTHROPIC_BASE_URL, without /v1, such as https://example.com/anthropic. Local loopback HTTP is allowed for testing. The connector appends /v1/messages and sends the key as a bearer token. No key belongs in this URL; blank prevents saving."
+        label="Base URL"
+      >
+        <input onChange={(event) => setBaseURL(event.target.value)} placeholder="https://example.com/anthropic" spellCheck={false} type="url" value={baseURL}/>
+      </StudioField>}
       {baseURLProblem !== undefined && <StudioNotice tone="attention">{baseURLProblem}</StudioNotice>}
-      {setup.provider !== "openai-compatible" && <StudioField hint={modelHint(setup)} label="Model">
+      {setup.provider === "openai-compatible" && <StudioField
+        hint="The OpenAI API your gateway documents. Chat Completions calls /chat/completions and suits most gateways; choose Responses only when the gateway documents a /responses endpoint."
+        label="API"
+      >
+        <select onChange={(event) => setOpenAICompatibleAPI(readSavedOpenAICompatibleAPI(event.target.value))} value={openAICompatibleAPI}>
+          <option value="chat-completions">Chat Completions (/chat/completions)</option>
+          <option value="responses">Responses (/responses)</option>
+        </select>
+      </StudioField>}
+      {!isCustomEndpointProvider(setup.provider) && <StudioField hint={modelHint(setup)} label="Model">
         <select
           disabled={listState.status === "waitingForKey" || listState.status === "loading"}
           onChange={(event) => chooseModelOption(event.target.value)}
@@ -208,14 +240,27 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
         <input checked={isShowingAllModels} onChange={(event) => setShowingAllModels(event.target.checked)} type="checkbox"/>
         Show all models ({hiddenModelCount} hidden that may not generate text)
       </label>}
-      {(setup.provider === "openai-compatible" || showsModelIDEntry) && <StudioField
-        hint={setup.provider === "openai-compatible"
+      {(isCustomEndpointProvider(setup.provider) || showsModelIDEntry) && <StudioField
+        hint={isCustomEndpointProvider(setup.provider)
           ? "From your gateway's API documentation or administrator, enter an exact model ID such as qwen-example. It is not secret; blank prevents saving."
           : "Any model ID the provider serves, written exactly as the provider names it, without a provider prefix."}
         label="Model ID">
         <input onChange={(event) => setModel(event.target.value.trim())} placeholder="model-id" spellCheck={false} type="text" value={model}/>
       </StudioField>}
       {modelProblem !== undefined && <StudioNotice tone="attention">{modelProblem}</StudioNotice>}
+      <StudioField
+        hint="Optional: the model IDs applications and agents may offer from this connection, one per line, exactly as the provider or gateway names them. Include the model above (or the provider default). At most 100; leave empty to list none. Steps may still pick other models."
+        label="Offered models (optional)"
+      >
+        <textarea onChange={(event) => setModelsText(event.target.value)} placeholder={"model-id\nanother-model-id"} rows={3} spellCheck={false} value={modelsText}/>
+      </StudioField>
+      <StudioField
+        hint="Optional: one <model ID>=<tokens> line per offered model whose context window applications cannot look up, such as my-gateway-model=128000. tokens is the total context window from the gateway's or provider's model documentation, from 1 to 100000000."
+        label="Context windows (optional)"
+      >
+        <textarea onChange={(event) => setContextWindowsText(event.target.value)} placeholder="model-id=128000" rows={2} spellCheck={false} value={contextWindowsText}/>
+      </StudioField>
+      {modelListProblem !== undefined && <StudioNotice tone="attention">{modelListProblem}</StudioNotice>}
     </>}
     <div className="studio-actions">
       <StudioButton disabled={!canSave} onClick={save} variant="primary">{saveState.status === "saving" ? "Saving…" : "Save"}</StudioButton>
@@ -225,22 +270,37 @@ function LLMConnectionForm({client, ready, onSaved}: ConnectionSetupProps & {onS
   </>;
 }
 
+/** ConnectionFormValues are the form's values that Save writes. */
+interface ConnectionFormValues {
+  region: LLMRegion;
+  model: string;
+  workspaceId: string;
+  baseURL: string;
+  openAICompatibleAPI: OpenAICompatibleAPI;
+  models: string[];
+  contextWindows: string[];
+}
+
 /** connectionConfiguration is the complete configuration Save stores; a field it omits is cleared. */
 function connectionConfiguration(
-  setup: LLMProviderSetup, region: LLMRegion, model: string, workspaceId: string, baseURL: string, saved: Record<string, unknown>,
+  setup: LLMProviderSetup, values: ConnectionFormValues, saved: Record<string, unknown>,
 ): Record<string, unknown> {
   const configuration: Record<string, unknown> = {provider: setup.provider};
-  if (setup.regions.length > 1) configuration.region = region;
-  if (model !== "") configuration.model = model;
-  if (setup.provider === "anthropic" && workspaceId.trim() !== "") configuration.anthropicWorkspaceId = workspaceId.trim();
-  if (setup.provider === "openai-compatible") configuration.baseUrl = baseURL.trim();
+  if (setup.regions.length > 1) configuration.region = values.region;
+  if (values.model !== "") configuration.model = values.model;
+  if (setup.provider === "anthropic" && values.workspaceId.trim() !== "") configuration.anthropicWorkspaceId = values.workspaceId.trim();
+  if (isCustomEndpointProvider(setup.provider)) configuration.baseUrl = values.baseURL.trim();
+  // The default Chat Completions API is omitted, so a saved configuration stays as it was before the field.
+  if (setup.provider === "openai-compatible" && values.openAICompatibleAPI === "responses") configuration.openaiCompatibleApi = "responses";
+  if (values.models.length > 0) configuration.models = values.models;
+  if (values.contextWindows.length > 0) configuration.modelContextWindowTokens = values.contextWindows;
   // maxResponseBytes has no field here; keep a value someone set for this provider.
   if (saved.provider === setup.provider && saved.maxResponseBytes !== undefined) configuration.maxResponseBytes = saved.maxResponseBytes;
   return configuration;
 }
 
 function apiKeyHint(setup: LLMProviderSetup, canKeepSavedKey: boolean): string {
-  if (setup.provider === "openai-compatible") {
+  if (isCustomEndpointProvider(setup.provider)) {
     const hint = "In your gateway administration page (for example https://example.com), open API keys and create an inference key in the format your gateway issues. It is secret, stored only in this connection, and sent as a bearer token only to baseUrl.";
     return canKeepSavedKey ? `${hint} Leave blank to keep the saved key.` : hint;
   }
@@ -248,20 +308,28 @@ function apiKeyHint(setup: LLMProviderSetup, canKeepSavedKey: boolean): string {
   return canKeepSavedKey ? `${hint} Leave blank to keep the saved key.` : hint;
 }
 
-function validateCustomBaseURL(value: string): string | undefined {
-  if (value.trim() === "") return "Enter the gateway's API base URL ending in /v1.";
+function validateCustomBaseURL(provider: "openai-compatible" | "anthropic-compatible", value: string): string | undefined {
+  const isOpenAI = provider === "openai-compatible";
+  const pathRule = isOpenAI ? "ending in /v1" : "without /v1, such as https://example.com/anthropic";
+  if (value.trim() === "") return `Enter the gateway's API base URL ${pathRule}.`;
   try {
     const parsed = new URL(value.trim());
     const isLoopback = parsed.hostname === "localhost" || /^127\.(?:\d{1,3}\.){2}\d{1,3}$/.test(parsed.hostname) || parsed.hostname === "[::1]";
+    const path = parsed.pathname.replace(/\/+$/, "");
+    const hasValidPath = isOpenAI ? path.endsWith("/v1") : !path.endsWith("/v1") && !path.endsWith("/messages");
     if ((parsed.protocol !== "https:" && !(parsed.protocol === "http:" && isLoopback)) ||
         parsed.username !== "" || parsed.password !== "" || parsed.search !== "" || parsed.hash !== "" ||
-        value.includes("?") || value.includes("#") || !parsed.pathname.replace(/\/+$/, "").endsWith("/v1")) {
-      return "Use an HTTPS API base URL ending in /v1, without credentials, a query, or a fragment; loopback HTTP is allowed for testing.";
+        value.includes("?") || value.includes("#") || !hasValidPath) {
+      return `Use an HTTPS API base URL ${pathRule}, without credentials, a query, or a fragment; loopback HTTP is allowed for testing.`;
     }
   } catch {
-    return "Enter an absolute HTTPS API base URL ending in /v1.";
+    return `Enter an absolute HTTPS API base URL ${pathRule}.`;
   }
   return undefined;
+}
+
+function readSavedOpenAICompatibleAPI(value: unknown): OpenAICompatibleAPI {
+  return value === "responses" ? "responses" : "chat-completions";
 }
 
 function modelHint(setup: LLMProviderSetup): string {

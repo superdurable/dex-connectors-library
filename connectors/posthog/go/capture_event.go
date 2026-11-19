@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -72,6 +73,9 @@ func (operation CaptureEventOperation) Invoke(call sdkgo.Call, input CaptureEven
 		properties[key] = value
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return captureRetry(sdkgo.FailureAvailability, "PostHog project token is temporarily unavailable", 0)
+	}
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.ProjectToken.Reveal()) {
 		return captureFailure(CaptureEventBranchDefect, sdkgo.FailureAuthentication, "PostHog project token is unavailable or invalid")
 	}
@@ -104,6 +108,10 @@ func (operation CaptureEventOperation) Invoke(call sdkgo.Call, input CaptureEven
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 		return captureRetry(sdkgo.FailureAvailability, "PostHog capture is temporarily unavailable", retryAfter)
 	}
+	if response.StatusCode != http.StatusOK && !isDefiniteRefusalStatus(response.StatusCode) {
+		// The event uuid deduplicates a resend, so an unknown answer retries.
+		return captureRetry(sdkgo.FailureAvailability, "PostHog answered capture with HTTP "+strconv.Itoa(response.StatusCode)+", so its outcome is unknown", retryAfter)
+	}
 	if response.StatusCode != http.StatusOK {
 		return captureFailure(CaptureEventBranchProviderRejected, posthogRejectionKind(response.StatusCode), "PostHog rejected capture with HTTP "+strconv.Itoa(response.StatusCode))
 	}
@@ -126,6 +134,13 @@ func (operation CaptureEventOperation) Invoke(call sdkgo.Call, input CaptureEven
 		return captureFailure(CaptureEventBranchQuotaLimited, sdkgo.FailureProviderRejection, "PostHog reported an event quota limit")
 	}
 	return sdkgo.NewMutationBranch(CaptureEventBranchAccepted, CapturedEvent{EventID: string(call.IdempotencyKey), Accepted: true}, nil, sdkgo.Receipt{})
+}
+
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func captureFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CapturedEvent] {

@@ -429,8 +429,8 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		{ID: ReplyToConversationBranchReplied, Description: "The reply or note is in the conversation; a retried attempt that found its own earlier reply reports it instead of sending again."},
 		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist or is not visible to the connection's token; nothing was added.", Optional: true},
 		{ID: ReplyToConversationBranchProviderRejected, Description: "Intercom conclusively rejected the reply, such as an unknown admin or a closed channel; nothing was added.", Optional: true},
-		{ID: ReplyToConversationBranchUncertain, Description: "An earlier attempt sent the reply but its outcome cannot be confirmed and the conversation shows no matching part, so the reply may exist; the connector never resends it.", Optional: true},
-		{ID: ReplyToConversationBranchInvalidResponse, Description: "Intercom accepted the reply but returned an invalid or oversized conversation, so the reply exists.", Optional: true},
+		{ID: ReplyToConversationBranchUncertain, Description: "The reply may exist but could not be confirmed: the send cap is reached and the conversation shows no part by the admin with the reply's type and text; or, after a possible send, the conversation could not be read back, is missing, or shows the reply with an invalid part; or Intercom accepted the reply with an unusable answer that a read-back could not confirm. A refusal whose body is oversized or reflects the access token is unconfirmed like a lost answer. Do not send it again without checking the conversation. Below the cap, a read-back that shows no matching part resends.", Optional: true},
+		{ID: ReplyToConversationBranchInvalidResponse, Description: "No longer selected. A reply whose part is invalid may exist, so the connector selects uncertain instead; the branch stays declared for compatibility.", Optional: true},
 		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -438,6 +438,8 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ReplyToConversationResult = sdkgo.MutationResult[ReplyToConversationOutput]
@@ -460,6 +462,8 @@ type ReplyToConversationStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplyToConversationResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ReplyToConversationOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]) sdkgo.MutationStep[IN, ReplyToConversationInput, ReplyToConversationOutput] {
@@ -498,6 +502,7 @@ func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -513,7 +518,7 @@ var UpdateConversationStateDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationStateBranchUpdated, Description: "The conversation is in the requested state; a repeated attempt that finds it there writes nothing."},
 		{ID: UpdateConversationStateBranchNotFound, Description: "The conversation does not exist or is not visible to the connection's token.", Optional: true},
 		{ID: UpdateConversationStateBranchProviderRejected, Description: "Intercom conclusively rejected the change, such as an unknown admin, and the conversation is not in the requested state.", Optional: true},
-		{ID: UpdateConversationStateBranchInvalidResponse, Description: "Intercom returned an invalid or oversized conversation, so the change may have been applied.", Optional: true},
+		{ID: UpdateConversationStateBranchInvalidResponse, Description: "Kept for compatibility and no longer selected: an invalid, oversized, or credential-reflecting conversation read before the change returns Retry, because the change is safe to repeat.", Optional: true},
 		{ID: UpdateConversationStateBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -521,6 +526,7 @@ var UpdateConversationStateDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateConversationStateResult = sdkgo.MutationResult[UpdateConversationStateOutput]
@@ -542,6 +548,8 @@ type UpdateConversationStateStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateConversationStateResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateConversationStateOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                                    `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateConversationStateStep[IN any](config UpdateConversationStateStepConfig[IN]) sdkgo.MutationStep[IN, UpdateConversationStateInput, UpdateConversationStateOutput] {
