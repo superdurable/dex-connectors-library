@@ -77,7 +77,7 @@ func (operation QueryPaymentStatusOperation) Invoke(call sdkgo.Call, input Query
 	request.Header.Set("Signature-Type", "RSA")
 	request.Header.Set("Signature-Data", signature)
 	request.Header.Set("mch_id", credentials.MerchantID)
-	request.Header.Set("timestamp", time.Now().In(time.FixedZone("CST", 8*60*60)).Format("20060102150405"))
+	request.Header.Set("timestamp", operation.client.now().In(time.FixedZone("CST", 8*60*60)).Format("20060102150405"))
 	request.Header.Set("Content-Type", "application/json;charset=utf-8")
 	request.Header.Set("Accept", "application/json")
 	response, err := operation.client.httpClient.Do(request)

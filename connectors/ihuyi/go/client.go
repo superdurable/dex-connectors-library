@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -17,10 +18,12 @@ const locationEndpoint = "https://api.ihuyi.com/appdev/ip/Submit.json"
 // Option supplies a client dependency at construction.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ httpClient *http.Client }
+type clockOption struct{ now func() time.Time }
 
 func (option httpClientOption) applyClientOption(client *Client) {
 	client.httpClient = option.httpClient
 }
+func (option clockOption) applyClientOption(client *Client) { client.now = option.now }
 
 // WithHTTPClient supplies a test transport or trusted proxy. Redirects remain disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -30,6 +33,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 // New validates local settings without making a provider request.
@@ -41,7 +45,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Validate() != nil || config.Timeout <= 0 || config.MaxResponseBytes <= 0 || config.MaxResponseBytes > 16<<20 {
 		return nil, errors.New("Ihuyi configuration is invalid")
 	}
-	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Ihuyi client option is required")
