@@ -74,12 +74,11 @@ func (operation ListAgentsOperation) Invoke(call sdkgo.Call, input ListAgentsInp
 	if page < 1 || page > 50000 || pageSize < 1 || pageSize > 100 {
 		return agentBranch(ListAgentsBranchDefect, sdkgo.FailureValidation, "page or pageSize is outside the supported range")
 	}
-	var nonceBytes [4]byte
-	if _, err := rand.Read(nonceBytes[:]); err != nil {
+	nonce, err := operation.client.nonce()
+	if err != nil {
 		return agentRetry(sdkgo.FailureAvailability, "request nonce could not be generated", 0)
 	}
-	nonce := strconv.Itoa(100000 + int(uint32(nonceBytes[0])<<24|uint32(nonceBytes[1])<<16|uint32(nonceBytes[2])<<8|uint32(nonceBytes[3]))%900000)
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().Unix(), 10)
 	payload, _ := json.Marshal(struct {
 		Page     int `json:"page"`
 		PageSize int `json:"pageSize"`
@@ -162,6 +161,14 @@ func (operation ListAgentsOperation) Invoke(call sdkgo.Call, input ListAgentsInp
 		agents = append(agents, AgentSummary{ID: item.ID, Number: item.Number, Enabled: *item.Status == 1})
 	}
 	return sdkgo.NewQueryBranch(ListAgentsBranchListed, ListAgentsOutput{Agents: agents, Page: page, Total: wire.Data.Page.Total, TotalPages: wire.Data.Page.TotalPage}, nil, sdkgo.Receipt{})
+}
+
+func newAgentNonce() (string, error) {
+	var nonceBytes [4]byte
+	if _, err := rand.Read(nonceBytes[:]); err != nil {
+		return "", err
+	}
+	return strconv.Itoa(100000 + int(uint32(nonceBytes[0])<<24|uint32(nonceBytes[1])<<16|uint32(nonceBytes[2])<<8|uint32(nonceBytes[3]))%900000), nil
 }
 
 func signAgentRequest(appID, secret, timestamp, nonce string) string {
