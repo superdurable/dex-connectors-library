@@ -1,0 +1,621 @@
+{
+  "connector": "sto",
+  "scenarios": [
+    {
+      "callId": "f779e974-13ca-53cf-8804-c7113962a7aa",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"884000400421364\":[{\"waybillNo\":\"884000400421364\",\"scanType\":\"收件\",\"opTime\":\"2020-02-18 17:20:08\",\"opOrgName\":\"青浦重固网点\"}]}}",
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "events": [
+            {
+              "opOrgName": "青浦重固网点",
+              "opTime": "2020-02-18 17:20:08",
+              "scanType": "收件"
+            }
+          ],
+          "waybillNo": "884000400421364"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-found",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "2c889153-2fae-5bce-8075-aaedd968764c",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorCode\":\"S02\",\"errorMsg\":\"invalid\"}",
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-providerRejected",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "10fa1292-bc32-5a2b-8dd2-71e252eceaab",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorCode\":\"S18\",\"errorMsg\":\"not subscribed\"}",
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-unsubscribed",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "cc2301e9-171f-5e56-adc9-03605f44136f",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-invalidResponse",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "10259524-3668-5c24-8896-1178856dce51",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorCode\":\"temporary\",\"needRetry\":true}",
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-retryHint",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "700e2e63-5f69-5452-ad39-c734043411b7",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorCode\":\"S07\"}",
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-gatewayUnavailable",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "cf8ffe09-33ca-5e05-bbb5-b8b72066633f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-retry429",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "1bddce2e-a505-50a0-8267-4802efd27556",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-retry503",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "15b69fb4-a70f-5b5e-b971-79e5642dbb49",
+      "exchanges": [
+        {
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-transport",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "0bffea01-b856-5fd7-9fb4-ba250dfd29fe",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "form": {
+            "api_name": [
+              "STO_TRACE_QUERY_COMMON"
+            ],
+            "content": [
+              "{\"waybillNoList\":[\"884000400421364\"]}"
+            ],
+            "data_digest": [
+              "qajJZOOGeLGF4j+mKgAaEA=="
+            ],
+            "from_appkey": [
+              "app123"
+            ],
+            "from_code": [
+              "resource123"
+            ],
+            "to_appkey": [
+              "sto_trace_query"
+            ],
+            "to_code": [
+              "sto_trace_query"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/gateway/link.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-oversized",
+      "operation": "queryWaybillTrace"
+    },
+    {
+      "callId": "8c276492-0dd5-52cc-ba54-82b74c0e68cb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "events": [],
+          "waybillNo": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "waybillNo": "884000400421364"
+      },
+      "name": "queryWaybillTrace-defect",
+      "operation": "queryWaybillTrace"
+    }
+  ],
+  "schemaVersion": 1
+}
