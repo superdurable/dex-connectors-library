@@ -1,0 +1,60 @@
+{
+  "connectorId": "showapi",
+  "releaseTag": "connectors/showapi/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-showapi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_lookup_area_codes_step",
+      "kind": "query",
+      "operationId": "lookupAreaCodes",
+      "inputType": "LookupAreaCodesInput",
+      "description": "Find weather region codes for a place name, returning only province, area, and area code.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "LookupAreaCodesInput names the place to resolve to weather area codes.",
+        "properties": {
+          "area": {
+            "description": "Area is a nonempty Chinese place name, limited to 100 Unicode characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "area"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

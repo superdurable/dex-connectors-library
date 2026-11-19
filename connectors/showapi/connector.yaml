@@ -8,6 +8,11 @@ metadata:
   categories: [developer-tools]
   version: v0.1.0
 spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [lookupAreaCodes]
+      triggers: []
   provider: showapi
   codegen:
     go:
