@@ -1,0 +1,333 @@
+{
+  "connector": "yunpian",
+  "scenarios": [
+    {
+      "callId": "e320cb07-fff8-595b-b942-c147ac8691b0",
+      "exchanges": [
+        {
+          "body": "{\"balance\":42.75}",
+          "form": {
+            "apikey": [
+              "sample-api-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/user/get.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "balance": 42.75
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-success",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "43c5dd58-1061-54f0-a03a-94263550154d",
+      "exchanges": [
+        {
+          "body": "{\"balance\":0}",
+          "form": {
+            "apikey": [
+              "sample-api-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/user/get.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "balance": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-empty",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "cf714725-0ddc-55c0-835a-756f47188484",
+      "exchanges": [
+        {
+          "body": "{\"code\":-1,\"msg\":\"invalid apikey\"}",
+          "form": {
+            "apikey": [
+              "sample-api-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/user/get.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balance": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-providerRejected",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "1064b0a6-10e9-5aed-b5ec-2d207a408bdf",
+      "exchanges": [
+        {
+          "body": "{\"nick\":\"person\"}",
+          "form": {
+            "apikey": [
+              "sample-api-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/user/get.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-invalidResponse",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "75f0c172-6047-5b7e-a438-ca7dd5e47dd5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "apikey": [
+              "sample-api-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/user/get.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-retry429",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "854f252e-2b58-5c7b-9716-ccc2d2b7123d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "apikey": [
+              "sample-api-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/user/get.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-retry503",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "16e886c5-d431-5256-ac03-a8a23acfd038",
+      "exchanges": [
+        {
+          "form": {
+            "apikey": [
+              "sample-api-key"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/user/get.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-transport",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "ae8451be-7624-5d64-9749-f79df6db4a48",
+      "exchanges": [
+        {
+          "body": "{\"balance\":42.75}",
+          "form": {
+            "apikey": [
+              "sample-api-key"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/user/get.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "balance": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-oversized",
+      "operation": "getAccountBalance"
+    },
+    {
+      "callId": "a637633b-c12e-5022-8712-96ca37412a40",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "balance": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAccountBalance-defect",
+      "operation": "getAccountBalance"
+    }
+  ],
+  "schemaVersion": 1
+}
