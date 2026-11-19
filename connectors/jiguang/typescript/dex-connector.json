@@ -1,0 +1,52 @@
+{
+  "connectorId": "jiguang",
+  "releaseTag": "connectors/jiguang/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-jiguang",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListApplicationTagsStep",
+      "kind": "query",
+      "operationId": "listApplicationTags",
+      "inputType": "ListApplicationTagsInput",
+      "description": "Read the JPush application's tag names without device identifiers.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListApplicationTagsInput has no parameters; the connection identifies the app.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
