@@ -1,0 +1,70 @@
+{
+  "connectorId": "niutrans",
+  "releaseTag": "connectors/niutrans/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-niutrans",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_translate_text_step",
+      "kind": "query",
+      "operationId": "translateText",
+      "inputType": "TranslateTextInput",
+      "description": "Translate up to 1000 Unicode characters from one language to another.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "translated",
+          "field": "translated",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "TranslateTextInput supplies bounded source text and language codes.",
+        "properties": {
+          "from": {
+            "description": "From is the NiuTrans source language code, such as zh or auto.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the source content, limited to 1000 Unicode characters.",
+            "type": "string"
+          },
+          "to": {
+            "description": "To is the NiuTrans target language code, such as en.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "text",
+          "to"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
