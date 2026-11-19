@@ -19,7 +19,8 @@ func TestFlowUsesStaticConnectionAndStepIdentities(t *testing.T) {
 	connection, err := datadog.NewConnection(client, reference)
 	require.NoError(t, err)
 	flow := NewFlow(connection)
-	_, err = dex.NewRegistry([]dex.Flow{flow})
+	monitorFlow := NewMonitorInspectionFlow(connection)
+	_, err = dex.NewRegistry([]dex.Flow{flow, monitorFlow})
 	require.NoError(t, err)
 	require.Equal(t, "DatadogLookup", dex.GetFinalFlowType(flow))
 	require.Equal(t, "StartDatadogLookup", dex.GetFinalStepType[LookupRequest](startLookup{}))
@@ -27,4 +28,8 @@ func TestFlowUsesStaticConnectionAndStepIdentities(t *testing.T) {
 	wait, err := startLookup{}.WaitFor(nil, datadog.QueryMetricsInput{From: 1761436800, To: 1761440400, Query: "system.cpu.user{*}"})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)
+	require.Equal(t, MonitorInspectionFlowType, dex.GetFinalFlowType(monitorFlow))
+	require.Equal(t, "StartMonitorInspection", dex.GetFinalStepType[datadog.GetMonitorInput](startMonitorInspection{}))
+	require.Equal(t, "CompleteMonitorInspection", dex.GetFinalStepType[datadog.GetMonitorResult](completeMonitorInspection{}))
+	require.Equal(t, datadog.GetMonitorInput{MonitorID: 12345}, mapMonitorInput(datadog.GetMonitorInput{MonitorID: 12345}))
 }

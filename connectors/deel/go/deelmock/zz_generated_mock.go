@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted deel connection. Script each operation through its accessor.
 type Mock struct {
-	connection  deel.Connection
-	getContract *connectormock.Query[deel.GetContractInput, deel.ContractStatus]
+	connection             deel.Connection
+	listContracts          *connectormock.Query[deel.ListContractsInput, deel.ContractPage]
+	listContractTasks      *connectormock.Query[deel.ListContractTasksInput, deel.ContractTaskList]
+	listContractAmendments *connectormock.Query[deel.ListContractAmendmentsInput, deel.ContractAmendmentPage]
+	listTerminationReasons *connectormock.Query[deel.ListTerminationReasonsInput, deel.TerminationReasonPage]
+	getContract            *connectormock.Query[deel.GetContractInput, deel.ContractStatus]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +30,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getContract: connectormock.NewQuery[deel.GetContractInput, deel.ContractStatus](t, deel.GetContractDefinition),
+		listContracts:          connectormock.NewQuery[deel.ListContractsInput, deel.ContractPage](t, deel.ListContractsDefinition),
+		listContractTasks:      connectormock.NewQuery[deel.ListContractTasksInput, deel.ContractTaskList](t, deel.ListContractTasksDefinition),
+		listContractAmendments: connectormock.NewQuery[deel.ListContractAmendmentsInput, deel.ContractAmendmentPage](t, deel.ListContractAmendmentsDefinition),
+		listTerminationReasons: connectormock.NewQuery[deel.ListTerminationReasonsInput, deel.TerminationReasonPage](t, deel.ListTerminationReasonsDefinition),
+		getContract:            connectormock.NewQuery[deel.GetContractInput, deel.ContractStatus](t, deel.GetContractDefinition),
 	}
+	mock.listContracts.Default(ListContractsDefault())
+	mock.listContractTasks.Default(ListContractTasksDefault())
+	mock.listContractAmendments.Default(ListContractAmendmentsDefault())
+	mock.listTerminationReasons.Default(ListTerminationReasonsDefault())
 	mock.getContract.Default(GetContractDefault())
 	connection, err := deel.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "deel", Name: connectionName})
 	if err != nil {
@@ -40,6 +52,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() deel.Connection { return mock.connection }
 
+// ListContracts returns the listContracts script.
+func (mock *Mock) ListContracts() *connectormock.Query[deel.ListContractsInput, deel.ContractPage] {
+	return mock.listContracts
+}
+
+// ListContractTasks returns the listContractTasks script.
+func (mock *Mock) ListContractTasks() *connectormock.Query[deel.ListContractTasksInput, deel.ContractTaskList] {
+	return mock.listContractTasks
+}
+
+// ListContractAmendments returns the listContractAmendments script.
+func (mock *Mock) ListContractAmendments() *connectormock.Query[deel.ListContractAmendmentsInput, deel.ContractAmendmentPage] {
+	return mock.listContractAmendments
+}
+
+// ListTerminationReasons returns the listTerminationReasons script.
+func (mock *Mock) ListTerminationReasons() *connectormock.Query[deel.ListTerminationReasonsInput, deel.TerminationReasonPage] {
+	return mock.listTerminationReasons
+}
+
 // GetContract returns the getContract script.
 func (mock *Mock) GetContract() *connectormock.Query[deel.GetContractInput, deel.ContractStatus] {
 	return mock.getContract
@@ -47,8 +79,174 @@ func (mock *Mock) GetContract() *connectormock.Query[deel.GetContractInput, deel
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListContracts() sdkgo.Query[deel.ListContractsInput, deel.ContractPage] {
+	return operations.mock.listContracts
+}
+func (operations mockOperations) ListContractTasks() sdkgo.Query[deel.ListContractTasksInput, deel.ContractTaskList] {
+	return operations.mock.listContractTasks
+}
+func (operations mockOperations) ListContractAmendments() sdkgo.Query[deel.ListContractAmendmentsInput, deel.ContractAmendmentPage] {
+	return operations.mock.listContractAmendments
+}
+func (operations mockOperations) ListTerminationReasons() sdkgo.Query[deel.ListTerminationReasonsInput, deel.TerminationReasonPage] {
+	return operations.mock.listTerminationReasons
+}
 func (operations mockOperations) GetContract() sdkgo.Query[deel.GetContractInput, deel.ContractStatus] {
 	return operations.mock.getContract
+}
+
+// ListContractsListed selects the listed branch: Deel returned a contract page.
+func ListContractsListed(value deel.ContractPage, failure *sdkgo.Failure) connectormock.Case[deel.ContractPage] {
+	return connectormock.Branch(deel.ListContractsBranchListed, value, failure)
+}
+
+// ListContractsProviderRejected selects the providerRejected branch: Deel rejected the list request.
+func ListContractsProviderRejected(value deel.ContractPage, failure *sdkgo.Failure) connectormock.Case[deel.ContractPage] {
+	return connectormock.Branch(deel.ListContractsBranchProviderRejected, value, failure)
+}
+
+// ListContractsInvalidResponse selects the invalidResponse branch: Deel returned malformed or oversized JSON.
+func ListContractsInvalidResponse(value deel.ContractPage, failure *sdkgo.Failure) connectormock.Case[deel.ContractPage] {
+	return connectormock.Branch(deel.ListContractsBranchInvalidResponse, value, failure)
+}
+
+// ListContractsDefect selects the defect branch: Local input or credentials are invalid.
+func ListContractsDefect(value deel.ContractPage, failure *sdkgo.Failure) connectormock.Case[deel.ContractPage] {
+	return connectormock.Branch(deel.ListContractsBranchDefect, value, failure)
+}
+
+// ListContractsRetry asks Dex to retry the listContracts Step, after the delay when it is positive.
+func ListContractsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[deel.ContractPage] {
+	return connectormock.Retry[deel.ContractPage](failure, after)
+}
+
+// ListContractsListedDefault is the manifest mock listedDefault: One example contract is returned.
+func ListContractsListedDefault() connectormock.Case[deel.ContractPage] {
+	value := connectormock.MustDecodeOutput[deel.ContractPage](`{"contracts":[{"id":"123e4567-e89b-12d3-a456-426614174000","type":"ongoing_time_based","status":"in_progress"}],"nextCursor":""}`)
+	return connectormock.Branch(deel.ListContractsBranchListed, value, nil)
+}
+
+// ListContractsDefault is the manifest default, listedDefault, which New installs.
+func ListContractsDefault() connectormock.Case[deel.ContractPage] {
+	return ListContractsListedDefault()
+}
+
+// ListContractTasksListed selects the listed branch: Deel returned contract tasks.
+func ListContractTasksListed(value deel.ContractTaskList, failure *sdkgo.Failure) connectormock.Case[deel.ContractTaskList] {
+	return connectormock.Branch(deel.ListContractTasksBranchListed, value, failure)
+}
+
+// ListContractTasksNotFound selects the notFound branch: Deel did not expose the contract.
+func ListContractTasksNotFound(value deel.ContractTaskList, failure *sdkgo.Failure) connectormock.Case[deel.ContractTaskList] {
+	return connectormock.Branch(deel.ListContractTasksBranchNotFound, value, failure)
+}
+
+// ListContractTasksProviderRejected selects the providerRejected branch: Deel rejected the task request.
+func ListContractTasksProviderRejected(value deel.ContractTaskList, failure *sdkgo.Failure) connectormock.Case[deel.ContractTaskList] {
+	return connectormock.Branch(deel.ListContractTasksBranchProviderRejected, value, failure)
+}
+
+// ListContractTasksInvalidResponse selects the invalidResponse branch: Deel returned malformed or oversized JSON.
+func ListContractTasksInvalidResponse(value deel.ContractTaskList, failure *sdkgo.Failure) connectormock.Case[deel.ContractTaskList] {
+	return connectormock.Branch(deel.ListContractTasksBranchInvalidResponse, value, failure)
+}
+
+// ListContractTasksDefect selects the defect branch: Local input or credentials are invalid.
+func ListContractTasksDefect(value deel.ContractTaskList, failure *sdkgo.Failure) connectormock.Case[deel.ContractTaskList] {
+	return connectormock.Branch(deel.ListContractTasksBranchDefect, value, failure)
+}
+
+// ListContractTasksRetry asks Dex to retry the listContractTasks Step, after the delay when it is positive.
+func ListContractTasksRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[deel.ContractTaskList] {
+	return connectormock.Retry[deel.ContractTaskList](failure, after)
+}
+
+// ListContractTasksListedDefault is the manifest mock listedDefault: One example task is returned.
+func ListContractTasksListedDefault() connectormock.Case[deel.ContractTaskList] {
+	value := connectormock.MustDecodeOutput[deel.ContractTaskList](`{"tasks":[{"id":"task-123","status":"approved"}]}`)
+	return connectormock.Branch(deel.ListContractTasksBranchListed, value, nil)
+}
+
+// ListContractTasksDefault is the manifest default, listedDefault, which New installs.
+func ListContractTasksDefault() connectormock.Case[deel.ContractTaskList] {
+	return ListContractTasksListedDefault()
+}
+
+// ListContractAmendmentsListed selects the listed branch: Deel returned an amendment page.
+func ListContractAmendmentsListed(value deel.ContractAmendmentPage, failure *sdkgo.Failure) connectormock.Case[deel.ContractAmendmentPage] {
+	return connectormock.Branch(deel.ListContractAmendmentsBranchListed, value, failure)
+}
+
+// ListContractAmendmentsNotFound selects the notFound branch: Deel did not expose the contract.
+func ListContractAmendmentsNotFound(value deel.ContractAmendmentPage, failure *sdkgo.Failure) connectormock.Case[deel.ContractAmendmentPage] {
+	return connectormock.Branch(deel.ListContractAmendmentsBranchNotFound, value, failure)
+}
+
+// ListContractAmendmentsProviderRejected selects the providerRejected branch: Deel rejected the amendment request.
+func ListContractAmendmentsProviderRejected(value deel.ContractAmendmentPage, failure *sdkgo.Failure) connectormock.Case[deel.ContractAmendmentPage] {
+	return connectormock.Branch(deel.ListContractAmendmentsBranchProviderRejected, value, failure)
+}
+
+// ListContractAmendmentsInvalidResponse selects the invalidResponse branch: Deel returned malformed or oversized JSON.
+func ListContractAmendmentsInvalidResponse(value deel.ContractAmendmentPage, failure *sdkgo.Failure) connectormock.Case[deel.ContractAmendmentPage] {
+	return connectormock.Branch(deel.ListContractAmendmentsBranchInvalidResponse, value, failure)
+}
+
+// ListContractAmendmentsDefect selects the defect branch: Local input or credentials are invalid.
+func ListContractAmendmentsDefect(value deel.ContractAmendmentPage, failure *sdkgo.Failure) connectormock.Case[deel.ContractAmendmentPage] {
+	return connectormock.Branch(deel.ListContractAmendmentsBranchDefect, value, failure)
+}
+
+// ListContractAmendmentsRetry asks Dex to retry the listContractAmendments Step, after the delay when it is positive.
+func ListContractAmendmentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[deel.ContractAmendmentPage] {
+	return connectormock.Retry[deel.ContractAmendmentPage](failure, after)
+}
+
+// ListContractAmendmentsListedDefault is the manifest mock listedDefault: One example amendment is returned.
+func ListContractAmendmentsListedDefault() connectormock.Case[deel.ContractAmendmentPage] {
+	value := connectormock.MustDecodeOutput[deel.ContractAmendmentPage](`{"amendments":[{"id":"amendment-123","status":"ACTIVE","signStatus":"APPROVED"}],"nextCursor":""}`)
+	return connectormock.Branch(deel.ListContractAmendmentsBranchListed, value, nil)
+}
+
+// ListContractAmendmentsDefault is the manifest default, listedDefault, which New installs.
+func ListContractAmendmentsDefault() connectormock.Case[deel.ContractAmendmentPage] {
+	return ListContractAmendmentsListedDefault()
+}
+
+// ListTerminationReasonsListed selects the listed branch: Deel returned termination reasons.
+func ListTerminationReasonsListed(value deel.TerminationReasonPage, failure *sdkgo.Failure) connectormock.Case[deel.TerminationReasonPage] {
+	return connectormock.Branch(deel.ListTerminationReasonsBranchListed, value, failure)
+}
+
+// ListTerminationReasonsProviderRejected selects the providerRejected branch: Deel rejected the reason request.
+func ListTerminationReasonsProviderRejected(value deel.TerminationReasonPage, failure *sdkgo.Failure) connectormock.Case[deel.TerminationReasonPage] {
+	return connectormock.Branch(deel.ListTerminationReasonsBranchProviderRejected, value, failure)
+}
+
+// ListTerminationReasonsInvalidResponse selects the invalidResponse branch: Deel returned malformed or oversized JSON.
+func ListTerminationReasonsInvalidResponse(value deel.TerminationReasonPage, failure *sdkgo.Failure) connectormock.Case[deel.TerminationReasonPage] {
+	return connectormock.Branch(deel.ListTerminationReasonsBranchInvalidResponse, value, failure)
+}
+
+// ListTerminationReasonsDefect selects the defect branch: Local input or credentials are invalid.
+func ListTerminationReasonsDefect(value deel.TerminationReasonPage, failure *sdkgo.Failure) connectormock.Case[deel.TerminationReasonPage] {
+	return connectormock.Branch(deel.ListTerminationReasonsBranchDefect, value, failure)
+}
+
+// ListTerminationReasonsRetry asks Dex to retry the listTerminationReasons Step, after the delay when it is positive.
+func ListTerminationReasonsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[deel.TerminationReasonPage] {
+	return connectormock.Retry[deel.TerminationReasonPage](failure, after)
+}
+
+// ListTerminationReasonsListedDefault is the manifest mock listedDefault: One standard reason is returned.
+func ListTerminationReasonsListedDefault() connectormock.Case[deel.TerminationReasonPage] {
+	value := connectormock.MustDecodeOutput[deel.TerminationReasonPage](`{"reasons":[{"id":"reason-123","name":"Project has ended","frequency":"MOST_COMMON"}],"nextCursor":""}`)
+	return connectormock.Branch(deel.ListTerminationReasonsBranchListed, value, nil)
+}
+
+// ListTerminationReasonsDefault is the manifest default, listedDefault, which New installs.
+func ListTerminationReasonsDefault() connectormock.Case[deel.TerminationReasonPage] {
+	return ListTerminationReasonsListedDefault()
 }
 
 // GetContractFound selects the found branch: Deel returned the contract.

@@ -16,10 +16,12 @@ import (
 // ConnectionName is the static project connection used by every connector Step.
 const ConnectionName = "todoist"
 
-// Request selects read-only list mode or lifecycle mode, which creates and deletes its own task.
+// Request selects listing, lifecycle, closing, or restoration of a task.
 type Request struct {
-	// Mode is list (the default) or lifecycle.
+	// Mode is list (the default), lifecycle, close, or reopen.
 	Mode string `json:"mode,omitempty"`
+	// TaskID is the task ID required for close and reopen modes.
+	TaskID string `json:"taskId,omitempty"`
 	// Content is required only for lifecycle mode, as the new task's original title.
 	Content string `json:"content,omitempty"`
 	// Description is the new task's original description in lifecycle mode.
@@ -38,8 +40,12 @@ type Request struct {
 
 // Outcome contains the returned list page or facts from the completed disposable lifecycle.
 type Outcome struct {
-	// Status is listed or deletedAndVerified; optional failure branches fail the Flow.
+	// Status is listed, closed, reopened, or deletedAndVerified; optional failure branches fail the Flow.
 	Status string `json:"status"`
+	// ClosedTaskID identifies the task closed in close mode.
+	ClosedTaskID string `json:"closedTaskId,omitempty"`
+	// ReopenedTaskID identifies the restored task in reopen mode.
+	ReopenedTaskID string `json:"reopenedTaskId,omitempty"`
 	// Page contains one page in list mode.
 	Page todoist.TaskPage `json:"page"`
 	// Created contains the task created by lifecycle mode.
@@ -81,6 +87,22 @@ func NewFlow(connection todoist.Connection) *TodoistTaskCRUDFlow {
 func (flow *TodoistTaskCRUDFlow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(StartTaskCRUD{}),
+		dex.DefineStep(todoist.NewCloseTaskStep(todoist.CloseTaskStepConfig[todoist.CloseTaskInput]{
+			StepType: "CloseActiveTask", ConnectionName: ConnectionName,
+			Connection:          flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "todoist", GroupLabel: "Todoist", Explanation: "Close the task with a deduplicated Sync command."},
+			MapToOperationInput: func(input todoist.CloseTaskInput) todoist.CloseTaskInput { return input },
+			Closed:              sdkgo.GoTo(CompleteTaskClose{}),
+		})),
+		dex.DefineStep(CompleteTaskClose{}),
+		dex.DefineStep(todoist.NewReopenTaskStep(todoist.ReopenTaskStepConfig[todoist.ReopenTaskInput]{
+			StepType: "ReopenCompletedTask", ConnectionName: ConnectionName,
+			Connection:          flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "todoist", GroupLabel: "Todoist", Explanation: "Restore the completed task named by the start input."},
+			MapToOperationInput: func(input todoist.ReopenTaskInput) todoist.ReopenTaskInput { return input },
+			Reopened:            sdkgo.GoTo(CompleteTaskReopen{}),
+		})),
+		dex.DefineStep(CompleteTaskReopen{}),
 		dex.DefineStep(todoist.NewListTasksStep(todoist.ListTasksStepConfig[todoist.ListTasksInput]{
 			StepType:            "ListCurrentTasks",
 			ConnectionName:      ConnectionName,
@@ -229,8 +251,10 @@ func (StartTaskCRUD) Execute(ctx dex.Context, input Request) (*dex.StepDecision,
 	if input.Mode == "" {
 		input.Mode = "list"
 	}
-	if input.Mode != "list" && input.Mode != "lifecycle" || input.Mode == "lifecycle" && strings.TrimSpace(input.Content) == "" {
-		return dex.ForceFail("mode must be list or lifecycle; lifecycle requires content"), nil
+	if input.Mode != "list" && input.Mode != "lifecycle" && input.Mode != "close" && input.Mode != "reopen" ||
+		input.Mode == "lifecycle" && strings.TrimSpace(input.Content) == "" ||
+		(input.Mode == "close" || input.Mode == "reopen") && strings.TrimSpace(input.TaskID) == "" {
+		return dex.ForceFail("mode must be list, lifecycle, close, or reopen; lifecycle requires content and close/reopen require taskId"), nil
 	}
 	if err := requestAttribute.Set(ctx, input); err != nil {
 		return nil, err
@@ -238,10 +262,48 @@ func (StartTaskCRUD) Execute(ctx dex.Context, input Request) (*dex.StepDecision,
 	if input.Mode == "list" {
 		return dex.GoTo(sdkgo.StepRef[todoist.ListTasksInput]("ListCurrentTasks"), todoist.ListTasksInput{ProjectID: input.ProjectID, Cursor: input.Cursor, Limit: input.Limit}), nil
 	}
+	if input.Mode == "reopen" {
+		return dex.GoTo(sdkgo.StepRef[todoist.ReopenTaskInput]("ReopenCompletedTask"), todoist.ReopenTaskInput{TaskID: input.TaskID}), nil
+	}
+	if input.Mode == "close" {
+		return dex.GoTo(sdkgo.StepRef[todoist.CloseTaskInput]("CloseActiveTask"), todoist.CloseTaskInput{TaskID: input.TaskID}), nil
+	}
 	if err := pageCountAttribute.Set(ctx, 0); err != nil {
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[Request]("CreateLifecycleTask"), input), nil
+}
+
+// CompleteTaskClose persists the confirmed closed task ID and completes.
+// dex:group group-id:crud group-label:"Task CRUD"
+// dex:explanation text:"Complete after Todoist confirms the deduplicated close command."
+type CompleteTaskClose struct {
+	dex.StepDefaultsNoWaitFor[todoist.CloseTaskResult]
+}
+
+// Execute records the closed task.
+func (CompleteTaskClose) Execute(ctx dex.Context, result todoist.CloseTaskResult) (*dex.StepDecision, error) {
+	outcome := Outcome{Status: "closed", ClosedTaskID: result.Value.TaskID}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// CompleteTaskReopen persists the restored task ID and completes.
+// dex:group group-id:crud group-label:"Task CRUD"
+// dex:explanation text:"Complete after Todoist confirms the task was restored."
+type CompleteTaskReopen struct {
+	dex.StepDefaultsNoWaitFor[todoist.ReopenTaskResult]
+}
+
+// Execute records the restored task.
+func (CompleteTaskReopen) Execute(ctx dex.Context, result todoist.ReopenTaskResult) (*dex.StepDecision, error) {
+	outcome := Outcome{Status: "reopened", ReopenedTaskID: result.Value.TaskID}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
 }
 
 // CompleteTaskList retains the one-page result.

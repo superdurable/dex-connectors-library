@@ -4,10 +4,7 @@
 // Package discord connects Dex applications to Discord channels through the
 // Discord HTTP API with a bot token.
 //
-// A Client exposes four operations: GetChannel reads one channel,
-// ListChannelMessages reads one bounded page of channel messages,
-// CreateMessage sends a bot text message, and AddReaction adds the bot's
-// reaction to a message.
+// A Client reads channels and messages, sends and deletes messages, and adds reactions.
 //
 // CreateMessage sends a nonce derived from the Step's idempotency key with
 // enforce_nonce under a single-dispatch fence, so a resend inside Discord's
@@ -172,6 +169,69 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 // GetChannel returns the channel read Query bound to this client.
 func (client *Client) GetChannel() GetChannelOperation { return GetChannelOperation{client: client} }
 
+// ListGuildChannels returns the server channel listing Query bound to this client.
+func (client *Client) ListGuildChannels() ListGuildChannelsOperation {
+	return ListGuildChannelsOperation{client: client}
+}
+
+// CreateGuildChannel returns the text channel creation Mutation bound to this client.
+func (client *Client) CreateGuildChannel() CreateGuildChannelOperation {
+	return CreateGuildChannelOperation{client: client}
+}
+
+// UpdateChannel returns the channel update Mutation bound to this client.
+func (client *Client) UpdateChannel() UpdateChannelOperation {
+	return UpdateChannelOperation{client: client}
+}
+
+// DeleteChannel returns the channel deletion Mutation bound to this client.
+func (client *Client) DeleteChannel() DeleteChannelOperation {
+	return DeleteChannelOperation{client: client}
+}
+
+// ListGuildMembers returns the server member listing Query bound to this client.
+func (client *Client) ListGuildMembers() ListGuildMembersOperation {
+	return ListGuildMembersOperation{client: client}
+}
+
+// BanGuildMember returns the member ban Mutation bound to this client.
+func (client *Client) BanGuildMember() BanGuildMemberOperation {
+	return BanGuildMemberOperation{client: client}
+}
+
+// KickGuildMember returns the member removal Mutation bound to this client.
+func (client *Client) KickGuildMember() KickGuildMemberOperation {
+	return KickGuildMemberOperation{client: client}
+}
+
+// AddGuildMemberRole returns the role add Mutation bound to this client.
+func (client *Client) AddGuildMemberRole() AddGuildMemberRoleOperation {
+	return AddGuildMemberRoleOperation{client: client}
+}
+
+// RemoveGuildMemberRole returns the role removal Mutation bound to this client.
+func (client *Client) RemoveGuildMemberRole() RemoveGuildMemberRoleOperation {
+	return RemoveGuildMemberRoleOperation{client: client}
+}
+
+// TimeoutGuildMember returns the absolute member timeout Mutation bound to this client.
+func (client *Client) TimeoutGuildMember() TimeoutGuildMemberOperation {
+	return TimeoutGuildMemberOperation{client: client}
+}
+
+// UnbanGuildMember returns the ban removal Mutation bound to this client.
+func (client *Client) UnbanGuildMember() UnbanGuildMemberOperation {
+	return UnbanGuildMemberOperation{client: client}
+}
+
+// GetMessage returns the single-message Query bound to this client.
+func (client *Client) GetMessage() GetMessageOperation { return GetMessageOperation{client: client} }
+
+// DeleteMessage returns the message deletion Mutation bound to this client.
+func (client *Client) DeleteMessage() DeleteMessageOperation {
+	return DeleteMessageOperation{client: client}
+}
+
 // ListChannelMessages returns the message page Query bound to this client.
 func (client *Client) ListChannelMessages() ListChannelMessagesOperation {
 	return ListChannelMessagesOperation{client: client}
@@ -197,6 +257,9 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 	case errors.Is(err, errRequestNotBuilt):
 		return response, client.outcome(outcomeDefect, operation, sdkgo.FailureLocalDefect, errRequestNotBuilt.Error(), receipt)
 	case errors.Is(err, errResponseTooLarge):
+		if request.method != http.MethodGet {
+			return response, client.outcome(outcomeRetry, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
+		}
 		return response, client.outcome(outcomeInvalidResponse, operation, sdkgo.FailureResponseTooLarge, errResponseTooLarge.Error(), receipt)
 	case err != nil:
 		return response, client.outcome(outcomeRetry, operation, sdkgo.FailureTransport, "Discord did not return a complete response", receipt)
@@ -204,8 +267,27 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 		return response, nil
 	}
 	classified := classifyErrorResponse(operation, response, client.now())
+	if request.method != http.MethodGet && classified.disposition != outcomeRetry && !isDefiniteDiscordWriteRefusal(response) {
+		classified = providerOutcome{disposition: outcomeRetry, failure: providerFailure(operation, sdkgo.FailureAvailability, "Discord write outcome is unknown")}
+	}
 	classified.receipt = receipt
 	return response, &classified
+}
+
+func isDefiniteDiscordWriteRefusal(response providerResponse) bool {
+	if response.isErrorBodyOversized || readErrorCode(response.body) == "" {
+		return false
+	}
+	var answer map[string]json.RawMessage
+	if json.Unmarshal(response.body, &answer) != nil {
+		return false
+	}
+	for _, field := range []string{"id", "message_id", "channel_id", "guild_id"} {
+		if len(answer[field]) > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (client *Client) send(call sdkgo.Call, credentials Credentials, request providerRequest) (providerResponse, error) {
@@ -233,6 +315,14 @@ func (client *Client) newHTTPRequest(requestContext context.Context, credentials
 		httpRequest.Header.Set("Content-Type", "application/json")
 	}
 	return httpRequest, nil
+}
+
+func (client *Client) sendWithContext(requestContext context.Context, credentials Credentials, request providerRequest) (providerResponse, error) {
+	httpRequest, err := client.newHTTPRequest(requestContext, credentials, request)
+	if err != nil {
+		return providerResponse{}, err
+	}
+	return client.do(httpRequest)
 }
 
 // do sends one built request and reads its bounded response. A response
