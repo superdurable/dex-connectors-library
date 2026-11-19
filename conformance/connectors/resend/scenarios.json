@@ -3895,7 +3895,7 @@
       "callId": "77b56df0-f538-5349-a1bf-5535116b7af0",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4307,7 +4307,7 @@
       "callId": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7603,7 +7603,7 @@
       "callId": "e479068b-d45c-5abd-a82f-a0288bad78d9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -12587,7 +12587,7 @@
       "callId": "a188a577-c1d9-55f6-9064-73285d9239b9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -16969,7 +16969,7 @@
       "callId": "1d0651bd-9c9b-5b4c-b938-01896586a2e9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -19449,18 +19449,16 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
-          "state": "canResend"
-        },
-        "output": {
-          "id": ""
+          "sendCount": 1,
+          "state": "claimed"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -19998,7 +19996,7 @@
           "status": 500
         },
         {
-          "body": "{\"data\":[{\"id\":\"broadcast-1\",\"name\":\"Newsletter\"}],\"has_more\":false}",
+          "body": "{\"data\":[],\"has_more\":false}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -20025,14 +20023,31 @@
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
-          "method": "GET",
-          "path": "/broadcasts/broadcast-1",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
           "requestHeaders": {
             "Accept": [
               "application/json"
             ],
             "Authorization": [
               "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
             ],
             "User-Agent": [
               "superdurable-resend/0.1"
@@ -20041,7 +20056,7 @@
           "status": 500
         },
         {
-          "body": "{\"data\":[{\"id\":\"broadcast-1\",\"name\":\"Newsletter\"}],\"has_more\":false}",
+          "body": "{\"data\":[],\"has_more\":false}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -20068,8 +20083,49 @@
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
+          "method": "POST",
+          "path": "/broadcasts",
+          "requestBody": {
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Newsletter",
+            "preview_text": "Preview",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "segment_id": "segment-1",
+            "send": false,
+            "subject": "Hello",
+            "text": "Hello",
+            "topic_id": "topic-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
           "method": "GET",
-          "path": "/broadcasts/broadcast-1",
+          "path": "/broadcasts",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -20081,16 +20137,25 @@
               "superdurable-resend/0.1"
             ]
           },
-          "status": 500
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 5,
-        "retry": true,
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 6,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "669718f4-5c93-5c95-bebe-397580ef142c",
       "input": {
@@ -20121,6 +20186,12 @@
         {
           "exchangeCount": 3,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "669718f4-5c93-5c95-bebe-397580ef142c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -21621,7 +21692,7 @@
       "callId": "0da46343-b8ac-54ae-89af-84c39c915cce",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -23728,7 +23799,7 @@
       "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -25792,7 +25863,7 @@
       "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -26991,7 +27062,7 @@
       "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -27043,7 +27114,7 @@
       "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -30484,7 +30555,7 @@
       "callId": "6566ec99-ab78-569a-8b9c-b596078a3efb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -31902,7 +31973,7 @@
       "callId": "21064e3d-0a40-5c15-af34-ce659fabe63c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -33048,7 +33119,7 @@
       "callId": "42138037-3438-588a-b075-01b3a68e726c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -34451,7 +34522,7 @@
       "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -36538,7 +36609,7 @@
       "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -38919,7 +38990,7 @@
       "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -40069,7 +40140,7 @@
       "callId": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -42307,7 +42378,7 @@
       "callId": "fe7e51e8-3aee-524a-98a0-8749ad1507d0",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -52093,7 +52164,7 @@
       "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"name\":\"invalid_request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

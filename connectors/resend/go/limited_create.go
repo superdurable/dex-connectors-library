@@ -192,7 +192,7 @@ func (request resendLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 		return request.unknownOutcome(canResendUnknown, 0)
 	}
 	if dispatch.status != http.StatusOK && dispatch.status != http.StatusCreated && dispatch.status != http.StatusAccepted {
-		if !hasPossibleEarlierSend && isDefiniteRefusalStatus(dispatch.status) && len(dispatch.body) > 0 && json.Valid(dispatch.body) {
+		if !hasPossibleEarlierSend && isDefiniteRefusalStatus(dispatch.status) && hasResendRefusalName(dispatch.body) {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 				return request.retry(sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
 			}
@@ -216,6 +216,11 @@ func (request resendLimitedCreate[T]) unknownOutcome(canResend bool, retryAfter 
 		return request.retry(sdkgo.FailureAvailability, "provider read-back is unavailable", retryAfter)
 	}
 	return request.uncertain("send cap reached without a request-unique confirmation")
+}
+
+func hasResendRefusalName(body []byte) bool {
+	var response struct{ Name string `json:"name"` }
+	return json.Unmarshal(body, &response) == nil && response.Name != ""
 }
 
 func (request resendLimitedCreate[T]) retry(kind sdkgo.FailureKind, message string, retryAfter time.Duration) sdkgo.MutationAttempt[T] {

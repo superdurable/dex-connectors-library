@@ -174,7 +174,7 @@ func (request sentryLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 		return request.unknownOutcome(canResendUnknown, 0)
 	}
 	if dispatch.status != http.StatusOK && dispatch.status != http.StatusCreated {
-		if !hasPossibleEarlierSend && isDefiniteRefusalStatus(dispatch.status) && len(dispatch.body) > 0 && json.Valid(dispatch.body) {
+		if !hasPossibleEarlierSend && isDefiniteRefusalStatus(dispatch.status) && hasSentryRefusalDetail(dispatch.body) {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 				return request.retry(sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
 			}
@@ -198,6 +198,11 @@ func (request sentryLimitedCreate[T]) unknownOutcome(canResend bool, retryAfter 
 		return request.retry(sdkgo.FailureAvailability, "provider read-back is unavailable", retryAfter)
 	}
 	return request.uncertain("send cap reached without a request-unique confirmation")
+}
+
+func hasSentryRefusalDetail(body []byte) bool {
+	var response struct{ Detail string `json:"detail"` }
+	return json.Unmarshal(body, &response) == nil && response.Detail != ""
 }
 
 func (request sentryLimitedCreate[T]) retry(kind sdkgo.FailureKind, message string, retryAfter time.Duration) sdkgo.MutationAttempt[T] {

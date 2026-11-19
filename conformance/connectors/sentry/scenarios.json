@@ -4258,7 +4258,7 @@
       "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"detail\":\"forbidden\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

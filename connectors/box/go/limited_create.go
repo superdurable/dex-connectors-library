@@ -243,7 +243,7 @@ func (request boxLimitedCreate) invoke() sdkgo.MutationAttempt[CreatedBoxItem] {
 		return request.unknownOutcome(canResendUnknown, 0)
 	}
 	if response.status != http.StatusOK && response.status != http.StatusCreated {
-		if !hasPossibleEarlierSend && isDefiniteBoxRefusalStatus(response.status) && len(response.body) > 0 && json.Valid(response.body) {
+		if !hasPossibleEarlierSend && isDefiniteBoxRefusalStatus(response.status) && hasBoxRefusalCode(response.body) {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 				return request.retry(sdkgo.FailureAvailability, "refusal checkpoint unavailable", 0)
 			}
@@ -276,6 +276,11 @@ func isDefiniteBoxRefusalStatus(status int) bool {
 		return true
 	}
 	return false
+}
+
+func hasBoxRefusalCode(body []byte) bool {
+	var response struct{ Code string `json:"code"` }
+	return json.Unmarshal(body, &response) == nil && response.Code != ""
 }
 
 func (request boxLimitedCreate) decodeResponse(body []byte) (CreatedBoxItem, error) {
