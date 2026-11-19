@@ -3684,6 +3684,152 @@
           }
         }
       }
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [
+        {
+          "body": "{\"results\":[],\"count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "metadata_dex_call_id": [
+              "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            ],
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"message\":\"PandaDoc refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents",
+          "requestBody": {
+            "metadata": {
+              "dex_call_id": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944"
+            },
+            "name": "Example agreement",
+            "recipients": [
+              {
+                "email": "recipient@example.com",
+                "role": "Signer"
+              }
+            ],
+            "template_uuid": "hryJY9mqYZHjQCYQuSjRQg"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "API-Key sample-pandadoc-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 2,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-resend-definite-refusal-retry",
+      "operation": "createDocument",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+      "input": {
+        "name": "Example agreement",
+        "recipients": [
+          {
+            "email": "recipient@example.com",
+            "role": "Signer"
+          }
+        ],
+        "templateId": "hryJY9mqYZHjQCYQuSjRQg"
+      },
+      "name": "createDocument-fail-closed-retry",
+      "operation": "createDocument",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "singleDispatchMarkers": {
+            "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944": {
+              "attempt": 1,
+              "callId": "c1e4cf0d-96f7-55ce-9f88-dab94a0e5944",
+              "sendCount": 0,
+              "state": "claimed"
+            }
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 1

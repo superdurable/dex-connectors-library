@@ -4,6 +4,7 @@
 package oraclenetsuite
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -26,6 +27,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := singledispatchtest.NewContext("conformance-flow", "netsuite-customer")
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) {
+		var checkpoint any
+		require.NoError(t, json.Unmarshal(value, &checkpoint))
+		require.NoError(t, context.SetPersistedCheckpoint(checkpoint))
+	})
+	for attempt := int32(0); attempt < priorAttempt; attempt++ {
+		context.AdvanceAttempt()
+	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
 			context.AdvanceAttempt()

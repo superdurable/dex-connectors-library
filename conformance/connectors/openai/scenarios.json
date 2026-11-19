@@ -5422,6 +5422,125 @@
       },
       "name": "deleteFile-malformed-success-retry",
       "operation": "deleteFile"
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"conversation request refused\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations",
+          "requestBody": {
+            "items": [
+              {
+                "content": "Hello",
+                "role": "user",
+                "type": "message"
+              }
+            ],
+            "metadata": {
+              "topic": "demo"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 2,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-resend-definite-refusal-retry",
+      "operation": "createConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+      "input": {
+        "items": [
+          {
+            "content": "Hello",
+            "role": "user",
+            "type": "message"
+          }
+        ],
+        "metadata": {
+          "topic": "demo"
+        }
+      },
+      "name": "createConversation-fail-closed-retry",
+      "operation": "createConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "singleDispatchMarkers": {
+            "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f": {
+              "attempt": 1,
+              "callId": "5b53cbe6-f1e7-5dfb-b1c4-dbde7bbda32f",
+              "sendCount": 0,
+              "state": "claimed"
+            }
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 1

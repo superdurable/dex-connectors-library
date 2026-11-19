@@ -5340,6 +5340,103 @@
           }
         }
       }
+    },
+    {
+      "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"OneSpan refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/packages",
+          "requestBody": {
+            "name": "Example agreement",
+            "status": "DRAFT",
+            "type": "PACKAGE"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 2,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "input": {
+        "name": "Example agreement"
+      },
+      "name": "createDraftPackage-resend-definite-refusal-retry",
+      "operation": "createDraftPackage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+      "input": {
+        "name": "Example agreement"
+      },
+      "name": "createDraftPackage-fail-closed-retry",
+      "operation": "createDraftPackage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "singleDispatchMarkers": {
+            "0fb47f40-16c6-5433-9c1d-c942b032b69c": {
+              "attempt": 1,
+              "callId": "0fb47f40-16c6-5433-9c1d-c942b032b69c",
+              "sendCount": 0,
+              "state": "claimed"
+            }
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 1

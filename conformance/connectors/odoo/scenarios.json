@@ -8417,6 +8417,114 @@
           }
         }
       }
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Odoo refused this request\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/create",
+          "requestBody": {
+            "vals_list": [
+              {
+                "email": "ada@example.com",
+                "name": "Ada Lovelace",
+                "phone": "4155550111"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 2,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 2,
+              "state": "claimed"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-resend-definite-refusal-retry",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 1,
+              "state": "claimed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58827055-a967-5225-bbe2-6e71c6c9b056",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace",
+        "phone": "4155550111"
+      },
+      "name": "createContact-fail-closed-retry",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "singleDispatchMarkers": {
+            "58827055-a967-5225-bbe2-6e71c6c9b056": {
+              "attempt": 1,
+              "callId": "58827055-a967-5225-bbe2-6e71c6c9b056",
+              "sendCount": 0,
+              "state": "claimed"
+            }
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 1
