@@ -441,6 +441,7 @@ var reviewedNonConnectorToolingReferences = map[string]bool{
 	".github/workflows/release-connector.yml references connectors_mcp_release": true,
 	".github/workflows/release-connector.yml references language_publish":       true,
 	".github/workflows/release-connector.yml references npm_publish":            true,
+	".github/workflows/release-pending-pypi.yml references language_publish":    true,
 	".github/workflows/release-sdk-ts.yml references npm_publish":               true,
 	// Comments only.
 	"cmd/connectorctl/catalog.go references language_publish": true,
