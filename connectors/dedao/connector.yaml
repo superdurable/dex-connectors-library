@@ -10,6 +10,7 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [getNoteTaskStatus], triggers: []}
+    typescript: {version: v0.1.0, package: "@superdurable/connector-dedao", operations: [getNoteTaskStatus], triggers: []}
   provider: dedao
   codegen:
     go:
