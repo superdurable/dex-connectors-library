@@ -12,7 +12,7 @@
       "kind": "query",
       "operationId": "getRoomUserCount",
       "inputType": "GetRoomUserCountInput",
-      "description": "Read the current ZIM room member count without returning member identities.",
+      "description": "Read a ZIM room's current member count without returning the member list.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,10 +43,11 @@
       ],
       "inputSchema": {
         "additionalProperties": false,
+        "description": "GetRoomUserCountInput identifies a ZIM room created by the application.",
         "properties": {
           "roomId": {
-            "type": "string",
-            "description": "Application-assigned ZIM room ID, at most 32 supported ASCII bytes."
+            "description": "RoomID is the application-assigned ZIM room ID, at most 32 supported ASCII bytes.",
+            "type": "string"
           }
         },
         "required": [
