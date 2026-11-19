@@ -6,4 +6,6 @@ Create a secret API Key in the target workspace at **管理 > API Key 管理 > �
 
 The [runnable Flow](go/examples/list-dashboards-page/README.md) uses the static `guance` connection. Real API Key authorization and Dex Web form interaction remain unverified.
 
+The [Python package](python/README.md) includes a [runnable Dex Flow](python/examples/dashboard_page/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.
+
 The [TypeScript package](typescript/README.md) includes a [runnable Dex Flow](typescript/examples/basic/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.

@@ -6,4 +6,6 @@ This Go connector reads aggregate counts of registered parcels by delivery statu
 
 The [runnable Dex Flow](go/examples/shipment-status-counts/README.md) shows setup and typed output. The logo uses the [official 51Tracking site SVG](https://s.51tracking.com/B-revised/comm/img/logoto.svg). Live authorization and production status counts remain unverified.
 
+The [Python package](python/README.md) includes a [runnable Dex Flow](python/examples/status_counts/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.
+
 The [TypeScript package](typescript/README.md) includes a [runnable Dex Flow](typescript/examples/basic/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.

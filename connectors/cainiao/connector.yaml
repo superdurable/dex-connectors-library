@@ -15,6 +15,11 @@ spec:
       package: dex-connector-cainiao
       operations: [queryWaybillTrace]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-cainiao"
+      operations: [queryWaybillTrace]
+      triggers: []
   codegen:
     go:
       package: cainiao

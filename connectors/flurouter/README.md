@@ -6,4 +6,6 @@ Follow the [access guide](https://flurouter.net/guide): sign in to the console, 
 
 Run the [example Flow](go/examples/list-models/) with the generated mock or a user-controlled connection. The live Key-visible model list is unverified without a user-controlled Key.
 
+The [Python package](python/README.md) includes a [runnable Dex Flow](python/examples/model_catalog/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.
+
 The [TypeScript package](typescript/README.md) includes a [runnable Dex Flow](typescript/examples/basic/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.

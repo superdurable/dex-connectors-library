@@ -1,0 +1,70 @@
+{
+  "connectorId": "kingsoftoffice",
+  "releaseTag": "connectors/kingsoftoffice/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-kingsoftoffice",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_folder_files_step",
+      "kind": "query",
+      "operationId": "listFolderFiles",
+      "inputType": "ListFolderFilesInput",
+      "description": "List one bounded page of file and folder metadata from a drive folder.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListFolderFilesInput selects one drive folder and an optional page cursor.",
+        "properties": {
+          "driveId": {
+            "description": "DriveID is the WPS drive identifier visible in its drive API or URL.",
+            "type": "string"
+          },
+          "pageToken": {
+            "description": "PageToken is an opaque cursor from a prior response; blank selects the first page.",
+            "type": "string"
+          },
+          "parentId": {
+            "description": "ParentID is the WPS folder identifier; 0 selects the drive root.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "driveId",
+          "pageToken",
+          "parentId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

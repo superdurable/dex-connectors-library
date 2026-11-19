@@ -7,3 +7,5 @@ The connector uses [App Key and App Secret signing](https://docs.caiyunapp.com/w
 See the [runnable Flow](go/examples/current-weather/README.md). The mock uses synthetic Beijing weather and no provider credentials. Live signed authorization and weather data have not been verified.
 
 The [Python package](python/) includes a runnable current-weather Flow and Go-recorded conformance replay.
+
+The [TypeScript package](typescript/README.md) includes a [runnable Flow](typescript/examples/current-weather/README.md) and Go-recorded conformance replay.
