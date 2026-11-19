@@ -367,6 +367,9 @@ func (operation CreateSegmentOperation) Invoke(call sdkgo.Call, input CreateSegm
 			}
 		}
 		if errors.Is(credentialResponse.err, errCredential) {
+			if decision.MaximumPriorSends > 0 {
+				return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("createSegment", sdkgo.FailureAvailability, "earlier segment creation may have succeeded"), 0)
+			}
 			return listMutationBranch[SegmentMetadata]("createSegment", CreateSegmentBranchDefect, sdkgo.FailureAuthentication, "Constant Contact credentials are unavailable or invalid")
 		}
 		return sdkgo.NewMutationRetry[SegmentMetadata](listFailure("createSegment", sdkgo.FailureAvailability, "Constant Contact credentials could not be refreshed"), 0)

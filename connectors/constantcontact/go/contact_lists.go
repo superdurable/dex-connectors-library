@@ -280,6 +280,9 @@ func (operation CreateContactListOperation) Invoke(call sdkgo.Call, input Create
 			_ = fence.RecordNotSent()
 		}
 		if errors.Is(credentialResponse.err, errCredential) {
+			if decision.MaximumPriorSends > 0 {
+				return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "earlier list creation may have succeeded"), 0)
+			}
 			return listMutationBranch[ContactListMetadata]("createContactList", CreateContactListBranchDefect, sdkgo.FailureAuthentication, "Constant Contact credentials are unavailable or invalid")
 		}
 		return sdkgo.NewMutationRetry[ContactListMetadata](listFailure("createContactList", sdkgo.FailureAvailability, "Constant Contact credentials could not be refreshed"), 0)
