@@ -12,7 +12,7 @@
       "kind": "query",
       "operationId": "listModels",
       "inputType": "ListModelsInput",
-      "description": "List up to 50 model IDs enabled for the API Key.",
+      "description": "List up to 50 model IDs visible to the API Key.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
