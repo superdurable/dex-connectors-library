@@ -11,3 +11,7 @@ Register and verify an account on the [GEOVIS Earth open platform](https://open.
 ## Example
 
 The [current-weather Flow](go/examples/current-weather/) is a runnable Worker with static Dex connection name `geovisearth`. Its mock is synthetic and is verified with a real Dex Worker and Client. Live authorization, location mapping, quota handling, and current observations remain unverified without a platform token.
+
+## Python
+
+The first Python package is [`python/`](python/README.md). It implements the same read-only Query and replays the Go-recorded provider scenarios. Its runnable Flow includes a real Dex Worker and Client integration test.
