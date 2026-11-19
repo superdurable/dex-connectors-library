@@ -1,0 +1,337 @@
+{
+  "connector": "iflytek",
+  "scenarios": [
+    {
+      "callId": "6e2a8bc8-6b4e-5e81-b168-84dfa6d7e252",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"你好！\"},\"index\":0}],\"usage\":{\"prompt_tokens\":4,\"completion_tokens\":3,\"total_tokens\":7}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 512,
+            "messages": [
+              {
+                "content": "你好",
+                "role": "user"
+              }
+            ],
+            "model": "lite",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer spark-test-password"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "completionTokens": 3,
+          "content": "你好！",
+          "model": "lite",
+          "promptTokens": 4,
+          "totalTokens": 7
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "prompt": "你好"
+      },
+      "name": "createChatCompletion-completed",
+      "operation": "createChatCompletion"
+    },
+    {
+      "callId": "5f434982-fe95-5c91-abd2-47f5015dc500",
+      "exchanges": [
+        {
+          "body": "{\"code\":10013}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 512,
+            "messages": [
+              {
+                "content": "你好",
+                "role": "user"
+              }
+            ],
+            "model": "lite",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer spark-test-password"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "completionTokens": 0,
+          "content": "",
+          "model": "",
+          "promptTokens": 0,
+          "totalTokens": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "prompt": "你好"
+      },
+      "name": "createChatCompletion-providerRejected",
+      "operation": "createChatCompletion"
+    },
+    {
+      "callId": "9708e854-2d71-58cd-90b3-4dbb9ae43baa",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"choices\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 512,
+            "messages": [
+              {
+                "content": "你好",
+                "role": "user"
+              }
+            ],
+            "model": "lite",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer spark-test-password"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "completionTokens": 0,
+          "content": "",
+          "model": "",
+          "promptTokens": 0,
+          "totalTokens": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "prompt": "你好"
+      },
+      "name": "createChatCompletion-invalidResponse",
+      "operation": "createChatCompletion"
+    },
+    {
+      "callId": "5aabd00f-017e-565c-9576-8d368b260d62",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "completionTokens": 0,
+          "content": "",
+          "model": "",
+          "promptTokens": 0,
+          "totalTokens": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "prompt": ""
+      },
+      "name": "createChatCompletion-defect",
+      "operation": "createChatCompletion"
+    },
+    {
+      "callId": "7c7e6889-d9f5-594b-ab69-aa17a00fbeb8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 512,
+            "messages": [
+              {
+                "content": "你好",
+                "role": "user"
+              }
+            ],
+            "model": "lite",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer spark-test-password"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "prompt": "你好"
+      },
+      "name": "createChatCompletion-rateLimit",
+      "operation": "createChatCompletion"
+    },
+    {
+      "callId": "38bb1ccd-3346-59da-80c4-46d868603a43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 512,
+            "messages": [
+              {
+                "content": "你好",
+                "role": "user"
+              }
+            ],
+            "model": "lite",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer spark-test-password"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "prompt": "你好"
+      },
+      "name": "createChatCompletion-serverError",
+      "operation": "createChatCompletion"
+    },
+    {
+      "callId": "2c66d105-5ccc-5b7e-890a-393a20134869",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "requestBody": {
+            "max_tokens": 512,
+            "messages": [
+              {
+                "content": "你好",
+                "role": "user"
+              }
+            ],
+            "model": "lite",
+            "stream": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer spark-test-password"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "prompt": "你好"
+      },
+      "name": "createChatCompletion-transport",
+      "operation": "createChatCompletion"
+    }
+  ],
+  "schemaVersion": 1
+}
