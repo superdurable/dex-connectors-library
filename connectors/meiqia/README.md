@@ -7,3 +7,5 @@ Sign in at [Meiqia](https://app.meiqia.com), open 设置 > 开发者 > APIs, and
 The [runnable Dex example](go/examples/get-conversation/) uses a synthetic mock and does not verify live Access Token permissions or conversation data.
 
 The [Python getConversation example](python/examples/) provides a runnable Dex Worker and local conformance replay.
+
+The [TypeScript getConversation example](typescript/examples/basic/) runs a Dex Worker and Client, with Go-recorded provider scenarios replayed by the package tests.
