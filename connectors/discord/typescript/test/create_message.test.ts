@@ -294,6 +294,32 @@ describe('Discord read-back of an accepted message', () => {
     expectOnePostThenReadBacks(requests, 1);
   });
 
+  const requiredFields = ['channel_id', 'author', 'content', 'type', 'timestamp'];
+  const createdWithout = (field: string): DiscordAnswer => {
+    const fields = JSON.parse(created.body) as Record<string, unknown>;
+    delete fields[field];
+    return { status: 200, body: JSON.stringify(fields) };
+  };
+
+  it.each(requiredFields)('reads back an accepted answer without %s after exactly one POST', async field => {
+    const requests: ProviderRequest[] = [];
+    const client = new DiscordClient({}, { resolve: async () => ({ botToken: new SecretString('MTAxTESTbot.token-part.0123456789abcdef') }) }, {
+      send: async (request: ProviderRequest) => {
+        requests.push(request);
+        const answer = request.method === 'POST' ? createdWithout(field) : created;
+        return { status: answer.status, headers: {}, body: Buffer.from(answer.body) };
+      },
+    });
+    expect(await create(client, new AttemptContext())).toMatchObject({ branch: 'created', value: { id: messageId } });
+    expectOnePostThenReadBacks(requests, 1);
+  });
+
+  it.each(['id', ...requiredFields])('selects uncertain for a read-back without %s', async field => {
+    const { client, requests } = newReadBackClient([createdWithout(field)]);
+    expect(await create(client, new AttemptContext())).toMatchObject({ branch: 'uncertain' });
+    expectOnePostThenReadBacks(requests, 1);
+  });
+
   it('reads a read-back timestamp without an offset as UTC and selects created', async () => {
     const zoneless = { status: 200, body: created.body.replace('2026-10-13T20:00:00.123000+00:00', '2026-10-13T20:00:00.123') };
     const { client, requests } = newReadBackClient([zoneless]);

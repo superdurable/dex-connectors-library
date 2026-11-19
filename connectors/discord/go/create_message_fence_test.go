@@ -21,6 +21,52 @@ import (
 
 var fencedCreateMessageInput = discord.CreateMessageInput{ChannelID: testChannelID, Content: "Release @everyone"}
 
+// requiredMessageFields are the message fields every conversion must find.
+var requiredMessageFields = []string{"channel_id", "author", "content", "type", "timestamp"}
+
+// messageJSONWithout returns the created message JSON without one top-level field.
+func messageJSONWithout(t *testing.T, field string) string {
+	t.Helper()
+	var fields map[string]any
+	require.NoError(t, json.Unmarshal([]byte(messageJSON(testMessageID, "Release @everyone")), &fields))
+	delete(fields, field)
+	encoded, err := json.Marshal(fields)
+	require.NoError(t, err)
+	return string(encoded)
+}
+
+func TestCreateMessageAcceptedAnswerMissingARequiredFieldIsReadBackAfterOnePost(t *testing.T) {
+	for _, field := range requiredMessageFields {
+		t.Run(field, func(t *testing.T) {
+			provider := newRecordingDiscord(t, func(response http.ResponseWriter, request recordedRequest) {
+				if request.method == http.MethodPost {
+					writeJSON(t, response, http.StatusOK, messageJSONWithout(t, field))
+					return
+				}
+				writeJSON(t, response, http.StatusOK, messageJSON(testMessageID, "Release @everyone"))
+			})
+			client := newTestClient(t, provider.URL, discord.Config{})
+			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("announcement-flow", "post"), client.CreateMessage(), discordConnection, fencedCreateMessageInput)
+			require.NoError(t, err)
+			require.Equal(t, discord.CreateMessageBranchCreated, result.Branch)
+			requireOnePostThenReadBacks(t, provider.recordedRequests(), 1)
+		})
+	}
+}
+
+func TestCreateMessageReadBackMissingARequiredFieldSelectsUncertain(t *testing.T) {
+	for _, field := range append([]string{"id"}, requiredMessageFields...) {
+		t.Run(field, func(t *testing.T) {
+			provider := newReadBackDiscord(t, nil, scriptedResponse{http.StatusOK, messageJSONWithout(t, field)})
+			client := newTestClient(t, provider.URL, discord.Config{})
+			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("announcement-flow", "post"), client.CreateMessage(), discordConnection, fencedCreateMessageInput)
+			require.NoError(t, err)
+			require.Equal(t, discord.CreateMessageBranchUncertain, result.Branch)
+			requireOnePostThenReadBacks(t, provider.recordedRequests(), 1)
+		})
+	}
+}
+
 // scriptedResponse is one fake Discord answer to a createMessage POST.
 type scriptedResponse struct {
 	status int

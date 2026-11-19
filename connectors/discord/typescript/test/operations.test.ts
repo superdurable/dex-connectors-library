@@ -16,6 +16,21 @@ const channelId = '100000000000000001';
 const messageId = '300000000000000001';
 const credential = { resolve: async () => ({ botToken: new SecretString('MTAxTESTbot.token-part.0123456789abcdef') }) };
 
+const listedMessage: Record<string, unknown> = {
+  id: messageId, channel_id: channelId, author: { id: '123456789012345678', username: 'dex-bot', bot: true },
+  content: 'Release', timestamp: '2026-10-13T20:00:00+00:00', type: 0,
+};
+
+it.each([
+  ...['id', 'channel_id', 'author', 'content', 'type', 'timestamp'].map(field => ({ name: `without ${field}`, message: Object.fromEntries(Object.entries(listedMessage).filter(([key]) => key !== field)) })),
+  { name: 'author without ID', message: { ...listedMessage, author: { username: 'dex-bot' } } },
+  { name: 'hour 24 timestamp', message: { ...listedMessage, timestamp: '2026-10-13T24:00:00+00:00' } },
+])('selects invalidResponse for a listed message $name', async ({ message }) => {
+  const client = new DiscordClient({}, credential, { send: async () => ({ status: 200, headers: {}, body: Buffer.from(JSON.stringify([message])) }) });
+  const listCall = { ...call, operation: { connectorId: 'discord', operationId: 'listChannelMessages' } } as Call;
+  expect(await client.listChannelMessages().invoke(listCall, { channelId, limit: 10 })).toMatchObject({ kind: 'branch', branch: 'invalidResponse' });
+});
+
 /** A first createMessage attempt whose single-dispatch fence starts without a checkpoint. */
 function createMessageCall(): Call {
   let heartbeat: unknown;

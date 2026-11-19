@@ -56,6 +56,7 @@ _Output = TypeVar("_Output")
 _SNOWFLAKE = re.compile(r"[0-9]{17,20}\Z")
 # An ISO 8601 timestamp without an offset, which Discord means as UTC.
 _ZONELESS_TIMESTAMP = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?\Z")
+_HOUR_24_TIMESTAMP = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T24:")
 _CUSTOM_EMOJI = re.compile(r"[A-Za-z0-9_]{2,32}:[0-9]{17,20}\Z")
 _DOCUMENTED_CODES = frozenset(
     {
@@ -139,7 +140,8 @@ def _message(item: object, channel_id: str) -> Message:
     if not isinstance(item.get("content"), str) or type(item.get("type")) is not int:
         raise ValueError("Discord returned a message without content or type")
     try:
-        timestamp = _message_timestamp(item["timestamp"])
+        # A missing timestamp is None, which fails like any other invalid value.
+        timestamp = _message_timestamp(item.get("timestamp"))
         edited = item.get("edited_timestamp")
         edited_timestamp = _message_timestamp(edited) if edited is not None else None
     except (ValueError, TypeError, AttributeError) as error:
@@ -157,8 +159,13 @@ def _message(item: object, channel_id: str) -> Message:
     )
 
 
-def _message_timestamp(value: str) -> datetime:
+def _message_timestamp(value: object) -> datetime:
     """Parse an RFC 3339 timestamp in UTC, reading one without an offset as UTC like the Go connector."""
+    if not isinstance(value, str):
+        raise ValueError("timestamp must be a string")
+    # Python 3.12 reads hour 24 as the next midnight, which Go, TypeScript, and Python 3.11 reject.
+    if _HOUR_24_TIMESTAMP.match(value) is not None:
+        raise ValueError("timestamp hour must be below 24")
     if _ZONELESS_TIMESTAMP.fullmatch(value) is not None:
         return datetime.fromisoformat(value).replace(tzinfo=UTC)
     timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -365,7 +372,7 @@ class GetChannelOperation:
         assert response is not None
         try:
             channel = _channel(response.body, input.channel_id)
-        except ValueError as error:
+        except (ValueError, KeyError, TypeError) as error:
             return _query_outcome(
                 "invalidResponse", empty, _failure("getChannel", FailureKind.PROTOCOL, str(error)), 0, receipt
             )
@@ -415,7 +422,7 @@ class ListChannelMessagesOperation:
         assert response is not None
         try:
             page = _page(response.body, input.channel_id, input.limit or 50)
-        except ValueError as error:
+        except (ValueError, KeyError, TypeError) as error:
             return _query_outcome(
                 "invalidResponse",
                 empty,
@@ -614,7 +621,7 @@ async def _classify_create_message(
         )
     try:
         message = _message(_decode_json(exchange.body), channel_id)
-    except ValueError as error:
+    except (ValueError, KeyError, TypeError) as error:
         return await _read_back_accepted_message(
             client, call, fence, token, channel_id, exchange.body, error, receipt
         )
@@ -628,7 +635,7 @@ async def _read_back_accepted_message(
     token: str,
     channel_id: str,
     body: bytes,
-    decode_error: ValueError,
+    decode_error: Exception,
     receipt: Receipt,
 ) -> MutationAttempt[Message]:
     """Confirm a 2xx whose body is not a valid message.
@@ -714,7 +721,7 @@ async def _read_back_message(
     if 200 <= exchange.status_code < 300 and not exchange.read_error:
         try:
             message = _message(_decode_json(exchange.body), channel_id)
-        except ValueError:
+        except (ValueError, KeyError, TypeError):
             message = None
         if message is not None and message.id == message_id:
             return MutationAttempt.branch_result(CREATED, message, receipt)
@@ -826,7 +833,7 @@ def _is_accepted_message_body(body: bytes, channel_id: str) -> bool:
     """Report an error body that nevertheless describes a message in the channel."""
     try:
         _message(_decode_json(body), channel_id)
-    except ValueError:
+    except (ValueError, KeyError, TypeError):
         return False
     return True
 

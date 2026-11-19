@@ -210,6 +210,20 @@ func TestListChannelMessagesValidatesBoundsAndTheResponse(t *testing.T) {
 	require.Equal(t, discord.ListChannelMessagesBranchInvalidResponse, result.Branch, "more messages than the limit is a protocol fault")
 }
 
+func TestListChannelMessagesMissingAMessageFieldSelectsInvalidResponse(t *testing.T) {
+	for _, field := range append([]string{"id"}, requiredMessageFields...) {
+		t.Run(field, func(t *testing.T) {
+			provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {
+				writeJSON(t, response, http.StatusOK, `[`+messageJSONWithout(t, field)+`]`)
+			})
+			client := newTestClient(t, provider.URL, discord.Config{})
+			result, err := sdkgo.RunQuery(newStepDexContext("list-missing-"+field), client.ListChannelMessages(), discordConnection, discord.ListChannelMessagesInput{ChannelID: testChannelID, Limit: 10})
+			require.NoError(t, err)
+			require.Equal(t, discord.ListChannelMessagesBranchInvalidResponse, result.Branch)
+		})
+	}
+}
+
 func TestOversizedResponsesSelectInvalidResponse(t *testing.T) {
 	provider := newRecordingDiscord(t, func(response http.ResponseWriter, _ recordedRequest) {
 		writeJSON(t, response, http.StatusOK, `[`+messageJSON(testMessageID, strings.Repeat("x", 2000))+`]`)

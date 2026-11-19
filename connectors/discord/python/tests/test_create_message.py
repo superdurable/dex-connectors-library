@@ -449,6 +449,38 @@ async def test_read_back_timestamp_without_timezone_selects_created() -> None:
     assert_one_post_then_read_backs(requests, 1)
 
 
+REQUIRED_MESSAGE_FIELDS = ("channel_id", "author", "content", "type", "timestamp")
+
+
+def without_field(field: str) -> dict[str, object]:
+    return {key: value for key, value in CREATED_BODY.items() if key != field}
+
+
+@pytest.mark.parametrize(
+    "body", [*(without_field(field) for field in REQUIRED_MESSAGE_FIELDS), CREATED_BODY | {"author": {}}]
+)
+async def test_accepted_answer_missing_a_required_field_is_read_back_after_one_post(body: object) -> None:
+    requests: list[httpx.Request] = []
+    answer: Answer = lambda request: (200, body if request.method == "POST" else CREATED_BODY)  # noqa: E731
+    assert is_branch(await create(answer, AttemptContext(), requests), "created")
+    assert_one_post_then_read_backs(requests, 1)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        *(without_field(field) for field in ("id", *REQUIRED_MESSAGE_FIELDS)),
+        CREATED_BODY | {"author": {}},
+        CREATED_BODY | {"timestamp": "2026-10-13T24:00:00"},
+        CREATED_BODY | {"timestamp": "2026-10-13T24:00:00+00:00"},
+    ],
+)
+async def test_read_back_missing_or_invalid_field_selects_uncertain(body: object) -> None:
+    requests: list[httpx.Request] = []
+    assert is_branch(await create(read_back((200, body)), AttemptContext(), requests), "uncertain")
+    assert_one_post_then_read_backs(requests, 1)
+
+
 class FailingCloseStream(httpx.AsyncByteStream):
     """Send a complete body, then fail while the response closes."""
 

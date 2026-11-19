@@ -19,6 +19,7 @@ from dex_connectors.discord import (
     Config,
     Credentials,
     GetChannelInput,
+    ListChannelMessagesInput,
 )
 
 REFERENCE = ConnectionRef("discord", "discord")
@@ -45,6 +46,41 @@ async def test_bad_channel_id_never_reaches_provider() -> None:
         assert attempt.branch == "defect"
         assert attempt.failure is not None
         assert "inert.test.token" not in attempt.failure.message
+
+
+LISTED_MESSAGE = {
+    "id": "998877665544332211",
+    "channel_id": "112233445566778899",
+    "author": {"id": "123456789012345678", "username": "dex-bot", "bot": True},
+    "content": "Release",
+    "timestamp": "2026-10-13T20:00:00+00:00",
+    "type": 0,
+}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "message",
+    [
+        *({key: value for key, value in LISTED_MESSAGE.items() if key != field} for field in LISTED_MESSAGE),
+        LISTED_MESSAGE | {"author": {"username": "dex-bot"}},
+        LISTED_MESSAGE | {"timestamp": 1760385600},
+        LISTED_MESSAGE | {"timestamp": "2026-10-13T24:00:00+00:00"},
+    ],
+)
+async def test_listed_message_with_a_missing_field_is_invalid_response(message: dict[str, object]) -> None:
+    """A missing or wrongly typed message field selects invalidResponse, as in the Go connector."""
+
+    def reply(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[message])
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(reply)) as transport:
+        client = Client(Config(endpoint="http://127.0.0.1:22048"), CREDENTIALS, transport)
+        call = Call(CallID("list"), REFERENCE, OperationRef("discord", "listChannelMessages"))
+        attempt = await client.list_channel_messages().invoke(
+            call, ListChannelMessagesInput("112233445566778899", 10)
+        )
+        assert attempt.branch == "invalidResponse"
 
 
 @pytest.mark.asyncio
