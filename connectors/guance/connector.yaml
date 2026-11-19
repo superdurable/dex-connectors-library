@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: guance
+  languages:
+    python: {version: v0.1.0, operations: [listDashboardsPage], triggers: []}
   codegen:
     go:
       package: guance
