@@ -9,3 +9,5 @@ Sign in to the [ModelBest console](https://platform.modelbest.cn/console/keys), 
 ## Example
 
 The [runnable Flow](go/examples/list-models/) starts with `{}` and completes with a typed `ListModelsOutput`. Its default mock returns one model. Live ModelBest authorization, model visibility and provider response variation remain unverified without a user-controlled Dex Web Connection.
+
+The [Python listModels example](python/examples/) provides a runnable Dex Worker and local conformance replay.
