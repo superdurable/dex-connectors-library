@@ -11,3 +11,5 @@ Run the [instance online status Flow](go/examples/get-instance-online-status) wi
 ## Python
 
 The `python/` package provides the `getInstanceOnlineStatus` Query. Run its checked-in example from `python/examples/`.
+
+The [TypeScript package](typescript/README.md) implements `getInstanceOnlineStatus` with a [runnable Dex Flow](typescript/examples/basic/README.md). Its provider scenarios replay the Go-recorded contract; live authorization remains unverified without user-controlled credentials.
