@@ -11,6 +11,7 @@ spec:
   provider: mingdao
   languages:
     python: {version: v0.1.0, operations: [listWorksheets], triggers: []}
+    typescript: {version: v0.1.0, operations: [listWorksheets], triggers: []}
   codegen:
     go:
       package: mingdao

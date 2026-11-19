@@ -7,3 +7,5 @@ For Mingdao SaaS, the endpoint is fixed at `https://api.mingdao.com/v3/app/works
 The [runnable Flow](go/examples/list-worksheets/README.md) uses the static `mingdao` connection and an operation-specific Step. Real Mingdao authorization and Dex Web form interaction remain unverified.
 
 The [Python listWorksheets example](python/examples/) provides a runnable Dex Worker and local conformance replay.
+
+The [TypeScript listWorksheets example](typescript/examples/basic/) runs a Dex Worker and Client, with Go-recorded provider scenarios replayed by the package tests.
