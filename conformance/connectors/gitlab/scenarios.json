@@ -1,0 +1,963 @@
+{
+  "connector": "gitlab",
+  "scenarios": [
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"name\":\"Meridian Web\",\"path_with_namespace\":\"meridian/web\",\"web_url\":\"https://gitlab.com/meridian/web\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 42,
+          "name": "Meridian Web",
+          "path_with_namespace": "meridian/web",
+          "web_url": "https://gitlab.com/meridian/web"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "getProject-happy",
+      "operation": "getProject"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": "",
+          "path_with_namespace": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "getProject-not-found",
+      "operation": "getProject"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "path_with_namespace": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "getProject-rejected",
+      "operation": "getProject"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": "",
+          "path_with_namespace": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "getProject-malformed",
+      "operation": "getProject"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "path_with_namespace": "",
+          "web_url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": ""
+      },
+      "name": "getProject-defect",
+      "operation": "getProject"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "getProject-rate-limit",
+      "operation": "getProject"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "getProject-unavailable",
+      "operation": "getProject"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "getProject-transport",
+      "operation": "getProject"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "[{\"id\":123,\"iid\":7,\"title\":\"Review release notes\",\"labels\":[\"review\",\"ready\"],\"web_url\":\"https://gitlab.com/meridian/web/-/issues/7\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "issues": [
+            {
+              "id": 123,
+              "iid": 7,
+              "labels": [
+                "review",
+                "ready"
+              ],
+              "title": "Review release notes",
+              "web_url": "https://gitlab.com/meridian/web/-/issues/7"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "listIssues-happy",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "issues": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "listIssues-not-found",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "issues": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "listIssues-rejected",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "issues": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "listIssues-malformed",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issues": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": ""
+      },
+      "name": "listIssues-defect",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "listIssues-rate-limit",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "listIssues-unavailable",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/42/issues",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "42"
+      },
+      "name": "listIssues-transport",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "exchanges": [
+        {
+          "body": "{\"id\":123,\"iid\":7,\"title\":\"Review release notes\",\"labels\":[\"review\",\"ready\"],\"web_url\":\"https://gitlab.com/meridian/web/-/issues/7\"}",
+          "form": {
+            "labels": [
+              "review,ready"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/42/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 123,
+          "iid": 7,
+          "labels": [
+            "review",
+            "ready"
+          ],
+          "title": "Review release notes",
+          "web_url": "https://gitlab.com/meridian/web/-/issues/7"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "input": {
+        "issueIid": 7,
+        "labels": [
+          "review",
+          "ready"
+        ],
+        "projectId": "42"
+      },
+      "name": "updateIssueLabels-happy",
+      "operation": "updateIssueLabels"
+    },
+    {
+      "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "labels": [
+              "review,ready"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/42/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "input": {
+        "issueIid": 7,
+        "labels": [
+          "review",
+          "ready"
+        ],
+        "projectId": "42"
+      },
+      "name": "updateIssueLabels-not-found",
+      "operation": "updateIssueLabels"
+    },
+    {
+      "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "labels": [
+              "review,ready"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/42/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "input": {
+        "issueIid": 7,
+        "labels": [
+          "review",
+          "ready"
+        ],
+        "projectId": "42"
+      },
+      "name": "updateIssueLabels-rejected",
+      "operation": "updateIssueLabels"
+    },
+    {
+      "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "exchanges": [
+        {
+          "body": "{",
+          "form": {
+            "labels": [
+              "review,ready"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/42/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "input": {
+        "issueIid": 7,
+        "labels": [
+          "review",
+          "ready"
+        ],
+        "projectId": "42"
+      },
+      "name": "updateIssueLabels-malformed",
+      "operation": "updateIssueLabels"
+    },
+    {
+      "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "iid": 0,
+          "labels": [],
+          "title": "",
+          "web_url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "input": {
+        "issueIid": 7,
+        "labels": [
+          "review",
+          "ready"
+        ],
+        "projectId": ""
+      },
+      "name": "updateIssueLabels-defect",
+      "operation": "updateIssueLabels"
+    },
+    {
+      "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "labels": [
+              "review,ready"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/42/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "input": {
+        "issueIid": 7,
+        "labels": [
+          "review",
+          "ready"
+        ],
+        "projectId": "42"
+      },
+      "name": "updateIssueLabels-rate-limit",
+      "operation": "updateIssueLabels"
+    },
+    {
+      "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "labels": [
+              "review,ready"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/42/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "input": {
+        "issueIid": 7,
+        "labels": [
+          "review",
+          "ready"
+        ],
+        "projectId": "42"
+      },
+      "name": "updateIssueLabels-unavailable",
+      "operation": "updateIssueLabels"
+    },
+    {
+      "callId": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "exchanges": [
+        {
+          "form": {
+            "labels": [
+              "review,ready"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/42/issues/7",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "Private-Token": [
+              "test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f2174a1-5c42-51cf-8ec4-7b71b70b170d",
+      "input": {
+        "issueIid": 7,
+        "labels": [
+          "review",
+          "ready"
+        ],
+        "projectId": "42"
+      },
+      "name": "updateIssueLabels-transport",
+      "operation": "updateIssueLabels"
+    }
+  ],
+  "schemaVersion": 1
+}

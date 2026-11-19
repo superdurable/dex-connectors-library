@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: tmdb
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-tmdb"
+      operations: [searchMovies, getMovie]
+      triggers: []
     python:
       version: v0.2.0
       operations: [searchMovies, getMovie]

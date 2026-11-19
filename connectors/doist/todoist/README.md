@@ -41,6 +41,10 @@ that creates, reads, updates, lists, and deletes one disposable task. Its
 conformance suite replays Go-recorded provider requests and results. Live
 Todoist authorization and provider behavior have not been verified.
 
+## TypeScript package
+
+Install `@superdurable/connector-doist-todoist@0.1.0` for the same five task operations. The [TypeScript package README](typescript/README.md) and [runnable task CRUD Flow](typescript/examples/task-crud/flow/workflow.ts) cover its Dex connection and task lifecycle. Go-recorded scenarios verify provider request and outcome parity; live Todoist behavior remains unverified.
+
 ## Partial updates
 
 `UpdateTaskInput` requires `TaskID` and at least one of `Content` or

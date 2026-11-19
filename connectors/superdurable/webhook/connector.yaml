@@ -9,8 +9,14 @@ metadata:
 spec:
   provider: webhook
   languages:
+<<<<<<< HEAD
     python:
       version: v0.1.0
+=======
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-superdurable-webhook'
+>>>>>>> origin/main
       operations: [sendEvent]
       triggers: []
   codegen:

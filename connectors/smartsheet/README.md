@@ -33,3 +33,11 @@ The runnable [example](go/examples/smartsheet-lookup/README.md) registers a Work
 ## Live verification
 
 The API endpoint, authentication, fields, and HTTP statuses above were checked against the linked official docs. Provider authorization, account permissions, and live responses have not been exercised.
+
+## TypeScript
+
+The `typescript/` package publishes `@superdurable/connector-smartsheet` v0.1.0
+with `listSheets` and `getSheet` Queries. Its runnable
+[Smartsheet lookup example](typescript/examples/smartsheet-lookup/flow.ts)
+uses the static `smartsheet` connection name and reads the first sheet returned
+by a page listing. The package README describes local verification.

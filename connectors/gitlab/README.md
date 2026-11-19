@@ -58,3 +58,7 @@ The [mock-backed example test](go/examples/gitlab-lookup/flow/workflow_mock_inte
 ## Verification limits
 
 The provider calls have not been exercised with live account credentials. Real Dex execution, release compatibility, and provider authorization remain unverified locally. Unlisted response fields and undocumented status details are not asserted.
+
+## TypeScript
+
+The [`typescript/`](typescript/) package provides `getProject`, `listIssues`, and `updateIssueLabels` at `@superdurable/connector-gitlab` version `0.1.0`. Its [runnable project lookup](typescript/examples/get-project/README.md) binds the static `gitlab` connection and can be verified through `dexcli dev`. Authorization uses a GitLab personal access token with `read_api` for queries or `api` for label updates.

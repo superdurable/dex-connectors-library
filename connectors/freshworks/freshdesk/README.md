@@ -8,6 +8,11 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/freshworks
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
 
+The TypeScript package `@superdurable/connector-freshdesk` is also available at
+[`typescript/`](typescript/README.md), with Go-recorded conformance and a runnable
+[search example](typescript/examples/search-tickets/README.md). Its live Freshdesk
+behavior has not been verified.
+
 The Freshdesk Connector reads and writes Freshdesk tickets from Dex Flows
 through Freshdesk API v2. It exposes these operation-specific Dex Step
 factories:

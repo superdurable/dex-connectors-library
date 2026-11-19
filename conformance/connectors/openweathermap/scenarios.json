@@ -1,0 +1,752 @@
+{
+  "connector": "openweathermap",
+  "scenarios": [
+    {
+      "callId": "fe89cd49-87a8-4619-bf1d-7dc9a1a996e9",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"Meridian\",\"main\":{\"temp\":21.5},\"weather\":[{\"description\":\"clear sky\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/weather",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "Meridian",
+          "description": "clear sky",
+          "temperature": 21.5
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getCurrentWeather-found",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "218bda6c-0fbb-4996-b010-54dd72386d0c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/weather",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "city": "",
+          "description": "",
+          "temperature": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getCurrentWeather-notFound",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "db80ff57-6907-40e5-8b25-300212c63c2b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/weather",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "description": "",
+          "temperature": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getCurrentWeather-providerRejected",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "92da4452-40a8-4433-b6cb-4d39d7c7c4ab",
+      "exchanges": [
+        {
+          "body": "{\"main\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/weather",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "description": "",
+          "temperature": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getCurrentWeather-invalidResponse",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "43457c78-dac8-4ad1-b4c0-24dc63f7b0d7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/weather",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getCurrentWeather-rateLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a1b9142c-f535-4b03-a5e6-ac941e76e956",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/weather",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getCurrentWeather-serverFailure",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "3246681d-184d-497c-81e3-96882fb775bb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/weather",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getCurrentWeather-transportFailure",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "5d249321-884d-4044-a4df-de9f82f91c9d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "description": "",
+          "temperature": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 91,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getCurrentWeather-defect",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "1e9338dd-3504-48ab-b03c-c8618bfd4d12",
+      "exchanges": [
+        {
+          "body": "{\"city\":{\"name\":\"Meridian\"},\"list\":[{\"dt\":1793210400,\"main\":{\"temp\":20.1}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/forecast",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "city": "Meridian",
+          "entries": [
+            {
+              "temperature": 20.1,
+              "timestamp": 1793210400
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getForecast-found",
+      "operation": "getForecast"
+    },
+    {
+      "callId": "6f3352d3-8768-4534-97de-f550da42b6cc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/forecast",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "city": "",
+          "entries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getForecast-notFound",
+      "operation": "getForecast"
+    },
+    {
+      "callId": "170d9e42-851b-4dd0-a896-26a352491c16",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/forecast",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "entries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getForecast-providerRejected",
+      "operation": "getForecast"
+    },
+    {
+      "callId": "a7bee49e-3d49-4ef8-aa7b-7d3799683e33",
+      "exchanges": [
+        {
+          "body": "{\"city\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/forecast",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "entries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getForecast-invalidResponse",
+      "operation": "getForecast"
+    },
+    {
+      "callId": "1380dac0-84f1-471f-a370-be82422a5478",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/forecast",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getForecast-rateLimit",
+      "operation": "getForecast"
+    },
+    {
+      "callId": "3576d3b0-1cdc-4220-b052-ae4e85f131d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/forecast",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getForecast-serverFailure",
+      "operation": "getForecast"
+    },
+    {
+      "callId": "59986eb1-0cad-4040-9ffe-3b9a854a9164",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/data/2.5/forecast",
+          "query": {
+            "appid": [
+              "test-key-123"
+            ],
+            "lat": [
+              "37.7"
+            ],
+            "lon": [
+              "-122.4"
+            ],
+            "units": [
+              "metric"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 37.7,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getForecast-transportFailure",
+      "operation": "getForecast"
+    },
+    {
+      "callId": "a8c4a2b3-a580-488f-9305-0e9968cff32b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "entries": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "latitude": 91,
+        "longitude": -122.4,
+        "units": "metric"
+      },
+      "name": "getForecast-defect",
+      "operation": "getForecast"
+    }
+  ],
+  "schemaVersion": 1
+}

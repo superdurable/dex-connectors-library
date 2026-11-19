@@ -19,6 +19,10 @@ Official documentation used for the endpoint, authentication, and response contr
 The Python package is [`dex-connector-pinecone`](python/README.md), imported as
 `dex_connectors.pinecone`.
 
+The TypeScript package is [`@superdurable/connector-pinecone`](typescript/README.md).
+Its [runnable sample](typescript/examples/sample-pinecone/) uses the same static
+`pinecone` connection and upsert operation.
+
 ## Authorization and configuration
 
 Start at [https://app.pinecone.io](https://app.pinecone.io) and follow the authorization guide shown in Dex Web Connections. The `api_key` field is secret. It is resolved for each call and sent only in the `Api-Key` header. The connector never places it in a URL, Result, receipt, Failure, or log. Leave `timeout` blank for 15 seconds and `maxResponseBytes` blank for 2,097,152 bytes. A larger bounded value can be entered if a real response page exceeds that limit.

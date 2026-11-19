@@ -1,0 +1,623 @@
+{
+  "connector": "sendgrid",
+  "scenarios": [
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "[{\"date\":\"2026-10-01\",\"stats\":[{\"metrics\":{\"requests\":8,\"delivered\":7}},{\"metrics\":{\"requests\":2,\"delivered\":1}}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/stats",
+          "query": {
+            "end_date": [
+              "2026-10-02"
+            ],
+            "start_date": [
+              "2026-10-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "days": [
+            {
+              "date": "2026-10-01",
+              "delivered": 8,
+              "requests": 10
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "endDate": "2026-10-02",
+        "startDate": "2026-10-01"
+      },
+      "name": "getStats-found",
+      "operation": "getStats"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[\"forbidden\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/stats",
+          "query": {
+            "end_date": [
+              "2026-10-02"
+            ],
+            "start_date": [
+              "2026-10-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "days": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "endDate": "2026-10-02",
+        "startDate": "2026-10-01"
+      },
+      "name": "getStats-rejected",
+      "operation": "getStats"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/stats",
+          "query": {
+            "end_date": [
+              "2026-10-02"
+            ],
+            "start_date": [
+              "2026-10-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "days": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "endDate": "2026-10-02",
+        "startDate": "2026-10-01"
+      },
+      "name": "getStats-invalid",
+      "operation": "getStats"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "days": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "startDate": "2026-02-30"
+      },
+      "name": "getStats-defect",
+      "operation": "getStats"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/stats",
+          "query": {
+            "end_date": [
+              "2026-10-02"
+            ],
+            "start_date": [
+              "2026-10-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "endDate": "2026-10-02",
+        "startDate": "2026-10-01"
+      },
+      "name": "getStats-rate-limit",
+      "operation": "getStats"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/stats",
+          "query": {
+            "end_date": [
+              "2026-10-02"
+            ],
+            "start_date": [
+              "2026-10-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "endDate": "2026-10-02",
+        "startDate": "2026-10-01"
+      },
+      "name": "getStats-unavailable",
+      "operation": "getStats"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/stats",
+          "query": {
+            "end_date": [
+              "2026-10-02"
+            ],
+            "start_date": [
+              "2026-10-01"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "endDate": "2026-10-02",
+        "startDate": "2026-10-01"
+      },
+      "name": "getStats-transport",
+      "operation": "getStats"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "{\"result\":[{\"id\":\"d-receipt\",\"name\":\"Receipt\",\"generation\":\"legacy\"}],\"_metadata\":{\"count\":1,\"next\":\"https://api.sendgrid.com/v3/templates?page_token=page-2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/templates",
+          "query": {
+            "generations": [
+              "legacy"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "page-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "count": 1,
+          "nextPageToken": "page-2",
+          "templates": [
+            {
+              "generation": "legacy",
+              "id": "d-receipt",
+              "name": "Receipt"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "generation": "legacy",
+        "pageSize": 2,
+        "pageToken": "page-1"
+      },
+      "name": "listTemplates-listed",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[\"unauthorized\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/templates",
+          "query": {
+            "generations": [
+              "legacy"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "page-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "count": 0,
+          "templates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "generation": "legacy",
+        "pageSize": 2,
+        "pageToken": "page-1"
+      },
+      "name": "listTemplates-rejected",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "{\"result\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/templates",
+          "query": {
+            "generations": [
+              "legacy"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "page-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0,
+          "templates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "generation": "legacy",
+        "pageSize": 2,
+        "pageToken": "page-1"
+      },
+      "name": "listTemplates-invalid",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "count": 0,
+          "templates": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "generation": "unknown",
+        "pageSize": 2,
+        "pageToken": "page-1"
+      },
+      "name": "listTemplates-defect",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/templates",
+          "query": {
+            "generations": [
+              "legacy"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "page-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "generation": "legacy",
+        "pageSize": 2,
+        "pageToken": "page-1"
+      },
+      "name": "listTemplates-rate-limit",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/templates",
+          "query": {
+            "generations": [
+              "legacy"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "page-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "generation": "legacy",
+        "pageSize": 2,
+        "pageToken": "page-1"
+      },
+      "name": "listTemplates-unavailable",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/templates",
+          "query": {
+            "generations": [
+              "legacy"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "page_token": [
+              "page-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "generation": "legacy",
+        "pageSize": 2,
+        "pageToken": "page-1"
+      },
+      "name": "listTemplates-transport",
+      "operation": "listTemplates"
+    }
+  ],
+  "schemaVersion": 1
+}

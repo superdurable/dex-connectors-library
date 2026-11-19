@@ -11,6 +11,12 @@ spec:
   codegen:
     go:
       package: freshdesk
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-freshdesk"
+      operations: [searchTickets, getTicket, createTicket, updateTicket, addNote]
+      triggers: []
   configuration:
     fields:
       - name: domain

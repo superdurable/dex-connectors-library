@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: paypal
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-paypal"
+      operations: [listTransactions, getOrder]
+      triggers: []
     python:
       version: v0.1.0
       operations: [listTransactions, getOrder]

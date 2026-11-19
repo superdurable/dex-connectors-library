@@ -94,6 +94,7 @@ type Option func(*clientOptions)
 
 type clientOptions struct {
 	httpClient *http.Client
+	clock      func() time.Time
 }
 
 // WithHTTPClient replaces the HTTP client used for S3 requests. The caller keeps ownership of client and its
@@ -101,6 +102,12 @@ type clientOptions struct {
 // putObject's create-only check fits inside Dex's 30-second Execute timeout.
 func WithHTTPClient(client *http.Client) Option {
 	return func(options *clientOptions) { options.httpClient = client }
+}
+
+// WithClock supplies the time used for signing, retry dates, and receipts. The default is time.Now.
+// A fixed clock makes recorded SigV4 requests reproducible; callers must provide a concurrency-safe function.
+func WithClock(clock func() time.Time) Option {
+	return func(options *clientOptions) { options.clock = clock }
 }
 
 // Client signs and sends S3 REST requests for one connection. It is immutable after New and safe for
@@ -230,6 +237,9 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		}
 		option(&dependencies)
 	}
+	if dependencies.clock == nil {
+		dependencies.clock = time.Now
+	}
 	return &Client{
 		endpoint: endpoint, isAmazonEndpoint: isAmazonEndpoint, addressingStyle: config.AddressingStyle,
 		region: config.Region, defaultBucket: config.DefaultBucket, listPageSize: int(config.ListPageSize),
@@ -237,7 +247,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 		httpClient:  providerhttp.NewProviderHTTPClient(dependencies.httpClient, requestTimeout),
 		credentials: credentials,
 		signer:      v4.NewSigner(func(options *v4.SignerOptions) { options.DisableURIPathEscaping = true }),
-		now:         time.Now,
+		now:         dependencies.clock,
 	}, nil
 }
 

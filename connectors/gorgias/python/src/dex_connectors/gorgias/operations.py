@@ -647,7 +647,10 @@ class CreateTicketOperation:
             try:
                 records, _ = decode_list(result.body, "ticket")
                 for record in records:
-                    ticket = decode_ticket(record)
+                    try:
+                        ticket = decode_ticket(record)
+                    except (ValueError, TypeError, KeyError, AttributeError):
+                        continue
                     if ticket.external_id == str(call.idempotency_key):
                         return ticket, result, self.client.receipt(call, result, ticket.id)
             except (ValueError, TypeError, KeyError, AttributeError) as error:

@@ -13,6 +13,8 @@ an announcement, react to it, and confirm it with a read-back.
 Its Go module is `github.com/superdurable/dex-connectors-library/connectors/discord/go`.
 The connector ID is `discord`.
 
+The TypeScript package is `@superdurable/connector-discord` at v0.1.0. It supports all four operations and no Triggers. See the [TypeScript package](typescript/README.md) and its [runnable announcement example](typescript/examples/channel-announcement/README.md).
+
 ## Operations
 
 | Factory | Kind | Input | Required branch | Optional branches |

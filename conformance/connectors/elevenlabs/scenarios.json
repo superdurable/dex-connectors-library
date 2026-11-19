@@ -1,0 +1,627 @@
+{
+  "connector": "elevenlabs",
+  "scenarios": [
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "{\"voices\": [{\"voice_id\": \"voice_meridian\", \"name\": \"Meridian Narrator\"}], \"has_more\": true, \"next_page_token\": \"page-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/voices",
+          "query": {
+            "next_page_token": [
+              "page one"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": true,
+          "nextPageToken": "page-2",
+          "voices": [
+            {
+              "name": "Meridian Narrator",
+              "voiceId": "voice_meridian"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextPageToken": "page one",
+        "pageSize": 25
+      },
+      "name": "listVoices-success",
+      "operation": "listVoices"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "private error",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/voices",
+          "query": {
+            "next_page_token": [
+              "page one"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "voices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextPageToken": "page one",
+        "pageSize": 25
+      },
+      "name": "listVoices-rejected",
+      "operation": "listVoices"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "{\"voices\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/voices",
+          "query": {
+            "next_page_token": [
+              "page one"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "voices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextPageToken": "page one",
+        "pageSize": 25
+      },
+      "name": "listVoices-invalid-response",
+      "operation": "listVoices"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "voices": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextPageToken": "page one",
+        "pageSize": -1
+      },
+      "name": "listVoices-defect",
+      "operation": "listVoices"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "private error",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/voices",
+          "query": {
+            "next_page_token": [
+              "page one"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "nextPageToken": "page one",
+        "pageSize": 25
+      },
+      "name": "listVoices-rate-limit",
+      "operation": "listVoices"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "private error",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/voices",
+          "query": {
+            "next_page_token": [
+              "page one"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextPageToken": "page one",
+        "pageSize": 25
+      },
+      "name": "listVoices-server-error",
+      "operation": "listVoices"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/voices",
+          "query": {
+            "next_page_token": [
+              "page one"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextPageToken": "page one",
+        "pageSize": 25
+      },
+      "name": "listVoices-transport",
+      "operation": "listVoices"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "ID3audio",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/text-to-speech/voice_meridian",
+          "query": {
+            "output_format": [
+              "mp3_44100_128"
+            ]
+          },
+          "requestBody": {
+            "model_id": "eleven_multilingual_v2",
+            "text": "Hello, world!"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "audio/mpeg"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "audioBase64": "SUQzYXVkaW8=",
+          "contentType": "audio/mpeg"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "modelId": "eleven_multilingual_v2",
+        "text": "Hello, world!",
+        "voiceId": "voice_meridian"
+      },
+      "name": "createSpeech-success",
+      "operation": "createSpeech"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "private error",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/text-to-speech/voice_meridian",
+          "query": {
+            "output_format": [
+              "mp3_44100_128"
+            ]
+          },
+          "requestBody": {
+            "model_id": "eleven_multilingual_v2",
+            "text": "Hello, world!"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "audio/mpeg"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "audioBase64": "",
+          "contentType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "modelId": "eleven_multilingual_v2",
+        "text": "Hello, world!",
+        "voiceId": "voice_meridian"
+      },
+      "name": "createSpeech-rejected",
+      "operation": "createSpeech"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/text-to-speech/voice_meridian",
+          "query": {
+            "output_format": [
+              "mp3_44100_128"
+            ]
+          },
+          "requestBody": {
+            "model_id": "eleven_multilingual_v2",
+            "text": "Hello, world!"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "audio/mpeg"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "audioBase64": "",
+          "contentType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "modelId": "eleven_multilingual_v2",
+        "text": "Hello, world!",
+        "voiceId": "voice_meridian"
+      },
+      "name": "createSpeech-invalid-response",
+      "operation": "createSpeech"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "audioBase64": "",
+          "contentType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "modelId": "model",
+        "text": "Hello",
+        "voiceId": "bad/voice"
+      },
+      "name": "createSpeech-defect",
+      "operation": "createSpeech"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "private error",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/text-to-speech/voice_meridian",
+          "query": {
+            "output_format": [
+              "mp3_44100_128"
+            ]
+          },
+          "requestBody": {
+            "model_id": "eleven_multilingual_v2",
+            "text": "Hello, world!"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "audio/mpeg"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "modelId": "eleven_multilingual_v2",
+        "text": "Hello, world!",
+        "voiceId": "voice_meridian"
+      },
+      "name": "createSpeech-rate-limit",
+      "operation": "createSpeech"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "body": "private error",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/text-to-speech/voice_meridian",
+          "query": {
+            "output_format": [
+              "mp3_44100_128"
+            ]
+          },
+          "requestBody": {
+            "model_id": "eleven_multilingual_v2",
+            "text": "Hello, world!"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "audio/mpeg"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "modelId": "eleven_multilingual_v2",
+        "text": "Hello, world!",
+        "voiceId": "voice_meridian"
+      },
+      "name": "createSpeech-server-error",
+      "operation": "createSpeech"
+    },
+    {
+      "callId": "f0e428c6-2385-5c69-b8ea-0b273865c443",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/text-to-speech/voice_meridian",
+          "query": {
+            "output_format": [
+              "mp3_44100_128"
+            ]
+          },
+          "requestBody": {
+            "model_id": "eleven_multilingual_v2",
+            "text": "Hello, world!"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "audio/mpeg"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "modelId": "eleven_multilingual_v2",
+        "text": "Hello, world!",
+        "voiceId": "voice_meridian"
+      },
+      "name": "createSpeech-transport",
+      "operation": "createSpeech"
+    }
+  ],
+  "schemaVersion": 1
+}

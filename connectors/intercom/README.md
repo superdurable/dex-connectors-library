@@ -370,6 +370,19 @@ starts one Flow per new conversation from the `conversationEvent` Trigger,
 uses all five operations, and answers and closes the conversation only when it
 duplicates the customer's earlier open conversation.
 
+## TypeScript package
+
+`@superdurable/connector-intercom@0.1.0` implements the five conversation
+and contact operations with operation-specific TypeScript Step factories. The
+[`read-conversation` example](typescript/examples/read-conversation) is a
+runnable Dex application using a static `intercom` connection. The
+`conversationEvent` Trigger remains Go-only. Run the TypeScript package's
+`npm run check` and its real Dex integration script as described in the
+[package README](typescript/README.md). Go-recorded provider scenarios in
+`conformance/connectors/intercom/scenarios.json` verify cross-language
+request and outcome parity; live Intercom behavior is unverified for the
+TypeScript package.
+
 ## Verification
 
 ```bash

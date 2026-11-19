@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from dex import CodecRegistry
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -75,6 +76,37 @@ async def test_get_file_keeps_document_tree_and_sends_figma_token() -> None:
     assert result.value.last_modified == "2026-10-28T12:00:00Z"
     assert requests[0].url.raw_path == b"/v1/files/AbC_123-x"
     assert requests[0].headers["X-Figma-Token"] == TOKEN
+
+
+@pytest.mark.asyncio
+async def test_get_file_encodes_document_numbers_like_go() -> None:
+    body = (
+        b'{"name":"Numeric Design","document":{"z":1.0,'
+        b'"a":100000000000000000000,"nested":{"later":2.00,"first":1,"fraction":0.5}}}'
+    )
+    result = await run_query(
+        make_client(httpx.Response(200, content=body)).get_file(), file_call(), GetFileInput("AbC")
+    )
+    assert result.branch == FOUND
+    encoded = CodecRegistry().resolve(type(result.value)).encode(result.value).data
+    assert encoded == (
+        '{"document":{"a":100000000000000000000,'
+        '"nested":{"first":1,"fraction":0.5,"later":2},"z":1},'
+        '"lastModified":"","name":"Numeric Design"}'
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("number", [b"1.234567890123456789", b"1e5000"])
+async def test_get_file_rejects_number_that_codec_cannot_encode(number: bytes) -> None:
+    body = b'{"name":"Numeric Design","document":{"children":[{"x":' + number + b'}]}}'
+    result = await run_query(
+        make_client(httpx.Response(200, content=body)).get_file(), file_call(), GetFileInput("AbC")
+    )
+    assert result.branch == INVALID_RESPONSE
+    assert result.failure is not None
+    assert result.failure.kind == FailureKind.PROTOCOL
+    assert "document.children[0].x" in result.failure.message
 
 
 @pytest.mark.asyncio

@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: gitlab
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-gitlab"
+      operations: [getProject, listIssues, updateIssueLabels]
+      triggers: []
     python:
       version: v0.1.0
       operations: [getProject, listIssues, updateIssueLabels]

@@ -11,6 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+<<<<<<< HEAD
+=======
+	"mime"
+	"mime/multipart"
+>>>>>>> origin/main
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -20,6 +25,10 @@ import (
 	"sync"
 	"testing"
 	"time"
+<<<<<<< HEAD
+=======
+	"unicode/utf8"
+>>>>>>> origin/main
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -556,6 +565,18 @@ func TestConformanceMatcher(t *testing.T) {
 			for _, field := range test.ExpectedMismatches {
 				require.Contains(t, strings.Join(recorder.mismatches, "\n"), field)
 			}
+<<<<<<< HEAD
+=======
+			if conformanceIsMultipart(request.Header.Get("Content-Type")) && len(test.ExpectedMismatches) == 0 {
+				observed, err := recorder.observeRequest(request)
+				require.NoError(t, err)
+				var expectedBody any
+				require.NoError(t, json.Unmarshal(test.Exchange.RequestBody, &expectedBody))
+				require.Equal(t, expectedBody, observed["requestBody"])
+				headers := observed["requestHeaders"].(map[string][]string)
+				require.Equal(t, conformanceExpectedValues(test.Exchange.RequestHeaders["Content-Type"]), headers["Content-Type"])
+			}
+>>>>>>> origin/main
 		})
 	}
 }
@@ -656,6 +677,16 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 					}
 				}
 			}
+<<<<<<< HEAD
+=======
+		} else if descriptor, isObject := expected.(map[string]any); isObject && descriptor["$multipart"] != nil {
+			observed, err := conformanceMultipartBody(request.Header.Get("Content-Type"), body)
+			if err != nil {
+				recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: invalid multipart body: %v", index, err))
+			} else if !reflect.DeepEqual(observed, expected) {
+				recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: multipart body mismatch", index))
+			}
+>>>>>>> origin/main
 		} else {
 			if _, isObject := expected.(map[string]any); isObject {
 				if json.Unmarshal(body, &observed) != nil {
@@ -684,7 +715,15 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 		}
 	}
 	for name, value := range exchange.RequestHeaders {
+<<<<<<< HEAD
 		recorder.matchValues(index, "header "+name, request.Header.Values(name), conformanceExpectedValues(value))
+=======
+		actual, expected := request.Header.Values(name), conformanceExpectedValues(value)
+		if strings.EqualFold(name, "Content-Type") && len(actual) == 1 && len(expected) == 1 && conformanceIsMultipart(expected[0]) {
+			actual = []string{conformanceMultipartContentType(actual[0])}
+		}
+		recorder.matchValues(index, "header "+name, actual, expected)
+>>>>>>> origin/main
 	}
 	for name, values := range request.Header {
 		if strings.EqualFold(name, "Idempotency-Key") {
@@ -747,7 +786,15 @@ func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[
 	headers := map[string][]string{}
 	for name, values := range request.Header {
 		if !strings.EqualFold(name, "Idempotency-Key") {
+<<<<<<< HEAD
 			headers[name] = values
+=======
+			if strings.EqualFold(name, "Content-Type") && len(values) == 1 && conformanceIsMultipart(values[0]) {
+				headers[name] = []string{conformanceMultipartContentType(values[0])}
+			} else {
+				headers[name] = values
+			}
+>>>>>>> origin/main
 		}
 	}
 	if len(headers) > 0 {
@@ -776,6 +823,15 @@ func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[
 		if len(values) > 0 {
 			observed["form"] = values
 		}
+<<<<<<< HEAD
+=======
+	} else if conformanceIsMultipart(request.Header.Get("Content-Type")) {
+		value, err := conformanceMultipartBody(request.Header.Get("Content-Type"), body)
+		if err != nil {
+			return observed, err
+		}
+		observed["requestBody"] = value
+>>>>>>> origin/main
 	} else if len(body) > 0 {
 		var value any
 		if json.Unmarshal(body, &value) == nil {
@@ -801,6 +857,58 @@ func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[
 	return observed, nil
 }
 
+<<<<<<< HEAD
+=======
+func conformanceIsMultipart(contentType string) bool {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	return err == nil && (mediaType == "multipart/form-data" || mediaType == "multipart/mixed")
+}
+
+func conformanceMultipartContentType(contentType string) string {
+	mediaType, parameters, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return contentType
+	}
+	delete(parameters, "boundary")
+	return mime.FormatMediaType(mediaType, parameters)
+}
+
+func conformanceMultipartBody(contentType string, body []byte) (map[string]any, error) {
+	mediaType, parameters, err := mime.ParseMediaType(contentType)
+	if err != nil || (mediaType != "multipart/form-data" && mediaType != "multipart/mixed") || parameters["boundary"] == "" {
+		return nil, errors.New("missing multipart boundary")
+	}
+	reader := multipart.NewReader(bytes.NewReader(body), parameters["boundary"])
+	parts := []any{}
+	for {
+		part, err := reader.NextRawPart()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		content, err := io.ReadAll(part)
+		if err != nil {
+			return nil, err
+		}
+		headers := map[string]any{}
+		for name, values := range part.Header {
+			items := make([]any, len(values))
+			for index, value := range values {
+				if !utf8.ValidString(value) {
+					return nil, errors.New("invalid UTF-8 multipart part header")
+				}
+				items[index] = value
+			}
+			headers[name] = items
+		}
+		parts = append(parts, map[string]any{"headers": headers, "bodyBase64": base64.StdEncoding.EncodeToString(content)})
+	}
+	return map[string]any{"$multipart": parts}, nil
+}
+
+>>>>>>> origin/main
 func decodeConformanceMIME(raw string) ([]byte, error) {
 	if strings.Contains(raw, "=") {
 		return base64.URLEncoding.DecodeString(raw)
@@ -939,6 +1047,40 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 			if rawBody, ok := exchangeFields["requestBody"]; ok {
 				var matcher map[string]json.RawMessage
 				if json.Unmarshal(rawBody, &matcher) == nil {
+<<<<<<< HEAD
+=======
+					if rawParts, isMultipart := matcher["$multipart"]; isMultipart {
+						if len(matcher) != 1 {
+							return nil, errors.New("invalid multipart expectation")
+						}
+						var parts []json.RawMessage
+						if json.Unmarshal(rawParts, &parts) != nil || parts == nil {
+							return nil, errors.New("invalid multipart parts")
+						}
+						for _, rawPart := range parts {
+							fields, err := conformanceObject(rawPart, []string{"headers", "bodyBase64"}, nil)
+							if err != nil {
+								return nil, fmt.Errorf("invalid multipart part: %w", err)
+							}
+							var headers map[string][]string
+							if json.Unmarshal(fields["headers"], &headers) != nil || headers == nil {
+								return nil, errors.New("invalid multipart headers")
+							}
+							for name, values := range headers {
+								if name == "" || len(values) == 0 {
+									return nil, errors.New("invalid multipart header")
+								}
+							}
+							var encoded string
+							if json.Unmarshal(fields["bodyBase64"], &encoded) != nil {
+								return nil, errors.New("invalid multipart body encoding")
+							}
+							if _, err := base64.StdEncoding.DecodeString(encoded); err != nil {
+								return nil, fmt.Errorf("invalid multipart body encoding: %w", err)
+							}
+						}
+					}
+>>>>>>> origin/main
 					if rawFragments, isMIME := matcher["$rawMimeContains"]; isMIME {
 						var fragments []string
 						if len(matcher) > 2 || json.Unmarshal(rawFragments, &fragments) != nil || len(fragments) == 0 {

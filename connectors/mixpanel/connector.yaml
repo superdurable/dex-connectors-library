@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [trackEvent, exportEvents]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-mixpanel'
+      operations: [trackEvent, exportEvents]
+      triggers: []
   codegen:
     go:
       package: mixpanel

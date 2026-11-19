@@ -5,13 +5,14 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 Moved from `github.com/superdurable/dex-connectors-library/connectors/pagerduty`.
 
 This Dex connector calls the public PagerDuty JSON API. Its
-manifest version is `v0.1.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`incident-review` example](go/examples/incident-review/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 
 The Python package is [`dex-connector-pagerduty`](python/README.md), imported as
-`dex_connectors.pagerduty`.
+`dex_connectors.pagerduty`. The TypeScript package is
+[`@superdurable/connector-pagerduty`](typescript/README.md).
 
 ## Operations
 

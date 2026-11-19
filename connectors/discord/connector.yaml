@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [getChannel, listChannelMessages, createMessage, addReaction]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-discord"
+      operations: [getChannel, listChannelMessages, createMessage, addReaction]
+      triggers: []
   codegen:
     go:
       package: discord

@@ -3,6 +3,7 @@
 """Datadog provider reads and Go-compatible branch classification."""
 
 import json
+import math
 from collections.abc import Callable
 from dataclasses import dataclass as dataclass
 from datetime import UTC, datetime
@@ -90,6 +91,10 @@ _STATUS_KINDS = {
 }
 
 Output = TypeVar("Output")
+
+
+class _InexactPointNumberError(ValueError):
+    """A provider point number cannot be preserved in the Dex output."""
 
 
 class Client:
@@ -194,6 +199,8 @@ class Client:
                 return _retry(operation, FailureKind.AVAILABILITY, "response was interrupted", 0)
             try:
                 value = decode(json.loads(body))
+            except _InexactPointNumberError as error:
+                return _failed(operation, INVALID_RESPONSE, empty, FailureKind.PROTOCOL, str(error))
             except (ValueError, TypeError, UnicodeDecodeError):
                 return _failed(
                     operation, INVALID_RESPONSE, empty, FailureKind.PROTOCOL, "response was malformed"
@@ -296,27 +303,47 @@ def _decode_metrics(document: Any) -> MetricsQuery:
     series = document.get("series")
     if _string(document, "status") != "ok" or not isinstance(series, list):
         raise ValueError
-    return MetricsQuery("ok", tuple(_decode_series(item) for item in series))
+    return MetricsQuery("ok", tuple(_decode_series(item, index) for index, item in enumerate(series)))
 
 
-def _decode_series(document: Any) -> MetricSeries:
+def _decode_series(document: Any, series_index: int) -> MetricSeries:
     document = _object(document)
     points = document.get("pointlist")
     if points is None:
         points = []
     if not isinstance(points, list):
         raise ValueError
-    return MetricSeries(_string(document, "metric"), tuple(_decode_point(point) for point in points))
+    return MetricSeries(
+        _string(document, "metric"),
+        tuple(_decode_point(point, series_index, index) for index, point in enumerate(points)),
+    )
 
 
-def _decode_point(point: Any) -> tuple[float | None, ...]:
+def _decode_point(point: Any, series_index: int, point_index: int) -> tuple[int | float | None, ...]:
     if point is None:
         return ()
     if not isinstance(point, list) or any(
         value is not None and type(value) not in (int, float) for value in point
     ):
         raise ValueError
-    return tuple(None if value is None else float(value) for value in point)
+    values: list[int | float | None] = []
+    for value_index, value in enumerate(point):
+        field = f"series[{series_index}].pointlist[{point_index}][{value_index}]"
+        if type(value) is int:
+            inexact_message = f"{field} cannot be represented exactly as a Go number"
+            try:
+                go_number = float(value)
+            except OverflowError as error:
+                raise _InexactPointNumberError(inexact_message) from error
+            if not math.isfinite(go_number) or int(go_number) != value:
+                raise _InexactPointNumberError(inexact_message)
+        elif type(value) is float:
+            if not math.isfinite(value):
+                raise _InexactPointNumberError(f"{field} is not a finite JSON number")
+            if value.is_integer() and abs(value) < 1e21 and math.copysign(1, value) > 0:
+                value = int(value)
+        values.append(value)
+    return tuple(values)
 
 
 def _decode_monitors(document: Any) -> MonitorsPage:
