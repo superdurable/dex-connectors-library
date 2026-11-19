@@ -537,7 +537,7 @@ async def test_uncertain_route_and_single_dispatch_after_lost_response() -> None
     assert lost.retry_marker is not None
     assert lost.retry_marker.state == State.CLAIMED
     assert lost.retry_marker.attempt == 1
-    assert lost.retry_marker.send_count == 0
+    assert lost.retry_marker.send_count == 1
     assert lost_sink.observed[0].branch == "uncertain"
 
 
