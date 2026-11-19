@@ -7,3 +7,7 @@ Open [Shuntianchuang](https://api-model.shuntianchuang.cn), sign in, then create
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "shuntianchuang"`. Run the worker with `go run .` from its directory, then start `ShuntianchuangModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [official developer documentation](https://docs.shuntianchuang.cn/tokenhub/api/base.html). Real provider authorization is unverified without a customer-controlled Key.
+
+## TypeScript
+
+`@superdurable/connector-shuntianchuang` provides the `listModels` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
