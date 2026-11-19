@@ -15,6 +15,11 @@ spec:
       package: dex-connector-emq
       operations: [listDeployments]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-emq"
+      operations: [listDeployments]
+      triggers: []
   codegen:
     go:
       package: emq

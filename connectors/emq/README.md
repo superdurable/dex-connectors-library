@@ -15,3 +15,5 @@ No live EMQX Cloud key is bundled. The mock example exercises the actual Dex Wor
 ## Python
 
 The [Python deployment list example](python/examples/deployment_list/) uses the same static connection and verifies retry through a real Dex Worker and Client. The package replays the Go-recorded provider scenarios. Live EMQX Cloud authorization and deployment data remain unverified without a user-controlled connection.
+
+The [TypeScript deployment-list Flow](typescript/examples/basic/) uses the same static connection. Its package replays Go-recorded HTTP scenarios and verifies 503 retry through a real Dex Worker and Client.
