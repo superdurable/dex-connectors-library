@@ -77,4 +77,8 @@ func TestMockBackedFlowWithRealDex(t *testing.T) {
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, resend.SendEmailInput(input), calls[0].Input)
 	require.Equal(t, resend.SendEmailBranchSent, calls[0].Branch)
+	domainCalls := mock.ListDomains().Calls()
+	require.Len(t, domainCalls, 1)
+	require.Equal(t, resend.ListDomainsInput{}, domainCalls[0].Input)
+	require.Equal(t, resend.ListDomainsBranchListed, domainCalls[0].Branch)
 }

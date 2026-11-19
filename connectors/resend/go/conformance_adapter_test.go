@@ -4,6 +4,7 @@
 package resend
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -19,8 +20,164 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	connection := sdkgo.ConnectionRef{Provider: "resend", Name: "resend"}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{connection: {APIKey: sdkgo.NewSecretString("test-secret-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"sendEmail": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.SendEmail(), connection, scenario.CallID),
-		"getEmail":  newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetEmail(), connection),
+	createContext := &resendCreateConformanceContext{attempt: 1}
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { createContext.heartbeat = value })
+	createContext.attempt = priorAttempt + 1
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			createContext.attempt = priorAttempt + int32(attempt)
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"sendEmail":                    newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.SendEmail(), connection, scenario.CallID),
+		"getEmail":                     newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetEmail(), connection),
+		"listEmails":                   newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListEmails(), connection),
+		"getContact":                   newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetContact(), connection),
+		"listContacts":                 newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListContacts(), connection),
+		"getDomain":                    newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetDomain(), connection),
+		"listDomains":                  newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListDomains(), connection),
+		"updateContact":                newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateContact(), connection, scenario.CallID),
+		"deleteContact":                newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteContact(), connection, scenario.CallID),
+		"deleteDomain":                 newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteDomain(), connection, scenario.CallID),
+		"updateScheduledEmail":         newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateScheduledEmail(), connection, scenario.CallID),
+		"cancelScheduledEmail":         newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.CancelScheduledEmail(), connection, scenario.CallID),
+		"createContact":                newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateContact(), connection, scenario.CallID),
+		"createDomain":                 newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateDomain(), connection, scenario.CallID),
+		"updateDomain":                 newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateDomain(), connection, scenario.CallID),
+		"verifyDomain":                 newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.VerifyDomain(), connection, scenario.CallID),
+		"sendBatchEmails":              newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.SendBatchEmails(), connection, scenario.CallID),
+		"createTopic":                  newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateTopic(), connection, scenario.CallID),
+		"createSegment":                newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateSegment(), connection, scenario.CallID),
+		"createContactProperty":        newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateContactProperty(), connection, scenario.CallID),
+		"createBroadcast":              newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateBroadcast(), connection, scenario.CallID),
+		"getBroadcast":                 newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetBroadcast(), connection),
+		"listBroadcasts":               newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListBroadcasts(), connection),
+		"updateBroadcast":              newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateBroadcast(), connection, scenario.CallID),
+		"deleteBroadcast":              newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteBroadcast(), connection, scenario.CallID),
+		"sendBroadcast":                newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.SendBroadcast(), connection, scenario.CallID),
+		"cancelBroadcast":              newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.CancelBroadcast(), connection, scenario.CallID),
+		"duplicateBroadcast":           newConformanceMutationInvocation(t, scenario.Input, createContext, client.DuplicateBroadcast(), connection, scenario.CallID),
+		"listBroadcastRecipients":      newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListBroadcastRecipients(), connection),
+		"listBroadcastClickedLinks":    newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListBroadcastClickedLinks(), connection),
+		"getContactProperty":           newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetContactProperty(), connection),
+		"listContactProperties":        newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListContactProperties(), connection),
+		"updateContactProperty":        newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateContactProperty(), connection, scenario.CallID),
+		"deleteContactProperty":        newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteContactProperty(), connection, scenario.CallID),
+		"addContactToSegment":          newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.AddContactToSegment(), connection, scenario.CallID),
+		"listContactImports":           newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListContactImports(), connection),
+		"getContactImport":             newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetContactImport(), connection),
+		"removeContactFromSegment":     newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.RemoveContactFromSegment(), connection, scenario.CallID),
+		"listContactSegments":          newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListContactSegments(), connection),
+		"getContactTopics":             newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetContactTopics(), connection),
+		"updateContactTopics":          newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateContactTopics(), connection, scenario.CallID),
+		"getSegment":                   newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetSegment(), connection),
+		"listSegments":                 newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListSegments(), connection),
+		"updateSegment":                newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateSegment(), connection, scenario.CallID),
+		"deleteSegment":                newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteSegment(), connection, scenario.CallID),
+		"listSegmentContacts":          newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListSegmentContacts(), connection),
+		"listEmailAttachments":         newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListEmailAttachments(), connection),
+		"getEmailAttachment":           newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetEmailAttachment(), connection),
+		"listReceivedEmails":           newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListReceivedEmails(), connection),
+		"getReceivedEmail":             newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetReceivedEmail(), connection),
+		"listReceivedEmailAttachments": newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListReceivedEmailAttachments(), connection),
+		"getReceivedEmailAttachment":   newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetReceivedEmailAttachment(), connection),
+		"getEmailMetrics":              newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetEmailMetrics(), connection),
+		"getUsage":                     newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetUsage(), connection),
+		"listLogs":                     newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListLogs(), connection),
+		"getLog":                       newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetLog(), connection),
+		"createTemplate":               newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateTemplate(), connection, scenario.CallID),
+		"getTemplate":                  newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetTemplate(), connection),
+		"listTemplates":                newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListTemplates(), connection),
+		"updateTemplate":               newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateTemplate(), connection, scenario.CallID),
+		"deleteTemplate":               newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteTemplate(), connection, scenario.CallID),
+		"publishTemplate":              newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.PublishTemplate(), connection, scenario.CallID),
+		"duplicateTemplate":            newConformanceMutationInvocation(t, scenario.Input, createContext, client.DuplicateTemplate(), connection, scenario.CallID),
+		"createSuppression":            newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateSuppression(), connection, scenario.CallID),
+		"listSuppressions":             newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListSuppressions(), connection),
+		"getSuppression":               newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetSuppression(), connection),
+		"deleteSuppression":            newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteSuppression(), connection, scenario.CallID),
+		"batchAddSuppressions":         newConformanceMutationInvocation(t, scenario.Input, createContext, client.BatchAddSuppressions(), connection, scenario.CallID),
+		"batchRemoveSuppressions":      newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.BatchRemoveSuppressions(), connection, scenario.CallID),
+		"createWebhook":                newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateWebhook(), connection, scenario.CallID),
+		"getWebhook":                   newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetWebhook(), connection),
+		"listWebhooks":                 newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListWebhooks(), connection),
+		"updateWebhook":                newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateWebhook(), connection, scenario.CallID),
+		"deleteWebhook":                newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteWebhook(), connection, scenario.CallID),
+		"listWebhookEvents":            newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListWebhookEvents(), connection),
+		"getWebhookEvent":              newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetWebhookEvent(), connection),
+		"listWebhookEventAttempts":     newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListWebhookEventAttempts(), connection),
+		"replayWebhookEvent":           newConformanceMutationInvocation(t, scenario.Input, createContext, client.ReplayWebhookEvent(), connection, scenario.CallID),
+		"createEvent":                  newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateEvent(), connection, scenario.CallID),
+		"getEvent":                     newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetEvent(), connection),
+		"listEvents":                   newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListEvents(), connection),
+		"updateEvent":                  newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateEvent(), connection, scenario.CallID),
+		"deleteEvent":                  newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteEvent(), connection, scenario.CallID),
+		"sendEvent":                    newConformanceMutationInvocation(t, scenario.Input, createContext, client.SendEvent(), connection, scenario.CallID),
+		"createAutomation":             newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateAutomation(), connection, scenario.CallID),
+		"getAutomation":                newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetAutomation(), connection),
+		"listAutomations":              newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListAutomations(), connection),
+		"updateAutomation":             newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateAutomation(), connection, scenario.CallID),
+		"deleteAutomation":             newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteAutomation(), connection, scenario.CallID),
+		"duplicateAutomation":          newConformanceMutationInvocation(t, scenario.Input, createContext, client.DuplicateAutomation(), connection, scenario.CallID),
+		"stopAutomation":               newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.StopAutomation(), connection, scenario.CallID),
+		"listAutomationRuns":           newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListAutomationRuns(), connection),
+		"getAutomationRun":             newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetAutomationRun(), connection),
+		"createInbox":                  newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateInbox(), connection, scenario.CallID),
+		"getInbox":                     newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetInbox(), connection),
+		"listInboxes":                  newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListInboxes(), connection),
+		"updateInbox":                  newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateInbox(), connection, scenario.CallID),
+		"deleteInbox":                  newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteInbox(), connection, scenario.CallID),
+		"getInboxAgent":                newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetInboxAgent(), connection),
+		"updateInboxAgent":             newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateInboxAgent(), connection, scenario.CallID),
+		"listInboxLabels":              newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListInboxLabels(), connection),
+		"createInboxLabel":             newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateInboxLabel(), connection, scenario.CallID),
+		"updateInboxLabel":             newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateInboxLabel(), connection, scenario.CallID),
+		"deleteInboxLabel":             newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteInboxLabel(), connection, scenario.CallID),
+		"listInboxThreads":             newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListInboxThreads(), connection),
+		"searchInboxThreads":           newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.SearchInboxThreads(), connection),
+		"getInboxThread":               newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetInboxThread(), connection),
+		"updateInboxThread":            newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateInboxThread(), connection, scenario.CallID),
+		"deleteInboxThread":            newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteInboxThread(), connection, scenario.CallID),
+		"addInboxThreadLabels":         newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.AddInboxThreadLabels(), connection, scenario.CallID),
+		"setInboxThreadLabels":         newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.SetInboxThreadLabels(), connection, scenario.CallID),
+		"removeInboxThreadLabel":       newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.RemoveInboxThreadLabel(), connection, scenario.CallID),
+		"listInboxThreadEmails":        newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListInboxThreadEmails(), connection),
+		"getInboxThreadEmail":          newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetInboxThreadEmail(), connection),
+		"replyInboxThreadEmail":        newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.ReplyInboxThreadEmail(), connection, scenario.CallID),
+		"forwardInboxThreadEmail":      newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.ForwardInboxThreadEmail(), connection, scenario.CallID),
+		"listInboxDrafts":              newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListInboxDrafts(), connection),
+		"createInboxDraft":             newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.CreateInboxDraft(), connection, scenario.CallID),
+		"getInboxDraft":                newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetInboxDraft(), connection),
+		"updateInboxDraft":             newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateInboxDraft(), connection, scenario.CallID),
+		"deleteInboxDraft":             newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteInboxDraft(), connection, scenario.CallID),
+		"sendInboxDraft":               newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.SendInboxDraft(), connection, scenario.CallID),
+		"createDomainClaim":            newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateDomainClaim(), connection, scenario.CallID),
+		"getDomainClaim":               newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetDomainClaim(), connection),
+		"verifyDomainClaim":            newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.VerifyDomainClaim(), connection, scenario.CallID),
+		"getTopic":                     newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetTopic(), connection),
+		"listTopics":                   newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListTopics(), connection),
+		"updateTopic":                  newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateTopic(), connection, scenario.CallID),
+		"deleteTopic":                  newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteTopic(), connection, scenario.CallID),
 	}}
+}
+
+type resendCreateConformanceContext struct {
+	providerTestContext
+	attempt   int32
+	heartbeat json.RawMessage
+}
+
+func (context *resendCreateConformanceContext) Attempt() int32 { return context.attempt }
+func (context *resendCreateConformanceContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.heartbeat = encoded
+	return nil
+}
+func (context *resendCreateConformanceContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
 }

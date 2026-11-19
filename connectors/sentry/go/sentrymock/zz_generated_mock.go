@@ -17,10 +17,37 @@ import (
 
 // Mock is a scripted sentry connection. Script each operation through its accessor.
 type Mock struct {
-	connection        sentry.Connection
-	listIssues        *connectormock.Query[sentry.ListIssuesInput, sentry.IssuePage]
-	getIssue          *connectormock.Query[sentry.GetIssueInput, sentry.Issue]
-	updateIssueStatus *connectormock.Mutation[sentry.UpdateIssueStatusInput, sentry.Issue]
+	connection         sentry.Connection
+	createTeam         *connectormock.Mutation[sentry.CreateTeamInput, sentry.Team]
+	getTeam            *connectormock.Query[sentry.GetTeamInput, sentry.Team]
+	listTeams          *connectormock.Query[sentry.ListTeamsInput, sentry.TeamPage]
+	updateTeam         *connectormock.Mutation[sentry.UpdateTeamInput, sentry.Team]
+	deleteTeam         *connectormock.Mutation[sentry.DeleteTeamInput, sentry.DeletedTeam]
+	createRelease      *connectormock.Mutation[sentry.CreateReleaseInput, sentry.Release]
+	getRelease         *connectormock.Query[sentry.GetReleaseInput, sentry.Release]
+	listReleases       *connectormock.Query[sentry.ListReleasesInput, sentry.ReleasePage]
+	updateRelease      *connectormock.Mutation[sentry.UpdateReleaseInput, sentry.Release]
+	deleteRelease      *connectormock.Mutation[sentry.DeleteReleaseInput, sentry.DeletedRelease]
+	createProject      *connectormock.Mutation[sentry.CreateProjectInput, sentry.Project]
+	assignIssue        *connectormock.Mutation[sentry.AssignIssueInput, sentry.Issue]
+	deleteIssue        *connectormock.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue]
+	renameProject      *connectormock.Mutation[sentry.RenameProjectInput, sentry.Project]
+	deleteProject      *connectormock.Mutation[sentry.DeleteProjectInput, sentry.DeletedProject]
+	listIssues         *connectormock.Query[sentry.ListIssuesInput, sentry.IssuePage]
+	getIssue           *connectormock.Query[sentry.GetIssueInput, sentry.Issue]
+	updateIssueStatus  *connectormock.Mutation[sentry.UpdateIssueStatusInput, sentry.Issue]
+	listIssueEvents    *connectormock.Query[sentry.ListIssueEventsInput, sentry.IssueEventPage]
+	getIssueEvent      *connectormock.Query[sentry.GetIssueEventInput, sentry.IssueEvent]
+	listProjects       *connectormock.Query[sentry.ListProjectsInput, sentry.ProjectPage]
+	getProject         *connectormock.Query[sentry.GetProjectInput, sentry.Project]
+	listOrganizations  *connectormock.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage]
+	createOrganization *connectormock.Mutation[sentry.CreateOrganizationInput, sentry.Organization]
+	getOrganization    *connectormock.Query[sentry.GetOrganizationInput, sentry.Organization]
+	updateOrganization *connectormock.Mutation[sentry.UpdateOrganizationInput, sentry.Organization]
+	updateIssue        *connectormock.Mutation[sentry.UpdateIssueInput, sentry.Issue]
+	updateProject      *connectormock.Mutation[sentry.UpdateProjectInput, sentry.Project]
+	listProjectEvents  *connectormock.Query[sentry.ListProjectEventsInput, sentry.IssueEventPage]
+	getProjectEvent    *connectormock.Query[sentry.GetProjectEventInput, sentry.IssueEvent]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,13 +55,67 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listIssues:        connectormock.NewQuery[sentry.ListIssuesInput, sentry.IssuePage](t, sentry.ListIssuesDefinition),
-		getIssue:          connectormock.NewQuery[sentry.GetIssueInput, sentry.Issue](t, sentry.GetIssueDefinition),
-		updateIssueStatus: connectormock.NewMutation[sentry.UpdateIssueStatusInput, sentry.Issue](t, sentry.UpdateIssueStatusDefinition),
+		createTeam:         connectormock.NewMutation[sentry.CreateTeamInput, sentry.Team](t, sentry.CreateTeamDefinition),
+		getTeam:            connectormock.NewQuery[sentry.GetTeamInput, sentry.Team](t, sentry.GetTeamDefinition),
+		listTeams:          connectormock.NewQuery[sentry.ListTeamsInput, sentry.TeamPage](t, sentry.ListTeamsDefinition),
+		updateTeam:         connectormock.NewMutation[sentry.UpdateTeamInput, sentry.Team](t, sentry.UpdateTeamDefinition),
+		deleteTeam:         connectormock.NewMutation[sentry.DeleteTeamInput, sentry.DeletedTeam](t, sentry.DeleteTeamDefinition),
+		createRelease:      connectormock.NewMutation[sentry.CreateReleaseInput, sentry.Release](t, sentry.CreateReleaseDefinition),
+		getRelease:         connectormock.NewQuery[sentry.GetReleaseInput, sentry.Release](t, sentry.GetReleaseDefinition),
+		listReleases:       connectormock.NewQuery[sentry.ListReleasesInput, sentry.ReleasePage](t, sentry.ListReleasesDefinition),
+		updateRelease:      connectormock.NewMutation[sentry.UpdateReleaseInput, sentry.Release](t, sentry.UpdateReleaseDefinition),
+		deleteRelease:      connectormock.NewMutation[sentry.DeleteReleaseInput, sentry.DeletedRelease](t, sentry.DeleteReleaseDefinition),
+		createProject:      connectormock.NewMutation[sentry.CreateProjectInput, sentry.Project](t, sentry.CreateProjectDefinition),
+		assignIssue:        connectormock.NewMutation[sentry.AssignIssueInput, sentry.Issue](t, sentry.AssignIssueDefinition),
+		deleteIssue:        connectormock.NewMutation[sentry.DeleteIssueInput, sentry.DeletedIssue](t, sentry.DeleteIssueDefinition),
+		renameProject:      connectormock.NewMutation[sentry.RenameProjectInput, sentry.Project](t, sentry.RenameProjectDefinition),
+		deleteProject:      connectormock.NewMutation[sentry.DeleteProjectInput, sentry.DeletedProject](t, sentry.DeleteProjectDefinition),
+		listIssues:         connectormock.NewQuery[sentry.ListIssuesInput, sentry.IssuePage](t, sentry.ListIssuesDefinition),
+		getIssue:           connectormock.NewQuery[sentry.GetIssueInput, sentry.Issue](t, sentry.GetIssueDefinition),
+		updateIssueStatus:  connectormock.NewMutation[sentry.UpdateIssueStatusInput, sentry.Issue](t, sentry.UpdateIssueStatusDefinition),
+		listIssueEvents:    connectormock.NewQuery[sentry.ListIssueEventsInput, sentry.IssueEventPage](t, sentry.ListIssueEventsDefinition),
+		getIssueEvent:      connectormock.NewQuery[sentry.GetIssueEventInput, sentry.IssueEvent](t, sentry.GetIssueEventDefinition),
+		listProjects:       connectormock.NewQuery[sentry.ListProjectsInput, sentry.ProjectPage](t, sentry.ListProjectsDefinition),
+		getProject:         connectormock.NewQuery[sentry.GetProjectInput, sentry.Project](t, sentry.GetProjectDefinition),
+		listOrganizations:  connectormock.NewQuery[sentry.ListOrganizationsInput, sentry.OrganizationPage](t, sentry.ListOrganizationsDefinition),
+		createOrganization: connectormock.NewMutation[sentry.CreateOrganizationInput, sentry.Organization](t, sentry.CreateOrganizationDefinition),
+		getOrganization:    connectormock.NewQuery[sentry.GetOrganizationInput, sentry.Organization](t, sentry.GetOrganizationDefinition),
+		updateOrganization: connectormock.NewMutation[sentry.UpdateOrganizationInput, sentry.Organization](t, sentry.UpdateOrganizationDefinition),
+		updateIssue:        connectormock.NewMutation[sentry.UpdateIssueInput, sentry.Issue](t, sentry.UpdateIssueDefinition),
+		updateProject:      connectormock.NewMutation[sentry.UpdateProjectInput, sentry.Project](t, sentry.UpdateProjectDefinition),
+		listProjectEvents:  connectormock.NewQuery[sentry.ListProjectEventsInput, sentry.IssueEventPage](t, sentry.ListProjectEventsDefinition),
+		getProjectEvent:    connectormock.NewQuery[sentry.GetProjectEventInput, sentry.IssueEvent](t, sentry.GetProjectEventDefinition),
 	}
+	mock.createTeam.Default(CreateTeamDefault())
+	mock.getTeam.Default(GetTeamDefault())
+	mock.listTeams.Default(ListTeamsDefault())
+	mock.updateTeam.Default(UpdateTeamDefault())
+	mock.deleteTeam.Default(DeleteTeamDefault())
+	mock.createRelease.Default(CreateReleaseDefault())
+	mock.getRelease.Default(GetReleaseDefault())
+	mock.listReleases.Default(ListReleasesDefault())
+	mock.updateRelease.Default(UpdateReleaseDefault())
+	mock.deleteRelease.Default(DeleteReleaseDefault())
+	mock.createProject.Default(CreateProjectDefault())
+	mock.assignIssue.Default(AssignIssueDefault())
+	mock.deleteIssue.Default(DeleteIssueDefault())
+	mock.renameProject.Default(RenameProjectDefault())
+	mock.deleteProject.Default(DeleteProjectDefault())
 	mock.listIssues.Default(ListIssuesDefault())
 	mock.getIssue.Default(GetIssueDefault())
 	mock.updateIssueStatus.Default(UpdateIssueStatusDefault())
+	mock.listIssueEvents.Default(ListIssueEventsDefault())
+	mock.getIssueEvent.Default(GetIssueEventDefault())
+	mock.listProjects.Default(ListProjectsDefault())
+	mock.getProject.Default(GetProjectDefault())
+	mock.listOrganizations.Default(ListOrganizationsDefault())
+	mock.createOrganization.Default(CreateOrganizationDefault())
+	mock.getOrganization.Default(GetOrganizationDefault())
+	mock.updateOrganization.Default(UpdateOrganizationDefault())
+	mock.updateIssue.Default(UpdateIssueDefault())
+	mock.updateProject.Default(UpdateProjectDefault())
+	mock.listProjectEvents.Default(ListProjectEventsDefault())
+	mock.getProjectEvent.Default(GetProjectEventDefault())
 	connection, err := sentry.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "sentry", Name: connectionName})
 	if err != nil {
 		t.Fatalf("sentry mock connection: %v", err)
@@ -45,6 +126,81 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sentry.Connection { return mock.connection }
+
+// CreateTeam returns the createTeam script.
+func (mock *Mock) CreateTeam() *connectormock.Mutation[sentry.CreateTeamInput, sentry.Team] {
+	return mock.createTeam
+}
+
+// GetTeam returns the getTeam script.
+func (mock *Mock) GetTeam() *connectormock.Query[sentry.GetTeamInput, sentry.Team] {
+	return mock.getTeam
+}
+
+// ListTeams returns the listTeams script.
+func (mock *Mock) ListTeams() *connectormock.Query[sentry.ListTeamsInput, sentry.TeamPage] {
+	return mock.listTeams
+}
+
+// UpdateTeam returns the updateTeam script.
+func (mock *Mock) UpdateTeam() *connectormock.Mutation[sentry.UpdateTeamInput, sentry.Team] {
+	return mock.updateTeam
+}
+
+// DeleteTeam returns the deleteTeam script.
+func (mock *Mock) DeleteTeam() *connectormock.Mutation[sentry.DeleteTeamInput, sentry.DeletedTeam] {
+	return mock.deleteTeam
+}
+
+// CreateRelease returns the createRelease script.
+func (mock *Mock) CreateRelease() *connectormock.Mutation[sentry.CreateReleaseInput, sentry.Release] {
+	return mock.createRelease
+}
+
+// GetRelease returns the getRelease script.
+func (mock *Mock) GetRelease() *connectormock.Query[sentry.GetReleaseInput, sentry.Release] {
+	return mock.getRelease
+}
+
+// ListReleases returns the listReleases script.
+func (mock *Mock) ListReleases() *connectormock.Query[sentry.ListReleasesInput, sentry.ReleasePage] {
+	return mock.listReleases
+}
+
+// UpdateRelease returns the updateRelease script.
+func (mock *Mock) UpdateRelease() *connectormock.Mutation[sentry.UpdateReleaseInput, sentry.Release] {
+	return mock.updateRelease
+}
+
+// DeleteRelease returns the deleteRelease script.
+func (mock *Mock) DeleteRelease() *connectormock.Mutation[sentry.DeleteReleaseInput, sentry.DeletedRelease] {
+	return mock.deleteRelease
+}
+
+// CreateProject returns the createProject script.
+func (mock *Mock) CreateProject() *connectormock.Mutation[sentry.CreateProjectInput, sentry.Project] {
+	return mock.createProject
+}
+
+// AssignIssue returns the assignIssue script.
+func (mock *Mock) AssignIssue() *connectormock.Mutation[sentry.AssignIssueInput, sentry.Issue] {
+	return mock.assignIssue
+}
+
+// DeleteIssue returns the deleteIssue script.
+func (mock *Mock) DeleteIssue() *connectormock.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue] {
+	return mock.deleteIssue
+}
+
+// RenameProject returns the renameProject script.
+func (mock *Mock) RenameProject() *connectormock.Mutation[sentry.RenameProjectInput, sentry.Project] {
+	return mock.renameProject
+}
+
+// DeleteProject returns the deleteProject script.
+func (mock *Mock) DeleteProject() *connectormock.Mutation[sentry.DeleteProjectInput, sentry.DeletedProject] {
+	return mock.deleteProject
+}
 
 // ListIssues returns the listIssues script.
 func (mock *Mock) ListIssues() *connectormock.Query[sentry.ListIssuesInput, sentry.IssuePage] {
@@ -61,8 +217,113 @@ func (mock *Mock) UpdateIssueStatus() *connectormock.Mutation[sentry.UpdateIssue
 	return mock.updateIssueStatus
 }
 
+// ListIssueEvents returns the listIssueEvents script.
+func (mock *Mock) ListIssueEvents() *connectormock.Query[sentry.ListIssueEventsInput, sentry.IssueEventPage] {
+	return mock.listIssueEvents
+}
+
+// GetIssueEvent returns the getIssueEvent script.
+func (mock *Mock) GetIssueEvent() *connectormock.Query[sentry.GetIssueEventInput, sentry.IssueEvent] {
+	return mock.getIssueEvent
+}
+
+// ListProjects returns the listProjects script.
+func (mock *Mock) ListProjects() *connectormock.Query[sentry.ListProjectsInput, sentry.ProjectPage] {
+	return mock.listProjects
+}
+
+// GetProject returns the getProject script.
+func (mock *Mock) GetProject() *connectormock.Query[sentry.GetProjectInput, sentry.Project] {
+	return mock.getProject
+}
+
+// ListOrganizations returns the listOrganizations script.
+func (mock *Mock) ListOrganizations() *connectormock.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage] {
+	return mock.listOrganizations
+}
+
+// CreateOrganization returns the createOrganization script.
+func (mock *Mock) CreateOrganization() *connectormock.Mutation[sentry.CreateOrganizationInput, sentry.Organization] {
+	return mock.createOrganization
+}
+
+// GetOrganization returns the getOrganization script.
+func (mock *Mock) GetOrganization() *connectormock.Query[sentry.GetOrganizationInput, sentry.Organization] {
+	return mock.getOrganization
+}
+
+// UpdateOrganization returns the updateOrganization script.
+func (mock *Mock) UpdateOrganization() *connectormock.Mutation[sentry.UpdateOrganizationInput, sentry.Organization] {
+	return mock.updateOrganization
+}
+
+// UpdateIssue returns the updateIssue script.
+func (mock *Mock) UpdateIssue() *connectormock.Mutation[sentry.UpdateIssueInput, sentry.Issue] {
+	return mock.updateIssue
+}
+
+// UpdateProject returns the updateProject script.
+func (mock *Mock) UpdateProject() *connectormock.Mutation[sentry.UpdateProjectInput, sentry.Project] {
+	return mock.updateProject
+}
+
+// ListProjectEvents returns the listProjectEvents script.
+func (mock *Mock) ListProjectEvents() *connectormock.Query[sentry.ListProjectEventsInput, sentry.IssueEventPage] {
+	return mock.listProjectEvents
+}
+
+// GetProjectEvent returns the getProjectEvent script.
+func (mock *Mock) GetProjectEvent() *connectormock.Query[sentry.GetProjectEventInput, sentry.IssueEvent] {
+	return mock.getProjectEvent
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateTeam() sdkgo.Mutation[sentry.CreateTeamInput, sentry.Team] {
+	return operations.mock.createTeam
+}
+func (operations mockOperations) GetTeam() sdkgo.Query[sentry.GetTeamInput, sentry.Team] {
+	return operations.mock.getTeam
+}
+func (operations mockOperations) ListTeams() sdkgo.Query[sentry.ListTeamsInput, sentry.TeamPage] {
+	return operations.mock.listTeams
+}
+func (operations mockOperations) UpdateTeam() sdkgo.Mutation[sentry.UpdateTeamInput, sentry.Team] {
+	return operations.mock.updateTeam
+}
+func (operations mockOperations) DeleteTeam() sdkgo.Mutation[sentry.DeleteTeamInput, sentry.DeletedTeam] {
+	return operations.mock.deleteTeam
+}
+func (operations mockOperations) CreateRelease() sdkgo.Mutation[sentry.CreateReleaseInput, sentry.Release] {
+	return operations.mock.createRelease
+}
+func (operations mockOperations) GetRelease() sdkgo.Query[sentry.GetReleaseInput, sentry.Release] {
+	return operations.mock.getRelease
+}
+func (operations mockOperations) ListReleases() sdkgo.Query[sentry.ListReleasesInput, sentry.ReleasePage] {
+	return operations.mock.listReleases
+}
+func (operations mockOperations) UpdateRelease() sdkgo.Mutation[sentry.UpdateReleaseInput, sentry.Release] {
+	return operations.mock.updateRelease
+}
+func (operations mockOperations) DeleteRelease() sdkgo.Mutation[sentry.DeleteReleaseInput, sentry.DeletedRelease] {
+	return operations.mock.deleteRelease
+}
+func (operations mockOperations) CreateProject() sdkgo.Mutation[sentry.CreateProjectInput, sentry.Project] {
+	return operations.mock.createProject
+}
+func (operations mockOperations) AssignIssue() sdkgo.Mutation[sentry.AssignIssueInput, sentry.Issue] {
+	return operations.mock.assignIssue
+}
+func (operations mockOperations) DeleteIssue() sdkgo.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue] {
+	return operations.mock.deleteIssue
+}
+func (operations mockOperations) RenameProject() sdkgo.Mutation[sentry.RenameProjectInput, sentry.Project] {
+	return operations.mock.renameProject
+}
+func (operations mockOperations) DeleteProject() sdkgo.Mutation[sentry.DeleteProjectInput, sentry.DeletedProject] {
+	return operations.mock.deleteProject
+}
 func (operations mockOperations) ListIssues() sdkgo.Query[sentry.ListIssuesInput, sentry.IssuePage] {
 	return operations.mock.listIssues
 }
@@ -71,6 +332,618 @@ func (operations mockOperations) GetIssue() sdkgo.Query[sentry.GetIssueInput, se
 }
 func (operations mockOperations) UpdateIssueStatus() sdkgo.Mutation[sentry.UpdateIssueStatusInput, sentry.Issue] {
 	return operations.mock.updateIssueStatus
+}
+func (operations mockOperations) ListIssueEvents() sdkgo.Query[sentry.ListIssueEventsInput, sentry.IssueEventPage] {
+	return operations.mock.listIssueEvents
+}
+func (operations mockOperations) GetIssueEvent() sdkgo.Query[sentry.GetIssueEventInput, sentry.IssueEvent] {
+	return operations.mock.getIssueEvent
+}
+func (operations mockOperations) ListProjects() sdkgo.Query[sentry.ListProjectsInput, sentry.ProjectPage] {
+	return operations.mock.listProjects
+}
+func (operations mockOperations) GetProject() sdkgo.Query[sentry.GetProjectInput, sentry.Project] {
+	return operations.mock.getProject
+}
+func (operations mockOperations) ListOrganizations() sdkgo.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage] {
+	return operations.mock.listOrganizations
+}
+func (operations mockOperations) CreateOrganization() sdkgo.Mutation[sentry.CreateOrganizationInput, sentry.Organization] {
+	return operations.mock.createOrganization
+}
+func (operations mockOperations) GetOrganization() sdkgo.Query[sentry.GetOrganizationInput, sentry.Organization] {
+	return operations.mock.getOrganization
+}
+func (operations mockOperations) UpdateOrganization() sdkgo.Mutation[sentry.UpdateOrganizationInput, sentry.Organization] {
+	return operations.mock.updateOrganization
+}
+func (operations mockOperations) UpdateIssue() sdkgo.Mutation[sentry.UpdateIssueInput, sentry.Issue] {
+	return operations.mock.updateIssue
+}
+func (operations mockOperations) UpdateProject() sdkgo.Mutation[sentry.UpdateProjectInput, sentry.Project] {
+	return operations.mock.updateProject
+}
+func (operations mockOperations) ListProjectEvents() sdkgo.Query[sentry.ListProjectEventsInput, sentry.IssueEventPage] {
+	return operations.mock.listProjectEvents
+}
+func (operations mockOperations) GetProjectEvent() sdkgo.Query[sentry.GetProjectEventInput, sentry.IssueEvent] {
+	return operations.mock.getProjectEvent
+}
+
+// CreateTeamCreated selects the created branch: Sentry created or confirmed the team.
+func CreateTeamCreated(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.CreateTeamBranchCreated, value, failure)
+}
+
+// CreateTeamProviderRejected selects the providerRejected branch: Sentry definitively rejected creation.
+func CreateTeamProviderRejected(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.CreateTeamBranchProviderRejected, value, failure)
+}
+
+// CreateTeamDefect selects the defect branch: Local input or credentials are invalid.
+func CreateTeamDefect(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.CreateTeamBranchDefect, value, failure)
+}
+
+// CreateTeamUncertain returns an uncertain createTeam outcome.
+func CreateTeamUncertain(value sentry.Team, failure sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTeamRetry asks Dex to retry the createTeam Step, after the delay when it is positive.
+func CreateTeamRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Team] {
+	return connectormock.Retry[sentry.Team](failure, after)
+}
+
+// CreateTeamCreateTeamDefault is the manifest mock createTeamDefault: One team was created.
+func CreateTeamCreateTeamDefault() connectormock.Case[sentry.Team] {
+	value := connectormock.MustDecodeOutput[sentry.Team](`{"id":"51","slug":"core","name":"Core"}`)
+	return connectormock.Branch(sentry.CreateTeamBranchCreated, value, nil)
+}
+
+// CreateTeamDefault is the manifest default, createTeamDefault, which New installs.
+func CreateTeamDefault() connectormock.Case[sentry.Team] { return CreateTeamCreateTeamDefault() }
+
+// GetTeamFound selects the found branch: Sentry returned the team.
+func GetTeamFound(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchFound, value, failure)
+}
+
+// GetTeamNotFound selects the notFound branch: The team does not exist.
+func GetTeamNotFound(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchNotFound, value, failure)
+}
+
+// GetTeamProviderRejected selects the providerRejected branch: Sentry definitively rejected retrieval.
+func GetTeamProviderRejected(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchProviderRejected, value, failure)
+}
+
+// GetTeamInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetTeamInvalidResponse(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchInvalidResponse, value, failure)
+}
+
+// GetTeamDefect selects the defect branch: Local input or credentials are invalid.
+func GetTeamDefect(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.GetTeamBranchDefect, value, failure)
+}
+
+// GetTeamRetry asks Dex to retry the getTeam Step, after the delay when it is positive.
+func GetTeamRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Team] {
+	return connectormock.Retry[sentry.Team](failure, after)
+}
+
+// GetTeamGetTeamDefault is the manifest mock getTeamDefault: One team was found.
+func GetTeamGetTeamDefault() connectormock.Case[sentry.Team] {
+	value := connectormock.MustDecodeOutput[sentry.Team](`{"id":"51","slug":"core","name":"Core"}`)
+	return connectormock.Branch(sentry.GetTeamBranchFound, value, nil)
+}
+
+// GetTeamDefault is the manifest default, getTeamDefault, which New installs.
+func GetTeamDefault() connectormock.Case[sentry.Team] { return GetTeamGetTeamDefault() }
+
+// ListTeamsListed selects the listed branch: Sentry returned the team page.
+func ListTeamsListed(value sentry.TeamPage, failure *sdkgo.Failure) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Branch(sentry.ListTeamsBranchListed, value, failure)
+}
+
+// ListTeamsProviderRejected selects the providerRejected branch: Sentry definitively rejected listing.
+func ListTeamsProviderRejected(value sentry.TeamPage, failure *sdkgo.Failure) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Branch(sentry.ListTeamsBranchProviderRejected, value, failure)
+}
+
+// ListTeamsInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func ListTeamsInvalidResponse(value sentry.TeamPage, failure *sdkgo.Failure) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Branch(sentry.ListTeamsBranchInvalidResponse, value, failure)
+}
+
+// ListTeamsDefect selects the defect branch: Local input or credentials are invalid.
+func ListTeamsDefect(value sentry.TeamPage, failure *sdkgo.Failure) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Branch(sentry.ListTeamsBranchDefect, value, failure)
+}
+
+// ListTeamsRetry asks Dex to retry the listTeams Step, after the delay when it is positive.
+func ListTeamsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.TeamPage] {
+	return connectormock.Retry[sentry.TeamPage](failure, after)
+}
+
+// ListTeamsListTeamsDefault is the manifest mock listTeamsDefault: One team was listed.
+func ListTeamsListTeamsDefault() connectormock.Case[sentry.TeamPage] {
+	value := connectormock.MustDecodeOutput[sentry.TeamPage](`{"teams":[{"id":"51","slug":"core","name":"Core"}]}`)
+	return connectormock.Branch(sentry.ListTeamsBranchListed, value, nil)
+}
+
+// ListTeamsDefault is the manifest default, listTeamsDefault, which New installs.
+func ListTeamsDefault() connectormock.Case[sentry.TeamPage] { return ListTeamsListTeamsDefault() }
+
+// UpdateTeamUpdated selects the updated branch: Sentry updated the team.
+func UpdateTeamUpdated(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchUpdated, value, failure)
+}
+
+// UpdateTeamNotFound selects the notFound branch: The team does not exist.
+func UpdateTeamNotFound(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchNotFound, value, failure)
+}
+
+// UpdateTeamProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateTeamProviderRejected(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchProviderRejected, value, failure)
+}
+
+// UpdateTeamInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateTeamInvalidResponse(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchInvalidResponse, value, failure)
+}
+
+// UpdateTeamDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateTeamDefect(value sentry.Team, failure *sdkgo.Failure) connectormock.Case[sentry.Team] {
+	return connectormock.Branch(sentry.UpdateTeamBranchDefect, value, failure)
+}
+
+// UpdateTeamRetry asks Dex to retry the updateTeam Step, after the delay when it is positive.
+func UpdateTeamRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Team] {
+	return connectormock.Retry[sentry.Team](failure, after)
+}
+
+// UpdateTeamUpdateTeamDefault is the manifest mock updateTeamDefault: One team was updated.
+func UpdateTeamUpdateTeamDefault() connectormock.Case[sentry.Team] {
+	value := connectormock.MustDecodeOutput[sentry.Team](`{"id":"51","slug":"core-platform","name":"Core Platform"}`)
+	return connectormock.Branch(sentry.UpdateTeamBranchUpdated, value, nil)
+}
+
+// UpdateTeamDefault is the manifest default, updateTeamDefault, which New installs.
+func UpdateTeamDefault() connectormock.Case[sentry.Team] { return UpdateTeamUpdateTeamDefault() }
+
+// DeleteTeamDeleted selects the deleted branch: Sentry accepted team deletion.
+func DeleteTeamDeleted(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchDeleted, value, failure)
+}
+
+// DeleteTeamNotFound selects the notFound branch: The team does not exist.
+func DeleteTeamNotFound(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchNotFound, value, failure)
+}
+
+// DeleteTeamProviderRejected selects the providerRejected branch: Sentry definitively rejected deletion.
+func DeleteTeamProviderRejected(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchProviderRejected, value, failure)
+}
+
+// DeleteTeamInvalidResponse selects the invalidResponse branch: Sentry returned unexpected deletion content.
+func DeleteTeamInvalidResponse(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchInvalidResponse, value, failure)
+}
+
+// DeleteTeamDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteTeamDefect(value sentry.DeletedTeam, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Branch(sentry.DeleteTeamBranchDefect, value, failure)
+}
+
+// DeleteTeamRetry asks Dex to retry the deleteTeam Step, after the delay when it is positive.
+func DeleteTeamRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.DeletedTeam] {
+	return connectormock.Retry[sentry.DeletedTeam](failure, after)
+}
+
+// DeleteTeamDeleteTeamDefault is the manifest mock deleteTeamDefault: One team deletion was accepted.
+func DeleteTeamDeleteTeamDefault() connectormock.Case[sentry.DeletedTeam] {
+	value := connectormock.MustDecodeOutput[sentry.DeletedTeam](`{"slug":"core"}`)
+	return connectormock.Branch(sentry.DeleteTeamBranchDeleted, value, nil)
+}
+
+// DeleteTeamDefault is the manifest default, deleteTeamDefault, which New installs.
+func DeleteTeamDefault() connectormock.Case[sentry.DeletedTeam] { return DeleteTeamDeleteTeamDefault() }
+
+// CreateReleaseCreated selects the created branch: Sentry created or confirmed the release.
+func CreateReleaseCreated(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.CreateReleaseBranchCreated, value, failure)
+}
+
+// CreateReleaseProviderRejected selects the providerRejected branch: Sentry definitively rejected creation.
+func CreateReleaseProviderRejected(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.CreateReleaseBranchProviderRejected, value, failure)
+}
+
+// CreateReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func CreateReleaseDefect(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.CreateReleaseBranchDefect, value, failure)
+}
+
+// CreateReleaseUncertain returns an uncertain createRelease outcome.
+func CreateReleaseUncertain(value sentry.Release, failure sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateReleaseRetry asks Dex to retry the createRelease Step, after the delay when it is positive.
+func CreateReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Release] {
+	return connectormock.Retry[sentry.Release](failure, after)
+}
+
+// CreateReleaseCreateReleaseDefault is the manifest mock createReleaseDefault: One release was created.
+func CreateReleaseCreateReleaseDefault() connectormock.Case[sentry.Release] {
+	value := connectormock.MustDecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"open"}`)
+	return connectormock.Branch(sentry.CreateReleaseBranchCreated, value, nil)
+}
+
+// CreateReleaseDefault is the manifest default, createReleaseDefault, which New installs.
+func CreateReleaseDefault() connectormock.Case[sentry.Release] {
+	return CreateReleaseCreateReleaseDefault()
+}
+
+// GetReleaseFound selects the found branch: Sentry returned the release.
+func GetReleaseFound(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchFound, value, failure)
+}
+
+// GetReleaseNotFound selects the notFound branch: The release does not exist.
+func GetReleaseNotFound(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchNotFound, value, failure)
+}
+
+// GetReleaseProviderRejected selects the providerRejected branch: Sentry definitively rejected retrieval.
+func GetReleaseProviderRejected(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchProviderRejected, value, failure)
+}
+
+// GetReleaseInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetReleaseInvalidResponse(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchInvalidResponse, value, failure)
+}
+
+// GetReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func GetReleaseDefect(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.GetReleaseBranchDefect, value, failure)
+}
+
+// GetReleaseRetry asks Dex to retry the getRelease Step, after the delay when it is positive.
+func GetReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Release] {
+	return connectormock.Retry[sentry.Release](failure, after)
+}
+
+// GetReleaseGetReleaseDefault is the manifest mock getReleaseDefault: One release was found.
+func GetReleaseGetReleaseDefault() connectormock.Case[sentry.Release] {
+	value := connectormock.MustDecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"open"}`)
+	return connectormock.Branch(sentry.GetReleaseBranchFound, value, nil)
+}
+
+// GetReleaseDefault is the manifest default, getReleaseDefault, which New installs.
+func GetReleaseDefault() connectormock.Case[sentry.Release] { return GetReleaseGetReleaseDefault() }
+
+// ListReleasesListed selects the listed branch: Sentry returned the release page.
+func ListReleasesListed(value sentry.ReleasePage, failure *sdkgo.Failure) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Branch(sentry.ListReleasesBranchListed, value, failure)
+}
+
+// ListReleasesProviderRejected selects the providerRejected branch: Sentry definitively rejected listing.
+func ListReleasesProviderRejected(value sentry.ReleasePage, failure *sdkgo.Failure) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Branch(sentry.ListReleasesBranchProviderRejected, value, failure)
+}
+
+// ListReleasesInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func ListReleasesInvalidResponse(value sentry.ReleasePage, failure *sdkgo.Failure) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Branch(sentry.ListReleasesBranchInvalidResponse, value, failure)
+}
+
+// ListReleasesDefect selects the defect branch: Local input or credentials are invalid.
+func ListReleasesDefect(value sentry.ReleasePage, failure *sdkgo.Failure) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Branch(sentry.ListReleasesBranchDefect, value, failure)
+}
+
+// ListReleasesRetry asks Dex to retry the listReleases Step, after the delay when it is positive.
+func ListReleasesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.ReleasePage] {
+	return connectormock.Retry[sentry.ReleasePage](failure, after)
+}
+
+// ListReleasesListReleasesDefault is the manifest mock listReleasesDefault: One release was listed.
+func ListReleasesListReleasesDefault() connectormock.Case[sentry.ReleasePage] {
+	value := connectormock.MustDecodeOutput[sentry.ReleasePage](`{"releases":[{"version":"app@1.0.0","status":"open"}]}`)
+	return connectormock.Branch(sentry.ListReleasesBranchListed, value, nil)
+}
+
+// ListReleasesDefault is the manifest default, listReleasesDefault, which New installs.
+func ListReleasesDefault() connectormock.Case[sentry.ReleasePage] {
+	return ListReleasesListReleasesDefault()
+}
+
+// UpdateReleaseUpdated selects the updated branch: Sentry updated the release.
+func UpdateReleaseUpdated(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchUpdated, value, failure)
+}
+
+// UpdateReleaseNotFound selects the notFound branch: The release does not exist.
+func UpdateReleaseNotFound(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchNotFound, value, failure)
+}
+
+// UpdateReleaseProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateReleaseProviderRejected(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchProviderRejected, value, failure)
+}
+
+// UpdateReleaseInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateReleaseInvalidResponse(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchInvalidResponse, value, failure)
+}
+
+// UpdateReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateReleaseDefect(value sentry.Release, failure *sdkgo.Failure) connectormock.Case[sentry.Release] {
+	return connectormock.Branch(sentry.UpdateReleaseBranchDefect, value, failure)
+}
+
+// UpdateReleaseRetry asks Dex to retry the updateRelease Step, after the delay when it is positive.
+func UpdateReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Release] {
+	return connectormock.Retry[sentry.Release](failure, after)
+}
+
+// UpdateReleaseUpdateReleaseDefault is the manifest mock updateReleaseDefault: One release was updated.
+func UpdateReleaseUpdateReleaseDefault() connectormock.Case[sentry.Release] {
+	value := connectormock.MustDecodeOutput[sentry.Release](`{"version":"app@1.0.0","status":"archived"}`)
+	return connectormock.Branch(sentry.UpdateReleaseBranchUpdated, value, nil)
+}
+
+// UpdateReleaseDefault is the manifest default, updateReleaseDefault, which New installs.
+func UpdateReleaseDefault() connectormock.Case[sentry.Release] {
+	return UpdateReleaseUpdateReleaseDefault()
+}
+
+// DeleteReleaseDeleted selects the deleted branch: Sentry accepted release deletion.
+func DeleteReleaseDeleted(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchDeleted, value, failure)
+}
+
+// DeleteReleaseNotFound selects the notFound branch: The release does not exist.
+func DeleteReleaseNotFound(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchNotFound, value, failure)
+}
+
+// DeleteReleaseProviderRejected selects the providerRejected branch: Sentry definitively rejected deletion.
+func DeleteReleaseProviderRejected(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchProviderRejected, value, failure)
+}
+
+// DeleteReleaseInvalidResponse selects the invalidResponse branch: Sentry returned unexpected deletion content.
+func DeleteReleaseInvalidResponse(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchInvalidResponse, value, failure)
+}
+
+// DeleteReleaseDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteReleaseDefect(value sentry.DeletedRelease, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Branch(sentry.DeleteReleaseBranchDefect, value, failure)
+}
+
+// DeleteReleaseRetry asks Dex to retry the deleteRelease Step, after the delay when it is positive.
+func DeleteReleaseRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.DeletedRelease] {
+	return connectormock.Retry[sentry.DeletedRelease](failure, after)
+}
+
+// DeleteReleaseDeleteReleaseDefault is the manifest mock deleteReleaseDefault: One release was deleted.
+func DeleteReleaseDeleteReleaseDefault() connectormock.Case[sentry.DeletedRelease] {
+	value := connectormock.MustDecodeOutput[sentry.DeletedRelease](`{"version":"app@1.0.0"}`)
+	return connectormock.Branch(sentry.DeleteReleaseBranchDeleted, value, nil)
+}
+
+// DeleteReleaseDefault is the manifest default, deleteReleaseDefault, which New installs.
+func DeleteReleaseDefault() connectormock.Case[sentry.DeletedRelease] {
+	return DeleteReleaseDeleteReleaseDefault()
+}
+
+// CreateProjectCreated selects the created branch: Sentry created or confirmed the project.
+func CreateProjectCreated(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.CreateProjectBranchCreated, value, failure)
+}
+
+// CreateProjectProviderRejected selects the providerRejected branch: Sentry definitively rejected creation.
+func CreateProjectProviderRejected(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.CreateProjectBranchProviderRejected, value, failure)
+}
+
+// CreateProjectDefect selects the defect branch: Local input or credentials are invalid.
+func CreateProjectDefect(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.CreateProjectBranchDefect, value, failure)
+}
+
+// CreateProjectUncertain returns an uncertain createProject outcome.
+func CreateProjectUncertain(value sentry.Project, failure sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateProjectRetry asks Dex to retry the createProject Step, after the delay when it is positive.
+func CreateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Project] {
+	return connectormock.Retry[sentry.Project](failure, after)
+}
+
+// CreateProjectCreateProjectDefault is the manifest mock createProjectDefault: One project was created.
+func CreateProjectCreateProjectDefault() connectormock.Case[sentry.Project] {
+	value := connectormock.MustDecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"Application"}`)
+	return connectormock.Branch(sentry.CreateProjectBranchCreated, value, nil)
+}
+
+// CreateProjectDefault is the manifest default, createProjectDefault, which New installs.
+func CreateProjectDefault() connectormock.Case[sentry.Project] {
+	return CreateProjectCreateProjectDefault()
+}
+
+// AssignIssueAssigned selects the assigned branch: Sentry assigned the issue.
+func AssignIssueAssigned(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchAssigned, value, failure)
+}
+
+// AssignIssueNotFound selects the notFound branch: The issue does not exist.
+func AssignIssueNotFound(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchNotFound, value, failure)
+}
+
+// AssignIssueProviderRejected selects the providerRejected branch: Sentry definitively rejected assignment.
+func AssignIssueProviderRejected(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchProviderRejected, value, failure)
+}
+
+// AssignIssueInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func AssignIssueInvalidResponse(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchInvalidResponse, value, failure)
+}
+
+// AssignIssueDefect selects the defect branch: Local input or credentials are invalid.
+func AssignIssueDefect(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchDefect, value, failure)
+}
+
+// AssignIssueRetry asks Dex to retry the assignIssue Step, after the delay when it is positive.
+func AssignIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Issue] {
+	return connectormock.Retry[sentry.Issue](failure, after)
+}
+
+// AssignIssueAssignIssueDefault is the manifest mock assignIssueDefault: One issue was assigned.
+func AssignIssueAssignIssueDefault() connectormock.Case[sentry.Issue] {
+	value := connectormock.MustDecodeOutput[sentry.Issue](`{"id":"42","shortId":"APP-42","title":"Example","status":"unresolved"}`)
+	return connectormock.Branch(sentry.AssignIssueBranchAssigned, value, nil)
+}
+
+// AssignIssueDefault is the manifest default, assignIssueDefault, which New installs.
+func AssignIssueDefault() connectormock.Case[sentry.Issue] { return AssignIssueAssignIssueDefault() }
+
+// DeleteIssueDeleted selects the deleted branch: Sentry queued issue deletion.
+func DeleteIssueDeleted(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchDeleted, value, failure)
+}
+
+// DeleteIssueNotFound selects the notFound branch: The issue does not exist.
+func DeleteIssueNotFound(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchNotFound, value, failure)
+}
+
+// DeleteIssueProviderRejected selects the providerRejected branch: Sentry definitively rejected deletion.
+func DeleteIssueProviderRejected(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchProviderRejected, value, failure)
+}
+
+// DeleteIssueInvalidResponse selects the invalidResponse branch: Sentry returned unexpected response content.
+func DeleteIssueInvalidResponse(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchInvalidResponse, value, failure)
+}
+
+// DeleteIssueDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteIssueDefect(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchDefect, value, failure)
+}
+
+// DeleteIssueRetry asks Dex to retry the deleteIssue Step, after the delay when it is positive.
+func DeleteIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Retry[sentry.DeletedIssue](failure, after)
+}
+
+// DeleteIssueDeleteIssueDefault is the manifest mock deleteIssueDefault: One issue deletion was queued.
+func DeleteIssueDeleteIssueDefault() connectormock.Case[sentry.DeletedIssue] {
+	value := connectormock.MustDecodeOutput[sentry.DeletedIssue](`{"id":"42"}`)
+	return connectormock.Branch(sentry.DeleteIssueBranchDeleted, value, nil)
+}
+
+// DeleteIssueDefault is the manifest default, deleteIssueDefault, which New installs.
+func DeleteIssueDefault() connectormock.Case[sentry.DeletedIssue] {
+	return DeleteIssueDeleteIssueDefault()
+}
+
+// RenameProjectRenamed selects the renamed branch: Sentry renamed the project.
+func RenameProjectRenamed(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchRenamed, value, failure)
+}
+
+// RenameProjectNotFound selects the notFound branch: The project does not exist.
+func RenameProjectNotFound(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchNotFound, value, failure)
+}
+
+// RenameProjectProviderRejected selects the providerRejected branch: Sentry definitively rejected the rename.
+func RenameProjectProviderRejected(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchProviderRejected, value, failure)
+}
+
+// RenameProjectInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func RenameProjectInvalidResponse(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchInvalidResponse, value, failure)
+}
+
+// RenameProjectDefect selects the defect branch: Local input or credentials are invalid.
+func RenameProjectDefect(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchDefect, value, failure)
+}
+
+// RenameProjectRetry asks Dex to retry the renameProject Step, after the delay when it is positive.
+func RenameProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Project] {
+	return connectormock.Retry[sentry.Project](failure, after)
+}
+
+// RenameProjectRenameProjectDefault is the manifest mock renameProjectDefault: One project was renamed.
+func RenameProjectRenameProjectDefault() connectormock.Case[sentry.Project] {
+	value := connectormock.MustDecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"New name"}`)
+	return connectormock.Branch(sentry.RenameProjectBranchRenamed, value, nil)
+}
+
+// RenameProjectDefault is the manifest default, renameProjectDefault, which New installs.
+func RenameProjectDefault() connectormock.Case[sentry.Project] {
+	return RenameProjectRenameProjectDefault()
+}
+
+// DeleteProjectDeleted selects the deleted branch: Sentry queued project deletion.
+func DeleteProjectDeleted(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchDeleted, value, failure)
+}
+
+// DeleteProjectNotFound selects the notFound branch: The project does not exist.
+func DeleteProjectNotFound(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchNotFound, value, failure)
+}
+
+// DeleteProjectProviderRejected selects the providerRejected branch: Sentry definitively rejected deletion.
+func DeleteProjectProviderRejected(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchProviderRejected, value, failure)
+}
+
+// DeleteProjectInvalidResponse selects the invalidResponse branch: Sentry returned unexpected response content.
+func DeleteProjectInvalidResponse(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchInvalidResponse, value, failure)
+}
+
+// DeleteProjectDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteProjectDefect(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchDefect, value, failure)
+}
+
+// DeleteProjectRetry asks Dex to retry the deleteProject Step, after the delay when it is positive.
+func DeleteProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Retry[sentry.DeletedProject](failure, after)
+}
+
+// DeleteProjectDeleteProjectDefault is the manifest mock deleteProjectDefault: One project deletion was queued.
+func DeleteProjectDeleteProjectDefault() connectormock.Case[sentry.DeletedProject] {
+	value := connectormock.MustDecodeOutput[sentry.DeletedProject](`{"slug":"app"}`)
+	return connectormock.Branch(sentry.DeleteProjectBranchDeleted, value, nil)
+}
+
+// DeleteProjectDefault is the manifest default, deleteProjectDefault, which New installs.
+func DeleteProjectDefault() connectormock.Case[sentry.DeletedProject] {
+	return DeleteProjectDeleteProjectDefault()
 }
 
 // ListIssuesListed selects the listed branch: Sentry returned the requested result.
@@ -185,4 +1058,467 @@ func UpdateIssueStatusUpdateIssueStatusDefault() connectormock.Case[sentry.Issue
 // UpdateIssueStatusDefault is the manifest default, updateIssueStatusDefault, which New installs.
 func UpdateIssueStatusDefault() connectormock.Case[sentry.Issue] {
 	return UpdateIssueStatusUpdateIssueStatusDefault()
+}
+
+// ListIssueEventsListed selects the listed branch: Sentry returned the requested result.
+func ListIssueEventsListed(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListIssueEventsBranchListed, value, failure)
+}
+
+// ListIssueEventsProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func ListIssueEventsProviderRejected(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListIssueEventsBranchProviderRejected, value, failure)
+}
+
+// ListIssueEventsInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func ListIssueEventsInvalidResponse(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListIssueEventsBranchInvalidResponse, value, failure)
+}
+
+// ListIssueEventsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListIssueEventsDefect(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListIssueEventsBranchDefect, value, failure)
+}
+
+// ListIssueEventsRetry asks Dex to retry the listIssueEvents Step, after the delay when it is positive.
+func ListIssueEventsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Retry[sentry.IssueEventPage](failure, after)
+}
+
+// ListIssueEventsListIssueEventsDefault is the manifest mock listIssueEventsDefault: A representative Sentry response.
+func ListIssueEventsListIssueEventsDefault() connectormock.Case[sentry.IssueEventPage] {
+	value := connectormock.MustDecodeOutput[sentry.IssueEventPage](`{"events":[{"id":"event-1","title":"ExampleError"}]}`)
+	return connectormock.Branch(sentry.ListIssueEventsBranchListed, value, nil)
+}
+
+// ListIssueEventsDefault is the manifest default, listIssueEventsDefault, which New installs.
+func ListIssueEventsDefault() connectormock.Case[sentry.IssueEventPage] {
+	return ListIssueEventsListIssueEventsDefault()
+}
+
+// GetIssueEventFound selects the found branch: Sentry returned the requested result.
+func GetIssueEventFound(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetIssueEventBranchFound, value, failure)
+}
+
+// GetIssueEventNotFound selects the notFound branch: Sentry did not find the requested resource.
+func GetIssueEventNotFound(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetIssueEventBranchNotFound, value, failure)
+}
+
+// GetIssueEventProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func GetIssueEventProviderRejected(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetIssueEventBranchProviderRejected, value, failure)
+}
+
+// GetIssueEventInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetIssueEventInvalidResponse(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetIssueEventBranchInvalidResponse, value, failure)
+}
+
+// GetIssueEventDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetIssueEventDefect(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetIssueEventBranchDefect, value, failure)
+}
+
+// GetIssueEventRetry asks Dex to retry the getIssueEvent Step, after the delay when it is positive.
+func GetIssueEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Retry[sentry.IssueEvent](failure, after)
+}
+
+// GetIssueEventGetIssueEventDefault is the manifest mock getIssueEventDefault: A representative Sentry response.
+func GetIssueEventGetIssueEventDefault() connectormock.Case[sentry.IssueEvent] {
+	value := connectormock.MustDecodeOutput[sentry.IssueEvent](`{"id":"event-1","title":"ExampleError"}`)
+	return connectormock.Branch(sentry.GetIssueEventBranchFound, value, nil)
+}
+
+// GetIssueEventDefault is the manifest default, getIssueEventDefault, which New installs.
+func GetIssueEventDefault() connectormock.Case[sentry.IssueEvent] {
+	return GetIssueEventGetIssueEventDefault()
+}
+
+// ListProjectsListed selects the listed branch: Sentry returned the requested result.
+func ListProjectsListed(value sentry.ProjectPage, failure *sdkgo.Failure) connectormock.Case[sentry.ProjectPage] {
+	return connectormock.Branch(sentry.ListProjectsBranchListed, value, failure)
+}
+
+// ListProjectsProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func ListProjectsProviderRejected(value sentry.ProjectPage, failure *sdkgo.Failure) connectormock.Case[sentry.ProjectPage] {
+	return connectormock.Branch(sentry.ListProjectsBranchProviderRejected, value, failure)
+}
+
+// ListProjectsInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func ListProjectsInvalidResponse(value sentry.ProjectPage, failure *sdkgo.Failure) connectormock.Case[sentry.ProjectPage] {
+	return connectormock.Branch(sentry.ListProjectsBranchInvalidResponse, value, failure)
+}
+
+// ListProjectsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListProjectsDefect(value sentry.ProjectPage, failure *sdkgo.Failure) connectormock.Case[sentry.ProjectPage] {
+	return connectormock.Branch(sentry.ListProjectsBranchDefect, value, failure)
+}
+
+// ListProjectsRetry asks Dex to retry the listProjects Step, after the delay when it is positive.
+func ListProjectsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.ProjectPage] {
+	return connectormock.Retry[sentry.ProjectPage](failure, after)
+}
+
+// ListProjectsListProjectsDefault is the manifest mock listProjectsDefault: A representative Sentry response.
+func ListProjectsListProjectsDefault() connectormock.Case[sentry.ProjectPage] {
+	value := connectormock.MustDecodeOutput[sentry.ProjectPage](`{"projects":[{"id":"456","slug":"example","name":"Example"}]}`)
+	return connectormock.Branch(sentry.ListProjectsBranchListed, value, nil)
+}
+
+// ListProjectsDefault is the manifest default, listProjectsDefault, which New installs.
+func ListProjectsDefault() connectormock.Case[sentry.ProjectPage] {
+	return ListProjectsListProjectsDefault()
+}
+
+// GetProjectFound selects the found branch: Sentry returned the requested result.
+func GetProjectFound(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.GetProjectBranchFound, value, failure)
+}
+
+// GetProjectNotFound selects the notFound branch: Sentry did not find the requested resource.
+func GetProjectNotFound(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.GetProjectBranchNotFound, value, failure)
+}
+
+// GetProjectProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func GetProjectProviderRejected(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.GetProjectBranchProviderRejected, value, failure)
+}
+
+// GetProjectInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetProjectInvalidResponse(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.GetProjectBranchInvalidResponse, value, failure)
+}
+
+// GetProjectDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetProjectDefect(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.GetProjectBranchDefect, value, failure)
+}
+
+// GetProjectRetry asks Dex to retry the getProject Step, after the delay when it is positive.
+func GetProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Project] {
+	return connectormock.Retry[sentry.Project](failure, after)
+}
+
+// GetProjectGetProjectDefault is the manifest mock getProjectDefault: A representative Sentry response.
+func GetProjectGetProjectDefault() connectormock.Case[sentry.Project] {
+	value := connectormock.MustDecodeOutput[sentry.Project](`{"id":"456","slug":"example","name":"Example"}`)
+	return connectormock.Branch(sentry.GetProjectBranchFound, value, nil)
+}
+
+// GetProjectDefault is the manifest default, getProjectDefault, which New installs.
+func GetProjectDefault() connectormock.Case[sentry.Project] { return GetProjectGetProjectDefault() }
+
+// ListOrganizationsListed selects the listed branch: Sentry returned the requested result.
+func ListOrganizationsListed(value sentry.OrganizationPage, failure *sdkgo.Failure) connectormock.Case[sentry.OrganizationPage] {
+	return connectormock.Branch(sentry.ListOrganizationsBranchListed, value, failure)
+}
+
+// ListOrganizationsProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func ListOrganizationsProviderRejected(value sentry.OrganizationPage, failure *sdkgo.Failure) connectormock.Case[sentry.OrganizationPage] {
+	return connectormock.Branch(sentry.ListOrganizationsBranchProviderRejected, value, failure)
+}
+
+// ListOrganizationsInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func ListOrganizationsInvalidResponse(value sentry.OrganizationPage, failure *sdkgo.Failure) connectormock.Case[sentry.OrganizationPage] {
+	return connectormock.Branch(sentry.ListOrganizationsBranchInvalidResponse, value, failure)
+}
+
+// ListOrganizationsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListOrganizationsDefect(value sentry.OrganizationPage, failure *sdkgo.Failure) connectormock.Case[sentry.OrganizationPage] {
+	return connectormock.Branch(sentry.ListOrganizationsBranchDefect, value, failure)
+}
+
+// ListOrganizationsRetry asks Dex to retry the listOrganizations Step, after the delay when it is positive.
+func ListOrganizationsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.OrganizationPage] {
+	return connectormock.Retry[sentry.OrganizationPage](failure, after)
+}
+
+// ListOrganizationsListOrganizationsDefault is the manifest mock listOrganizationsDefault: A representative Sentry response.
+func ListOrganizationsListOrganizationsDefault() connectormock.Case[sentry.OrganizationPage] {
+	value := connectormock.MustDecodeOutput[sentry.OrganizationPage](`{"organizations":[{"id":"789","slug":"acme","name":"Acme"}]}`)
+	return connectormock.Branch(sentry.ListOrganizationsBranchListed, value, nil)
+}
+
+// ListOrganizationsDefault is the manifest default, listOrganizationsDefault, which New installs.
+func ListOrganizationsDefault() connectormock.Case[sentry.OrganizationPage] {
+	return ListOrganizationsListOrganizationsDefault()
+}
+
+// CreateOrganizationCreated selects the created branch: Sentry created or confirmed the organization.
+func CreateOrganizationCreated(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.CreateOrganizationBranchCreated, value, failure)
+}
+
+// CreateOrganizationProviderRejected selects the providerRejected branch: Sentry definitively rejected creation.
+func CreateOrganizationProviderRejected(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.CreateOrganizationBranchProviderRejected, value, failure)
+}
+
+// CreateOrganizationDefect selects the defect branch: Local input or credentials are invalid.
+func CreateOrganizationDefect(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.CreateOrganizationBranchDefect, value, failure)
+}
+
+// CreateOrganizationUncertain returns an uncertain createOrganization outcome.
+func CreateOrganizationUncertain(value sentry.Organization, failure sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOrganizationRetry asks Dex to retry the createOrganization Step, after the delay when it is positive.
+func CreateOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Organization] {
+	return connectormock.Retry[sentry.Organization](failure, after)
+}
+
+// CreateOrganizationCreateOrganizationDefault is the manifest mock createOrganizationDefault: One organization was created.
+func CreateOrganizationCreateOrganizationDefault() connectormock.Case[sentry.Organization] {
+	value := connectormock.MustDecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+	return connectormock.Branch(sentry.CreateOrganizationBranchCreated, value, nil)
+}
+
+// CreateOrganizationDefault is the manifest default, createOrganizationDefault, which New installs.
+func CreateOrganizationDefault() connectormock.Case[sentry.Organization] {
+	return CreateOrganizationCreateOrganizationDefault()
+}
+
+// GetOrganizationFound selects the found branch: Sentry returned the organization.
+func GetOrganizationFound(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchFound, value, failure)
+}
+
+// GetOrganizationNotFound selects the notFound branch: The organization does not exist.
+func GetOrganizationNotFound(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchNotFound, value, failure)
+}
+
+// GetOrganizationProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func GetOrganizationProviderRejected(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchProviderRejected, value, failure)
+}
+
+// GetOrganizationInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetOrganizationInvalidResponse(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchInvalidResponse, value, failure)
+}
+
+// GetOrganizationDefect selects the defect branch: Local input or credentials are invalid.
+func GetOrganizationDefect(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.GetOrganizationBranchDefect, value, failure)
+}
+
+// GetOrganizationRetry asks Dex to retry the getOrganization Step, after the delay when it is positive.
+func GetOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Organization] {
+	return connectormock.Retry[sentry.Organization](failure, after)
+}
+
+// GetOrganizationGetOrganizationDefault is the manifest mock getOrganizationDefault: One organization was found.
+func GetOrganizationGetOrganizationDefault() connectormock.Case[sentry.Organization] {
+	value := connectormock.MustDecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+	return connectormock.Branch(sentry.GetOrganizationBranchFound, value, nil)
+}
+
+// GetOrganizationDefault is the manifest default, getOrganizationDefault, which New installs.
+func GetOrganizationDefault() connectormock.Case[sentry.Organization] {
+	return GetOrganizationGetOrganizationDefault()
+}
+
+// UpdateOrganizationUpdated selects the updated branch: Sentry updated the organization.
+func UpdateOrganizationUpdated(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchUpdated, value, failure)
+}
+
+// UpdateOrganizationNotFound selects the notFound branch: The organization does not exist.
+func UpdateOrganizationNotFound(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchNotFound, value, failure)
+}
+
+// UpdateOrganizationProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateOrganizationProviderRejected(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchProviderRejected, value, failure)
+}
+
+// UpdateOrganizationInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateOrganizationInvalidResponse(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchInvalidResponse, value, failure)
+}
+
+// UpdateOrganizationDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateOrganizationDefect(value sentry.Organization, failure *sdkgo.Failure) connectormock.Case[sentry.Organization] {
+	return connectormock.Branch(sentry.UpdateOrganizationBranchDefect, value, failure)
+}
+
+// UpdateOrganizationRetry asks Dex to retry the updateOrganization Step, after the delay when it is positive.
+func UpdateOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Organization] {
+	return connectormock.Retry[sentry.Organization](failure, after)
+}
+
+// UpdateOrganizationUpdateOrganizationDefault is the manifest mock updateOrganizationDefault: One organization was updated.
+func UpdateOrganizationUpdateOrganizationDefault() connectormock.Case[sentry.Organization] {
+	value := connectormock.MustDecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
+	return connectormock.Branch(sentry.UpdateOrganizationBranchUpdated, value, nil)
+}
+
+// UpdateOrganizationDefault is the manifest default, updateOrganizationDefault, which New installs.
+func UpdateOrganizationDefault() connectormock.Case[sentry.Organization] {
+	return UpdateOrganizationUpdateOrganizationDefault()
+}
+
+// UpdateIssueUpdated selects the updated branch: Sentry updated the issue.
+func UpdateIssueUpdated(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchUpdated, value, failure)
+}
+
+// UpdateIssueNotFound selects the notFound branch: The issue does not exist.
+func UpdateIssueNotFound(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchNotFound, value, failure)
+}
+
+// UpdateIssueProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateIssueProviderRejected(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchProviderRejected, value, failure)
+}
+
+// UpdateIssueInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateIssueInvalidResponse(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchInvalidResponse, value, failure)
+}
+
+// UpdateIssueDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateIssueDefect(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchDefect, value, failure)
+}
+
+// UpdateIssueRetry asks Dex to retry the updateIssue Step, after the delay when it is positive.
+func UpdateIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Issue] {
+	return connectormock.Retry[sentry.Issue](failure, after)
+}
+
+// UpdateIssueUpdateIssueDefault is the manifest mock updateIssueDefault: One issue was updated.
+func UpdateIssueUpdateIssueDefault() connectormock.Case[sentry.Issue] {
+	value := connectormock.MustDecodeOutput[sentry.Issue](`{"id":"42","shortId":"APP-42","title":"Example","status":"resolved"}`)
+	return connectormock.Branch(sentry.UpdateIssueBranchUpdated, value, nil)
+}
+
+// UpdateIssueDefault is the manifest default, updateIssueDefault, which New installs.
+func UpdateIssueDefault() connectormock.Case[sentry.Issue] { return UpdateIssueUpdateIssueDefault() }
+
+// UpdateProjectUpdated selects the updated branch: Sentry updated the project.
+func UpdateProjectUpdated(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchUpdated, value, failure)
+}
+
+// UpdateProjectNotFound selects the notFound branch: The project does not exist.
+func UpdateProjectNotFound(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchNotFound, value, failure)
+}
+
+// UpdateProjectProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateProjectProviderRejected(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchProviderRejected, value, failure)
+}
+
+// UpdateProjectInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateProjectInvalidResponse(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchInvalidResponse, value, failure)
+}
+
+// UpdateProjectDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateProjectDefect(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchDefect, value, failure)
+}
+
+// UpdateProjectRetry asks Dex to retry the updateProject Step, after the delay when it is positive.
+func UpdateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Project] {
+	return connectormock.Retry[sentry.Project](failure, after)
+}
+
+// UpdateProjectUpdateProjectDefault is the manifest mock updateProjectDefault: One project was updated.
+func UpdateProjectUpdateProjectDefault() connectormock.Case[sentry.Project] {
+	value := connectormock.MustDecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"Application"}`)
+	return connectormock.Branch(sentry.UpdateProjectBranchUpdated, value, nil)
+}
+
+// UpdateProjectDefault is the manifest default, updateProjectDefault, which New installs.
+func UpdateProjectDefault() connectormock.Case[sentry.Project] {
+	return UpdateProjectUpdateProjectDefault()
+}
+
+// ListProjectEventsListed selects the listed branch: Sentry returned events.
+func ListProjectEventsListed(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListProjectEventsBranchListed, value, failure)
+}
+
+// ListProjectEventsProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func ListProjectEventsProviderRejected(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListProjectEventsBranchProviderRejected, value, failure)
+}
+
+// ListProjectEventsInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func ListProjectEventsInvalidResponse(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListProjectEventsBranchInvalidResponse, value, failure)
+}
+
+// ListProjectEventsDefect selects the defect branch: Local input or credentials are invalid.
+func ListProjectEventsDefect(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListProjectEventsBranchDefect, value, failure)
+}
+
+// ListProjectEventsRetry asks Dex to retry the listProjectEvents Step, after the delay when it is positive.
+func ListProjectEventsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Retry[sentry.IssueEventPage](failure, after)
+}
+
+// ListProjectEventsListProjectEventsDefault is the manifest mock listProjectEventsDefault: One event page was returned.
+func ListProjectEventsListProjectEventsDefault() connectormock.Case[sentry.IssueEventPage] {
+	value := connectormock.MustDecodeOutput[sentry.IssueEventPage](`{"events":[{"id":"aabbccddeeff00112233445566778899","title":"Example","message":"Error"}]}`)
+	return connectormock.Branch(sentry.ListProjectEventsBranchListed, value, nil)
+}
+
+// ListProjectEventsDefault is the manifest default, listProjectEventsDefault, which New installs.
+func ListProjectEventsDefault() connectormock.Case[sentry.IssueEventPage] {
+	return ListProjectEventsListProjectEventsDefault()
+}
+
+// GetProjectEventFound selects the found branch: Sentry returned the event.
+func GetProjectEventFound(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchFound, value, failure)
+}
+
+// GetProjectEventNotFound selects the notFound branch: The event does not exist.
+func GetProjectEventNotFound(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchNotFound, value, failure)
+}
+
+// GetProjectEventProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func GetProjectEventProviderRejected(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchProviderRejected, value, failure)
+}
+
+// GetProjectEventInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetProjectEventInvalidResponse(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchInvalidResponse, value, failure)
+}
+
+// GetProjectEventDefect selects the defect branch: Local input or credentials are invalid.
+func GetProjectEventDefect(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchDefect, value, failure)
+}
+
+// GetProjectEventRetry asks Dex to retry the getProjectEvent Step, after the delay when it is positive.
+func GetProjectEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Retry[sentry.IssueEvent](failure, after)
+}
+
+// GetProjectEventGetProjectEventDefault is the manifest mock getProjectEventDefault: One event was returned.
+func GetProjectEventGetProjectEventDefault() connectormock.Case[sentry.IssueEvent] {
+	value := connectormock.MustDecodeOutput[sentry.IssueEvent](`{"id":"aabbccddeeff00112233445566778899","title":"Example","message":"Error"}`)
+	return connectormock.Branch(sentry.GetProjectEventBranchFound, value, nil)
+}
+
+// GetProjectEventDefault is the manifest default, getProjectEventDefault, which New installs.
+func GetProjectEventDefault() connectormock.Case[sentry.IssueEvent] {
+	return GetProjectEventGetProjectEventDefault()
 }
