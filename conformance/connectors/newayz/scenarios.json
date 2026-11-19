@@ -1,0 +1,317 @@
+{
+  "connector": "newayz",
+  "scenarios": [
+    {
+      "callId": "2617697f-276d-55fc-a057-41e6ee60d0f9",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[{\"province\":\"湖北省\",\"city\":\"武汉市\",\"adcode\":\"420100\",\"weather\":\"晴\",\"temperature\":\"20\",\"winddirection\":\"东风\",\"windpower\":\"2\",\"humidity\":\"50\",\"reporttime\":\"2026-01-01 12:00:00\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "city": "武汉市",
+          "cityCode": "420100",
+          "humidityPercent": "50",
+          "province": "湖北省",
+          "reportTime": "2026-01-01 12:00:00",
+          "temperatureCelsius": "20",
+          "weather": "晴",
+          "windDirection": "东风",
+          "windPower": "2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-fetched",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "2bbd7f65-6d8c-59f2-93b2-df0bc6a1f5e6",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"0\",\"infocode\":\"10001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-providerRejected",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "a62c42e5-9c9d-5156-977e-62364ba0e74b",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"1\",\"infocode\":\"10000\",\"lives\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-invalidResponse",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "58c184c9-c96e-521f-b33e-000f8c6f186e",
+      "exchanges": [
+        {
+          "body": "private provider data",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-rateLimit",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "b34a2407-bf75-54d4-8ca5-1e326c4df867",
+      "exchanges": [
+        {
+          "body": "private provider data",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-serverError",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "da4c14e0-6a5f-5ebd-8395-47296b2b87bc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "city": "",
+          "cityCode": "",
+          "humidityPercent": "",
+          "province": "",
+          "reportTime": "",
+          "temperatureCelsius": "",
+          "weather": "",
+          "windDirection": "",
+          "windPower": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "42010"
+      },
+      "name": "getCurrentWeather-defect",
+      "operation": "getCurrentWeather"
+    },
+    {
+      "callId": "20f88cac-99f9-56e2-8642-f5d4c3bc7973",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/location/scenario/v1/weather",
+          "query": {
+            "access_key": [
+              "test-newayz-access-key"
+            ],
+            "city": [
+              "420100"
+            ],
+            "extensions": [
+              "base"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cityCode": "420100"
+      },
+      "name": "getCurrentWeather-transport",
+      "operation": "getCurrentWeather"
+    }
+  ],
+  "schemaVersion": 1
+}

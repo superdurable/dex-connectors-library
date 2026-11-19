@@ -1,0 +1,264 @@
+{
+  "connector": "okki",
+  "scenarios": [
+    {
+      "callId": "b8cde854-b991-5bf9-b980-584733165d1f",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"message\":\"success\",\"data\":[{\"id\":\"origin_list\",\"name\":\"客户来源\",\"field_type\":7,\"default\":\"private@example.com\",\"ext_info\":[\"private\"]},{\"id\":5200812401,\"name\":\"测试日期\",\"field_type\":4,\"default\":\"private\"},{\"id\":\"\",\"name\":\"来源详情\",\"field_type\":7}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/company/fields",
+          "query": {
+            "type": [
+              "company"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "jwt123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "fields": [
+            {
+              "fieldType": 7,
+              "id": "origin_list",
+              "name": "客户来源"
+            },
+            {
+              "fieldType": 4,
+              "id": "5200812401",
+              "name": "测试日期"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerFields-listed",
+      "operation": "listCustomerFields"
+    },
+    {
+      "callId": "f6f8e8c7-68d1-542a-a701-9d189e79c677",
+      "exchanges": [
+        {
+          "body": "{\"code\":403,\"message\":\"no permission\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/company/fields",
+          "query": {
+            "type": [
+              "company"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "jwt123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fields": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerFields-providerRejected",
+      "operation": "listCustomerFields"
+    },
+    {
+      "callId": "772f1fc3-0864-5a80-9069-7af6869d4245",
+      "exchanges": [
+        {
+          "body": "{\"code\":200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/company/fields",
+          "query": {
+            "type": [
+              "company"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "jwt123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerFields-invalidResponse",
+      "operation": "listCustomerFields"
+    },
+    {
+      "callId": "cc1303e8-5085-56b3-be07-4fbd502c1330",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/company/fields",
+          "query": {
+            "type": [
+              "company"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "jwt123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerFields-rateLimit",
+      "operation": "listCustomerFields"
+    },
+    {
+      "callId": "b9b31440-9a33-533f-8de4-7866a5ae8060",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/company/fields",
+          "query": {
+            "type": [
+              "company"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "jwt123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerFields-serverError",
+      "operation": "listCustomerFields"
+    },
+    {
+      "callId": "3c4af2a6-c179-53cb-98db-ebac26b626ca",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "fields": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerFields-defect",
+      "operation": "listCustomerFields"
+    },
+    {
+      "callId": "ac393fd6-c08f-5cb0-a5c5-96e0d791c4f9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/company/fields",
+          "query": {
+            "type": [
+              "company"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "jwt123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listCustomerFields-transport",
+      "operation": "listCustomerFields"
+    }
+  ],
+  "schemaVersion": 1
+}

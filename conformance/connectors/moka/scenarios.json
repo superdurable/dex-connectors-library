@@ -1,0 +1,300 @@
+{
+  "connector": "moka",
+  "scenarios": [
+    {
+      "callId": "122d067a-a91a-5a06-9e8a-97d1ee2d7831",
+      "exchanges": [
+        {
+          "body": "{\"jobs\":[{\"id\":2873,\"label\":\"Technology\",\"jobCount\":64,\"email\":\"must not persist\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "functions": [
+            {
+              "id": 2873,
+              "jobCount": 64,
+              "label": "Technology",
+              "parentId": 0
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-found",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "f93a8775-2c74-5d3c-a561-1b55a3ad46b4",
+      "exchanges": [
+        {
+          "body": "{\"jobs\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "functions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-empty",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "6577aaf5-712f-5e5b-9655-9f7bca2510fc",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"secret-api-key\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "functions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-providerRejected",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "14143d8e-6b95-51a5-b62c-df5f65abfd04",
+      "exchanges": [
+        {
+          "body": "{\"jobs\":[{\"id\":2873}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "functions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-invalidResponse",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "ccc24e57-e012-5f1f-816a-2e6e68edddd9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-rateLimit",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "cfd7fccd-e9fa-5f68-9d52-150e7198e698",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-serverError",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "aabaffdf-5021-5e9d-b1bf-6500c4b37ff9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "functions": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-defect",
+      "operation": "listJobFunctions"
+    },
+    {
+      "callId": "6827f2c4-0dfa-54d2-8c20-677a257ae49b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api-platform/v1/jobs-groupedby-zhineng/orgid-test",
+          "query": {
+            "mode": [
+              "social"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VjcmV0LWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listJobFunctions-transport",
+      "operation": "listJobFunctions"
+    }
+  ],
+  "schemaVersion": 1
+}

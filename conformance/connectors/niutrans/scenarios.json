@@ -1,0 +1,335 @@
+{
+  "connector": "niutrans",
+  "scenarios": [
+    {
+      "callId": "5931ad81-f522-55e8-9f0b-979558e4f356",
+      "exchanges": [
+        {
+          "body": "{\"from\":\"zh\",\"to\":\"en\",\"tgt_text\":\"Hello.\",\"apikey\":\"private\",\"src_text\":\"private\"}",
+          "form": {
+            "apikey": [
+              "test-translation-api-key"
+            ],
+            "from": [
+              "zh"
+            ],
+            "src_text": [
+              "你好。"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/NiuTransServer/translation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "translated",
+        "failureKind": "",
+        "output": {
+          "translatedText": "Hello."
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": "zh",
+        "text": "你好。",
+        "to": "en"
+      },
+      "name": "translateText-translated",
+      "operation": "translateText"
+    },
+    {
+      "callId": "78697337-bd9f-5fa1-a18e-3aeb97862b1e",
+      "exchanges": [
+        {
+          "body": "{\"error_code\":\"10000\",\"error_msg\":\"private\"}",
+          "form": {
+            "apikey": [
+              "test-translation-api-key"
+            ],
+            "from": [
+              "zh"
+            ],
+            "src_text": [
+              "你好。"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/NiuTransServer/translation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "translatedText": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": "zh",
+        "text": "你好。",
+        "to": "en"
+      },
+      "name": "translateText-providerRejected",
+      "operation": "translateText"
+    },
+    {
+      "callId": "610d2e21-ced4-57cd-aba1-b1b182267363",
+      "exchanges": [
+        {
+          "body": "{\"from\":\"zh\",\"to\":\"en\"}",
+          "form": {
+            "apikey": [
+              "test-translation-api-key"
+            ],
+            "from": [
+              "zh"
+            ],
+            "src_text": [
+              "你好。"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/NiuTransServer/translation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "translatedText": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": "zh",
+        "text": "你好。",
+        "to": "en"
+      },
+      "name": "translateText-invalidResponse",
+      "operation": "translateText"
+    },
+    {
+      "callId": "72e15c71-dd93-5fed-baf4-97eabf967bd2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "form": {
+            "apikey": [
+              "test-translation-api-key"
+            ],
+            "from": [
+              "zh"
+            ],
+            "src_text": [
+              "你好。"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/NiuTransServer/translation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": "zh",
+        "text": "你好。",
+        "to": "en"
+      },
+      "name": "translateText-rateLimit",
+      "operation": "translateText"
+    },
+    {
+      "callId": "b9f45b9b-7b08-5f4a-bea2-46214a6dc324",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"private\"}",
+          "form": {
+            "apikey": [
+              "test-translation-api-key"
+            ],
+            "from": [
+              "zh"
+            ],
+            "src_text": [
+              "你好。"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/NiuTransServer/translation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": "zh",
+        "text": "你好。",
+        "to": "en"
+      },
+      "name": "translateText-serverError",
+      "operation": "translateText"
+    },
+    {
+      "callId": "8064f97a-0c7e-53a2-af7a-1b780de035ae",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "translatedText": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": "en",
+        "text": "hello",
+        "to": "en"
+      },
+      "name": "translateText-defect",
+      "operation": "translateText"
+    },
+    {
+      "callId": "908cda14-4df2-5754-883b-7b41e0600fb6",
+      "exchanges": [
+        {
+          "form": {
+            "apikey": [
+              "test-translation-api-key"
+            ],
+            "from": [
+              "zh"
+            ],
+            "src_text": [
+              "你好。"
+            ],
+            "to": [
+              "en"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/NiuTransServer/translation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": "zh",
+        "text": "你好。",
+        "to": "en"
+      },
+      "name": "translateText-transport",
+      "operation": "translateText"
+    }
+  ],
+  "schemaVersion": 1
+}

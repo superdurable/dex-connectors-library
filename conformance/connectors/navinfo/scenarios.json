@@ -1,0 +1,275 @@
+{
+  "connector": "navinfo",
+  "scenarios": [
+    {
+      "callId": "db6f1f1a-5b97-5c25-82fd-0c809115d225",
+      "exchanges": [
+        {
+          "body": "{\"status\":200,\"data\":{\"prov\":\"北京市\",\"city\":\"北京市\",\"adcode\":\"110000\",\"private\":\"private-cover\"},\"msg\":\"private-trace\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "118.28.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "adcode": "110000",
+          "city": "北京市",
+          "province": "北京市"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "118.28.8.8"
+      },
+      "name": "lookupIPLocation-found",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "48bec4c7-8cd9-5348-bc08-898f25968682",
+      "exchanges": [
+        {
+          "body": "{\"status\":1001,\"msg\":\"test-secret\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "118.28.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "118.28.8.8"
+      },
+      "name": "lookupIPLocation-providerRejected",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "4879a837-db3d-5e31-b215-df6e1b9dd442",
+      "exchanges": [
+        {
+          "body": "{\"status\":200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "118.28.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "118.28.8.8"
+      },
+      "name": "lookupIPLocation-invalidResponse",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "5b1da931-af57-5890-8139-c4090faab5dc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "118.28.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "118.28.8.8"
+      },
+      "name": "lookupIPLocation-rateLimit",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "8783a3ee-8bd8-57ec-b966-cc579e48e77b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "118.28.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "118.28.8.8"
+      },
+      "name": "lookupIPLocation-serverError",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "046cd021-2f98-5b43-ba55-8c7f861aa5c0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adcode": "",
+          "city": "",
+          "province": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "118.28.8.8/24"
+      },
+      "name": "lookupIPLocation-defect",
+      "operation": "lookupIPLocation"
+    },
+    {
+      "callId": "1ead62bf-d0c9-58fe-9aab-1aaee6ef3162",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/open-api/position/v1/ip",
+          "query": {
+            "ak": [
+              "test-secret"
+            ],
+            "ip": [
+              "118.28.8.8"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ipAddress": "118.28.8.8"
+      },
+      "name": "lookupIPLocation-transport",
+      "operation": "lookupIPLocation"
+    }
+  ],
+  "schemaVersion": 1
+}
