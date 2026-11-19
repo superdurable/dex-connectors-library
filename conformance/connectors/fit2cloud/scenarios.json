@@ -96,7 +96,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
+      "input": {"page": 1, "pageSize": 20},
       "name": "listPosts-empty",
       "operation": "listPosts"
     },
