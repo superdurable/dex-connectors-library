@@ -1,14 +1,16 @@
 # Supabase connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/supabase/go@v0.2.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/supabase/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/supabase`.
 
-This Dex connector exposes `selectRows`, `upsertRows`. The runnable [sample Flow](go/examples/sample-supabase/flow/workflow.go) uses `selectRows` with the static `supabase` connection. Each operation uses the generated typed Step factory.
+This Dex connector exposes `selectRows`, `getRow`, `createRow`, `upsertRows`, `updateRow`, and `deleteRow`. The runnable [sample Flow](go/examples/sample-supabase/flow/workflow.go) uses `getRow` with the static `supabase` connection. Each operation uses the generated typed Step factory.
 
 ## Provider contract
 
 `upsertRows` uses `POST`, `Prefer: resolution=merge-duplicates,return=representation`, and `on_conflict`. The selected conflict columns must have a database-enforced primary key or unique constraint. Repeating the same rows merges the same values. Use a server-side secret API key in `apikey`; publishable keys remain subject to row-level security. Supply the project REST URL ending in `/rest/v1` as `baseUrl`; there is no shared project default.
+
+`getRow` reads one row by a required equality filter. `updateRow` sets literal replacement values with `PATCH`; `deleteRow` uses `DELETE`. Both write operations require a filter to prevent table-wide changes and return the affected rows. `createRow` inserts one row and requires a unique string marker already present in the row, backed by a database unique constraint. On an unknown insert outcome it reads that marker back and compares every supplied column before any bounded resend. The application must supply a marker unique to this request, not a reused display name.
 
 Official documentation used for the endpoint, authentication, and response contract:
 
@@ -30,10 +32,10 @@ Start at [https://supabase.com/dashboard/projects](https://supabase.com/dashboar
 | Provider outcome | Dex outcome |
 | --- | --- |
 | Documented success response with valid JSON shape | Happy-path branch |
-| 400, 401, 403, 409 (constraint conflict), or another definite 4xx for `selectRows`; only 400, 401, 403, 404, 411, 413, 414, 415, or 422 for `upsertRows` | Optional `providerRejected` branch |
-| 408, 429, 5xx, transport interruption, any other `upsertRows` status, or a transient credential failure such as an unavailable credential broker | Retry until the Step budget expires |
-| Malformed, incomplete, or oversized `selectRows` response | Optional `invalidResponse` branch; `upsertRows` declares `repeatOnUnknown: safe` and retries it |
-| Invalid input, an invalid credential, a required reauthorization, a missing or unselected connection, a credential broker refusal, or malformed stored credentials | Optional `defect` branch |
+| Definite refusal before a possible send | Optional `providerRejected` branch |
+| Unknown write outcome | Safe operations retry; `createRow` reads back by a request-unique marker and resends within its send cap, then selects optional `uncertain` if unconfirmed |
+| Malformed, incomplete, or oversized read response | Optional `invalidResponse` branch; safe writes retry |
+| Invalid local input or configuration before dispatch | Optional `defect` branch |
 
 Provider error bodies are never copied into Failures. A Flow fails when an optional branch is selected without wiring. The default retry policy is exponential from one second to five minutes, with unlimited attempts within one hour.
 

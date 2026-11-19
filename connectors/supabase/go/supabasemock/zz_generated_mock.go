@@ -20,6 +20,10 @@ type Mock struct {
 	connection supabase.Connection
 	selectRows *connectormock.Query[supabase.SelectRowsInput, supabase.SelectRowsOutput]
 	upsertRows *connectormock.Mutation[supabase.UpsertRowsInput, supabase.UpsertRowsOutput]
+	getRow     *connectormock.Query[supabase.GetRowInput, supabase.GetRowOutput]
+	updateRow  *connectormock.Mutation[supabase.UpdateRowInput, supabase.UpdateRowOutput]
+	deleteRow  *connectormock.Mutation[supabase.DeleteRowInput, supabase.DeleteRowOutput]
+	createRow  *connectormock.Mutation[supabase.CreateRowInput, supabase.CreateRowOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,9 +33,17 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		selectRows: connectormock.NewQuery[supabase.SelectRowsInput, supabase.SelectRowsOutput](t, supabase.SelectRowsDefinition),
 		upsertRows: connectormock.NewMutation[supabase.UpsertRowsInput, supabase.UpsertRowsOutput](t, supabase.UpsertRowsDefinition),
+		getRow:     connectormock.NewQuery[supabase.GetRowInput, supabase.GetRowOutput](t, supabase.GetRowDefinition),
+		updateRow:  connectormock.NewMutation[supabase.UpdateRowInput, supabase.UpdateRowOutput](t, supabase.UpdateRowDefinition),
+		deleteRow:  connectormock.NewMutation[supabase.DeleteRowInput, supabase.DeleteRowOutput](t, supabase.DeleteRowDefinition),
+		createRow:  connectormock.NewMutation[supabase.CreateRowInput, supabase.CreateRowOutput](t, supabase.CreateRowDefinition),
 	}
 	mock.selectRows.Default(SelectRowsDefault())
 	mock.upsertRows.Default(UpsertRowsDefault())
+	mock.getRow.Default(GetRowDefault())
+	mock.updateRow.Default(UpdateRowDefault())
+	mock.deleteRow.Default(DeleteRowDefault())
+	mock.createRow.Default(CreateRowDefault())
 	connection, err := supabase.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "supabase", Name: connectionName})
 	if err != nil {
 		t.Fatalf("supabase mock connection: %v", err)
@@ -53,6 +65,26 @@ func (mock *Mock) UpsertRows() *connectormock.Mutation[supabase.UpsertRowsInput,
 	return mock.upsertRows
 }
 
+// GetRow returns the getRow script.
+func (mock *Mock) GetRow() *connectormock.Query[supabase.GetRowInput, supabase.GetRowOutput] {
+	return mock.getRow
+}
+
+// UpdateRow returns the updateRow script.
+func (mock *Mock) UpdateRow() *connectormock.Mutation[supabase.UpdateRowInput, supabase.UpdateRowOutput] {
+	return mock.updateRow
+}
+
+// DeleteRow returns the deleteRow script.
+func (mock *Mock) DeleteRow() *connectormock.Mutation[supabase.DeleteRowInput, supabase.DeleteRowOutput] {
+	return mock.deleteRow
+}
+
+// CreateRow returns the createRow script.
+func (mock *Mock) CreateRow() *connectormock.Mutation[supabase.CreateRowInput, supabase.CreateRowOutput] {
+	return mock.createRow
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SelectRows() sdkgo.Query[supabase.SelectRowsInput, supabase.SelectRowsOutput] {
@@ -60,6 +92,18 @@ func (operations mockOperations) SelectRows() sdkgo.Query[supabase.SelectRowsInp
 }
 func (operations mockOperations) UpsertRows() sdkgo.Mutation[supabase.UpsertRowsInput, supabase.UpsertRowsOutput] {
 	return operations.mock.upsertRows
+}
+func (operations mockOperations) GetRow() sdkgo.Query[supabase.GetRowInput, supabase.GetRowOutput] {
+	return operations.mock.getRow
+}
+func (operations mockOperations) UpdateRow() sdkgo.Mutation[supabase.UpdateRowInput, supabase.UpdateRowOutput] {
+	return operations.mock.updateRow
+}
+func (operations mockOperations) DeleteRow() sdkgo.Mutation[supabase.DeleteRowInput, supabase.DeleteRowOutput] {
+	return operations.mock.deleteRow
+}
+func (operations mockOperations) CreateRow() sdkgo.Mutation[supabase.CreateRowInput, supabase.CreateRowOutput] {
+	return operations.mock.createRow
 }
 
 // SelectRowsSelected selects the selected branch: Select a bounded page of table rows through PostgREST.
@@ -132,4 +176,151 @@ func UpsertRowsDefaultUpsertRows() connectormock.Case[supabase.UpsertRowsOutput]
 // UpsertRowsDefault is the manifest default, defaultUpsertRows, which New installs.
 func UpsertRowsDefault() connectormock.Case[supabase.UpsertRowsOutput] {
 	return UpsertRowsDefaultUpsertRows()
+}
+
+// GetRowFound selects the found branch: The matching row was returned.
+func GetRowFound(value supabase.GetRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.GetRowOutput] {
+	return connectormock.Branch(supabase.GetRowBranchFound, value, failure)
+}
+
+// GetRowNotFound selects the notFound branch: No row matched the equality filter.
+func GetRowNotFound(value supabase.GetRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.GetRowOutput] {
+	return connectormock.Branch(supabase.GetRowBranchNotFound, value, failure)
+}
+
+// GetRowProviderRejected selects the providerRejected branch: The provider conclusively rejected the request.
+func GetRowProviderRejected(value supabase.GetRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.GetRowOutput] {
+	return connectormock.Branch(supabase.GetRowBranchProviderRejected, value, failure)
+}
+
+// GetRowInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func GetRowInvalidResponse(value supabase.GetRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.GetRowOutput] {
+	return connectormock.Branch(supabase.GetRowBranchInvalidResponse, value, failure)
+}
+
+// GetRowDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func GetRowDefect(value supabase.GetRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.GetRowOutput] {
+	return connectormock.Branch(supabase.GetRowBranchDefect, value, failure)
+}
+
+// GetRowRetry asks Dex to retry the getRow Step, after the delay when it is positive.
+func GetRowRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[supabase.GetRowOutput] {
+	return connectormock.Retry[supabase.GetRowOutput](failure, after)
+}
+
+// GetRowDefaultGetRow is the manifest mock defaultGetRow: A representative row.
+func GetRowDefaultGetRow() connectormock.Case[supabase.GetRowOutput] {
+	value := connectormock.MustDecodeOutput[supabase.GetRowOutput](`{"data":{"id":1,"name":"Meridian"}}`)
+	return connectormock.Branch(supabase.GetRowBranchFound, value, nil)
+}
+
+// GetRowDefault is the manifest default, defaultGetRow, which New installs.
+func GetRowDefault() connectormock.Case[supabase.GetRowOutput] { return GetRowDefaultGetRow() }
+
+// UpdateRowUpdated selects the updated branch: Matching rows were updated.
+func UpdateRowUpdated(value supabase.UpdateRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.UpdateRowOutput] {
+	return connectormock.Branch(supabase.UpdateRowBranchUpdated, value, failure)
+}
+
+// UpdateRowProviderRejected selects the providerRejected branch: The provider conclusively rejected the request.
+func UpdateRowProviderRejected(value supabase.UpdateRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.UpdateRowOutput] {
+	return connectormock.Branch(supabase.UpdateRowBranchProviderRejected, value, failure)
+}
+
+// UpdateRowInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func UpdateRowInvalidResponse(value supabase.UpdateRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.UpdateRowOutput] {
+	return connectormock.Branch(supabase.UpdateRowBranchInvalidResponse, value, failure)
+}
+
+// UpdateRowDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func UpdateRowDefect(value supabase.UpdateRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.UpdateRowOutput] {
+	return connectormock.Branch(supabase.UpdateRowBranchDefect, value, failure)
+}
+
+// UpdateRowRetry asks Dex to retry the updateRow Step, after the delay when it is positive.
+func UpdateRowRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[supabase.UpdateRowOutput] {
+	return connectormock.Retry[supabase.UpdateRowOutput](failure, after)
+}
+
+// UpdateRowDefaultUpdateRow is the manifest mock defaultUpdateRow: A representative updated row.
+func UpdateRowDefaultUpdateRow() connectormock.Case[supabase.UpdateRowOutput] {
+	value := connectormock.MustDecodeOutput[supabase.UpdateRowOutput](`{"data":[{"id":1,"name":"Meridian"}]}`)
+	return connectormock.Branch(supabase.UpdateRowBranchUpdated, value, nil)
+}
+
+// UpdateRowDefault is the manifest default, defaultUpdateRow, which New installs.
+func UpdateRowDefault() connectormock.Case[supabase.UpdateRowOutput] {
+	return UpdateRowDefaultUpdateRow()
+}
+
+// DeleteRowDeleted selects the deleted branch: Matching rows were deleted, or were already absent.
+func DeleteRowDeleted(value supabase.DeleteRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.DeleteRowOutput] {
+	return connectormock.Branch(supabase.DeleteRowBranchDeleted, value, failure)
+}
+
+// DeleteRowProviderRejected selects the providerRejected branch: The provider conclusively rejected the request.
+func DeleteRowProviderRejected(value supabase.DeleteRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.DeleteRowOutput] {
+	return connectormock.Branch(supabase.DeleteRowBranchProviderRejected, value, failure)
+}
+
+// DeleteRowInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func DeleteRowInvalidResponse(value supabase.DeleteRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.DeleteRowOutput] {
+	return connectormock.Branch(supabase.DeleteRowBranchInvalidResponse, value, failure)
+}
+
+// DeleteRowDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func DeleteRowDefect(value supabase.DeleteRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.DeleteRowOutput] {
+	return connectormock.Branch(supabase.DeleteRowBranchDefect, value, failure)
+}
+
+// DeleteRowRetry asks Dex to retry the deleteRow Step, after the delay when it is positive.
+func DeleteRowRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[supabase.DeleteRowOutput] {
+	return connectormock.Retry[supabase.DeleteRowOutput](failure, after)
+}
+
+// DeleteRowDefaultDeleteRow is the manifest mock defaultDeleteRow: A representative deleted row.
+func DeleteRowDefaultDeleteRow() connectormock.Case[supabase.DeleteRowOutput] {
+	value := connectormock.MustDecodeOutput[supabase.DeleteRowOutput](`{"data":[{"id":1,"name":"Meridian"}]}`)
+	return connectormock.Branch(supabase.DeleteRowBranchDeleted, value, nil)
+}
+
+// DeleteRowDefault is the manifest default, defaultDeleteRow, which New installs.
+func DeleteRowDefault() connectormock.Case[supabase.DeleteRowOutput] {
+	return DeleteRowDefaultDeleteRow()
+}
+
+// CreateRowCreated selects the created branch: The row was inserted or confirmed by its unique key.
+func CreateRowCreated(value supabase.CreateRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.CreateRowOutput] {
+	return connectormock.Branch(supabase.CreateRowBranchCreated, value, failure)
+}
+
+// CreateRowProviderRejected selects the providerRejected branch: The provider conclusively rejected the insert.
+func CreateRowProviderRejected(value supabase.CreateRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.CreateRowOutput] {
+	return connectormock.Branch(supabase.CreateRowBranchProviderRejected, value, failure)
+}
+
+// CreateRowDefect selects the defect branch: Local input, configuration, or credentials are invalid.
+func CreateRowDefect(value supabase.CreateRowOutput, failure *sdkgo.Failure) connectormock.Case[supabase.CreateRowOutput] {
+	return connectormock.Branch(supabase.CreateRowBranchDefect, value, failure)
+}
+
+// CreateRowUncertain returns an uncertain createRow outcome.
+func CreateRowUncertain(value supabase.CreateRowOutput, failure sdkgo.Failure) connectormock.Case[supabase.CreateRowOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateRowRetry asks Dex to retry the createRow Step, after the delay when it is positive.
+func CreateRowRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[supabase.CreateRowOutput] {
+	return connectormock.Retry[supabase.CreateRowOutput](failure, after)
+}
+
+// CreateRowDefaultCreateRow is the manifest mock defaultCreateRow: A representative inserted row.
+func CreateRowDefaultCreateRow() connectormock.Case[supabase.CreateRowOutput] {
+	value := connectormock.MustDecodeOutput[supabase.CreateRowOutput](`{"data":{"id":1,"external_key":"meridian","name":"Meridian"}}`)
+	return connectormock.Branch(supabase.CreateRowBranchCreated, value, nil)
+}
+
+// CreateRowDefault is the manifest default, defaultCreateRow, which New installs.
+func CreateRowDefault() connectormock.Case[supabase.CreateRowOutput] {
+	return CreateRowDefaultCreateRow()
 }

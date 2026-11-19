@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { TypeformClient } from '../src/client.js';
 import { GetFormInputSchema, ListFormsInputSchema, ListResponsesInputSchema, UpsertWebhookInputSchema, type UpsertWebhookInput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/typeform/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/typeform/scenarios.json', import.meta.url))
+  .filter(scenario => ['listForms', 'getForm', 'listResponses', 'upsertWebhook'].includes(scenario.operation));
 const connection = { provider: 'typeform', name: 'forms' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeTypeform));
 function productionMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input, key: string) {

@@ -41,7 +41,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 	policy := textmessagedelivery.DefaultDeliveryStatusPolicy()
-	registry, err := dex.NewRegistry([]dex.Flow{textmessagedelivery.NewFlow(connection, &policy)})
+	registry, err := dex.NewRegistry([]dex.Flow{textmessagedelivery.NewFlow(connection, &policy), textmessagedelivery.NewMessageListFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Twilio text message Flow: %w", err)
 	}

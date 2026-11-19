@@ -24,6 +24,98 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[smartsheet.Sheet](`{"id":1001,"name":"Meridian Planning","columns":[{"id":2001,"title":"Task"}],"rows":[]}`)
 			return err
 		}},
+		{name: "getRow/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetRow](`{"id":3001,"cells":["{\"columnId\":2001,\"value\":\"Planning\"}"]}`)
+			return err
+		}},
+		{name: "addRow/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetRow](`{"id":3001,"cells":["{\"columnId\":2001,\"value\":\"Planning\"}"]}`)
+			return err
+		}},
+		{name: "updateRow/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetRow](`{"id":3001,"cells":["{\"columnId\":2001,\"value\":\"Planning\"}"]}`)
+			return err
+		}},
+		{name: "deleteRow/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteRowOutput](`{"rowId":3001}`)
+			return err
+		}},
+		{name: "createSheetInWorkspace/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetSummary](`{"id":1001,"name":"Meridian Planning"}`)
+			return err
+		}},
+		{name: "createSheetInFolder/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetSummary](`{"id":1001,"name":"Meridian Planning"}`)
+			return err
+		}},
+		{name: "updateSheet/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.SheetSummary](`{"id":1001,"name":"Meridian Planning"}`)
+			return err
+		}},
+		{name: "deleteSheet/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteSheetOutput](`{"sheetId":1001}`)
+			return err
+		}},
+		{name: "listColumns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.ColumnPage](`{"columns":[{"id":2001,"title":"Task","type":"TEXT_NUMBER"}],"pageNumber":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "getColumn/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.ColumnSummary](`{"id":2001,"title":"Task","type":"TEXT_NUMBER"}`)
+			return err
+		}},
+		{name: "addColumn/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.ColumnSummary](`{"id":2001,"title":"Task","type":"TEXT_NUMBER"}`)
+			return err
+		}},
+		{name: "updateColumn/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.ColumnSummary](`{"id":2001,"title":"Task","type":"TEXT_NUMBER"}`)
+			return err
+		}},
+		{name: "deleteColumn/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteColumnOutput](`{"columnId":2001}`)
+			return err
+		}},
+		{name: "getFolder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.FolderSummary](`{"id":5001,"name":"Meridian Folder"}`)
+			return err
+		}},
+		{name: "createFolderInWorkspace/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.FolderSummary](`{"id":5001,"name":"Meridian Folder"}`)
+			return err
+		}},
+		{name: "createFolderInFolder/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.FolderSummary](`{"id":5001,"name":"Meridian Folder"}`)
+			return err
+		}},
+		{name: "updateFolder/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.FolderSummary](`{"id":5001,"name":"Meridian Folder"}`)
+			return err
+		}},
+		{name: "deleteFolder/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteFolderOutput](`{"folderId":5001}`)
+			return err
+		}},
+		{name: "listWorkspaces/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.WorkspacePage](`{"workspaces":[{"id":4001,"name":"Meridian Workspace"}],"lastKey":""}`)
+			return err
+		}},
+		{name: "getWorkspace/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.WorkspaceSummary](`{"id":4001,"name":"Meridian Workspace"}`)
+			return err
+		}},
+		{name: "createWorkspace/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.WorkspaceSummary](`{"id":4001,"name":"Meridian Workspace"}`)
+			return err
+		}},
+		{name: "updateWorkspace/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.WorkspaceSummary](`{"id":4001,"name":"Meridian Workspace"}`)
+			return err
+		}},
+		{name: "deleteWorkspace/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteWorkspaceOutput](`{"workspaceId":4001}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +131,74 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetSheet().Definition().Operation.OperationID != "getSheet" {
 		t.Errorf("getSheet mock has another definition")
+	}
+	if mock.GetRow().Definition().Operation.OperationID != "getRow" {
+		t.Errorf("getRow mock has another definition")
+	}
+	if mock.AddRow().Definition().Operation.OperationID != "addRow" {
+		t.Errorf("addRow mock has another definition")
+	}
+	if mock.UpdateRow().Definition().Operation.OperationID != "updateRow" {
+		t.Errorf("updateRow mock has another definition")
+	}
+	if mock.DeleteRow().Definition().Operation.OperationID != "deleteRow" {
+		t.Errorf("deleteRow mock has another definition")
+	}
+	if mock.CreateSheetInWorkspace().Definition().Operation.OperationID != "createSheetInWorkspace" {
+		t.Errorf("createSheetInWorkspace mock has another definition")
+	}
+	if mock.CreateSheetInFolder().Definition().Operation.OperationID != "createSheetInFolder" {
+		t.Errorf("createSheetInFolder mock has another definition")
+	}
+	if mock.UpdateSheet().Definition().Operation.OperationID != "updateSheet" {
+		t.Errorf("updateSheet mock has another definition")
+	}
+	if mock.DeleteSheet().Definition().Operation.OperationID != "deleteSheet" {
+		t.Errorf("deleteSheet mock has another definition")
+	}
+	if mock.ListColumns().Definition().Operation.OperationID != "listColumns" {
+		t.Errorf("listColumns mock has another definition")
+	}
+	if mock.GetColumn().Definition().Operation.OperationID != "getColumn" {
+		t.Errorf("getColumn mock has another definition")
+	}
+	if mock.AddColumn().Definition().Operation.OperationID != "addColumn" {
+		t.Errorf("addColumn mock has another definition")
+	}
+	if mock.UpdateColumn().Definition().Operation.OperationID != "updateColumn" {
+		t.Errorf("updateColumn mock has another definition")
+	}
+	if mock.DeleteColumn().Definition().Operation.OperationID != "deleteColumn" {
+		t.Errorf("deleteColumn mock has another definition")
+	}
+	if mock.GetFolder().Definition().Operation.OperationID != "getFolder" {
+		t.Errorf("getFolder mock has another definition")
+	}
+	if mock.CreateFolderInWorkspace().Definition().Operation.OperationID != "createFolderInWorkspace" {
+		t.Errorf("createFolderInWorkspace mock has another definition")
+	}
+	if mock.CreateFolderInFolder().Definition().Operation.OperationID != "createFolderInFolder" {
+		t.Errorf("createFolderInFolder mock has another definition")
+	}
+	if mock.UpdateFolder().Definition().Operation.OperationID != "updateFolder" {
+		t.Errorf("updateFolder mock has another definition")
+	}
+	if mock.DeleteFolder().Definition().Operation.OperationID != "deleteFolder" {
+		t.Errorf("deleteFolder mock has another definition")
+	}
+	if mock.ListWorkspaces().Definition().Operation.OperationID != "listWorkspaces" {
+		t.Errorf("listWorkspaces mock has another definition")
+	}
+	if mock.GetWorkspace().Definition().Operation.OperationID != "getWorkspace" {
+		t.Errorf("getWorkspace mock has another definition")
+	}
+	if mock.CreateWorkspace().Definition().Operation.OperationID != "createWorkspace" {
+		t.Errorf("createWorkspace mock has another definition")
+	}
+	if mock.UpdateWorkspace().Definition().Operation.OperationID != "updateWorkspace" {
+		t.Errorf("updateWorkspace mock has another definition")
+	}
+	if mock.DeleteWorkspace().Definition().Operation.OperationID != "deleteWorkspace" {
+		t.Errorf("deleteWorkspace mock has another definition")
 	}
 }

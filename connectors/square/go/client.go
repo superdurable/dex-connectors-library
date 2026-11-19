@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package square provides read-only Square Query operations for Dex Flows.
+// Package square provides Square Query and Mutation operations for Dex Flows.
 package square
 
 import (
@@ -236,4 +236,27 @@ func failedAttempt[T any](operation string, branch sdkgo.BranchID, kind sdkgo.Fa
 }
 func failureFor(operation string, kind sdkgo.FailureKind, message string) *sdkgo.Failure {
 	return &sdkgo.Failure{Kind: kind, Provider: ConnectorID, Operation: operation, Message: message}
+}
+
+func isDefiniteSquareWriteRefusal(response *http.Response, maxResponseBytes int64) bool {
+	switch response.StatusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
+	if err != nil {
+		return false
+	}
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(body, &envelope) != nil || len(envelope) != 1 {
+		return false
+	}
+	var providerErrors []struct {
+		Category string `json:"category"`
+		Code     string `json:"code"`
+	}
+	return json.Unmarshal(envelope["errors"], &providerErrors) == nil && len(providerErrors) > 0 && providerErrors[0].Category != "" && providerErrors[0].Code != ""
 }

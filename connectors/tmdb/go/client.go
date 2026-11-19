@@ -50,6 +50,82 @@ type GetMovieInput struct {
 	ID int64 `json:"id"`
 }
 
+// SearchTVInput searches TV series by title.
+type SearchTVInput struct {
+	// Query is the title search expression.
+	Query string `json:"query"`
+	// Page is the one-based results page; zero uses the provider default.
+	Page int `json:"page"`
+}
+
+// GetTVInput identifies a TV series by TMDB ID.
+type GetTVInput struct {
+	// ID is the provider's stable series identifier.
+	ID int64 `json:"id"`
+}
+
+// TVSeries contains selected public TV series fields.
+type TVSeries struct {
+	// ID is the provider's stable series identifier.
+	ID int64 `json:"id"`
+	// Name is the series display name.
+	Name string `json:"name"`
+	// Overview is the series summary.
+	Overview string `json:"overview"`
+	// FirstAirDate is the first broadcast date.
+	FirstAirDate string `json:"first_air_date"`
+}
+
+// TVPage is one TV search results page.
+type TVPage struct {
+	// Page is the one-based results page.
+	Page int `json:"page"`
+	// TotalPages is the number of matching pages.
+	TotalPages int `json:"total_pages"`
+	// TotalResults is the number of matching series.
+	TotalResults int `json:"total_results"`
+	// Results contains series on this page.
+	Results []TVSeries `json:"results"`
+}
+
+// SearchPeopleInput searches people by name.
+type SearchPeopleInput struct {
+	// Query is the name search expression.
+	Query string `json:"query"`
+	// Page is the one-based results page; zero uses the provider default.
+	Page int `json:"page"`
+}
+
+// GetPersonInput identifies a person by TMDB ID.
+type GetPersonInput struct {
+	// ID is the provider's stable person identifier.
+	ID int64 `json:"id"`
+}
+
+// Person contains selected public person fields.
+type Person struct {
+	// ID is the provider's stable person identifier.
+	ID int64 `json:"id"`
+	// Name is the person's display name.
+	Name string `json:"name"`
+	// KnownForDepartment describes the person's primary work.
+	KnownForDepartment string `json:"known_for_department"`
+	// Biography is the person's public biography when available.
+	Biography string `json:"biography"`
+}
+
+// PeoplePage is one person search results page.
+type PeoplePage struct {
+	// Page is the one-based results page.
+	Page int `json:"page"`
+	// TotalPages is the number of matching pages.
+	TotalPages int `json:"total_pages"`
+	// TotalResults is the number of matching people.
+	TotalResults int `json:"total_results"`
+	// Results contains people on this page.
+	Results []Person `json:"results"`
+}
+
 // Movie contains selected public movie fields.
 type Movie struct {
 	// ID is the provider's stable resource identifier.
@@ -90,6 +166,30 @@ type GetMovieOperation struct {
 // Definition returns the generated getMovie contract.
 func (GetMovieOperation) Definition() sdkgo.QueryDefinition { return GetMovieDefinition }
 
+// SearchTVOperation invokes TMDB's TV search endpoint.
+type SearchTVOperation struct{ client *Client }
+
+// Definition returns the generated searchTV contract.
+func (SearchTVOperation) Definition() sdkgo.QueryDefinition { return SearchTVDefinition }
+
+// GetTVOperation invokes TMDB's TV details endpoint.
+type GetTVOperation struct{ client *Client }
+
+// Definition returns the generated getTV contract.
+func (GetTVOperation) Definition() sdkgo.QueryDefinition { return GetTVDefinition }
+
+// SearchPeopleOperation invokes TMDB's person search endpoint.
+type SearchPeopleOperation struct{ client *Client }
+
+// Definition returns the generated searchPeople contract.
+func (SearchPeopleOperation) Definition() sdkgo.QueryDefinition { return SearchPeopleDefinition }
+
+// GetPersonOperation invokes TMDB's person details endpoint.
+type GetPersonOperation struct{ client *Client }
+
+// Definition returns the generated getPerson contract.
+func (GetPersonOperation) Definition() sdkgo.QueryDefinition { return GetPersonDefinition }
+
 // New validates configuration without a network call. Zero settings use manifest defaults.
 func New(config Config, credentials CredentialSource, options ...Option) (*Client, error) {
 	if credentials == nil {
@@ -116,6 +216,18 @@ func (client *Client) SearchMovies() SearchMoviesOperation { return SearchMovies
 
 // GetMovie binds getMovie to this client.
 func (client *Client) GetMovie() GetMovieOperation { return GetMovieOperation{client} }
+
+// SearchTV binds searchTV to this client.
+func (client *Client) SearchTV() SearchTVOperation { return SearchTVOperation{client} }
+
+// GetTV binds getTV to this client.
+func (client *Client) GetTV() GetTVOperation { return GetTVOperation{client} }
+
+// SearchPeople binds searchPeople to this client.
+func (client *Client) SearchPeople() SearchPeopleOperation { return SearchPeopleOperation{client} }
+
+// GetPerson binds getPerson to this client.
+func (client *Client) GetPerson() GetPersonOperation { return GetPersonOperation{client} }
 
 // Invoke runs this provider operation.
 func (operation SearchMoviesOperation) Invoke(call sdkgo.Call, input SearchMoviesInput) sdkgo.QueryAttempt[MoviePage] {
@@ -148,6 +260,74 @@ func (operation GetMovieOperation) Invoke(call sdkgo.Call, input GetMovieInput) 
 			err = fmt.Errorf("movie ID mismatch")
 		}
 		return movie, err
+	})
+}
+
+// Invoke searches TV series.
+func (operation SearchTVOperation) Invoke(call sdkgo.Call, input SearchTVInput) sdkgo.QueryAttempt[TVPage] {
+	if strings.TrimSpace(input.Query) == "" || input.Page < 0 || input.Page > 500 {
+		return queryFailure[TVPage]("searchTV", SearchTVBranchDefect, sdkgo.FailureValidation, "query is required and page must be 1–500")
+	}
+	query := url.Values{"query": {input.Query}}
+	if input.Page > 0 {
+		query.Set("page", strconv.Itoa(input.Page))
+	}
+	return runQuery(operation.client, call, "searchTV", "/search/tv?"+query.Encode(), SearchTVBranchSearched, "", SearchTVBranchProviderRejected, SearchTVBranchInvalidResponse, SearchTVBranchDefect, func(body []byte) (TVPage, error) {
+		var page TVPage
+		err := json.Unmarshal(body, &page)
+		if err == nil && (page.Results == nil || page.Page <= 0) {
+			err = fmt.Errorf("TV page incomplete")
+		}
+		return page, err
+	})
+}
+
+// Invoke gets one TV series.
+func (operation GetTVOperation) Invoke(call sdkgo.Call, input GetTVInput) sdkgo.QueryAttempt[TVSeries] {
+	if input.ID <= 0 {
+		return queryFailure[TVSeries]("getTV", GetTVBranchDefect, sdkgo.FailureValidation, "series ID must be positive")
+	}
+	return runQuery(operation.client, call, "getTV", "/tv/"+strconv.FormatInt(input.ID, 10), GetTVBranchFound, GetTVBranchNotFound, GetTVBranchProviderRejected, GetTVBranchInvalidResponse, GetTVBranchDefect, func(body []byte) (TVSeries, error) {
+		var series TVSeries
+		err := json.Unmarshal(body, &series)
+		if err == nil && series.ID != input.ID {
+			err = fmt.Errorf("series ID mismatch")
+		}
+		return series, err
+	})
+}
+
+// Invoke searches people.
+func (operation SearchPeopleOperation) Invoke(call sdkgo.Call, input SearchPeopleInput) sdkgo.QueryAttempt[PeoplePage] {
+	if strings.TrimSpace(input.Query) == "" || input.Page < 0 || input.Page > 500 {
+		return queryFailure[PeoplePage]("searchPeople", SearchPeopleBranchDefect, sdkgo.FailureValidation, "query is required and page must be 1–500")
+	}
+	query := url.Values{"query": {input.Query}}
+	if input.Page > 0 {
+		query.Set("page", strconv.Itoa(input.Page))
+	}
+	return runQuery(operation.client, call, "searchPeople", "/search/person?"+query.Encode(), SearchPeopleBranchSearched, "", SearchPeopleBranchProviderRejected, SearchPeopleBranchInvalidResponse, SearchPeopleBranchDefect, func(body []byte) (PeoplePage, error) {
+		var page PeoplePage
+		err := json.Unmarshal(body, &page)
+		if err == nil && (page.Results == nil || page.Page <= 0) {
+			err = fmt.Errorf("people page incomplete")
+		}
+		return page, err
+	})
+}
+
+// Invoke gets one person.
+func (operation GetPersonOperation) Invoke(call sdkgo.Call, input GetPersonInput) sdkgo.QueryAttempt[Person] {
+	if input.ID <= 0 {
+		return queryFailure[Person]("getPerson", GetPersonBranchDefect, sdkgo.FailureValidation, "person ID must be positive")
+	}
+	return runQuery(operation.client, call, "getPerson", "/person/"+strconv.FormatInt(input.ID, 10), GetPersonBranchFound, GetPersonBranchNotFound, GetPersonBranchProviderRejected, GetPersonBranchInvalidResponse, GetPersonBranchDefect, func(body []byte) (Person, error) {
+		var person Person
+		err := json.Unmarshal(body, &person)
+		if err == nil && person.ID != input.ID {
+			err = fmt.Errorf("person ID mismatch")
+		}
+		return person, err
 	})
 }
 

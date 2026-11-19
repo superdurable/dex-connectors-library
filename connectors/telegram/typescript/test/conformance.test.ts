@@ -10,7 +10,7 @@ import {
   type ExchangeRecorder, type HeartbeatContext, type Scenario,
 } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/telegram/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/telegram/scenarios.json', import.meta.url)).filter(scenario => ['sendMessage', 'getChat'].includes(scenario.operation));
 const connection = { provider: 'telegram', name: 'telegram' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeTelegram));
 

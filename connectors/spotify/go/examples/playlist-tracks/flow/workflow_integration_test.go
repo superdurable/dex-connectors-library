@@ -90,9 +90,24 @@ func newFakeSpotifyProvider(t *testing.T, statuses ...int) *fakeSpotifyProvider 
 	provider := &fakeSpotifyProvider{statuses: append([]int(nil), statuses...)}
 	provider.server = httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		require.Equal(t, http.MethodGet, request.Method)
+		require.Equal(t, "Bearer "+integrationAccessToken, request.Header.Get("Authorization"))
+		response.Header().Set("Content-Type", "application/json")
+		switch request.URL.Path {
+		case "/v1/playlists/" + integrationPlaylistID:
+			_, _ = response.Write([]byte(`{"id":"` + integrationPlaylistID + `","name":"Sample playlist","description":"","owner":{"id":"playlist-owner"},"snapshot_id":"snapshot-1","public":true,"external_urls":{"spotify":"https://open.spotify.com/playlist/` + integrationPlaylistID + `"}}`))
+			return
+		case "/v1/albums/" + integrationAlbumID:
+			_, _ = response.Write([]byte(`{"id":"` + integrationAlbumID + `","name":"An Album","release_date":"2026-08-14","release_date_precision":"day","total_tracks":10,"artists":[{"id":"` + integrationArtistID + `","name":"An Artist","uri":"spotify:artist:` + integrationArtistID + `","external_urls":{"spotify":"https://open.spotify.com/artist/` + integrationArtistID + `"}}],"uri":"spotify:album:` + integrationAlbumID + `","external_urls":{"spotify":"https://open.spotify.com/album/` + integrationAlbumID + `"}}`))
+			return
+		case "/v1/artists/" + integrationArtistID:
+			_, _ = response.Write([]byte(`{"id":"` + integrationArtistID + `","name":"An Artist","uri":"spotify:artist:` + integrationArtistID + `","external_urls":{"spotify":"https://open.spotify.com/artist/` + integrationArtistID + `"}}`))
+			return
+		case "/v1/tracks/" + integrationTrackID:
+			_, _ = response.Write([]byte(`{"id":"` + integrationTrackID + `","name":"A Song","duration_ms":213000,"artists":[{"id":"` + integrationArtistID + `","name":"An Artist","uri":"spotify:artist:` + integrationArtistID + `","external_urls":{"spotify":"https://open.spotify.com/artist/` + integrationArtistID + `"}}],"uri":"spotify:track:` + integrationTrackID + `","external_urls":{"spotify":"https://open.spotify.com/track/` + integrationTrackID + `"}}`))
+			return
+		}
 		require.Equal(t, "/v1/playlists/"+integrationPlaylistID+"/items", request.URL.Path)
 		require.Equal(t, "1", request.URL.Query().Get("limit"))
-		require.Equal(t, "Bearer "+integrationAccessToken, request.Header.Get("Authorization"))
 		status := provider.nextStatus()
 		if status == http.StatusTooManyRequests {
 			response.Header().Set("Retry-After", "1")

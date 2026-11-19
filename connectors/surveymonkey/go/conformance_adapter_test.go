@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/v3"
@@ -19,8 +20,26 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	reference := sdkgo.ConnectionRef{Provider: "surveymonkey", Name: "surveymonkey"}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {AccessToken: sdkgo.NewSecretString("test-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listSurveys": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSurveys(), reference),
-		"getResponse": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetResponse(), reference),
+	dispatchContext := singledispatchtest.NewContext("surveymonkey-conformance", "create-survey")
+	collectorContext := singledispatchtest.NewContext("surveymonkey-conformance", "create-collector")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			dispatchContext.AdvanceAttempt()
+			collectorContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"listSurveys":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSurveys(), reference),
+		"getResponse":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetResponse(), reference),
+		"getSurvey":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSurvey(), reference),
+		"createSurvey":    newConformanceMutationInvocation(t, scenario.Input, dispatchContext, client.CreateSurvey(), reference, scenario.CallID),
+		"updateSurvey":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateSurvey(), reference, scenario.CallID),
+		"deleteSurvey":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteSurvey(), reference, scenario.CallID),
+		"listCollectors":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCollectors(), reference),
+		"getCollector":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCollector(), reference),
+		"createCollector": newConformanceMutationInvocation(t, scenario.Input, collectorContext, client.CreateCollector(), reference, scenario.CallID),
+		"updateCollector": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateCollector(), reference, scenario.CallID),
+		"deleteCollector": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCollector(), reference, scenario.CallID),
+		"listResponses":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListResponses(), reference),
+		"deleteResponse":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteResponse(), reference, scenario.CallID),
 	}}
 }
