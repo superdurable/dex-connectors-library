@@ -8,6 +8,12 @@ metadata:
   categories: [marketing]
   version: v0.1.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-fit2cloud"
+      operations: [listPosts]
+      triggers: []
   provider: fit2cloud
   codegen:
     go:
