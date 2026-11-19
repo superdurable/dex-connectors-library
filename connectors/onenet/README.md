@@ -9,3 +9,7 @@ At [OneNET](https://iot.10086.cn), open personal **Account Information** for the
 The Query selects optional `defect` for invalid local inputs, `providerRejected` for definite provider errors, and `invalidResponse` for malformed or oversized JSON. HTTP 429, HTTP 5xx and transport failures retry. The example leaves optional branches unwired, so those outcomes fail the Flow.
 
 See the runnable [`go/examples/device-read`](go/examples/device-read). Tests use a local HTTP provider and a real Dex server with the generated mock. Live OneNET authorization and device data retrieval remain unverified.
+
+## Python
+
+The `dex-connector-onenet` Python package implements `queryDeviceDetail` with the same signed request and provider decisions as Go. See [its runnable Flow](python/examples/device_detail/). Live provider authorization has not been verified.
