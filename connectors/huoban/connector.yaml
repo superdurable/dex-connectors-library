@@ -10,6 +10,7 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [listSpaces], triggers: []}
+    typescript: {version: v0.1.0, operations: [listSpaces], triggers: []}
   provider: huoban
   codegen:
     go:
