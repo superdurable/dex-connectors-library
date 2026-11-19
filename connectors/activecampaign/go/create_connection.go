@@ -94,6 +94,9 @@ func (operation CreateConnectionOperation) Invoke(call sdkgo.Call, input CreateC
 		return sdkgo.NewMutationRetry[ConnectionMetadata](queryFailure("createConnection", sdkgo.FailureAvailability, "connection checkpoint unavailable"), 0)
 	}
 	if errors.Is(dispatch.err, errCredential) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return limitedActiveCampaignUnknown[ConnectionMetadata](call, decision, queryFailure("createConnection", sdkgo.FailureAuthentication, "connection create remains unconfirmed after credentials became unavailable"), dealReceipt(call, decision.Marker.ProviderID))
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[ConnectionMetadata](queryFailure("createConnection", sdkgo.FailureAvailability, "connection checkpoint unavailable"), 0)
 		}

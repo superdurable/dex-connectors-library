@@ -165,6 +165,9 @@ func (operation SetTopicAttributeOperation) Invoke(call sdkgo.Call, input SetTop
 
 func classifyTopicWriteResponse(call sdkgo.Call, response providerResponse, operation string, rejected sdkgo.BranchID, defect sdkgo.BranchID) (sdkgo.MutationAttempt[TopicIdentity], bool) {
 	if errors.Is(response.err, errCredential) {
+		if call.Context != nil && call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[TopicIdentity](topicOperationFailure(operation, sdkgo.FailureAuthentication, "SNS credentials became unavailable after an earlier send"), 0), true
+		}
 		return topicMutationBranch(defect, operation, sdkgo.FailureAuthentication, "SNS credentials are unavailable or invalid"), true
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable || response.status == http.StatusRequestTimeout || response.status >= 500 || response.err != nil {

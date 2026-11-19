@@ -2252,6 +2252,11 @@ func CreateTagCreated(value activecampaign.TagMetadata, failure *sdkgo.Failure) 
 	return connectormock.Branch(activecampaign.CreateTagBranchCreated, value, failure)
 }
 
+// CreateTagUncertain returns an uncertain createTag outcome.
+func CreateTagUncertain(value activecampaign.TagMetadata, failure sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
 // CreateTagProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
 func CreateTagProviderRejected(value activecampaign.TagMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.TagMetadata] {
 	return connectormock.Branch(activecampaign.CreateTagBranchProviderRejected, value, failure)

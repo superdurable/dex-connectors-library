@@ -103,6 +103,31 @@ func TestCreateDealDoesNotConfirmByTitleAfterUnknownOutcome(t *testing.T) {
 	require.Equal(t, int32(0), reads.Load())
 }
 
+func TestCreateDealKeepsUnknownOutcomeWhenCredentialsDisappear(t *testing.T) {
+	var sends atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		require.Equal(t, http.MethodPost, request.Method)
+		sends.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL+"/api/3")
+	ctx := &dealRetryContext{attempt: 1}
+	input := CreateDealInput{Title: "Renewal", ContactID: "68", PipelineID: "1", StageID: "2", ValueMinor: 45600, Currency: "USD"}
+	_, err := sdkgo.RunMutation(ctx, client.CreateDeal(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	client.credentials = sdkgo.StaticCredentialProvider[Credentials]{}
+	ctx.attempt = 2
+	result, err := sdkgo.RunMutation(ctx, client.CreateDeal(), testConnection, input)
+	if err == nil {
+		require.Equal(t, CreateDealBranchUncertain, result.Branch)
+	} else {
+		require.ErrorAs(t, err, &retry)
+	}
+	require.Equal(t, int32(1), sends.Load())
+}
+
 func TestDealUpdateAndDeleteConverge(t *testing.T) {
 	var deletes atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

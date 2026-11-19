@@ -92,6 +92,9 @@ func (operation CreateDealOperation) Invoke(call sdkgo.Call, input CreateDealInp
 		return sdkgo.NewMutationRetry[DealMetadata](queryFailure("createDeal", sdkgo.FailureAvailability, "deal create checkpoint is unavailable"), 0)
 	}
 	if errors.Is(dispatch.err, errCredential) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return limitedActiveCampaignUnknown[DealMetadata](call, decision, queryFailure("createDeal", sdkgo.FailureAuthentication, "deal create remains unconfirmed after credentials became unavailable"), dealReceipt(call, decision.Marker.ProviderID))
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[DealMetadata](queryFailure("createDeal", sdkgo.FailureAvailability, "deal retry checkpoint is unavailable"), 0)
 		}

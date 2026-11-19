@@ -90,6 +90,9 @@ func (operation CreateEcommerceCustomerOperation) Invoke(call sdkgo.Call, input 
 		return sdkgo.NewMutationRetry[EcommerceCustomerMetadata](queryFailure("createEcommerceCustomer", sdkgo.FailureAvailability, "customer checkpoint unavailable"), 0)
 	}
 	if errors.Is(dispatch.err, errCredential) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return limitedActiveCampaignUnknown[EcommerceCustomerMetadata](call, decision, queryFailure("createEcommerceCustomer", sdkgo.FailureAuthentication, "customer create remains unconfirmed after credentials became unavailable"), dealReceipt(call, decision.Marker.ProviderID))
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[EcommerceCustomerMetadata](queryFailure("createEcommerceCustomer", sdkgo.FailureAvailability, "customer checkpoint unavailable"), 0)
 		}

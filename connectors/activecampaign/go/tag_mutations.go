@@ -4,6 +4,7 @@
 package activecampaign
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 // CreateTagInput creates a contact tag definition identified by its name.
@@ -75,7 +77,7 @@ func (UpdateTagOperation) Definition() sdkgo.MutationDefinition { return UpdateT
 // Definition returns the manifest-generated delete contract.
 func (DeleteTagOperation) Definition() sdkgo.MutationDefinition { return DeleteTagDefinition }
 
-// IdempotencyKey derives the stable call identity; the provider returns an existing same-name tag.
+// IdempotencyKey correlates bounded sends locally; ActiveCampaign does not receive this key.
 func (CreateTagOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTagInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
@@ -90,12 +92,103 @@ func (DeleteTagOperation) IdempotencyKey(callID sdkgo.CallID, _ DeleteTagInput) 
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates or returns the contact tag with the same case-insensitive name.
+// Invoke creates a tag with bounded sends and reports unconfirmed outcomes.
 func (operation CreateTagOperation) Invoke(call sdkgo.Call, input CreateTagInput) sdkgo.MutationAttempt[TagMetadata] {
 	if !validTagName(input.Name) {
 		return tagMutationBranch("createTag", CreateTagBranchDefect, sdkgo.FailureValidation, "tag name is invalid")
 	}
-	return invokeTagMutation(call, operation.client, "createTag", http.MethodPost, "/tags", input.Name, input.Description, CreateTagBranchCreated, "", CreateTagBranchProviderRejected, CreateTagBranchInvalidResponse, CreateTagBranchDefect)
+	encoded, err := json.Marshal(map[string]any{"tag": map[string]string{"tag": input.Name, "tagType": "contact", "description": input.Description}})
+	if err != nil {
+		return tagMutationBranch("createTag", CreateTagBranchDefect, sdkgo.FailureLocalDefect, "tag request could not be encoded")
+	}
+	fence, err := singledispatch.NewFence(call, CreateTagDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return tagMutationBranch("createTag", CreateTagBranchDefect, sdkgo.FailureLocalDefect, "tag create checkpoint could not be initialized")
+	}
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[TagMetadata](queryFailure("createTag", sdkgo.FailureAvailability, "tag create checkpoint is unavailable"), 0)
+	}
+	if decision.Marker.ProviderID != "" {
+		body, status, _, readErr := operation.client.get(call, "/tags/"+decision.Marker.ProviderID)
+		if readErr == nil && status == http.StatusOK {
+			tag, decodeErr := decodeTag(body)
+			if decodeErr == nil && tag.ID == decision.Marker.ProviderID && tag.Name == input.Name && tag.Description == input.Description {
+				return sdkgo.NewMutationBranch(CreateTagBranchCreated, tag, nil, dealReceipt(call, tag.ID))
+			}
+		}
+		if decision.Kind == singledispatch.ReadBackRequired {
+			return createTagUncertain(call, "tag create could not be confirmed by its provider ID")
+		}
+		return sdkgo.NewMutationRetry[TagMetadata](queryFailure("createTag", sdkgo.FailureAvailability, "tag create confirmation requires read-back"), 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		return createTagUncertain(call, "an earlier tag create may have succeeded and reached the send cap")
+	}
+	dispatch := &createTagDispatch{client: operation.client, call: call, body: encoded}
+	if err := fence.Dispatch(dispatch.execute); err != nil {
+		return sdkgo.NewMutationRetry[TagMetadata](queryFailure("createTag", sdkgo.FailureAvailability, "tag create checkpoint is unavailable"), 0)
+	}
+	if errors.Is(dispatch.err, errCredential) {
+		if decision.MaximumPriorSends > 0 {
+			return limitedActiveCampaignUnknown[TagMetadata](call, decision, queryFailure("createTag", sdkgo.FailureAuthentication, "tag create remains unconfirmed after credentials became unavailable"), dealReceipt(call, ""))
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[TagMetadata](queryFailure("createTag", sdkgo.FailureAvailability, "tag retry checkpoint is unavailable"), 0)
+		}
+		return tagMutationBranch("createTag", CreateTagBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
+	}
+	if errors.Is(dispatch.err, errRequest) {
+		return limitedActiveCampaignUnknown[TagMetadata](call, decision, queryFailure("createTag", sdkgo.FailureTransport, "tag create outcome is unknown"), dealReceipt(call, ""))
+	}
+	if dispatch.status == http.StatusTooManyRequests || dispatch.status == http.StatusServiceUnavailable {
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[TagMetadata](queryFailure("createTag", sdkgo.FailureAvailability, "tag retry checkpoint is unavailable"), 0)
+		}
+		return sdkgo.NewMutationRetry[TagMetadata](queryFailure("createTag", sdkgo.FailureRateLimit, "ActiveCampaign temporarily rejected the tag create"), dispatch.retryAfter)
+	}
+	if dispatch.status != http.StatusOK && dispatch.status != http.StatusCreated {
+		if decision.MaximumPriorSends == 0 && dispatch.err == nil && isDefiniteActiveCampaignRefusal(dispatch.status, dispatch.response) {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[TagMetadata](queryFailure("createTag", sdkgo.FailureAvailability, "tag refusal checkpoint is unavailable"), 0)
+			}
+			return tagMutationBranch("createTag", CreateTagBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
+		}
+		return limitedActiveCampaignUnknown[TagMetadata](call, decision, queryFailure("createTag", sdkgo.FailureTransport, "tag create response did not prove refusal"), dealReceipt(call, ""))
+	}
+	if dispatch.err != nil {
+		return limitedActiveCampaignUnknown[TagMetadata](call, decision, queryFailure("createTag", sdkgo.FailureProtocol, "tag create response was incomplete"), dealReceipt(call, ""))
+	}
+	tag, err := decodeTag(dispatch.response)
+	if err != nil {
+		return limitedActiveCampaignUnknown[TagMetadata](call, decision, queryFailure("createTag", sdkgo.FailureProtocol, "tag create confirmation was invalid"), dealReceipt(call, ""))
+	}
+	if decision.MaximumPriorSends > 0 && dispatch.status == http.StatusOK {
+		return limitedActiveCampaignUnknown[TagMetadata](call, decision, queryFailure("createTag", sdkgo.FailureProtocol, "an existing same-name tag cannot confirm an earlier create"), dealReceipt(call, ""))
+	}
+	if err := fence.RecordProviderID(tag.ID); err != nil {
+		return sdkgo.NewMutationRetry[TagMetadata](queryFailure("createTag", sdkgo.FailureAvailability, "tag confirmation checkpoint is unavailable"), 0)
+	}
+	return sdkgo.NewMutationBranch(CreateTagBranchCreated, tag, nil, dealReceipt(call, tag.ID))
+}
+
+type createTagDispatch struct {
+	client     *Client
+	call       sdkgo.Call
+	body       []byte
+	response   []byte
+	status     int
+	retryAfter time.Duration
+	err        error
+}
+
+func (dispatch *createTagDispatch) execute(ctx context.Context) error {
+	dispatch.response, dispatch.status, dispatch.retryAfter, dispatch.err = dispatch.client.requestWithContext(ctx, dispatch.call, http.MethodPost, "/tags", dispatch.body)
+	return nil
+}
+
+func createTagUncertain(call sdkgo.Call, message string) sdkgo.MutationAttempt[TagMetadata] {
+	return sdkgo.NewMutationUncertain(TagMetadata{}, queryFailure("createTag", sdkgo.FailureTransport, message), dealReceipt(call, ""))
 }
 
 // Invoke sets the tag's absolute name and description on every attempt.

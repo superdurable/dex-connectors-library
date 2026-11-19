@@ -98,3 +98,72 @@ func TestTagMutationsUseAbsoluteFieldsAndConvergeOnDeletion(t *testing.T) {
 	require.Equal(t, int32(1), updates.Load())
 	require.Equal(t, int32(2), deletes.Load())
 }
+
+func TestCreateTagDoesNotTreatConflictAfterUnknownSendAsRejection(t *testing.T) {
+	var sends atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		require.Equal(t, http.MethodPost, request.Method)
+		require.Equal(t, "/api/3/tags", request.URL.Path)
+		if sends.Add(1) == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusConflict)
+		_, err := w.Write([]byte(`{"errors":[{"title":"Duplicate tag name"}]}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL+"/api/3")
+	ctx := &dealRetryContext{attempt: 1}
+	input := CreateTagInput{Name: "Newsletter", Description: "Monthly"}
+	for attempt := int32(1); attempt < 3; attempt++ {
+		ctx.attempt = attempt
+		_, err := sdkgo.RunMutation(ctx, client.CreateTag(), testConnection, input)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+	}
+	ctx.attempt = 3
+	result, err := sdkgo.RunMutation(ctx, client.CreateTag(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, CreateTagBranchUncertain, result.Branch)
+	require.Equal(t, int32(3), sends.Load())
+}
+
+func TestCreateTagRetriesInconclusiveResponses(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "conflict", status: http.StatusConflict, body: `{"errors":[{"title":"Duplicate"}]}`},
+		{name: "other client error", status: http.StatusMethodNotAllowed, body: `{"errors":[{"title":"Unsupported"}]}`},
+		{name: "empty refusal", status: http.StatusBadRequest},
+		{name: "contradictory refusal", status: http.StatusBadRequest, body: `{"errors":[{"title":"Rejected"}],"tag":{"id":"16"}}`},
+		{name: "malformed success", status: http.StatusOK, body: `{"tag":{"id":"16"}}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(testCase.status)
+				_, err := w.Write([]byte(testCase.body))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			client := newTestClient(t, server.URL+"/api/3")
+			_, err := sdkgo.RunMutation(queryContext{}, client.CreateTag(), testConnection, CreateTagInput{Name: "Newsletter"})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
+}
+
+func TestCreateTagFailsClosedToRetry(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("a malformed checkpoint must prevent sending")
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL+"/api/3")
+	ctx := &dealRetryContext{attempt: 2, heartbeat: []byte(`{invalid`)}
+	_, err := sdkgo.RunMutation(ctx, client.CreateTag(), testConnection, CreateTagInput{Name: "Newsletter"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+}

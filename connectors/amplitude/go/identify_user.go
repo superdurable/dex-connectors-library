@@ -55,6 +55,9 @@ func (operation IdentifyUserOperation) Invoke(call sdkgo.Call, input IdentifyUse
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[IdentifiedUser](identifyFailure(sdkgo.FailureAuthentication, "Amplitude API key became unavailable after an earlier send"), 0)
+		}
 		return identifiedBranch(IdentifyUserBranchDefect, sdkgo.FailureAuthentication, "Amplitude API key is unavailable or invalid")
 	}
 	identification, err := json.Marshal(struct {
@@ -84,6 +87,9 @@ func (operation IdentifyUserOperation) Invoke(call sdkgo.Call, input IdentifyUse
 			return identifiedBranch(IdentifyUserBranchProviderRejected, sdkgo.FailureProviderRejection, "Amplitude rejected the user property update")
 		}
 		return sdkgo.NewMutationRetry[IdentifiedUser](identifyFailure(sdkgo.FailureTransport, "Amplitude user property update outcome is unknown"), 0)
+	}
+	if hasContradictoryIdentifyConfirmation(response.body) {
+		return sdkgo.NewMutationRetry[IdentifiedUser](identifyFailure(sdkgo.FailureProtocol, "Amplitude Identify response was invalid"), 0)
 	}
 	value := IdentifiedUser{UserID: input.UserID, PropertyName: input.PropertyName}
 	return sdkgo.NewMutationBranch(IdentifyUserBranchIdentified, value, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "amplitude", ProviderObjectID: input.UserID})

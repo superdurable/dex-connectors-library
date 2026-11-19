@@ -97,6 +97,9 @@ func (client *Client) requestLeadAPI(call sdkgo.Call, method, path string, body 
 
 func (client *Client) writeLeadAPI(call sdkgo.Call, path string, body []byte) leadResponse {
 	response := client.requestLeadAPI(call, http.MethodPost, path, body)
+	if errors.Is(response.err, errLeadReauthorization) && call.Context.Attempt() > 1 {
+		response.err = errLeadTransport
+	}
 	if response.status > 0 && response.status != http.StatusOK && response.status != http.StatusTooManyRequests && response.status != http.StatusServiceUnavailable &&
 		(response.err != nil || call.Context.Attempt() > 1 || !isDefiniteMarketoRefusal(response.status, response.body)) {
 		response.err = errLeadTransport

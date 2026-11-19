@@ -61,6 +61,9 @@ func (operation TrackEventOperation) Invoke(call sdkgo.Call, input TrackEventInp
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[TrackedEvent](eventFailure(sdkgo.FailureAuthentication, "Amplitude API key became unavailable after an earlier send"), 0)
+		}
 		return trackedBranch(TrackEventBranchDefect, sdkgo.FailureAuthentication, "Amplitude API key is unavailable or invalid")
 	}
 	insertID := string(call.IdempotencyKey)

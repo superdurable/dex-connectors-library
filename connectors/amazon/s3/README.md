@@ -198,6 +198,7 @@ repeatedly lists up to 100 keys beneath a prefix, deletes each current object,
 then lists again until the prefix is empty. A retry resumes from remaining
 keys after a partial deletion; the operation can take several retries for a
 large prefix. It needs `s3:ListBucket` and `s3:DeleteObject` permissions.
+An invalid list response retries when an earlier attempt may already have deleted objects.
 
 Every operation bounds its requests by 25 seconds in total and each exchange
 by 12 seconds, below the 30-second Execute timeout. Transport failures, 408,

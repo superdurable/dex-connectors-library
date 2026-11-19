@@ -120,6 +120,9 @@ func changeContactListStatus(call sdkgo.Call, client *Client, operation string, 
 		return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, sdkgo.FailureAvailability, "membership checkpoint is unavailable"), 0)
 	}
 	if errors.Is(dispatch.err, errCredential) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return limitedActiveCampaignUnknown[ContactListMembership](call, decision, queryFailure(operation, sdkgo.FailureAuthentication, "membership change remains unconfirmed after credentials became unavailable"), dealReceipt(call, decision.Marker.ProviderID))
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, sdkgo.FailureAvailability, "membership retry checkpoint is unavailable"), 0)
 		}

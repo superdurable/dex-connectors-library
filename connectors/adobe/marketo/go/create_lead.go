@@ -80,6 +80,9 @@ func (operation CreateLeadOperation) Invoke(call sdkgo.Call, input CreateLeadInp
 	}
 	response := dispatch.response
 	if errors.Is(response.err, errLeadReauthorization) || errors.Is(response.err, errLeadCredentials) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return limitedMarketoUnknown[CreatedLead](call, decision, createLeadFailure(sdkgo.FailureAuthentication, "lead create remains unconfirmed after credentials became unavailable"), createLeadReceipt(call, 0))
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return createLeadRetry(sdkgo.FailureAvailability, "lead create retry checkpoint is unavailable", 0)
 		}

@@ -114,6 +114,9 @@ func (operation CreateDealNoteOperation) Invoke(call sdkgo.Call, input CreateDea
 		return sdkgo.NewMutationRetry[DealNoteMetadata](queryFailure("createDealNote", sdkgo.FailureAvailability, "note checkpoint is unavailable"), 0)
 	}
 	if errors.Is(dispatch.err, errCredential) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return limitedActiveCampaignUnknown[DealNoteMetadata](call, decision, queryFailure("createDealNote", sdkgo.FailureAuthentication, "note create remains unconfirmed after credentials became unavailable"), dealReceipt(call, decision.Marker.ProviderID))
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[DealNoteMetadata](queryFailure("createDealNote", sdkgo.FailureAvailability, "note retry checkpoint is unavailable"), 0)
 		}

@@ -283,7 +283,7 @@ func (operation SaveObjectOperation) Invoke(call sdkgo.Call, input SaveObjectInp
 	}
 	body, status, failure, retryAfter := operation.client.send(call, http.MethodPut, "/indexes/"+url.PathEscape(input.IndexName)+"/"+url.PathEscape(input.ObjectID), payload, name)
 	if failure != nil {
-		if status == 0 {
+		if status == 0 && (call.Context == nil || call.Context.Attempt() == 1) {
 			return sdkgo.NewMutationBranch(SaveObjectBranchDefect, SavedObject{}, failure, sdkgo.Receipt{})
 		}
 		// A repeated replacement of the same objectID converges, so an oversized answer retries.
@@ -395,7 +395,7 @@ func (operation PartialUpdateObjectOperation) Invoke(call sdkgo.Call, input Part
 	path := "/indexes/" + url.PathEscape(input.IndexName) + "/" + url.PathEscape(input.ObjectID) + "/partial?createIfNotExists=false"
 	body, status, failure, retryAfter := operation.client.send(call, http.MethodPost, path, payload, name)
 	if failure != nil {
-		if status == 0 {
+		if status == 0 && (call.Context == nil || call.Context.Attempt() == 1) {
 			return sdkgo.NewMutationBranch(PartialUpdateObjectBranchDefect, SavedObject{}, failure, sdkgo.Receipt{})
 		}
 		if status < 0 {
@@ -425,7 +425,7 @@ func (operation DeleteObjectOperation) Invoke(call sdkgo.Call, input ObjectInput
 	path := "/indexes/" + url.PathEscape(input.IndexName) + "/" + url.PathEscape(input.ObjectID)
 	body, status, failure, retryAfter := operation.client.send(call, http.MethodDelete, path, nil, name)
 	if failure != nil {
-		if status == 0 {
+		if status == 0 && (call.Context == nil || call.Context.Attempt() == 1) {
 			return sdkgo.NewMutationBranch(DeleteObjectBranchDefect, SavedObject{}, failure, sdkgo.Receipt{})
 		}
 		if status < 0 {

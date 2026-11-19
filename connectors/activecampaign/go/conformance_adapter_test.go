@@ -5,6 +5,7 @@ package activecampaign
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	reference := sdkgo.ConnectionRef{Provider: "activecampaign", Name: "activecampaign"}
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: {APIKey: sdkgo.NewSecretString("test-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
+	if strings.HasSuffix(scenario.Name, "-credentialLostAfterUnknown") {
+		client.credentials = sdkgo.StaticCredentialProvider[Credentials]{}
+	}
 	retryContext := &dealRetryContext{attempt: 1}
 	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(checkpoint []byte) { retryContext.heartbeat = checkpoint })
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { retryContext.attempt = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
@@ -65,7 +69,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"updateAccount":                 newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateAccount(), reference, scenario.CallID),
 		"deleteAccount":                 newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteAccount(), reference, scenario.CallID),
 		"getTag":                        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTag(), reference),
-		"createTag":                     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateTag(), reference, scenario.CallID),
+		"createTag":                     newConformanceMutationInvocation(t, scenario.Input, retryContext, client.CreateTag(), reference, scenario.CallID),
 		"updateTag":                     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateTag(), reference, scenario.CallID),
 		"deleteTag":                     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTag(), reference, scenario.CallID),
 		"listLists":                     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLists(), reference),

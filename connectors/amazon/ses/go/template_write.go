@@ -122,6 +122,9 @@ type templateWireContent struct {
 
 func templateMutationFailure[T any](call sdkgo.Call, operationID string, response providerResponse, rejected, defect sdkgo.BranchID) (sdkgo.MutationAttempt[T], bool) {
 	if errors.Is(response.err, errCredential) {
+		if call.Context != nil && call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[T](sesFailure(operationID, sdkgo.FailureAuthentication, "SES credentials became unavailable after an earlier send"), 0), true
+		}
 		return templateMutationBranch[T](operationID, defect, sdkgo.FailureAuthentication, "SES credentials are unavailable or response repeated a credential"), true
 	}
 	if errors.Is(response.err, errRequest) {

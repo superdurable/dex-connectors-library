@@ -2507,6 +2507,13 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "providerId": "16",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "description": "Monthly",
           "id": "16",
@@ -2559,6 +2566,13 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "providerId": "16",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "output": {
           "description": "Monthly",
           "id": "16",
@@ -2611,6 +2625,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "state": "canResend"
+        },
         "output": {
           "description": "",
           "id": "",
@@ -2663,6 +2682,12 @@
       "expected": {
         "branch": "",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2733,6 +2758,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2778,7 +2808,12 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2823,6 +2858,12 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -17137,15 +17178,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "connectionId": "",
-          "email": "",
-          "storeOrderId": ""
-        },
+        "branch": "",
+        "failureKind": "PROTOCOL",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -17331,6 +17367,381 @@
       },
       "name": "upsertEcommerceOrder-transportFailure",
       "operation": "upsertEcommerceOrder"
+    },
+    {
+      "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"title\":\"Duplicate tag\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tags",
+          "requestBody": {
+            "tag": {
+              "description": "Monthly",
+              "tag": "Newsletter",
+              "tagType": "contact"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+      "input": {
+        "description": "Monthly",
+        "name": "Newsletter"
+      },
+      "name": "createTag-conflictAfterUnknown",
+      "operation": "createTag",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "description": "",
+          "id": "",
+          "name": "",
+          "tagType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+      "input": {
+        "description": "Monthly",
+        "name": "Newsletter"
+      },
+      "name": "createTag-uncertainAfterLostResponse",
+      "operation": "createTag",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "c917c25a-2897-5033-ae71-dfdc373c2a61",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "c917c25a-2897-5033-ae71-dfdc373c2a61",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c917c25a-2897-5033-ae71-dfdc373c2a61",
+      "input": {
+        "contactId": "68",
+        "currency": "USD",
+        "pipelineId": "1",
+        "stageId": "2",
+        "title": "Renewal",
+        "valueMinor": 45600
+      },
+      "name": "createDeal-credentialLostAfterUnknown",
+      "operation": "createDeal",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "c917c25a-2897-5033-ae71-dfdc373c2a61",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+      "input": {
+        "externalId": "store-1",
+        "listId": "2",
+        "name": "Store",
+        "service": "fooCommerce"
+      },
+      "name": "createConnection-credentialLostAfterUnknown",
+      "operation": "createConnection",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "input": {
+        "accountId": "2",
+        "contactId": "3",
+        "jobTitle": "Manager"
+      },
+      "name": "createAccountContact-credentialLostAfterUnknown",
+      "operation": "createAccountContact",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "createEcommerceCustomer-credentialLostAfterUnknown",
+      "operation": "createEcommerceCustomer",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "4891d971-7729-52b5-9eba-9fe376dcdb70",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "4891d971-7729-52b5-9eba-9fe376dcdb70",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4891d971-7729-52b5-9eba-9fe376dcdb70",
+      "input": {
+        "accountUrl": "https://example.com",
+        "name": "Example Account"
+      },
+      "name": "createAccount-credentialLostAfterUnknown",
+      "operation": "createAccount",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "4891d971-7729-52b5-9eba-9fe376dcdb70",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+      "input": {
+        "dealId": "46",
+        "text": "Follow up"
+      },
+      "name": "createDealNote-credentialLostAfterUnknown",
+      "operation": "createDealNote",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-credentialLostAfterUnknown",
+      "operation": "subscribeContactToList",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-credentialLostAfterUnknown",
+      "operation": "unsubscribeContactFromList",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

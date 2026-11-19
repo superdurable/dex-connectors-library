@@ -157,7 +157,7 @@ func (operation UpsertEcommerceOrderOperation) Invoke(call sdkgo.Call, input Ups
 		return sdkgo.NewMutationRetry[EcommerceOrderUpsertMetadata](queryFailure(name, sdkgo.FailureProtocol, "order upsert response invalid"), 0)
 	}
 	if len(response.Errors) > 0 {
-		return upsertOrderBranch(UpsertEcommerceOrderBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected the GraphQL order")
+		return sdkgo.NewMutationRetry[EcommerceOrderUpsertMetadata](queryFailure(name, sdkgo.FailureProtocol, "order upsert response did not prove non-acceptance"), 0)
 	}
 	order := response.Data.UpsertOrder
 	if order == nil || order.ConnectionID.String() != input.ConnectionID || order.StoreOrderID != input.StoreOrderID || order.Email != input.Email {

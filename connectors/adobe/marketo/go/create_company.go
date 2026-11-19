@@ -60,6 +60,9 @@ func (operation CreateCompanyOperation) Invoke(call sdkgo.Call, input CreateComp
 	}
 	response := dispatch.response
 	if errors.Is(response.err, errLeadReauthorization) || errors.Is(response.err, errLeadCredentials) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return createCompanyUnknown(call, decision, "company create remains unconfirmed after credentials became unavailable")
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return companyWriteRetry("createCompany", sdkgo.FailureAvailability, "company create retry checkpoint is unavailable", 0)
 		}

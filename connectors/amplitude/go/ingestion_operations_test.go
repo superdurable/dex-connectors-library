@@ -100,6 +100,28 @@ func TestIngestionWritesClassifyProviderOutcomes(t *testing.T) {
 	}
 }
 
+func TestIdentifyWritesRetryContradictorySuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, err := response.Write([]byte(`{"code":400,"error":"not accepted"}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL, 0)
+	for _, invoke := range []func() error{
+		func() error {
+			_, err := sdkgo.RunMutation(queryContext{}, client.IdentifyUser(), testConnection, IdentifyUserInput{UserID: "example-user", PropertyName: "plan", PropertyValue: "pro"})
+			return err
+		},
+		func() error {
+			_, err := sdkgo.RunMutation(queryContext{}, client.UnsetUserProperty(), testConnection, UnsetUserPropertyInput{UserID: "example-user", PropertyName: "plan"})
+			return err
+		},
+	} {
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, invoke(), &retry)
+	}
+}
+
 func TestTrackEventRetriesMalformedSuccessWithoutChangingInsertID(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		_, _ = response.Write([]byte(`{"code":200,"events_ingested":0}`))

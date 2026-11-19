@@ -99,6 +99,9 @@ func (client *Client) requestWithContext(ctx context.Context, call sdkgo.Call, m
 
 func (client *Client) mutate(call sdkgo.Call, method, path string, body []byte) ([]byte, int, time.Duration, error) {
 	responseBody, status, retryAfter, err := client.request(call, method, path, body)
+	if errors.Is(err, errCredential) && call.Context != nil && call.Context.Attempt() > 1 {
+		return responseBody, status, retryAfter, errRequest
+	}
 	if (status < 200 || status >= 300) && status != http.StatusTooManyRequests && status != http.StatusServiceUnavailable &&
 		(err != nil || (call.Context != nil && call.Context.Attempt() > 1) || !isDefiniteActiveCampaignRefusal(status, responseBody)) {
 		return responseBody, status, retryAfter, errRequest

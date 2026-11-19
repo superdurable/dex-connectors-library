@@ -5767,6 +5767,109 @@
       },
       "name": "deleteOpportunity-transportFailure",
       "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample",
+        "lastName": "Lead"
+      },
+      "name": "createLead-credentialLostAfterUnknown",
+      "operation": "createLead",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-credentialLostAfterUnknown",
+      "operation": "createCompany",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-credentialLostAfterUnknown",
+      "operation": "createOpportunity",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

@@ -67,6 +67,28 @@ func TestCreateLeadRejectsBadEmailBeforeSending(t *testing.T) {
 	require.Equal(t, CreateLeadBranchDefect, result.Branch)
 }
 
+func TestCreateLeadKeepsUnknownOutcomeWhenCredentialsDisappear(t *testing.T) {
+	sends := 0
+	client := testClient(t, func(*http.Request) (*http.Response, error) {
+		sends++
+		return response(http.StatusInternalServerError, `{}`), nil
+	})
+	ctx := &conformanceMarketoRetryContext{attempt: 1}
+	input := CreateLeadInput{Email: "sample@example.com"}
+	_, err := sdkgo.RunMutation(ctx, client.CreateLead(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	client.credentials = sdkgo.StaticCredentialProvider[Credentials]{}
+	ctx.attempt = 2
+	result, err := sdkgo.RunMutation(ctx, client.CreateLead(), testConnection, input)
+	if err == nil {
+		require.Equal(t, CreateLeadBranchUncertain, result.Branch)
+	} else {
+		require.ErrorAs(t, err, &retry)
+	}
+	require.Equal(t, 1, sends)
+}
+
 func TestUpsertLeadByEmailCreatesOrUpdatesOneLead(t *testing.T) {
 	firstName := "Sample"
 	client := testClient(t, func(request *http.Request) (*http.Response, error) {

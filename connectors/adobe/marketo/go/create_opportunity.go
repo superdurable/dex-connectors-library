@@ -63,6 +63,9 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 	}
 	response := dispatch.response
 	if errors.Is(response.err, errLeadReauthorization) || errors.Is(response.err, errLeadCredentials) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return createOpportunityUnknown(call, decision, "opportunity create remains unconfirmed after credentials became unavailable")
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return opportunityWriteRetry("createOpportunity", sdkgo.FailureAvailability, "opportunity create retry checkpoint is unavailable", 0)
 		}

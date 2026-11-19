@@ -28,3 +28,14 @@ func isDefiniteIngestionRefusal(call sdkgo.Call, response providerResponse) bool
 	}
 	return json.Unmarshal(response.body, &body) == nil && body.Error != "" && body.Code == 0 && body.EventsIngested == 0
 }
+
+func hasContradictoryIdentifyConfirmation(body []byte) bool {
+	if len(body) == 0 {
+		return false
+	}
+	var confirmation struct {
+		Code  int    `json:"code"`
+		Error string `json:"error"`
+	}
+	return json.Unmarshal(body, &confirmation) != nil || confirmation.Error != "" || confirmation.Code != http.StatusOK
+}

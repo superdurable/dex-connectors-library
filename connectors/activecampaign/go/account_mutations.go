@@ -138,6 +138,9 @@ func (operation CreateAccountOperation) Invoke(call sdkgo.Call, input CreateAcco
 		return sdkgo.NewMutationRetry[AccountMetadata](queryFailure("createAccount", sdkgo.FailureAvailability, "account checkpoint unavailable"), 0)
 	}
 	if errors.Is(dispatch.err, errCredential) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return limitedActiveCampaignUnknown[AccountMetadata](call, decision, queryFailure("createAccount", sdkgo.FailureAuthentication, "account create remains unconfirmed after credentials became unavailable"), dealReceipt(call, decision.Marker.ProviderID))
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[AccountMetadata](queryFailure("createAccount", sdkgo.FailureAvailability, "account checkpoint unavailable"), 0)
 		}

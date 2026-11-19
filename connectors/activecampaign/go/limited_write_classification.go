@@ -27,7 +27,7 @@ func isDefiniteActiveCampaignRefusal(status int, body []byte) bool {
 	if json.Unmarshal(document["errors"], &errors) != nil || len(errors) == 0 {
 		return false
 	}
-	for _, key := range []string{"account", "accountContact", "connection", "contact", "deal", "ecomCustomer", "note", "contactList"} {
+	for _, key := range []string{"account", "accountContact", "connection", "contact", "deal", "ecomCustomer", "note", "contactList", "tag"} {
 		if _, hasResult := document[key]; hasResult {
 			return false
 		}

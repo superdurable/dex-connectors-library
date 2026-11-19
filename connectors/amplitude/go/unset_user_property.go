@@ -47,6 +47,9 @@ func (operation UnsetUserPropertyOperation) Invoke(call sdkgo.Call, input UnsetU
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[IdentifiedUser](unsetFailure(sdkgo.FailureAuthentication, "Amplitude API key became unavailable after an earlier send"), 0)
+		}
 		return unsetBranch(UnsetUserPropertyBranchDefect, sdkgo.FailureAuthentication, "Amplitude API key is unavailable")
 	}
 	identification, err := json.Marshal(struct {
@@ -76,6 +79,9 @@ func (operation UnsetUserPropertyOperation) Invoke(call sdkgo.Call, input UnsetU
 			return unsetBranch(UnsetUserPropertyBranchProviderRejected, sdkgo.FailureProviderRejection, "Amplitude refused the property removal")
 		}
 		return sdkgo.NewMutationRetry[IdentifiedUser](unsetFailure(sdkgo.FailureTransport, "Amplitude property removal outcome is unknown"), 0)
+	}
+	if hasContradictoryIdentifyConfirmation(response.body) {
+		return sdkgo.NewMutationRetry[IdentifiedUser](unsetFailure(sdkgo.FailureProtocol, "Amplitude unset response was invalid"), 0)
 	}
 	value := IdentifiedUser{UserID: input.UserID, PropertyName: input.PropertyName}
 	return sdkgo.NewMutationBranch(UnsetUserPropertyBranchUnset, value, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "amplitude", ProviderObjectID: input.UserID})

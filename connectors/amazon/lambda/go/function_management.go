@@ -165,6 +165,9 @@ func (operation UpdateFunctionDescriptionOperation) Invoke(call sdkgo.Call, inpu
 	}
 	response := operation.client.send(call, http.MethodPut, "/2015-03-31/functions/"+input.FunctionName+"/configuration", body)
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[FunctionDetails](functionUpdateFailure(sdkgo.FailureAuthentication, "Lambda credentials became unavailable after an earlier send"), 0)
+		}
 		return functionUpdateBranch(UpdateFunctionDescriptionBranchDefect, sdkgo.FailureAuthentication, "Lambda credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRequest) {
@@ -208,6 +211,9 @@ func (operation DeleteFunctionOperation) Invoke(call sdkgo.Call, input DeleteFun
 	}
 	response := operation.client.send(call, http.MethodDelete, "/2015-03-31/functions/"+input.FunctionName, nil)
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[FunctionWriteResult](functionDeleteFailure(sdkgo.FailureAuthentication, "Lambda credentials became unavailable after an earlier send"), 0)
+		}
 		return functionDeleteBranch(DeleteFunctionBranchDefect, sdkgo.FailureAuthentication, "Lambda credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRequest) {

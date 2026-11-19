@@ -3639,6 +3639,7 @@ func NewGetTagStep[IN any](config GetTagStepConfig[IN]) sdkgo.QueryStep[IN, GetT
 }
 
 const CreateTagBranchCreated sdkgo.BranchID = "created"
+const CreateTagBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const CreateTagBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const CreateTagBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const CreateTagBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
@@ -3647,6 +3648,7 @@ var CreateTagDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTag"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTagBranchCreated, Description: "ActiveCampaign completed the tag operation."},
+		{ID: CreateTagBranchUncertain, Description: "A prior tag create may have succeeded but cannot be confirmed.", Optional: true},
 		{ID: CreateTagBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
 		{ID: CreateTagBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
 		{ID: CreateTagBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
@@ -3654,9 +3656,10 @@ var CreateTagDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateTagResult = sdkgo.MutationResult[TagMetadata]
@@ -3671,12 +3674,13 @@ type CreateTagStepConfig[IN any] struct {
 	ConnectionName                    string                                            `connector:"connectionName"`
 	MapToOperationInput               func(IN) CreateTagInput                           `connector:"mapToOperationInput"`
 	Created                           sdkgo.Target[CreateTagResult]                     `connector:"branch=created"`
+	Uncertain                         sdkgo.Target[CreateTagResult]                     `connector:"branch=uncertain,optional"`
 	ProviderRejected                  sdkgo.Target[CreateTagResult]                     `connector:"branch=providerRejected,optional"`
 	InvalidResponse                   sdkgo.Target[CreateTagResult]                     `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[CreateTagResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TagMetadata]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
-	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -3692,9 +3696,12 @@ func NewCreateTagStep[IN any](config CreateTagStepConfig[IN]) sdkgo.MutationStep
 		Operation: config.Connection.operations.CreateTag(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CreateTagResult] {
-			branches := make([]sdkgo.BranchTarget[CreateTagResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[CreateTagResult], 0, 5)
 			if config.Created.HasStep() {
 				branches = append(branches, config.Created.BranchTarget(CreateTagBranchCreated))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateTagBranchUncertain))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTagBranchProviderRejected))
@@ -3709,6 +3716,7 @@ func NewCreateTagStep[IN any](config CreateTagStepConfig[IN]) sdkgo.MutationStep
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

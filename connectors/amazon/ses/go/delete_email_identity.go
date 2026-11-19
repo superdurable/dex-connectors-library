@@ -52,6 +52,9 @@ func (operation DeleteEmailIdentityOperation) Invoke(call sdkgo.Call, input Dele
 	deleted := DeletedEmailIdentity{Name: input.EmailIdentity}
 	response := operation.client.request(call, http.MethodDelete, "/v2/email/identities/"+url.PathEscape(input.EmailIdentity), nil)
 	if errors.Is(response.err, errCredential) {
+		if call.Context != nil && call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[DeletedEmailIdentity](sesFailure(deleteEmailIdentityOperationID, sdkgo.FailureAuthentication, "SES credentials became unavailable after an earlier send"), 0)
+		}
 		return deleteIdentityBranch(DeleteEmailIdentityBranchDefect, sdkgo.FailureAuthentication, "SES credentials are unavailable or invalid", deleted)
 	}
 	if errors.Is(response.err, errRequest) {

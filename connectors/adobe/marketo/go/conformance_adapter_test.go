@@ -4,8 +4,11 @@
 package marketo
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -14,6 +17,16 @@ import (
 
 const conformanceEndpointPath = "/rest"
 const conformanceFixturePathPrefix = "/rest"
+
+type reauthorizationCredentialProvider struct{}
+
+func (reauthorizationCredentialProvider) Resolve(sdkgo.Call) (Credentials, error) {
+	return Credentials{}, sdkgo.NewReauthorizationRequiredError(errors.New("connection revoked"))
+}
+
+func (provider reauthorizationCredentialProvider) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
+	return provider.Resolve(call)
+}
 
 type conformanceMarketoRetryContext struct {
 	queryContext
@@ -51,6 +64,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
+	if strings.HasSuffix(scenario.Name, "-credentialLostAfterUnknown") {
+		client.credentials = reauthorizationCredentialProvider{}
+	}
 	retryContext := &conformanceMarketoRetryContext{attempt: 1}
 	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(checkpoint []byte) { retryContext.heartbeat = checkpoint })
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { retryContext.attempt = priorAttempt + int32(attempt) }, actions: map[string]conformanceOperationInvocation{

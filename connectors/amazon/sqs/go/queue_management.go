@@ -347,7 +347,7 @@ func queueQueryFailure[T any](failure queueRequestFailure, rejected, invalid, de
 }
 
 func queueMutationFailure[T any](failure queueRequestFailure, call sdkgo.Call, client *Client, rejected, invalid, defect sdkgo.BranchID, objectID string) sdkgo.MutationAttempt[T] {
-	if failure.classified.outcome == outcomeRetry || failure.isInvalidResponse || (failure.classified.statusCode != 0 && ((call.Context != nil && call.Context.Attempt() > 1) || !isDefiniteSQSRefusal(providerErrorResponse{statusCode: failure.classified.statusCode, code: failure.classified.errorCode}))) {
+	if failure.classified.outcome == outcomeRetry || failure.isInvalidResponse || (call.Context != nil && call.Context.Attempt() > 1 && failure.classified.outcome == outcomeDefect) || (failure.classified.statusCode != 0 && ((call.Context != nil && call.Context.Attempt() > 1) || !isDefiniteSQSRefusal(providerErrorResponse{statusCode: failure.classified.statusCode, code: failure.classified.errorCode}))) {
 		return sdkgo.NewMutationRetry[T](failure.classified.failure, failure.classified.retryAfter)
 	}
 	branch := rejected

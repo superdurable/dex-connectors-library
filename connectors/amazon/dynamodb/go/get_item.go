@@ -326,6 +326,9 @@ type writeBranches struct{ written, rejected, invalid, defect sdkgo.BranchID }
 func invokeItemWrite(call sdkgo.Call, client *Client, operation, target string, branches writeBranches, payload []byte) sdkgo.MutationAttempt[ItemWriteResult] {
 	response := client.send(call, target, payload)
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[ItemWriteResult](writeFailure(operation, sdkgo.FailureAuthentication, "DynamoDB credentials became unavailable after an earlier send"), 0)
+		}
 		return writeBranch(operation, branches.defect, sdkgo.FailureAuthentication, "DynamoDB credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRequest) {

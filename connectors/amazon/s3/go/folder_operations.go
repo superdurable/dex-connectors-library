@@ -120,6 +120,7 @@ func (operation DeleteFolderOperation) Invoke(call sdkgo.Call, input DeleteFolde
 	}
 	defer cancel()
 	value := DeletedFolder{Bucket: location.bucket, Prefix: location.key}
+	hasDeletedObject := false
 	for session.context.Err() == nil {
 		query := url.Values{"list-type": {"2"}, "encoding-type": {"url"}, "max-keys": {"100"}, "prefix": {location.key}}
 		response, requestErr := client.exchange(session, s3Request{method: http.MethodGet, location: objectLocation{bucket: location.bucket}, query: query})
@@ -138,18 +139,27 @@ func (operation DeleteFolderOperation) Invoke(call sdkgo.Call, input DeleteFolde
 		requestID := safeRequestID(response.Header)
 		closeResponseBody(response)
 		if readErr != nil || containsCredential(string(contents), session.credentials, true) {
-			return sdkgo.NewMutationBranch(DeleteFolderBranchInvalidResponse, value, failurePointer(deleteFolderOperationID, sdkgo.FailureProtocol, "S3 folder listing is incomplete, oversized, or secret-bearing"), client.receipt(call, requestID, location))
+			if !hasDeletedObject && call.Context.Attempt() == 1 {
+				return sdkgo.NewMutationBranch(DeleteFolderBranchInvalidResponse, value, failurePointer(deleteFolderOperationID, sdkgo.FailureProtocol, "S3 folder listing is incomplete, oversized, or secret-bearing"), client.receipt(call, requestID, location))
+			}
+			return sdkgo.NewMutationRetry[DeletedFolder](newFailure(deleteFolderOperationID, sdkgo.FailureProtocol, "S3 folder listing is incomplete, oversized, or secret-bearing"), 0)
 		}
 		page, parseErr := decodeListBucketResult(contents)
 		if parseErr != nil || (len(page.Objects) == 0 && page.IsTruncated) {
-			return sdkgo.NewMutationBranch(DeleteFolderBranchInvalidResponse, value, failurePointer(deleteFolderOperationID, sdkgo.FailureProtocol, "S3 returned an invalid folder listing"), client.receipt(call, requestID, location))
+			if !hasDeletedObject && call.Context.Attempt() == 1 {
+				return sdkgo.NewMutationBranch(DeleteFolderBranchInvalidResponse, value, failurePointer(deleteFolderOperationID, sdkgo.FailureProtocol, "S3 returned an invalid folder listing"), client.receipt(call, requestID, location))
+			}
+			return sdkgo.NewMutationRetry[DeletedFolder](newFailure(deleteFolderOperationID, sdkgo.FailureProtocol, "S3 returned an invalid folder listing"), 0)
 		}
 		if len(page.Objects) == 0 {
 			return sdkgo.NewMutationBranch(DeleteFolderBranchDeleted, value, nil, client.receipt(call, requestID, location))
 		}
 		for _, object := range page.Objects {
 			if !strings.HasPrefix(object.Key, location.key) {
-				return sdkgo.NewMutationBranch(DeleteFolderBranchInvalidResponse, value, failurePointer(deleteFolderOperationID, sdkgo.FailureProtocol, "S3 returned an object outside the folder prefix"), client.receipt(call, requestID, location))
+				if !hasDeletedObject && call.Context.Attempt() == 1 {
+					return sdkgo.NewMutationBranch(DeleteFolderBranchInvalidResponse, value, failurePointer(deleteFolderOperationID, sdkgo.FailureProtocol, "S3 returned an object outside the folder prefix"), client.receipt(call, requestID, location))
+				}
+				return sdkgo.NewMutationRetry[DeletedFolder](newFailure(deleteFolderOperationID, sdkgo.FailureProtocol, "S3 returned an object outside the folder prefix"), 0)
 			}
 			item := objectLocation{bucket: location.bucket, key: object.Key, hasKey: true}
 			deleted, deleteErr := client.exchange(session, s3Request{method: http.MethodDelete, location: item})
@@ -165,6 +175,7 @@ func (operation DeleteFolderOperation) Invoke(call sdkgo.Call, input DeleteFolde
 				return mutationAttemptForFailure(call, classified, client.receipt(call, classified.requestID, item), DeleteFolderBranchProviderRejected, DeleteFolderBranchDefect, value)
 			}
 			closeResponseBody(deleted)
+			hasDeletedObject = true
 		}
 	}
 	return sdkgo.NewMutationRetry[DeletedFolder](transportFailure(deleteFolderOperationID, "folder deletion"), 0)

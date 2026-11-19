@@ -89,6 +89,9 @@ func (operation CreateAccountContactOperation) Invoke(call sdkgo.Call, input Cre
 		return sdkgo.NewMutationRetry[AccountContactAssociation](queryFailure("createAccountContact", sdkgo.FailureAvailability, "account-contact checkpoint unavailable"), 0)
 	}
 	if errors.Is(dispatch.err, errCredential) {
+		if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
+			return limitedActiveCampaignUnknown[AccountContactAssociation](call, decision, queryFailure("createAccountContact", sdkgo.FailureAuthentication, "account-contact create remains unconfirmed after credentials became unavailable"), dealReceipt(call, decision.Marker.ProviderID))
+		}
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[AccountContactAssociation](queryFailure("createAccountContact", sdkgo.FailureAvailability, "account-contact checkpoint unavailable"), 0)
 		}
