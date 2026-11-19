@@ -8,6 +8,8 @@ metadata:
   categories: [ai]
   version: v0.1.0
 spec:
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-ppio", operations: [listModels], triggers: []}
   provider: ppio
   codegen:
     go:
