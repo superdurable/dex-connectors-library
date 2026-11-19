@@ -453,8 +453,9 @@ class QueueOnlyJobsTest(unittest.TestCase):
     pull_request_exclusion = "github.event_name != 'pull_request'"
 
     def job_condition(self, job_name: str) -> str:
+        """Returns the job's condition without the explicit dependency status checks of trusted-skip jobs."""
         match = re.search(r"(?m)^    if: (.*)$", workflow_job(self.workflow, job_name).split("\n    steps:\n", 1)[0])
-        return match.group(1) if match else ""
+        return strip_dependency_status_checks(match.group(1)) if match else ""
 
     def test_workflow_skips_exactly_the_summary_queue_only_jobs_on_pull_requests(self) -> None:
         from script import ci_summary
@@ -493,7 +494,9 @@ class QueueOnlyJobsTest(unittest.TestCase):
         self.assertEqual({"make test-python-connectors test-typescript-connectors": ""}, self.step_conditions("language-connectors"))
         for job_name in ("language-connectors", "connector-conformance"):
             header = workflow_job(self.workflow, job_name).split("\n    steps:\n", 1)[0]
-            self.assertIn("\n    needs: connector-plan\n    if: needs.connector-plan.outputs.count != '0'\n", header)
+            self.assertIn("\n    needs: [connector-plan, local-verification]\n"
+                          "    if: \"!cancelled() && needs.connector-plan.result == 'success' && needs.connector-plan.outputs.count != '0'"
+                          " && needs.local-verification.outputs.trusted != 'true'\"\n", header)
         self.assertNotIn("all_connectors", self.workflow)
 
     def test_every_event_replays_the_selected_connectors_and_only_pull_requests_and_canaries_mutate(self) -> None:
@@ -535,6 +538,121 @@ class QueueOnlyJobsTest(unittest.TestCase):
     def test_released_compatibility_runs_only_on_schedule_and_manual_runs(self) -> None:
         self.assertEqual("(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && needs.connector-plan.outputs.count != '0'",
                          self.job_condition("dex-compat-released"))
+
+
+class LocalVerificationJobsTest(unittest.TestCase):
+    """A trusted Mac Studio verification skips exactly ci-summary's heavy jobs; untrusted runs keep every job."""
+
+    workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+    trusted_skip = " && needs.local-verification.outputs.trusted != 'true'"
+
+    def job_header(self, job_name: str) -> str:
+        return workflow_job(self.workflow, job_name).split("\n    steps:\n", 1)[0]
+
+    def job_condition(self, job_name: str) -> str:
+        """Returns the job's full condition, unquoted."""
+        match = re.search(r"(?m)^    if: (.*)$", self.job_header(job_name))
+        return unquote_condition(match.group(1)) if match else ""
+
+    def job_needs(self, job_name: str) -> list[str]:
+        match = re.search(r"(?m)^    needs: (.*)$", self.job_header(job_name))
+        if not match:
+            return []
+        return [need.strip() for need in match.group(1).strip("[]").split(",")]
+
+    def test_decision_job_starts_at_once_with_read_only_permissions(self) -> None:
+        header = self.job_header("local-verification")
+        self.assertNotIn("needs:", header)
+        self.assertNotIn("if:", header)
+        self.assertIn("    permissions:\n      contents: read\n      pull-requests: read\n      statuses: read\n    outputs:\n", header)
+        self.assertIn("trusted: ${{ steps.decide.outputs.trusted }}", header)
+        job = workflow_job(self.workflow, "local-verification")
+        for line in ("GITHUB_TOKEN: ${{ github.token }}", "PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}",
+                     "MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}",
+                     "MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}", "run: python3 script/ci_local_verification.py"):
+            self.assertIn(line, job)
+
+    def test_workflow_skips_exactly_the_summary_heavy_jobs_when_trusted(self) -> None:
+        from script import ci_summary
+
+        jobs_section = self.workflow.split("\njobs:\n", 1)[1]
+        job_names = re.findall(r"(?m)^  ([a-z][a-z0-9-]*):\s*$", jobs_section)
+        gated = {name for name in job_names if "needs.local-verification.outputs.trusted != 'true'" in self.job_condition(name)}
+        self.assertEqual(set(ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS), gated)
+        for name in gated:
+            with self.subTest(job=name):
+                self.assertTrue(self.job_condition(name).endswith(self.trusted_skip), name)
+                self.assertEqual("local-verification", self.job_needs(name)[-1])
+
+    def test_heavy_jobs_require_their_original_needs_explicitly_but_not_local_verification(self) -> None:
+        # An implicit success() would also skip heavy jobs when local-verification fails or is cancelled.
+        from script import ci_summary
+
+        for name in ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS:
+            with self.subTest(job=name):
+                original_needs = self.job_needs(name)[:-1]
+                self.assertTrue(original_needs)
+                status_checks = "".join(f"needs.{need}.result == 'success' && " for need in original_needs)
+                self.assertTrue(self.job_condition(name).startswith("!cancelled() && " + status_checks), self.job_condition(name))
+                self.assertNotIn("needs.local-verification.result", self.job_condition(name))
+
+    def test_untrusted_runs_keep_every_heavy_job_condition(self) -> None:
+        from script import ci_summary
+
+        for name in ci_summary.LOCALLY_VERIFIED_SKIPPED_JOBS:
+            # The run is not cancelled; evaluate_condition knows no functions.
+            condition = self.job_condition(name).replace("!cancelled()", "True")
+            original = strip_dependency_status_checks(self.job_condition(name))[:-len(self.trusted_skip)]
+            original_needs = self.job_needs(name)[:-1]
+            contexts = set(re.findall(r"(?:github|needs)\.[a-z0-9_.-]+", original))
+            for values in ({"github.event_name": "merge_group", "needs.connector-plan.outputs.count": "1"},
+                           {"github.event_name": "pull_request", "needs.connector-plan.outputs.count": "0"},
+                           {"github.event_name": "push", "needs.connector-plan.outputs.sdkpython": "true"}):
+                filled = {context: values.get(context, "1") for context in contexts}
+                succeeded = {f"needs.{need}.result": "success" for need in original_needs}
+                # Failed, cancelled, or skipped local-verification leaves trusted empty; the job runs as before.
+                for trusted in ("false", ""):
+                    with self.subTest(job=name, values=values, trusted=trusted):
+                        self.assertEqual(evaluate_condition(original, filled), evaluate_condition(
+                            condition, filled | succeeded | {"needs.local-verification.outputs.trusted": trusted}))
+                with self.subTest(job=name, values=values, trusted="true"):
+                    self.assertFalse(evaluate_condition(
+                        condition, filled | succeeded | {"needs.local-verification.outputs.trusted": "true"}))
+                for need in original_needs:
+                    for result in ("failure", "cancelled", "skipped"):
+                        with self.subTest(job=name, values=values, need=need, result=result):
+                            self.assertFalse(evaluate_condition(condition, filled | succeeded | {
+                                f"needs.{need}.result": result, "needs.local-verification.outputs.trusted": ""}))
+
+    def test_generation_checks_run_only_when_trusted_and_connectors_are_selected(self) -> None:
+        self.assertEqual(["connector-plan", "local-verification"], self.job_needs("connector-generation"))
+        condition = self.job_condition("connector-generation")
+        for trusted, count, runs in (("true", "3", True), ("true", "0", False), ("false", "3", False), ("", "3", False)):
+            with self.subTest(trusted=trusted, count=count):
+                self.assertEqual(runs, evaluate_condition(condition, {"needs.local-verification.outputs.trusted": trusted,
+                                                                      "needs.connector-plan.outputs.count": count}))
+        self.assertEqual(["make check-connector-generation"],
+                         re.findall(r"(?m)^\s+- run: (make .*)$", workflow_job(self.workflow, "connector-generation")))
+        makefile = MAKEFILE_PATH.read_text(encoding="utf-8")
+        prerequisites, recipe = makefile_target(makefile, "check-connector-generation")
+        _, connectors_recipe = makefile_target(makefile, "test-connectors")
+        self.assertIn("download-root-go-modules", prerequisites.split())
+        self.assertIn('go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1;', recipe)
+        for command in ('validate "$$module/connector.yaml"', 'generate --check "$$module/connector.yaml"'):
+            self.assertIn(command, recipe)
+            self.assertIn(command, connectors_recipe)
+
+
+def unquote_condition(condition: str) -> str:
+    """Removes the YAML double quotes a condition starting with ! needs."""
+    if len(condition) >= 2 and condition[0] == condition[-1] == '"':
+        return condition[1:-1]
+    return condition
+
+
+def strip_dependency_status_checks(condition: str) -> str:
+    """Removes a leading `!cancelled() && needs.<job>.result == 'success' && ...` prefix."""
+    return re.sub(r"^!cancelled\(\) && (?:needs\.[a-z0-9-]+\.result == 'success' && )*", "", unquote_condition(condition))
 
 
 def evaluate_condition(condition: str, values: dict[str, str]) -> bool:

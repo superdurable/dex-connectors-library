@@ -259,6 +259,40 @@ Compatibility jobs resolve the latest stable Dex CLI release and the latest
 stable Dex Go SDK on every run, so no checked-in file pins a Dex version. See
 [Dex versions](versioning-and-releases.md#dex-versions).
 
+### Mac Studio verified pull requests
+
+The commit status `mac-studio-verified` = `success` on a pull request head
+means the owner's Mac Studio tooling, `remote-test.py attest`, posted it after
+a passing full local run of that commit. The `local-verification` job trusts it
+only when the newest status with that context on the head is `success` and its
+creator holds the `admin` or `maintain` repository role; on a merge group it
+checks the head of the pull request the queue ref names. A trusted run skips
+the heavy jobs that `LOCALLY_VERIFIED_SKIPPED_JOBS` in `script/ci_summary.py`
+names: connector shards, language packages, conformance replay, Dex
+integration and compatibility, database and email integration, SDK
+integration, and workspace dependents. The planning jobs, repository checks,
+common blocks, SDK unit suites, React, site, Connectors MCP, and
+`connector-generation`, which validates and generation-checks every selected
+connector in one job, still run. `ci-summary` accepts the skipped heavy jobs
+only when `local-verification` succeeded with `trusted=true` on a pull request
+or merge group; every other run is checked exactly as before. Each heavy job
+checks its original dependencies with explicit `needs.<job>.result` checks, so a
+failed or cancelled `local-verification` still runs it, and `ci-summary` fails.
+Trust relies on the reviewed workflow and scripts, so review every pull request
+that changes `.github/workflows/ci.yml`, `script/ci_local_verification.py`, or
+`script/ci_summary.py` with that in mind.
+
+Limitations:
+
+- The skipped jobs are not re-run on the merge-group commit. That commit can
+  differ from the verified head when `main` moved after the local run.
+- A merge group whose base is not already on `main` holds earlier queued pull
+  requests and is never trusted, so it runs every job.
+- A status posted after a pull request's CI started counts only on a rerun or
+  in the merge queue.
+- Push, scheduled, and manual runs never skip jobs. API errors also make the
+  run untrusted.
+
 ## Studio UI distribution
 
 A manifest may declare a setup entrypoint, Host API range, backend capability
