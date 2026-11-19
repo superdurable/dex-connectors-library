@@ -24,12 +24,15 @@ var testConnection = sdkgo.ConnectionRef{Provider: "copper", Name: "copper"}
 
 type queryContext struct{ dex.Context }
 
-func (queryContext) FlowID() string              { return "copper-provider-test" }
-func (queryContext) StepExecutionID() string     { return "query" }
-func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }
-func (queryContext) Done() <-chan struct{}       { return nil }
-func (queryContext) Err() error                  { return nil }
-func (queryContext) Value(key any) any           { return context.Background().Value(key) }
+func (queryContext) FlowID() string                          { return "copper-provider-test" }
+func (queryContext) StepExecutionID() string                 { return "query" }
+func (queryContext) Deadline() (time.Time, bool)             { return time.Time{}, false }
+func (queryContext) Done() <-chan struct{}                   { return nil }
+func (queryContext) Err() error                              { return nil }
+func (queryContext) Value(key any) any                       { return context.Background().Value(key) }
+func (queryContext) Attempt() int32                          { return 1 }
+func (queryContext) RecordHeartbeat(any) error               { return nil }
+func (queryContext) GetLastHeartbeatValue(any) (bool, error) { return false, nil }
 
 func newTestClient(t *testing.T, baseURL string) *Client {
 	t.Helper()

@@ -27,7 +27,7 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret Datadog API key from Organization Settings > API Keys at https://app.datadoghq.com/organization-settings/api-keys. Create API Key and copy it; blank prevents requests. */
   apiKey: SecretString;
-  /** Secret Datadog application key from Organization Settings > Application Keys at https://app.datadoghq.com/organization-settings/application-keys. Select New Key with timeseries_query and monitors_read permissions; copy the key at creation; blank prevents requests. */
+  /** Secret Datadog application key from Organization Settings > Application Keys at https://app.datadoghq.com/organization-settings/application-keys. Select New Key with timeseries_query, monitors_read, and monitors_write permissions; copy the key at creation; blank prevents requests. */
   applicationKey: SecretString;
 }
 

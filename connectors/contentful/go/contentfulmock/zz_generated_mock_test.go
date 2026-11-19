@@ -24,6 +24,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[contentful.ListEntriesOutput](`{"data":{"items":[{"sys":{"id":"entry-meridian","type":"Entry"},"fields":{"title":"Meridian"}}],"total":1,"skip":0,"limit":100}}`)
 			return err
 		}},
+		{name: "getAsset/defaultGetAsset/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[contentful.ContentfulReadOutput](`{"data":{"sys":{"id":"asset-meridian","type":"Asset"},"fields":{"title":"Meridian logo"}}}`)
+			return err
+		}},
+		{name: "listAssets/defaultListAssets/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[contentful.ContentfulReadOutput](`{"data":{"items":[{"sys":{"id":"asset-meridian","type":"Asset"}}],"total":1,"skip":0,"limit":100}}`)
+			return err
+		}},
+		{name: "getContentType/defaultGetContentType/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[contentful.ContentfulReadOutput](`{"data":{"sys":{"id":"article","type":"ContentType"},"name":"Article","fields":[]}}`)
+			return err
+		}},
+		{name: "listContentTypes/defaultListContentTypes/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[contentful.ContentfulReadOutput](`{"data":{"items":[{"sys":{"id":"article","type":"ContentType"}}],"total":1,"skip":0,"limit":100}}`)
+			return err
+		}},
+		{name: "getSpace/defaultGetSpace/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[contentful.ContentfulReadOutput](`{"data":{"sys":{"id":"space-meridian","type":"Space"},"name":"Meridian","locales":[{"code":"en-US","default":true,"name":"English"}]}}`)
+			return err
+		}},
+		{name: "listLocales/defaultListLocales/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[contentful.ContentfulReadOutput](`{"data":{"items":[{"code":"en-US","default":true,"name":"English"}],"total":1,"skip":0,"limit":100}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +63,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListEntries().Definition().Operation.OperationID != "listEntries" {
 		t.Errorf("listEntries mock has another definition")
+	}
+	if mock.GetAsset().Definition().Operation.OperationID != "getAsset" {
+		t.Errorf("getAsset mock has another definition")
+	}
+	if mock.ListAssets().Definition().Operation.OperationID != "listAssets" {
+		t.Errorf("listAssets mock has another definition")
+	}
+	if mock.GetContentType().Definition().Operation.OperationID != "getContentType" {
+		t.Errorf("getContentType mock has another definition")
+	}
+	if mock.ListContentTypes().Definition().Operation.OperationID != "listContentTypes" {
+		t.Errorf("listContentTypes mock has another definition")
+	}
+	if mock.GetSpace().Definition().Operation.OperationID != "getSpace" {
+		t.Errorf("getSpace mock has another definition")
+	}
+	if mock.ListLocales().Definition().Operation.OperationID != "listLocales" {
+		t.Errorf("listLocales mock has another definition")
 	}
 }

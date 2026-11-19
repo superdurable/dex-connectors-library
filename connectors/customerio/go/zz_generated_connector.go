@@ -40,11 +40,23 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetCampaign() sdkgo.Query[GetCampaignInput, CampaignSummary]
+	ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsPage]
+	GetCampaignMetrics() sdkgo.Query[GetCampaignMetricsInput, CampaignMetrics]
 	GetCustomersByEmail() sdkgo.Query[GetCustomersByEmailInput, CustomerLookupPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetCampaign() sdkgo.Query[GetCampaignInput, CampaignSummary] {
+	return operations.client.GetCampaign()
+}
+func (operations clientOperations) ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsPage] {
+	return operations.client.ListCampaigns()
+}
+func (operations clientOperations) GetCampaignMetrics() sdkgo.Query[GetCampaignMetricsInput, CampaignMetrics] {
+	return operations.client.GetCampaignMetrics()
+}
 func (operations clientOperations) GetCustomersByEmail() sdkgo.Query[GetCustomersByEmailInput, CustomerLookupPage] {
 	return operations.client.GetCustomersByEmail()
 }
@@ -184,6 +196,231 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential privateKey is required")
 	}
 	return nil
+}
+
+const GetCampaignBranchFound sdkgo.BranchID = "found"
+const GetCampaignBranchNotFound sdkgo.BranchID = "notFound"
+const GetCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCampaignBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCampaignDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCampaignBranchFound, Description: "Customer.io returned the campaign."},
+		{ID: GetCampaignBranchNotFound, Description: "No accessible campaign has this ID.", Optional: true},
+		{ID: GetCampaignBranchProviderRejected, Description: "Customer.io rejected the campaign lookup.", Optional: true},
+		{ID: GetCampaignBranchInvalidResponse, Description: "Customer.io returned invalid or oversized JSON.", Optional: true},
+		{ID: GetCampaignBranchDefect, Description: "Input or App API credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCampaignResult = sdkgo.QueryResult[CampaignSummary]
+
+type GetCampaignStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=customerio"`
+	operationID                    struct{}                                           `connector:"operationId=getCampaign"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCampaignInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCampaignResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCampaignResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCampaignResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCampaignResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCampaignResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CampaignSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetCampaignStep[IN any](config GetCampaignStepConfig[IN]) sdkgo.QueryStep[IN, GetCampaignInput, CampaignSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("customerio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCampaignInput, CampaignSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[GetCampaignResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCampaignBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCampaignBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCampaignBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCampaignBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCampaignsBranchListed sdkgo.BranchID = "listed"
+const ListCampaignsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCampaignsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCampaignsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCampaignsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCampaigns"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCampaignsBranchListed, Description: "Customer.io returned the campaign list."},
+		{ID: ListCampaignsBranchProviderRejected, Description: "Customer.io rejected the campaign list.", Optional: true},
+		{ID: ListCampaignsBranchInvalidResponse, Description: "Customer.io returned invalid or oversized JSON.", Optional: true},
+		{ID: ListCampaignsBranchDefect, Description: "App API credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCampaignsResult = sdkgo.QueryResult[CampaignsPage]
+
+type ListCampaignsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=customerio"`
+	operationID                    struct{}                                         `connector:"operationId=listCampaigns"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCampaignsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCampaignsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCampaignsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCampaignsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCampaignsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CampaignsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListCampaignsStep[IN any](config ListCampaignsStepConfig[IN]) sdkgo.QueryStep[IN, ListCampaignsInput, CampaignsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("customerio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCampaignsInput, CampaignsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCampaigns(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCampaignsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCampaignsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCampaignsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCampaignsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCampaignsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCampaignsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCampaignMetricsBranchFound sdkgo.BranchID = "found"
+const GetCampaignMetricsBranchNotFound sdkgo.BranchID = "notFound"
+const GetCampaignMetricsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCampaignMetricsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCampaignMetricsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCampaignMetricsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCampaignMetrics"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCampaignMetricsBranchFound, Description: "Customer.io returned campaign metric series."},
+		{ID: GetCampaignMetricsBranchNotFound, Description: "No accessible campaign has this ID.", Optional: true},
+		{ID: GetCampaignMetricsBranchProviderRejected, Description: "Customer.io rejected the metrics request.", Optional: true},
+		{ID: GetCampaignMetricsBranchInvalidResponse, Description: "Customer.io returned invalid or oversized JSON.", Optional: true},
+		{ID: GetCampaignMetricsBranchDefect, Description: "Input or App API credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCampaignMetricsResult = sdkgo.QueryResult[CampaignMetrics]
+
+type GetCampaignMetricsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=customerio"`
+	operationID                    struct{}                                           `connector:"operationId=getCampaignMetrics"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCampaignMetricsInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCampaignMetricsResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCampaignMetricsResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCampaignMetricsResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCampaignMetricsResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCampaignMetricsResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CampaignMetrics]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetCampaignMetricsStep[IN any](config GetCampaignMetricsStepConfig[IN]) sdkgo.QueryStep[IN, GetCampaignMetricsInput, CampaignMetrics] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("customerio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCampaignMetricsInput, CampaignMetrics]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCampaignMetrics(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCampaignMetricsResult] {
+			branches := make([]sdkgo.BranchTarget[GetCampaignMetricsResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCampaignMetricsBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCampaignMetricsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCampaignMetricsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCampaignMetricsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCampaignMetricsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetCustomersByEmailBranchFound sdkgo.BranchID = "found"

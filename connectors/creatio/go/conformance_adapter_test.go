@@ -4,6 +4,7 @@
 package creatio
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -24,7 +25,65 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getContact": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), reference),
+	context := &contactConformanceContext{attempt: 1}
+	if len(scenario.PriorHeartbeat) > 0 {
+		context.heartbeat = append([]byte(nil), scenario.PriorHeartbeat...)
+		var prior struct {
+			Attempt int32 `json:"attempt"`
+		}
+		require.NoError(t, json.Unmarshal(context.heartbeat, &prior))
+		context.attempt = prior.Attempt + 1
+	}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			context.attempt = int32(attempt)
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"getContact":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), reference),
+		"listContacts":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), reference),
+		"createContact":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreateContact(), reference, scenario.CallID),
+		"updateContact":     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateContact(), reference, scenario.CallID),
+		"deleteContact":     newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteContact(), reference, scenario.CallID),
+		"getAccount":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAccount(), reference),
+		"listAccounts":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAccounts(), reference),
+		"createAccount":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreateAccount(), reference, scenario.CallID),
+		"updateAccount":     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateAccount(), reference, scenario.CallID),
+		"deleteAccount":     newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteAccount(), reference, scenario.CallID),
+		"getActivity":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetActivity(), reference),
+		"listActivities":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListActivities(), reference),
+		"createActivity":    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateActivity(), reference, scenario.CallID),
+		"updateActivity":    newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateActivity(), reference, scenario.CallID),
+		"deleteActivity":    newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteActivity(), reference, scenario.CallID),
+		"getOpportunity":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOpportunity(), reference),
+		"listOpportunities": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOpportunities(), reference),
+		"createOpportunity": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateOpportunity(), reference, scenario.CallID),
+		"updateOpportunity": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateOpportunity(), reference, scenario.CallID),
+		"deleteOpportunity": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteOpportunity(), reference, scenario.CallID),
+		"getLead":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), reference),
+		"listLeads":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLeads(), reference),
+		"createLead":        newConformanceMutationInvocation(t, scenario.Input, context, client.CreateLead(), reference, scenario.CallID),
+		"updateLead":        newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateLead(), reference, scenario.CallID),
+		"deleteLead":        newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteLead(), reference, scenario.CallID),
 	}}
+}
+
+type contactConformanceContext struct {
+	queryContext
+	attempt   int32
+	heartbeat []byte
+}
+
+func (context *contactConformanceContext) Attempt() int32 { return context.attempt }
+func (context *contactConformanceContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err == nil {
+		context.heartbeat = encoded
+	}
+	return err
+}
+func (context *contactConformanceContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
 }

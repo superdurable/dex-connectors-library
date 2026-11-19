@@ -8,7 +8,9 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { TodoistClient } from '../src/client.js';
 import { CreateTaskInputSchema, DeleteTaskInputSchema, GetTaskInputSchema, ListTasksInputSchema, UpdateTaskInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/doist/todoist/scenarios.json', import.meta.url));
+const supportedOperations = new Set(['getTask', 'updateTaskContent', 'listTasks', 'createTask', 'deleteTask']);
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/doist/todoist/scenarios.json', import.meta.url))
+  .filter(scenario => supportedOperations.has(scenario.operation));
 const connection = { provider: 'todoist', name: 'todoist' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeTodoist));

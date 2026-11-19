@@ -24,3 +24,16 @@ func TestSignatureRequestInspectionFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestSignatureRequestListFlowIdentityAndMapping(t *testing.T) {
+	input := dropboxsign.ListSignatureRequestsInput{Page: 1, PageSize: 20}
+	require.Equal(t, input, mapListInput(input))
+	require.Equal(t, ListFlowType, dex.GetFinalFlowType(NewListFlow(dropboxsign.Connection{})))
+	require.Equal(t, "StartSignatureRequestList", dex.GetFinalStepType[dropboxsign.ListSignatureRequestsInput](startList{}))
+	wait, err := startList{}.WaitFor(nil, input)
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+	mock := dropboxsignmock.New(t, ConnectionName)
+	_, err = dex.NewRegistry([]dex.Flow{NewListFlow(mock.Connection())})
+	require.NoError(t, err)
+}

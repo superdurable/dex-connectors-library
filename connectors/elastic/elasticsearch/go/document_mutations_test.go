@@ -33,6 +33,9 @@ func TestIndexDocumentReplacesSameStableIDAcrossRetry(t *testing.T) {
 		if status == http.StatusCreated {
 			_, err := fmt.Fprint(w, `{"_index":"products","_id":"sku-42","result":"created"}`)
 			require.NoError(t, err)
+		} else if status == http.StatusUnauthorized {
+			_, err := fmt.Fprint(w, `{"error":{"type":"security_exception","reason":"invalid credentials"}}`)
+			require.NoError(t, err)
 		}
 	}))
 	defer server.Close()
