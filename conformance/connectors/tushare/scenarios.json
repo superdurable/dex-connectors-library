@@ -1,0 +1,422 @@
+{
+  "connector": "tushare",
+  "scenarios": [
+    {
+      "callId": "191c28a3-e8a6-5792-95c1-673c6e7ebab1",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"fields\":[\"exchange\",\"cal_date\",\"is_open\",\"pretrade_date\"],\"items\":[[\"SSE\",\"20261113\",1,\"20261112\"]]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "api_name": "trade_cal",
+            "fields": "exchange,cal_date,is_open,pretrade_date",
+            "params": {
+              "end_date": "20261113",
+              "exchange": "SSE",
+              "start_date": "20261113"
+            },
+            "token": "test-secret"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "date": "20261113",
+          "exchange": "SSE",
+          "isOpen": true,
+          "previousTradingDate": "20261112"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "date": "20261113",
+        "exchange": "SSE"
+      },
+      "name": "getTradingDay-found",
+      "operation": "getTradingDay"
+    },
+    {
+      "callId": "e04c5d12-e5a3-529d-9941-17653930a687",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"fields\":[\"exchange\",\"cal_date\",\"is_open\",\"pretrade_date\"],\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "api_name": "trade_cal",
+            "fields": "exchange,cal_date,is_open,pretrade_date",
+            "params": {
+              "end_date": "20261113",
+              "exchange": "SSE",
+              "start_date": "20261113"
+            },
+            "token": "test-secret"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "noData",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "date": "",
+          "exchange": "",
+          "isOpen": false,
+          "previousTradingDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "date": "20261113",
+        "exchange": "SSE"
+      },
+      "name": "getTradingDay-noData",
+      "operation": "getTradingDay"
+    },
+    {
+      "callId": "1ad487a7-25ca-5e51-8e94-229410a034eb",
+      "exchanges": [
+        {
+          "body": "{\"code\":2002,\"msg\":\"private data\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "api_name": "trade_cal",
+            "fields": "exchange,cal_date,is_open,pretrade_date",
+            "params": {
+              "end_date": "20261113",
+              "exchange": "SSE",
+              "start_date": "20261113"
+            },
+            "token": "test-secret"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "date": "",
+          "exchange": "",
+          "isOpen": false,
+          "previousTradingDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "date": "20261113",
+        "exchange": "SSE"
+      },
+      "name": "getTradingDay-providerRejected",
+      "operation": "getTradingDay"
+    },
+    {
+      "callId": "a943d2b3-12dc-5523-8d5c-b2527b71c1df",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"fields\":[\"cal_date\"],\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "api_name": "trade_cal",
+            "fields": "exchange,cal_date,is_open,pretrade_date",
+            "params": {
+              "end_date": "20261113",
+              "exchange": "SSE",
+              "start_date": "20261113"
+            },
+            "token": "test-secret"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "date": "",
+          "exchange": "",
+          "isOpen": false,
+          "previousTradingDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "date": "20261113",
+        "exchange": "SSE"
+      },
+      "name": "getTradingDay-invalidResponse",
+      "operation": "getTradingDay"
+    },
+    {
+      "callId": "5e9d9b41-ead5-5eeb-8124-32f0d08832c8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "date": "",
+          "exchange": "",
+          "isOpen": false,
+          "previousTradingDate": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "date": "20261113",
+        "exchange": "SSE"
+      },
+      "name": "getTradingDay-defect",
+      "operation": "getTradingDay"
+    },
+    {
+      "callId": "597ba26a-3de9-58e7-a40b-5de4583f9374",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "api_name": "trade_cal",
+            "fields": "exchange,cal_date,is_open,pretrade_date",
+            "params": {
+              "end_date": "20261113",
+              "exchange": "SSE",
+              "start_date": "20261113"
+            },
+            "token": "test-secret"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "date": "20261113",
+        "exchange": "SSE"
+      },
+      "name": "getTradingDay-retry429",
+      "operation": "getTradingDay"
+    },
+    {
+      "callId": "aa7e492f-b2e4-5924-95ff-0e515b23396e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "api_name": "trade_cal",
+            "fields": "exchange,cal_date,is_open,pretrade_date",
+            "params": {
+              "end_date": "20261113",
+              "exchange": "SSE",
+              "start_date": "20261113"
+            },
+            "token": "test-secret"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "date": "20261113",
+        "exchange": "SSE"
+      },
+      "name": "getTradingDay-retry503",
+      "operation": "getTradingDay"
+    },
+    {
+      "callId": "e5f77271-71fa-5e44-8730-11b5cbbd6220",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "api_name": "trade_cal",
+            "fields": "exchange,cal_date,is_open,pretrade_date",
+            "params": {
+              "end_date": "20261113",
+              "exchange": "SSE",
+              "start_date": "20261113"
+            },
+            "token": "test-secret"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "date": "20261113",
+        "exchange": "SSE"
+      },
+      "name": "getTradingDay-transport",
+      "operation": "getTradingDay"
+    },
+    {
+      "callId": "f0e7228b-64f6-5b0c-90b8-6330063c9500",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"fields\":[\"exchange\",\"cal_date\",\"is_open\",\"pretrade_date\"],\"items\":[[\"SSE\",\"20261113\",1,\"20261112\"]]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "api_name": "trade_cal",
+            "fields": "exchange,cal_date,is_open,pretrade_date",
+            "params": {
+              "end_date": "20261113",
+              "exchange": "SSE",
+              "start_date": "20261113"
+            },
+            "token": "test-secret"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "date": "",
+          "exchange": "",
+          "isOpen": false,
+          "previousTradingDate": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "date": "20261113",
+        "exchange": "SSE"
+      },
+      "name": "getTradingDay-oversized",
+      "operation": "getTradingDay"
+    }
+  ],
+  "schemaVersion": 1
+}
