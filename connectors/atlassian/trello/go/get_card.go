@@ -39,8 +39,11 @@ func (operation GetCardOperation) Invoke(call sdkgo.Call, input GetCardInput) sd
 		return sdkgo.NewQueryBranch(GetCardBranchDefect, Card{}, failurePointer(getCardOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
 	session, cancel, startFailure := client.startSession(call, getCardOperationID)
+	if startFailure != nil && startFailure.isTransient {
+		return sdkgo.NewQueryRetry[Card](startFailure.failure, 0)
+	}
 	if startFailure != nil {
-		return sdkgo.NewQueryBranch(GetCardBranchDefect, Card{}, startFailure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(GetCardBranchDefect, Card{}, &startFailure.failure, sdkgo.Receipt{})
 	}
 	defer cancel()
 	card, receipt, classification := client.readCard(session, getCardOperationID, cardID)

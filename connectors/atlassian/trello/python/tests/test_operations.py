@@ -3,6 +3,7 @@
 """Check local validation and secret-safe provider response handling."""
 
 import json
+from dataclasses import replace
 from uuid import UUID
 
 import httpx
@@ -49,6 +50,25 @@ def test_card_position_uses_go_json_number_shape(
     encoded = json.loads(wire_value.data)
     assert type(encoded["position"]) is type(expected_position)
     assert encoded["position"] == expected_position
+
+
+class FirstAttemptContext:
+    """A first Execute attempt with no earlier heartbeat."""
+
+    attempt = 1
+    run_id = "run"
+    deadline = None
+
+    def has_last_heartbeat_value(self) -> bool:
+        """Report that no earlier attempt recorded a heartbeat."""
+        return False
+
+    def get_last_heartbeat_value(self, value_type: type[object]) -> object:
+        """Return no earlier heartbeat."""
+        return None
+
+    async def heartbeat(self, value: object = None) -> None:
+        """Accept the attempt's marker."""
 
 
 def make_client(handler: httpx.MockTransport) -> Client:
@@ -179,7 +199,7 @@ async def test_created_card_references_match_go_patterns(
     monkeypatch.setattr(operations, "_single_dispatch", dispatch)
     client = make_client(httpx.MockTransport(lambda _: httpx.Response(500)))
     attempt = await client.create_card().invoke(
-        make_call("createCard"), CreateCardInput(CARD_ID, "Example")
+        replace(make_call("createCard"), context=FirstAttemptContext()), CreateCardInput(CARD_ID, "Example")
     )
     assert attempt.branch == "created"
     assert attempt.value is not None

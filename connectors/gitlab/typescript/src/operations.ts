@@ -62,7 +62,10 @@ export class UpdateIssueLabelsOperation implements Mutation<UpdateIssueLabelsInp
       const value = decodeIssue(JSON.parse(Buffer.from(result.response.body).toString('utf8')) as unknown);
       if (value.id <= 0 || value.iid <= 0) throw new Error('missing issue identity');
       return newMutationBranch('updated', value, {});
-    } catch { return mutationFailure('updateIssueLabels', 'invalidResponse', 'PROTOCOL', 'response was malformed'); }
+    } catch {
+      // Replacing the complete label set is safe to repeat, so a malformed answer retries.
+      return newMutationRetry(failure('updateIssueLabels', 'PROTOCOL', 'response was malformed'));
+    }
   }
 }
 
@@ -86,7 +89,6 @@ function failure(operation: string, kind: Failure['kind'], message: string): Fai
 function queryDefect<T>(operation: string, empty: T, message: string): QueryAttempt<T> { return newQueryBranch('defect', empty, {}, failure(operation, 'VALIDATION', message)); }
 function mutationDefect(operation: string, message: string): MutationAttempt<Issue> { return newMutationBranch('defect', emptyIssue, {}, failure(operation, 'VALIDATION', message)); }
 function queryFailure<T>(operation: string, branch: string, empty: T): QueryAttempt<T> { return newQueryBranch(branch, empty, {}, failure(operation, 'PROTOCOL', 'response was malformed')); }
-function mutationFailure(operation: string, branch: string, kind: Failure['kind'], message: string): MutationAttempt<Issue> { return newMutationBranch(branch, emptyIssue, {}, failure(operation, kind, message)); }
 function queryOutcome<T>(result: Exclude<GitLabExchange, { response: unknown }>, empty: T): QueryAttempt<T> {
   if (result.branch === 'retry') return newQueryRetry(result.failure, result.retryAfterMs);
   return newQueryBranch(result.branch, empty, {}, result.failure);

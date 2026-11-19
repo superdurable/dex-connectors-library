@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, urlsplit
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -29,6 +30,7 @@ from .client import (
     USER_SELECT,
     Client,
     Exchange,
+    _TransientCredentialError,
     convert_user,
     decode_user,
     failure,
@@ -104,7 +106,8 @@ def _failed_query(
 def _failed_mutation(
     client: Client, call: Call, exchange: Exchange, zero: Any, not_found: str = "notFound"
 ) -> MutationAttempt[Any]:
-    if exchange.outcome == "retry":
+    # Every write is safe to repeat, so an unusable response retries instead of selecting invalidResponse.
+    if exchange.outcome in ("retry", "invalidResponse"):
         assert exchange.failure is not None
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
     branch = {"notFound": not_found, "invalidResponse": "invalidResponse", "defect": "defect"}.get(
@@ -112,6 +115,11 @@ def _failed_mutation(
     )
     receipt = Receipt() if exchange.outcome == "defect" else _receipt(client, call, exchange)
     return MutationAttempt.branch_result(branch, zero, receipt, exchange.failure)
+
+
+def _transient_credential_failure(operation: str) -> Failure:
+    message = "connection credentials are temporarily unavailable; nothing was sent"
+    return failure(operation, FailureKind.AVAILABILITY, message)
 
 
 def _validation_query(operation: str, zero: Any, error: Exception) -> QueryAttempt[Any]:
@@ -145,6 +153,8 @@ class GetUserOperation:
             return _validation_query(operation, User(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return QueryAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return QueryAttempt.branch_result(
                 "defect",
@@ -191,6 +201,8 @@ class ListUsersOperation:
             return _validation_query(operation, ListUsersOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return QueryAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return QueryAttempt.branch_result(
                 "defect",
@@ -342,6 +354,8 @@ async def _set_account_enabled(
         return _validation_mutation(operation, User(), error)
     try:
         credential = await client.resolve_credentials(call)
+    except _TransientCredentialError:
+        return MutationAttempt.retry(_transient_credential_failure(operation))
     except Exception:
         return MutationAttempt.branch_result(
             "defect",
@@ -369,27 +383,14 @@ async def _set_account_enabled(
     try:
         user, _ = decode_user(read.body)
     except ValueError as error:
-        return MutationAttempt.branch_result(
-            "invalidResponse",
-            User(),
-            receipt,
-            failure(operation, FailureKind.PROTOCOL, "provider returned an invalid account: " + str(error)),
+        return MutationAttempt.retry(
+            failure(operation, FailureKind.PROTOCOL, "provider returned an invalid account: " + str(error))
         )
     receipt = _receipt(client, call, read, user.id)
     if user.is_account_enabled != enabled:
-        if client.within_propagation_window(call):
-            return MutationAttempt.retry(
-                failure(operation, FailureKind.AVAILABILITY, "Microsoft Graph does not report the change yet")
-            )
-        return MutationAttempt.branch_result(
-            "providerRejected",
-            user,
-            receipt,
-            failure(
-                operation,
-                FailureKind.PROVIDER_REJECTION,
-                "Microsoft Graph returned the account without the requested accountEnabled value",
-            ),
+        # A read that contradicts the accepted absolute write is unknown, and the write is safe to repeat.
+        return MutationAttempt.retry(
+            failure(operation, FailureKind.AVAILABILITY, "Microsoft Graph does not report the change yet")
         )
     return MutationAttempt.branch_result(applied, user, receipt)
 
@@ -419,6 +420,8 @@ class RevokeSignInSessionsOperation:
             return _validation_mutation(operation, RevokeSignInSessionsOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return MutationAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return MutationAttempt.branch_result(
                 "defect",
@@ -444,11 +447,9 @@ class RevokeSignInSessionsOperation:
             ):
                 raise ValueError()
         except (ValueError, UnicodeDecodeError):
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                output,
-                receipt,
-                failure(operation, FailureKind.PROTOCOL, "provider returned an invalid revocation response"),
+            # Revoking again is harmless, so an unusable acceptance retries.
+            return MutationAttempt.retry(
+                failure(operation, FailureKind.PROTOCOL, "provider returned an invalid revocation response")
             )
         if response.get("value") is False:
             return MutationAttempt.branch_result(
@@ -488,6 +489,8 @@ class AddUserToGroupOperation:
             return _validation_mutation(operation, AddUserToGroupOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return MutationAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return MutationAttempt.branch_result(
                 "defect",
@@ -539,17 +542,15 @@ class AddUserToGroupOperation:
                 ):
                     raise ValueError()
             except (ValueError, UnicodeDecodeError):
-                return MutationAttempt.branch_result(
-                    "invalidResponse",
-                    AddUserToGroupOutput(),
-                    receipt,
-                    failure(operation, FailureKind.PROTOCOL, "provider returned an invalid membership check"),
+                return MutationAttempt.retry(
+                    failure(operation, FailureKind.PROTOCOL, "provider returned an invalid membership check")
                 )
             if any((member or {}).get("id", "").lower() == user_id for member in members):
                 return MutationAttempt.branch_result(
                     "added", replace(output, was_already_member=True), receipt
                 )
-            if self.client.within_propagation_window(call):
+            # After an earlier attempt, the unlisted membership may be this Step's.
+            if _has_possible_earlier_attempt(call) or self.client.within_propagation_window(call):
                 return MutationAttempt.retry(
                     failure(
                         operation,
@@ -610,6 +611,8 @@ class RemoveUserFromGroupOperation:
             return _validation_mutation(operation, RemoveUserFromGroupOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return MutationAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return MutationAttempt.branch_result(
                 "defect",
@@ -663,6 +666,8 @@ class CreateUserOperation:
             return _validation_mutation(operation, CreateUserOutput(), error)
         try:
             credential = await self.client.resolve_credentials(call)
+        except _TransientCredentialError:
+            return MutationAttempt.retry(_transient_credential_failure(operation))
         except Exception:
             return MutationAttempt.branch_result(
                 "defect",
@@ -717,30 +722,24 @@ class CreateUserOperation:
                 try:
                     user, source = decode_user(read.body)
                 except ValueError as error:
-                    return MutationAttempt.branch_result(
-                        "invalidResponse",
-                        CreateUserOutput(),
-                        receipt,
+                    return MutationAttempt.retry(
                         failure(
                             operation,
                             FailureKind.PROTOCOL,
                             "provider returned an invalid account: " + str(error),
-                        ),
+                        )
                     )
                 receipt = _receipt(self.client, call, read, user.id)
                 attributes = source.get("onPremisesExtensionAttributes") or {}
                 if not isinstance(attributes, dict) or any(
                     value is not None and not isinstance(value, str) for value in attributes.values()
                 ):
-                    return MutationAttempt.branch_result(
-                        "invalidResponse",
-                        CreateUserOutput(),
-                        receipt,
+                    return MutationAttempt.retry(
                         failure(
                             operation,
                             FailureKind.PROTOCOL,
                             "provider returned an invalid account: account is not valid JSON",
-                        ),
+                        )
                     )
                 if attributes.get(self.client.config.creation_key_attribute) == "dex-creation-key:" + key:
                     return MutationAttempt.branch_result("created", CreateUserOutput(user, True), receipt)
@@ -755,7 +754,8 @@ class CreateUserOperation:
                     ),
                 )
             if read.outcome == "notFound":
-                if self.client.within_propagation_window(call):
+                # After an earlier attempt, the unreadable account may be this Step's.
+                if _has_possible_earlier_attempt(call) or self.client.within_propagation_window(call):
                     return MutationAttempt.retry(
                         failure(
                             operation,
@@ -802,13 +802,53 @@ class CreateUserOperation:
                 )
             )
         if exchange.outcome in ("notFound", "rejected"):
-            return MutationAttempt.branch_result(
+            refusal = MutationAttempt.branch_result(
                 "providerRejected",
                 CreateUserOutput(),
                 _receipt(self.client, call, exchange),
                 exchange.failure,
             )
+            if _has_possible_earlier_attempt(call):
+                principal = payload["userPrincipalName"]
+                return await self._confirm_refusal(call, credential, principal, key, refusal)
+            return refusal
         return _failed_mutation(self.client, call, exchange, CreateUserOutput(), "providerRejected")
+
+    async def _confirm_refusal(
+        self,
+        call: Call,
+        credential: Any,
+        principal: str,
+        key: str,
+        refusal: MutationAttempt[CreateUserOutput],
+    ) -> MutationAttempt[CreateUserOutput]:
+        """Read the name back, because an earlier attempt may have created the account."""
+        operation = "createUser"
+        read = await self.client.exchange(
+            call, credential, operation, "GET", _user_path(principal), {"$select": CREATION_SELECT}
+        )
+        if read.outcome == "notFound":
+            return refusal
+        if read.outcome != "success":
+            return _failed_mutation(self.client, call, read, CreateUserOutput(), "providerRejected")
+        try:
+            user, source = decode_user(read.body)
+            attributes = source.get("onPremisesExtensionAttributes") or {}
+            if not isinstance(attributes, dict):
+                raise ValueError("account is not valid JSON")
+        except ValueError as error:
+            message = "provider returned an invalid account: " + str(error)
+            return MutationAttempt.retry(failure(operation, FailureKind.PROTOCOL, message))
+        if attributes.get(self.client.config.creation_key_attribute) == "dex-creation-key:" + key:
+            return MutationAttempt.branch_result(
+                "created", CreateUserOutput(user, True), _receipt(self.client, call, read, user.id)
+            )
+        return refusal
+
+
+def _has_possible_earlier_attempt(call: Call) -> bool:
+    """Report a later attempt, whose predecessor may have sent the write."""
+    return call.context is not None and call.context.attempt > 1
 
 
 def _build_create_user_request(input: CreateUserInput, attribute: str, key: str) -> dict[str, Any]:

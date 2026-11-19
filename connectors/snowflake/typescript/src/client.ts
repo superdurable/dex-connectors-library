@@ -3,14 +3,16 @@
 
 import { createHash, createPrivateKey, createPublicKey, sign } from 'node:crypto';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { SubmitStatementOperation, GetStatementResultOperation, CancelStatementOperation } from './operations.js';
 
 const handlePattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const codePattern = /^[0-9]{6}$/;
 const sqlStatePattern = /^[0-9A-Z]{5}$/;
 const maxBodyBytes = 256 << 20;
+const maxWriteErrorBodyBytes = 1 << 20;
 
 /** A request sender injectable for provider replay. */
 export type SnowflakeRequestSender = (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -29,6 +31,8 @@ export interface SnowflakeFailure {
   failure: Failure;
   retryAfterMs: number;
   status: SnowflakeStatus;
+  /** HTTP status of a classified provider answer; absent for a local or transport failure. */
+  httpStatus?: number;
 }
 /** Validated fields from a SQL API status body. */
 export interface SnowflakeStatus {
@@ -98,8 +102,14 @@ export class SnowflakeClient {
   async exchange(call: Call, operation: string, method: string, target: string, body?: Uint8Array): Promise<SnowflakeExchange> {
     let token: string;
     let tokenType: string;
+    let credentials: Credentials;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+      credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+    } catch (error) {
+      if (!isTerminalCredentialError(error)) return { outcome: this.failure('retry', operation, 'AVAILABILITY', 'Snowflake connection credentials are temporarily unavailable; nothing was sent') };
+      return { outcome: this.failure('defect', operation, 'AUTHENTICATION', 'Snowflake connection credentials are unavailable') };
+    }
+    try {
       if (credentials.authMethodId === 'programmatic-access-token') {
         if (!(credentials.programmaticAccessToken instanceof SecretString) || !isHeaderSafeCredential(credentials.programmaticAccessToken.reveal())) throw new Error('the Snowflake programmatic access token is blank or contains spaces or non-ASCII characters');
         token = credentials.programmaticAccessToken.reveal(); tokenType = 'PROGRAMMATIC_ACCESS_TOKEN';
@@ -117,9 +127,14 @@ export class SnowflakeClient {
         addressPolicy: this.baseUrl.startsWith('https://') && !this.baseUrl.includes('localhost') && !this.baseUrl.includes('127.0.0.1') ? 'publicHTTPS' : 'privateNetworkHTTP',
         timeoutMs: 20000, signal: call.context.cancellationSignal });
       if (response.status === 200 || response.status === 202) return { response };
+      // The Go and Python ports bound a write's error body at 1 MiB; a longer one is not a definite refusal.
+      if (operation !== 'getStatementResult' && response.body.byteLength > maxWriteErrorBodyBytes)
+        return { outcome: this.failure('retry', operation, 'AVAILABILITY', `Snowflake returned HTTP ${response.status} with an error body over ${maxWriteErrorBodyBytes} bytes`) };
       return { outcome: this.classifyResponse(response, operation) };
     } catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.status !== 200 && error.status !== 202) {
+        // A write refusal is definite only when its whole body was read.
+        if (operation !== 'getStatementResult') return { outcome: this.failure('retry', operation, 'AVAILABILITY', `Snowflake returned HTTP ${error.status} with an error body over ${maxBodyBytes} bytes`) };
         return { outcome: this.classifyResponse({ status: error.status, headers: error.headers ?? {}, body: new Uint8Array() }, operation) };
       }
       if (error instanceof BodyTooLargeError && operation === 'getStatementResult') {
@@ -178,7 +193,7 @@ export class SnowflakeClient {
     if (code === 408 || status.code === '000604') message += '; the statement exceeded statementTimeoutSeconds or was canceled';
     else if (code >= 300 && code < 400) message += '; the connector never follows redirects, so check accountIdentifier';
     const retry = response.headers['retry-after'];
-    return this.failure(disposition, operation, kind, message, status, disposition === 'retry' ? parseRetryAfter(Array.isArray(retry) ? retry[0] ?? '' : retry ?? '', this.now()) : 0);
+    return { ...this.failure(disposition, operation, kind, message, status, disposition === 'retry' ? parseRetryAfter(Array.isArray(retry) ? retry[0] ?? '' : retry ?? '', this.now()) : 0), httpStatus: code };
   }
 }
 
@@ -197,6 +212,12 @@ export function decodeStatus(body: Uint8Array): SnowflakeStatus {
 
 /** Check a Snowflake statement handle before placing it in a path. */
 export function isStatementHandle(value: string): boolean { return handlePattern.test(value); }
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return isCredentialMaterialError(error) || error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError;
+}
 
 function statementFailureKind(status: SnowflakeStatus): Failure['kind'] {
   if (status.code === '000709' || status.sqlState === '02000') return 'NOT_FOUND';

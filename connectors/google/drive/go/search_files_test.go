@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/google/drive/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -216,17 +217,50 @@ func TestSearchFilesRefreshesOnceAfterUnauthorizedAndNeverLoops(t *testing.T) {
 	}
 }
 
-func TestSearchFilesWithoutCredentialsUsesDefect(t *testing.T) {
-	fake := newFakeDrive(t, func(response http.ResponseWriter, _ *http.Request, _ []byte) {
-		writeJSON(t, response, http.StatusOK, accountHierarchyPage)
-	})
-	client, err := drive.New(drive.Config{Endpoint: fake.URL}, sdkgo.StaticCredentialProvider[drive.Credentials]{})
-	require.NoError(t, err)
-	result, err := sdkgo.RunQuery(newDexContext("search-no-credentials"), client.SearchFiles(), driveConnection, drive.SearchFilesInput{Name: "Plan"})
-	require.NoError(t, err)
-	require.Equal(t, drive.SearchFilesBranchDefect, result.Branch)
-	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
-	require.Empty(t, fake.recorded())
+// resolveErrorCredentials fails every resolution with one error.
+type resolveErrorCredentials struct{ err error }
+
+func (credentials resolveErrorCredentials) Resolve(sdkgo.Call) (drive.Credentials, error) {
+	return drive.Credentials{}, credentials.err
+}
+
+func (credentials resolveErrorCredentials) ResolveWithRefresh(context.Context, sdkgo.Call, sdkgo.CredentialRefreshDriver[drive.Credentials]) (drive.Credentials, error) {
+	return drive.Credentials{}, credentials.err
+}
+
+func TestSearchFilesCredentialFailuresRetryUnlessTerminal(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		source     drive.CredentialSource
+		isTerminal bool
+	}{
+		{name: "unconfigured static connection", source: sdkgo.StaticCredentialProvider[drive.Credentials]{}},
+		{name: "broker unavailable", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerUnavailable}},
+		{name: "unlisted", source: resolveErrorCredentials{err: errors.New("unlisted resolve failure")}},
+		{name: "reauthorization", source: resolveErrorCredentials{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))}, isTerminal: true},
+		{name: "project reauthorization", source: resolveErrorCredentials{err: projectconfig.ErrReauthorizationRequired}, isTerminal: true},
+		{name: "object not found", source: resolveErrorCredentials{err: projectconfig.ErrObjectNotFound}, isTerminal: true},
+		{name: "connection not selected", source: resolveErrorCredentials{err: projectconfig.ErrConnectionNotSelected}, isTerminal: true},
+		{name: "broker rejected", source: resolveErrorCredentials{err: projectconfig.ErrCredentialBrokerRejected}, isTerminal: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fake := newFakeDrive(t, func(response http.ResponseWriter, _ *http.Request, _ []byte) {
+				writeJSON(t, response, http.StatusOK, accountHierarchyPage)
+			})
+			client, err := drive.New(drive.Config{Endpoint: fake.URL}, test.source)
+			require.NoError(t, err)
+			result, err := sdkgo.RunQuery(newDexContext("search-credentials-"+test.name), client.SearchFiles(), driveConnection, drive.SearchFilesInput{Name: "Plan"})
+			if test.isTerminal {
+				require.NoError(t, err)
+				require.Equal(t, drive.SearchFilesBranchDefect, result.Branch)
+				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			} else {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+			}
+			require.Empty(t, fake.recorded())
+		})
+	}
 }
 
 type rejectionRefreshingCredentialProvider struct {

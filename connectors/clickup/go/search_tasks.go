@@ -101,6 +101,9 @@ func (operation SearchTasksOperation) Invoke(call sdkgo.Call, input SearchTasksI
 		return sdkgo.NewQueryBranch(SearchTasksBranchDefect, output, clickupFailurePointer(sdkgo.FailureValidation, searchTasksOperation, err.Error()), sdkgo.Receipt{})
 	}
 	credentials, failure := operation.client.resolveCredentials(call, searchTasksOperation)
+	if failure != nil && failure.Kind != sdkgo.FailureAuthentication {
+		return sdkgo.NewQueryRetry[SearchTasksOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(SearchTasksBranchDefect, output, failure, sdkgo.Receipt{})
 	}

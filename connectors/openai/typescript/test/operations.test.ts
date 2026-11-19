@@ -4,10 +4,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { OpenAIClient, pathEscape } from '../src/client.js';
-import type { CreateRequest } from '../src/generated/models.js';
+import { decodeCredentials, type CreateRequest } from '../src/generated/models.js';
+
+/** Return the error the SDK project provider throws when the generated decoder rejects stored material. */
+function sdkWrappedMaterialError(): TypeError {
+  try { decodeCredentials({ unexpected_field: 'value' }); }
+  catch { return new TypeError('project credential decoding failed'); }
+  throw new Error('malformed stored material decoded');
+}
 import { Mock, validateCreateResponseAnswer, validateCreateResponseRequest } from '../src/mock.js';
 
 const input: CreateRequest = { Model: '', Input: 'Summarize this.', Instructions: '', StructuredOutput: null };
@@ -43,7 +50,7 @@ describe('createResponse checkpoint recovery', () => {
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.value.id).toBe('resp_123');
     expect(methods).toEqual(['GET']);
-    expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 2, responseId: 'resp_123' });
+    expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 2, responseId: 'resp_123', sendCount: 1 });
   });
 
   it('keeps heartbeating during read-back when the first record fails', async () => {
@@ -65,10 +72,40 @@ describe('createResponse checkpoint recovery', () => {
     } finally { vi.useRealTimers(); }
   });
 
-  it('fails closed without a checkpoint after the first attempt', async () => {
+  it('counts every earlier attempt without a checkpoint and sends nothing at the cap', async () => {
     const provider = client(async () => { throw new Error('unexpected send'); });
-    const result = await provider.createResponse().invoke(call(2).invocation, input);
+    const result = await provider.createResponse().invoke(call(4).invocation, input);
     expect(result.kind).toBe('uncertain');
+  });
+
+  it.each([
+    [1, undefined, 'retry'],
+    [2, { callId: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', attempt: 1, sendCount: 1 }, 'retry'],
+    [3, { callId: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', attempt: 2, sendCount: 2 }, 'uncertain'],
+    [5, { callId: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', attempt: 4, canResend: true, sendCount: 0 }, 'retry'],
+  ] as const)('on attempt %i, an unknown 500 resends below the cap of 3', async (attempt, previous, expected) => {
+    const methods: string[] = [];
+    const provider = client(async request => { methods.push(request.method); return { status: 500, headers: {}, body: Buffer.from('{}') }; });
+    const result = await provider.createResponse().invoke(call(attempt, previous).invocation, input);
+    expect(result.kind).toBe(expected);
+    expect(methods).toEqual(['POST']);
+  });
+
+  it('selects uncertain when a resend after a possible create is refused', async () => {
+    const provider = client(async () => ({ status: 400, headers: {}, body: Buffer.from('{}') }));
+    const { invocation, heartbeats } = call(2, { callId: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', attempt: 1, sendCount: 1 });
+    const result = await provider.createResponse().invoke(invocation, input);
+    expect(result.kind).toBe('uncertain');
+    expect(heartbeats.at(-1)).toEqual({ callId: invocation.id, attempt: 2, canResend: true, sendCount: 1 });
+  });
+
+  it('treats a foreign checkpoint on a later attempt as a possible earlier send', async () => {
+    const methods: string[] = [];
+    const provider = client(async request => { methods.push(request.method); return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) }; });
+    const result = await provider.createResponse().invoke(call(2, { callId: 'another-call', attempt: 1 }).invocation, input);
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') expect(result.branch).toBe('completed');
+    expect(methods).toEqual(['POST']);
   });
 
   it('treats a cleared checkpoint as absent and rejects scalar checkpoints', async () => {
@@ -90,7 +127,7 @@ describe('createResponse checkpoint recovery', () => {
     const { invocation, heartbeats } = call();
     const result = await provider.createResponse().invoke(invocation, input);
     expect(result.kind).toBe('retry');
-    expect(heartbeats.at(-1)).toEqual({ callId: invocation.id, attempt: 1, canResend: true });
+    expect(heartbeats.at(-1)).toEqual({ callId: invocation.id, attempt: 1, canResend: true, sendCount: 0 });
   });
 
   it('decodes streamed text and checkpoints its response ID', async () => {
@@ -109,7 +146,7 @@ describe('createResponse checkpoint recovery', () => {
     if (result.kind === 'branch') expect(result.branch).toBe('completed');
     expect(texts).toEqual(['Done.']);
     expect(progresses).toContainEqual({ phase: 'response.created', message: 'in_progress', providerSequence: 12 });
-    expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 1, responseId: 'resp_123' });
+    expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 1, responseId: 'resp_123', sendCount: 1 });
   });
 
   it('keeps create headers when a known stream is read back after transport failure', async () => {
@@ -167,9 +204,102 @@ describe('createResponse checkpoint recovery', () => {
     } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
   });
 
+  it.each([
+    ['a malformed body', async (): Promise<ProviderResponse> => ({ status: 200, headers: {}, body: Buffer.from('{') })],
+    ['a body cut off after the headers', async (): Promise<ProviderResponse> => { throw new ProviderTransportError(false, 200, {}); }],
+    ['an oversized body', async (): Promise<ProviderResponse> => { throw new BodyTooLargeError(200, {}); }],
+  ] as const)('never resends an accepted create with %s below the cap', async (_name, answer) => {
+    let posts = 0;
+    const provider = client(async () => { posts += 1; return answer(); });
+    const result = await provider.createResponse().invoke(call(1).invocation, input);
+    expect(result.kind).toBe('uncertain');
+    if (result.kind === 'uncertain') expect(result.failure.message).toMatch(/^OpenAI accepted the create request/);
+    expect(posts).toBe(1);
+  });
+
+  it('selects uncertain for an accepted stream that ends without a response ID', async () => {
+    const provider = client(async () => ({ status: 200, headers: { 'content-type': 'text/event-stream' }, body: Buffer.from('data: {"type":"error"}\n\n') }));
+    const result = await provider.createResponse().invoke(call(1, undefined, true).invocation, input);
+    expect(result.kind).toBe('uncertain');
+  });
+
+  it.each([
+    ['unavailable', async () => { throw new Error('vault unavailable'); }, 'retry'],
+    ['reauthorization', async () => { throw new ReauthorizationRequiredError(); }, 'uncertain'],
+    ['invalid', async () => ({ apiKey: new SecretString('bad\nkey') }), 'uncertain'],
+    ['malformed stored', async () => { throw sdkWrappedMaterialError(); }, 'uncertain'],
+  ] as const)('after a possible create, %s credentials select %s', async (_name, resolve, expected) => {
+    const provider = new OpenAIClient({ endpoint: 'http://localhost:34080/v1', model: 'gpt-test' }, { resolve }, { send: async () => { throw new Error('unexpected send'); } });
+    const { invocation, heartbeats } = call(2);
+    const result = await provider.createResponse().invoke(invocation, input);
+    expect(result.kind).toBe(expected);
+    if (expected === 'retry') expect(heartbeats.at(-1)).toMatchObject({ canResend: true, sendCount: 1 });
+  });
+
+  it.each([
+    ['unavailable', async () => { throw new Error('vault unavailable'); }, 'retry'],
+    ['reauthorization', async () => { throw new ReauthorizationRequiredError(); }, 'branch'],
+    ['malformed stored', async () => { throw sdkWrappedMaterialError(); }, 'branch'],
+  ] as const)('before any create, %s credentials select %s', async (_name, resolve, expected) => {
+    const provider = new OpenAIClient({ endpoint: 'http://localhost:34080/v1', model: 'gpt-test' }, { resolve }, { send: async () => { throw new Error('unexpected send'); } });
+    const { invocation, heartbeats } = call(1);
+    const result = await provider.createResponse().invoke(invocation, input);
+    expect(result.kind).toBe(expected);
+    if (result.kind === 'branch') expect(result.branch).toBe('defect');
+    if (expected === 'retry') expect(heartbeats.at(-1)).toMatchObject({ canResend: true, sendCount: 0 });
+  });
+
+  it.each([
+    ['oversized', async () => ({ status: 400, headers: {}, body: Buffer.alloc((64 << 10) + 1, 32) })],
+    ['cut off', async () => { throw new ProviderTransportError(false, 400, {}); }],
+  ] as const)('resends a refusal whose body is %s below the cap', async (_name, answer) => {
+    let posts = 0;
+    const provider = client(async () => { posts++; return answer(); });
+    expect((await provider.createResponse().invoke(call(1).invocation, input)).kind).toBe('retry');
+    expect((await provider.createResponse().invoke(call(3).invocation, input)).kind).toBe('uncertain');
+    expect(posts).toBe(2);
+  });
+
+  it.each([400, 429, 500])('reads back a response a %i error answer names and never resends it', async status => {
+    const methods: string[] = [];
+    const provider = client(async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') return { status, headers: {}, body: Buffer.from('{"id":"resp_123","error":{"code":"x"}}') };
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) };
+    });
+    const { invocation, heartbeats } = call(1);
+    const result = await provider.createResponse().invoke(invocation, input);
+    expect(result).toMatchObject({ kind: 'branch', branch: 'completed', value: { id: 'resp_123' } });
+    expect(methods).toEqual(['POST', 'GET']);
+    expect(heartbeats.at(-1)).toMatchObject({ responseId: 'resp_123' });
+  });
+
+  it('keeps the ID an error answer names, so a later attempt reads it back instead of sending', async () => {
+    const methods: string[] = [];
+    const provider = client(async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') return { status: 400, headers: {}, body: Buffer.from('{"id":"resp_123","error":{"code":"x"}}') };
+      if (methods.filter(method => method === 'GET').length === 1) return { status: 404, headers: {}, body: new Uint8Array() };
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) };
+    });
+    const first = call(1);
+    expect((await provider.createResponse().invoke(first.invocation, input)).kind).toBe('uncertain');
+    expect(first.heartbeats.at(-1)).toMatchObject({ responseId: 'resp_123' });
+    const result = await provider.createResponse().invoke(call(2, first.heartbeats.at(-1)).invocation, input);
+    expect(result).toMatchObject({ kind: 'branch', branch: 'completed' });
+    expect(methods).toEqual(['POST', 'GET', 'GET']);
+  });
+
+  it('retries a 429 whose body broke without counting a send', async () => {
+    const provider = client(async () => { throw new ProviderTransportError(false, 429, {}); });
+    const { invocation, heartbeats } = call(1);
+    expect((await provider.createResponse().invoke(invocation, input)).kind).toBe('retry');
+    expect(heartbeats.at(-1)).toMatchObject({ canResend: true, sendCount: 0 });
+  });
+
   it('keeps create headers on an oversized body with no response ID', async () => {
     const provider = client(async () => { throw new BodyTooLargeError(200, { 'x-request-id': 'req_large', 'x-ratelimit-remaining-tokens': '80' }); });
-    const result = await provider.createResponse().invoke(call().invocation, input);
+    const result = await provider.createResponse().invoke(call(3).invocation, input);
     expect(result.kind).toBe('uncertain');
     if (result.kind === 'uncertain') {
       expect(result.receipt.providerRequestId).toBe('req_large');

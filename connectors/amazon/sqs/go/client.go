@@ -42,6 +42,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -233,14 +234,26 @@ func (client *Client) ChangeMessageVisibility() ChangeMessageVisibilityOperation
 }
 
 // startSession resolves the credential, reread before every call; the caller must call the returned cancel.
-func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sdkgo.Failure) {
+// shouldRetry reports a transient credential failure, which returns Retry instead of selecting defect.
+func (client *Client) startSession(call sdkgo.Call, operationID string) (session *operationSession, cancel context.CancelFunc, failure *sdkgo.Failure, shouldRetry bool) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return nil, nil, failurePointer(operationID, sdkgo.FailureAvailability,
+			"SQS connection credentials are temporarily unavailable; nothing was sent"), true
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication,
-			"SQS connection credentials are unavailable; save an access key ID and secret access key for the connection")
+			"SQS connection credentials are unavailable; save an access key ID and secret access key for the connection"), false
 	}
 	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
-	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil
+	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil, false
+}
+
+// isTerminalCredentialError reports a credential failure that no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 // resolveQueue returns the input queue URL, or the connection's default queue when the input leaves it blank.
@@ -345,10 +358,24 @@ func classifyErrorResponse(operationID string, subject string, response provider
 			statusMessage("SQS rejected the connection credentials for the "+subject, response)+"; replace the access key or session token")
 	case isAuthorizationErrorCode(code) || status == http.StatusForbidden:
 		classified.outcome, classified.failure = outcomeRejected, newFailure(operationID, sdkgo.FailureAuthorization, statusMessage("SQS denied the "+subject, response))
+	case !isDefiniteRefusalStatus(status):
+		// Every SQS operation is safe to repeat, so a status that does not prove a refusal retries.
+		classified.outcome, classified.failure = outcomeRetry, newFailure(operationID, sdkgo.FailureAvailability, statusMessage("SQS answered the "+subject+" ambiguously", response))
 	default:
 		classified.outcome, classified.failure = outcomeRejected, newFailure(operationID, sdkgo.FailureProviderRejection, statusMessage("SQS rejected the "+subject, response))
 	}
 	return classified
+}
+
+// isDefiniteRefusalStatus reports an HTTP status that proves SQS refused the request.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity,
+		http.StatusNotImplemented:
+		return true
+	}
+	return false
 }
 
 func (client *Client) receipt(call sdkgo.Call, requestID string, providerObjectID string) sdkgo.Receipt {

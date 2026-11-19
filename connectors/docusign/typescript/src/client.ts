@@ -4,9 +4,10 @@
 import { createHash } from 'node:crypto';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type FailureKind, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { CreateEnvelopeFromTemplateOperation, DownloadCombinedDocumentOperation, GetEnvelopeOperation, ListEnvelopeRecipientsOperation, VoidEnvelopeOperation } from './operations.js';
 
 const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -49,6 +50,7 @@ export interface DocuSignResponse {
   /** Response headers. */ headers: ProviderResponse['headers'];
   /** Bounded response bytes. */ body: Uint8Array;
   /** Whether a successful body exceeded its limit. */ isTooLarge: boolean;
+  /** Whether a non-2xx body was oversized or broke mid-read, so it proves no refusal. */ isErrorBodyIncomplete?: boolean;
 }
 /** Open successful PDF stream or a bounded non-success answer. */
 export type DocumentResponse = { stream: AsyncIterable<Uint8Array>; headers: ProviderResponse['headers']; close(): Promise<void> } | { rejected: DocuSignResponse };
@@ -76,6 +78,14 @@ export class ResponseTooLargeError extends Error {}
 
 /** Return whether a provider identifier is a DocuSign GUID. */
 export function isGuid(value: string): boolean { return guidPattern.test(value); }
+/** Return the lowercase envelopeId GUID a body names, which means DocuSign created it, or ''. */
+export function acceptedEnvelopeId(body: Uint8Array): string {
+  let decoded: unknown;
+  try { decoded = JSON.parse(Buffer.from(body).toString('utf8')); }
+  catch { return ''; }
+  const envelopeId = typeof decoded === 'object' && decoded !== null ? (decoded as Record<string, unknown>).envelopeId : undefined;
+  return typeof envelopeId === 'string' && isGuid(envelopeId) ? envelopeId.toLowerCase() : '';
+}
 /** Escape a path segment with Go url.PathEscape semantics. */
 export function escapePath(value: string): string {
   return Array.from(Buffer.from(value)).map(byte => {
@@ -137,6 +147,7 @@ export class DocuSignClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
+      if (error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error)) throw new SessionError('defect', failure(operation, 'AUTHENTICATION', 'the DocuSign connection credentials are missing or not selected for this project; authorize the connection in Dex Web Connections'));
       const isTerminal = error instanceof Error && error.name === 'ReauthorizationRequiredError';
       throw new SessionError(isTerminal ? 'defect' : 'retry', failure(operation, isTerminal ? 'AUTHENTICATION' : 'AVAILABILITY', isTerminal
         ? 'the DocuSign connection needs reauthorization; authorize it again in Dex Web Connections'
@@ -298,13 +309,16 @@ export class DocuSignClient {
       let response: ProviderResponse;
       try { response = await this.send(request); }
       catch (error) {
-        if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined && (error.status < 200 || error.status >= 300)) return { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: false };
+        if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined && (error.status < 200 || error.status >= 300)) return { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: false, isErrorBodyIncomplete: true };
         if (error instanceof BodyTooLargeError) throw new ResponseTooLargeError();
         throw error;
       }
-      const answer = { ...response, isTooLarge: response.status >= 200 && response.status < 300 && response.body.length > limit };
+      const isError = response.status < 200 || response.status >= 300;
+      const answer = { ...response, isTooLarge: !isError && response.body.length > limit, ...(isError && response.body.length > maximumErrorBodyBytes ? { isErrorBodyIncomplete: true } : {}) };
       if (answer.isTooLarge) throw new ResponseTooLargeError();
       if (response.status !== 401 || attempt !== 0 || !('resolveAfterRejection' in this.credentials)) return answer;
+      // An incomplete or envelope-naming 401 body proves no refusal, so the create is not sent again.
+      if (method === 'POST' && (answer.isErrorBodyIncomplete === true || acceptedEnvelopeId(answer.body) !== '')) return answer;
       try { current = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
       catch { return answer; }
       if (!isHeaderSafeCredential(current.accessToken.reveal())) return answer;

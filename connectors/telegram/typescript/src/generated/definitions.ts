@@ -20,9 +20,9 @@ export const SendMessageBranch = {
 export const SendMessageBranchSent = SendMessageBranch.Sent;
 /** Telegram conclusively rejected the send before creating a message. */
 export const SendMessageBranchProviderRejected = SendMessageBranch.ProviderRejected;
-/** The request may have reached Telegram but no message ID was confirmed; do not resend automatically. */
+/** Telegram may have created the message, but the send cap was reached or Telegram accepted it without a complete confirmation; check the chat before sending again. */
 export const SendMessageBranchUncertain = SendMessageBranch.Uncertain;
-/** Local input, bot token, or dispatch checkpoint is invalid. */
+/** Local input, bot token, or dispatch fence is invalid before any send. */
 export const SendMessageBranchDefect = SendMessageBranch.Defect;
 /** Manifest definition for sendMessage. */
 export const SendMessageDefinition: MutationDefinition = {
@@ -30,10 +30,12 @@ export const SendMessageDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "Telegram created the message and returned its ID." },
     { id: "providerRejected", description: "Telegram conclusively rejected the send before creating a message.", optional: true },
-    { id: "uncertain", description: "The request may have reached Telegram but no message ID was confirmed; do not resend automatically.", optional: true },
-    { id: "defect", description: "Local input, bot token, or dispatch checkpoint is invalid.", optional: true },
+    { id: "uncertain", description: "Telegram may have created the message, but the send cap was reached or Telegram accepted it without a complete confirmation; check the chat before sending again.", optional: true },
+    { id: "defect", description: "Local input, bot token, or dispatch fence is invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for sendMessage. */
 export const SendMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

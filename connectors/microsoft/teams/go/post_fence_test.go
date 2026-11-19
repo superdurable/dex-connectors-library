@@ -72,14 +72,117 @@ func TestFencedPostFailsClosedWhenHeartbeatReadFails(t *testing.T) {
 	require.NoError(t, err)
 	stepContext := singledispatchtest.NewContext("teams-flow", "heartbeat-read-failure")
 	stepContext.SetReadError(errors.New("heartbeat unavailable"))
-	result, err := sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	_, err = sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
 	require.Zero(t, provider.requestCount())
 	require.Zero(t, credentials.attempts)
 }
 
-func TestFencedPostDoesNotResendWhenCanResendCheckpointFails(t *testing.T) {
+// runPostUntilTerminal runs attempts until one selects a branch, advancing between attempts.
+func runPostUntilTerminal(t *testing.T, run func() (sdkgo.MutationResult[teams.PostMessageOutput], error), advanceAttempt func()) sdkgo.MutationResult[teams.PostMessageOutput] {
+	t.Helper()
+	for range 8 {
+		result, err := run()
+		var retry *sdkgo.RetryError
+		if !errors.As(err, &retry) {
+			require.NoError(t, err)
+			return result
+		}
+		advanceAttempt()
+	}
+	t.Fatal("the post never selected a branch")
+	return sdkgo.MutationResult[teams.PostMessageOutput]{}
+}
+
+func TestFencedPostResendsUnknownOutcomesBelowTheCapAfterReadBack(t *testing.T) {
+	for _, operation := range []string{"channel", "reply", "chat"} {
+		t.Run(operation, func(t *testing.T) {
+			provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				if request.Method == http.MethodPost {
+					writeJSON(t, response, http.StatusBadGateway, graphErrorJSON("BadGateway"))
+					return
+				}
+				writeJSON(t, response, http.StatusOK, collectionJSON(""))
+			})
+			client := newTeamsClient(t, provider.endpoint())
+			stepContext := singledispatchtest.NewContext("teams-flow", "resend-"+operation)
+			result := runPostUntilTerminal(t, func() (sdkgo.MutationResult[teams.PostMessageOutput], error) {
+				return runPostForReauthorizationTest(stepContext, client, operation)
+			}, stepContext.AdvanceAttempt)
+			require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+			require.Equal(t, 3, provider.countRequests(http.MethodPost), "the default send cap is 3")
+			if operation == "chat" {
+				require.Zero(t, provider.countRequests(http.MethodGet))
+			} else {
+				require.Equal(t, 3, provider.countRequests(http.MethodGet), "every later attempt reads back first")
+			}
+		})
+	}
+}
+
+func TestFencedPostResendThatSucceedsSelectsSent(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		if request.Method == http.MethodPost && index == 0 {
+			writeJSON(t, response, http.StatusInternalServerError, graphErrorJSON("InternalServerError"))
+			return
+		}
+		writeJSON(t, response, http.StatusCreated, chatMessageJSON(t, "1616990032050", "", "", "text", testEscalation, testCreatedAt))
+	})
+	client := newTeamsClient(t, provider.endpoint())
+	stepContext := singledispatchtest.NewContext("teams-flow", "chat-resend-sent")
+	result := runPostUntilTerminal(t, func() (sdkgo.MutationResult[teams.PostMessageOutput], error) {
+		return sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+	}, stepContext.AdvanceAttempt)
+	require.Equal(t, teams.PostChatMessageBranchSent, result.Branch)
+	require.Equal(t, 2, provider.countRequests(http.MethodPost))
+}
+
+func TestFencedChatPostWithSendCapOneSelectsUncertainOnTheFirstUnknownOutcome(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusGatewayTimeout, graphErrorJSON("GatewayTimeout"))
+	})
+	client := newTeamsClient(t, provider.endpoint())
+	stepContext := singledispatchtest.NewContext("teams-flow", "chat-cap-one")
+	result, err := sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput(), sdkgo.WithMaxSends(1))
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Equal(t, 1, provider.countRequests(http.MethodPost))
+}
+
+func TestFencedPostDefiniteRefusalIsNeverResent(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusBadRequest, graphErrorJSON("BadRequest"))
+	})
+	client := newTeamsClient(t, provider.endpoint())
+	stepContext := singledispatchtest.NewContext("teams-flow", "chat-refused")
+	result, err := sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, teams.PostChatMessageBranchProviderRejected, result.Branch)
+	require.Equal(t, 1, provider.countRequests(http.MethodPost))
+	heartbeats := stepContext.Heartbeats()
+	require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"state":"canResend"`)
+}
+
+func TestFencedPostRefusalAfterAnUnknownOutcomeIsUncertain(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusInternalServerError, graphErrorJSON("InternalServerError"))
+			return
+		}
+		writeJSON(t, response, http.StatusForbidden, graphErrorJSON("Forbidden"))
+	})
+	client := newTeamsClient(t, provider.endpoint())
+	stepContext := singledispatchtest.NewContext("teams-flow", "chat-refused-after-unknown")
+	_, err := sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	stepContext.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Equal(t, 2, provider.countRequests(http.MethodPost))
+}
+
+func TestFencedPostCountsTheSendWhenCanResendCheckpointFails(t *testing.T) {
 	stepContext := singledispatchtest.NewContext("teams-flow", "can-resend-write-failure")
 	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPost {
@@ -95,11 +198,12 @@ func TestFencedPostDoesNotResendWhenCanResendCheckpointFails(t *testing.T) {
 	require.Contains(t, retry.Failure.Message, "safe-resend checkpoint failed")
 	stepContext.SetWriteError(nil)
 	stepContext.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
-	require.Equal(t, 1, provider.countRequests(http.MethodPost))
+	_, err = sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 2, provider.countRequests(http.MethodPost), "the claimed send is counted, then resent after an empty read-back")
 	require.Equal(t, 1, provider.countRequests(http.MethodGet))
+	heartbeats := stepContext.Heartbeats()
+	require.Contains(t, string(heartbeats[len(heartbeats)-1]), `"sendCount":2`)
 }
 
 func TestFencedPostKnownIDReadBackFailuresNeverResend(t *testing.T) {
@@ -153,7 +257,7 @@ func TestFencedPostKnownIDReadBackFailuresNeverResend(t *testing.T) {
 	}
 }
 
-func TestFencedPostConflictReadsBackWithoutResending(t *testing.T) {
+func TestFencedPostConflictReadsBackBeforeEachResendUntilTheCap(t *testing.T) {
 	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPost {
 			writeJSON(t, response, http.StatusConflict, graphErrorJSON("Conflict"))
@@ -164,34 +268,33 @@ func TestFencedPostConflictReadsBackWithoutResending(t *testing.T) {
 	})
 	client := newTeamsClient(t, provider.endpoint())
 	stepContext := singledispatchtest.NewContext("teams-flow", "post-conflict")
-	_, err := sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-	requireRetry(t, err, sdkgo.FailureAvailability)
-	stepContext.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-	require.NoError(t, err)
+	result := runPostUntilTerminal(t, func() (sdkgo.MutationResult[teams.PostMessageOutput], error) {
+		return sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	}, stepContext.AdvanceAttempt)
 	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
-	require.Equal(t, 1, provider.countRequests(http.MethodPost))
-	require.Equal(t, 1, provider.countRequests(http.MethodGet))
+	require.Equal(t, 3, provider.countRequests(http.MethodPost))
+	require.Equal(t, 3, provider.countRequests(http.MethodGet))
 }
 
-func TestFencedChatPostConflictIsUncertainWithoutResending(t *testing.T) {
+func TestFencedChatPostConflictIsResentUntilTheCap(t *testing.T) {
 	provider := newRecordingGraph(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusConflict, graphErrorJSON("Conflict"))
 	})
 	client := newTeamsClient(t, provider.endpoint())
 	stepContext := singledispatchtest.NewContext("teams-flow", "chat-conflict")
+	result := runPostUntilTerminal(t, func() (sdkgo.MutationResult[teams.PostMessageOutput], error) {
+		return sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+	}, stepContext.AdvanceAttempt)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	stepContext.AdvanceAttempt()
 	result, err := sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
-	stepContext.AdvanceAttempt()
-	result, err = sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
-	require.Equal(t, 1, provider.countRequests(http.MethodPost))
+	require.Equal(t, 3, provider.countRequests(http.MethodPost))
 	require.Zero(t, provider.countRequests(http.MethodGet))
 }
 
-func TestFencedPostDoesNotResendFromAStaleCanResendMarker(t *testing.T) {
+func TestFencedPostReadsBackBeforeResendingFromAStaleCanResendMarker(t *testing.T) {
 	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPost {
 			writeJSON(t, response, http.StatusServiceUnavailable, graphErrorJSON("ServiceNotAvailable"))
@@ -205,13 +308,13 @@ func TestFencedPostDoesNotResendFromAStaleCanResendMarker(t *testing.T) {
 	requireRetry(t, err, sdkgo.FailureAvailability)
 	stepContext.AdvanceAttempt()
 	stepContext.AdvanceAttempt()
-	result, err := sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
-	require.Equal(t, 1, provider.countRequests(http.MethodPost))
+	_, err = sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 1, provider.countRequests(http.MethodGet), "a stale marker forces a read-back before the resend")
+	require.Equal(t, 2, provider.countRequests(http.MethodPost))
 }
 
-func TestFencedPostLostClaimAndUnusableAcceptedBodyNeverResends(t *testing.T) {
+func TestFencedPostLostClaimAndAcceptedBodyWithoutIDIsUncertain(t *testing.T) {
 	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPost {
 			writeJSON(t, response, http.StatusCreated, `{}`)
@@ -223,14 +326,105 @@ func TestFencedPostLostClaimAndUnusableAcceptedBodyNeverResends(t *testing.T) {
 	stepContext := singledispatchtest.NewContext("teams-flow", "post-lost-claim")
 	stepContext.LoseNextHeartbeat()
 
-	_, err := sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
-	requireRetry(t, err, sdkgo.FailureProtocol)
-	stepContext.AdvanceAttempt()
 	result, err := sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
 	require.Equal(t, 1, provider.countRequests(http.MethodPost))
-	require.Equal(t, 1, provider.countRequests(http.MethodGet))
+	require.Zero(t, provider.countRequests(http.MethodGet))
+}
+
+func TestFencedAcceptedPostWithInterruptedBodyIsNeverResent(t *testing.T) {
+	for _, operation := range []string{"channel", "reply", "chat"} {
+		t.Run(operation, func(t *testing.T) {
+			provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				require.Equal(t, http.MethodPost, request.Method)
+				response.Header().Set("Content-Type", "application/json")
+				response.Header().Set("Content-Length", "4096")
+				response.WriteHeader(http.StatusCreated)
+				_, _ = response.Write([]byte(`{"id":"16169900`))
+			})
+			client := newTeamsClient(t, provider.endpoint())
+			stepContext := singledispatchtest.NewContext("teams-flow", "interrupted-"+operation)
+			result, err := runPostForReauthorizationTest(stepContext, client, operation)
+			require.NoError(t, err)
+			require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+			require.Contains(t, result.Failure.Message, "interrupted")
+			require.Equal(t, 1, provider.countRequests(http.MethodPost))
+		})
+	}
+}
+
+func TestFencedAcceptedPostWithValidIDIsNeverResentWhenTheIDCheckpointFails(t *testing.T) {
+	for _, operation := range []string{"channel", "chat"} {
+		t.Run(operation, func(t *testing.T) {
+			dexContext := newTestDexContext("id-checkpoint-" + operation)
+			provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+				require.Equal(t, http.MethodPost, request.Method)
+				dexContext.mutex.Lock()
+				dexContext.recordErr = errors.New("dex unavailable")
+				dexContext.mutex.Unlock()
+				writeJSON(t, response, http.StatusCreated, `{"id":"1616990032050"}`)
+			})
+			client := newTeamsClient(t, provider.endpoint())
+			var result sdkgo.MutationResult[teams.PostMessageOutput]
+			var err error
+			if operation == "chat" {
+				result, err = sdkgo.RunMutation(dexContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+			} else {
+				result, err = sdkgo.RunMutation(dexContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+			}
+			require.NoError(t, err)
+			require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+			require.Equal(t, 1, provider.countRequests(http.MethodPost))
+		})
+	}
+}
+
+func TestFencedPostReadsBackAfterAResendWasThrottled(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, collectionJSON(""))
+			return
+		}
+		if index == 0 {
+			writeJSON(t, response, http.StatusBadGateway, graphErrorJSON("BadGateway"))
+			return
+		}
+		writeJSON(t, response, http.StatusTooManyRequests, graphErrorJSON("TooManyRequests"))
+	})
+	client := newTeamsClient(t, provider.endpoint())
+	stepContext := singledispatchtest.NewContext("teams-flow", "throttled-resend")
+	_, err := sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	stepContext.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	require.Equal(t, []string{http.MethodPost, http.MethodGet, http.MethodPost}, requestMethods(provider))
+	stepContext.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	require.Equal(t, http.MethodGet, provider.request(3).method, "the attempt after a throttled resend reads back first")
+	require.Equal(t, http.MethodPost, provider.request(4).method)
+}
+
+func requestMethods(provider *recordingGraph) []string {
+	methods := make([]string, 0, provider.requestCount())
+	for index := 0; index < provider.requestCount(); index++ {
+		methods = append(methods, provider.request(index).method)
+	}
+	return methods
+}
+
+func TestFencedChatPostWithAStoredButUnusableMessageIsNeverResent(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":"1616990032050"}`)
+	})
+	client := newTeamsClient(t, provider.endpoint())
+	stepContext := singledispatchtest.NewContext("teams-flow", "chat-unusable-stored")
+	result, err := sdkgo.RunMutation(stepContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Equal(t, 1, provider.countRequests(http.MethodPost))
 }
 
 func TestFencedAcceptedPostReadsKnownIDOnLaterAttempt(t *testing.T) {
@@ -345,24 +539,19 @@ func (provider *reauthorizationAfterDispatchTeamsCredentials) ResolveWithRefresh
 	return provider.Resolve(call)
 }
 
-func TestFencedPostReauthorizationAfterAcceptedWriteIsUncertainWithoutReadBack(t *testing.T) {
+func TestFencedPostReauthorizationAfterPossibleWriteIsUncertainWithoutReadBack(t *testing.T) {
 	for _, operation := range []string{"channel", "reply", "chat"} {
 		t.Run(operation, func(t *testing.T) {
 			provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 				require.Equal(t, http.MethodPost, request.Method)
-				writeJSON(t, response, http.StatusCreated, `{}`)
+				writeJSON(t, response, http.StatusBadGateway, graphErrorJSON("BadGateway"))
 			})
 			credentials := &reauthorizationAfterDispatchTeamsCredentials{}
 			client, err := teams.New(teams.Config{Endpoint: provider.endpoint()}, credentials)
 			require.NoError(t, err)
 			stepContext := singledispatchtest.NewContext("teams-flow", "reauthorization-after-"+operation)
-			first, err := runPostForReauthorizationTest(stepContext, client, operation)
-			if operation == "chat" {
-				require.NoError(t, err)
-				require.Equal(t, sdkgo.UncertainBranchID, first.Branch)
-			} else {
-				requireRetry(t, err, sdkgo.FailureProtocol)
-			}
+			_, err = runPostForReauthorizationTest(stepContext, client, operation)
+			requireRetry(t, err, sdkgo.FailureAvailability)
 			stepContext.AdvanceAttempt()
 			second, err := runPostForReauthorizationTest(stepContext, client, operation)
 			require.NoError(t, err)
@@ -373,6 +562,56 @@ func TestFencedPostReauthorizationAfterAcceptedWriteIsUncertainWithoutReadBack(t
 			require.Zero(t, provider.countRequests(http.MethodGet))
 		})
 	}
+}
+
+// thirdAttemptUnavailableTeamsCredentials fails transiently on the third attempt only.
+type thirdAttemptUnavailableTeamsCredentials struct{}
+
+func (thirdAttemptUnavailableTeamsCredentials) Resolve(call sdkgo.Call) (teams.Credentials, error) {
+	if call.Context.Attempt() == 3 {
+		return teams.Credentials{}, errors.New("token endpoint unavailable")
+	}
+	return teams.Credentials{AccessToken: sdkgo.NewSecretString(testAccessToken)}, nil
+}
+
+func (provider thirdAttemptUnavailableTeamsCredentials) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[teams.Credentials],
+) (teams.Credentials, error) {
+	return provider.Resolve(call)
+}
+
+func TestFencedCredentialFailureAfterAPossibleSendRecordsNothingAndReadsBackNext(t *testing.T) {
+	provider := newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, index int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, collectionJSON(""))
+			return
+		}
+		if index == 0 {
+			writeJSON(t, response, http.StatusBadGateway, graphErrorJSON("BadGateway"))
+			return
+		}
+		writeJSON(t, response, http.StatusTooManyRequests, graphErrorJSON("TooManyRequests"))
+	})
+	client, err := teams.New(teams.Config{Endpoint: provider.endpoint()}, thirdAttemptUnavailableTeamsCredentials{})
+	require.NoError(t, err)
+	stepContext := singledispatchtest.NewContext("teams-flow", "credential-after-send")
+	_, err = sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	stepContext.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	heartbeatCount := len(stepContext.Heartbeats())
+	stepContext.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	require.Len(t, stepContext.Heartbeats(), heartbeatCount, "a possible earlier send never records notSent")
+	stepContext.AdvanceAttempt()
+	requestCount := provider.requestCount()
+	_, err = sdkgo.RunMutation(stepContext, client.PostChannelMessage(), teamsConnection, validChannelMessageInput())
+	requireRetry(t, err, sdkgo.FailureRateLimit)
+	require.Equal(t, http.MethodGet, provider.request(requestCount).method)
 }
 
 func runPostForReauthorizationTest(stepContext *singledispatchtest.Context, client *teams.Client, operation string) (sdkgo.MutationResult[teams.PostMessageOutput], error) {

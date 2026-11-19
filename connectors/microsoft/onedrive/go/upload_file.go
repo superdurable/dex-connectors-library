@@ -96,9 +96,12 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	if err != nil {
 		return sdkgo.NewMutationBranch(UploadFileBranchDefect, UploadFileOutput{}, graphFailurePointer(sdkgo.FailureValidation, uploadFileOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, uploadFileOperationID, input.DriveID)
+	credential, failure, isRetryable := client.resolveCredential(call, uploadFileOperationID, input.DriveID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[UploadFileOutput](*failure, 0)
+	}
 	if failure != nil {
-		return sdkgo.NewMutationBranch(UploadFileBranchDefect, UploadFileOutput{}, failure, sdkgo.Receipt{})
+		return writeCredentialFailure[UploadFileOutput](call, failure, UploadFileBranchDefect)
 	}
 	target := client.childPathURL(input.DriveID, input.ParentFolderID, input.Name) + ":/content?" +
 		buildODataQuery([2]string{conflictBehaviorParameter, string(input.ConflictBehavior)})
@@ -129,6 +132,9 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	case isRetryableStatus(response.status, codes):
 		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
 		return sdkgo.NewMutationRetry[UploadFileOutput](graphFailure(statusFailureKind(response.status, codes), uploadFileOperationID, "provider temporarily rejected the upload"), delay)
+	case !isDefiniteWriteRefusal(response):
+		// An unlisted status, such as 501, or an unreadable body leaves the PUT unsettled.
+		return sdkgo.NewMutationRetry[UploadFileOutput](graphFailure(sdkgo.FailureProtocol, uploadFileOperationID, "provider answer did not settle the upload, so the PUT repeats"), 0)
 	default:
 		return sdkgo.NewMutationBranch(UploadFileBranchProviderRejected, UploadFileOutput{}, graphFailurePointer(statusFailureKind(response.status, codes), uploadFileOperationID, "provider rejected the upload"), receipt)
 	}
@@ -152,12 +158,12 @@ func (operation UploadFileOperation) readBackConflictingFile(
 		return sdkgo.NewMutationRetry[UploadFileOutput](graphFailure(sdkgo.FailureConflict, uploadFileOperationID, "conflicting item is not readable yet"), 0)
 	}
 	if outcome != nil {
-		return mutationAttemptFromReadOutcome[UploadFileOutput](outcome)
+		return writeReadBackAttempt[UploadFileOutput](call, response, outcome)
 	}
 	receipt := client.receipt(call, response.requestID, "")
 	item, err := decodeItemResponse(response.body)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UploadFileBranchInvalidResponse, UploadFileOutput{}, graphFailurePointer(sdkgo.FailureProtocol, uploadFileOperationID, "provider returned an invalid item response"), receipt)
+		return sdkgo.NewMutationRetry[UploadFileOutput](graphFailure(sdkgo.FailureProtocol, uploadFileOperationID, "provider returned an invalid item response"), 0)
 	}
 	receipt.ProviderObjectID = item.ID
 	if !item.IsFolder && !item.IsPackage && item.QuickXorHash == "" {
@@ -208,6 +214,46 @@ func validateUploadFileInput(input UploadFileInput, maxUploadBytes int64) (uploa
 func isIdenticalFile(item DriveItem, request uploadRequest) bool {
 	return !item.IsFolder && !item.IsPackage && strings.EqualFold(item.Name, request.input.Name) &&
 		item.SizeBytes == int64(len(request.content)) && item.QuickXorHash == request.quickXorHash
+}
+
+// isDefiniteWriteRefusal reports an allowlisted refusal status whose fully read body describes no item.
+func isDefiniteWriteRefusal(response graphResponse) bool {
+	if response.isErrorBodyIncomplete {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity,
+		// Graph documents 507 as a full quota, a definite refusal that no repeat clears.
+		http.StatusInsufficientStorage:
+	default:
+		return false
+	}
+	_, err := decodeItemResponse(response.body)
+	return err != nil
+}
+
+// isLaterAttempt reports an attempt that may follow an earlier attempt's applied write.
+func isLaterAttempt(call sdkgo.Call) bool {
+	return call.Context != nil && call.Context.Attempt() > 1
+}
+
+// writeCredentialFailure retries a credential failure after a possible earlier write, where defect would misreport it.
+func writeCredentialFailure[T any](call sdkgo.Call, failure *sdkgo.Failure, defect sdkgo.BranchID) sdkgo.MutationAttempt[T] {
+	var zero T
+	if isLaterAttempt(call) && failure.Kind == sdkgo.FailureAuthentication {
+		return sdkgo.NewMutationRetry[T](*failure, 0)
+	}
+	return sdkgo.NewMutationBranch(defect, zero, failure, sdkgo.Receipt{})
+}
+
+// writeReadBackAttempt keeps a definite read refusal only on a first attempt; anything else retries the safe write.
+func writeReadBackAttempt[T any](call sdkgo.Call, response graphResponse, outcome *readOutcome) sdkgo.MutationAttempt[T] {
+	if outcome.branch == "" || isLaterAttempt(call) || !isDefiniteWriteRefusal(response) {
+		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
+	}
+	return mutationAttemptFromReadOutcome[T](outcome)
 }
 
 // mutationAttemptFromReadOutcome converts a failed read into a Mutation Retry or branch.

@@ -9,7 +9,7 @@ from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
 from ..models import AddReactionInput, AddedReaction, Channel, CreateMessageInput, GetChannelInput, ListChannelMessagesInput, Message, MessageAuthor, MessagePage
-from .definitions import CONNECTOR_ID, ADDED, ADD_REACTION_DEFINITION, CREATED, CREATE_MESSAGE_DEFINITION, DEFECT, FOUND, GET_CHANNEL_DEFINITION, INVALID_RESPONSE, LISTED, LIST_CHANNEL_MESSAGES_DEFINITION, NOT_FOUND, PROVIDER_REJECTED
+from .definitions import CONNECTOR_ID, ADDED, ADD_REACTION_DEFINITION, CREATED, CREATE_MESSAGE_DEFINITION, DEFECT, FOUND, GET_CHANNEL_DEFINITION, INVALID_RESPONSE, LISTED, LIST_CHANNEL_MESSAGES_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, UNCERTAIN
 
 def get_channel_found(value: Channel, failure: Failure | None = None) -> Case[Channel]:
     return Case.branch_result(FOUND, value, failure)
@@ -121,6 +121,11 @@ def create_message_invalid_response(value: Message, failure: Failure | None = No
 
 setattr(create_message_invalid_response, '__module__', "dex_connectors.discord.discordmock")
 
+def create_message_uncertain(value: Message, failure: Failure) -> Case[Message]:
+    return Case.uncertain(value, failure)
+
+setattr(create_message_uncertain, '__module__', "dex_connectors.discord.discordmock")
+
 def create_message_defect(value: Message, failure: Failure | None = None) -> Case[Message]:
     return Case.branch_result(DEFECT, value, failure)
 
@@ -145,6 +150,11 @@ def create_message_missing_send_permission() -> Case[Message]:
     return Case.branch_result(PROVIDER_REJECTED, Message(author=MessageAuthor()), Failure(FailureKind.AUTHORIZATION, CONNECTOR_ID, "createMessage", "Discord denied message creation."))
 
 setattr(create_message_missing_send_permission, '__module__', "dex_connectors.discord.discordmock")
+
+def create_message_message_outcome_unknown() -> Case[Message]:
+    return Case.uncertain(Message(author=MessageAuthor()), Failure(FailureKind.TRANSPORT, CONNECTOR_ID, "createMessage", "The connection closed before Discord confirmed the message."))
+
+setattr(create_message_message_outcome_unknown, '__module__', "dex_connectors.discord.discordmock")
 
 def add_reaction_added(value: AddedReaction, failure: Failure | None = None) -> Case[AddedReaction]:
     return Case.branch_result(ADDED, value, failure)
@@ -235,11 +245,13 @@ __all__ = [
     "create_message_not_found",
     "create_message_provider_rejected",
     "create_message_invalid_response",
+    "create_message_uncertain",
     "create_message_defect",
     "create_message_retry",
     "create_message_release_announcement",
     "create_message_unknown_channel",
     "create_message_missing_send_permission",
+    "create_message_message_outcome_unknown",
     "add_reaction_added",
     "add_reaction_not_found",
     "add_reaction_provider_rejected",

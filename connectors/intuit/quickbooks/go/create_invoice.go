@@ -132,7 +132,10 @@ func (CreateInvoiceOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateInvoic
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates the invoice with POST /invoice under the Step's requestid.
+// Invoke creates the invoice with POST /invoice under the Step's requestid and a single-dispatch
+// fence capped by call.MaxSends. An unknown outcome is resent with the same requestid while the cap
+// allows another send and selects uncertain at the cap; an accepted but unusable answer is read
+// back by its invoice ID, which every later attempt reads back instead of resending.
 func (operation CreateInvoiceOperation) Invoke(call sdkgo.Call, input CreateInvoiceInput) sdkgo.MutationAttempt[CreateInvoiceOutput] {
 	client := operation.client
 	attemptBudget := client.newAttemptBudget(call.Context, CreateInvoiceDefinition.StepDefaults.ExecuteMethodTimeout)
@@ -142,11 +145,22 @@ func (operation CreateInvoiceOperation) Invoke(call sdkgo.Call, input CreateInvo
 		return sdkgo.NewMutationBranch(CreateInvoiceBranchDefect, requested,
 			quickbooksFailurePointer(sdkgo.FailureValidation, createInvoiceOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	result := client.exchange(call, createInvoiceOperationID, quickbooksRequest{method: http.MethodPost, path: "/invoice", payload: payload, isMutation: true, attemptBudget: attemptBudget})
+	write, attempt, isDecided := newFencedWrite(client, call, createInvoiceOperationID, CreateInvoiceDefinition.StepDefaults.ExecuteMethodTimeout, requested,
+		mutationBranches{providerRejected: CreateInvoiceBranchProviderRejected, defect: CreateInvoiceBranchDefect},
+		acceptedWriteReadBack[CreateInvoiceOutput]{entityPath: "invoice", happy: CreateInvoiceBranchCreated,
+			confirm: func(body []byte, invoiceID string) (CreateInvoiceOutput, bool) {
+				readInvoice, isConfirmed := confirmCreatedInvoice(body, invoiceID, payload)
+				return CreateInvoiceOutput{Invoice: readInvoice, DocNumber: requested.DocNumber}, isConfirmed
+			}})
+	if isDecided {
+		return attempt
+	}
+	result, notSent := write.dispatch(quickbooksRequest{method: http.MethodPost, path: "/invoice", payload: payload, isMutation: true, attemptBudget: attemptBudget})
+	if notSent != nil {
+		return *notSent
+	}
 	receipt := client.receipt(call, result, "")
-	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
-		providerRejected: CreateInvoiceBranchProviderRejected, defect: CreateInvoiceBranchDefect,
-	}); isTerminal {
+	if attempt, isTerminal := write.attemptForExchange(result, receipt); isTerminal {
 		return attempt
 	}
 	wire, err := decodeEntity[invoiceWire](result.response.body, "Invoice")
@@ -158,21 +172,21 @@ func (operation CreateInvoiceOperation) Invoke(call sdkgo.Call, input CreateInvo
 		err = errors.New("invoice belongs to another customer")
 	}
 	if err != nil {
-		if invoiceID := acceptedEntityID(result.response.body, "Invoice"); invoiceID != "" {
-			if body, isFound := readAcceptedEntity(client, call, createInvoiceOperationID, "invoice", invoiceID); isFound {
-				if readWire, readErr := decodeEntity[invoiceWire](body, "Invoice"); readErr == nil {
-					if readInvoice, decodeErr := decodeInvoice(readWire); decodeErr == nil && readInvoice.InvoiceID == invoiceID && readInvoice.CustomerID == payload.CustomerRef.Value && (payload.DocNumber == "" || readInvoice.DocNumber == payload.DocNumber) {
-						receipt.ProviderObjectID = invoiceID
-						return sdkgo.NewMutationBranch(CreateInvoiceBranchCreated, CreateInvoiceOutput{Invoice: readInvoice, DocNumber: requested.DocNumber}, nil, receipt)
-					}
-				}
-			}
-		}
-		return sdkgo.NewMutationUncertain(requested, quickbooksFailure(sdkgo.FailureProtocol, createInvoiceOperationID,
-			"QuickBooks accepted the invoice but returned an unusable invoice: "+err.Error()), receipt)
+		return write.unusableAccepted(acceptedEntityID(result.response.body, "Invoice"), receipt, err)
 	}
 	receipt.ProviderObjectID = invoice.InvoiceID
 	return sdkgo.NewMutationBranch(CreateInvoiceBranchCreated, CreateInvoiceOutput{Invoice: invoice, DocNumber: requested.DocNumber}, nil, receipt)
+}
+
+// confirmCreatedInvoice decodes a read invoice and reports whether it is the one this Step created.
+func confirmCreatedInvoice(body []byte, invoiceID string, payload createInvoiceRequestWire) (Invoice, bool) {
+	wire, err := decodeEntity[invoiceWire](body, "Invoice")
+	if err != nil {
+		return Invoice{}, false
+	}
+	invoice, err := decodeInvoice(wire)
+	return invoice, err == nil && invoice.InvoiceID == invoiceID && invoice.CustomerID == payload.CustomerRef.Value &&
+		(payload.DocNumber == "" || invoice.DocNumber == payload.DocNumber)
 }
 
 // buildCreateInvoiceRequest is deterministic for one input, so every attempt sends the same body.

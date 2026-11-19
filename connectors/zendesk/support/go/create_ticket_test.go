@@ -5,12 +5,15 @@ package support_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
 func validCreateTicketInput() support.CreateTicketInput {
@@ -77,8 +80,11 @@ func TestCreateTicketReportsAReplayedResponseAndInternalFirstComments(t *testing
 	require.NotContains(t, body.Ticket, "tags")
 }
 
-func TestCreateTicketRetriesEveryDispatchFailureUnderTheSameKey(t *testing.T) {
-	for _, status := range []int{http.StatusConflict, http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusServiceUnavailable} {
+func TestCreateTicketRetriesEveryUnknownOutcomeUnderTheSameKey(t *testing.T) {
+	for _, status := range []int{
+		http.StatusFound, http.StatusRequestTimeout, http.StatusConflict, http.StatusGone, http.StatusTeapot,
+		http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusServiceUnavailable,
+	} {
 		provider := newRecordingZendesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 			writeJSON(t, response, status, `{"error":"SENTINEL"}`)
 		})
@@ -89,7 +95,25 @@ func TestCreateTicketRetriesEveryDispatchFailureUnderTheSameKey(t *testing.T) {
 	}
 }
 
-func TestCreateTicketRejectionsAndInvalidResponses(t *testing.T) {
+func TestCreateTicketRetriesAnUnusableCreatedResponse(t *testing.T) {
+	for name, body := range map[string]string{
+		"created ticket missing": `{"audit":{"id":1}}`,
+		"reflects credential":    `{"ticket":{"id":35436,"subject":"` + testAPIToken + `"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingZendesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, http.StatusCreated, body)
+			})
+			_, err := sdkgo.RunMutation(newZendeskDexContext("create-unusable"), newZendeskClient(t, provider.URL).CreateTicket(), zendeskConnection, validCreateTicketInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the next attempt repeats the keyed request")
+			require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+			require.NotContains(t, retry.Failure.Message, testAPIToken)
+		})
+	}
+}
+
+func TestCreateTicketRejections(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		status  int
@@ -111,9 +135,9 @@ func TestCreateTicketRejectionsAndInvalidResponses(t *testing.T) {
 			message: "Zendesk rejected the request (HTTP 422) [RecordInvalid; details: requester=InvalidValue]",
 		},
 		{
-			name: "created ticket missing", status: http.StatusCreated, body: `{"audit":{"id":1}}`,
-			branch: support.CreateTicketBranchInvalidResponse, kind: sdkgo.FailureProtocol,
-			message: "Zendesk returned an invalid created ticket: ticket response has no ticket",
+			name: "missing permission", status: http.StatusForbidden, body: `{"error":"Forbidden"}`,
+			branch: support.CreateTicketBranchProviderRejected, kind: sdkgo.FailureAuthorization,
+			message: "Zendesk rejected the request (HTTP 403) [Forbidden]",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -148,6 +172,89 @@ func TestCreateTicketValidatesInputBeforeAnyRequest(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, support.CreateTicketBranchDefect, result.Branch)
 			require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
+		})
+	}
+}
+
+func TestCreateTicketCredentialFailureSelectsDefectOnlyWhenTerminalOnTheFirstAttempt(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		err      error
+		attempt  int32
+		isDefect bool
+	}{
+		{name: "terminal first attempt", err: sdkgo.ErrReauthorizationRequired, attempt: 1, isDefect: true},
+		{name: "project reauthorization", err: projectconfig.ErrReauthorizationRequired, attempt: 1, isDefect: true},
+		{name: "connection object missing", err: projectconfig.ErrObjectNotFound, attempt: 1, isDefect: true},
+		{name: "connection not selected", err: projectconfig.ErrConnectionNotSelected, attempt: 1, isDefect: true},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected, attempt: 1, isDefect: true},
+		{name: "transient first attempt", err: errors.New("credential broker unavailable"), attempt: 1},
+		{name: "broker unavailable", err: projectconfig.ErrCredentialBrokerUnavailable, attempt: 1},
+		{name: "connection not configured", err: errors.New("connection is not configured"), attempt: 1},
+		{name: "terminal later attempt", err: sdkgo.ErrReauthorizationRequired, attempt: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingZendesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+			client := newSwitchableZendeskClient(t, provider.URL, &switchableCredentials{err: test.err})
+			dexContext := newZendeskDexContext("create-credentials-" + test.name)
+			dexContext.attempt = test.attempt
+			result, err := sdkgo.RunMutation(dexContext, client.CreateTicket(), zendeskConnection, validCreateTicketInput())
+			if test.isDefect {
+				require.NoError(t, err)
+				require.Equal(t, support.CreateTicketBranchDefect, result.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
+}
+
+func TestQueryCredentialFailureSelectsDefectOnlyWhenTerminal(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		err      error
+		isDefect bool
+	}{
+		{name: "reauthorization", err: sdkgo.ErrReauthorizationRequired, isDefect: true},
+		{name: "broker rejected", err: projectconfig.ErrCredentialBrokerRejected, isDefect: true},
+		{name: "broker unavailable", err: projectconfig.ErrCredentialBrokerUnavailable},
+		{name: "connection not configured", err: errors.New("connection is not configured")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newRecordingZendesk(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
+			client := newSwitchableZendeskClient(t, provider.URL, &switchableCredentials{err: test.err})
+			get, getErr := sdkgo.RunQuery(newZendeskDexContext("get-credentials-"+test.name), client.GetTicket(), zendeskConnection, support.GetTicketInput{TicketID: 5512})
+			search, searchErr := sdkgo.RunQuery(newZendeskDexContext("search-credentials-"+test.name), client.SearchTickets(), zendeskConnection, support.SearchTicketsInput{Statuses: []support.TicketStatus{support.TicketStatusOpen}})
+			if test.isDefect {
+				require.NoError(t, getErr)
+				require.NoError(t, searchErr)
+				require.Equal(t, support.GetTicketBranchDefect, get.Branch)
+				require.Equal(t, support.SearchTicketsBranchDefect, search.Branch)
+				return
+			}
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, getErr, &retry)
+			require.ErrorAs(t, searchErr, &retry)
+		})
+	}
+}
+
+func TestCreateTicketRefusalWithAnUnreadableOrContradictoryBodyRetries(t *testing.T) {
+	for name, body := range map[string]string{
+		"oversized":        `{"error":"RecordInvalid","description":"` + strings.Repeat("x", 4096) + `"}`,
+		"carries a ticket": `{"error":"RecordInvalid","ticket":{"id":35437}}`,
+		"echoes the token": `{"error":"RecordInvalid","description":"` + testAPIToken + `"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := newRecordingZendesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+				writeJSON(t, response, http.StatusUnprocessableEntity, body)
+			})
+			client, err := support.New(support.Config{Subdomain: testSubdomain, MaxResponseBytes: 2048}, testCredentialProvider(), support.WithAPIBaseURL(provider.URL+"/api/v2"))
+			require.NoError(t, err)
+			_, err = sdkgo.RunMutation(newZendeskDexContext("create-unknown-refusal"), client.CreateTicket(), zendeskConnection, validCreateTicketInput())
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the keyed request is repeated")
 		})
 	}
 }

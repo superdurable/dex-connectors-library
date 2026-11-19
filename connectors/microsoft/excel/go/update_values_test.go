@@ -4,6 +4,7 @@
 package excel_test
 
 import (
+	"errors"
 	"math"
 	"net/http"
 	"testing"
@@ -40,6 +41,22 @@ func TestUpdateValuesWritesLiteralTextNumbersBooleansAndBlanks(t *testing.T) {
 		"text carries Excel's apostrophe prefix so it is never a formula or a number")
 }
 
+func TestUpdateValuesRetriesATransientCredentialFailureAndRejectsARevokedOne(t *testing.T) {
+	server := newRecordingServer(t, func(http.ResponseWriter, recordedRequest) { t.Fatal("no request is expected") })
+	input := summaryUpdateInput(excel.TextCellValue("a"), excel.TextCellValue("b"), excel.TextCellValue("c"), excel.TextCellValue("d"), excel.TextCellValue("e"))
+	outage, err := excel.New(excel.Config{}, failingCredentialProvider{err: errors.New("credential store offline")}, excel.WithLocalProviderURL(server.URL))
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(newDexContext("credential-outage"), outage.UpdateValues(), excelConnection, input)
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+
+	revoked, err := excel.New(excel.Config{}, failingCredentialProvider{err: sdkgo.NewReauthorizationRequiredError(errors.New("revoked"))}, excel.WithLocalProviderURL(server.URL))
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(newDexContext("revoked"), revoked.UpdateValues(), excelConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, excel.UpdateValuesBranchDefect, result.Branch)
+	require.Empty(t, server.recorded())
+}
+
 func TestUpdateValuesRetriesAmbiguousFailuresBecauseTheValuesAreAbsolute(t *testing.T) {
 	server := newRecordingServer(t, func(response http.ResponseWriter, _ recordedRequest) {
 		response.Header().Set("Retry-After", "3")
@@ -67,10 +84,9 @@ func TestUpdateValuesMapsRejectionsWithoutProviderText(t *testing.T) {
 		body   string
 		branch sdkgo.BranchID
 	}{
-		"missing worksheet":  {http.StatusNotFound, graphErrorBody("itemNotFound", ""), excel.UpdateValuesBranchNotFound},
-		"protected cells":    {http.StatusForbidden, graphErrorBody("accessDenied", "accessDenied"), excel.UpdateValuesBranchProviderRejected},
-		"range too large":    {http.StatusRequestEntityTooLarge, graphErrorBody("payloadTooLarge", ""), excel.UpdateValuesBranchProviderRejected},
-		"unspecified failed": {http.StatusInternalServerError, graphErrorBody("internalServerError", "internalServerErrorUncategorized"), excel.UpdateValuesBranchProviderRejected},
+		"missing worksheet": {http.StatusNotFound, graphErrorBody("itemNotFound", ""), excel.UpdateValuesBranchNotFound},
+		"protected cells":   {http.StatusForbidden, graphErrorBody("accessDenied", "accessDenied"), excel.UpdateValuesBranchProviderRejected},
+		"range too large":   {http.StatusRequestEntityTooLarge, graphErrorBody("payloadTooLarge", ""), excel.UpdateValuesBranchProviderRejected},
 	} {
 		t.Run(name, func(t *testing.T) {
 			server := newRecordingServer(t, func(response http.ResponseWriter, _ recordedRequest) {
@@ -82,6 +98,28 @@ func TestUpdateValuesMapsRejectionsWithoutProviderText(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, scenario.branch, result.Branch)
 			requireSecretFree(t, result)
+		})
+	}
+}
+
+func TestUpdateValuesRetriesEveryUnknownOutcomeBecauseTheWriteIsRepeatSafe(t *testing.T) {
+	for name, scenario := range map[string]struct {
+		status int
+		body   string
+	}{
+		"unspecified failure": {http.StatusInternalServerError, graphErrorBody("internalServerError", "internalServerErrorUncategorized")},
+		"conflict":            {http.StatusConflict, graphErrorBody("conflict", "insertDeleteConflict")},
+		"not implemented":     {http.StatusNotImplemented, graphErrorBody("notImplemented", "")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			server := newRecordingServer(t, func(response http.ResponseWriter, _ recordedRequest) {
+				writeJSON(t, response, scenario.status, scenario.body)
+			})
+			_, err := sdkgo.RunMutation(newDexContext("unknown"), newExcelClient(t, server.URL).UpdateValues(), excelConnection, summaryUpdateInput(
+				excel.TextCellValue("a"), excel.TextCellValue("b"), excel.TextCellValue("c"), excel.TextCellValue("d"), excel.TextCellValue("e"),
+			))
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
 		})
 	}
 }

@@ -72,8 +72,9 @@ func (operation UpdateRecordOperation) Invoke(call sdkgo.Call, input UpdateRecor
 		return mutationAttemptFromOutcome(client, call, updateRecordBranches, outcome, UpdateRecordOutput{ProviderErrors: outcome.providerErrors})
 	}
 	if response.status == http.StatusMultipleChoices {
-		// A 300 applies no change; it is only defined for external ID paths.
-		return sdkgo.NewMutationBranch(UpdateRecordBranchProviderRejected, UpdateRecordOutput{}, salesforceFailurePointer(sdkgo.FailureProtocol, updateRecordOperationID, "Salesforce returned multiple choices for a record ID"), client.receipt(call, input.RecordID, response.apiUsage))
+		// A 300 is defined only for external ID paths, so for a record ID it is an unknown
+		// outcome; repeating the absolute values is safe.
+		return sdkgo.NewMutationRetry[UpdateRecordOutput](salesforceFailure(sdkgo.FailureProtocol, updateRecordOperationID, "Salesforce returned multiple choices for a record ID"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateRecordBranchUpdated, UpdateRecordOutput{ID: input.RecordID}, nil, client.receipt(call, input.RecordID, response.apiUsage))
 }

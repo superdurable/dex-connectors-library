@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
+import { ReauthorizationRequiredError, SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, CredentialBrokerUnavailableError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { GorgiasClient, isBareEmail } from '../src/client.js';
 import { decodeTicket } from '../src/wire.js';
 
@@ -14,16 +15,42 @@ const call = {
   reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false,
 } as unknown as Call;
 
-function mutationCall(attempt: number, hasEarlierDispatch = false): Call {
+const mutationCallID = '3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269';
+
+function mutationCall(attempt: number, previousHeartbeat?: unknown): Call {
   return {
-    ...call, idempotencyKey: 'dex-call-test',
+    ...call, id: mutationCallID, idempotencyKey: `dex-${mutationCallID}`,
     context: {
-      ...call.context, attempt, hasLastHeartbeatValue: () => hasEarlierDispatch,
-      getLastHeartbeatValue: () => hasEarlierDispatch ? { gorgiasDispatchedCallId: 'call-test' } : null,
+      ...call.context, attempt, hasLastHeartbeatValue: () => previousHeartbeat !== undefined,
+      getLastHeartbeatValue: () => previousHeartbeat ?? null,
       recordHeartbeat: async () => {},
     },
   } as Call;
 }
+
+/** A mutation call whose Fence heartbeats are appended to heartbeats. */
+function recordingMutationCall(attempt: number, heartbeats: unknown[], previousHeartbeat?: unknown): Call {
+  const recorded = mutationCall(attempt, previousHeartbeat);
+  return { ...recorded, context: { ...recorded.context, recordHeartbeat: async (value: unknown) => { heartbeats.push(value); } } } as Call;
+}
+
+/** A transient credential read failure and the terminal ones another attempt cannot repair. */
+const credentialFailures = [
+  ['transient credential read failure', async () => { throw new Error('credential store unavailable'); }, false],
+  ['broker outage', async () => { throw new CredentialBrokerUnavailableError(); }, false],
+  ['refused credential not yet refreshed', async () => { throw new RejectedCredentialNotRefreshedError(); }, false],
+  ['connection that is not configured', async (requested: Call) => new StaticCredentialProvider<typeof credential>([]).resolve(requested), false],
+  ['reauthorization requirement', async () => { throw new ReauthorizationRequiredError(); }, true],
+  ['missing connection object', async () => { throw new ObjectNotFoundError(); }, true],
+  ['connection that is not selected', async () => { throw new ConnectionNotSelectedError(); }, true],
+  ['broker refusal', async () => { throw new CredentialBrokerRejectedError(); }, true],
+  // The SDK project provider replaces a malformed-material decoder error with this TypeError.
+  ['malformed stored material', async () => { throw new TypeError('project credential decoding failed'); }, true],
+  ['unusable credential', async () => ({ email: 'not an address', apiKey: new SecretString('testKey0123456789') }), true],
+] as const;
+
+/** A claim after three possible sends, which reaches the manifest send cap of three. */
+const claimAtSendCap = { callId: mutationCallID, attempt: 3, state: 'claimed', sendCount: 3 };
 
 function response(status: number, body: unknown = {}): { status: number; headers: Record<string, string>; body: Uint8Array } {
   return { status, headers: {}, body: Buffer.from(JSON.stringify(body)) };
@@ -47,13 +74,11 @@ describe('Gorgias client', () => {
     expect(attempt.failure?.kind).toBe('TRANSPORT');
   });
 
-  it('treats unavailable credentials as a terminal defect', async () => {
+  it('retries credentials that could not be read this time without leaking the error', async () => {
     const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => { throw new Error('secret-bearing error'); } });
     const attempt = await client.getTicket().invoke(call, { ticketId: 7001 });
-    expect(attempt.kind).toBe('branch');
-    if (attempt.kind !== 'branch') throw new Error('expected a terminal branch');
-    expect(attempt.branch).toBe('defect');
-    expect(attempt.failure?.kind).toBe('AUTHENTICATION');
+    expect(attempt.kind).toBe('retry');
+    expect(attempt.failure?.kind).toBe('AVAILABILITY');
     expect(attempt.failure?.message).not.toContain('secret');
   });
 });
@@ -72,7 +97,7 @@ describe('Gorgias retry and routing parity', () => {
     let requestCount = 0;
     const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => {
       requestCount++;
-      return response(200, { data: [{ id: 1 }, { id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z', external_id: 'dex-call-test' }] });
+      return response(200, { data: [{ id: 1 }, { id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z', external_id: `dex-${mutationCallID}` }] });
     } });
     const attempt = await client.createTicket().invoke(mutationCall(2), createInput);
     expect(attempt.kind).toBe('branch');
@@ -96,34 +121,163 @@ describe('Gorgias retry and routing parity', () => {
   it.each([
     ['createTicket', createInput],
     ['addNote', noteInput],
-  ] as const)('retries an invalid unsent %s lookup', async (operation, input) => {
-    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => response(200, { malformed: true }) });
+  ] as const)('resends below the cap after an invalid %s lookup and never resends an unusable accepted answer', async (operation, input) => {
+    const methods: string[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => { methods.push(request.method); return response(200, { malformed: true }); } });
     const attempt = operation === 'createTicket'
       ? await client.createTicket().invoke(mutationCall(2), input)
       : await client.addNote().invoke(mutationCall(2), input);
-    expect(attempt.kind).toBe('retry');
+    expect(attempt.kind).toBe('uncertain');
     expect(attempt.failure?.kind).toBe('PROTOCOL');
+    expect(methods).toEqual(['GET', 'POST', 'GET']);
   });
 
   it.each([
     ['createTicket', createInput],
     ['addNote', noteInput],
-  ] as const)('reports an earlier %s send as uncertain after a rejected lookup', async (operation, input) => {
+  ] as const)('reports %s as uncertain after a rejected lookup at the send cap', async (operation, input) => {
     let requestCount = 0;
     const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => { requestCount++; return response(403); } });
     const attempt = operation === 'createTicket'
-      ? await client.createTicket().invoke(mutationCall(2, true), input)
-      : await client.addNote().invoke(mutationCall(2, true), input);
+      ? await client.createTicket().invoke(mutationCall(4, claimAtSendCap), input)
+      : await client.addNote().invoke(mutationCall(4, claimAtSendCap), input);
     expect(attempt.kind).toBe('uncertain');
-    expect(attempt.failure?.message).toContain('Gorgias could not confirm it, so it is not sent again:');
+    expect(attempt.failure?.message).toContain('Gorgias could not confirm it:');
     expect(requestCount).toBe(1);
   });
 
-  it('reports unavailable credentials after an earlier dispatch with the reconciliation message', async () => {
-    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => { throw new Error('unavailable'); } });
-    const attempt = await client.createTicket().invoke(mutationCall(4, true), createInput);
+  it.each(credentialFailures)('maps a %s after a possible earlier send without recording a checkpoint', async (_name, resolve, isTerminal) => {
+    const heartbeats: unknown[] = [];
+    const attempt = await new GorgiasClient({ domain: 'acme' }, { resolve }).createTicket()
+      .invoke(recordingMutationCall(2, heartbeats, { callId: mutationCallID, attempt: 1, state: 'claimed', sendCount: 1 }), createInput);
+    expect(heartbeats).toEqual([]);
+    expect(attempt.kind).toBe(isTerminal ? 'uncertain' : 'retry');
+    if (isTerminal) expect(attempt.failure?.message).toContain('credentials are unusable to read it back');
+  });
+
+  it.each(credentialFailures)('retries a Query %s unless it is terminal, without a request', async (_name, resolve, isTerminal) => {
+    let requestCount = 0;
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve }, { send: async () => { requestCount++; return response(500); } });
+    const attempts = [
+      await client.getTicket().invoke(call, { ticketId: 7001 }),
+      await client.findCustomerByEmail().invoke(call, { email: 'ada@example.com' }),
+      await client.searchTickets().invoke(call, {}),
+    ];
+    for (const attempt of attempts) {
+      expect(attempt.kind).toBe(isTerminal ? 'branch' : 'retry');
+      if (attempt.kind === 'branch') expect(attempt.branch).toBe('defect');
+    }
+    expect(requestCount).toBe(0);
+  });
+
+  it.each(credentialFailures)('maps a %s on a first send after recording notSent', async (_name, resolve, isTerminal) => {
+    const heartbeats: unknown[] = [];
+    const attempt = await new GorgiasClient({ domain: 'acme' }, { resolve }).addNote().invoke(recordingMutationCall(1, heartbeats), noteInput);
+    expect(JSON.stringify(heartbeats)).toContain('"state":"notSent"');
+    if (!isTerminal) { expect(attempt.kind).toBe('retry'); return; }
+    expect(attempt.kind).toBe('branch');
+    if (attempt.kind === 'branch') expect(attempt.branch).toBe('defect');
+  });
+
+  it.each([
+    ['transport failure', () => new ProviderTransportError(false, 201, {})],
+    ['stall', () => new ProviderStalledError(201, {})],
+  ] as const)('reads back a ticket whose 2xx body breaks with a %s and never resends it', async (_name, bodyFailure) => {
+    const methods: string[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') throw bodyFailure();
+      return response(200, { data: [{ id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z', external_id: `dex-${mutationCallID}` }] });
+    } });
+    const attempt = await client.createTicket().invoke(mutationCall(1), createInput);
+    expect(methods).toEqual(['POST', 'GET']);
+    expect(attempt.kind).toBe('branch');
+    if (attempt.kind === 'branch') expect(attempt.branch).toBe('created');
+  });
+
+  it('reads back a note whose 2xx body breaks and selects uncertain when it is absent', async () => {
+    const methods: string[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') throw new ProviderTransportError(false, 201, {});
+      return response(200, { id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z', messages: [] });
+    } });
+    const attempt = await client.addNote().invoke(mutationCall(1), noteInput);
+    expect(methods).toEqual(['POST', 'GET']);
     expect(attempt.kind).toBe('uncertain');
-    expect(attempt.failure?.message).toContain('credentials are unavailable to confirm it, so it is not sent again');
+  });
+
+  it.each([true, false])('reads back a write whose 2xx body the write window cuts off and never resends it (found: %s)', async isFound => {
+    const methods: string[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => {
+      methods.push(request.method);
+      if (request.method !== 'POST') return response(200, { data: isFound ? [{ id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z', external_id: `dex-${mutationCallID}` }] : [] });
+      // The headers arrived; the SDK sender reports the cut body with the status it saw.
+      await new Promise(resolve => request.signal?.addEventListener('abort', resolve, { once: true }));
+      throw new ProviderTransportError(false, 201, {});
+    } });
+    const shortCall = mutationCall(1);
+    const attempt = await client.createTicket().invoke({ ...shortCall, context: { ...shortCall.context, deadline: new Date(Date.now() + 600) } } as Call, createInput);
+    expect(methods).toEqual(['POST', 'GET']);
+    expect(attempt.kind).toBe(isFound ? 'branch' : 'uncertain');
+  });
+
+  it.each([
+    ['an invalid ticket', async () => response(200, { id: 'SENTINEL' })],
+    ['an oversized refusal', async () => { throw new BodyTooLargeError(400, {}); }],
+    ['a conflict', async () => response(409)],
+    ['an outage', async () => response(500)],
+    ['a timeout status', async () => response(408)],
+    ['a credential-reflecting refusal', async () => response(400, { error: { msg: 'testKey0123456789' } })],
+  ] as const)('retries an updateTicket whose first read returns %s', async (_name, send) => {
+    const methods: string[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => { methods.push(request.method); return send(); } });
+    const attempt = await client.updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
+    expect(methods).toEqual(['GET']);
+    expect(attempt.kind).toBe('retry');
+  });
+
+  it.each([[404, 'notFound'], [403, 'providerRejected'], [301, 'providerRejected']] as const)('selects a branch when the updateTicket first read gets a definite %s', async (status, branch) => {
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => response(status) });
+    const attempt = await client.updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
+    expect(attempt.kind).toBe('branch');
+    if (attempt.kind === 'branch') expect(attempt.branch).toBe(branch);
+  });
+
+  it('treats a write refusal with an oversized body as an unknown outcome', async () => {
+    const heartbeats: unknown[] = [];
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => { throw new BodyTooLargeError(400, {}); } });
+    const attempt = await client.createTicket().invoke(recordingMutationCall(1, heartbeats), createInput);
+    expect(attempt.kind).toBe('retry');
+    expect(JSON.stringify(heartbeats.at(-1))).toContain('"state":"claimed"');
+  });
+
+  it('retries an updateTicket refusal with an oversized body', async () => {
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async request => {
+      if (request.method === 'GET') return response(200, { id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z' });
+      throw new BodyTooLargeError(400, {});
+    } });
+    const attempt = await client.updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
+    expect(attempt.kind).toBe('retry');
+  });
+
+  it.each(credentialFailures)('retries an updateTicket %s on a later attempt, when an earlier change may have applied', async (_name, resolve) => {
+    const attempt = await new GorgiasClient({ domain: 'acme' }, { resolve }).updateTicket().invoke(mutationCall(2), { ticketId: 7001, status: 'closed' });
+    expect(attempt.kind).toBe('retry');
+  });
+
+  it.each(credentialFailures)('maps an updateTicket %s', async (_name, resolve, isTerminal) => {
+    const attempt = await new GorgiasClient({ domain: 'acme' }, { resolve }).updateTicket().invoke(mutationCall(1), { ticketId: 7001, status: 'closed' });
+    expect(attempt.kind).toBe(isTerminal ? 'branch' : 'retry');
+  });
+
+  it('retries without sending after a marker the previous release wrote', async () => {
+    let requestCount = 0;
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => { requestCount++; return response(201); } });
+    const attempt = await client.addNote().invoke(mutationCall(2, { gorgiasDispatchedCallId: mutationCallID }), noteInput);
+    expect(attempt.kind).toBe('retry');
+    expect(attempt.failure?.kind).toBe('AVAILABILITY');
+    expect(requestCount).toBe(0);
   });
 
   it('omits a zero view ID and rejects empty status and priority filters', async () => {

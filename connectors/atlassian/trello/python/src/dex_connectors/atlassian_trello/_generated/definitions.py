@@ -72,7 +72,7 @@ CREATE_CARD_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Trello created the card and returned its ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created.", True),
-        BranchDefinition(UNCERTAIN, "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Trello accepted the card without a usable answer, and the outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -90,7 +90,7 @@ UPDATE_CARD_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "Trello applied every requested change, including when the card already had those values, and the Value holds the card Trello returned.", False),
         BranchDefinition(NOT_FOUND, "The card does not exist.", True),
         BranchDefinition(PROVIDER_REJECTED, "Trello conclusively rejected a change, such as an unknown list, label, or member, or missing permission.", True),
-        BranchDefinition(INVALID_RESPONSE, "Trello returned an invalid or oversized card, or a card that does not show a requested change.", True),
+        BranchDefinition(INVALID_RESPONSE, "No longer selected. An invalid or oversized card, or a card that does not show a requested change, is retried because a repeated update converges; the branch stays declared for compatibility.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -107,7 +107,7 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Trello added the comment and returned its action ID.", False),
         BranchDefinition(NOT_FOUND, "The card does not exist; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The send cap is reached, or Trello accepted the comment without a usable answer, and the outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

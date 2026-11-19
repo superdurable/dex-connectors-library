@@ -71,10 +71,11 @@ type providerResponse struct {
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if sdkgo.IsReauthorizationRequired(err) {
+	if isTerminalCredentialError(err) {
 		return providerResponse{err: errCredential}
 	}
 	if err != nil {
+		// Nothing reached Hootsuite, so a transient credential failure retries.
 		return providerResponse{err: errRequest}
 	}
 	if credentials.Validate() != nil {

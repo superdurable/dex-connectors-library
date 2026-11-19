@@ -5,6 +5,7 @@
 import hashlib
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
@@ -17,12 +18,19 @@ from dex_connectors.sdk import (
     ConnectionRef,
     FailureKind,
     IdempotencyKey,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
 )
 from dex_connectors.sdk.projectconfig import load_dex_web_project
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.amazon_sqs import (
     CHANGE_MESSAGE_VISIBILITY_DEFINITION,
@@ -45,6 +53,7 @@ from dex_connectors.amazon_sqs import (
     ReceiveMessagesInput,
     new_project_connection,
 )
+from dex_connectors.amazon_sqs._generated.connection import CredentialMaterialError
 from dex_connectors.amazon_sqs.sigv4 import sign_headers
 
 CONNECTION = ConnectionRef("amazon-sqs", "amazon-sqs")
@@ -53,6 +62,18 @@ QUEUE = "https://sqs.eu-west-1.amazonaws.com/123456789012/orders"
 FIFO_QUEUE = QUEUE + ".fifo"
 SECRET = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
 Responder = Callable[[httpx.Request], httpx.Response]
+
+
+def _sdk_wrapped_material_error() -> ValueError:
+    """Build the ValueError that the SDK project provider raises over a decoder failure."""
+    try:
+        try:
+            raise CredentialMaterialError("Amazon SQS credential access_key_id is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+    raise AssertionError("unreachable")
 
 
 def credentials(session_token: str = "") -> Credentials:
@@ -340,6 +361,42 @@ async def test_delete_error_classification(response: httpx.Response, branch: str
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError(), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("Amazon SQS credential access_key_id is required"), True),
+        (_sdk_wrapped_material_error(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (RuntimeError("unlisted"), False),
+    ],
+)
+async def test_credential_failures_select_defect_only_when_terminal(
+    error: Exception, is_terminal: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    class FailingCredentials:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    client = make_client(answer(httpx.Response(200, json={}), requests=requests), FailingCredentials())
+    input = DeleteMessageInput(QUEUE, "receipt-1")
+    if is_terminal:
+        result = await run_mutation(client.delete_message(), call_for(DELETE_MESSAGE_DEFINITION), input)
+        assert result.branch == DEFECT
+    else:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.delete_message(), call_for(DELETE_MESSAGE_DEFINITION), input)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
+    assert requests == []
+
+
+@pytest.mark.asyncio
 async def test_error_metadata_rejects_trailing_newlines() -> None:
     response = httpx.Response(
         400,
@@ -500,3 +557,75 @@ async def test_project_connection_reads_stored_access_key(tmp_path: Path) -> Non
     assert json.loads(requests[0].content)["WaitTimeSeconds"] == 1
     assert "Credential=AKIDEXAMPLE/" in requests[0].headers["Authorization"]
     await project.close()
+
+
+@pytest.mark.asyncio
+async def test_malformed_stored_credentials_in_a_project_select_defect(tmp_path: Path) -> None:
+    path = tmp_path / "connections.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
+                "connections": [
+                    {
+                        "connectorId": "amazon-sqs",
+                        "connectionName": "amazon-sqs-orders",
+                        "modulePath": (
+                            "github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go"
+                        ),
+                        "provider": "amazon-sqs",
+                        "configuration": {"region": "eu-west-1", "defaultQueueUrl": QUEUE},
+                        "credentials": {"access_key_id": 42, "secret_access_key": SECRET},
+                    }
+                ],
+                "triggerBindings": [],
+            }
+        )
+    )
+    path.chmod(0o600)
+    project = await load_dex_web_project(path)
+    requests: list[httpx.Request] = []
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(answer(httpx.Response(200, json={}), requests=requests))
+    ) as http_client:
+        connection = new_project_connection(project, "amazon-sqs-orders", http_client)
+        call = Call(
+            CallID(str(uuid4())),
+            ConnectionRef("amazon-sqs", "amazon-sqs-orders"),
+            DELETE_MESSAGE_DEFINITION.operation,
+            IdempotencyKey("key"),
+        )
+        result = await run_mutation(connection.delete_message(), call, DeleteMessageInput(QUEUE, "receipt-1"))
+    assert result.branch == DEFECT
+    assert requests == []
+    await project.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [405, 409, 425, 451])
+async def test_unlisted_statuses_retry_as_unknown(status: int) -> None:
+    with pytest.raises(RetryError) as raised:
+        await run_mutation(
+            make_client(answer(sqs_error(status, "Unlisted"))).delete_message(),
+            call_for(DELETE_MESSAGE_DEFINITION),
+            DeleteMessageInput(QUEUE, "receipt-1"),
+        )
+    assert raised.value.failure.kind == FailureKind.AVAILABILITY
+
+
+@pytest.mark.asyncio
+async def test_repeated_release_that_finds_the_message_released_selects_changed() -> None:
+    class SecondAttempt:
+        attempt = 2
+
+    response = sqs_error(400, "com.amazonaws.sqs#MessageNotInflight")
+    call = replace(call_for(CHANGE_MESSAGE_VISIBILITY_DEFINITION), context=SecondAttempt())  # type: ignore[arg-type]
+    operation = make_client(answer(response)).change_message_visibility()
+    released = await operation.invoke(call, ChangeMessageVisibilityInput(QUEUE, "receipt-1", "order-1042", 0))
+    assert released.branch == CHANGED
+    release = ChangeMessageVisibilityInput(QUEUE, "receipt-1", "order-1042", 0)
+    first = await operation.invoke(call_for(CHANGE_MESSAGE_VISIBILITY_DEFINITION), release)
+    assert first.branch == RECEIPT_HANDLE_INVALID
+    extend = ChangeMessageVisibilityInput(QUEUE, "receipt-1", "order-1042", 90)
+    extended = await operation.invoke(call, extend)
+    assert extended.branch == RECEIPT_HANDLE_INVALID

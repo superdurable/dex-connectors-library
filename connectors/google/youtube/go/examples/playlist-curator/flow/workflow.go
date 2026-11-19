@@ -3,7 +3,7 @@
 
 // Package playlistcurator demonstrates the YouTube connector in a Flow started
 // from Dex Web: it finds a channel's newest video that matches a query, adds it
-// once to a playlist the account owns, and reads the playlist back to confirm.
+// to a playlist the account owns unless the playlist holds it, and reads the playlist back to confirm.
 package playlistcurator
 
 import (

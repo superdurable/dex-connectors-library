@@ -67,24 +67,31 @@ func (operation UpdateEventOperation) Invoke(call sdkgo.Call, input UpdateEventI
 	if err != nil {
 		return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, failurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, mailboxRoot, failure := operation.client.resolveCredentials(call, operationID)
+	credentials, mailboxRoot, failure, isRetryable := operation.client.resolveCredentials(call, operationID)
+	if isRetryable {
+		return sdkgo.NewMutationRetry[UpdateEventOutput](*failure, 0)
+	}
+	isLaterAttempt := call.Context != nil && call.Context.Attempt() > 1
+	if failure != nil && isLaterAttempt && failure.Kind == sdkgo.FailureAuthentication {
+		// An earlier attempt may have applied the PATCH, so defect would misreport it.
+		return sdkgo.NewMutationRetry[UpdateEventOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, failure, sdkgo.Receipt{})
 	}
 	current := operation.client.readEvent(call, &credentials, operationID, mailboxRoot, input.EventID, display)
 	readReceipt := operation.client.receipt(call, current.response, input.EventID)
-	switch current.outcome {
-	case eventReadFound:
-	case eventReadMissing:
+	switch {
+	case current.outcome == eventReadFound:
+	case current.outcome == eventReadMissing:
 		return sdkgo.NewMutationBranch(UpdateEventBranchNotFound, UpdateEventOutput{}, &current.failure, readReceipt)
-	case eventReadRetry:
-		return sdkgo.NewMutationRetry[UpdateEventOutput](current.failure, current.retryAfter)
-	case eventReadRejected:
+	case current.outcome == eventReadRejected && isDefiniteGraphRefusal(current.response):
 		return sdkgo.NewMutationBranch(UpdateEventBranchProviderRejected, UpdateEventOutput{}, &current.failure, readReceipt)
-	case eventReadInvalid:
-		return sdkgo.NewMutationBranch(UpdateEventBranchInvalidResponse, UpdateEventOutput{}, &current.failure, readReceipt)
-	default:
+	case current.outcome == eventReadDefect && !isLaterAttempt:
 		return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, &current.failure, sdkgo.Receipt{})
+	default:
+		// A transient, unlisted, or unusable pre-write read is unknown, and the update is safe to repeat.
+		return sdkgo.NewMutationRetry[UpdateEventOutput](current.failure, current.retryAfter)
 	}
 	if current.event.IsCancelled {
 		return sdkgo.NewMutationBranch(UpdateEventBranchNotFound, UpdateEventOutput{}, failurePointer(sdkgo.FailureNotFound, operationID, "event is cancelled"), readReceipt)
@@ -99,8 +106,6 @@ func (operation UpdateEventOperation) Invoke(call sdkgo.Call, input UpdateEventI
 	if err != nil {
 		requestFailure := asProviderRequestError(err)
 		switch requestFailure.kind {
-		case sdkgo.FailureResponseTooLarge:
-			return sdkgo.NewMutationBranch(UpdateEventBranchInvalidResponse, UpdateEventOutput{}, failurePointer(requestFailure.kind, operationID, requestFailure.message), operation.client.receipt(call, response, input.EventID))
 		case sdkgo.FailureLocalDefect:
 			return sdkgo.NewMutationBranch(UpdateEventBranchDefect, UpdateEventOutput{}, failurePointer(requestFailure.kind, operationID, requestFailure.message), sdkgo.Receipt{})
 		default:
@@ -115,14 +120,15 @@ func (operation UpdateEventOperation) Invoke(call sdkgo.Call, input UpdateEventI
 		return sdkgo.NewMutationBranch(UpdateEventBranchNotFound, UpdateEventOutput{}, failurePointer(sdkgo.FailureNotFound, operationID, "event was not found"), receipt)
 	case !isSuccessStatus(response.statusCode):
 		classification := classifyFailureStatus(response)
-		if classification.isRetryable {
+		if classification.isRetryable || !isDefiniteGraphRefusal(response) {
 			return sdkgo.NewMutationRetry[UpdateEventOutput](calendarFailure(classification.kind, operationID, classification.message), classification.retryAfter)
 		}
 		return sdkgo.NewMutationBranch(UpdateEventBranchProviderRejected, UpdateEventOutput{}, failurePointer(classification.kind, operationID, classification.message), receipt)
 	}
 	event, err := decodeEvent(response.body, "", display)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateEventBranchInvalidResponse, UpdateEventOutput{}, failurePointer(sdkgo.FailureProtocol, operationID, "provider returned an invalid event: "+err.Error()), receipt)
+		// The PATCH is absolute, so the retry rereads the event and finds the change if it applied.
+		return sdkgo.NewMutationRetry[UpdateEventOutput](calendarFailure(sdkgo.FailureProtocol, operationID, "provider returned an invalid event: "+err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateEventBranchUpdated, UpdateEventOutput{Event: event}, nil, receipt)
 }

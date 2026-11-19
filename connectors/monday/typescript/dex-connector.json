@@ -1,10 +1,10 @@
 {
   "connectorId": "monday",
-  "releaseTag": "connectors/monday/go/v0.25.0",
+  "releaseTag": "connectors/monday/go/v0.25.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-monday",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -250,7 +250,7 @@
       "kind": "mutation",
       "operationId": "createItem",
       "inputType": "CreateItemInput",
-      "description": "Create one item on a board with typed column values. A stable Idempotency-Key and sync dispatch checkpoint fence retries; an unconfirmed sent request fails closed.",
+      "description": "Create one item on a board with typed column values. A stable Idempotency-Key and a send-counting sync checkpoint resend an unknown outcome only within the send cap; 429 and 503 retry.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -618,7 +618,7 @@
       "kind": "mutation",
       "operationId": "addUpdate",
       "inputType": "AddUpdateInput",
-      "description": "Add one plain-text item update. A stable Idempotency-Key and sync dispatch checkpoint fence retries; an unconfirmed sent request fails closed.",
+      "description": "Add one plain-text item update. A stable Idempotency-Key and a send-counting sync checkpoint resend an unknown outcome only within the send cap; 429 and 503 retry.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

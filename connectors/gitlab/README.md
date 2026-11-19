@@ -1,6 +1,6 @@
 # GitLab connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/gitlab/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/gitlab/go@v0.2.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/gitlab`.
 
@@ -14,7 +14,7 @@ The `gitlab` Go module exposes typed Dex Steps for GitLab. Its [runnable lookup 
 | NewListIssuesStep | GET /api/v4/projects/{id}/issues | `ProjectID` | `IssuesPage.Issues` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect |
 | NewUpdateIssueLabelsStep | PUT /api/v4/projects/{id}/issues/{issue_iid} | `ProjectID`, positive `IssueIID`, complete `Labels` list | updated `Issue` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect |
 
-`updateIssueLabels` sends the `labels` form field as a comma-separated absolute replacement. An empty list sends an empty field and clears all labels. Repeating the same set is safe; label names containing commas are rejected locally. The list operation returns GitLab’s first default page of 20 issues.
+`updateIssueLabels` sends the `labels` form field as a comma-separated absolute replacement. An empty list sends an empty field and clears all labels. Repeating the same set is safe, so the manifest declares `repeatOnUnknown: safe`: HTTP 404 selects `notFound`, only HTTP 400, 401, 403, 411, 413, 414, 415, or 422 selects `providerRejected`, and any other status or a malformed or oversized answer retries. Label names containing commas are rejected locally. Malformed stored credential material selects `defect`. The list operation returns GitLab’s first default page of 20 issues.
 
 The Python package is [`dex-connector-gitlab`](python/README.md), imported as
 `dex_connectors.gitlab`.
@@ -61,4 +61,4 @@ The provider calls have not been exercised with live account credentials. Real D
 
 ## TypeScript
 
-The [`typescript/`](typescript/) package provides `getProject`, `listIssues`, and `updateIssueLabels` at `@superdurable/connector-gitlab` version `0.1.0`. Its [runnable project lookup](typescript/examples/get-project/README.md) binds the static `gitlab` connection and can be verified through `dexcli dev`. Authorization uses a GitLab personal access token with `read_api` for queries or `api` for label updates.
+The [`typescript/`](typescript/) package provides `getProject`, `listIssues`, and `updateIssueLabels` at `@superdurable/connector-gitlab` version `0.1.1`. Its [runnable project lookup](typescript/examples/get-project/README.md) binds the static `gitlab` connection and can be verified through `dexcli dev`. Authorization uses a GitLab personal access token with `read_api` for queries or `api` for label updates.

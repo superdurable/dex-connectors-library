@@ -9,7 +9,16 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -118,14 +127,33 @@ class Client:
 
     async def token(self, call: Call) -> str | None:
         """Resolve and validate a secret without storing it in Flow state."""
+        token, _ = await self.token_or_failure(call, "")
+        return token
+
+    async def token_or_failure(self, call: Call, operation: str) -> tuple[str | None, Failure | None]:
+        """Resolve and validate a secret, or return why it is unavailable.
+
+        A terminal failure, such as a missing connection or one that needs reauthorization, has kind
+        AUTHENTICATION; a transient one, such as a store or credential broker read, has kind
+        AVAILABILITY.
+        """
+        terminal = failure(
+            operation, FailureKind.AUTHENTICATION, "Asana connection credentials are unavailable"
+        )
         try:
             credentials = await self._credentials.resolve(call)
-            if not isinstance(credentials, Credentials):
-                return None
-            token = credentials.access_token.reveal()
-            return token if is_header_safe_credential(token) else None
-        except Exception:
-            return None
+        except Exception as error:
+            if is_terminal_credential_error(error):
+                return None, terminal
+            return None, failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                "Asana connection credentials could not be read, so nothing was sent",
+            )
+        if not isinstance(credentials, Credentials):
+            return None, terminal
+        token = credentials.access_token.reveal()
+        return (token, None) if is_header_safe_credential(token) else (None, terminal)
 
     async def exchange(
         self,
@@ -135,8 +163,12 @@ class Client:
         path: str,
         query: Mapping[str, str] | None = None,
         payload: object | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one JSON request without redirects and bound the complete body."""
+        """Send one JSON request without redirects and bound the complete body.
+
+        ``observed_statuses`` receives the HTTP status once headers arrive, before the body is read.
+        """
         target = self.endpoint + path
         if query:
             target += "?" + str(httpx.QueryParams(sorted(query.items())))
@@ -156,6 +188,8 @@ class Client:
             response, _ = await send_traced(self._http_client, request)
         except ProviderTransportError as error:
             return Exchange(error="beforeSend" if error.provably_not_sent else "afterSend")
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         limit = self.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
         try:
             contents = await read_bounded_body(response, limit)
@@ -181,6 +215,22 @@ class Client:
     def retry_after(self, exchange: Exchange) -> float:
         """Read a bounded provider Retry-After hint."""
         return parse_retry_after(exchange.headers.get("Retry-After", ""), self._now())
+
+
+def is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a credential resolution failure that no retry fixes; every other error is transient."""
+    # Imported here because the generated connection module imports this module.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:

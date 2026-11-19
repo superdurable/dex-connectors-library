@@ -183,6 +183,9 @@ var errPostNotPublished = errors.New("post is not published")
 
 func invokeWordPressQuery[T any](client *Client, call sdkgo.Call, operationID, path string, query url.Values, branches queryBranches, decode func([]byte, http.Header) (T, error)) sdkgo.QueryAttempt[T] {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		return retryQuery[T](operationID, sdkgo.FailureAvailability, "connection credentials are temporarily unavailable", 0)
+	}
 	if err != nil || credentials.Validate() != nil {
 		return failedQuery[T](operationID, branches.defect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}

@@ -58,7 +58,8 @@ func (UpdateItemColumnValuesOperation) IdempotencyKey(callID sdkgo.CallID, _ Upd
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sets the column values. Every unconfirmed outcome is retried, because a repeat writes the same values.
+// Invoke sets the column values. Every unknown outcome is retried, because a repeat writes the same
+// values; only a definite refusal or a response echoing the credential ends the Step.
 func (operation UpdateItemColumnValuesOperation) Invoke(call sdkgo.Call, input UpdateItemColumnValuesInput) sdkgo.MutationAttempt[UpdateItemColumnValuesOutput] {
 	client := operation.client
 	request, requested, err := buildUpdateItemColumnValuesRequest(input)
@@ -72,14 +73,25 @@ func (operation UpdateItemColumnValuesOperation) Invoke(call sdkgo.Call, input U
 		output.Item, output.IsReplayed = &item, result.response.isReplayed
 		return sdkgo.NewMutationBranch(UpdateItemColumnValuesBranchUpdated, output, nil, receipt)
 	}
-	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
-		notFound: UpdateItemColumnValuesBranchNotFound, providerRejected: UpdateItemColumnValuesBranchProviderRejected,
-		defect: UpdateItemColumnValuesBranchDefect, invalidResponse: UpdateItemColumnValuesBranchInvalidResponse,
-	}); isTerminal {
-		return attempt
+	switch classifyWrite(result, "change_multiple_column_values") {
+	case writeAccepted:
+		return sdkgo.NewMutationRetry[UpdateItemColumnValuesOutput](mondayFailure(sdkgo.FailureProtocol, updateItemColumnValuesOperationID,
+			"monday.com returned an unusable item, so the values are set again"), 0)
+	case writeRefused:
+		branch := UpdateItemColumnValuesBranchProviderRejected
+		switch result.outcome {
+		case exchangeNotFound:
+			branch = UpdateItemColumnValuesBranchNotFound
+		case exchangeDefect:
+			branch = UpdateItemColumnValuesBranchDefect
+		}
+		return sdkgo.NewMutationBranch(branch, requested, &result.failure, receipt)
 	}
-	return sdkgo.NewMutationBranch(UpdateItemColumnValuesBranchInvalidResponse, requested, mondayFailurePointer(sdkgo.FailureProtocol,
-		updateItemColumnValuesOperationID, "monday.com returned an unusable item, so the values may have been set"), receipt)
+	// Resending would expose the credential to the same faulty endpoint again.
+	if result.isCredentialReflected {
+		return sdkgo.NewMutationBranch(UpdateItemColumnValuesBranchInvalidResponse, requested, &result.failure, receipt)
+	}
+	return sdkgo.NewMutationRetry[UpdateItemColumnValuesOutput](result.failure, result.retryAfter)
 }
 
 // buildUpdateItemColumnValuesRequest validates input and returns the request plus the echo used by every branch.

@@ -166,10 +166,15 @@ func newFreshdeskDexContext(step string) *freshdeskDexContext {
 	return &freshdeskDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 
-// nextAttempt is the following attempt of the same Step execution, which sees this attempt's last heartbeat.
+// nextAttempt is the following attempt of the same Step execution, which sees the last heartbeat
+// any earlier attempt stored.
 func (context *freshdeskDexContext) nextAttempt() *freshdeskDexContext {
+	previousHeartbeat := context.recordedHeartbeat
+	if context.heartbeatCount == 0 {
+		previousHeartbeat = context.previousHeartbeat
+	}
 	return &freshdeskDexContext{
-		Context: context.Context, step: context.step, previousHeartbeat: context.recordedHeartbeat, attempt: context.attempt + 1,
+		Context: context.Context, step: context.step, previousHeartbeat: previousHeartbeat, attempt: context.attempt + 1,
 	}
 }
 

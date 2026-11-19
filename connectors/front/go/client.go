@@ -215,8 +215,12 @@ func (client *Client) exchangeWithWritePreparation(
 		response.body = body
 		return frontExchange{outcome: exchangeSucceeded, response: response}
 	}
-	// Only the status decides a failure, so an unreadable error body changes nothing.
-	return client.classifyFailureStatus(response, operationID)
+	// The status decides a failure; writes also check whether the error body was readable.
+	result := client.classifyFailureStatus(response, operationID)
+	token := credentials.APIToken.Reveal()
+	isReflectingToken := token != "" && bytes.Contains(body, []byte(token))
+	result.isErrorBodyUnreadable = readErr != nil || closeErr != nil || isReflectingToken
+	return result
 }
 
 func (client *Client) buildRequest(

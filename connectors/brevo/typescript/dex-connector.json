@@ -1,10 +1,10 @@
 {
   "connectorId": "brevo",
-  "releaseTag": "connectors/brevo/go/v0.2.0",
+  "releaseTag": "connectors/brevo/go/v0.2.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-brevo",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "factories": [
     {

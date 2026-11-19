@@ -59,12 +59,19 @@ export class SaveObjectOperation implements Mutation<SaveObjectInput, SavedObjec
     if (body.length > 1 << 20) return newMutationBranch('defect', emptySavedObject, zeroReceipt(), failure('saveObject', 'VALIDATION', 'record payload is invalid or too large'));
     const response = await this.client.send(call, 'PUT', `/indexes/${encodePathPart(input.indexName)}/${encodePathPart(input.objectID)}`, body);
     if (response.kind === 'retry') return newMutationRetry(failure('saveObject', response.failureKind, response.message), response.retryAfterMs);
-    if (response.kind === 'failure') return newMutationBranch(response.failureKind === 'AUTHENTICATION' || response.failureKind === 'LOCAL_DEFECT' ? 'defect' : 'invalidResponse', emptySavedObject, zeroReceipt(), failure('saveObject', response.failureKind, response.message));
-    if (response.status !== 200) return newMutationBranch('providerRejected', emptySavedObject, zeroReceipt(), failure('saveObject', rejectionKind(response.status), `Algolia rejected record replacement with HTTP ${response.status}`));
+    if (response.kind === 'failure') {
+      if (response.failureKind === 'AUTHENTICATION' || response.failureKind === 'LOCAL_DEFECT') return newMutationBranch('defect', emptySavedObject, zeroReceipt(), failure('saveObject', response.failureKind, response.message));
+      // A repeated replacement of the same objectID converges, so an oversized answer retries.
+      return newMutationRetry(failure('saveObject', response.failureKind, response.message));
+    }
+    if (response.status !== 200) {
+      if (![400, 401, 403, 404, 411, 413, 414, 415, 422].includes(response.status)) return newMutationRetry(failure('saveObject', 'AVAILABILITY', `Algolia answered record replacement with HTTP ${response.status}; outcome unknown`));
+      return newMutationBranch('providerRejected', emptySavedObject, zeroReceipt(), failure('saveObject', rejectionKind(response.status), `Algolia rejected record replacement with HTTP ${response.status}`));
+    }
     let result: unknown;
     try { result = JSON.parse(Buffer.from(response.body).toString('utf8')) as unknown; }
-    catch { return newMutationBranch('invalidResponse', emptySavedObject, zeroReceipt(), failure('saveObject', 'PROTOCOL', 'Algolia returned an invalid indexing task')); }
-    if (!isSavedObject(result, input.objectID)) return newMutationBranch('invalidResponse', emptySavedObject, zeroReceipt(), failure('saveObject', 'PROTOCOL', 'Algolia returned an invalid indexing task'));
+    catch { return newMutationRetry(failure('saveObject', 'PROTOCOL', 'Algolia returned an invalid indexing task')); }
+    if (!isSavedObject(result, input.objectID)) return newMutationRetry(failure('saveObject', 'PROTOCOL', 'Algolia returned an invalid indexing task'));
     return newMutationBranch('saved', { objectID: result.objectID, taskID: result.taskID }, zeroReceipt());
   }
 }

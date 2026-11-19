@@ -217,7 +217,12 @@ func newTestDexContext(step string) *testDexContext {
 
 // nextAttempt is the following attempt of the same Step execution, which sees this attempt's last heartbeat.
 func (ctx *testDexContext) nextAttempt() *testDexContext {
-	return &testDexContext{Context: ctx.Context, step: ctx.step, previousHeartbeat: ctx.recordedHeartbeat, attempt: ctx.attempt + 1}
+	previous := ctx.recordedHeartbeat
+	if ctx.heartbeatCount == 0 {
+		// Like Dex, an attempt that recorded nothing leaves the earlier value for the next one.
+		previous = ctx.previousHeartbeat
+	}
+	return &testDexContext{Context: ctx.Context, step: ctx.step, previousHeartbeat: previous, attempt: ctx.attempt + 1}
 }
 
 func (*testDexContext) FlowID() string                                  { return "jsm-flow" }

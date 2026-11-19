@@ -1013,16 +1013,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": "",
-          "shortId": "",
-          "status": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1032,7 +1026,7 @@
         "organization": "acme",
         "status": "resolved"
       },
-      "name": "updateIssueStatus-invalid-response",
+      "name": "updateIssueStatus-invalid-answer-retries",
       "operation": "updateIssueStatus"
     },
     {
@@ -1358,16 +1352,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "id": "",
-          "shortId": "",
-          "status": "",
-          "title": ""
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1377,7 +1365,7 @@
         "organization": "acme",
         "status": "resolved"
       },
-      "name": "updateIssueStatus-conflict-rejected",
+      "name": "updateIssueStatus-conflict-name-retries",
       "operation": "updateIssueStatus"
     }
   ],

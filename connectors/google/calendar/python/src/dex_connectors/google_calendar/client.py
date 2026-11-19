@@ -10,7 +10,19 @@ from typing import Any
 from urllib.parse import quote, quote_plus, urlsplit
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -31,6 +43,13 @@ _REASONS = frozenset(
 )
 
 MINIMUM_POLL_INTERVAL_SECONDS = 5
+# Resolve failures that only reconnection repairs; any other resolve failure is transient.
+TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
 """Keeps an eventChanged poll loop from spending the Calendar API quota."""
 
 
@@ -95,6 +114,10 @@ def google_error_reason(body: bytes) -> str:
     return ""
 
 
+# Only these statuses prove Google refused the request; any other one is unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
 def classify_status(response: ProviderResponse) -> tuple[bool, FailureKind, str, float]:
     """Classify a non-success response using Go's Calendar status policy."""
     reason = google_error_reason(response.body)
@@ -106,9 +129,12 @@ def classify_status(response: ProviderResponse) -> tuple[bool, FailureKind, str,
     elif status == 408 or status >= 500:
         category = FailureKind.AVAILABILITY
         message = "provider is temporarily unavailable" + suffix
+    elif reason in ("quotaExceeded", "dailyLimitExceeded"):
+        return False, FailureKind.QUOTA_EXHAUSTED, "provider quota is exhausted" + suffix, 0
+    elif status not in _DEFINITE_REFUSAL_STATUSES:
+        category = FailureKind.AVAILABILITY
+        message = f"provider answered HTTP {status}, which leaves the outcome unknown" + suffix
     else:
-        if reason in ("quotaExceeded", "dailyLimitExceeded"):
-            return False, FailureKind.QUOTA_EXHAUSTED, "provider quota is exhausted" + suffix, 0
         kinds = {
             400: FailureKind.VALIDATION,
             401: FailureKind.AUTHENTICATION,
@@ -205,19 +231,34 @@ class Client:
         return QueryFreeBusyOperation(self)
 
     async def resolve(self, call: Call, operation: str) -> Credentials | Failure:
-        """Resolve the generated OAuth source and validate the bearer token."""
+        """Resolve the generated OAuth source and validate the bearer token.
+
+        A transient resolve failure returns an AVAILABILITY failure that callers retry; a terminal
+        one or invalid material returns an AUTHENTICATION failure.
+        """
         try:
             result = await self.credentials.resolve(call)
-            if (
-                not isinstance(result, Credentials)
-                or result.access_token is None
-                or not result.access_token.reveal()
-                or result.auth_method_id not in ("", "google-oauth", "workspace-domain-delegation")
-            ):
-                raise ValueError("missing bearer token")
-            return result
-        except Exception:
+        except TERMINAL_CREDENTIAL_ERRORS:
             return failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
+        except Exception as error:
+            # The generated connection module imports this one, so the predicate loads lazily.
+            from ._generated.connection import is_credential_material_error
+
+            if is_credential_material_error(error):
+                return failure(
+                    FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
+                )
+            return failure(
+                FailureKind.AVAILABILITY, operation, "connection credentials are temporarily unavailable"
+            )
+        if (
+            not isinstance(result, Credentials)
+            or result.access_token is None
+            or not result.access_token.reveal()
+            or result.auth_method_id not in ("", "google-oauth", "workspace-domain-delegation")
+        ):
+            return failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
+        return result
 
     async def send(
         self,

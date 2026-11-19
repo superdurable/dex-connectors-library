@@ -359,16 +359,18 @@ var ReplyToConversationDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "replyToConversation"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: ReplyToConversationBranchReplied, Description: "Front accepted the reply for delivery or created the comment."},
-		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist, was merged, or is not visible to the API token; nothing was sent.", Optional: true},
+		{ID: ReplyToConversationBranchNotFound, Description: "The conversation does not exist or is not visible to the API token (HTTP 404); nothing was sent. A merged conversation's 301 is an unknown outcome instead.", Optional: true},
 		{ID: ReplyToConversationBranchProviderRejected, Description: "Front conclusively rejected the reply or comment, such as a token without send permission or an unknown author; nothing was sent.", Optional: true},
-		{ID: ReplyToConversationBranchUncertain, Description: "The reply or comment may exist after a lost answer, ambiguous server error, late answer, 409 conflict, or terminal credential failure during accepted-write read-back; an accepted comment may have been deleted before read-back. The connector never resends without proof of non-application.", Optional: true},
-		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection credentials that require reauthorization or are unusable before sending, or the connector definition is invalid; transient credential failures Retry.", Optional: true},
+		{ID: ReplyToConversationBranchUncertain, Description: "The reply or comment may exist: the send cap is reached after answers that were lost, late, 409, a 3xx such as a merged conversation's 301, an unlisted status, an ambiguous server error, or a refusal with an unreadable body; Front accepted it with a 2xx that carries no usable provider ID; a refusal or a reconnection requirement follows a possible earlier send; or an accepted write could not be read back, such as after a terminal credential failure or a deleted comment. Without a provider ID, an unknown outcome is resent while the cap allows; a 2xx is never resent.", Optional: true},
+		{ID: ReplyToConversationBranchDefect, Description: "Local input, connection credentials that require reauthorization or are unusable before a first send, or the connector definition is invalid; transient credential failures Retry.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type ReplyToConversationResult = sdkgo.MutationResult[ConversationReply]
@@ -390,6 +392,8 @@ type ReplyToConversationStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[ReplyToConversationResult]                 `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ConversationReply]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]) sdkgo.MutationStep[IN, ReplyToConversationInput, ConversationReply] {
@@ -425,6 +429,7 @@ func NewReplyToConversationStep[IN any](config ReplyToConversationStepConfig[IN]
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -440,14 +445,15 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationBranchUpdated, Description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt."},
 		{ID: UpdateConversationBranchNotFound, Description: "The conversation does not exist, was merged, or is not visible to the API token.", Optional: true},
 		{ID: UpdateConversationBranchProviderRejected, Description: "Front conclusively rejected a change, such as an unknown teammate, tag, or ticket status; changes sent before it stay applied.", Optional: true},
-		{ID: UpdateConversationBranchInvalidResponse, Description: "Front returned a malformed or oversized conversation, so the change may have been applied.", Optional: true},
-		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+		{ID: UpdateConversationBranchInvalidResponse, Description: "Declared for compatibility and no longer selected: an earlier attempt's change may have applied, so a malformed or oversized conversation on any read is retried.", Optional: true},
+		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid, or the connection needs reconnection on the first attempt; a transient credential failure, or one after an earlier attempt, Retries.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(60000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateConversationResult = sdkgo.MutationResult[UpdateConversationOutput]
@@ -469,6 +475,8 @@ type UpdateConversationStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateConversationResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateConversationOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateConversationStep[IN any](config UpdateConversationStepConfig[IN]) sdkgo.MutationStep[IN, UpdateConversationInput, UpdateConversationOutput] {

@@ -17,8 +17,11 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
+    ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError, CredentialBrokerRejectedError
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     new_provider_http_client,
@@ -40,6 +43,10 @@ if TYPE_CHECKING:
 
 _CURRENCY_PATTERN = re.compile(r"^[a-z]{3}$")
 _REFUND_STATUSES = frozenset({"succeeded", "pending", "failed", "requires_action", "canceled"})
+
+
+class CredentialMaterialError(ValueError):
+    """Stored Stripe credential material fails the connector credential checks, so no retry can succeed."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,16 +131,36 @@ class Client:
     async def resolve_credentials(
         self, call: Call, operation: str
     ) -> tuple[Credentials | None, Failure | None]:
-        """Resolve a secret key at call time, returning a safe authentication failure."""
+        """Resolve a secret key at call time, returning a safe failure.
+
+        A resolve failure another attempt may clear returns an AVAILABILITY failure; every
+        terminal credential problem returns an AUTHENTICATION failure.
+        """
+        unavailable = stripe_failure(
+            operation, FailureKind.AUTHENTICATION, "Stripe connection credentials are unavailable"
+        )
         try:
             credentials = await self._credentials.resolve(call)
-            if not isinstance(credentials, Credentials) or not credentials.secret_key.reveal():
-                raise ValueError("empty Stripe key")
-            return credentials, None
+        except (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+            CredentialMaterialError,
+        ):
+            return None, unavailable
         except Exception:
             return None, stripe_failure(
-                operation, FailureKind.AUTHENTICATION, "Stripe connection credentials are unavailable"
+                operation,
+                FailureKind.AVAILABILITY,
+                "Stripe connection credentials are temporarily unavailable; nothing was sent",
             )
+        try:
+            if not isinstance(credentials, Credentials) or not credentials.secret_key.reveal():
+                return None, unavailable
+        except (AttributeError, TypeError):
+            return None, unavailable
+        return credentials, None
 
     async def request(
         self,
@@ -198,8 +225,54 @@ def retry_after_seconds(headers: httpx.Headers) -> float:
     return float(min(seconds, 3600)) if seconds >= 1 else 0
 
 
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+
+def is_definite_stripe_write_refusal(
+    response: ProviderResponse, is_created_object: Callable[[bytes], bool]
+) -> bool:
+    """Report a listed 4xx whose body is not the created object, or a 402 Stripe error."""
+    if response.is_body_too_large:
+        # An unread body may carry the created object, so the outcome is unknown.
+        return False
+    if response.status_code in _DEFINITE_REFUSAL_STATUSES:
+        return not is_created_object(response.body)
+    if response.status_code == 402:
+        return bool(parse_stripe_api_error(response.body).get("type"))
+    return False
+
+
+def unknown_stripe_write_failure(operation: str, subject: str, response: ProviderResponse) -> Failure:
+    """Describe a keyed write outcome that a Retry resends under the same key."""
+    if response.status_code == 409:
+        return stripe_failure(
+            operation,
+            FailureKind.CONFLICT,
+            f"Stripe reported a conflicting {subject} request with this idempotency key",
+        )
+    if response.status_code >= 500:
+        return stripe_failure(
+            operation, FailureKind.AVAILABILITY, f"Stripe {subject} is temporarily unavailable"
+        )
+    return stripe_failure(
+        operation,
+        FailureKind.PROTOCOL,
+        f"Stripe returned unexpected HTTP status {response.status_code} for the {subject} request",
+    )
+
+
+def is_replayed_stripe_response(response: ProviderResponse) -> bool:
+    """Report Stripe replaying a cached result of an earlier request under the same key."""
+    return str(response.headers.get("Idempotent-Replayed", "")).lower() == "true"
+
+
+def is_later_attempt(call: Call) -> bool:
+    """Report an attempt after the first, which may follow an earlier send."""
+    return call.context is not None and call.context.attempt > 1
+
+
 def should_retry_keyed_server_failure(response: ProviderResponse) -> bool:
-    """Respect Stripe replay and retry hints before classifying keyed 5xx."""
+    """Respect Stripe replay and retry hints before reading back a refund 5xx."""
     if response.headers.get("Idempotent-Replayed", "").lower() == "true":
         return False
     hint = response.headers.get("Stripe-Should-Retry", "").lower()

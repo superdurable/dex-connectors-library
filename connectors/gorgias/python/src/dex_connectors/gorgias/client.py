@@ -11,7 +11,19 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+)
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -60,6 +72,16 @@ class Exchange:
     status: int = 0
     headers: httpx.Headers | None = None
     retry_after: float = 0
+    body_too_large: bool = False
+    """The body exceeded max_response_bytes and was not read, so it cannot prove a refusal."""
+    body_reflects_credential: bool = False
+    """The body contains the API key, so it cannot prove a refusal."""
+    object_id: int = 0
+    """The top-level id a readable body names; a write answer that carries one was accepted."""
+    object_external_id: str = ""
+    """The top-level external_id beside object_id, or empty."""
+    object_ticket_id: int = 0
+    """The top-level ticket_id beside object_id, or zero."""
 
 
 class Client:
@@ -156,6 +178,34 @@ class Client:
                 FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
             )
 
+    async def resolve_write_credentials(
+        self, call: Call, operation: str
+    ) -> tuple[Credentials | None, Failure | None, bool]:
+        """Resolve credentials and report whether a failure is terminal.
+
+        Terminal means revoked, unselected, or unusable credentials, which another attempt cannot repair;
+        any other provider error is a credential read that may succeed on a later attempt.
+        """
+        unusable = failure(FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable")
+        try:
+            credentials = await self.credentials.resolve(call)
+        except Exception as error:
+            if _is_terminal_credential_error(error):
+                return None, unusable, True
+            unread = failure(FailureKind.AVAILABILITY, operation, "connection credentials could not be read")
+            return None, unread, False
+        try:
+            is_usable = (
+                bare_email(credentials.email)
+                and ":" not in credentials.email
+                and is_header_safe_credential(credentials.api_key.reveal())
+            )
+        except (AttributeError, TypeError, ValueError):
+            is_usable = False
+        if not is_usable:
+            return None, unusable, True
+        return credentials, None, False
+
     async def exchange(
         self,
         call: Call,
@@ -165,8 +215,13 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
+        on_response_status: Callable[[int], None] | None = None,
     ) -> Exchange:
-        """Send one request and classify the outcome without selecting an operation branch."""
+        """Send one request and classify the outcome without selecting an operation branch.
+
+        on_response_status receives the HTTP status as soon as the headers arrive, so a caller cancelled
+        while the body is read still knows whether Gorgias accepted the request.
+        """
         basic = base64.b64encode(f"{credentials.email}:{credentials.api_key.reveal()}".encode()).decode()
         headers = {"Accept": "application/json", "Authorization": "Basic " + basic}
         if payload is not None:
@@ -192,7 +247,16 @@ class Client:
                 if error.provably_not_sent
                 else "Gorgias request failed before a response arrived"
             )
-            return Exchange(outcome, failure(FailureKind.TRANSPORT, operation, message))
+            # A status that arrived before the failure is kept, so a 2xx still proves acceptance.
+            return Exchange(
+                outcome,
+                failure(FailureKind.TRANSPORT, operation, message),
+                status=error.status_code or 0,
+                headers=error.headers,
+            )
+        if on_response_status is not None:
+            on_response_status(response.status_code)
+        body_too_large = False
         try:
             body = await read_bounded_body(response, self.max_response_bytes)
         except BodyTooLargeError:
@@ -207,7 +271,7 @@ class Client:
                     status=response.status_code,
                     headers=response.headers,
                 )
-            body = b""
+            body, body_too_large = b"", True
         except ProviderTransportError:
             return Exchange(
                 "unavailable",
@@ -215,6 +279,7 @@ class Client:
                 status=response.status_code,
                 headers=response.headers,
             )
+        object_id, object_external_id, object_ticket_id = _object_marker(body)
         if 200 <= response.status_code < 300:
             if credentials.api_key.reveal().encode() in body:
                 return Exchange(
@@ -226,8 +291,33 @@ class Client:
                     ),
                     status=response.status_code,
                     headers=response.headers,
+                    object_id=object_id,
+                    object_external_id=object_external_id,
+                    object_ticket_id=object_ticket_id,
                 )
-            return Exchange("success", body=body, status=response.status_code, headers=response.headers)
+            return Exchange(
+                "success",
+                body=body,
+                status=response.status_code,
+                headers=response.headers,
+                object_id=object_id,
+                object_external_id=object_external_id,
+                object_ticket_id=object_ticket_id,
+            )
+        api_key = credentials.api_key.reveal().encode()
+        return replace(
+            self._classify_failure_status(response, body, credentials, operation),
+            body_too_large=body_too_large,
+            body_reflects_credential=bool(api_key) and api_key in body,
+            object_id=object_id,
+            object_external_id=object_external_id,
+            object_ticket_id=object_ticket_id,
+        )
+
+    def _classify_failure_status(
+        self, response: httpx.Response, body: bytes, credentials: Credentials, operation: str
+    ) -> Exchange:
+        """Map a non-2xx response; Gorgias documents 429 as a request it did not perform."""
         status = response.status_code
         summary = describe_error(body, credentials.api_key.reveal())
         suffix = f" [{summary}]" if summary else ""
@@ -309,6 +399,22 @@ def failure(kind: FailureKind, operation: str, message: str) -> Failure:
     return Failure(kind, "gorgias", operation, message)
 
 
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure another attempt cannot repair, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return is_credential_material_error(error) or isinstance(
+        error,
+        (
+            ReauthorizationRequiredError,
+            ObjectNotFoundError,
+            ConnectionNotSelectedError,
+            CredentialBrokerRejectedError,
+        ),
+    )
+
+
 def describe_error(body: bytes, secret: str) -> str:
     """Keep only safe provider error codes and field names."""
     try:
@@ -324,6 +430,35 @@ def describe_error(body: bytes, secret: str) -> str:
         return "; ".join(parts)
     except (ValueError, TypeError, KeyError, AttributeError):
         return ""
+
+
+def _object_marker(body: bytes) -> tuple[int, str, int]:
+    """Return the top-level id, external_id, and ticket_id a body names.
+
+    Zeros mean the body is not a well-typed JSON object.
+    """
+    try:
+        document = json.loads(body)
+    except (ValueError, TypeError):
+        return 0, "", 0
+    if not isinstance(document, dict):
+        return 0, "", 0
+    object_id, ticket_id = document.get("id"), document.get("ticket_id")
+    external_id = document.get("external_id")
+    if (
+        not _is_optional_int64(object_id)
+        or not _is_optional_int64(ticket_id)
+        or not (external_id is None or isinstance(external_id, str))
+    ):
+        return 0, "", 0
+    return object_id or 0, external_id or "", ticket_id or 0
+
+
+def _is_optional_int64(value: Any) -> bool:
+    """Match a JSON value Go decodes into an int64 field: null or an integer in range."""
+    if value is None:
+        return True
+    return isinstance(value, int) and not isinstance(value, bool) and -(2**63) <= value < 2**63
 
 
 def bare_email(value: str) -> bool:

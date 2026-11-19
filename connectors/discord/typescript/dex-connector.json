@@ -1,10 +1,10 @@
 {
   "connectorId": "discord",
-  "releaseTag": "connectors/discord/go/v0.3.0",
+  "releaseTag": "connectors/discord/go/v0.4.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-discord",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -132,7 +132,7 @@
       "kind": "mutation",
       "operationId": "createMessage",
       "inputType": "CreateMessageInput",
-      "description": "Send one bot text message to a channel, deduplicated by a Discord nonce derived from the idempotency key, with every mention disabled.",
+      "description": "Send one bot text message to a channel with every mention disabled. Every send carries the same enforced Discord nonce derived from the idempotency key, an unknown outcome resends up to the send cap, an accepted 2xx is never resent and is read back by its message ID, and synchronous durability preserves the single-dispatch fence after retry or Worker loss.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -158,6 +158,11 @@
         {
           "id": "invalidResponse",
           "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
           "optional": true
         },
         {

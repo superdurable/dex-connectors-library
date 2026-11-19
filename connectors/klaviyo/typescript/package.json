@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-klaviyo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Klaviyo profile and event operations for Dex Flows",
   "license": "MIT",
   "repository": {

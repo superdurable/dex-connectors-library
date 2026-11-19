@@ -13,12 +13,22 @@ from dex_connectors.microsoft_sql_server import (
     QueryRowsInput,
     RowSet,
     StatementExecution,
+    new_execute_non_idempotent_step,
     new_execute_step,
     new_query_step,
 )
 
 CONNECTION_NAME = "sqlserver-refunds"
 FLOW_TYPE = "SQLServerRecordRefundPython"
+# Running this twice counts the refund twice, so it uses executeNonIdempotent.
+ADD_REFUND_TO_DAILY_TOTAL = (
+    "MERGE dbo.refund_daily_totals WITH (HOLDLOCK) AS totals "
+    "USING (SELECT CAST(SYSUTCDATETIME() AS date) AS refund_date, "
+    "CAST(@p1 AS decimal(14, 2)) AS amount_usd) AS refund "
+    "ON totals.refund_date = refund.refund_date "
+    "WHEN MATCHED THEN UPDATE SET total_usd = totals.total_usd + refund.amount_usd "
+    "WHEN NOT MATCHED THEN INSERT (refund_date, total_usd) VALUES (refund.refund_date, refund.amount_usd);"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +55,11 @@ def execute_input(request: RefundRequest) -> ExecuteStatementInput:
     )
 
 
+def daily_total_input(request: RefundRequest) -> ExecuteStatementInput:
+    """Add the refund's exact amount to today's total; the MERGE touches one row."""
+    return ExecuteStatementInput(ADD_REFUND_TO_DAILY_TOTAL, (request.amount_usd,), max_rows_affected=1)
+
+
 def query_input(request: RefundRequest) -> QueryRowsInput:
     """Read back the committed refund by its application order ID."""
     return QueryRowsInput(
@@ -67,7 +82,17 @@ class PrepareRefund(dex.Step[RefundRequest]):
 
 
 # dex:group group-id:refund group-label:"Record refund"
-# dex:explanation text:"Pass the retained order to the read-back Query after the write commits."
+# dex:explanation text:"Pass the retained refund to the daily total after the write commits."
+class PrepareDailyTotal(dex.Step[MutationResult[StatementExecution]]):
+    def get_step_type(self) -> str:
+        return "PrepareDailyTotal"
+
+    def execute(self, context: dex.Context, input: MutationResult[StatementExecution]) -> dex.StepDecision:
+        return dex.go_to(dex.StepRef("AddRefundToDailyTotal"), _REQUEST.get(context))
+
+
+# dex:group group-id:refund group-label:"Record refund"
+# dex:explanation text:"Pass the retained order to the read-back Query after the daily total commits."
 class PrepareReadBack(dex.Step[MutationResult[StatementExecution]]):
     def get_step_type(self) -> str:
         return "PrepareReadBack"
@@ -94,6 +119,7 @@ class RecordRefundFlow(dex.Flow[RefundRequest]):
         if connection.reference.name != CONNECTION_NAME:
             raise ValueError("refund Flow requires its static SQL Server connection")
         self.prepare = PrepareRefund()
+        self.prepare_daily_total = PrepareDailyTotal()
         self.prepare_read = PrepareReadBack()
         self.complete = CompleteRefund()
         self.execute = new_execute_step(
@@ -107,6 +133,19 @@ class RecordRefundFlow(dex.Flow[RefundRequest]):
             connection=connection,
             connection_name=CONNECTION_NAME,
             map_to_operation_input=execute_input,
+            completed=self.prepare_daily_total,
+        )
+        self.add_to_daily_total = new_execute_non_idempotent_step(
+            step_type="AddRefundToDailyTotal",
+            step_input_type=RefundRequest,
+            annotations={
+                "groupId": "refund",
+                "groupLabel": "Record refund",
+                "explanation": "Add the refund to today's total at most once.",
+            },
+            connection=connection,
+            connection_name=CONNECTION_NAME,
+            map_to_operation_input=daily_total_input,
             completed=self.prepare_read,
         )
         self.query = new_query_step(
@@ -128,7 +167,12 @@ class RecordRefundFlow(dex.Flow[RefundRequest]):
 
     def get_steps(self) -> dex.StepList[RefundRequest]:
         return dex.StepList.start_step(self.prepare).other_steps(
-            self.execute, self.prepare_read, self.query, self.complete
+            self.execute,
+            self.prepare_daily_total,
+            self.add_to_daily_total,
+            self.prepare_read,
+            self.query,
+            self.complete,
         )
 
     def get_persistence_schema(self) -> dex.PersistenceSchema:

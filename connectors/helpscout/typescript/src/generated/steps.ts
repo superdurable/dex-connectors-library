@@ -79,9 +79,9 @@ export interface ReplyToConversationStepConfig<StepInput, OperationInput = Reply
   replied: StepTarget<MutationResult<OperationOutput>>;
   /** The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added. */
   notFound?: StepTarget<MutationResult<OperationOutput>>;
-  /** Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added. */
+  /** Help Scout conclusively rejected the thread with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as invalid text or an unknown customer; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The thread was sent but Help Scout's answer was lost, a server error, or unreadable, so it may exist; the connector never sends it again. */
+  /** The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a refusal whose error body could not be read in full or echoed the access token; Help Scout accepted the thread with a 2xx but no valid thread ID; an error answer named a thread whose ID could not be saved; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -112,15 +112,18 @@ export interface UpdateConversationStepConfig<StepInput, OperationInput = Update
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Help Scout returned a malformed or oversized conversation, so part of the change may have been applied. */
+  /** Kept for compatibility and no longer selected: a malformed or oversized conversation read before or after the change returns Retry, because the change is safe to repeat. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateConversation Step from a named connection. */
 export function newUpdateConversationStep<StepInput, OperationInput = UpdateConversationInput, OperationOutput = UpdateConversationOutput>(configuration: UpdateConversationStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateConversation(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

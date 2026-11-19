@@ -258,7 +258,7 @@ export function updateEmployeeNotFoundFailure(): Case<UpdateEmployeeOutput> {
 /** Manifest scenario providerRejectedFailure for updateEmployee. */
 export function updateEmployeeProviderRejectedFailure(): Case<UpdateEmployeeOutput> {
   const value = emptyUpdateEmployeeOutput;
-  return branchCase("providerRejected", value, { kind: "CONFLICT", provider: ConnectorID, operation: "updateEmployee", message: "BambooHR rejected the duplicate email." });
+  return branchCase("providerRejected", value, { kind: "VALIDATION", provider: ConnectorID, operation: "updateEmployee", message: "BambooHR rejected the field value." });
 }
 /** Manifest scenario invalidResponseFailure for updateEmployee. */
 export function updateEmployeeInvalidResponseFailure(): Case<UpdateEmployeeOutput> {
@@ -286,7 +286,7 @@ export function addEmployeeDefault(): Case<AddEmployeeOutput> { return addEmploy
 /** Manifest scenario providerRejectedFailure for addEmployee. */
 export function addEmployeeProviderRejectedFailure(): Case<AddEmployeeOutput> {
   const value = emptyAddEmployeeOutput;
-  return branchCase("providerRejected", value, { kind: "CONFLICT", provider: ConnectorID, operation: "addEmployee", message: "BambooHR rejected the duplicate email." });
+  return branchCase("providerRejected", value, { kind: "VALIDATION", provider: ConnectorID, operation: "addEmployee", message: "BambooHR rejected the field value." });
 }
 
 /** Scripted operations and manifest defaults for this connector. */

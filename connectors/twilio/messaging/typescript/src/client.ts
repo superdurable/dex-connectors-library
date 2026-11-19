@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import type { Config, Credentials, Message } from './generated/models.js';
+import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { ReauthorizationRequiredError, SecretString, resolveCredentialAfterRejection, type Call, type CredentialProvider, type CredentialRefreshDriver, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { isCredentialMaterialError, type Config, type Credentials, type Message } from './generated/models.js';
 import { GetMessageOperation, SendMessageOperation } from './operations.js';
 
 const accountPattern = /^AC[0-9a-f]{32}$/;
@@ -82,7 +83,7 @@ export class TwilioClient {
     let credentials: Credentials;
     try { credentials = await this.credentials.resolve(call, call.context.cancellationSignal); }
     catch (error) {
-      if (error instanceof Error && (error.name === 'ReauthorizationRequiredError' || error.message.includes('reauthorization required'))) return { failure: twilioFailure(operation, 'AUTHENTICATION', 'Twilio connection credentials require reauthorization; reconnect the connection'), isTransient: false };
+      if (isTerminalCredentialError(error)) return { failure: twilioFailure(operation, 'AUTHENTICATION', 'Twilio connection credentials are unavailable or require reauthorization; reconnect the connection'), isTransient: false };
       return { failure: twilioFailure(operation, 'AVAILABILITY', 'Twilio credential lookup is temporarily unavailable'), isTransient: true };
     }
     return this.validateAuthorization(credentials, operation);
@@ -94,7 +95,7 @@ export class TwilioClient {
     try { credentials = await resolveCredentialAfterRejection(this.credentials, call, staticCredentialRefresh, call.context.cancellationSignal); }
     catch (error) {
       if (error instanceof TypeError && error.message.includes('does not support refresh')) return { failure: twilioFailure('sendMessage', 'AUTHENTICATION', 'Twilio credential cannot be refreshed after rejection'), isTransient: false };
-      if (error instanceof Error && error.name === 'ReauthorizationRequiredError') return { failure: twilioFailure('sendMessage', 'AUTHENTICATION', 'Twilio connection credentials require reauthorization; reconnect the connection'), isTransient: false };
+      if (isTerminalCredentialError(error)) return { failure: twilioFailure('sendMessage', 'AUTHENTICATION', 'Twilio connection credentials are unavailable or require reauthorization; reconnect the connection'), isTransient: false };
       if (error instanceof Error && error.name === 'RejectedCredentialNotRefreshedError') return { failure: twilioFailure('sendMessage', 'AUTHENTICATION', 'Twilio rejected the message credentials; update the connection'), isTransient: false };
       return { failure: twilioFailure('sendMessage', 'AVAILABILITY', 'Twilio credential refresh is temporarily unavailable'), isTransient: true };
     }
@@ -119,7 +120,7 @@ export class TwilioClient {
     const body = form ? Buffer.from(encodeGoForm(form), 'utf8') : undefined;
     const request: ProviderRequest = {
       url, method, headers: { Authorization: `Basic ${Buffer.from(`${authorization.username}:${authorization.password}`).toString('base64')}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
-      ...(body ? { body } : {}), maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes),
+      ...(body ? { body } : {}), maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes), maxErrorResponseBytes: MaxErrorBodyBytes,
       addressPolicy: this.addressPolicy, timeoutMs: requestTimeoutMs, signal: signal ?? call.context.cancellationSignal,
     };
     try {
@@ -127,8 +128,11 @@ export class TwilioClient {
       return { response, isTooLarge: response.status >= 200 && response.status < 300 && response.body.length > this.maxResponseBytes, isBodyReadFailed: false };
     } catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers) {
-        if (error.status < 200 || error.status >= 300) return { response: { status: error.status, headers: error.headers, body: Buffer.alloc(0) }, isTooLarge: false, isBodyReadFailed: false };
         return { response: { status: error.status, headers: error.headers, body: Buffer.alloc(0) }, isTooLarge: true, isBodyReadFailed: false };
+      }
+      // Headers arrived before the body failed, so the status still decides whether Twilio applied the request.
+      if ((error instanceof ProviderTransportError && !error.isProvablyNotSent || error instanceof ProviderStalledError) && error.status !== undefined && error.status >= 100) {
+        return { response: { status: error.status, headers: error.headers ?? {}, body: Buffer.alloc(0) }, isTooLarge: false, isBodyReadFailed: true };
       }
       const safe = error instanceof Error ? error : new Error('Twilio transport failed');
       return { error: safe, isProvablyNotSent: error instanceof AddressRefusal || (error instanceof ProviderTransportError && error.isProvablyNotSent) };
@@ -211,6 +215,13 @@ export function parseTwilioJSON(text: string): ParsedTwilioJSON {
 export function isE164PhoneNumber(value: string): boolean { return phonePattern.test(value); }
 /** Safe failure without provider content. */
 export function twilioFailure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'twilio', operation, message }; }
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError ||
+    isCredentialMaterialError(error) || (error instanceof Error && error.name === 'ReauthorizationRequiredError');
+}
 /** Parse a supported sender. */
 export function parseSender(value: string): MessageSender {
   const sender = value.trim();

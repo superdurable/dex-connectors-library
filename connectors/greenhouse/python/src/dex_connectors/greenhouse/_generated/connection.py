@@ -66,27 +66,43 @@ def new_connection_with_operations(
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.greenhouse.connection')
 
 
+class CredentialMaterialError(ValueError):
+    "Stored Greenhouse credential material fails the connector credential checks, so no retry can succeed."
+
+
+def is_credential_material_error(error: BaseException) -> bool:
+    """Report malformed stored credential material, also behind the SDK provider's decoding ValueError."""
+    if isinstance(error, CredentialMaterialError):
+        return True
+    # Only the SDK decoding wrapper qualifies; other errors may be transient.
+    return (
+        type(error) is ValueError
+        and str(error) in {'project credential decoding failed', 'shared project credential decoding failed'}
+        and isinstance(error.__context__, CredentialMaterialError)
+    )
+
+
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
-        raise ValueError("Greenhouse stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Greenhouse stored credential does not match the connector credential fields")
     if set(material) - set(('client_id', 'client_secret', 'access_token')):
-        raise ValueError("Greenhouse stored credential does not match the connector credential fields")
+        raise CredentialMaterialError("Greenhouse stored credential does not match the connector credential fields")
     is_shared = shared
     client_id = material.get("client_id")
     if client_id is not None and not (isinstance(client_id, str)):
-        raise ValueError("Greenhouse credential client_id has an invalid type")
+        raise CredentialMaterialError("Greenhouse credential client_id has an invalid type")
     client_secret = material.get("client_secret")
     if client_secret is not None and not (isinstance(client_secret, str)):
-        raise ValueError("Greenhouse credential client_secret has an invalid type")
+        raise CredentialMaterialError("Greenhouse credential client_secret has an invalid type")
     access_token = material.get("access_token")
     if access_token is not None and not (isinstance(access_token, str)):
-        raise ValueError("Greenhouse credential access_token has an invalid type")
+        raise CredentialMaterialError("Greenhouse credential access_token has an invalid type")
     if not client_id:
-        raise ValueError("Greenhouse credential client_id is required")
+        raise CredentialMaterialError("Greenhouse credential client_id is required")
     if not client_secret and not is_shared:
-        raise ValueError("Greenhouse credential client_secret is required")
+        raise CredentialMaterialError("Greenhouse credential client_secret is required")
     if not access_token and is_shared:
-        raise ValueError("Greenhouse credential access_token is required")
+        raise CredentialMaterialError("Greenhouse credential access_token is required")
     return Credentials(client_id, SecretString(client_secret or ''), SecretString(access_token or ''))
 
 

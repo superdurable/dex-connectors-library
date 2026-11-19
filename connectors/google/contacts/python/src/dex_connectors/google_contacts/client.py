@@ -10,6 +10,11 @@ from typing import TYPE_CHECKING
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, ReauthorizationRequiredError
+from dex_connectors.sdk.projectconfig import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    ObjectNotFoundError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -26,6 +31,22 @@ from ._generated.config import Credentials as Credentials
 
 if TYPE_CHECKING:
     from .operations import CreateContactOperation, GetContactOperation, ListContactsOperation
+
+# Credential failures that only reconnection repairs; any other resolve failure is transient.
+_TERMINAL_CREDENTIAL_ERRORS = (
+    ReauthorizationRequiredError,
+    ObjectNotFoundError,
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+)
+
+
+def _is_terminal_credential_error(error: BaseException) -> bool:
+    """Report a resolve failure that only reconnection repairs, including malformed stored material."""
+    # The generated connection module imports this module, so import it lazily.
+    from ._generated.connection import is_credential_material_error
+
+    return isinstance(error, _TERMINAL_CREDENTIAL_ERRORS) or is_credential_material_error(error)
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,9 +104,10 @@ class Client:
         """Return a header-safe bearer token or a safe failure class."""
         try:
             credentials = await self.credentials.resolve(call)
-        except ReauthorizationRequiredError:
-            return "", "credential"
-        except (ValueError, LookupError, OSError):
+        except Exception as error:  # noqa: BLE001
+            if _is_terminal_credential_error(error):
+                return "", "credential"
+            # Any unlisted resolve failure, such as an unconfigured connection, is transient.
             return "", "refresh"
         token = credentials.access_token.reveal()
         if not is_header_safe_credential(token):
@@ -100,8 +122,13 @@ class Client:
         token: str | None = None,
         method: str = "GET",
         body: bytes | None = None,
+        observed_statuses: list[int] | None = None,
     ) -> Exchange:
-        """Send one bounded HTTP request without returning provider error text."""
+        """Send one bounded HTTP request without returning provider error text.
+
+        `observed_statuses` receives the response status as its headers arrive, so a
+        caller whose wait is cancelled during the body read still knows Google answered.
+        """
         if token is None:
             token, error = await self.resolve_token(call)
             if error:
@@ -127,6 +154,8 @@ class Client:
             return Exchange(error="not_built")
         except httpx.HTTPError:
             return Exchange(error="request", request_sent=True)
+        if observed_statuses is not None:
+            observed_statuses.append(response.status_code)
         try:
             retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
             try:

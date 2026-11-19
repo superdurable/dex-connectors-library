@@ -12,12 +12,19 @@ from dex_connectors.sdk import (
     CallID,
     ConnectionRef,
     FailureKind,
+    ReauthorizationRequiredError,
     RetryError,
     SecretString,
     StaticCredentialProvider,
     run_mutation,
     run_query,
 )
+from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
+    CredentialBrokerRejectedError,
+    CredentialBrokerUnavailableError,
+)
+from dex_connectors.sdk.projectconfig.storage import ObjectNotFoundError
 
 from dex_connectors.sentry import (
     DEFECT,
@@ -37,6 +44,7 @@ from dex_connectors.sentry import (
     ListIssuesInput,
     UpdateIssueStatusInput,
 )
+from dex_connectors.sentry._generated.connection import CredentialMaterialError
 
 CONNECTION = ConnectionRef("sentry", "sentry")
 TOKEN = "sntrys_test_token"
@@ -143,9 +151,8 @@ async def test_update_puts_absolute_status() -> None:
     [
         (httpx.Response(404), NOT_FOUND),
         (httpx.Response(400), PROVIDER_REJECTED),
-        (httpx.Response(409, json={"name": "invalid_idempotent_request"}), PROVIDER_REJECTED),
+        (httpx.Response(422), PROVIDER_REJECTED),
         (httpx.Response(202, json=ISSUE), UPDATED),
-        (httpx.Response(200, content=b"[]"), INVALID_RESPONSE),
     ],
 )
 async def test_update_branches(response: httpx.Response, branch: str) -> None:
@@ -164,6 +171,11 @@ async def test_update_branches(response: httpx.Response, branch: str) -> None:
         (httpx.Response(429, headers={"Retry-After": "2"}), FailureKind.RATE_LIMIT),
         (httpx.Response(500), FailureKind.AVAILABILITY),
         (httpx.Response(409), FailureKind.AVAILABILITY),
+        (httpx.Response(409, json={"name": "invalid_idempotent_request"}), FailureKind.AVAILABILITY),
+        (httpx.Response(302), FailureKind.AVAILABILITY),
+        (httpx.Response(425), FailureKind.AVAILABILITY),
+        (httpx.Response(200, content=b"[]"), FailureKind.PROTOCOL),
+        (httpx.Response(200, content=b"x" * 300), FailureKind.RESPONSE_TOO_LARGE),
     ],
 )
 async def test_update_retries_safe_failures(response: httpx.Response, kind: FailureKind) -> None:
@@ -197,4 +209,64 @@ async def test_invalid_inputs_and_blank_token_are_defects_without_request() -> N
     )
     assert blank_token.branch == DEFECT
     assert blank_token.failure is not None and blank_token.failure.kind == FailureKind.AUTHENTICATION
+    assert requests == []
+
+
+def _sdk_decoding_failure() -> ValueError:
+    """Build the SDK project provider's wrapper around a malformed stored credential."""
+    try:
+        try:
+            raise CredentialMaterialError("Sentry credential api_key is required")
+        except CredentialMaterialError:
+            raise ValueError("project credential decoding failed") from None
+    except ValueError as error:
+        return error
+
+
+class _FailingCredentials:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def resolve(self, call: Call) -> Credentials:
+        raise self.error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "is_terminal"),
+    [
+        (ReauthorizationRequiredError(), True),
+        (ObjectNotFoundError("absent"), True),
+        (ConnectionNotSelectedError(), True),
+        (CredentialBrokerRejectedError(), True),
+        (CredentialMaterialError("Sentry credential api_key is required"), True),
+        (_sdk_decoding_failure(), True),
+        (CredentialBrokerUnavailableError(), False),
+        (ValueError("connection is not configured"), False),
+        (LookupError("unlisted"), False),
+    ],
+)
+async def test_credential_resolve_errors_use_the_shared_terminal_set(
+    error: Exception, is_terminal: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=ISSUE)
+
+    client = Client(
+        Config(base_url="http://localhost:8848/api/0"),
+        _FailingCredentials(error),
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    call = make_call(UPDATE_ISSUE_STATUS_DEFINITION)
+    update = UpdateIssueStatusInput("acme", "123", "resolved")
+    if is_terminal:
+        result = await run_mutation(client.update_issue_status(), call, update)
+        assert result.branch == DEFECT
+    else:
+        with pytest.raises(RetryError) as raised:
+            await run_mutation(client.update_issue_status(), call, update)
+        assert raised.value.failure.kind == FailureKind.AVAILABILITY
     assert requests == []

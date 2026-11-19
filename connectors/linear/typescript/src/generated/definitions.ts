@@ -110,7 +110,7 @@ export const UpdateIssueBranchUpdated = UpdateIssueBranch.Updated;
 export const UpdateIssueBranchNotFound = UpdateIssueBranch.NotFound;
 /** Linear conclusively rejected the change, such as a workflow state or label of another team, an unknown assignee, or missing permission. */
 export const UpdateIssueBranchProviderRejected = UpdateIssueBranch.ProviderRejected;
-/** Linear returned an invalid or oversized issue, so the change may have been applied; repeating the Step is safe. */
+/** Kept for compatibility and no longer selected: an invalid or oversized issue after the change now retries, because repeating the absolute update is safe. */
 export const UpdateIssueBranchInvalidResponse = UpdateIssueBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateIssueBranchDefect = UpdateIssueBranch.Defect;
@@ -121,7 +121,7 @@ export const UpdateIssueDefinition: MutationDefinition = {
     { id: "updated", description: "Linear applied the change and returned the issue." },
     { id: "notFound", description: "The issue does not exist, was deleted, or the connection cannot see its team; nothing was changed.", optional: true },
     { id: "providerRejected", description: "Linear conclusively rejected the change, such as a workflow state or label of another team, an unknown assignee, or missing permission.", optional: true },
-    { id: "invalidResponse", description: "Linear returned an invalid or oversized issue, so the change may have been applied; repeating the Step is safe.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: an invalid or oversized issue after the change now retries, because repeating the absolute update is safe.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },

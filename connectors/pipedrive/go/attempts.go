@@ -4,6 +4,8 @@
 package pipedrive
 
 import (
+	"net/http"
+
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
@@ -55,6 +57,36 @@ func repeatableMutationAttemptForExchange[T any](result pipedriveExchange, recei
 	}
 	var zero T
 	return sdkgo.NewMutationBranch(branches.branchFor(result.outcome), zero, &result.failure, receipt)
+}
+
+// repeatSafeWriteAttemptForExchange maps an unsuccessful repeat-safe write: a status that does not
+// prove a refusal, such as 402, a redirect, or an unlisted 4xx, is retried like an unknown outcome.
+func repeatSafeWriteAttemptForExchange[T any](result pipedriveExchange, receipt sdkgo.Receipt, branches operationBranches) sdkgo.MutationAttempt[T] {
+	if isUnknownWriteOutcome(result) {
+		return sdkgo.NewMutationRetry[T](result.failure, result.retryAfter)
+	}
+	return repeatableMutationAttemptForExchange[T](result, receipt, branches)
+}
+
+// isUnknownWriteOutcome reports a write rejection whose status does not prove Pipedrive refused it.
+func isUnknownWriteOutcome(result pipedriveExchange) bool {
+	return (result.outcome == exchangeRejected || result.outcome == exchangeNotFound) && !isDefiniteWriteRefusal(result)
+}
+
+// isDefiniteWriteRefusal reports a status that proves Pipedrive refused a write. The daily token
+// budget 429 also counts: Pipedrive refuses the request before acting, until the budget resets.
+func isDefiniteWriteRefusal(result pipedriveExchange) bool {
+	if result.failure.Kind == sdkgo.FailureQuotaExhausted {
+		return true
+	}
+	switch result.response.statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 // queryAttemptForSession maps a session that could not start; nothing was sent.

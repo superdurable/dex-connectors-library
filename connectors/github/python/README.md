@@ -3,7 +3,7 @@
 `dex-connector-github` implements the six GitHub Query operations declared in
 [`connector.yaml`](../connector.yaml): `getAuthenticatedProfile`,
 `listPublicRepositories`, `listMergedPullRequests`, `listPullRequestFiles`,
-`listReleases`, and `listCommits`. Its Python release is `v0.1.0`; the Go release
+`listReleases`, and `listCommits`. Its Python release is `v0.1.1`; the Go release
 version remains independent. The Go-only `listIssues` and `createIssue`
 operations and their `github-oauth-repository` authorization method are not
 implemented here, and the conformance test replays only the six Queries.
@@ -14,6 +14,11 @@ manifest-driven OAuth refresh driver. It requests `read:user`, `user:email`, and
 exactly `read:user` and `user:email` in `X-OAuth-Scopes`; broader scopes select
 `insufficientScope`. The package never stores tokens in Flow input, Attributes,
 Results, receipts, or logs.
+
+A credential failure selects `defect` only when reconnection is required: the
+connection needs reauthorization, is missing or not selected, the credential
+broker refused it, or the stored material is malformed. Every other credential
+failure, such as an unavailable broker, returns Retry without contacting GitHub.
 
 The manifest declares two authorization methods, so the generated `Credentials`
 dataclass begins with `auth_method_id`, which defaults to `github-oauth`, and

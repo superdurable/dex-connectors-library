@@ -1,6 +1,6 @@
 # Telegram message send Flow
 
-This runnable Flow calls `sendMessage` with the static `telegram` connection and completes with Telegram's message ID. Optional branches, including `uncertain`, are unwired so they fail the Flow. If a send becomes uncertain, inspect the destination chat before considering a new send.
+This runnable Flow calls `sendMessage` with the static `telegram` connection and completes with Telegram's message ID. Optional branches, including `uncertain`, are unwired so they fail the Flow. An unknown outcome resends up to the send cap before `uncertain`; if a send becomes uncertain, inspect the destination chat before considering a new send.
 
 ## Strict FDG 2.0 generation
 

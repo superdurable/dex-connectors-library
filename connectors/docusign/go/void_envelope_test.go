@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/docusign/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
 func voidEnvelope(t *testing.T, fake *fakeDocuSign, reason string) (docusign.VoidEnvelopeResult, error) {
@@ -66,6 +67,17 @@ func TestVoidEnvelopeReadsBackARefusedVoid(t *testing.T) {
 	}
 }
 
+func TestVoidEnvelopeRetriesAnUnreadableStatusReadBack(t *testing.T) {
+	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{
+		"PUT " + envelopePath: respondJSON(http.StatusBadRequest, docusignError("ENVELOPE_CANNOT_VOID_INVALID_STATE")),
+		"GET " + envelopePath: respondJSON(http.StatusOK, `{"envelopeId":`),
+	})
+	_, err := voidEnvelope(t, fake, "Deal lost")
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "voiding again is safe, so an unreadable read-back never selects invalidResponse")
+	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+}
+
 func TestVoidEnvelopeClassifiesOtherAnswers(t *testing.T) {
 	for name, test := range map[string]struct {
 		status         int
@@ -84,10 +96,22 @@ func TestVoidEnvelopeClassifiesOtherAnswers(t *testing.T) {
 		})
 	}
 
-	fake := newFakeDocuSign(t, map[string]http.HandlerFunc{"PUT " + envelopePath: respondJSON(http.StatusServiceUnavailable, `{}`)})
-	_, err := voidEnvelope(t, fake, "Deal lost")
-	var retry *sdkgo.RetryError
-	require.ErrorAs(t, err, &retry, "a void is safe to repeat")
+	for _, status := range []int{http.StatusServiceUnavailable, http.StatusConflict, http.StatusFound, http.StatusGone} {
+		fake := newFakeDocuSign(t, map[string]http.HandlerFunc{"PUT " + envelopePath: respondJSON(status, docusignError("UNSPECIFIED_ERROR"))})
+		_, err := voidEnvelope(t, fake, "Deal lost")
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "a void is safe to repeat after HTTP %d", status)
+	}
+
+	for name, answer := range map[string]http.HandlerFunc{
+		"oversized refusal body": respondJSON(http.StatusBadRequest, docusignError("USER_LACKS_PERMISSIONS")+strings.Repeat(" ", providerhttp.MaxErrorBodyBytes)),
+		"refusal body cut off":   cutOffBody(http.StatusBadRequest, docusignError("USER_LACKS_PERMISSIONS")),
+	} {
+		fake := newFakeDocuSign(t, map[string]http.HandlerFunc{"PUT " + envelopePath: answer})
+		_, err := voidEnvelope(t, fake, "Deal lost")
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "an incomplete refusal body proves no refusal: %s", name)
+	}
 }
 
 func TestVoidEnvelopeRequiresAReasonDocuSignKeepsWhole(t *testing.T) {

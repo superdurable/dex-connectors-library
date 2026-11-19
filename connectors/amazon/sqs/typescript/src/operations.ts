@@ -18,6 +18,9 @@ function failure(operation: string, kind: Failure['kind'], message: string): Fai
 function defect<Output>(operation: string, output: Output, message: string): MutationAttempt<Output> {
   return newMutationBranch('defect', output, zeroReceipt(), failure(operation, 'VALIDATION', message));
 }
+function credentialsRetry<Output>(operation: string): MutationAttempt<Output> {
+  return newMutationRetry(failure(operation, 'AVAILABILITY', 'SQS connection credentials are temporarily unavailable; nothing was sent'));
+}
 function credentialsDefect<Output>(operation: string, output: Output): MutationAttempt<Output> {
   return newMutationBranch('defect', output, zeroReceipt(), failure(operation, 'AUTHENTICATION', 'SQS connection credentials are unavailable; save an access key ID and secret access key for the connection'));
 }
@@ -59,7 +62,8 @@ export class ReceiveMessagesOperation implements Mutation<ReceiveMessagesInput, 
     if (visibility !== undefined && (!Number.isSafeInteger(visibility) || visibility < 0 || visibility > 43200)) return defect(operation, zeroReceived, 'visibilityTimeoutSeconds must be from 0 to 43200');
     const attemptId = call.idempotencyKey ?? '';
     if (queue.isFIFO && (!attemptId || Buffer.byteLength(attemptId) > 128 || !printable.test(attemptId))) return defect(operation, zeroReceived, 'idempotency key is missing or not a valid ReceiveRequestAttemptId');
-    const credentials = await this.client.resolveCredentials(call);
+    const credentials = await this.client['resolveCredentialsOrTransient'](call);
+    if (credentials === null) return credentialsRetry(operation);
     if (!credentials) return credentialsDefect(operation, zeroReceived);
     const batch: ReceivedMessages = { queueUrl: queue.url, ...(queue.isFIFO ? { isFifo: true } : {}) };
     const attributes = receiveSystemAttributes();
@@ -101,7 +105,8 @@ export class DeleteMessageOperation implements Mutation<DeleteMessageInput, Dele
     let queue: QueueAddress;
     try { queue = acknowledgementInput(this.client, input.queueUrl, input.receiptHandle, input.messageId); }
     catch (error) { return defect(operation, zeroDeleted, (error as Error).message); }
-    const credentials = await this.client.resolveCredentials(call);
+    const credentials = await this.client['resolveCredentialsOrTransient'](call);
+    if (credentials === null) return credentialsRetry(operation);
     if (!credentials) return credentialsDefect(operation, zeroDeleted);
     const deleted: DeletedMessage = { queueUrl: queue.url, ...(input.messageId ? { messageId: input.messageId } : {}) };
     const objectId = input.messageId ? `${queue.url}#${input.messageId}` : queue.url;
@@ -126,7 +131,8 @@ export class ChangeMessageVisibilityOperation implements Mutation<ChangeMessageV
     try { queue = acknowledgementInput(this.client, input.queueUrl, input.receiptHandle, input.messageId); }
     catch (error) { return defect(operation, zeroChanged, (error as Error).message); }
     if (!Number.isSafeInteger(input.visibilityTimeoutSeconds) || input.visibilityTimeoutSeconds < 0 || input.visibilityTimeoutSeconds > 43200) return defect(operation, zeroChanged, 'visibilityTimeoutSeconds must be from 0 to 43200');
-    const credentials = await this.client.resolveCredentials(call);
+    const credentials = await this.client['resolveCredentialsOrTransient'](call);
+    if (credentials === null) return credentialsRetry(operation);
     if (!credentials) return credentialsDefect(operation, zeroChanged);
     const changed: ChangedMessageVisibility = { queueUrl: queue.url, ...(input.messageId ? { messageId: input.messageId } : {}), visibilityTimeoutSeconds: input.visibilityTimeoutSeconds, visibleAfter: '0001-01-01T00:00:00Z' };
     const objectId = input.messageId ? `${queue.url}#${input.messageId}` : queue.url;
@@ -134,7 +140,9 @@ export class ChangeMessageVisibilityOperation implements Mutation<ChangeMessageV
     try { response = await this.client.exchange(call, credentials, 'ChangeMessageVisibility', { QueueUrl: queue.url, ReceiptHandle: input.receiptHandle, VisibilityTimeout: input.visibilityTimeoutSeconds }); }
     catch { return transportRetry(operation, 'visibility change'); }
     const classified = classifyAcknowledgement(call, this.client, response, credentials, operation, 'visibility change', changed, objectId);
-    if (classified) return classified;
+    // An earlier release may have taken effect, and a released message is no longer in flight.
+    const isRepeatedRelease = input.visibilityTimeoutSeconds === 0 && call.context.attempt > 1 && classified?.kind === 'branch' && classified.branch === 'receiptHandleInvalid';
+    if (classified && !isRepeatedRelease) return classified;
     const receipt = this.client.receipt(call, response, objectId);
     changed.visibleAfter = new Date(Date.parse(receipt.observedAt) + input.visibilityTimeoutSeconds * 1000).toISOString().replace(/\.000Z$/, 'Z');
     return newMutationBranch('changed', changed, receipt);

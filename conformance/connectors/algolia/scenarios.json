@@ -499,14 +499,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "objectID": "",
-          "taskID": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -518,7 +514,7 @@
         "indexName": "products",
         "objectID": "product-1"
       },
-      "name": "saveObject-invalid-response",
+      "name": "saveObject-invalid-confirmation-retries",
       "operation": "saveObject"
     },
     {

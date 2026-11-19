@@ -59,11 +59,11 @@ func TestIndexDocumentReplacesSameStableIDAcrossRetry(t *testing.T) {
 	require.Equal(t, 4, requests)
 }
 
-func TestDocumentMutationsTreatUnresolvedCredentialsAsDefect(t *testing.T) {
+func TestDocumentMutationsTreatInvalidCredentialsAsDefect(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests++ }))
 	defer server.Close()
-	client, err := New(Config{ClusterURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{})
+	client, err := New(Config{ClusterURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {}})
 	require.NoError(t, err)
 	indexed, err := sdkgo.RunMutation(queryContext{}, client.IndexDocument(), testConnection, IndexDocumentInput{Index: "products", DocumentID: "sku-42", Source: []byte(`{"title":"Meridian"}`)})
 	require.NoError(t, err)
@@ -111,4 +111,21 @@ func TestDeleteDocumentTreatsRepeatedDeleteAsSuccess(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, DeleteDocumentBranchIndexNotFound, missingIndex.Branch)
 	require.Equal(t, 3, requests)
+}
+
+func TestDocumentWritesRetryUnlistedStatusesAsUnknown(t *testing.T) {
+	for _, status := range []int{http.StatusMethodNotAllowed, http.StatusConflict, http.StatusTooEarly, http.StatusUnavailableForLegalReasons} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(status)
+			_, err := fmt.Fprint(w, `{}`)
+			require.NoError(t, err)
+		}))
+		client := newTestClient(t, server.URL)
+		_, err := sdkgo.RunMutation(queryContext{}, client.IndexDocument(), testConnection,
+			IndexDocumentInput{Index: "products", DocumentID: "sku-42", Source: []byte(`{"title":"Meridian"}`)})
+		require.Error(t, err, "HTTP %d on indexDocument is unknown and retries", status)
+		_, err = sdkgo.RunMutation(queryContext{}, client.DeleteDocument(), testConnection, DeleteDocumentInput{Index: "products", DocumentID: "sku-42"})
+		require.Error(t, err, "HTTP %d on deleteDocument is unknown and retries", status)
+		server.Close()
+	}
 }

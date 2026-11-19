@@ -6,7 +6,7 @@ import { MaxChangesPerPage, markCursorInvalid, markRateLimited, newTriggerCreden
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import { actionLookbackNanoseconds, compareASCII, decodeCardActionCursor, encodeCardActionCursor, formatGoJSONTime, formatTrelloTime, parseGoTime, seenActionIdsWithin, type CardActionCursor, type GoTime } from './card_action_cursor.js';
 import { CardActionCommented, CardActionUpdated, CardChangedTriggerDefinition, WatchedCardActionTypes, cardChangeEventId, type ActionCard, type ActionList, type CardActionType, type CardChangedEvent, type CardChangedTriggerConfiguration } from './card_changed.js';
-import { TrelloCredentialReflectionError, trelloRateLimitMessage, trelloRetryDelay, type TrelloClient, type TrelloExchange } from './client.js';
+import { TrelloCredentialReflectionError, TrelloCredentialUnavailableError, trelloRateLimitMessage, trelloRetryDelay, type TrelloClient, type TrelloExchange } from './client.js';
 import type { MemberReference } from './generated/models.js';
 
 const operation = 'cardChanged';
@@ -121,7 +121,7 @@ export class CardActionFetcher {
 /** Map a failed exchange to a poll error: 429 pauses the connection, and a 400 naming since or before reseeds. */
 function responseBodyOrThrow(exchange: TrelloExchange): Uint8Array {
   if ('error' in exchange) {
-    if (exchange.error instanceof TypeError && exchange.receipt.callId === undefined) {
+    if (exchange.error instanceof TrelloCredentialUnavailableError) {
       throw new Error('Trello cardChanged credentials are unavailable; save an API key and a token for the connection');
     }
     const status = exchange.status;

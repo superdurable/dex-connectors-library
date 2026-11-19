@@ -1,6 +1,6 @@
 # Google Calendar Python connector
 
-Install `dex-connector-google-calendar==0.2.0` alongside a compatible Dex Python SDK; it requires `dex-connectors-sdk>=0.12.0` for the poll Trigger kit. The package exposes `Client`, generated `Config` and `Credentials`, a generated project connection with Google OAuth and Workspace delegated refresh, operation-specific Step factories for `listEvents`, `getEvent`, `createEvent`, `updateEvent`, and `queryFreeBusy`, and the `eventChanged` Trigger.
+Install `dex-connector-google-calendar==0.2.1` alongside a compatible Dex Python SDK; it requires `dex-connectors-sdk>=0.12.0` for the poll Trigger kit. The package exposes `Client`, generated `Config` and `Credentials`, a generated project connection with Google OAuth and Workspace delegated refresh, operation-specific Step factories for `listEvents`, `getEvent`, `createEvent`, `updateEvent`, and `queryFreeBusy`, and the `eventChanged` Trigger.
 
 See [`examples/calendar_events`](examples/calendar_events/README.md) for a runnable Flow with the static connection name `google-calendar-events-reader`. The example lists a bounded event window and persists the public result. It uses the generated project connection, so the Worker reads credentials from Dex project storage and never takes a token from Flow input.
 

@@ -36,4 +36,11 @@ func TestRecordRefundUsesMockWithRealDex(t *testing.T) {
 		IdempotencyKeyPlaceholder: 4, MaxRowsAffected: &maximumRowsAffected,
 	}, executeCalls[0].Input)
 	require.Equal(t, postgresql.ExecuteStatementBranchCompleted, executeCalls[0].Branch)
+
+	dailyTotalCalls := mock.ExecuteStatementNonIdempotent().Calls()
+	require.Len(t, dailyTotalCalls, 1)
+	require.Equal(t, postgresql.ExecuteStatementInput{
+		Statement: AddRefundToDailyTotalStatement, Parameters: []any{outcome.Refund.AmountUSD}, MaxRowsAffected: &maximumRowsAffected,
+	}, dailyTotalCalls[0].Input)
+	require.Equal(t, "250.00", outcome.DailyTotalUSD)
 }

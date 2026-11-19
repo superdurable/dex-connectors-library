@@ -1,12 +1,13 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call } from '@superdurable/connectors-sdk';
 import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { SearchVideosOperation, GetVideoOperation, GetChannelOperation, ListPlaylistItemsOperation, AddPlaylistItemOperation } from './operations.js';
 
 const defaultEndpoint = 'https://www.googleapis.com/youtube/v3';
@@ -15,14 +16,17 @@ const defaultTimeoutMs = 25_000;
 
 /** Inject a provider transport for deterministic tests. */
 export interface YouTubeClientOptions { send?: (request: ProviderRequest) => Promise<ProviderResponse>; now?: () => Date; }
-/** One provider exchange. */
-export interface YouTubeResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; isTooLarge: boolean; }
+/** One provider exchange. `isErrorBodyTooLarge` marks a non-2xx body dropped for its size. */
+export interface YouTubeResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; isTooLarge: boolean; isErrorBodyTooLarge?: boolean; }
 /**
  * One classified provider exchange. A fenced write reports `retryUnprocessed` only when YouTube
- * provably did not act on it, and `writeUnconfirmed` when it may have taken effect.
+ * provably did not act on it, `writeUnconfirmed` when it may have taken effect, and
+ * `acceptedUnreadable` when YouTube accepted it, such as a 2xx whose body could not be read or a
+ * response that names an item ID. `isTransientCredentialFailure` marks credentials that could not
+ * be resolved or refreshed without a revoked grant.
  */
 export class YouTubeExchangeError extends Error {
-  constructor(readonly disposition: 'retry' | 'retryUnprocessed' | 'writeUnconfirmed' | 'quotaExhausted' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect', readonly kind: string, message: string, readonly response?: YouTubeResponse, readonly retryAfterMs = 0) { super(message); }
+  constructor(readonly disposition: 'retry' | 'retryUnprocessed' | 'writeUnconfirmed' | 'acceptedUnreadable' | 'quotaExhausted' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect', readonly kind: string, message: string, readonly response?: YouTubeResponse, readonly retryAfterMs = 0, readonly isTransientCredentialFailure = false) { super(message); }
 }
 
 /** YouTube API client using the generated OAuth refresh declaration. */
@@ -57,8 +61,8 @@ export class YouTubeClient {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
-      if (error instanceof ReauthorizationRequiredError) throw new YouTubeExchangeError('providerRejected', 'AUTHENTICATION', 'the YouTube connection must be authorized again');
-      throw new YouTubeExchangeError('defect', 'AUTHENTICATION', 'YouTube connection credentials are unavailable or invalid');
+      if (isTerminalCredentialError(error)) throw new YouTubeExchangeError('providerRejected', 'AUTHENTICATION', 'the YouTube connection must be authorized again');
+      throw new YouTubeExchangeError('retry', 'AUTHENTICATION', 'YouTube connection credentials are temporarily unavailable', undefined, 0, true);
     }
     if (!credentials.accessToken || !isHeaderSafeCredential(credentials.accessToken.reveal())) throw new YouTubeExchangeError('defect', 'AUTHENTICATION', 'YouTube connection credentials are unavailable or invalid');
     if (requiresManage && credentials.authMethodId !== 'google-oauth-manage') throw new YouTubeExchangeError('providerRejected', 'AUTHORIZATION', 'addPlaylistItem requires a YouTube connection authorized with the google-oauth-manage method and its youtube scope');
@@ -75,7 +79,8 @@ export class YouTubeClient {
 
   /**
    * Send once, resending after one refreshed 401, and classify the response. A fenced write retries as
-   * unprocessed only after a rate-limit refusal or a connection that never opened; any other failure, including 503, may have applied it.
+   * unprocessed only after a rate-limit refusal, 503, or a connection that never opened; any other failure may have
+   * applied it. A 2xx whose body cannot be read is accepted and never resent.
    */
   private async sendAndClassify(call: Call, operation: string, url: string, initialCredentials: Credentials, body: string | undefined, signal: AbortSignal, isFencedWrite: boolean): Promise<YouTubeResponse> {
     let credentials = initialCredentials;
@@ -86,15 +91,25 @@ export class YouTubeClient {
         response = await this.request(url, credentials.accessToken.reveal(), body, signal, isFencedWrite);
       } catch (error) {
         if (error instanceof YouTubeExchangeError) throw error;
-        if (error instanceof ReauthorizationRequiredError) throw new YouTubeExchangeError('providerRejected', 'AUTHENTICATION', 'the YouTube connection must be authorized again');
-        throw new YouTubeExchangeError('defect', 'AUTHENTICATION', 'YouTube connection credentials are unavailable or invalid');
+        if (isTerminalCredentialError(error)) throw new YouTubeExchangeError('providerRejected', 'AUTHENTICATION', 'the YouTube connection must be authorized again');
+        throw new YouTubeExchangeError('retry', 'AUTHENTICATION', 'YouTube connection credentials are temporarily unavailable', undefined, 0, true);
       }
     }
-    if (response.isTooLarge) throw new YouTubeExchangeError(isFencedWrite ? 'writeUnconfirmed' : 'invalidResponse', 'RESPONSE_TOO_LARGE', 'YouTube response exceeds the configured size limit', response);
+    if (response.isTooLarge) throw new YouTubeExchangeError(isFencedWrite ? 'acceptedUnreadable' : 'invalidResponse', 'RESPONSE_TOO_LARGE', 'YouTube response exceeds the configured size limit', response);
     if (response.status >= 200 && response.status < 300) return response;
     const classified = classifyError(response, operation, this.now());
-    if (!isFencedWrite || classified.disposition !== 'retry') throw classified;
-    throw new YouTubeExchangeError(classified.kind === 'RATE_LIMIT' ? 'retryUnprocessed' : 'writeUnconfirmed', classified.kind, classified.message, response, classified.retryAfterMs);
+    if (!isFencedWrite) throw classified;
+    // An item ID contradicts any other status, so YouTube stored the insert; it is read back, never resent.
+    if (insertedItemID(response.body)) throw new YouTubeExchangeError('acceptedUnreadable', classified.kind, classified.message, response);
+    if (classified.disposition === 'retry') {
+      const isUnprocessed = classified.kind === 'RATE_LIMIT' || response.status === 503;
+      throw new YouTubeExchangeError(isUnprocessed ? 'retryUnprocessed' : 'writeUnconfirmed', classified.kind, classified.message, response, classified.retryAfterMs);
+    }
+    // Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert,
+    // and an oversized refusal body might hide an item ID.
+    if (classified.disposition !== 'quotaExhausted' && (!definiteRefusalStatuses.has(response.status) || response.isErrorBodyTooLarge))
+      throw new YouTubeExchangeError('writeUnconfirmed', classified.kind, classified.message, response);
+    throw classified;
   }
 
   private async request(url: string, token: string, body: string | undefined, signal: AbortSignal, isFencedWrite: boolean): Promise<YouTubeResponse> {
@@ -102,17 +117,40 @@ export class YouTubeClient {
     try { return { ...(await this.send(request)), isTooLarge: false }; }
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined) {
-        if (error.status < 200 || error.status >= 300) return { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: false };
+        if (error.status < 200 || error.status >= 300) return { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: false, isErrorBodyTooLarge: true };
         return { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: true };
       }
       if (isFencedWrite && error instanceof ProviderTransportError && error.isProvablyNotSent) throw new YouTubeExchangeError('retryUnprocessed', 'TRANSPORT', 'YouTube could not be reached before sending');
+      const statusBeforeFailure = error instanceof ProviderTransportError || error instanceof ProviderStalledError ? error.status : undefined;
+      if (isFencedWrite && statusBeforeFailure !== undefined && statusBeforeFailure >= 200 && statusBeforeFailure < 300)
+        throw new YouTubeExchangeError('acceptedUnreadable', 'TRANSPORT', 'YouTube accepted the insert but its response body could not be read');
       throw new YouTubeExchangeError(isFencedWrite ? 'writeUnconfirmed' : 'retry', 'TRANSPORT', 'YouTube did not return a complete response');
     }
   }
 }
 
+// Only these statuses prove YouTube refused a write; every other status is an unknown outcome.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** Return the playlist item ID an error response still carries, whatever its other fields hold. */
+export function insertedItemID(body: Uint8Array | undefined): string {
+  if (!body) return '';
+  try {
+    const value = JSON.parse(new TextDecoder().decode(body)) as unknown;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+    const id = (value as Record<string, unknown>).id;
+    return typeof id === 'string' ? id : '';
+  } catch { return ''; }
+}
+
 /** Encode one query component exactly as Go url.QueryEscape. */
 export function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
+
+/** Report a resolve failure that only reconnection repairs; any other one is transient. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
 
 function header(response: YouTubeResponse, name: string): string {
   const value = response.headers[name.toLowerCase()];

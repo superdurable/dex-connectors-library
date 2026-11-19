@@ -45,7 +45,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "ClickHouse", Explanation: "List tables from ClickHouse."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Listed:               sdkgo.GoTo(completeResult{}),
+			Listed:              sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
 	}

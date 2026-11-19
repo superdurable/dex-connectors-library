@@ -33,6 +33,8 @@
       "unauthorized_client"
     ],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeout": "15s",
+    "tokenExchangeTimeoutNanoseconds": 15000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -90,6 +92,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 15000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -146,6 +149,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 15000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -203,6 +207,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 15000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -260,6 +265,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 15000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -317,6 +323,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 15000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -374,6 +381,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 15000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -430,6 +438,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 15000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",
@@ -484,6 +493,7 @@
     },
     "terminalErrorCodes": [],
     "storedMissingExpiry": "refresh",
+    "tokenExchangeTimeoutNanoseconds": 15000000000,
     "refreshRequiredCases": [
       {
         "name": "fresh token",

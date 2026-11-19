@@ -1,6 +1,6 @@
 # Google Workspace Admin Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin`.
 
@@ -25,8 +25,9 @@ API. It exposes these operation-specific Dex Step factories:
   `workspaceadmin.NewRemoveUserFromGroupStep` change one direct group
   membership.
 
-Every Mutation converges when a Step repeats, so all seven operations use async
-Execute durability and none declares an `uncertain` branch. The connector never
+Every Mutation converges when a Step repeats, so each declares
+`repeatOnUnknown: safe`, retries an unknown outcome, and declares no
+`uncertain` branch; all seven operations use async Execute durability. The connector never
 deletes or renames accounts, changes passwords after creation, grants
 administrator roles, or edits group settings. This release has no Triggers and
 no Studio pickers.
@@ -142,7 +143,12 @@ address back with `users.get`:
   because Google documents a propagation delay after creation, and then
   selects `alreadyExists`: the address belongs to a group or to an account
   outside the directory, such as the unmanaged account Google's `users.insert`
-  reference names as a 409 cause.
+  reference names as a 409 cause. On a later attempt, whose predecessor may
+  have created the account, it keeps retrying within the retry budget instead.
+
+On a later attempt, a definite refusal of the insert, such as a 403, first
+reads the address back: an account carrying the key selects `created` with
+`wasAlreadyCreated: true`, and otherwise the refusal stands.
 
 An unusable success response is retried for the same reason. `createUser` and
 `addUserToGroup` use the one-hour default retry budget, which permits attempts after that one-minute window. Set `provisioningKey` to
@@ -159,8 +165,8 @@ creation to 10 accounts per domain per second; a creation 503 is retried.
 `{"suspended": true}` or `{"suspended": false}`. Google documents patch
 semantics for `users.update`, so no other field changes and a repeated attempt
 applies nothing new. An account Google returns in the other state, such as one
-Google suspended for abuse, selects `providerRejected` with the returned
-account. A missing account selects `notFound`. Suspension keeps the account's
+Google suspended for abuse, contradicts the write, so it is retried within the
+retry budget. A missing account selects `notFound`. Suspension keeps the account's
 data.
 
 ## Group membership
@@ -202,9 +208,9 @@ external IDs, and custom schema fields are never returned.
 | Invalid input, configuration, or credential | `defect`, before any request |
 | 404 | `notFound` where the operation declares it, otherwise `providerRejected` |
 | 409 | read-back convergence for `createUser` and `addUserToGroup`, otherwise `providerRejected` |
-| Other 4xx, including a 403 without a rate-limit reason | `providerRejected` |
-| Malformed or oversized response | `invalidResponse`, or Retry when a write may have been applied |
-| 429; 403 `userRateLimitExceeded`, `rateLimitExceeded`, or `quotaExceeded`; 408; 5xx; transport failure | Retry, honoring `Retry-After` up to one hour |
+| 400, 401, 411, 413, 414, 415, 422, or a 403 without a rate-limit reason | `providerRejected` |
+| Malformed or oversized response | `invalidResponse` for a Query; Retry for every Mutation |
+| 429; 403 `userRateLimitExceeded`, `rateLimitExceeded`, or `quotaExceeded`; 408; 5xx; any other status, including 3xx and 412; an oversized error body; transport failure | Retry, honoring `Retry-After` up to one hour |
 
 Failures carry a safe message, the failure kind, and only a documented Google
 reason code, never provider message text, account data, or credentials. Error
@@ -254,7 +260,7 @@ GOWORK=off go test -tags=integration ./... -count=1 -v
 
 ## Python package
 
-Install `dex-connector-google-workspace-admin==0.1.0` to use the same seven
+Install `dex-connector-google-workspace-admin==0.1.1` to use the same seven
 Directory operations in Python Dex Flows. The package uses Connector SDK
 `0.5.0`; its generated connection binding loads either the default Workspace
 domain delegation method or administrator OAuth, refreshes credentials before

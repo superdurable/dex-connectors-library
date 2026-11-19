@@ -100,24 +100,23 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadedFi
     if (content.toString('base64') !== input.contentBase64 || content.length > this.client.maxUploadBytes)
       return uploadBranch('defect', 'VALIDATION', 'Box upload content must be bounded Base64');
     const digest = createHash('sha1').update(content).digest('hex').toUpperCase();
+    const isLaterAttempt = (call.context?.attempt ?? 1) > 1;
     const first = await this.client.getFileMetadata(call, input.fileId);
-    const initial = initialMetadata(first, input.fileId);
+    const initial = initialMetadata(first, input.fileId, isLaterAttempt);
     if ('decision' in initial) return initial.decision;
     const metadata = initial.metadata;
     if (matches(metadata, input.fileId, digest, content.length)) return uploaded(metadata);
     const exchange = await this.client.upload(call, input.fileId, metadata.name, content);
-    if (exchange.error === 'credential' && !exchange.requestSent)
-      return uploadBranch('defect', 'AUTHENTICATION', 'Box credentials are unavailable or invalid');
+    if (exchange.error === 'credential' && !exchange.requestSent) return credentialFailure(isLaterAttempt);
     if (exchange.error === 'refresh') return uploadRetry('AVAILABILITY', 'Box credentials could not be refreshed');
     if (exchange.error === 'request' && !exchange.requestSent)
       return uploadRetry('TRANSPORT', 'Box upload did not leave the process');
     if (exchange.status === 429) return uploadRetry('RATE_LIMIT', 'Box rate limited the upload', exchange.retryAfterMs);
     if (exchange.status === 408 || exchange.status >= 500)
       return uploadRetry('AVAILABILITY', 'Box upload is temporarily unavailable', exchange.retryAfterMs);
-    if (exchange.status === 404) return uploadBranch('notFound', 'NOT_FOUND', 'Box did not find the file');
+    if (isDefiniteRefusal(exchange)) return refusal(exchange.status);
+    // Any other answer, such as 409, 3xx, or an unreadable error body, is unknown: read back below.
     const isAccepted = exchange.status === 200 || exchange.status === 201;
-    if (exchange.status !== 0 && !isAccepted)
-      return uploadBranch('providerRejected', 'PROVIDER_REJECTION', `Box rejected HTTP ${exchange.status}`);
     if (isAccepted && !exchange.error) {
       try {
         const wire: unknown = JSON.parse(Buffer.from(exchange.body).toString('utf8'));
@@ -139,19 +138,43 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadedFi
   }
 }
 
-function initialMetadata(exchange: BoxExchange, fileID: string): { metadata: FileMetadata } | { decision: MutationAttempt<UploadedFile> } {
-  if (exchange.error === 'credential') return { decision: uploadBranch('defect', 'AUTHENTICATION', 'Box credentials are unavailable or invalid') };
+/** Select a branch only for a definite pre-write answer; anything unknown returns Retry. */
+function initialMetadata(exchange: BoxExchange, fileID: string, isLaterAttempt: boolean): { metadata: FileMetadata } | { decision: MutationAttempt<UploadedFile> } {
+  if (exchange.error === 'credential' && exchange.status === 0) return { decision: credentialFailure(isLaterAttempt) };
+  if (exchange.error === 'credential') return { decision: uploadRetry('PROTOCOL', 'Box metadata echoed the access token', exchange.retryAfterMs) };
   if (exchange.error === 'refresh') return { decision: uploadRetry('AVAILABILITY', 'Box credentials could not be refreshed') };
   if (exchange.error === 'request') return { decision: uploadRetry('TRANSPORT', 'Box metadata request failed') };
   if (exchange.status === 429) return { decision: uploadRetry('RATE_LIMIT', 'Box rate limited metadata lookup', exchange.retryAfterMs) };
   if (exchange.status === 408 || exchange.status >= 500)
     return { decision: uploadRetry('AVAILABILITY', 'Box metadata is temporarily unavailable', exchange.retryAfterMs) };
-  if (exchange.status === 404) return { decision: uploadBranch('notFound', 'NOT_FOUND', 'Box did not find the file') };
+  if (isDefiniteRefusal(exchange)) return { decision: refusal(exchange.status) };
   if (exchange.status !== 200)
-    return { decision: uploadBranch('providerRejected', 'PROVIDER_REJECTION', `Box rejected HTTP ${exchange.status}`) };
-  if (exchange.error === 'tooLarge')
-    return { decision: uploadBranch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Box metadata exceeds the configured limit') };
+    return { decision: uploadRetry('PROTOCOL', `Box answered metadata lookup with unexpected HTTP ${exchange.status}`, exchange.retryAfterMs) };
+  if (exchange.error === 'tooLarge') return { decision: uploadRetry('RESPONSE_TOO_LARGE', 'Box metadata exceeds the configured limit') };
   if (exchange.error) return { decision: uploadRetry('TRANSPORT', 'Box metadata response was interrupted') };
   try { return { metadata: decodeMetadata(exchange.body, fileID) }; }
-  catch { return { decision: uploadBranch('invalidResponse', 'PROTOCOL', 'Box returned invalid file metadata') }; }
+  catch { return { decision: uploadRetry('PROTOCOL', 'Box returned invalid file metadata') }; }
+}
+
+/** Keep defect for the first attempt; a later one may follow an applied upload, so it retries. */
+function credentialFailure(isLaterAttempt: boolean): MutationAttempt<UploadedFile> {
+  if (isLaterAttempt) return uploadRetry('AUTHENTICATION', 'Box credentials are unavailable or invalid after a possible earlier upload');
+  return uploadBranch('defect', 'AUTHENTICATION', 'Box credentials are unavailable or invalid');
+}
+
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
+/** An allowlisted refusal status whose fully read body describes no file. */
+function isDefiniteRefusal(exchange: BoxExchange): boolean {
+  if (exchange.error || !definiteRefusalStatuses.has(exchange.status)) return false;
+  let wire: unknown;
+  try { wire = JSON.parse(Buffer.from(exchange.body).toString('utf8')); } catch { return true; }
+  if (!wire || typeof wire !== 'object' || Array.isArray(wire)) return true;
+  const fields = wire as { type?: unknown; entries?: unknown };
+  return fields.type !== 'file' && (fields.entries === undefined || fields.entries === null);
+}
+
+function refusal(status: number): MutationAttempt<UploadedFile> {
+  if (status === 404) return uploadBranch('notFound', 'NOT_FOUND', 'Box did not find the file');
+  return uploadBranch('providerRejected', 'PROVIDER_REJECTION', `Box rejected HTTP ${status}`);
 }

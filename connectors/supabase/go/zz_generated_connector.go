@@ -270,7 +270,7 @@ var UpsertRowsDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertRowsBranchUpserted, Description: "Upsert rows with a declared unique conflict key and merge duplicates."},
 		{ID: UpsertRowsBranchProviderRejected, Description: "The provider conclusively rejected the request or credentials.", Optional: true},
-		{ID: UpsertRowsBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: UpsertRowsBranchInvalidResponse, Description: "Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert.", Optional: true},
 		{ID: UpsertRowsBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

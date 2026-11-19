@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, retryCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
+import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
 import type { SearchTicketsInput, Ticket, SearchTicketsOutput, GetTicketInput, TicketUser, TicketComment, TicketDetails, TicketCommentInput, TicketRequesterInput, CreateTicketInput, CreateTicketOutput, UpdateTicketInput, UpdateTicketOutput } from './models.js';
 import { SearchTicketsInputSchema, TicketSchema, SearchTicketsOutputSchema, GetTicketInputSchema, TicketUserSchema, TicketCommentSchema, TicketDetailsSchema, TicketCommentInputSchema, TicketRequesterInputSchema, CreateTicketInputSchema, CreateTicketOutputSchema, UpdateTicketInputSchema, UpdateTicketOutputSchema } from './models.js';
@@ -160,6 +160,8 @@ export function updateTicketInvalidResponse(value: UpdateTicketOutput, failure?:
 export function updateTicketDefect(value: UpdateTicketOutput, failure?: Failure): Case<UpdateTicketOutput> { return branchCase("defect", value, failure); }
 /** Script a safe retry of updateTicket. */
 export function updateTicketRetry(failure: Failure, retryAfterMs = 0): Case<UpdateTicketOutput> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain updateTicket attempt. */
+export function updateTicketUncertain(value: UpdateTicketOutput, failure: Failure): Case<UpdateTicketOutput> { return uncertainCase(value, failure); }
 /** Manifest scenario followedUpCustomerIssue for updateTicket. */
 export function updateTicketFollowedUpCustomerIssue(): Case<UpdateTicketOutput> {
   const value = UpdateTicketOutputSchema.parse({"ticket":{"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","createdAt":"2026-10-21T08:00:00Z","id":35436,"requesterId":7701,"status":"open","subject":"Double charge on order 88213","tags":["billing-double-charge","dex-repeat-contact"],"updatedAt":"2026-10-26T12:00:00Z"},"wasAlreadyApplied":false});

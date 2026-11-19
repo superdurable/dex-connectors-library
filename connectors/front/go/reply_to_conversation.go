@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -100,8 +101,8 @@ func (ReplyToConversationOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyT
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke fences the reply or comment. A later attempt reads an accepted provider ID or fails closed;
-// only a 429, 503, or provably undispatched failure permits another send.
+// Invoke fences the reply or comment under the manifest send cap. A later attempt reads back an accepted
+// provider ID and never resends it; without one, an unknown outcome resends while the cap allows.
 func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input ReplyToConversationInput) sdkgo.MutationAttempt[ConversationReply] {
 	operationID := ReplyToConversationDefinition.Operation.OperationID
 	client := operation.client
@@ -109,17 +110,39 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	if err := validateReplyToConversationInput(input); err != nil {
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, frontFailurePointer(sdkgo.FailureValidation, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	fence, err := singledispatch.NewFence(call, ReplyToConversationDefinition.StepDefaults.ExecuteMethodTimeout)
+	fence, err := singledispatch.NewFence(call, ReplyToConversationDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, frontFailurePointer(sdkgo.FailureLocalDefect, operationID, err.Error()), sdkgo.Receipt{})
 	}
-	switch decision := fence.Decide(); decision.Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
-		return client.uncertainReply(call, output, sdkgo.FailureAvailability, "the dispatch checkpoint could not be trusted; the reply or comment is not sent again")
+		// FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
+			"the dispatch checkpoint could not be read; nothing was sent in this attempt"), 0)
 	case singledispatch.ReadBackRequired:
 		return client.readBackReply(call, input, output, decision.Marker)
+	case singledispatch.ReadBackThenResendAllowed:
+		// Front returns an ID only for an accepted write, so a saved one is read back and never resent.
+		if decision.Marker.ProviderID != "" {
+			return client.readBackReply(call, input, output, decision.Marker)
+		}
+	}
+	permit := replySendPermit{
+		fence:                   fence,
+		isFirstSend:             decision.MaximumPriorSends == 0,
+		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
 	}
 	credentials, failure, credentialError := client.resolveCredentialsWithCause(call, operationID)
+	if failure != nil && !permit.isFirstSend {
+		// notSent would hide the earlier possible send, so nothing is recorded.
+		if isTerminalCredentialFailure(credentialError) {
+			return client.uncertainReply(call, output, sdkgo.FailureAuthentication,
+				"an earlier attempt may have sent the reply or comment, and the connection needs reconnection to resend it")
+		}
+		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
+			"Front credentials were temporarily unavailable; nothing was sent in this attempt"), 0)
+	}
 	if failure != nil {
 		if err := fence.RecordNotSent(); err != nil {
 			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
@@ -134,13 +157,20 @@ func (operation ReplyToConversationOperation) Invoke(call sdkgo.Call, input Repl
 	}
 	attempt := &replySendAttempt{client: client, credentials: credentials, operationID: operationID, request: buildReplyRequest(input)}
 	if err := fence.Dispatch(attempt.send); err != nil {
-		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
-			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
-				"the reply was not dispatched; retry after the checkpoint or attempt budget recovers"), 0)
-		}
-		return client.uncertainReply(call, output, sdkgo.FailureTransport, "the fenced reply outcome could not be determined")
+		// Dispatch refused before sending, so nothing reached Front in this attempt.
+		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID,
+			"the reply was not dispatched; retry after the checkpoint or attempt budget recovers"), 0)
 	}
-	return client.classifyReplyExchange(call, output, attempt.result, credentials, fence)
+	return client.classifyReplyExchange(call, output, attempt.result, credentials, permit)
+}
+
+// replySendPermit is a fence that allowed this attempt's send, with its send-cap facts.
+type replySendPermit struct {
+	fence *singledispatch.Fence
+	// isFirstSend means no earlier attempt of this call may have sent.
+	isFirstSend bool
+	// canResendUnknownOutcome means this attempt's send leaves room under the cap for one more.
+	canResendUnknownOutcome bool
 }
 
 func (attempt *replySendAttempt) send(requestContext context.Context) error {
@@ -206,8 +236,12 @@ func (client *Client) readBackReply(
 	return sdkgo.NewMutationUncertain(output, frontFailure(result.failure.Kind, operationID, message), client.receipt(call, marker.ProviderID))
 }
 
+// isTerminalCredentialFailure reports a credential failure another attempt cannot repair; nil means the
+// resolved token failed local validation.
 func isTerminalCredentialFailure(err error) bool {
-	return err == nil || errors.Is(err, sdkgo.ErrReauthorizationRequired)
+	return err == nil || errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ConversationReply] {
@@ -215,11 +249,11 @@ func (client *Client) uncertainReply(call sdkgo.Call, output ConversationReply, 
 		ReplyToConversationDefinition.Operation.OperationID, message), client.receipt(call, output.ConversationID))
 }
 
-// classifyReplyExchange maps the sent request: only a provable non-application is retried.
-func (client *Client) classifyReplyExchange(call sdkgo.Call, output ConversationReply, result frontExchange, credentials Credentials, fence *singledispatch.Fence) sdkgo.MutationAttempt[ConversationReply] {
+// classifyReplyExchange maps the sent request. A 2xx is never resent, and only a definite refusal selects
+// a refusal branch; any other outcome may have been applied, so it resends while the send cap allows.
+func (client *Client) classifyReplyExchange(call sdkgo.Call, output ConversationReply, result frontExchange, credentials Credentials, permit replySendPermit) sdkgo.MutationAttempt[ConversationReply] {
 	receipt := client.receipt(call, output.ConversationID)
 	if result.response.statusCode >= 200 && result.response.statusCode < 300 {
-		// Front accepted the write even when its body was interrupted or unusable.
 		output.MessageUID, output.CommentID = decodeReplyIdentity(result.response.body, output.IsInternalNote)
 		providerID := cmp.Or(output.CommentID, output.MessageUID)
 		if providerID == "" {
@@ -227,58 +261,108 @@ func (client *Client) classifyReplyExchange(call sdkgo.Call, output Conversation
 			if kind == "" {
 				kind = sdkgo.FailureProtocol
 			}
-			return client.uncertainReply(call, output, kind, "Front accepted the reply or comment, but its answer has no usable provider ID; do not resend")
+			// A 2xx means Front accepted the write; without an ID nothing can confirm it, so it is never resent.
+			return sdkgo.NewMutationUncertain(output, frontFailure(kind, ReplyToConversationDefinition.Operation.OperationID,
+				"Front accepted the reply or comment but answered without a usable provider ID; it is not resent"), receipt)
 		}
-		_ = fence.RecordProviderID(providerID) // Acceptance is already known if this extra checkpoint fails.
+		_ = permit.fence.RecordProviderID(providerID) // Acceptance is already known if this extra checkpoint fails.
 		receipt.ProviderObjectID = providerID
 		return sdkgo.NewMutationBranch(ReplyToConversationBranchReplied, output, nil, receipt)
 	}
+	if result.isErrorBodyUnreadable && (result.outcome == exchangeRejected || result.outcome == exchangeNotFound || result.outcome == exchangeMerged) {
+		// An unreadable refusal body cannot rule out acceptance, so the outcome is unknown.
+		failure := result.failure
+		failure.Message += "; its error body could not be read, so the reply or comment may exist"
+		return client.resendOrSelectUncertain(call, output, permit, failure, 0)
+	}
 	switch result.outcome {
 	case exchangeDefect:
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchDefect, output, &result.failure, sdkgo.Receipt{})
-	case exchangeNotSent, exchangeRateLimited:
-		if err := fence.RecordCanResend(); err != nil {
-			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability,
-				ReplyToConversationDefinition.Operation.OperationID, "the resend checkpoint failed"), 0)
+		if !permit.isFirstSend {
+			// A local request failure repeats, and defect would hide an earlier possible send.
+			return sdkgo.NewMutationUncertain(output, result.failure, receipt)
 		}
+		return client.rejectReply(call, output, permit, ReplyToConversationBranchDefect, result.failure)
+	case exchangeNotSent, exchangeRateLimited:
+		// A lost checkpoint leaves the claim, so the next attempt counts this send toward the cap.
+		_ = permit.fence.RecordCanResend()
 		return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
 	case exchangeUnconfirmed:
 		if result.response.statusCode == http.StatusServiceUnavailable {
-			if err := fence.RecordCanResend(); err != nil {
-				return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability,
-					ReplyToConversationDefinition.Operation.OperationID, "the resend checkpoint failed"), 0)
-			}
+			_ = permit.fence.RecordCanResend()
 			return sdkgo.NewMutationRetry[ConversationReply](result.failure, result.retryAfter)
 		}
 		failure := result.failure
 		failure.Message += "; the reply or comment may exist"
-		return sdkgo.NewMutationUncertain(output, failure, receipt)
+		return client.resendOrSelectUncertain(call, output, permit, failure, result.retryAfter)
 	case exchangeNotFound:
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchNotFound, output, &result.failure, receipt)
+		if result.response.statusCode != http.StatusNotFound {
+			return client.resendOrSelectUncertain(call, output, permit, result.failure, 0)
+		}
+		return client.rejectReply(call, output, permit, ReplyToConversationBranchNotFound, result.failure)
 	case exchangeMerged:
+		// A 3xx after a write is not a definite refusal, so the merged 301 is an unknown outcome.
 		failure := result.failure
 		if mergedInto := mergedConversationID(result.response.header.Get("Location")); mergedInto != "" {
-			failure.Message = fmt.Sprintf("the conversation was merged into %s; reply to that conversation", mergedInto)
+			failure.Message = fmt.Sprintf("the conversation was merged into %s; the reply or comment may exist", mergedInto)
 		}
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchNotFound, output, &failure, receipt)
+		return client.resendOrSelectUncertain(call, output, permit, failure, 0)
 	case exchangeRejected:
 		if result.response.statusCode == http.StatusUnauthorized {
-			return client.classifyRejectedReplyCredential(call, output, credentials, fence)
+			return client.classifyRejectedReplyCredential(call, output, credentials, permit)
 		}
-		if result.response.statusCode == http.StatusConflict {
-			return client.uncertainReply(call, output, sdkgo.FailureConflict, "Front returned a conflict without a key or unique value for read-back")
+		if isDefiniteRefusalStatus(result.response.statusCode) {
+			return client.rejectReply(call, output, permit, ReplyToConversationBranchProviderRejected, result.failure)
 		}
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output, &result.failure, receipt)
+		return client.resendOrSelectUncertain(call, output, permit, result.failure, 0)
 	default:
-		return client.uncertainReply(call, output, result.failure.Kind, "the reply or comment may exist")
+		failure := result.failure
+		failure.Message += "; the reply or comment may exist"
+		return client.resendOrSelectUncertain(call, output, permit, failure, 0)
 	}
 }
 
-func (client *Client) classifyRejectedReplyCredential(call sdkgo.Call, output ConversationReply, rejected Credentials, fence *singledispatch.Fence) sdkgo.MutationAttempt[ConversationReply] {
+// isDefiniteRefusalStatus reports a status that proves Front applied nothing.
+func isDefiniteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
+}
+
+// resendOrSelectUncertain retries an unknown outcome while the send cap allows another send.
+func (client *Client) resendOrSelectUncertain(call sdkgo.Call, output ConversationReply, permit replySendPermit, failure sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[ConversationReply] {
+	if permit.canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return sdkgo.NewMutationRetry[ConversationReply](failure, retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(output, failure, client.receipt(call, output.ConversationID))
+}
+
+// rejectReply selects a refusal branch only when no earlier send of this call may have applied.
+func (client *Client) rejectReply(call sdkgo.Call, output ConversationReply, permit replySendPermit, branch sdkgo.BranchID, failure sdkgo.Failure) sdkgo.MutationAttempt[ConversationReply] {
+	if !permit.isFirstSend {
+		return sdkgo.NewMutationUncertain(output, failure, client.receipt(call, output.ConversationID))
+	}
+	if err := permit.fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability,
+			ReplyToConversationDefinition.Operation.OperationID, "the refusal checkpoint failed"), 0)
+	}
+	receipt := client.receipt(call, output.ConversationID)
+	if branch == ReplyToConversationBranchDefect {
+		receipt = sdkgo.Receipt{}
+	}
+	return sdkgo.NewMutationBranch(branch, output, &failure, receipt)
+}
+
+func (client *Client) classifyRejectedReplyCredential(call sdkgo.Call, output ConversationReply, rejected Credentials, permit replySendPermit) sdkgo.MutationAttempt[ConversationReply] {
 	operationID := ReplyToConversationDefinition.Operation.OperationID
 	if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRefresh {
-		return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output,
-			frontFailurePointer(sdkgo.FailureAuthentication, operationID, "Front rejected the API token (HTTP 401); reconnect the Front connection"), client.receipt(call, output.ConversationID))
+		return client.rejectReply(call, output, permit, ReplyToConversationBranchProviderRejected,
+			frontFailure(sdkgo.FailureAuthentication, operationID, "Front rejected the API token (HTTP 401); reconnect the Front connection"))
 	}
 	var refreshContext context.Context = call.Context
 	if deadline, hasDeadline := refreshContext.Deadline(); hasDeadline {
@@ -289,7 +373,7 @@ func (client *Client) classifyRejectedReplyCredential(call sdkgo.Call, output Co
 	replacement, err := sdkgo.ResolveCredentialAfterRejection(refreshContext, client.credentials, call, frontCredentialRefreshDriver{})
 	if err == nil && replacement.Validate() == nil && providerhttp.IsHeaderSafeCredential(replacement.APIToken.Reveal()) &&
 		replacement.APIToken.Reveal() != rejected.APIToken.Reveal() {
-		if err := fence.RecordCanResend(); err != nil {
+		if err := permit.fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAvailability, operationID, "the credential resend checkpoint failed"), 0)
 		}
 		return sdkgo.NewMutationRetry[ConversationReply](frontFailure(sdkgo.FailureAuthentication, operationID, "Front rejected the prior API token; retry with its replacement"), 0)
@@ -298,8 +382,7 @@ func (client *Client) classifyRejectedReplyCredential(call sdkgo.Call, output Co
 	if err != nil && !errors.Is(err, sdkgo.ErrReauthorizationRequired) {
 		message = "Front rejected the API token (HTTP 401); credential refresh is temporarily unavailable"
 	}
-	return sdkgo.NewMutationBranch(ReplyToConversationBranchProviderRejected, output,
-		frontFailurePointer(sdkgo.FailureAuthentication, operationID, message), client.receipt(call, output.ConversationID))
+	return client.rejectReply(call, output, permit, ReplyToConversationBranchProviderRejected, frontFailure(sdkgo.FailureAuthentication, operationID, message))
 }
 
 type frontCredentialRefreshDriver struct{}

@@ -54,7 +54,8 @@ export class UpdateIssueStatusOperation implements Mutation<UpdateIssueStatusInp
     const exchange = await this.client.exchange(call, 'updateIssueStatus', 'PUT', issuePath(input), body, true);
     if ('branch' in exchange) return mutationExchange(exchange);
     try { return newMutationBranch('updated', decodeIssue(JSON.parse(Buffer.from(exchange.body).toString('utf8'))), {}); }
-    catch { return mutationFailure('invalidResponse', 'PROTOCOL', 'provider response is incomplete or malformed'); }
+    // Repeating the absolute update is safe, so a malformed answer retries.
+    catch { return newMutationRetry({ kind: 'PROTOCOL', provider: 'sentry', operation: 'updateIssueStatus', message: 'provider response is incomplete or malformed' }); }
   }
 }
 

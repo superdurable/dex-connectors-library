@@ -1,6 +1,6 @@
 # Cloudflare connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/cloudflare/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/cloudflare/go@v0.2.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/cloudflare`.
 
@@ -32,10 +32,10 @@ Create a custom scoped token at [My Profile > API Tokens](https://dash.cloudflar
 | HTTP 200 with a valid provider result | Required success branch |
 | HTTP 200 with `success: false` | `providerRejected` |
 | HTTP 404 for a named resource | `notFound` when declared, otherwise `providerRejected` |
-| Other conclusive 4xx or redirects | `providerRejected` |
-| HTTP 408, 409, 429, 5xx, or transport failure | Retry under the default one-hour policy |
-| Malformed or oversized response | `invalidResponse` |
-| Invalid local input or credentials | `defect` before sending |
+| Other conclusive 4xx or redirects; for `purgeCacheByURLs` only HTTP 400, 401, 403, 411, 413, 414, 415, or 422 | `providerRejected` |
+| HTTP 408, 409, 429, 5xx, any other `purgeCacheByURLs` status, transport failure, or a transient credential failure such as an unavailable credential broker | Retry under the default one-hour policy |
+| Malformed or oversized `listZones` response; `purgeCacheByURLs` declares `repeatOnUnknown: safe` and retries it | `invalidResponse` |
+| Invalid local input or credentials, malformed stored credentials, a required reauthorization, a missing or unselected connection, or a credential broker refusal | `defect` before sending |
 
 HTTP redirects are not followed. Provider error bodies are never copied into failures. Unwired optional branches fail the Flow.
 

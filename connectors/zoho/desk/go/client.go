@@ -4,8 +4,8 @@
 // Package desk implements Zoho Desk ticket operations as Dex connector Steps: searchTickets and
 // getTicket read tickets, updateTicket changes a ticket's status, priority, assignee, or department
 // so that a repeated attempt writes nothing twice, and createTicket and addComment create a ticket
-// or add one comment, sending each request at most once per Step execution because Zoho Desk
-// documents no idempotency key. The ticketChanged poll Trigger starts a Flow for each ticket created or
+// or add one comment under a single-dispatch fence: because Zoho Desk documents no idempotency key,
+// an unknown outcome is resent only while the Step's send cap allows. The ticketChanged poll Trigger starts a Flow for each ticket created or
 // changed in the organization; see NewProjectTicketTriggerRunner.
 //
 // A connection authorizes with Zoho OAuth in one Zoho data center, chosen by its authorization
@@ -35,7 +35,9 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -161,6 +163,10 @@ type deskExchange struct {
 	retryAfter time.Duration
 	// errorSummary is Zoho Desk's machine-readable error code and field errors of a non-2xx response.
 	errorSummary deskErrorSummary
+	// isErrorBodyUnreadable means a non-2xx body was oversized or reflected the credential.
+	isErrorBodyUnreadable bool
+	// acceptedProviderID is a created object's id carried by a non-2xx body.
+	acceptedProviderID string
 }
 
 // operationSession is one Invoke's resolved credential, Zoho Desk host, and deadline.
@@ -276,6 +282,13 @@ func (client *Client) startSession(call sdkgo.Call, operation string) (*operatio
 	return client.startSessionWithContext(call.Context, call, operation)
 }
 
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 // startSessionWithContext starts a session under parent; Trigger pollers pass their own context because
 // their calls have no Dex Step context.
 func (client *Client) startSessionWithContext(parent context.Context, call sdkgo.Call, operation string) (*operationSession, context.CancelFunc, *sessionFailure) {
@@ -283,7 +296,7 @@ func (client *Client) startSessionWithContext(parent context.Context, call sdkgo
 	credentials, err := sdkgo.ResolveCredential(operationContext, client.credentials, call, client.refreshDriver)
 	var failure *sessionFailure
 	switch {
-	case sdkgo.IsReauthorizationRequired(err):
+	case isTerminalCredentialError(err):
 		failure = &sessionFailure{route: sessionRejected, failure: deskFailure(sdkgo.FailureAuthentication, operation,
 			"Zoho authorization is revoked or expired; reconnect the connection")}
 	case err != nil:
@@ -321,20 +334,12 @@ func queryAttemptForSession[OUT any](failure *sessionFailure, providerRejected s
 // exchange sends one request; after a 401 it forces one coordinated refresh and resends once,
 // because Zoho Desk rejects an expired or revoked token before acting on the request.
 func (client *Client) exchange(session *operationSession, operation string, request deskRequest) deskExchange {
-	var payload []byte
-	if request.payload != nil {
-		encoded, err := json.Marshal(request.payload)
-		if err != nil {
-			return deskExchange{outcome: exchangeDefect, failure: deskFailure(sdkgo.FailureLocalDefect, operation, errRequestNotBuilt.Error())}
-		}
-		payload = encoded
-	}
-	target := session.apiBaseURL + request.path
-	if len(request.query) != 0 {
-		target += "?" + request.query.Encode()
+	target, payload, err := encodeDeskRequest(session, request)
+	if err != nil {
+		return deskExchange{outcome: exchangeDefect, failure: deskFailure(sdkgo.FailureLocalDefect, operation, errRequestNotBuilt.Error())}
 	}
 	for attempt := 0; ; attempt++ {
-		result := client.exchangeOnce(session, operation, request.method, target, payload)
+		result := client.exchangeOnce(session, operation, request.method, target, payload, false)
 		if result.response.statusCode != http.StatusUnauthorized || attempt > 0 {
 			return result
 		}
@@ -349,7 +354,40 @@ func (client *Client) exchange(session *operationSession, operation string, requ
 	}
 }
 
-func (client *Client) exchangeOnce(session *operationSession, operation string, method string, target string, payload []byte) deskExchange {
+// exchangeFencedWrite sends one fenced write exactly once under the Dispatch context. A 401 is
+// returned without the inline refresh and resend, so the fence counts every send.
+func (client *Client) exchangeFencedWrite(requestContext context.Context, session *operationSession, operation string, request deskRequest) deskExchange {
+	target, payload, err := encodeDeskRequest(session, request)
+	if err != nil {
+		return deskExchange{outcome: exchangeDefect, failure: deskFailure(sdkgo.FailureLocalDefect, operation, errRequestNotBuilt.Error())}
+	}
+	if deadline, hasDeadline := session.context.Deadline(); hasDeadline {
+		var cancel context.CancelFunc
+		requestContext, cancel = context.WithDeadline(requestContext, deadline)
+		defer cancel()
+	}
+	fencedSession := *session
+	fencedSession.context = requestContext
+	return client.exchangeOnce(&fencedSession, operation, request.method, target, payload, true)
+}
+
+func encodeDeskRequest(session *operationSession, request deskRequest) (string, []byte, error) {
+	var payload []byte
+	if request.payload != nil {
+		encoded, err := json.Marshal(request.payload)
+		if err != nil {
+			return "", nil, err
+		}
+		payload = encoded
+	}
+	target := session.apiBaseURL + request.path
+	if len(request.query) != 0 {
+		target += "?" + request.query.Encode()
+	}
+	return target, payload, nil
+}
+
+func (client *Client) exchangeOnce(session *operationSession, operation string, method string, target string, payload []byte, isFencedWrite bool) deskExchange {
 	if session.context.Err() != nil {
 		return deskExchange{outcome: exchangeNotSent, failure: deskFailure(sdkgo.FailureTransport, operation, "the operation deadline passed before Zoho Desk was contacted; no request was sent")}
 	}
@@ -369,6 +407,11 @@ func (client *Client) exchangeOnce(session *operationSession, operation string, 
 	httpRequest.Header.Set("Accept", "application/json")
 	if payload != nil {
 		httpRequest.Header.Set("Content-Type", "application/json")
+	}
+	if isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return deskExchange{outcome: exchangeDefect, failure: deskFailure(sdkgo.FailureLocalDefect, operation, errRequestNotBuilt.Error())}
+		}
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
@@ -395,20 +438,28 @@ func (client *Client) exchangeOnce(session *operationSession, operation string, 
 	case errors.Is(readErr, providerhttp.ErrBodyTooLarge):
 		// An oversized error body carries no usable errorCode, so the status alone classifies it.
 		content = nil
+	case (readErr != nil || closeErr != nil) && httpResponse.StatusCode == http.StatusTooManyRequests:
+		// A 429 status proves Zoho Desk did not process the request, even when its body broke.
+		content = nil
 	case readErr != nil || closeErr != nil:
 		return deskExchange{outcome: exchangeUnavailable, response: response, failure: deskFailure(sdkgo.FailureTransport, operation, "Zoho Desk response could not be read")}
 	}
+	isErrorBodyUnreadable := !isSuccess && errors.Is(readErr, providerhttp.ErrBodyTooLarge)
 	if accessToken != "" && bytes.Contains(content, []byte(accessToken)) {
 		if isSuccess {
 			return deskExchange{outcome: exchangeInvalid, response: response, failure: deskFailure(sdkgo.FailureProtocol, operation, "Zoho Desk response reflected the connection credential")}
 		}
-		content = nil
+		content, isErrorBodyUnreadable = nil, true
 	}
 	response.body = content
 	if isSuccess {
 		return deskExchange{outcome: exchangeSucceeded, response: response}
 	}
-	return client.classifyFailureStatus(response, operation)
+	result := client.classifyFailureStatus(response, operation)
+	// A write refusal is definite only with a trusted body and no created id; write callers check both.
+	result.isErrorBodyUnreadable = isErrorBodyUnreadable
+	result.acceptedProviderID = acceptedProviderID(content)
+	return result
 }
 
 // classifyFailureStatus maps a non-2xx response without reading Zoho Desk's message text.

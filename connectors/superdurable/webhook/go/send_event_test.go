@@ -4,6 +4,7 @@
 package webhook_test
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -213,12 +214,13 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 	}{
 		{http.StatusOK, webhook.SendEventBranchDelivered, ""},
 		{http.StatusAccepted, webhook.SendEventBranchDelivered, ""},
-		{http.StatusFound, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
 		{http.StatusBadRequest, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
 		{http.StatusUnauthorized, webhook.SendEventBranchRejected, sdkgo.FailureAuthentication},
 		{http.StatusForbidden, webhook.SendEventBranchRejected, sdkgo.FailureAuthorization},
 		{http.StatusNotFound, webhook.SendEventBranchRejected, sdkgo.FailureNotFound},
-		{http.StatusGone, webhook.SendEventBranchRejected, sdkgo.FailureNotFound},
+		{http.StatusLengthRequired, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
+		{http.StatusRequestEntityTooLarge, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
+		{http.StatusUnsupportedMediaType, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
 		{http.StatusUnprocessableEntity, webhook.SendEventBranchRejected, sdkgo.FailureProviderRejection},
 	} {
 		t.Run(strconv.Itoa(test.statusCode), func(t *testing.T) {
@@ -237,6 +239,36 @@ func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 			requireSecretFree(t, result)
 		})
 	}
+}
+
+func TestSendEventRetriesAnswersThatDoNotProveARefusal(t *testing.T) {
+	for _, statusCode := range []int{http.StatusFound, http.StatusMethodNotAllowed, http.StatusGone, http.StatusPreconditionFailed, http.StatusTeapot} {
+		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
+			receiver := newFakeReceiver(t, standardKey(t), statusCode)
+			_, err := sendEvent(t, newSendingClient(t, receiver.URL, standardSecret, receiver.Client()), "forward", forwardedPayload)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "an unlisted status is an unknown outcome of a safe write")
+			require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+			require.Len(t, receiver.receivedDeliveries(), 1, "redirects are never followed")
+		})
+	}
+}
+
+func TestSendEventRetriesARefusalOrLocalFailureOnALaterAttempt(t *testing.T) {
+	receiver := newFakeReceiver(t, standardKey(t), http.StatusUnprocessableEntity)
+	client := newSendingClient(t, receiver.URL, standardSecret, receiver.Client())
+	_, err := sdkgo.RunMutation(newLaterAttemptStepContext("forward"), client.SendEvent(), testConnection,
+		webhook.SendEventInput{Payload: json.RawMessage(forwardedPayload)})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an earlier attempt may have delivered the event, so a refusal is not final")
+	require.Len(t, receiver.receivedDeliveries(), 1)
+
+	blankSecret := newSendingClient(t, receiver.URL, "", receiver.Client())
+	_, err = sdkgo.RunMutation(newLaterAttemptStepContext("forward"), blankSecret.SendEvent(), testConnection,
+		webhook.SendEventInput{Payload: json.RawMessage(forwardedPayload)})
+	require.ErrorAs(t, err, &retry, "a later attempt never selects defect")
+	require.Equal(t, sdkgo.FailureAuthentication, retry.Failure.Kind)
+	require.Len(t, receiver.receivedDeliveries(), 1)
 }
 
 func TestSendEventRetriesReceiverFailuresWithTheSameWebhookID(t *testing.T) {
@@ -435,6 +467,18 @@ func TestSendEventRetriesWhenTheCredentialBrokerIsUnavailable(t *testing.T) {
 	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 	require.NotContains(t, retry.Failure.Message, sentinelSecret)
 	require.Empty(t, receiver.receivedDeliveries())
+
+	for _, transient := range []error{projectconfig.ErrExchangePending, projectconfig.ErrRefreshFailed, projectconfig.ErrOutcomeUnknown,
+		errors.New("unlisted resolve failure"), context.DeadlineExceeded} {
+		client := newSendingClientWithCredentials(t, receiver.URL, failingCredentials{err: transient}, receiver.Client())
+		_, err := sendEvent(t, client, "forward", forwardedPayload)
+		require.ErrorAs(t, err, &retry, "%v is transient and never selects defect", transient)
+		require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	}
+	unconfigured := newSendingClientWithCredentials(t, receiver.URL, sdkgo.StaticCredentialProvider[webhook.Credentials]{}, receiver.Client())
+	_, err = sendEvent(t, unconfigured, "forward", forwardedPayload)
+	require.ErrorAs(t, err, &retry, "an unconfigured static connection is transient")
+	require.Empty(t, receiver.receivedDeliveries())
 }
 
 func TestSendEventSelectsDefectWithoutSendingInvalidRequests(t *testing.T) {
@@ -454,13 +498,21 @@ func TestSendEventSelectsDefectWithoutSendingInvalidRequests(t *testing.T) {
 		{name: "oversized payload", client: smallLimit, payload: forwardedPayload, expectedReason: "maxBodyBytes"},
 		{name: "blank secret", client: newSendingClient(t, receiver.URL, "", receiver.Client()), payload: forwardedPayload, expectedReason: "signing secret"},
 		{
-			name: "connection without credentials", payload: forwardedPayload, expectedReason: "signing secret",
-			client: newSendingClientWithCredentials(t, receiver.URL, sdkgo.StaticCredentialProvider[webhook.Credentials]{}, receiver.Client()),
-		},
-		{
 			name: "credential broker rejection", payload: forwardedPayload, expectedReason: "signing secret",
 			client: newSendingClientWithCredentials(t, receiver.URL,
 				failingCredentials{err: fmt.Errorf("read signing secret: %w", projectconfig.ErrCredentialBrokerRejected)}, receiver.Client()),
+		},
+		{
+			name: "connection not selected", payload: forwardedPayload, expectedReason: "signing secret",
+			client: newSendingClientWithCredentials(t, receiver.URL, failingCredentials{err: projectconfig.ErrConnectionNotSelected}, receiver.Client()),
+		},
+		{
+			name: "connection object not found", payload: forwardedPayload, expectedReason: "signing secret",
+			client: newSendingClientWithCredentials(t, receiver.URL, failingCredentials{err: projectconfig.ErrObjectNotFound}, receiver.Client()),
+		},
+		{
+			name: "reauthorization required", payload: forwardedPayload, expectedReason: "signing secret",
+			client: newSendingClientWithCredentials(t, receiver.URL, failingCredentials{err: projectconfig.ErrReauthorizationRequired}, receiver.Client()),
 		},
 		{name: "invalid whsec_ secret", client: newSendingClient(t, receiver.URL, "whsec_not base64!", receiver.Client()), payload: forwardedPayload, expectedReason: "whsec_"},
 	} {

@@ -166,7 +166,7 @@ func UpdateIssueLabelsProviderRejected(value gitlab.Issue, failure *sdkgo.Failur
 	return connectormock.Branch(gitlab.UpdateIssueLabelsBranchProviderRejected, value, failure)
 }
 
-// UpdateIssueLabelsInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+// UpdateIssueLabelsInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: a malformed or oversized answer now retries, because replacing the complete label set again is safe.
 func UpdateIssueLabelsInvalidResponse(value gitlab.Issue, failure *sdkgo.Failure) connectormock.Case[gitlab.Issue] {
 	return connectormock.Branch(gitlab.UpdateIssueLabelsBranchInvalidResponse, value, failure)
 }

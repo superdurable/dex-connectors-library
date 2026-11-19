@@ -2,9 +2,12 @@
 # SPDX-License-Identifier: MIT
 """Provider operation and credential resolution contracts without Dex."""
 
+import asyncio
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
+import dex
 import pytest
 
 from dex_connectors.sdk import (
@@ -26,6 +29,8 @@ from dex_connectors.sdk import (
     RetryError,
     StaticCredentialProvider,
     StepDefaults,
+    derive_call_id,
+    derive_step_call_id,
     resolve_credential,
     resolve_credential_after_rejection,
     run_mutation,
@@ -207,6 +212,162 @@ async def test_credential_resolution_modes() -> None:
         await static.resolve(Call(CALL_ID, ConnectionRef("sample", "missing"), OPERATION))
     with pytest.raises(ValueError, match="required"):
         await resolve_credential(None, CALL, driver)  # type: ignore[arg-type]
+
+
+class StepContext:
+    """Weakly referenceable Step identity, as a real Dex context is."""
+
+    def __init__(self) -> None:
+        self.flow_id = "flow-1"
+        self.step_execution_id = "step-1"
+        self.attempt = 1
+
+
+class BlockingMutation(ExampleMutation):
+    """Hold invoke open until released, so another call overlaps it."""
+
+    def __init__(self, operation: OperationRef = OPERATION) -> None:
+        super().__init__(MutationAttempt.branch_result("success", "ok", RECEIPT))
+        self.operation = operation
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+        self.invocations = 0
+
+    def definition(self) -> MutationDefinition:
+        """Return the Mutation definition of the configured operation."""
+        return replace(super().definition(), operation=self.operation)
+
+    async def invoke(self, call: Call, input: str) -> MutationAttempt[str]:
+        """Block until the test releases the call."""
+        self.invocations += 1
+        self.started.set()
+        await self.release.wait()
+        return await super().invoke(call, input)
+
+
+@pytest.mark.asyncio
+async def test_concurrent_call_of_the_same_mutation_is_refused_before_sending() -> None:
+    """A second call of a running operation selects defect; others and later calls run."""
+    context = StepContext()
+    step_call = Call(CALL_ID, CONNECTION, OPERATION, context=cast(dex.AsyncContext, context))
+    running = BlockingMutation()
+    first = asyncio.create_task(run_mutation(running, step_call, "first"))
+    await running.started.wait()
+
+    concurrent = ExampleMutation(MutationAttempt.branch_result("success", "ok", RECEIPT))
+    refused = await run_mutation(concurrent, step_call, "second")
+    assert refused.branch == "defect" and refused.failure is not None
+    assert "concurrent calls" in refused.failure.message
+    assert concurrent.observed_call is None, "the refused call never reaches invoke"
+
+    other_operation = OperationRef("sample", "deleteItem")
+    other = BlockingMutation(other_operation)
+    other.release.set()
+    other_call = replace(step_call, operation=other_operation)
+    assert (await run_mutation(other, other_call, "other")).branch == "success"
+
+    running.release.set()
+    assert (await first).branch == "success"
+    assert (await run_mutation(concurrent, step_call, "third")).branch == "success"
+    assert running.invocations == 1
+
+
+@pytest.mark.asyncio
+async def test_refused_concurrent_mutation_keeps_its_occurrence() -> None:
+    """Refused calls keep their ordinals, so the next call gets occurrence 4 regardless of timing."""
+    context = cast(dex.AsyncContext, StepContext())
+    unbound_receipt = replace(RECEIPT, call_id=CallID(""))
+
+    def derived_call() -> Call:
+        return Call(derive_step_call_id(context, OPERATION), CONNECTION, OPERATION, context=context)
+
+    running = BlockingMutation()
+    running.attempt = MutationAttempt.branch_result("success", "ok", unbound_receipt)
+    refused_mutations = [
+        ExampleMutation(MutationAttempt.branch_result("success", "ok", unbound_receipt))
+        for _ in range(2)
+    ]
+    # gather builds every Call before any Mutation begins.
+    calls = [derived_call() for _ in range(3)]
+    first = asyncio.create_task(run_mutation(running, calls[0], "first"))
+    await running.started.wait()
+    refused = await asyncio.gather(*(
+        run_mutation(mutation, call, "concurrent")
+        for mutation, call in zip(refused_mutations, calls[1:], strict=True)
+    ))
+    assert [result.branch for result in refused] == ["defect", "defect"]
+    running.release.set()
+    assert (await first).receipt.call_id == calls[0].id
+
+    later = ExampleMutation(MutationAttempt.branch_result("success", "ok", unbound_receipt))
+    later_call = derived_call()
+    fourth_occurrence = derive_call_id("flow-1", "step-1", OPERATION, occurrence=4)
+    assert later_call.id == fourth_occurrence, "construction consumed occurrences 1 to 3"
+    result = await run_mutation(later, later_call, "later")
+    assert later.observed_call is not None and later.observed_call.id == fourth_occurrence
+    assert result.receipt.call_id == fourth_occurrence
+    assert str(later.observed_call.idempotency_key) == str(fourth_occurrence)
+
+    assert await _run_and_observe_call_id(later_call) == fourth_occurrence, "a rerun keeps its ID"
+    assert await _run_and_observe_call_id(calls[1]) == calls[1].id, "a refused call reruns with its ID"
+
+    application_call = Call(CALL_ID, CONNECTION, OPERATION, context=context)
+    assert await _run_and_observe_call_id(application_call) == CALL_ID
+
+
+async def _run_and_observe_call_id(call: Call) -> CallID | None:
+    """Run a succeeding Mutation and return the Call ID its invoke saw, or None when refused."""
+    mutation = ExampleMutation(
+        MutationAttempt.branch_result("success", "ok", replace(RECEIPT, call_id=CallID("")))
+    )
+    await run_mutation(mutation, call, "input")
+    return mutation.observed_call.id if mutation.observed_call is not None else None
+
+
+@pytest.mark.asyncio
+async def test_occurrences_follow_construction_order_only() -> None:
+    """Unused calls, reruns, and refused calls keep their IDs; overlaps never shift an occurrence."""
+    context = cast(dex.AsyncContext, StepContext())
+
+    def derived_call() -> Call:
+        return Call(derive_step_call_id(context, OPERATION), CONNECTION, OPERATION, context=context)
+
+    def occurrence(n: int) -> CallID:
+        return derive_call_id("flow-1", "step-1", OPERATION, occurrence=n)
+
+    first = derived_call()
+    running = BlockingMutation()
+    running.attempt = MutationAttempt.branch_result("success", "ok", replace(RECEIPT, call_id=CallID("")))
+    task = asyncio.create_task(run_mutation(running, first, "first"))
+    await running.started.wait()
+    assert await _run_and_observe_call_id(first) is None, "the running call itself is refused"
+    running.release.set()
+    await task
+    assert await _run_and_observe_call_id(first) == occurrence(1), "a rerun keeps its ID"
+    unused = derived_call()
+    assert unused.id == occurrence(2)
+    assert await _run_and_observe_call_id(derived_call()) == occurrence(3), "an unused call shifts nothing"
+
+    blocking = BlockingMutation()
+    blocking.attempt = running.attempt
+    holder = derived_call()
+    task = asyncio.create_task(run_mutation(blocking, holder, "holder"))
+    await blocking.started.wait()
+    refused = derived_call()
+    assert await _run_and_observe_call_id(refused) is None
+    blocking.release.set()
+    await task
+    assert await _run_and_observe_call_id(derived_call()) == occurrence(6), "refused call kept occurrence 5"
+    assert await _run_and_observe_call_id(refused) == occurrence(5), "the refused call reruns with its own ID"
+
+
+def test_step_attempt_state_requires_a_weakly_referenceable_context() -> None:
+    """A context without weak references raises instead of silently not sharing state."""
+    from types import SimpleNamespace
+
+    context = SimpleNamespace(flow_id="flow-1", step_execution_id="step-1", attempt=1)
+    with pytest.raises(TypeError, match="weak references"):
+        derive_step_call_id(cast(dex.AsyncContext, context), OPERATION)
 
 
 def test_operation_protocols_are_typed() -> None:

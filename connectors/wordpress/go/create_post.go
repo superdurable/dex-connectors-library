@@ -12,11 +12,11 @@ import (
 	"net/http/httptrace"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
@@ -50,15 +50,10 @@ func (CreatePostOperation) IdempotencyKey(callID sdkgo.CallID, _ CreatePostInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke dispatches at most once and fails closed when a previous attempt could have created a post.
+// Invoke creates the post under a single-dispatch fence. WordPress has no create idempotency key,
+// so an unknown outcome resends while possible sends stay below call.MaxSends() and selects
+// uncertain at the cap. A definite refusal is never resent.
 func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInput) sdkgo.MutationAttempt[CreatedPost] {
-	fence, err := singledispatch.NewFence(call, CreatePostDefinition.StepDefaults.ExecuteMethodTimeout)
-	if err != nil {
-		return createFailure(CreatePostBranchDefect, sdkgo.FailureLocalDefect, "WordPress dispatch fence is unavailable")
-	}
-	if fence.Decide().Kind != singledispatch.SendAllowed {
-		return createUncertain(sdkgo.FailureTransport, "WordPress post outcome cannot be confirmed; do not create another")
-	}
 	status := input.Status
 	if status == "" {
 		status = "draft"
@@ -74,46 +69,77 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 	if err != nil || int64(len(payload)) > operation.client.maxPostBytes {
 		return createFailure(CreatePostBranchDefect, sdkgo.FailureValidation, "post exceeds the configured request limit")
 	}
+	fence, err := singledispatch.NewFence(call, CreatePostDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return createFailure(CreatePostBranchDefect, sdkgo.FailureLocalDefect, "WordPress dispatch fence is unavailable")
+	}
+	decision := fence.Decide()
+	switch decision.Kind {
+	case singledispatch.FailClosed:
+		return createRetry(sdkgo.FailureAvailability, "WordPress dispatch checkpoint is unreadable; no post was created in this attempt", 0)
+	case singledispatch.ReadBackRequired:
+		return createUncertain(sdkgo.FailureTransport, "an earlier attempt may have created the WordPress post, and the send cap is reached")
+	case singledispatch.ReadBackThenResendAllowed:
+		// A saved post ID proves WordPress created the post, so it is never resent.
+		if decision.Marker.ProviderID != "" {
+			return createUncertain(sdkgo.FailureTransport, "an earlier attempt created the WordPress post, but its confirmation was lost")
+		}
+	}
+	// This attempt's send would be the last one the cap allows when no further send remains.
+	canResendUnknownOutcome := decision.MaximumPriorSends+1 < call.MaxSends()
+	// An earlier send may have created the post, so a refusal of this resend cannot prove nothing changed.
+	hasPossibleEarlierSend := decision.MaximumPriorSends > 0
 	credentials, err := operation.client.credentials.Resolve(call)
-	if err != nil || credentials.Validate() != nil {
-		return createFailure(CreatePostBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
+	if err != nil {
+		if isTerminalCredentialError(err) {
+			return localCreateFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials are unavailable")
+		}
+		return localCreateFailure(fence, hasPossibleEarlierSend, false, sdkgo.FailureAvailability, "connection credentials could not be read")
 	}
 	password := strings.ReplaceAll(credentials.ApplicationPassword.Reveal(), " ", "")
-	if !validWordPressUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(password) {
-		return createFailure(CreatePostBranchDefect, sdkgo.FailureAuthentication, "connection credentials are invalid")
+	if credentials.Validate() != nil || !validWordPressUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(password) {
+		return localCreateFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureAuthentication, "connection credentials are invalid")
 	}
 	endpoint := operation.client.siteURL + "/wp-json/wp/v2/posts"
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, endpoint, bytes.NewReader(payload))
 	if err != nil {
-		return createFailure(CreatePostBranchDefect, sdkgo.FailureLocalDefect, "WordPress post request could not be built")
+		return localCreateFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "WordPress post request could not be built")
 	}
 	request.SetBasicAuth(credentials.Username, password)
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json")
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
-		return createFailure(CreatePostBranchDefect, sdkgo.FailureLocalDefect, "WordPress post request is invalid")
+		return localCreateFailure(fence, hasPossibleEarlierSend, true, sdkgo.FailureLocalDefect, "WordPress post request is invalid")
 	}
-	var didGetConnection atomic.Bool
+	observation := &dispatchObservation{}
 	var response *http.Response
+	var body []byte
+	var readErr error
 	err = fence.Dispatch(func(requestContext context.Context) error {
-		trace := &httptrace.ClientTrace{GotConn: func(httptrace.GotConnInfo) { didGetConnection.Store(true) }}
-		request = request.WithContext(httptrace.WithClientTrace(requestContext, trace))
-		response, err = operation.client.httpClient.Do(request)
-		return err
+		request = request.WithContext(httptrace.WithClientTrace(requestContext, observation.clientTrace()))
+		var sendErr error
+		response, sendErr = operation.client.httpClient.Do(request)
+		if sendErr != nil {
+			return sendErr
+		}
+		// Dispatch cancels requestContext on return, so the body is read here; its status classifies a read failure.
+		body, readErr = providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+		return nil
 	})
 	if err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return createRetry(sdkgo.FailureTransport, "WordPress dispatch was not started", 0)
 		}
-		if !didGetConnection.Load() {
-			if checkpointErr := fence.RecordCanResend(); checkpointErr == nil {
-				return createRetry(sdkgo.FailureTransport, "WordPress could not be reached before sending", 0)
-			}
+		if observation.isProvablyUndispatched() {
+			// A lost canResend checkpoint leaves the claim, which the next attempt counts as a send.
+			_ = fence.RecordCanResend()
+			return createRetry(sdkgo.FailureTransport, "WordPress could not be reached before sending", 0)
 		}
-		return createUncertain(sdkgo.FailureTransport, "WordPress post outcome is unknown")
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureTransport, "WordPress post outcome is unknown", 0)
 	}
 	// Closing a response cannot change a confirmed provider outcome.
 	defer func() { _ = response.Body.Close() }()
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
 			return createRetry(sdkgo.FailureAvailability, "WordPress retry checkpoint is unavailable", 0)
@@ -122,37 +148,107 @@ func (operation CreatePostOperation) Invoke(call sdkgo.Call, input CreatePostInp
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
 		}
-		return createRetry(kind, "WordPress did not create the post", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
+		return createRetry(kind, "WordPress did not create the post", retryAfter)
 	}
-	if response.StatusCode >= 500 || response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusConflict {
-		return createUncertain(sdkgo.FailureAvailability, "WordPress post outcome is unknown")
-	}
-	if response.StatusCode == http.StatusUnauthorized {
-		return createFailure(CreatePostBranchProviderRejected, sdkgo.FailureAuthentication, "WordPress rejected the application password")
-	}
-	if response.StatusCode == http.StatusForbidden {
-		return createFailure(CreatePostBranchProviderRejected, sdkgo.FailureAuthorization, "WordPress denied post creation")
-	}
-	if response.StatusCode >= 400 && response.StatusCode < 500 {
-		return createFailure(CreatePostBranchProviderRejected, sdkgo.FailureProviderRejection, "WordPress rejected HTTP "+strconv.Itoa(response.StatusCode))
-	}
-	if response.StatusCode != http.StatusCreated {
-		return createUncertain(sdkgo.FailureProtocol, "WordPress returned an unexpected post response")
-	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
-	if err != nil {
-		return createUncertain(sdkgo.FailureTransport, "WordPress created a post but its response could not be read")
-	}
+	isSuccessStatus := response.StatusCode >= 200 && response.StatusCode < 300
+	isBodyReadable := readErr == nil
 	var wire struct {
 		ID     int64  `json:"id"`
 		Status string `json:"status"`
 	}
-	if err := json.Unmarshal(body, &wire); err != nil || wire.ID <= 0 || !validCreatedPostStatus(wire.Status) {
-		return createUncertain(sdkgo.FailureProtocol, "WordPress created a post but returned no usable ID")
+	// A positive post ID in the body means WordPress created the post.
+	isAccepted := isBodyReadable && json.Unmarshal(body, &wire) == nil && wire.ID > 0
+	if isSuccessStatus && !isBodyReadable {
+		// WordPress accepted the post, so a resend could duplicate it.
+		return createUncertain(sdkgo.FailureTransport, "WordPress accepted the post, but its response could not be read")
 	}
-	// A lost provider-ID heartbeat does not permit another send.
+	if isSuccessStatus && !isAccepted {
+		return createUncertain(sdkgo.FailureProtocol, "WordPress accepted the post, but its response is malformed")
+	}
+	if !isSuccessStatus && isAccepted {
+		return createUncertain(sdkgo.FailureProtocol, "WordPress returned a contradictory post response")
+	}
+	if !isSuccessStatus {
+		// An unreadable or oversized error body cannot prove a refusal.
+		if isBodyReadable && isDefiniteRefusalStatus(response.StatusCode) {
+			return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionFailureKind(response.StatusCode), "WordPress rejected the post with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return resendOrSelectUncertain(canResendUnknownOutcome, sdkgo.FailureAvailability, "WordPress post outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
+	}
+	// A lost provider-ID checkpoint leaves the claim, which still counts this send.
 	_ = fence.RecordProviderID(strconv.FormatInt(wire.ID, 10))
+	if response.StatusCode != http.StatusCreated || !validCreatedPostStatus(wire.Status) {
+		// WordPress reported a post ID, so a resend could duplicate the post.
+		return createUncertain(sdkgo.FailureProtocol, "WordPress created a post but returned an unexpected response")
+	}
 	return sdkgo.NewMutationBranch(CreatePostBranchCreated, CreatedPost{ID: wire.ID, Status: wire.Status}, nil, sdkgo.Receipt{})
+}
+
+// isDefiniteRefusalStatus reports the HTTP statuses that prove WordPress refused the request.
+func isDefiniteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
+func rejectionFailureKind(statusCode int) sdkgo.FailureKind {
+	switch statusCode {
+	case http.StatusUnauthorized:
+		return sdkgo.FailureAuthentication
+	case http.StatusForbidden:
+		return sdkgo.FailureAuthorization
+	}
+	return sdkgo.FailureProviderRejection
+}
+
+// resendOrSelectUncertain retries a possibly created post while the send cap allows another send.
+func resendOrSelectUncertain(canResendUnknownOutcome bool, kind sdkgo.FailureKind, message string, retryAfter time.Duration) sdkgo.MutationAttempt[CreatedPost] {
+	if canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return createRetry(kind, message, retryAfter)
+	}
+	return createUncertain(kind, message)
+}
+
+// rejectOrSelectUncertain selects providerRejected only when no earlier send of this call may have created the post.
+func rejectOrSelectUncertain(fence *singledispatch.Fence, hasPossibleEarlierSend bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CreatedPost] {
+	if hasPossibleEarlierSend {
+		return createUncertain(kind, message)
+	}
+	// The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+	_ = fence.RecordCanResend()
+	return createFailure(CreatePostBranchProviderRejected, kind, message)
+}
+
+// localCreateFailure returns Retry for a transient failure, recording notSent only when no earlier
+// send may have created the post. A terminal failure selects defect before any possible send and
+// uncertain after one.
+func localCreateFailure(fence *singledispatch.Fence, hasPossibleEarlierSend bool, isTerminal bool, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CreatedPost] {
+	if !isTerminal {
+		if !hasPossibleEarlierSend {
+			// Without notSent the next attempt counts this attempt as a possible send, which only lowers the cap.
+			_ = fence.RecordNotSent()
+		}
+		// After a possible send, notSent would hide that send, so nothing is recorded.
+		return createRetry(kind, message+"; no post was created in this attempt", 0)
+	}
+	if hasPossibleEarlierSend {
+		return createUncertain(kind, message+"; an earlier attempt may have created the post")
+	}
+	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+	_ = fence.RecordNotSent()
+	return createFailure(CreatePostBranchDefect, kind, message)
+}
+
+// isTerminalCredentialError reports a credential failure that only reconnecting the connection can fix.
+func isTerminalCredentialError(err error) bool {
+	return errors.Is(err, sdkgo.ErrReauthorizationRequired) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) ||
+		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func validCreatedPostStatus(status string) bool {

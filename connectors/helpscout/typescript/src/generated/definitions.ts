@@ -87,9 +87,9 @@ export const ReplyToConversationBranch = {
 export const ReplyToConversationBranchReplied = ReplyToConversationBranch.Replied;
 /** The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added. */
 export const ReplyToConversationBranchNotFound = ReplyToConversationBranch.NotFound;
-/** Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added. */
+/** Help Scout conclusively rejected the thread with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as invalid text or an unknown customer; nothing was added. */
 export const ReplyToConversationBranchProviderRejected = ReplyToConversationBranch.ProviderRejected;
-/** The thread was sent but Help Scout's answer was lost, a server error, or unreadable, so it may exist; the connector never sends it again. */
+/** The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a refusal whose error body could not be read in full or echoed the access token; Help Scout accepted the thread with a 2xx but no valid thread ID; an error answer named a thread whose ID could not be saved; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent. */
 export const ReplyToConversationBranchUncertain = ReplyToConversationBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const ReplyToConversationBranchDefect = ReplyToConversationBranch.Defect;
@@ -99,8 +99,8 @@ export const ReplyToConversationDefinition: MutationDefinition = {
   branches: [
     { id: "replied", description: "Help Scout created the reply or note and returned its thread ID." },
     { id: "notFound", description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user; nothing was added.", optional: true },
-    { id: "providerRejected", description: "Help Scout conclusively rejected the thread, such as a locked conversation with 100 threads or an unknown customer; nothing was added.", optional: true },
-    { id: "uncertain", description: "The thread was sent but Help Scout's answer was lost, a server error, or unreadable, so it may exist; the connector never sends it again.", optional: true },
+    { id: "providerRejected", description: "Help Scout conclusively rejected the thread with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as invalid text or an unknown customer; nothing was added.", optional: true },
+    { id: "uncertain", description: "The thread may exist: the send cap is reached after answers that were lost, a server error other than 503, an unlisted status, or a refusal whose error body could not be read in full or echoed the access token; Help Scout accepted the thread with a 2xx but no valid thread ID; an error answer named a thread whose ID could not be saved; an accepted thread could not be confirmed by read-back; or a refusal, local failure, or authorization failure followed a possible earlier send. Below the cap, an unknown outcome is resent.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
@@ -124,7 +124,7 @@ export const UpdateConversationBranchUpdated = UpdateConversationBranch.Updated;
 export const UpdateConversationBranchNotFound = UpdateConversationBranch.NotFound;
 /** Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account. */
 export const UpdateConversationBranchProviderRejected = UpdateConversationBranch.ProviderRejected;
-/** Help Scout returned a malformed or oversized conversation, so part of the change may have been applied. */
+/** Kept for compatibility and no longer selected: a malformed or oversized conversation read before or after the change returns Retry, because the change is safe to repeat. */
 export const UpdateConversationBranchInvalidResponse = UpdateConversationBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateConversationBranchDefect = UpdateConversationBranch.Defect;
@@ -135,12 +135,11 @@ export const UpdateConversationDefinition: MutationDefinition = {
     { id: "updated", description: "The conversation holds the requested status, assignee, and tags, written now or by an earlier attempt." },
     { id: "notFound", description: "The conversation does not exist, was merged, or is not visible to the app's Help Scout user.", optional: true },
     { id: "providerRejected", description: "Help Scout conclusively rejected the change, such as an assignee who is not a user or team of the account.", optional: true },
-    { id: "invalidResponse", description: "Help Scout returned a malformed or oversized conversation, so part of the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "Kept for compatibility and no longer selected: a malformed or oversized conversation read before or after the change returns Retry, because the change is safe to repeat.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for updateConversation. */
 export const UpdateConversationMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

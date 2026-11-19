@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-pipedrive",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pipedrive CRM operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -45,8 +45,8 @@
     "example:list:start": "npm run build && tsx examples/list-deals/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
-    "@superdurable/dex": ">=1.28.0",
+    "@superdurable/connectors-sdk": "0.12.0",
+    "@superdurable/dex": ">=1.45.4",
     "zod": "^4.1.0"
   },
   "devDependencies": {

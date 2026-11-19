@@ -724,11 +724,10 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 		}
 	}
 	if strings.HasPrefix(conformanceHeaderValue(request.Header, "Content-Type"), "application/x-www-form-urlencoded") || len(exchange.Form) != 0 {
-		body, readErr := io.ReadAll(request.Body)
+		body, readErr := conformanceReadRequestBody(request)
 		if readErr != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr))
 		}
-		request.Body = io.NopCloser(bytes.NewReader(body))
 		form, parseErr := url.ParseQuery(string(body))
 		if parseErr != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: parse form: %v", index, parseErr))
@@ -743,11 +742,10 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 		}
 	}
 	if len(exchange.RequestBody) != 0 {
-		body, readErr := io.ReadAll(request.Body)
+		body, readErr := conformanceReadRequestBody(request)
 		if readErr != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr))
 		}
-		request.Body = io.NopCloser(bytes.NewReader(body))
 		var observed, expected any
 		if err := json.Unmarshal(exchange.RequestBody, &expected); err != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: invalid expected body", index))
@@ -818,11 +816,10 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 		}
 	}
 	if len(exchange.RequestBody) == 0 && len(exchange.Form) == 0 && request.Body != nil {
-		body, readErr := io.ReadAll(request.Body)
+		body, readErr := conformanceReadRequestBody(request)
 		if readErr != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr))
 		}
-		request.Body = io.NopCloser(bytes.NewReader(body))
 		if len(body) != 0 {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: unasserted body", index))
 		}
@@ -1079,6 +1076,16 @@ func conformanceHeaderValues(headers http.Header, name string) []string {
 	return values
 }
 
+// conformanceReadRequestBody reads and restores the body; a nil body, as a GET sends, reads as empty.
+func conformanceReadRequestBody(request *http.Request) ([]byte, error) {
+	if request.Body == nil {
+		return nil, nil
+	}
+	body, err := io.ReadAll(request.Body)
+	request.Body = io.NopCloser(bytes.NewReader(body))
+	return body, err
+}
+
 func conformanceHeaderValue(headers http.Header, name string) string {
 	values := conformanceHeaderValues(headers, name)
 	if len(values) == 0 {
@@ -1314,7 +1321,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 			}
 		}
 		if prior, ok := fields["priorHeartbeat"]; ok {
-			priorFields, err := conformanceObject(prior, []string{"attempt"}, []string{"value", "callId", "state", "providerId"})
+			priorFields, err := conformanceObject(prior, []string{"attempt"}, []string{"value", "callId", "state", "providerId", "sendCount"})
 			if err != nil {
 				return nil, err
 			}
@@ -1323,7 +1330,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 					return nil, errors.New("invalid prior heartbeat value")
 				}
 			} else {
-				if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId"}); err != nil {
+				if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId", "sendCount"}); err != nil {
 					return nil, err
 				}
 				var marker struct {
@@ -1338,6 +1345,12 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 				}
 				if marker.State != "notSent" && marker.State != "claimed" && marker.State != "canResend" {
 					return nil, errors.New("invalid prior heartbeat")
+				}
+				if rawSendCount, counted := priorFields["sendCount"]; counted {
+					var sendCount int32
+					if bytes.Equal(bytes.TrimSpace(rawSendCount), []byte("null")) || json.Unmarshal(rawSendCount, &sendCount) != nil || sendCount < 0 {
+						return nil, errors.New("invalid prior heartbeat send count")
+					}
 				}
 			}
 			var attempt struct {

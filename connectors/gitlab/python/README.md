@@ -1,6 +1,6 @@
 # GitLab connector for Python
 
-Install with `pip install dex-connector-gitlab==0.1.0`. The package requires
+Install with `pip install dex-connector-gitlab==0.1.1`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest operations `getProject` and `listIssues` (Queries) and
 `updateIssueLabels` (Mutation) with the same branches, defaults, and failure
@@ -23,6 +23,9 @@ absolute state; labels must be nonblank and cannot contain commas.
 All operations retry on 408, 409, 429, 5xx, and transport failures. HTTP 404
 selects `notFound`; other statuses select `providerRejected` with
 authentication (401), authorization (403), or validation (400, 422) kinds.
+`updateIssueLabels` is declared `repeatOnUnknown: safe`, so it rejects only
+HTTP 400, 401, 403, 411, 413, 414, 415, or 422 and retries every other
+unknown answer, including a malformed or oversized response.
 
 ## Authorization
 

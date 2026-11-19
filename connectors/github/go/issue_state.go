@@ -87,7 +87,10 @@ func (operation SetIssueStateOperation) Invoke(call sdkgo.Call, input SetIssueSt
 	if failure != nil {
 		return sdkgo.NewMutationBranch(SetIssueStateBranchDefect, requested, failure, sdkgo.Receipt{})
 	}
-	credential, failure := operation.client.resolveCredential(call, setIssueStateOperationID)
+	credential, failure, isTerminalCredential := operation.client.resolveCredentialWithTerminality(call, setIssueStateOperationID)
+	if failure != nil && !isTerminalCredential {
+		return sdkgo.NewMutationRetry[UpdatedIssueState](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(SetIssueStateBranchDefect, requested, failure, sdkgo.Receipt{})
 	}
@@ -102,13 +105,15 @@ func (operation SetIssueStateOperation) Invoke(call sdkgo.Call, input SetIssueSt
 	path := issuesPath(owner, repository) + "/" + strconv.Itoa(input.IssueNumber)
 	response, err := operation.client.sendRequest(call, &credential, http.MethodPatch, path, nil, payload)
 	if err != nil {
+		// The absolute state is repeat-safe, so an oversized or lost answer retries.
 		if errors.Is(err, errResponseTooLarge) {
-			return issueStateBranch(SetIssueStateBranchInvalidResponse, requested, sdkgo.FailureResponseTooLarge, "GitHub response exceeds the configured size limit", receipt(response))
+			return sdkgo.NewMutationRetry[UpdatedIssueState](providerFailure(setIssueStateOperationID, sdkgo.FailureResponseTooLarge, "GitHub response exceeds the configured size limit"), 0)
 		}
 		return sdkgo.NewMutationRetry[UpdatedIssueState](providerFailure(setIssueStateOperationID, sdkgo.FailureTransport, "GitHub issue state update did not complete"), 0)
 	}
 	if terminal := operation.client.classify(setIssueStateOperationID, response, issueStateResponseBranches()); terminal != nil {
-		if terminal.isRetryable {
+		// The absolute state is repeat-safe, so a status that does not prove a refusal, such as 410, retries.
+		if terminal.isRetryable || !isDefiniteRefusalStatus(response.statusCode) {
 			return sdkgo.NewMutationRetry[UpdatedIssueState](terminal.failure, terminal.delay)
 		}
 		if terminal.branch == SetIssueStateBranchProviderRejected {
@@ -119,7 +124,7 @@ func (operation SetIssueStateOperation) Invoke(call sdkgo.Call, input SetIssueSt
 	}
 	var updated githubIssue
 	if decodeJSON(response.body, &updated) != nil || !isValidUpdatedIssue(updated, input.IssueNumber, request.State) {
-		return issueStateBranch(SetIssueStateBranchInvalidResponse, requested, sdkgo.FailureProtocol, "GitHub returned an invalid issue", receipt(response))
+		return sdkgo.NewMutationRetry[UpdatedIssueState](providerFailure(setIssueStateOperationID, sdkgo.FailureProtocol, "GitHub returned an invalid issue"), 0)
 	}
 	updatedAt := updated.UpdatedAt.UTC()
 	output := UpdatedIssueState{

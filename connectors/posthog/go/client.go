@@ -60,6 +60,16 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	return client, nil
 }
 
+// isDefiniteRefusalStatus reports a status that proves PostHog refused the request.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
 func posthogRejectionKind(status int) sdkgo.FailureKind {
 	if status == http.StatusUnauthorized {
 		return sdkgo.FailureAuthentication

@@ -1,12 +1,13 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
-import { ReauthorizationRequiredError, defaultTriggerLogger, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError, RejectedCredentialNotRefreshedError } from '@superdurable/connectors-sdk/projectconfig';
+import { ReauthorizationRequiredError, defaultTriggerLogger, newQueryBranch, newQueryRetry, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type QueryAttempt, type ReceiptDraft, type TriggerLogger } from '@superdurable/connectors-sdk';
 import { MaxSlackSocketMessageBytes, dialSlackSocket, type SlackSocketDialer } from './socket_mode.js';
 import { Authorization, CredentialFields } from './generated/refresh.js';
-import type { Config, CredentialSource, Credentials } from './generated/models.js';
+import { isCredentialMaterialError, type Config, type CredentialSource, type Credentials } from './generated/models.js';
 import { GetThreadReplyOperation, GetWorkspaceIdentityOperation, ListChannelMessagesOperation, ListChannelsOperation, ListThreadMessagesOperation, PostButtonMessageOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
 
 /** One Slack request exchange, including a status when body decoding failed. */
@@ -125,17 +126,24 @@ export class SlackClient {
       const token = (kind === 'bot' ? credential.botToken : credential.userToken)?.reveal();
       return { ...(token && isHeaderSafeCredential(token) ? { token } : {}), terminal: !token || !isHeaderSafeCredential(token) };
     } catch (error) {
-      return { terminal: error instanceof ReauthorizationRequiredError || error instanceof TypeError };
+      return { terminal: isTerminalCredentialError(error) };
     }
   }
 
-  /** Refresh once after Slack rejects an access token; the host owns persistence. */
-  async refreshRejectedToken(call: Call, kind: 'bot' | 'user', currentToken: string): Promise<{ token?: string; terminal: boolean }> {
+  /**
+   * Refresh once after Slack rejects an access token; the host owns persistence. `isTransient` marks a
+   * refresh failure a later attempt may resolve; an unrefreshed or unrefreshable credential is not transient.
+   */
+  async refreshRejectedToken(call: Call, kind: 'bot' | 'user', currentToken: string): Promise<{ token?: string; terminal: boolean; isTransient?: boolean }> {
     try {
       const credential = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
       const token = (kind === 'bot' ? credential.botToken : credential.userToken)?.reveal();
       return { ...(token && token !== currentToken && isHeaderSafeCredential(token) ? { token } : {}), terminal: !token || token === currentToken || !isHeaderSafeCredential(token) };
-    } catch (error) { return { terminal: error instanceof ReauthorizationRequiredError }; }
+    } catch (error) {
+      const terminal = isTerminalCredentialError(error);
+      const isTransient = !terminal && !(error instanceof RejectedCredentialNotRefreshedError) && typeof (this.credentials as { resolveAfterRejection?: unknown }).resolveAfterRejection === 'function';
+      return { terminal, ...(isTransient ? { isTransient } : {}) };
+    }
   }
 
   /** Make one Slack HTTP request with Go-compatible body and status handling. */
@@ -150,7 +158,12 @@ export class SlackClient {
     try { received = await this.send(request); }
     catch (error) {
       if (error instanceof BodyTooLargeError) return { status: error.status ?? 0, headers: error.headers ?? {}, body: undefined, error: 'tooLarge' };
-      return { status: 0, headers: {}, body: undefined, error: error instanceof ProviderTransportError && error.isProvablyNotSent ? 'notSent' : 'transport' };
+      // Headers that arrived before the failure keep their status, so a 2xx is never resent.
+      if (error instanceof ProviderTransportError || error instanceof ProviderStalledError) {
+        const isProvablyNotSent = error instanceof ProviderTransportError && error.isProvablyNotSent;
+        return { status: error.status ?? 0, headers: error.headers ?? {}, body: undefined, error: isProvablyNotSent ? 'notSent' : 'transport' };
+      }
+      return { status: 0, headers: {}, body: undefined, error: 'transport' };
     }
     if (!received.body.length) return { status: received.status, headers: received.headers, body: undefined, error: 'invalid' };
     try {
@@ -201,6 +214,18 @@ export function slackCode(code: string): string {
 
 /** Construct the provider-safe failure contract. */
 export function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { provider: 'slack', operation, kind, message }; }
+
+/** Report a credential failure that no later attempt resolves without a person. */
+function isTerminalCredentialError(error: unknown): boolean {
+  return error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError ||
+    error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error);
+}
+
+/** Select defect for a terminal credential failure and retry a transient one in a Query. */
+export function queryCredentialFailure<Output>(operation: string, emptyOutput: Output, terminal: boolean): QueryAttempt<Output> {
+  if (terminal) return newQueryBranch('defect', emptyOutput, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
+  return newQueryRetry(failure(operation, 'AVAILABILITY', 'Slack credentials are temporarily unavailable'));
+}
 
 /** Parse Slack's integer Retry-After seconds without accepting dates. */
 export function retryAfter(response: SlackExchange): number {

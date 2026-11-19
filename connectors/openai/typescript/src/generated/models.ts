@@ -12,9 +12,9 @@ export interface Config {
   model?: string;
   /** OpenAI API base URL that each operation appends its path to, such as /responses; leave blank for the displayed public v1 default. Enter an absolute HTTPS URL only for a trusted compatible gateway, except for loopback test servers. The Studio model list always uses api.openai.com. */
   endpoint?: string;
-  /** Positive maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the displayed default holds roughly 30,000 streamed output tokens; raise it only for longer outputs. When a createResponse stream grows larger, the connector reads it to the end and reads the stored response back if its ID was observed, or selects uncertain otherwise; a larger non-streamed createResponse response selects uncertain, and a larger retrieveResponse response selects invalidResponse. */
+  /** Positive maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the displayed default holds roughly 30,000 streamed output tokens; raise it only for longer outputs. When a createResponse stream grows larger, the connector reads it to the end and reads the stored response back if its ID was observed, or otherwise selects uncertain without resending, because the 2xx stream already created a response; a larger non-streamed createResponse response is handled the same way, and a larger retrieveResponse response selects invalidResponse. */
   maxResponseBytes?: number;
-  /** Positive maximum size of one createResponse server-sent event in bytes. The final Responses event repeats the whole response, so raise it only for very long outputs. After an oversized event the connector reads the stream to the end and reads the stored response back if its ID was observed, or selects uncertain otherwise. */
+  /** Positive maximum size of one createResponse server-sent event in bytes. The final Responses event repeats the whole response, so raise it only for very long outputs. After an oversized event the connector reads the stream to the end and reads the stored response back if its ID was observed, or otherwise selects uncertain without resending. */
   maxSseEventBytes?: number;
 }
 
@@ -32,15 +32,34 @@ export interface Credentials {
   apiKey: SecretString;
 }
 
+/** Stored credential material that fails the connector credential checks, so no retry can succeed. */
+export class CredentialMaterialError extends TypeError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialMaterialError';
+  }
+}
+
+const sdkCredentialDecodingFailureMessages: ReadonlySet<string> = new Set([
+  'project credential decoding failed',
+  'shared project credential decoding failed',
+  'project credential decoding failed: this connector version does not support shared credentials',
+]);
+
+/** Report malformed stored credential material, also behind the SDK provider's decoding TypeError. */
+export function isCredentialMaterialError(error: unknown): boolean {
+  return error instanceof CredentialMaterialError || (error instanceof TypeError && sdkCredentialDecodingFailureMessages.has(error.message));
+}
+
 /** Decode private credential fields for the connector. */
 export function decodeCredentials(value: unknown): Credentials {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new CredentialMaterialError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const allowed = new Set<string>(["api_key"]);
-  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
-  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new CredentialMaterialError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new CredentialMaterialError("credential api_key has an invalid type");
   const credentials = {} as Credentials;
-  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  if (!fields["api_key"]) throw new CredentialMaterialError("credential api_key is required");
   credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
   return credentials;
 }

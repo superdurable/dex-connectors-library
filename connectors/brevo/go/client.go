@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
@@ -131,6 +132,9 @@ func (operation CreateOrUpdateContactOperation) Invoke(call sdkgo.Call, input Cr
 		return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchDefect, ContactWriteResult{}, brevoFailure(name, sdkgo.FailureValidation, "contact payload is invalid or too large"), sdkgo.Receipt{})
 	}
 	request, failure := operation.client.newRequest(call, http.MethodPost, "/contacts", payload, name)
+	if failure != nil && failure.Kind == sdkgo.FailureAvailability {
+		return sdkgo.NewMutationRetry[ContactWriteResult](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchDefect, ContactWriteResult{}, failure, sdkgo.Receipt{})
 	}
@@ -143,13 +147,17 @@ func (operation CreateOrUpdateContactOperation) Invoke(call sdkgo.Call, input Cr
 		return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureAvailability, "Brevo contact request is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
 	if response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusNoContent {
+		if !isDefiniteRefusalStatus(response.StatusCode) {
+			// A repeated upsert by email converges, so an ambiguous answer retries.
+			return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureAvailability, "Brevo answered the contact request with HTTP "+strconv.Itoa(response.StatusCode)), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchProviderRejected, ContactWriteResult{}, brevoFailure(name, failureKind(response.StatusCode), "Brevo rejected contact request with HTTP "+strconv.Itoa(response.StatusCode)), sdkgo.Receipt{})
 	}
 	result := ContactWriteResult{Email: input.Email, Created: response.StatusCode == http.StatusCreated}
 	if result.Created {
 		body, readError := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 		if errors.Is(readError, providerhttp.ErrBodyTooLarge) {
-			return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchInvalidResponse, ContactWriteResult{}, brevoFailure(name, sdkgo.FailureResponseTooLarge, "Brevo contact response exceeded the limit"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureResponseTooLarge, "Brevo contact response exceeded the limit"), 0)
 		}
 		if readError != nil {
 			return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureAvailability, "Brevo contact response could not be read"), 0)
@@ -158,7 +166,7 @@ func (operation CreateOrUpdateContactOperation) Invoke(call sdkgo.Call, input Cr
 			ID int64 `json:"id"`
 		}
 		if json.Unmarshal(body, &created) != nil || created.ID <= 0 {
-			return sdkgo.NewMutationBranch(CreateOrUpdateContactBranchInvalidResponse, ContactWriteResult{}, brevoFailure(name, sdkgo.FailureProtocol, "Brevo returned an invalid contact ID"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[ContactWriteResult](*brevoFailure(name, sdkgo.FailureProtocol, "Brevo returned an invalid contact ID"), 0)
 		}
 		result.ID = created.ID
 	}
@@ -172,6 +180,9 @@ func (operation GetContactOperation) Invoke(call sdkgo.Call, input GetContactInp
 		return sdkgo.NewQueryBranch(GetContactBranchDefect, Contact{}, brevoFailure(name, sdkgo.FailureValidation, "a plain email address is required"), sdkgo.Receipt{})
 	}
 	request, failure := operation.client.newRequest(call, http.MethodGet, "/contacts/"+url.PathEscape(input.Email), nil, name)
+	if failure != nil && failure.Kind == sdkgo.FailureAvailability {
+		return sdkgo.NewQueryRetry[Contact](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(GetContactBranchDefect, Contact{}, failure, sdkgo.Receipt{})
 	}
@@ -205,6 +216,10 @@ func (operation GetContactOperation) Invoke(call sdkgo.Call, input GetContactInp
 
 func (client *Client) newRequest(call sdkgo.Call, method, path string, payload []byte, operation string) (*http.Request, *sdkgo.Failure) {
 	credentials, err := client.credentials.Resolve(call)
+	if err != nil && !isTerminalCredentialError(err) {
+		// FailureAvailability tells callers to Retry; nothing was sent.
+		return nil, brevoFailure(operation, sdkgo.FailureAvailability, "Brevo connection credentials are temporarily unavailable")
+	}
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		return nil, brevoFailure(operation, sdkgo.FailureAuthentication, "Brevo connection credentials are unavailable or invalid")
 	}
@@ -218,9 +233,26 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, payload [
 	return request, nil
 }
 
+// isTerminalCredentialError reports a resolve failure no later attempt clears; every other resolve error is transient.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
+}
+
 func validEmail(value string) bool {
 	address, err := mail.ParseAddress(value)
 	return err == nil && address.Address == value && strings.Contains(value, "@")
+}
+
+// isDefiniteRefusalStatus reports a status that proves Brevo refused the write; any other status is unknown.
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func isRetryable(status int) bool {

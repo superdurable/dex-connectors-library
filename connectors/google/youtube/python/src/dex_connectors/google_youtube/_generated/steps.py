@@ -259,6 +259,7 @@ def new_add_playlist_item_step(
     defect: dex.StepTarget[MutationResult[AddedPlaylistItem]] | None = None,
     result_attribute: dex.Attribute[MutationResult[AddedPlaylistItem]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, AddPlaylistItemInput, AddedPlaylistItem]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("YouTube Step connection name must match its connection reference")
@@ -296,6 +297,7 @@ def new_add_playlist_item_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

@@ -244,6 +244,7 @@ def new_update_ticket_step(
     defect: dex.StepTarget[MutationResult[UpdateTicketOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateTicketOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
     max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateTicketInput, UpdateTicketOutput]:
     if connection is None or connection.reference.name != connection_name:
@@ -278,7 +279,6 @@ def new_update_ticket_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
-            max_sends_override=max_sends_override,
         )
     )
 

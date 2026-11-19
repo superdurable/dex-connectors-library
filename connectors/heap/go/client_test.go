@@ -82,6 +82,11 @@ func TestSetUserPropertiesClassifiesProviderStatuses(t *testing.T) {
 		retry  bool
 	}{
 		{status: 400, branch: SetUserPropertiesBranchProviderRejected},
+		{status: 422, branch: SetUserPropertiesBranchProviderRejected},
+		{status: 202, retry: true},
+		{status: 302, retry: true},
+		{status: 409, retry: true},
+		{status: 425, retry: true},
 		{status: 429, retry: true},
 		{status: 503, retry: true},
 	}

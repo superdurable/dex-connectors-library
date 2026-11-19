@@ -270,7 +270,7 @@ func CreatePageNotFound(value notion.CreatePageOutput, failure *sdkgo.Failure) c
 	return connectormock.Branch(notion.CreatePageBranchNotFound, value, failure)
 }
 
-// CreatePageProviderRejected selects the providerRejected branch: Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created.
+// CreatePageProviderRejected selects the providerRejected branch: Notion conclusively rejected the first send with HTTP 400, 401, 403, 411, 413, 414, 415, or 422, such as a missing property, a value of the wrong type, or missing Insert content capability; nothing was created.
 func CreatePageProviderRejected(value notion.CreatePageOutput, failure *sdkgo.Failure) connectormock.Case[notion.CreatePageOutput] {
 	return connectormock.Branch(notion.CreatePageBranchProviderRejected, value, failure)
 }
@@ -333,7 +333,7 @@ func UpdatePagePropertiesProviderRejected(value notion.UpdatePagePropertiesOutpu
 	return connectormock.Branch(notion.UpdatePagePropertiesBranchProviderRejected, value, failure)
 }
 
-// UpdatePagePropertiesInvalidResponse selects the invalidResponse branch: Notion applied the update but returned an invalid or oversized page.
+// UpdatePagePropertiesInvalidResponse selects the invalidResponse branch: Kept for compatibility and no longer selected: an invalid or oversized page after an accepted update now retries, because repeating the absolute update is safe.
 func UpdatePagePropertiesInvalidResponse(value notion.UpdatePagePropertiesOutput, failure *sdkgo.Failure) connectormock.Case[notion.UpdatePagePropertiesOutput] {
 	return connectormock.Branch(notion.UpdatePagePropertiesBranchInvalidResponse, value, failure)
 }

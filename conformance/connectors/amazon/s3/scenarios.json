@@ -1693,6 +1693,60 @@
       "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
       "exchanges": [
         {
+          "body": "\u003cError\u003e\u003cCode\u003eMethodNotAllowed\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=content-length;content-md5;content-type;host;x-amz-content-sha256;x-amz-date;x-amz-meta-dex-idempotency-key, Signature=b1496aa2a45813e2145189e921b77aa663fc1e0c716b8d686c2cfe430c3f409e"
+            ],
+            "Content-Md5": [
+              "XUFAKrxLKna5cZ2REBfFkg=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            ],
+            "X-Amz-Date": [
+              "20261025T090000Z"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "key": "reports/weekly.md",
+        "textContent": "hello"
+      },
+      "name": "putObject-unlisted-status-retries",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
           "keyMode": "absent",
           "method": "PUT",
           "path": "/acme-reports/reports/weekly.md",

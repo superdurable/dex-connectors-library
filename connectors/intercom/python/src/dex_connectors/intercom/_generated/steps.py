@@ -197,6 +197,7 @@ def new_update_conversation_state_step(
     defect: dex.StepTarget[MutationResult[UpdateConversationStateOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UpdateConversationStateOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    # Accepted for compatibility; ignored because the operation is safe to repeat.
     max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, UpdateConversationStateInput, UpdateConversationStateOutput]:
     if connection is None or connection.reference.name != connection_name:
@@ -231,7 +232,6 @@ def new_update_conversation_state_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
-            max_sends_override=max_sends_override,
         )
     )
 

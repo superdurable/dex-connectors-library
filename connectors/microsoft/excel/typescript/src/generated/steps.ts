@@ -89,11 +89,14 @@ export interface UpdateValuesStepConfig<StepInput, OperationInput = UpdateValues
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateValues Step from a named connection. */
 export function newUpdateValuesStep<StepInput, OperationInput = UpdateValuesInput, OperationOutput = UpdateValuesOutput>(configuration: UpdateValuesStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateValues(), connection: connection.reference, branches: [
     goToBranch("updated", updated),
@@ -119,7 +122,7 @@ export interface AppendTableRowsStepConfig<StepInput, OperationInput = AppendTab
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
   /** Microsoft returned an invalid or oversized response before the append was sent. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** The append was sent but its outcome cannot be confirmed and the table does not show its rows yet; the connector never sends it again. */
+  /** The append reached the send cap, or a send was refused after an earlier unconfirmed send, and the table still does not show every row. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

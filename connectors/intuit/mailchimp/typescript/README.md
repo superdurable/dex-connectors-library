@@ -2,11 +2,11 @@
 
 `@superdurable/connector-intuit-mailchimp` provides typed Dex operations for reading and listing audience contacts, upserting contacts, updating tags, and sending a reviewed campaign, and the `memberChanged` poll Trigger. It requires `@superdurable/connectors-sdk` 0.12.0, the release of the poll Trigger kit.
 
-Install with `npm install @superdurable/connector-intuit-mailchimp@0.2.0`. Configure a Mailchimp API key in Dex Web as described in the [connector README](../README.md#mailchimp-setup). The package derives the data center from the key suffix and never puts the key in Flow input or output.
+Install with `npm install @superdurable/connector-intuit-mailchimp@0.2.1`. Configure a Mailchimp API key in Dex Web as described in the [connector README](../README.md#mailchimp-setup). The package derives the data center from the key suffix and never puts the key in Flow input or output.
 
 The runnable [get-member example](examples/get-member/README.md) shows the static connection name, Worker, and Flow. Its integration test uses a local Mailchimp stand-in and a real `dexcli dev` server. The Go-recorded [conformance scenarios](../../../../conformance/connectors/intuit/mailchimp/scenarios.json) cover all five operations, including retries and campaign send recovery.
 
-For `sendCampaign`, a Mailchimp throttle or a connection failure proven to occur before the send clears the dispatch checkpoint and retries. A send that might have reached Mailchimp keeps the checkpoint; a later attempt reads campaign status and reports `alreadySent` only when Mailchimp shows `sending` or `sent`, otherwise `uncertain`.
+For `sendCampaign`, the send runs under the SDK single-dispatch fence with the manifest's `maxSends` (3 unless the application overrides it). A 429, a throttling 403, a 503, or a connection failure proven to occur before the send is retried without counting the send. Any other outcome after the send is unknown: it is retried while another send is allowed, and the retry reads campaign status first, reporting `alreadySent` when Mailchimp shows `sending` or `sent` and resending only a draft. At the cap it reports `uncertain`. See [Duplicate safety](../README.md#duplicate-safety).
 
 ## memberChanged Trigger
 

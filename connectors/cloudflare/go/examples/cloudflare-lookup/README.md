@@ -22,7 +22,7 @@ mkdir -p /tmp/cloudflare-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/cloudflare/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/cloudflare/go \
-  --version v0.2.0 --tag connectors/cloudflare/go/v0.2.0 \
+  --version v0.2.1 --tag connectors/cloudflare/go/v0.2.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/cloudflare-release/connector-release.json \
   --digest-output /tmp/cloudflare-release/connector-release.json.sha256

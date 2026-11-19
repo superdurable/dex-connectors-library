@@ -85,7 +85,10 @@ func (operation SearchTicketsOperation) Invoke(call sdkgo.Call, input SearchTick
 	if err != nil {
 		return sdkgo.NewQueryBranch(SearchTicketsBranchDefect, SearchTicketsOutput{}, zendeskFailurePointer(sdkgo.FailureValidation, searchTicketsOperation, err.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, searchTicketsOperation)
+	credentials, failure, isTerminal := operation.client.resolveWriteCredentials(call, searchTicketsOperation)
+	if failure != nil && !isTerminal {
+		return sdkgo.NewQueryRetry[SearchTicketsOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(SearchTicketsBranchDefect, SearchTicketsOutput{}, failure, sdkgo.Receipt{})
 	}

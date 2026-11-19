@@ -158,7 +158,7 @@ func TestUpsertRecordsRejectionNamesOnlyAirtablesErrorType(t *testing.T) {
 	require.Len(t, provider.recordedRequests(), 1)
 }
 
-func TestUpsertRecordsSelectsInvalidResponseForAnInconsistentAnswer(t *testing.T) {
+func TestUpsertRecordsRetriesAnInconsistentAnswer(t *testing.T) {
 	record := `{"id":"recDecisionLog001","createdTime":"2026-09-30T10:00:00.000Z","fields":{"Case ID":"case-1"}}`
 	for name, body := range map[string]string{
 		"missing createdRecords":      `{"records":[` + record + `],"updatedRecords":[]}`,
@@ -171,12 +171,12 @@ func TestUpsertRecordsSelectsInvalidResponseForAnInconsistentAnswer(t *testing.T
 				writeJSON(t, response, http.StatusOK, body)
 			})
 			client := newTestClient(t, provider.URL, airtable.Config{})
-			result, err := sdkgo.RunMutation(newStepDexContext("upsert-inconsistent"), client.UpsertRecords(), airtableConnection, airtable.UpsertRecordsInput{
+			_, err := sdkgo.RunMutation(newStepDexContext("upsert-inconsistent"), client.UpsertRecords(), airtableConnection, airtable.UpsertRecordsInput{
 				BaseID: testBaseID, TableIDOrName: testTableID, FieldsToMergeOn: []string{"Case ID"},
 				Records: []airtable.RecordUpsert{{Fields: map[string]airtable.CellValue{"Case ID": airtable.TextCellValue("case-1")}}},
 			})
-			require.NoError(t, err)
-			require.Equal(t, airtable.UpsertRecordsBranchInvalidResponse, result.Branch)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry, "the upsert may have applied, and repeating it converges")
 		})
 	}
 }

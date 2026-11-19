@@ -6,16 +6,16 @@ metadata:
   description: Retrieve profiles and create deduplicated profile events.
   company: Klaviyo
   categories: [marketing, ecommerce]
-  version: v0.2.0
+  version: v0.2.1
 spec:
   provider: klaviyo
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       operations: [createEvent, getProfile]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-klaviyo"
       operations: [createEvent, getProfile]
       triggers: []
@@ -88,7 +88,11 @@ spec:
         - {id: accepted, goName: Accepted, description: Klaviyo accepted the deduplicated event for asynchronous processing.}
         - {id: providerRejected, goName: ProviderRejected, description: Klaviyo rejected the event or key., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        # Klaviyo deduplicates a resent event by the unique_id that every attempt derives from the call ID.
+        repeatOnUnknown: safe
       mocks:
         - name: acceptedDefaultEvent
           branch: accepted

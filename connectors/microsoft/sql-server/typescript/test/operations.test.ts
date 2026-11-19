@@ -251,8 +251,13 @@ it('rejects a malformed SQLSERVER_SSL_CA bundle before connecting', async () => 
   }
 });
 
-it('treats credential-provider errors as authentication defects for both operations', async () => {
-  const unavailable = new SQLServerClient({ host: 'localhost', database: 'master', user: 'sa' }, { resolve: async () => { throw new Error('missing secret 4242'); } });
+it('treats an empty password as an authentication defect and an unlisted provider error as Retry', async () => {
+  const unlisted = new SQLServerClient({ host: 'localhost', database: 'master', user: 'sa' }, { resolve: async () => { throw new Error('missing secret 4242'); } });
+  const retryCall = { id: 'test-call', context: { cancellationSignal: new AbortController().signal } } as Parameters<SQLServerClient['open']>[0];
+  const retried = await unlisted.execute().invoke(retryCall, { statement: 'UPDATE dbo.t SET value = 1', parameters: [] });
+  expect(retried).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+  expect(JSON.stringify(retried)).not.toContain('4242');
+  const unavailable = new SQLServerClient({ host: 'localhost', database: 'master', user: 'sa' }, { resolve: async () => ({ password: new SecretString('') }) });
   const call = { id: 'test-call', context: { cancellationSignal: new AbortController().signal } } as Parameters<SQLServerClient['open']>[0];
   const query = await unavailable.query().invoke(call, { statement: 'SELECT 1 AS answer', parameters: [] });
   const execute = await unavailable.execute().invoke(call, { statement: 'UPDATE dbo.t SET value = 1', parameters: [] });

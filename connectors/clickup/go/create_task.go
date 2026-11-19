@@ -26,9 +26,6 @@ const (
 	MaxTaskTags = 20
 
 	createTaskOperation = "createTask"
-
-	// writeReconciliationSkew tolerates a difference between the Worker's and ClickUp's clocks.
-	writeReconciliationSkew = 5 * time.Minute
 )
 
 // CreateTaskInput is one task to create in a List.
@@ -67,7 +64,7 @@ type CreateTaskOutput struct {
 	// Task is the task ClickUp created, or empty on every branch except created.
 	Task Task `json:"task"`
 	// WasAlreadyApplied reports that an earlier attempt of this Step created the task without a
-	// confirmed outcome and this attempt found it in the List, so nothing was sent again.
+	// confirmed outcome and this attempt read it back, so nothing was sent again.
 	WasAlreadyApplied bool `json:"wasAlreadyApplied,omitempty"`
 }
 
@@ -95,83 +92,122 @@ type customFieldInputWire struct {
 	Value json.RawMessage `json:"value"`
 }
 
-// writeDispatchMarker is the Dex heartbeat checkpoint recorded before an unkeyed write is sent.
-type writeDispatchMarker struct {
-	DispatchedCallID sdkgo.CallID `json:"clickupDispatchedCallId"`
-	// DispatchedAtMilliseconds is the Worker's Unix time in milliseconds just before the send.
-	DispatchedAtMilliseconds int64 `json:"clickupDispatchedAt"`
+// earlierTaskReadBack is what reading back an earlier create of this call found.
+type earlierTaskReadBack struct {
+	status readBackStatus
+	task   Task
+	// failure explains every status except readBackFound.
+	failure    sdkgo.Failure
+	retryAfter time.Duration
+}
+
+// createdTaskReference is the part of an accepted create that identifies the task.
+type createdTaskReference struct {
+	ID string `json:"id"`
 }
 
 // Definition returns the immutable connector operation definition.
 func (CreateTaskOperation) Definition() sdkgo.MutationDefinition { return CreateTaskDefinition }
 
 // IdempotencyKey uses the stable connector Call ID. ClickUp documents no idempotency key, so the key
-// only correlates the Receipt; duplicate protection comes from a Dex heartbeat checkpoint instead.
+// only correlates the Receipt; a Dex heartbeat checkpoint counts each send of the create instead.
 func (CreateTaskOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTaskInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke records a dispatch checkpoint and then sends POST /list/{list_id}/task. An attempt that finds
-// the checkpoint never sends: it reads the List's tasks created since the dispatch and reports the one
-// task with the requested name and parent, or selects uncertain. Only a 429 or a connection that never
-// opened clears the checkpoint for a resend. Dex accepts the checkpoint when the Worker writes it to its
-// stream, so a Worker lost before Dex stored it could still send the create twice.
+// Invoke sends POST /list/{list_id}/task behind the shared single-dispatch fence. An attempt after a
+// possible earlier send first reads the task back: by its ID when ClickUp returned one, otherwise among
+// the List's tasks created since the Step's first attempt with the requested name and parent. It reports
+// one match, selects uncertain for several, and otherwise resends while possible sends stay within the
+// send cap, selecting uncertain at the cap.
 func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInput) sdkgo.MutationAttempt[CreateTaskOutput] {
 	output := CreateTaskOutput{ListID: input.ListID, Name: input.Name}
 	if err := validateCreateTaskInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, output, clickupFailurePointer(sdkgo.FailureValidation, createTaskOperation, err.Error()), sdkgo.Receipt{})
 	}
+	write, attempt, isDecided := startFencedWrite(call, CreateTaskDefinition, createTaskOperation, output, CreateTaskBranchDefect)
+	if isDecided {
+		return attempt
+	}
 	credentials, failure := operation.client.resolveCredentials(call, createTaskOperation)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, output, failure, sdkgo.Receipt{})
+		return credentialFailureAttempt(write, createTaskOperation, *failure, output, CreateTaskBranchDefect)
 	}
-	var marker writeDispatchMarker
-	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
-	if err != nil || isMarkerFound {
-		return operation.reconcileEarlierDispatch(call, credentials, input, marker)
+	if write.needsReadBack() {
+		if attempt, isDecided := operation.reconcileEarlierCreate(call, credentials, input, write); isDecided {
+			return attempt
+		}
 	}
-	if err := call.Context.RecordHeartbeat(writeDispatchMarker{DispatchedCallID: call.ID, DispatchedAtMilliseconds: operation.client.now().UnixMilli()}); err != nil {
-		return sdkgo.NewMutationRetry[CreateTaskOutput](clickupFailure(sdkgo.FailureAvailability, createTaskOperation,
-			"Dex did not record the dispatch checkpoint; nothing was sent"), 0)
-	}
-	result := operation.client.exchange(call.Context, credentials, createTaskOperation, clickupRequest{
+	result, attempt, isDecided := dispatchFencedWrite(write, operation.client, credentials, createTaskOperation, clickupRequest{
 		method: http.MethodPost, path: "/list/" + input.ListID + "/task", payload: createTaskPayload(input),
-	})
+	}, output, CreateTaskBranchDefect)
+	if isDecided {
+		return attempt
+	}
 	receipt := operation.client.receipt(call, input.ListID)
-	switch result.outcome {
-	case exchangeSucceeded:
-	case exchangeNotSent, exchangeRateLimited:
-		releaseWriteDispatch(call)
-		return sdkgo.NewMutationRetry[CreateTaskOutput](result.failure, result.retryAfter)
-	case exchangeUnconfirmed, exchangeInvalid:
-		// The checkpoint stays, so the next attempt reads the List instead of resending.
-		return sdkgo.NewMutationRetry[CreateTaskOutput](result.failure, result.retryAfter)
-	case exchangeNotFound:
-		return sdkgo.NewMutationBranch(CreateTaskBranchNotFound, output, &result.failure, receipt)
-	case exchangeDefect:
-		releaseWriteDispatch(call)
-		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, output, &result.failure, receipt)
-	default:
-		return sdkgo.NewMutationBranch(CreateTaskBranchProviderRejected, output, &result.failure, receipt)
+	if result.classifyWrite() != writeAccepted {
+		return attemptForUnacceptedWrite(write, createTaskOperation, result, output, receipt, singleDispatchBranches{
+			notFound: CreateTaskBranchNotFound, providerRejected: CreateTaskBranchProviderRejected, defect: CreateTaskBranchDefect,
+		})
 	}
 	task, err := decodeTaskBody(result.response.body, false)
 	if err != nil {
-		return sdkgo.NewMutationRetry[CreateTaskOutput](clickupFailure(sdkgo.FailureProtocol, createTaskOperation,
-			"ClickUp accepted the task but returned an invalid task, so the next attempt reads the List back: "+err.Error()), 0)
+		var reference createdTaskReference
+		if json.Unmarshal(result.response.body, &reference) != nil || !taskIDPattern.MatchString(reference.ID) {
+			reference.ID = ""
+		}
+		return retryAcceptedReadBackOrSelectUncertain(write, createTaskOperation, reference.ID, output,
+			"ClickUp accepted the task but returned an invalid task ("+err.Error()+")", receipt)
 	}
+	recordAcceptedWrite(write, task.ID)
 	output.Task, receipt.ProviderObjectID = task, task.ID
 	return sdkgo.NewMutationBranch(CreateTaskBranchCreated, output, nil, receipt)
 }
 
-// reconcileEarlierDispatch never sends: it reports the earlier attempt's task found in the List, or uncertain.
-func (operation CreateTaskOperation) reconcileEarlierDispatch(
-	call sdkgo.Call, credentials Credentials, input CreateTaskInput, marker writeDispatchMarker,
-) sdkgo.MutationAttempt[CreateTaskOutput] {
+// reconcileEarlierCreate never sends. It decides the attempt unless read-back confirmed nothing and the
+// fence still permits a resend.
+func (operation CreateTaskOperation) reconcileEarlierCreate(
+	call sdkgo.Call, credentials Credentials, input CreateTaskInput, write *fencedWrite,
+) (sdkgo.MutationAttempt[CreateTaskOutput], bool) {
 	output := CreateTaskOutput{ListID: input.ListID, Name: input.Name}
-	since := time.Time{}
-	if marker.DispatchedAtMilliseconds > 0 {
-		since = time.UnixMilli(marker.DispatchedAtMilliseconds).Add(-writeReconciliationSkew)
+	receipt := operation.client.receipt(call, input.ListID)
+	readBack := operation.readBackEarlierTask(call, credentials, input, write.decision.Marker.ProviderID)
+	switch readBack.status {
+	case readBackFound:
+		output.Task, output.WasAlreadyApplied, receipt.ProviderObjectID = readBack.task, true, readBack.task.ID
+		return sdkgo.NewMutationBranch(CreateTaskBranchCreated, output, nil, receipt), true
+	case readBackRetry:
+		return sdkgo.NewMutationRetry[CreateTaskOutput](readBack.failure, readBack.retryAfter), true
+	case readBackParentNotFound:
+		// An earlier send may have created the task before the List became unreadable.
+		return sdkgo.NewMutationUncertain(output, clickupFailure(readBack.failure.Kind, createTaskOperation,
+			"an earlier attempt of this Step may have created the task, and the List can no longer be read back, so it is not sent again: "+readBack.failure.Message), receipt), true
+	case readBackMissing:
+		if write.canResendAfterMissingReadBack() {
+			return sdkgo.MutationAttempt[CreateTaskOutput]{}, false
+		}
+		return sdkgo.NewMutationUncertain(output, clickupFailure(readBack.failure.Kind, createTaskOperation,
+			"earlier attempts of this Step sent the create up to the send cap or were accepted, and read-back cannot confirm the task, so it is not sent again: "+readBack.failure.Message), receipt), true
+	default:
+		return sdkgo.NewMutationUncertain(output, readBack.failure, receipt), true
 	}
+}
+
+// readBackEarlierTask reads the task by its saved ID, or else the List's tasks created since the Step's
+// first attempt with the requested name and parent.
+func (operation CreateTaskOperation) readBackEarlierTask(call sdkgo.Call, credentials Credentials, input CreateTaskInput, providerID string) earlierTaskReadBack {
+	if providerID != "" {
+		result := operation.client.exchange(call.Context, credentials, createTaskOperation, clickupRequest{method: http.MethodGet, path: taskPath(providerID)})
+		if readBack, isDecided := earlierTaskReadFailure(result, false); isDecided {
+			return readBack
+		}
+		task, err := decodeTaskBody(result.response.body, false)
+		if err != nil || task.ID != providerID {
+			return earlierTaskReadBack{status: readBackMissing, failure: clickupFailure(sdkgo.FailureProtocol, createTaskOperation, "the accepted task read back is invalid")}
+		}
+		return earlierTaskReadBack{status: readBackFound, task: task}
+	}
+	since := readBackCreatedSince(call)
 	query := url.Values{"include_closed": {"true"}, "subtasks": {"true"}, "page": {"0"}}
 	if !since.IsZero() {
 		query.Set("date_created_gt", strconv.FormatInt(since.UnixMilli(), 10))
@@ -179,21 +215,12 @@ func (operation CreateTaskOperation) reconcileEarlierDispatch(
 	result := operation.client.exchange(call.Context, credentials, createTaskOperation, clickupRequest{
 		method: http.MethodGet, path: "/list/" + input.ListID + "/task", query: query,
 	})
-	receipt := operation.client.receipt(call, input.ListID)
-	switch {
-	case result.outcome == exchangeSucceeded:
-	case result.isRetryableRead():
-		return sdkgo.NewMutationRetry[CreateTaskOutput](result.failure, result.retryAfter)
-	case result.outcome == exchangeNotFound:
-		return sdkgo.NewMutationBranch(CreateTaskBranchNotFound, output, &result.failure, receipt)
-	default:
-		return sdkgo.NewMutationUncertain(output, clickupFailure(result.failure.Kind, createTaskOperation,
-			"an earlier attempt of this Step sent the create, and the List could not be read back: "+result.failure.Message), receipt)
+	if readBack, isDecided := earlierTaskReadFailure(result, true); isDecided {
+		return readBack
 	}
 	page, err := decodeSearchTasksPage(result.response.body, 0)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(output, clickupFailure(sdkgo.FailureProtocol, createTaskOperation,
-			"an earlier attempt of this Step sent the create, and the List read back is invalid: "+err.Error()), receipt)
+		return earlierTaskReadBack{status: readBackMissing, failure: clickupFailure(sdkgo.FailureProtocol, createTaskOperation, "the List read back is invalid: "+err.Error())}
 	}
 	var matches []Task
 	for _, task := range page.Tasks {
@@ -202,13 +229,30 @@ func (operation CreateTaskOperation) reconcileEarlierDispatch(
 			matches = append(matches, task)
 		}
 	}
-	if len(matches) != 1 {
-		return sdkgo.NewMutationUncertain(output, clickupFailure(sdkgo.FailureTransport, createTaskOperation, fmt.Sprintf(
+	switch len(matches) {
+	case 0:
+		return earlierTaskReadBack{status: readBackMissing, failure: clickupFailure(sdkgo.FailureTransport, createTaskOperation, "the List shows no task with the name created since")}
+	case 1:
+		return earlierTaskReadBack{status: readBackFound, task: matches[0]}
+	default:
+		return earlierTaskReadBack{status: readBackAmbiguous, failure: clickupFailure(sdkgo.FailureTransport, createTaskOperation, fmt.Sprintf(
 			"an earlier attempt of this Step sent the create without a confirmed outcome, and the List shows %d tasks with the name created since, so it is not sent again",
-			len(matches))), receipt)
+			len(matches)))}
 	}
-	output.Task, output.WasAlreadyApplied, receipt.ProviderObjectID = matches[0], true, matches[0].ID
-	return sdkgo.NewMutationBranch(CreateTaskBranchCreated, output, nil, receipt)
+}
+
+// earlierTaskReadFailure maps a read-back without a 2xx; isListRead reports that a 404 means the List is missing.
+func earlierTaskReadFailure(result clickupExchange, isListRead bool) (earlierTaskReadBack, bool) {
+	switch {
+	case result.outcome == exchangeSucceeded:
+		return earlierTaskReadBack{}, false
+	case result.isRetryableRead():
+		return earlierTaskReadBack{status: readBackRetry, failure: result.failure, retryAfter: result.retryAfter}, true
+	case result.outcome == exchangeNotFound && isListRead:
+		return earlierTaskReadBack{status: readBackParentNotFound, failure: result.failure}, true
+	default:
+		return earlierTaskReadBack{status: readBackMissing, failure: result.failure}, true
+	}
 }
 
 func createTaskPayload(input CreateTaskInput) createTaskWire {
@@ -223,12 +267,6 @@ func createTaskPayload(input CreateTaskInput) createTaskWire {
 		payload.CustomFields = append(payload.CustomFields, customFieldInputWire(field))
 	}
 	return payload
-}
-
-// releaseWriteDispatch clears the checkpoint after ClickUp provably did not receive or apply the write.
-func releaseWriteDispatch(call sdkgo.Call) {
-	// A failed clear leaves the checkpoint, so the next attempt reconciles instead of resending.
-	_ = call.Context.RecordHeartbeat(nil)
 }
 
 func validateCreateTaskInput(input CreateTaskInput) error {

@@ -45,7 +45,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Easemob", Explanation: "Read one Easemob IM user."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Found:              sdkgo.GoTo(completeResult{}),
+			Found:               sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
 	}

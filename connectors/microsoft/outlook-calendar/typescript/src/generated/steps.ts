@@ -79,21 +79,24 @@ export interface CreateEventStepConfig<StepInput, OperationInput = CreateEventIn
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Microsoft Graph conclusively rejected the event. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Microsoft Graph returned an invalid or oversized event response. */
+  /** The marker lookup before any send returned a malformed or oversized answer, so nothing was sent; an unusable POST answer is read back or selects uncertain instead. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** An earlier send may have created the event, the marker lookup cannot confirm it, and the send cap allows no further POST. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
 }
 
 /** Build the createEvent Step from a named connection. */
 export function newCreateEventStep<StepInput, OperationInput = CreateEventInput, OperationOutput = CreateEventOutput>(configuration: CreateEventStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, created, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  const { connection, connectionName, created, providerRejected, invalidResponse, defect, uncertain, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createEvent(), connection: connection.reference, branches: [
     goToBranch("created", created),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
   ] });
 }
 
@@ -109,15 +112,18 @@ export interface UpdateEventStepConfig<StepInput, OperationInput = UpdateEventIn
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Microsoft Graph conclusively rejected the event change. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Microsoft Graph returned an invalid or oversized event response. */
+  /** Retained for compatibility and no longer selected: an invalid or oversized response now retries from the read. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the updateEvent Step from a named connection. */
 export function newUpdateEventStep<StepInput, OperationInput = UpdateEventInput, OperationOutput = UpdateEventOutput>(configuration: UpdateEventStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, updated, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.updateEvent(), connection: connection.reference, branches: [
     goToBranch("updated", updated),

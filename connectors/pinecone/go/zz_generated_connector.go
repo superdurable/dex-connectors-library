@@ -199,7 +199,7 @@ var UpsertVectorsDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpsertVectorsBranchUpserted, Description: "Upsert vector IDs by absolute replacement in one namespace."},
 		{ID: UpsertVectorsBranchProviderRejected, Description: "The provider conclusively rejected the request or credentials.", Optional: true},
-		{ID: UpsertVectorsBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: UpsertVectorsBranchInvalidResponse, Description: "Kept for compatibility and no longer selected; a malformed or oversized upsert response is an unknown outcome that retries the safe upsert.", Optional: true},
 		{ID: UpsertVectorsBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

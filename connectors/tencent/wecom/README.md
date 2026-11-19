@@ -14,7 +14,7 @@ WeCom external contacts (客户联系) or WeChat Customer Service (微信客服)
 reads, approvals, and callback Triggers are outside this release.
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/tencent/wecom/go@v0.1.0
+go get github.com/superdurable/dex-connectors-library/connectors/tencent/wecom/go@v0.1.1
 ```
 
 ## Connections
@@ -69,16 +69,22 @@ content size, never the content.
 
 WeCom robot posts accept no idempotency key, return no message ID, and cannot be
 read back. The operation therefore uses sync Execute durability and the
-`singledispatch` fence: once a post may have reached WeCom, no later attempt of
-the same Step posts again.
+`singledispatch` fence, which counts possible posts across attempts. It is a
+`limited` Mutation: an unknown outcome posts again while possible posts stay
+below the operation's `maxSends` (default 3), so the group may show a
+duplicate, and selects `uncertain` at the cap. After errcode 0 the fence saves
+an acceptance marker, so a later attempt of the same Step selects `sent`
+without posting again. Set the Step's `MaxSends` to 1 to forbid every
+automatic repost.
 
 | Outcome | Selected when |
 | --- | --- |
-| `sent` | errcode 0 |
-| Retry | errcode -1 (system busy), 45009 (frequency limit, retried after one minute), or 45033 (concurrency limit); HTTP 429 or 503; or a DNS, dial, or proxy CONNECT failure of net/http's own Transport before a connection was made |
-| `providerRejected` | any other errcode, such as 93000 (invalid webhook or robot removed), 93004 (robot disabled), or 45002 (content too large), or another HTTP 4xx |
-| `uncertain` | HTTP 5xx other than 503, HTTP 408, an interrupted, malformed, or oversized response, any other transport failure, any transport failure of a custom `WithHTTPClient` RoundTripper, or a later attempt after such an outcome or a lost Worker |
-| `defect` | invalid input, a connection that is not `group-robot`, or a malformed `webhook_key`; nothing was posted |
+| `sent` | errcode 0, or a later attempt after errcode 0 was checkpointed |
+| Retry | errcode -1 (system busy), 45009 (frequency limit, retried after one minute), or 45033 (concurrency limit); HTTP 429 or 503; a DNS, dial, or proxy CONNECT failure of net/http's own Transport before a connection was made; temporarily unavailable credentials, such as an unreachable credential broker; or an unreadable checkpoint |
+| Retry and post again below the cap | HTTP 5xx other than 503, 408, 409, or any 4xx other than 400, 401, 403, 404, 411, 413, 414, 415, and 422; one of those refusal statuses whose body is interrupted, oversized, or reports errcode 0; a malformed or oversized 2xx response; any other transport failure, including any transport failure of a custom `WithHTTPClient` RoundTripper; or a lost Worker |
+| `providerRejected` | on a first post, any other errcode, such as 93000 (invalid webhook or robot removed), 93004 (robot disabled), or 45002 (content too large), or HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a readable body |
+| `uncertain` | an unknown outcome at the send cap; a 2xx whose body breaks mid-read, because WeCom answered and the post may exist; or a refusal, a connection that is not `group-robot`, missing or reauthorization-required credentials, or a malformed `webhook_key` after an earlier possible post |
+| `defect` | invalid input, a connection that is not `group-robot`, missing or reauthorization-required credentials, or a malformed `webhook_key` before any possible post; nothing was posted |
 
 Wire `uncertain` only when the application can ask a person to check the
 group chat; unwired, it fails the Flow so the outcome stays visible.
@@ -96,8 +102,17 @@ recipients.
 Every request sets `enable_duplicate_check` to 1 and `duplicate_check_interval`
 to 14400 seconds, the documented four-hour maximum
 ([message/send](https://developer.work.weixin.qq.com/document/path/90236)).
-Each attempt sends byte-identical JSON, so WeCom suppresses the repeat of an
-accepted message, and an unconfirmed attempt retries. Two consequences follow:
+Each attempt sends byte-identical JSON, so WeCom should suppress the repeat of
+an accepted message. How WeCom answers a suppressed repeat is unconfirmed, so
+the operation does not rely on it alone: like `sendGroupRobotMessage`, it uses
+sync Execute durability and the `singledispatch` fence and is a `limited`
+Mutation. An unknown outcome sends again only while possible sends stay below
+the operation's `maxSends` (default 3) and selects `uncertain` at the cap; set
+the Step's `MaxSends` to 1 to forbid every automatic resend. After errcode 0
+the fence saves the msgid, so a later attempt of the same Step selects `sent`
+without sending again; that result carries the msgid but empty
+skipped-recipient lists, which were not saved. Two consequences of the
+duplicate check follow:
 
 - WeCom also suppresses an identical message (same recipients, type, and
   content) that another Flow sends within four hours. Include a distinguishing
@@ -112,11 +127,12 @@ accepted message, and an unconfirmed attempt retries. Two consequences follow:
 
 | Outcome | Selected when |
 | --- | --- |
-| `sent` | errcode 0, including partial delivery |
-| Retry | errcode -1, 45009, or 45033; errcode 40014, 41001, or 42001 after discarding the cached token; HTTP 429, 408, or 5xx; a transport failure; or an interrupted, malformed, or oversized response, while within `DuplicateCheckResendCutoff` |
-| `providerRejected` | a refused token request, such as 40001 (invalid secret), 40013 (invalid corp ID), or 60020 (untrusted IP), or a refused send, such as 81013 (no valid recipient), 40056 (invalid AgentId), or 301002 (token for another application) |
-| `uncertain` | a retry at or after `DuplicateCheckResendCutoff`; an earlier attempt may have delivered the message |
-| `defect` | invalid input, a connection that is not `application`, or malformed application credentials; nothing was sent |
+| `sent` | errcode 0, including partial delivery, or a later attempt after errcode 0 was checkpointed |
+| Retry | errcode -1, 45009, or 45033; errcode 40014, 41001, or 42001 after discarding the cached token; HTTP 429 or 503; a failed or retryable token request; a DNS, dial, or proxy CONNECT failure of net/http's own Transport before a connection was made; temporarily unavailable credentials, such as an unreachable credential broker; or an unreadable checkpoint |
+| Retry and send again below the cap | HTTP 408, 409, 5xx other than 503, or any status other than 2xx and 400, 401, 403, 404, 411, 413, 414, 415, and 422; one of those refusal statuses whose body is interrupted, oversized, or reports errcode 0 or a msgid; a malformed or oversized 2xx response; any other transport failure; or a lost Worker; each only before `DuplicateCheckResendCutoff` |
+| `providerRejected` | on a first send, a refused token request, such as 40001 (invalid secret), 40013 (invalid corp ID), or 60020 (untrusted IP), or a refused send, such as 81013 (no valid recipient), 40056 (invalid AgentId), or 301002 (token for another application), or HTTP 400, 401, 403, 404, 411, 413, 414, 415, or 422 with a readable body |
+| `uncertain` | an unknown outcome at the send cap; a 2xx whose body breaks mid-read, or errcode 0 with malformed fields, because WeCom answered and the message may be delivered; a retry at or after `DuplicateCheckResendCutoff` after a possible send; or, after a possible send, a refused token request, a refused send, missing or reauthorization-required credentials, or malformed application credentials |
+| `defect` | invalid input, a connection that is not `application`, missing or reauthorization-required credentials, or malformed application credentials before any possible send; nothing was sent |
 
 The operation never retries 40001 or 40013, because WeCom can block an IP that
 repeats a wrong secret.
@@ -167,11 +183,11 @@ The integration tests need a running `dexcli dev -durability
 process-crash-safe` and use `DEX_FLOW_SERVICE_ADDRESS` when it is not
 `127.0.0.1:8801`. They run both examples on real Dex against the generated
 `wecommock` connection and against local fake WeCom servers, including a robot
-post retried after errcode -1, a robot post that is never repeated after a
-dropped connection, and an application send retried with identical bytes and a
-cached token, plus a robot post accepted by WeCom while its Worker is
-force-stopped: the attempt on the replacement Worker reads the claim checkpoint
-and selects `uncertain` without posting again. With the release artifact loaded through `dexcli dev
+post retried after errcode -1, a robot post that is reposted only up to the
+send cap after dropped connections, and an application send retried with
+identical bytes and a cached token, plus a robot post received by WeCom while
+its Worker is force-stopped: the attempt on the replacement Worker reads the
+claim checkpoint, counts that post, and reposts once below the cap. With the release artifact loaded through `dexcli dev
 --connector-release-override`, Dex Web Connectors rendered both senders as
 **Local override**, with their guides, every field, and the displayed defaults;
 no credential was saved.
@@ -180,8 +196,8 @@ Not verified against WeCom itself: no live robot post or application send has
 run, and these provider behaviors remain unconfirmed:
 
 - the response WeCom returns when duplicate checking suppresses a repeat; the
-  connector assumes errcode 0 and would report any other errcode as
-  `providerRejected` although the first send was delivered;
+  connector expects errcode 0, and any other errcode on a resend selects
+  `uncertain`, because the first send may have been delivered;
 - the HTTP status and body of errcodes -1, 45009, and 45033 on the robot
   webhook, assumed to be HTTP 200 like other WeCom errors;
 - which applications require trusted IPs, whether 可信域名 must come first, and

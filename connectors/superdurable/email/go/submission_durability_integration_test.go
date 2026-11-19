@@ -37,7 +37,7 @@ func TestAsyncRetryAfterAcceptedSubmissionDoesNotResubmitWithRealDex(t *testing.
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	var outcome submissionRetryOutcome
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, email.SendMessageBranchUncertain, outcome.Branch)
+	require.Equal(t, email.SendMessageBranchSent, outcome.Branch, "the checkpoint proves the server accepted the message")
 	require.Equal(t, 1, fixture.smtp.DataCount())
 	submissions := fixture.smtp.Submissions()
 	require.Len(t, submissions, 1)

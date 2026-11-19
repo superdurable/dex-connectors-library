@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { MaximumMaxSends, isValidMaxSends } from './operation.js';
+import { nextCallOccurrence } from './call_occurrence.js';
 import { ConnectionRefSchema, OperationRefSchema, deriveCallID, type CallID, type ConnectionRef, type OperationRef } from './types.js';
 import type { AsyncContext, BufferedTextStreamOptions, Stream } from '@superdurable/dex';
 
@@ -51,14 +52,21 @@ export interface Call {
   /** Whether buffered text output is configured. */ hasTextStream(): boolean;
 }
 
-/** Bind a live Dex Execute context to a stable, provider-safe call identity. */
+/**
+ * Bind a live Dex Execute context to a stable, provider-safe call identity.
+ *
+ * The n-th call of the same operation in one Step attempt gets occurrence n of `deriveCallID`,
+ * so several fenced writes of one operation keep separate checkpoint entries; the first keeps the
+ * four-field ID. The count restarts each attempt, so IDs stay stable across retries only when the
+ * Step creates its calls in a deterministic order. Call it once per logical call.
+ */
 export function createCall(context: AsyncContext, connection: ConnectionRef, operation: OperationRef, options: CallOptions = {}): Call {
   if (!context?.flowId) throw new TypeError('Dex Flow ID is required');
   if (!context.stepExecutionId) throw new TypeError('connector operations require a Dex Step execution; RPC invocation is not allowed');
   ConnectionRefSchema.parse(connection);
   OperationRefSchema.parse(operation);
   if (options.maxSendsOverride !== undefined && !isValidMaxSends(options.maxSendsOverride)) throw new RangeError(`connector maxSends must be an integer from 1 to ${MaximumMaxSends}`);
-  const call = { context, id: deriveCallID(context.flowId, context.stepExecutionId, operation), connection, operation } as Call;
+  const call = { context, id: deriveCallID(context.flowId, context.stepExecutionId, operation, nextCallOccurrence(context, operation)), connection, operation } as Call;
   if (options.maxSendsOverride !== undefined) call.maxSendsOverride = options.maxSendsOverride;
   const textWriter = options.textStream?.bufferedText(context, options.textOptions);
   let sequence = 0;

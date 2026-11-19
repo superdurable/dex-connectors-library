@@ -25,7 +25,7 @@ in one Flow, `PipedriveDealIntake`:
 
 ## Release baseline
 
-- Pipedrive Connector `v0.24.0`
+- Pipedrive Connector `v0.24.1`
 - dexcli `cli-v1.5.0` or a later stable release
 
 ## Generate the Flow Definition Graph
@@ -40,12 +40,12 @@ cd pipedrive-deal-intake-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/pipedrive/go/v0.24.0/connectors/pipedrive/go/examples/deal-intake/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/pipedrive/go/v0.24.1/connectors/pipedrive/go/examples/deal-intake/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/pipedrive-deal-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/pipedrive/go@v0.24.0
+go get github.com/superdurable/dex-connectors-library/connectors/pipedrive/go@v0.24.1
 go mod tidy
 
 dexcli visualize ./flow/workflow.go \
@@ -97,8 +97,9 @@ The integration suite runs 14 scenarios on a real Dex Server against a stateful
 fake Pipedrive: a new lead, a repeat lead with decoy deals, a person create and
 a deal create with delayed responses that are each sent once while healthy,
 an update applied before Worker loss and repeated with the same values by its
-replacement, a lost deal-create response (`uncertain`, never resent), a lost
-person-create response that the retry reads back by email, a Worker lost
-during a deal create, a burst-limited create, persons that share an email, a
+replacement, a lost deal-create response that is resent below the send cap, a
+lost person-create response that the retry reads back by email, a Worker lost
+during a deal create whose claimed send is counted before one resend, a
+burst-limited create, persons that share an email, a
 rejected deal, an expired OAuth token refreshed to the company `api_domain`,
 and invalid input that fails before any Pipedrive call.

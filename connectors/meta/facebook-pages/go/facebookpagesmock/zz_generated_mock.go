@@ -170,7 +170,7 @@ func PublishTextPostUncertain(value facebookpages.PublishedPost, failure sdkgo.F
 	return connectormock.Uncertain(value, failure)
 }
 
-// PublishTextPostDefect selects the defect branch: Local input or connection credentials are invalid.
+// PublishTextPostDefect selects the defect branch: Local input or connection credentials are invalid before any send.
 func PublishTextPostDefect(value facebookpages.PublishedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.PublishedPost] {
 	return connectormock.Branch(facebookpages.PublishTextPostBranchDefect, value, failure)
 }

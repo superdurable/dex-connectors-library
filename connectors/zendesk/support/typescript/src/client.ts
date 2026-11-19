@@ -1,10 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderStalledError, ProviderTransportError, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isIP } from 'node:net';
-import { defaultTriggerLogger, type Call, type CredentialProvider, type Failure, type Receipt, type TriggerLogger } from '@superdurable/connectors-sdk';
-import type { Config, Credentials } from './generated/models.js';
+import { z } from 'zod';
+import { defaultTriggerLogger, ReauthorizationRequiredError, type Call, type CredentialProvider, type Failure, type Receipt, type TriggerLogger } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
+import { isCredentialMaterialError, type Config, type Credentials } from './generated/models.js';
 import { RequestSpacingLimiter } from './request_spacing_limiter.js';
 import { CreateTicketOperation, GetTicketOperation, SearchTicketsOperation, UpdateTicketOperation } from './operations.js';
 
@@ -39,10 +41,26 @@ const minimumPollIntervalMs = 5_000;
 /** Classified response to one Zendesk HTTP request. */
 export type ZendeskExchange =
   | { outcome: 'success'; response: ZendeskResponse }
-  | { outcome: 'retry' | 'notFound' | 'rejected' | 'invalid' | 'defect'; response: ZendeskResponse; failure: Failure; retryAfterMs?: number };
+  | { outcome: 'retry' | 'notSent' | 'notFound' | 'rejected' | 'invalid' | 'defect'; response: ZendeskResponse; failure: Failure; retryAfterMs?: number };
+
+/** Per-request transport options of one exchange. */
+export interface ZendeskExchangeOptions {
+  /** Replaces the call's cancellation signal, such as the fence's write window. */ signal?: AbortSignal;
+  /** Reports a provably unsent fenced write as notSent. */ isFencedWrite?: boolean;
+}
 
 /** Secret-free response details needed by operations. */
-export interface ZendeskResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; requestId: string }
+export interface ZendeskResponse {
+  status: number; headers: ProviderResponse['headers']; body: Uint8Array; requestId: string;
+  /** A non-2xx body exceeded maxResponseBytes, so it cannot prove a refusal. */ hasOversizedBody?: boolean;
+  /** A non-2xx body carries a ticket ID, which contradicts a refusal. */ hasTicketIdentity?: boolean;
+  /** A non-2xx body contains the API token, so it cannot prove a refusal. */ hasCredentialEcho?: boolean;
+}
+
+/** Resolved credentials, or a failure that only reconnecting fixes (terminal) or that may pass (transient). */
+export type ZendeskWriteCredentials =
+  | { kind: 'resolved'; credentials: { email: string; apiToken: string } }
+  | { kind: 'terminal' | 'transient'; failure: Failure };
 
 /** Authenticated Zendesk Support client shared across Dex Steps. */
 export class ZendeskClient {
@@ -95,8 +113,24 @@ export class ZendeskClient {
     } catch { return undefined; }
   }
 
+  /** Resolve credentials for a Mutation and classify a failure as terminal or transient. */
+  async resolveWriteCredentials(call: Call, operation: string): Promise<ZendeskWriteCredentials> {
+    let current: Credentials;
+    try { current = await this.credentials.resolve(call, call.context.cancellationSignal); }
+    catch (error) {
+      const isTerminal = error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError || isCredentialMaterialError(error) || error instanceof z.ZodError;
+      return isTerminal
+        ? { kind: 'terminal', failure: zendeskFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable') }
+        : { kind: 'transient', failure: zendeskFailure(operation, 'AVAILABILITY', 'connection credentials could not be read') };
+    }
+    let apiToken: string | undefined;
+    try { apiToken = current.apiToken?.reveal(); } catch { apiToken = undefined; }
+    if (!isBareEmailAddress(current.email) || !apiToken || !isHeaderSafeCredential(apiToken)) return { kind: 'terminal', failure: zendeskFailure(operation, 'AUTHENTICATION', 'connection credentials are unavailable') };
+    return { kind: 'resolved', credentials: { email: current.email, apiToken } };
+  }
+
   /** Send and classify one request, keeping status classification independent of error-body size. */
-  async exchange(call: Call, credentials: { email: string; apiToken: string }, operation: string, method: 'GET' | 'POST' | 'PUT', path: string, query?: Record<string, string>, payload?: unknown, idempotencyKey?: string): Promise<ZendeskExchange> {
+  async exchange(call: Call, credentials: { email: string; apiToken: string }, operation: string, method: 'GET' | 'POST' | 'PUT', path: string, query?: Record<string, string>, payload?: unknown, idempotencyKey?: string, options: ZendeskExchangeOptions = {}): Promise<ZendeskExchange> {
     const headers: Record<string, string> = {
       Authorization: `Basic ${Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64')}`,
       Accept: 'application/json',
@@ -108,7 +142,7 @@ export class ZendeskClient {
       url: `${this.apiBaseURL}${path}${suffix}`, method, headers,
       maxResponseBytes: this.maxResponseBytes, timeoutMs: 9_000,
       addressPolicy: this.apiBaseURL.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP',
-      signal: call.context.cancellationSignal,
+      signal: options.signal ?? call.context.cancellationSignal,
       ...(payload === undefined ? {} : { body: Buffer.from(JSON.stringify(payload), 'utf8') }),
     };
     let response: ZendeskResponse;
@@ -117,6 +151,14 @@ export class ZendeskClient {
       const sent = await this.send(request);
       response = { status: sent.status, headers: sent.headers, body: sent.body, requestId: header(sent.headers, 'x-zendesk-request-id') };
     } catch (error) {
+      if (options.isFencedWrite && error instanceof ProviderTransportError && error.isProvablyNotSent) {
+        return { outcome: 'notSent', response: emptyResponse(), failure: zendeskFailure(operation, 'TRANSPORT', 'Zendesk could not be reached; no request was sent') };
+      }
+      if ((error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status !== undefined && error.headers !== undefined) {
+        // The status is kept: a write answered 2xx was accepted even when its body breaks.
+        const partial = { status: error.status, headers: error.headers, body: new Uint8Array(), requestId: header(error.headers, 'x-zendesk-request-id') };
+        return { outcome: 'retry', response: partial, failure: zendeskFailure(operation, 'TRANSPORT', 'Zendesk response could not be read') };
+      }
       if (!(error instanceof BodyTooLargeError) || error.status === undefined || error.headers === undefined) {
         return { outcome: 'retry', response: emptyResponse(), failure: zendeskFailure(operation, 'TRANSPORT', 'Zendesk request failed before a response arrived') };
       }
@@ -129,6 +171,8 @@ export class ZendeskClient {
       return { outcome: 'success', response };
     }
     const summary = describeError(response.body, credentials.apiToken);
+    const hasCredentialEcho = credentials.apiToken !== '' && Buffer.from(response.body).includes(Buffer.from(credentials.apiToken));
+    response = { ...response, hasOversizedBody: oversized, hasTicketIdentity: hasTicketIdentity(response.body), ...(hasCredentialEcho ? { hasCredentialEcho } : {}) };
     const status = response.status;
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'), this.now());
     if (status === 429) return { outcome: 'retry', response, failure: zendeskFailure(operation, 'RATE_LIMIT', `Zendesk rate limited the request (HTTP 429)${summary}`), retryAfterMs };
@@ -153,6 +197,17 @@ export function zendeskFailure(operation: string, kind: Failure['kind'], message
 /** Return one case-insensitive provider response header. */
 export function header(headers: ProviderResponse['headers'], name: string): string { const value = headers[name.toLowerCase()]; return Array.isArray(value) ? (value[0] ?? '') : (value ?? ''); }
 function emptyResponse(): ZendeskResponse { return { status: 0, headers: {}, body: new Uint8Array(), requestId: '' }; }
+/** Report a body whose ticket object carries a positive integer ID, as Go decodes it. */
+function hasTicketIdentity(body: Uint8Array): boolean {
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(body).toString('utf8'));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+    const ticket = (parsed as Record<string, unknown>).ticket;
+    if (!ticket || typeof ticket !== 'object' || Array.isArray(ticket)) return false;
+    const id = (ticket as Record<string, unknown>).id;
+    return typeof id === 'number' && Number.isSafeInteger(id) && id > 0;
+  } catch { return false; }
+}
 function goQueryEscape(value: string): string { return encodeURIComponent(Buffer.from(value, 'utf8').toString('utf8')).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
 function describeError(body: Uint8Array, secret: string): string {
   try {

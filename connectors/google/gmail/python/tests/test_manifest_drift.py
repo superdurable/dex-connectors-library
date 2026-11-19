@@ -163,6 +163,9 @@ def test_python_mock_factories_match_every_manifest_scenario() -> None:
                 assert case.kind == "retry" and not case.branch
                 failure = mock["retry"]["failure"]
                 assert case.retry_after_seconds == _seconds(mock["retry"].get("after", "0s")).total_seconds()
+            elif "uncertain" in mock:
+                assert case.kind == "uncertain" and case.branch == "uncertain"
+                failure = mock["uncertain"]["failure"]
             else:
                 assert case.kind == "branch" and case.branch == mock["branch"]
                 failure = mock.get("failure")

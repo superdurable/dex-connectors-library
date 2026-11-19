@@ -1,6 +1,6 @@
 # Email connector for Python
 
-Install `dex-connector-superdurable-email==0.1.0`. The package implements all six
+Install `dex-connector-superdurable-email==0.1.1`. The package implements all six
 email operations in the manifest: search, read, send, reply, move, and set flags.
 It uses verified TLS 1.2 or later for IMAP and SMTP, including STARTTLS when
 selected in the connection. Credentials are resolved on each operation attempt.
@@ -10,10 +10,11 @@ Flow with a static `email-support` connection. It uses `new_search_messages_step
 and completes with `SearchMessagesOutput`. Other operation-specific factories
 are exported from `dex_connectors.superdurable_email`.
 
-SMTP sends claim a Dex heartbeat before writing the message. If the final-dot
-answer is lost, the `uncertain` result contains the stable Message-ID and a
-later attempt does not resubmit. A definitive temporary refusal clears the
-claim and retries. IMAP flag changes use absolute values; moves look for the
+SMTP sends count their submissions in a Dex heartbeat checkpoint, as the Go
+connector does. If the final-dot answer is lost, a later attempt resubmits the
+message with the same Message-ID while fewer than `maxSends` (3) submissions
+may have been accepted; at the cap the `uncertain` result contains that
+Message-ID. A definitive temporary refusal is not counted and is retried. IMAP flag changes use absolute values; moves look for the
 same Message-ID in the destination after a lost answer.
 Mailbox names, including spaces and Unicode, are sent as quoted IMAP modified
 UTF-7. When the server reports COPYUID, a move returns the destination

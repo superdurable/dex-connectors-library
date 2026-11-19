@@ -86,7 +86,7 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
         const object = decodeCRMObject(input.objectType, providerObject);
         const created = booleanField(providerObject, 'new');
         return newMutationBranch('upserted', { object, created }, { ...receipt, providerObjectId: object.id });
-      } catch (error) { return mutationFailure('upsertObject', 'invalidResponse', 'PROTOCOL', zeroUpsert, receipt, error); }
+      } catch (error) { return unusableAnswerRetry('upsertObject', error); }
     }
     throw new TypeError('unreachable upsert attempt');
   }
@@ -102,10 +102,12 @@ export class UpdateObjectOperation implements Mutation<UpdateObjectInput, CRMObj
     try { validateObjectType(input.objectType); validateRecordId(input.objectId); validateValues(input.properties ?? undefined, true); }
     catch (error) { return mutationFailure('updateObject', 'defect', 'VALIDATION', zeroObject, {}, error); }
     const result = await this.client.exchange(call, 'updateObject', input.objectId, 'PATCH', objectsPath(input.objectType, input.objectId), undefined, { properties: input.properties });
+    // HubSpot's 409 CONFLICT, such as for an email another contact owns, is the only path to conflict.
+    if ('outcome' in result && result.outcome.disposition === 'conflict') return newMutationBranch('conflict', zeroObject, result.outcome.receipt, result.outcome.failure);
     if ('outcome' in result) return mutationOutcome(result.outcome, zeroObject, 'providerRejected', 'notFound', 'conflict');
     const receipt = this.client.receipt(call, result.response, input.objectId);
     try { const object = decodeCRMObject(input.objectType, jsonObject(result.response.body)); if (object.id !== input.objectId) throw new TypeError('HubSpot returned an invalid record'); return newMutationBranch('updated', object, receipt); }
-    catch { return mutationFailure('updateObject', 'invalidResponse', 'PROTOCOL', zeroObject, receipt, new Error('HubSpot returned an invalid record')); }
+    catch { return unusableAnswerRetry('updateObject', new Error('HubSpot returned an invalid record')); }
   }
 }
 
@@ -114,13 +116,24 @@ function queryOutcome<T>(outcome: ExchangeFailure, zero: T, rejected: string, no
   const branch = outcome.disposition === 'notFound' ? notFound : outcome.disposition === 'conflict' || outcome.disposition === 'rejected' ? rejected : outcome.disposition;
   return newQueryBranch(branch, zero, outcome.receipt, outcome.failure);
 }
+/** Statuses that prove HubSpot refused a write; any other failure leaves the write unknown. */
+const definiteRefusalStatuses: ReadonlySet<number> = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
+
 function mutationOutcome<T>(outcome: ExchangeFailure, zero: T, rejected: string, notFound = rejected, conflict = rejected): MutationAttempt<T> {
-  if (outcome.disposition === 'retry') return newMutationRetry(outcome.failure, outcome.retryAfterMs);
+  // Both writes are repeat-safe, so an HTTP status that does not prove a refusal, such as a bare 409, is retried.
+  // A documented CONFLICT is definite even after an earlier send: repeating our own write cannot conflict with it.
+  const isUnknownStatus = outcome.disposition !== 'conflict' && outcome.status !== undefined &&(outcome.status < 200 || outcome.status >= 300) && !definiteRefusalStatuses.has(outcome.status) && outcome.failure.kind !== 'QUOTA_EXHAUSTED';
+  // An oversized or unusable answer may follow an applied write, and repeating it is safe.
+  if (outcome.disposition === 'retry' || outcome.disposition === 'invalidResponse' || isUnknownStatus) return newMutationRetry(outcome.failure, outcome.retryAfterMs);
   const branch = outcome.disposition === 'notFound' ? notFound : outcome.disposition === 'conflict' ? conflict : outcome.disposition === 'rejected' ? rejected : outcome.disposition;
   return newMutationBranch(branch, zero, outcome.receipt, outcome.failure);
 }
 function queryFailure<T>(operation: string, branch: string, kind: Failure['kind'], zero: T, receipt: ReceiptDraft, error: unknown): QueryAttempt<T> {
   return newQueryBranch(branch, zero, receipt, { kind, provider: 'hubspot', operation, message: error instanceof Error ? error.message : 'HubSpot returned a malformed response' });
+}
+/** Retry a repeat-safe write whose accepted answer could not be decoded. */
+function unusableAnswerRetry<T>(operation: string, error: unknown): MutationAttempt<T> {
+  return newMutationRetry({ kind: 'PROTOCOL', provider: 'hubspot', operation, message: error instanceof Error ? error.message : 'HubSpot returned a malformed response' });
 }
 function mutationFailure<T>(operation: string, branch: string, kind: Failure['kind'], zero: T, receipt: ReceiptDraft, error: unknown): MutationAttempt<T> {
   return newMutationBranch(branch, zero, receipt, { kind, provider: 'hubspot', operation, message: error instanceof Error ? error.message : 'HubSpot returned a malformed response' });

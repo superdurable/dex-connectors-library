@@ -84,6 +84,7 @@ def new_send_message_step(
     map_to_operation_input: Callable[[StepInput], SendMessageInput],
     sent: dex.StepTarget[MutationResult[SendMessageOutput]],
     provider_rejected: dex.StepTarget[MutationResult[SendMessageOutput]] | None = None,
+    uncertain: dex.StepTarget[MutationResult[SendMessageOutput]] | None = None,
     defect: dex.StepTarget[MutationResult[SendMessageOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[SendMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
@@ -104,6 +105,8 @@ def new_send_message_step(
     }
     if provider_rejected is not None:
         branches["providerRejected"] = provider_rejected
+    if uncertain is not None:
+        branches["uncertain"] = uncertain
     if defect is not None:
         branches["defect"] = defect
     return MutationStep(
@@ -134,6 +137,7 @@ def new_reply_to_message_step(
     sent: dex.StepTarget[MutationResult[SendMessageOutput]],
     provider_rejected: dex.StepTarget[MutationResult[SendMessageOutput]] | None = None,
     invalid_response: dex.StepTarget[MutationResult[SendMessageOutput]] | None = None,
+    uncertain: dex.StepTarget[MutationResult[SendMessageOutput]] | None = None,
     defect: dex.StepTarget[MutationResult[SendMessageOutput]] | None = None,
     result_attribute: dex.Attribute[MutationResult[SendMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
@@ -156,6 +160,8 @@ def new_reply_to_message_step(
         branches["providerRejected"] = provider_rejected
     if invalid_response is not None:
         branches["invalidResponse"] = invalid_response
+    if uncertain is not None:
+        branches["uncertain"] = uncertain
     if defect is not None:
         branches["defect"] = defect
     return MutationStep(

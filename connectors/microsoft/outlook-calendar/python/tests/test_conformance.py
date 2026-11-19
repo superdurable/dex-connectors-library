@@ -47,6 +47,7 @@ ADAPTER = conformance.PythonOperationAdapter(
         "updateEvent": UpdateEventOperation,
         "queryFreeBusy": QueryFreeBusyOperation,
     },
+    with_context=True,
 )
 
 

@@ -22,7 +22,7 @@ mkdir -p /tmp/klaviyo-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/klaviyo/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/klaviyo/go \
-  --version v0.2.0 --tag connectors/klaviyo/go/v0.2.0 \
+  --version v0.2.1 --tag connectors/klaviyo/go/v0.2.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/klaviyo-release/connector-release.json \
   --digest-output /tmp/klaviyo-release/connector-release.json.sha256

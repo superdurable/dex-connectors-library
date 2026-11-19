@@ -1216,13 +1216,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "module": "Contacts"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1240,7 +1237,7 @@
           "workflow"
         ]
       },
-      "name": "upsertRecord-invalid-response",
+      "name": "upsertRecord-invalid-response-retries",
       "operation": "upsertRecord"
     },
     {
@@ -1617,13 +1614,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "module": "Deals"
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1638,7 +1632,62 @@
           "workflow"
         ]
       },
-      "name": "updateRecord-invalid-response",
+      "name": "updateRecord-invalid-response-retries",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"UNLISTED\",\"details\":{},\"message\":\"SENTINEL\",\"status\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-unlisted-status-retries",
       "operation": "updateRecord"
     },
     {

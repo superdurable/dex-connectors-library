@@ -85,6 +85,7 @@ func sendMessageAgentToolMetadata() sdkgo.AgentToolMetadata {
 		MaxSends:              SendMessageDefinition.MaxSends,
 		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
 			SendMessageBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
+			SendMessageBranchUncertain:        sdkgo.AgentBranchOutcomeUnknown,
 			SendMessageBranchDefect:           sdkgo.AgentBranchOutcomeUnknown,
 		},
 		InputType:    "SendMessageInput",
@@ -107,6 +108,7 @@ func replyToMessageAgentToolMetadata() sdkgo.AgentToolMetadata {
 		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
 			ReplyToMessageBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
 			ReplyToMessageBranchInvalidResponse:  sdkgo.AgentBranchOutcomeRejected,
+			ReplyToMessageBranchUncertain:        sdkgo.AgentBranchOutcomeUnknown,
 			ReplyToMessageBranchDefect:           sdkgo.AgentBranchOutcomeUnknown,
 		},
 		InputType:    "ReplyToMessageInput",

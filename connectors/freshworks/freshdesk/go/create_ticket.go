@@ -79,44 +79,66 @@ func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v2/tickets. A 429, 503, or traced pre-connection failure retries only
-// in the next attempt; other unconfirmed dispatched outcomes select uncertain without resending.
+// Invoke sends POST /api/v2/tickets under the single-dispatch fence and the manifest send cap.
+// A 429, 503, or traced pre-connection failure retries; another unknown outcome resends while the
+// cap allows and selects uncertain at the cap, because Freshdesk has no ticket read-back by Call ID.
+// An accepted answer with an unusable body, or an earlier attempt's checkpointed ticket ID, is read
+// back with GET /api/v2/tickets/{id} and never resent.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	if err := validateCreateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, freshdeskFailurePointer(sdkgo.FailureValidation, createTicketOperation, err.Error()), sdkgo.Receipt{})
 	}
 	writeBudget := newFreshdeskWriteBudget(call.Context, CreateTicketDefinition.StepDefaults.ExecuteMethodTimeout)
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend[CreateTicketOutput](inspectSingleDispatch(call), createTicketOperation,
-		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
-		return attempt
+	permit, priorAttempt := beginFreshdeskWrite[CreateTicketOutput](call, operation.client, createTicketOperation,
+		CreateTicketDefinition.StepDefaults.ExecuteMethodTimeout, CreateTicketBranchDefect)
+	if priorAttempt != nil {
+		return *priorAttempt
 	}
 	credentials, failure, isTransient := operation.client.resolveCredentials(call, createTicketOperation)
 	if failure != nil {
-		if isTransient || call.Context.Attempt() > 1 {
-			permitSingleDispatchRetry(call)
-			return sdkgo.NewMutationRetry[CreateTicketOutput](*failure, 0)
-		}
-		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, failure, sdkgo.Receipt{})
+		return credentialAttempt[CreateTicketOutput](permit, *failure, isTransient, CreateTicketBranchDefect)
 	}
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend[CreateTicketOutput](recordSingleDispatch(call), createTicketOperation,
-		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
-		return attempt
+	reader := createdTicketReader{client: operation.client}
+	if permit.savedProviderID != 0 {
+		return confirmAcceptedWrite[CreateTicketOutput](call, operation.client, credentials, permit.savedProviderID, true, CreateTicketBranchCreated, reader)
 	}
-	result := operation.client.exchange(call, credentials, createTicketOperation, freshdeskRequest{
+	result, dispatchAttempt := sendFreshdeskWrite[CreateTicketOutput](permit, operation.client, credentials, createTicketOperation, freshdeskRequest{
 		method: http.MethodPost, path: "/tickets", payload: buildCreateTicketRequest(input),
 	}, writeBudget)
-	receipt := operation.client.receipt(call, result.response, 0)
-	if attempt, isTerminal := singleDispatchAttemptForExchange[CreateTicketOutput](call, result, receipt, singleDispatchBranches{
+	if dispatchAttempt != nil {
+		return *dispatchAttempt
+	}
+	return finishFreshdeskWrite[CreateTicketOutput](permit, call, operation.client, credentials, createTicketOperation, result, CreateTicketBranchCreated, singleDispatchBranches{
 		providerRejected: CreateTicketBranchProviderRejected, defect: CreateTicketBranchDefect,
-	}); isTerminal {
-		return attempt
-	}
-	ticket, err := decodeTicketBody(result.response.body, 0)
+	}, reader)
+}
+
+// createdTicketReader decodes a created ticket and reads it back by ID.
+type createdTicketReader struct {
+	client *Client
+}
+
+func (createdTicketReader) decodeAcceptedWrite(body []byte) (CreateTicketOutput, int64, error) {
+	ticket, err := decodeTicketBody(body, 0)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(CreateTicketOutput{}, freshdeskFailure(sdkgo.FailureProtocol, createTicketOperation,
-			"Freshdesk accepted the ticket but returned an invalid ticket: "+err.Error()), receipt)
+		return CreateTicketOutput{}, 0, err
 	}
-	return sdkgo.NewMutationBranch(CreateTicketBranchCreated, CreateTicketOutput{Ticket: ticket}, nil, operation.client.receipt(call, result.response, ticket.ID))
+	return CreateTicketOutput{Ticket: ticket}, ticket.ID, nil
+}
+
+// readAcceptedWrite reads GET /api/v2/tickets/{id}; a missing or invalid ticket is unconfirmed.
+func (reader createdTicketReader) readAcceptedWrite(call sdkgo.Call, credentials Credentials, providerID int64) acceptedWriteReadBack[CreateTicketOutput] {
+	result := reader.client.exchange(call, credentials, createTicketOperation, freshdeskRequest{method: http.MethodGet, path: ticketPath(providerID)})
+	if result.outcome != exchangeSucceeded {
+		return acceptedWriteReadBack[CreateTicketOutput]{result: result}
+	}
+	ticket, err := decodeTicketBody(result.response.body, providerID)
+	if err != nil {
+		result.outcome = exchangeInvalid
+		result.failure = freshdeskFailure(sdkgo.FailureProtocol, createTicketOperation, "Freshdesk accepted the ticket, and its read-back returned an invalid ticket: "+err.Error())
+		return acceptedWriteReadBack[CreateTicketOutput]{result: result}
+	}
+	return acceptedWriteReadBack[CreateTicketOutput]{output: CreateTicketOutput{Ticket: ticket}, isConfirmed: true, result: result}
 }
 
 func validateCreateTicketInput(input CreateTicketInput) error {

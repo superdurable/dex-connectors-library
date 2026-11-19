@@ -1,6 +1,6 @@
 # Email (IMAP and SMTP) Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go@v0.23.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/email`.
 
@@ -14,7 +14,7 @@ than Gmail and Microsoft 365. It exposes these operation-specific Dex Step
 factories:
 
 The [Python package](python/README.md) implements the same six operations at
-`v0.1.0`, with a [runnable mailbox search Flow](python/examples/mailbox_search/README.md).
+`v0.1.1`, with a [runnable mailbox search Flow](python/examples/mailbox_search/README.md).
 Its CI protocol integration test uses GreenMail; live mail-provider behavior
 remains unverified.
 
@@ -31,7 +31,7 @@ Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. IMAP operations use
 a 30-second Execute timeout and unlimited attempts within one hour. The two SMTP
 operations use sync durability, a 150-second Execute timeout with a matching
-heartbeat timeout, and five attempts within ten minutes; see
+heartbeat timeout, and ten attempts within ten minutes; see
 [Duplicate safety](#duplicate-safety).
 
 Use the [Gmail connector](../../google/gmail) for Gmail. Microsoft 365
@@ -237,7 +237,9 @@ over IMAP without setting `\Seen`, then submits the reply like `sendMessage`:
 - the text is sent as given; quote the original in it, as the example does.
 
 A missing source selects `notFound`, and a source without a usable reply
-address selects `invalidResponse`; neither sends anything. The reply does not
+address selects `invalidResponse`; neither sends anything. After an earlier
+attempt may have submitted the reply, both select `uncertain` instead, because
+the source no longer settles whether that reply was accepted. The reply does not
 set `\Answered`; use `setFlags`.
 
 ### moveMessage
@@ -269,36 +271,60 @@ commit, so the operations
 take these positions:
 
 - **searchMessages** and **getMessage** only read.
-- **setFlags** and **moveMessage** are safe to repeat and keep async
+- **setFlags** and **moveMessage** are `repeatOnUnknown: safe` and keep async
   durability. Flags are absolute values from a fresh read, and a message can
   be moved only once; a repeat that finds it gone finds it by Message-ID in the
   destination. Every unconfirmed outcome, including a lost connection, is
   retried. The example drops a `MOVE` answer after applying it; read-back
-  confirms the message was archived once.
-- **sendMessage** and **replyToMessage** run with sync durability, which
-  persists the result before the Flow advances. Before connecting to the SMTP server,
-  the operation records a Dex heartbeat checkpoint naming the Step's Call ID.
-  A later attempt of the same Step execution that finds the checkpoint, after a
-  lost Worker or an Execute timeout, selects `uncertain` without connecting.
-  `replyToMessage` checks for the checkpoint before it reads the source.
+  confirms the message was archived once. Without `messageId`, a repeat after
+  a lost `MOVE` answer cannot find the message and selects `notFound`.
+- **sendMessage** and **replyToMessage** are `repeatOnUnknown: limited` with
+  `maxSends: 3`: a duplicate email is acceptable, and the connector cannot read
+  a sent message back. They run with sync durability, which persists the
+  result before the Flow advances. A Dex heartbeat checkpoint counts the
+  submissions of the Step's Call ID: each attempt records a claim before SMTP
+  `DATA`, a provable non-acceptance records that it was not counted, and an
+  accepted submission is recorded as accepted. The next attempt bounds the
+  earlier submissions from the checkpoint: a missing checkpoint counts every
+  earlier attempt, a checkpoint written by an earlier release counts every
+  earlier attempt, and a checkpoint of another Call ID or one that cannot be
+  read returns Retry without submitting.
 - An SMTP server accepts a message only when it answers the final dot, so
   every failure before that point is provably not sent: a 4xx reply or a
-  connection that failed before the final dot clears the checkpoint and is
-  retried, and a 5xx clears it and selects `providerRejected`. A 4xx or 5xx
-  answer to the final dot is also a refusal. Only an answer lost after the
-  final dot, such as a dropped connection or a timeout, selects `uncertain`,
-  with the Message-ID to look for; the connector never resubmits it.
+  connection that failed before the final dot is retried and not counted, and
+  a 5xx selects `providerRejected`. A 4xx or 5xx answer to the final dot is
+  also a refusal. An answer lost after the final dot, such as a dropped
+  connection or a timeout, is submitted again, with the same Message-ID, while
+  fewer than `maxSends` submissions may have been accepted; at the cap it
+  selects `uncertain` with the Message-ID to look for.
+- After an earlier submission may have been accepted, a refusal, unusable
+  credentials, or a source that can no longer be read selects `uncertain`
+  instead of `providerRejected`, `notFound`, `invalidResponse`, or `defect`.
+  A replay after an accepted submission never submits again: it selects
+  `sent` with the rebuilt message and a blank `sentAt`, because the
+  checkpoint proves the server accepted it. A `replyToMessage` replay reads
+  the source again to rebuild the reply: a temporary IMAP failure returns
+  Retry and keeps the accepted checkpoint, so a later attempt still selects
+  `sent`, and a source that is gone selects `uncertain`.
+- A credential resolve failure is terminal only for reauthorization, a
+  missing or unselected connection, or a broker refusal. Any other, such as a
+  temporarily unavailable credential broker or store, a timeout, or a
+  connection that is not configured yet, returns Retry in every operation and
+  is not counted as a submission; it never selects `defect`, and after an
+  accepted submission it keeps the accepted checkpoint.
 
 Keep these two Steps sync to reduce replay risk before an async result commit.
-Both durability modes use the same attempt and retry rules. The root
-integration test forces a second Execute after an accepted submission and
-confirms it selects `uncertain` without resubmitting. The example's lost-Worker
-test checks the same checkpoint through Worker replacement. Dex's `RecordHeartbeat`
-returns once the checkpoint enters the Worker's stream, not after the server
-stores it, so a Worker lost in that instant could still allow one resubmission;
-it would carry the same Message-ID. A crash after the checkpoint and before
-the final dot makes an attempt report `uncertain` for a message the server
-never accepted; that direction is safe.
+Both durability modes use the same attempt and retry rules. The ten attempts
+within ten minutes leave room for the three submissions plus temporary SMTP
+refusals. The root integration test forces a second Execute after an accepted
+submission and confirms it selects `sent` without resubmitting. The
+example's lost-Worker test replaces the Worker while the server holds the
+final-dot answer; the next attempt counts that submission and sends the reply
+once more. Dex's `RecordHeartbeat` returns once the checkpoint enters the
+Worker's stream, not after the server stores it, so a lost claim is counted
+from the attempt number, and a lost acceptance record lets a replay resubmit
+only while the send cap allows; every resubmission carries the same
+Message-ID.
 
 ## Errors
 
@@ -311,7 +337,7 @@ name the command and the reply and enhanced status codes, such as
 | Outcome | Reads | moveMessage and setFlags | sendMessage and replyToMessage |
 | --- | --- | --- | --- |
 | Host does not resolve | `providerRejected` | `providerRejected` | `providerRejected` |
-| Connection refused, lost, or timed out | Retry | Retry | Retry before the final dot; `uncertain` after it |
+| Connection refused, lost, or timed out | Retry | Retry | Retry before the final dot; after it, Retry below the send cap and `uncertain` at it |
 | Certificate fails verification, no TLS on the port, or no STARTTLS offered | `providerRejected` | `providerRejected` | `providerRejected` |
 | Login refused (`AUTHENTICATIONFAILED`, SMTP 535) | `providerRejected`, `AUTHENTICATION` | same | same |
 | Mailbox missing (`NONEXISTENT`, `TRYCREATE`) | `providerRejected` for search, `notFound` for a reference | `notFound`; a missing move destination is `providerRejected` | `notFound` for the reply source |
@@ -321,7 +347,8 @@ name the command and the reply and enhanced status codes, such as
 | SMTP 4xx | n/a | n/a | Retry, checkpoint cleared |
 | SMTP 5xx, such as a rejected recipient or sender | n/a | n/a | `providerRejected`, nothing sent |
 | Unparseable server response | `invalidResponse` | Retry | `invalidResponse` for the reply source; `providerRejected` for an unusable SMTP answer before the final dot |
-| Invalid input or connection credentials | `defect`, no connection | `defect` | `defect` |
+| Invalid input, unusable credential material, or a terminal credential resolve failure | `defect`, no connection | `defect` on the first attempt, Retry on a later one | `defect`; `uncertain` after an earlier possible submission |
+| Any other credential resolve failure, such as a temporarily unavailable broker or store | Retry | Retry | Retry, not counted |
 
 ## Not in this release
 

@@ -87,7 +87,10 @@ func (operation ReadFileTextOperation) Invoke(call sdkgo.Call, input ReadFileTex
 	if err := validateDriveAndFolderIDs(input.DriveID, input.ItemID); err != nil || input.ItemID == "" || input.ItemID == rootFolderAlias {
 		return sdkgo.NewQueryBranch(ReadFileTextBranchDefect, ReadFileTextOutput{}, graphFailurePointer(sdkgo.FailureValidation, readFileTextOperationID, "itemId must be a Microsoft Graph file item ID, and driveId a drive ID or blank"), sdkgo.Receipt{})
 	}
-	credential, failure := client.resolveCredential(call, readFileTextOperationID, input.DriveID)
+	credential, failure, isRetryable := client.resolveCredential(call, readFileTextOperationID, input.DriveID)
+	if isRetryable {
+		return sdkgo.NewQueryRetry[ReadFileTextOutput](*failure, 0)
+	}
 	if failure != nil {
 		return sdkgo.NewQueryBranch(ReadFileTextBranchDefect, ReadFileTextOutput{}, failure, sdkgo.Receipt{})
 	}

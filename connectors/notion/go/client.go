@@ -170,7 +170,10 @@ const (
 	writeRetry
 	writeRejected
 	writeNotFound
+	// writeUncertain means the write may or may not have taken effect, so a capped resend may follow.
 	writeUncertain
+	// writeAcceptedUnreadable means a 2xx accepted the write, so a resend would duplicate it.
+	writeAcceptedUnreadable
 	writeInvalid
 	writeDefect
 )
@@ -260,7 +263,7 @@ func (client *Client) startSessionWithCredentialStatus(call sdkgo.Call, operatio
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication,
-			"Notion connection credentials are unavailable; save the connection's API token again"), isTransientCredentialFailure(err)
+			"Notion connection credentials are unavailable; save the connection's API token again"), !isTerminalCredentialError(err)
 	}
 	if !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
 		return nil, nil, failurePointer(operationID, sdkgo.FailureAuthentication,
@@ -279,9 +282,11 @@ func (client *Client) startSessionWithCredentialStatus(call sdkgo.Call, operatio
 	return &operationSession{context: operationContext, call: call, credentials: credentials}, cancel, nil, false
 }
 
-func isTransientCredentialFailure(err error) bool {
-	return errors.Is(err, projectconfig.ErrCredentialBrokerUnavailable) ||
-		errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+// isTerminalCredentialError reports a credential failure no later attempt resolves without a person.
+func isTerminalCredentialError(err error) bool {
+	return sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) ||
+		errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, projectconfig.ErrConnectionNotSelected) ||
+		errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
 }
 
 func (client *Client) exchange(session *operationSession, request notionRequest) exchangeResult {
@@ -383,7 +388,7 @@ func (client *Client) classifyRead(operationID string, subject string, result ex
 	}
 }
 
-// classifyUnkeyedWrite retries only provably unwritten requests: undispatched, 409, 429, and 529.
+// classifyUnkeyedWrite retries only provably unwritten requests: undispatched and 429.
 func (client *Client) classifyUnkeyedWrite(operationID string, subject string, result exchangeResult) writeClassification {
 	switch {
 	case errors.Is(result.err, errRequestNotBuilt):
@@ -396,20 +401,25 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 	response := result.response
 	switch {
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureTransport, "Notion accepted the "+subject+" but its response was interrupted")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureTransport, "Notion accepted the "+subject+" but its response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Notion accepted the "+subject+" but its response exceeds the configured size limit")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Notion accepted the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureProtocol, "Notion accepted the "+subject+" but its response contains credential material")}
+		return writeClassification{outcome: writeAcceptedUnreadable, failure: newFailure(operationID, sdkgo.FailureProtocol, "Notion accepted the "+subject+" but its response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
 	case isBlockedRateLimit(response):
 		return writeClassification{outcome: writeRejected, failure: blockedFailure(operationID, subject)}
-	case response.statusCode == http.StatusTooManyRequests || response.statusCode == statusServiceOverload:
+	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response),
 			failure: newFailure(operationID, sdkgo.FailureRateLimit, "Notion rate limited the "+subject+" before writing it")}
-	case response.statusCode == http.StatusConflict:
-		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response),
+	case response.isBodyTooLarge || response.hasBodyReadFailed:
+		// An unreadable refusal cannot prove the write was refused.
+		return writeClassification{outcome: writeUncertain, retryAfter: client.retryAfter(response),
+			failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Notion %s outcome is unknown after an unreadable HTTP %d", subject, response.statusCode))}
+	case response.statusCode == http.StatusConflict || response.statusCode == statusServiceOverload:
+		// The owner rules treat 409 and every 5xx without a saved ID as an unknown outcome.
+		return writeClassification{outcome: writeUncertain, retryAfter: client.retryAfter(response),
 			failure: statusFailure(operationID, "Notion could not complete the "+subject+" transaction", response)}
 	case response.statusCode == http.StatusServiceUnavailable && readCommittedResourceID(response.body) != "":
 		return writeClassification{outcome: writeCommitted, committedResourceID: readCommittedResourceID(response.body),
@@ -419,7 +429,7 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 	case isConclusiveRejectionStatus(response.statusCode):
 		return writeClassification{outcome: writeRejected, failure: rejectionFailure(operationID, subject, response)}
 	default:
-		return writeClassification{outcome: writeUncertain,
+		return writeClassification{outcome: writeUncertain, retryAfter: client.retryAfter(response),
 			failure: statusFailure(operationID, fmt.Sprintf("Notion %s outcome is unknown after HTTP %d", subject, response.statusCode), response)}
 	}
 }
@@ -437,11 +447,15 @@ func (client *Client) classifyRepeatableWrite(operationID string, subject string
 	case isSuccessStatus(response.statusCode) && response.hasBodyReadFailed:
 		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureTransport, "Notion "+subject+" response was interrupted")}
 	case isSuccessStatus(response.statusCode) && response.isBodyTooLarge:
-		return writeClassification{outcome: writeInvalid, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Notion applied the "+subject+" but its response exceeds the configured size limit")}
+		// Repeating the absolute write is safe, so an unusable accepted response retries.
+		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureResponseTooLarge, "Notion applied the "+subject+" but its response exceeds the configured size limit")}
 	case isSuccessStatus(response.statusCode) && response.reflectsSecret:
-		return writeClassification{outcome: writeInvalid, failure: newFailure(operationID, sdkgo.FailureProtocol, "Notion "+subject+" response contains credential material")}
+		return writeClassification{outcome: writeRetry, failure: newFailure(operationID, sdkgo.FailureProtocol, "Notion "+subject+" response contains credential material")}
 	case isSuccessStatus(response.statusCode):
 		return writeClassification{outcome: writeAccepted}
+	case response.isBodyTooLarge || response.hasBodyReadFailed:
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response),
+			failure: newFailure(operationID, sdkgo.FailureTransport, fmt.Sprintf("Notion %s outcome is unknown after an unreadable HTTP %d", subject, response.statusCode))}
 	case isBlockedRateLimit(response):
 		return writeClassification{outcome: writeRejected, failure: blockedFailure(operationID, subject)}
 	case response.statusCode == http.StatusTooManyRequests || response.statusCode == statusServiceOverload:
@@ -450,10 +464,12 @@ func (client *Client) classifyRepeatableWrite(operationID string, subject string
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: statusFailure(operationID, "Notion "+subject+" is temporarily unavailable", response)}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: notFoundFailure(operationID, subject)}
-	case response.statusCode >= 400 && response.statusCode < 500:
+	case isConclusiveRejectionStatus(response.statusCode):
 		return writeClassification{outcome: writeRejected, failure: rejectionFailure(operationID, subject, response)}
 	default:
-		return writeClassification{outcome: writeInvalid, failure: newFailure(operationID, sdkgo.FailureProtocol, fmt.Sprintf("Notion returned unexpected HTTP %d for the %s", response.statusCode, subject))}
+		// Any other status leaves the write unknown; repeating it leaves the same state.
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response),
+			failure: statusFailure(operationID, fmt.Sprintf("Notion %s outcome is unknown after HTTP %d", subject, response.statusCode), response)}
 	}
 }
 
@@ -557,10 +573,16 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408, 409, and 429: Notion refused before writing.
+// isConclusiveRejectionStatus reports a status that proves Notion refused a write: 400, 401, 403,
+// 411, 413, 414, 415, or 422. A 404 is handled separately; any other status leaves the write unknown.
 func isConclusiveRejectionStatus(statusCode int) bool {
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout &&
-		statusCode != http.StatusConflict && statusCode != http.StatusTooManyRequests
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusLengthRequired,
+		http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong, http.StatusUnsupportedMediaType,
+		http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 // isRetryableReadStatus reports a status a repeated read or absolute write can safely wait out.
