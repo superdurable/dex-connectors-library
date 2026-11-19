@@ -12,7 +12,7 @@
       "kind": "query",
       "operationId": "getPatentValuation",
       "inputType": "GetPatentValuationInput",
-      "description": "List up to 50 model IDs enabled for the API Key.",
+      "description": "Read provider valuation metrics for one patent publication number.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -24,6 +24,11 @@
           "id": "found",
           "field": "found",
           "optional": false
+        },
+        {
+          "id": "noData",
+          "field": "no_data",
+          "optional": true
         },
         {
           "id": "providerRejected",
@@ -43,8 +48,16 @@
       ],
       "inputSchema": {
         "additionalProperties": false,
-        "description": "GetPatentValuationInput requests models visible to the Zhihuiya API Key.",
-        "properties": {},
+        "description": "GetPatentValuationInput identifies one patent by its publication number.",
+        "properties": {
+          "publicationNumber": {
+            "description": "PublicationNumber is the patent publication number, for example JP6012277B2.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publicationNumber"
+        ],
         "type": "object"
       }
     }
