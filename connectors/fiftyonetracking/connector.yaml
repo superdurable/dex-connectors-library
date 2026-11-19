@@ -8,9 +8,14 @@ metadata:
   categories: [ecommerce]
   version: v0.1.0
 spec:
-  provider: fiftyonetracking
   languages:
     python: {version: v0.1.0, operations: [getShipmentStatusCounts], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-fiftyonetracking"
+      operations: [getShipmentStatusCounts]
+      triggers: []
+  provider: fiftyonetracking
   codegen:
     go:
       package: fiftyonetracking

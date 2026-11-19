@@ -8,9 +8,14 @@ metadata:
   categories: [ai, developer-tools]
   version: v0.1.0
 spec:
-  provider: gshapi
   languages:
     python: {version: v0.1.0, operations: [listModels], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-gshapi"
+      operations: [listModels]
+      triggers: []
+  provider: gshapi
   codegen:
     go:
       package: gshapi

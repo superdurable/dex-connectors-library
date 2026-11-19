@@ -5,3 +5,7 @@ This connector lists the models visible to the current Key through [FluRouter's 
 Follow the [access guide](https://flurouter.net/guide): sign in to the console, open **API Keys**, create a Key with the needed model permissions, and copy its `sk-il-` value when shown. Save it in Dex Web Connections. The Query takes `{}` and sends the Key only as a Bearer header over HTTPS. The connector disables redirects, bounds the response, and keeps raw provider errors out of Flow output and failures.
 
 Run the [example Flow](go/examples/list-models/) with the generated mock or a user-controlled connection. The live Key-visible model list is unverified without a user-controlled Key.
+
+The [Python package](python/README.md) includes a [runnable Dex Flow](python/examples/model_catalog/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.
+
+The [TypeScript package](typescript/README.md) includes a [runnable Dex Flow](typescript/examples/basic/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.

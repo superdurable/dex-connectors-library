@@ -7,3 +7,7 @@ GitCode [API authentication](https://docs.gitcode.com/docs/apis/) accepts a pers
 `getRepository` selects `fetched`, `notFound`, `providerRejected`, `invalidResponse`, or `defect`. Rate limits, transport errors, and temporary server faults retry. Optional branches fail the example Flow unless wired by an application.
 
 [Run the repository Flow](go/examples/repository/README.md). Its checked-in mock is synthetic; live repository lookup has not been verified without a user-controlled token in Dex Web Connections.
+
+The [Python package](python/README.md) includes a [runnable Dex Flow](python/examples/repository_lookup/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.
+
+The [TypeScript package](typescript/README.md) includes a [runnable Dex Flow](typescript/examples/basic/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.

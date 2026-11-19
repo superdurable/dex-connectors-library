@@ -10,6 +10,11 @@ metadata:
 spec:
   languages:
     python: {version: v0.1.0, operations: [getRepository], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-gitcode"
+      operations: [getRepository]
+      triggers: []
   provider: gitcode
   codegen:
     go:

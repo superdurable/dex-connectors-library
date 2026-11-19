@@ -8,9 +8,14 @@ metadata:
   categories: [analytics]
   version: v0.1.0
 spec:
-  provider: guance
   languages:
     python: {version: v0.1.0, operations: [listDashboardsPage], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-guance"
+      operations: [listDashboardsPage]
+      triggers: []
+  provider: guance
   codegen:
     go:
       package: guance

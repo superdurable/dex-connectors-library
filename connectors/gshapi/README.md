@@ -7,3 +7,7 @@ Open [GSH API subscription](https://api.gshpay.com/pricing.html) and submit a su
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "gshapi"`. Run the worker with `go run .` from its directory, then start `GSHAPIModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [official developer documentation](https://api.gshpay.com/docs.html). Real provider authorization is unverified without a customer-controlled Key.
+
+The [Python package](python/README.md) includes a [runnable Dex Flow](python/examples/model_list/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.
+
+The [TypeScript package](typescript/README.md) includes a [runnable Dex Flow](typescript/examples/basic/README.md) and replays the Go-recorded provider scenarios. Live provider authorization remains unverified without user-controlled credentials.

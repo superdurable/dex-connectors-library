@@ -1,0 +1,70 @@
+{
+  "connectorId": "gitcode",
+  "releaseTag": "connectors/gitcode/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-gitcode",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetRepositoryStep",
+      "kind": "query",
+      "operationId": "getRepository",
+      "inputType": "GetRepositoryInput",
+      "description": "Read one repository's ID, full name, visibility, and default branch.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetRepositoryInput identifies a repository by its GitCode URL path components.",
+        "properties": {
+          "owner": {
+            "description": "Owner is the organization or user path before the slash.",
+            "type": "string"
+          },
+          "repo": {
+            "description": "Repo is the repository path after the slash.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner",
+          "repo"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
