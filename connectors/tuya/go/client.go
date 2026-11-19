@@ -5,10 +5,13 @@
 package tuya
 
 import (
+	"crypto/rand"
 	"errors"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Option supplies a client dependency at construction.
@@ -28,6 +31,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	now              func() time.Time
+	nonceReader      io.Reader
 }
 
 // New validates the configured Tuya data center without making a provider request.
@@ -42,7 +47,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Timeout <= 0 || config.MaxResponseBytes <= 0 || config.MaxResponseBytes > 16<<20 {
 		return nil, errors.New("Tuya timeout or response limit is invalid")
 	}
-	client := &Client{endpoint: string(config.Endpoint), maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{endpoint: string(config.Endpoint), maxResponseBytes: config.MaxResponseBytes, credentials: credentials, now: time.Now, nonceReader: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Tuya client option is required")
