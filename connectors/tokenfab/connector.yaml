@@ -8,11 +8,10 @@ metadata:
   categories: [ai, developer-tools]
   version: v0.1.0
 spec:
-  languages:
-    typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   provider: tokenfab
   languages:
     python: {version: v0.1.0, operations: [listModels], triggers: []}
+    typescript: {version: v0.1.0, operations: [listModels], triggers: []}
   codegen:
     go:
       package: tokenfab
