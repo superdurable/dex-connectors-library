@@ -66,7 +66,7 @@ func (operation ListStoresOperation) Invoke(call sdkgo.Call, _ ListStoresInput) 
 		}
 		return storeBranch(issue.branch, issue.kind, issue.message)
 	}
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().Unix(), 10)
 	appID := credentials.AppID.Reveal()
 	signature, err := signStoreRequest(map[string]string{"access_token": token, "app_key": appID, "timestamp": timestamp}, appID)
 	if err != nil {
@@ -84,7 +84,7 @@ func (operation ListStoresOperation) Invoke(call sdkgo.Call, _ ListStoresInput) 
 		return storeRetry(sdkgo.FailureAvailability, "Lingxing store request failed", 0)
 	}
 	defer func() { _ = response.Body.Close() }()
-	delay := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	delay := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), operation.client.now())
 	if response.StatusCode == http.StatusTooManyRequests {
 		return storeRetry(sdkgo.FailureRateLimit, "Lingxing store request was rate limited", delay)
 	}
