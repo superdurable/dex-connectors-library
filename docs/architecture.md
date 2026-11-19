@@ -267,13 +267,18 @@ a passing full local run of that commit. The `local-verification` job trusts it
 only when the newest status with that context on the head is `success` and its
 creator holds the `admin` or `maintain` repository role; on a merge group it
 checks the head of the pull request the queue ref names. A trusted run skips
-the heavy jobs that `LOCALLY_VERIFIED_SKIPPED_JOBS` in `script/ci_summary.py`
-names: connector shards, language packages, conformance replay, Dex
-integration and compatibility, database and email integration, SDK
-integration, and workspace dependents. The planning jobs, repository checks,
-common blocks, SDK unit suites, React, site, Connectors MCP, and
+only the jobs the Mac Studio `connector-ci` recipe reproduces, which
+`LOCALLY_VERIFIED_SKIPPED_JOBS` in `script/ci_summary.py` names: `connectors`,
+`connector-conformance`, `language-connectors`,
+`python-connectors-latest-sdk`, `dex-integration-connectors`,
+`dex-compat-current`, and `dex-compat-latest-go-sdk`. Jobs that recipe does
+not reproduce still run: `workspace-connector-dependents`,
+`dex-integration-sdk`, `database-language-integration`,
+`email-language-integration`, `sdkpython-integration`, and
+`sdkts-integration`. So do the planning jobs, repository checks, common
+blocks, SDK unit suites, React, site, Connectors MCP, and
 `connector-generation`, which validates and generation-checks every selected
-connector in one job, still run. `ci-summary` accepts the skipped heavy jobs
+connector in one job. `ci-summary` accepts the skipped heavy jobs
 only when `local-verification` succeeded with `trusted=true` on a pull request
 or merge group; every other run is checked exactly as before. Each heavy job
 checks its original dependencies with explicit `needs.<job>.result` checks, so a
