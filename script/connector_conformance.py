@@ -336,11 +336,11 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
         branch = expected["branch"]
         final_exchange_index = scenario.get("intermediate", [{}])[-1].get("exchangeCount", 0)
         if not isinstance(final_exchange_index, int) or final_exchange_index < 0 or (
-            scenario["exchanges"] and final_exchange_index >= len(scenario["exchanges"])
+            final_exchange_index > len(scenario["exchanges"])
         ):
             raise ValueError(f"{scenario['name']} has invalid final attempt exchange count")
         classified_status = (scenario["exchanges"][final_exchange_index].get("status", 0)
-                             if scenario["exchanges"] else 0)
+                             if final_exchange_index < len(scenario["exchanges"]) else 0)
         if expected["retry"]:
             if branch:
                 raise ValueError(f"{scenario['name']} has both retry and branch")

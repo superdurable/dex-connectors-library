@@ -1361,7 +1361,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 		previousExchangeCount := 0
 		if os.Getenv("CONNECTOR_CONFORMANCE_MODE") != "record" {
 			for _, intermediate := range scenario.Intermediate {
-				if intermediate.ExchangeCount <= previousExchangeCount || intermediate.ExchangeCount >= len(scenario.Exchanges) {
+				if intermediate.ExchangeCount <= previousExchangeCount || intermediate.ExchangeCount > len(scenario.Exchanges) {
 					return nil, errors.New("invalid intermediate exchange count")
 				}
 				previousExchangeCount = intermediate.ExchangeCount
