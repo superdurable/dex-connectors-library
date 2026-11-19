@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: zoomeye
+  languages:
+    typescript: {version: v0.1.0, package: "@superdurable/connector-zoomeye", operations: [getAccountQuota], triggers: []}
   codegen:
     go:
       package: zoomeye
