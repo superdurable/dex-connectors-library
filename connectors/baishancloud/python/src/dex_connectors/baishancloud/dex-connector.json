@@ -1,0 +1,65 @@
+{
+  "connectorId": "baishancloud",
+  "releaseTag": "connectors/baishancloud/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-baishancloud",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_describe_domain_step",
+      "kind": "query",
+      "operationId": "describeDomain",
+      "inputType": "DescribeDomainInput",
+      "description": "Describe one CDN domain by name, returning only ID, name, type, status, and CNAME.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DescribeDomainInput identifies one CDN domain by name.",
+        "properties": {
+          "domain": {
+            "description": "Domain is an ASCII DNS name, without protocol or path.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
