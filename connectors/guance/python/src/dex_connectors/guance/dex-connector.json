@@ -1,0 +1,65 @@
+{
+  "connectorId": "guance",
+  "releaseTag": "connectors/guance/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-guance",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_dashboards_page_step",
+      "kind": "query",
+      "operationId": "listDashboardsPage",
+      "inputType": "ListDashboardsPageInput",
+      "description": "List one page of dashboard UUIDs and names in the key's workspace.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDashboardsPageInput selects one provider page; zeros use page 1 and size 10.",
+        "properties": {
+          "pageIndex": {
+            "description": "PageIndex is the one-based page number; zero means the first page.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of dashboards per page, from 1 to 100; zero means 10.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageIndex",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
