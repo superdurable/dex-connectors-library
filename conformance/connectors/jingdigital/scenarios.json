@@ -1,0 +1,377 @@
+{
+  "connector": "jingdigital",
+  "scenarios": [
+    {
+      "callId": "7dbf4e1e-54bf-59b5-9034-a870c86ed9ef",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"temporary-token\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestBody": {
+            "app_id": "app-test",
+            "app_secret": "secret-test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":{\"items\":[{\"id\":166007,\"name\":\"Example Tag\",\"level\":1}],\"_meta\":{\"totalCount\":21,\"currentPage\":2,\"perPage\":10}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/tag/select/list",
+          "requestBody": {
+            "level": 1,
+            "page": 2,
+            "perPage": 10,
+            "tag_ids": []
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access_token": [
+              "temporary-token"
+            ],
+            "App_id": [
+              "app-test"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPage": 3,
+          "tags": [
+            {
+              "id": 166007,
+              "level": 1,
+              "name": "Example Tag"
+            }
+          ],
+          "total": 21
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listTags-listed",
+      "operation": "listTags"
+    },
+    {
+      "callId": "ff10d0a8-7e6e-5f06-9688-cb96dffebde0",
+      "exchanges": [
+        {
+          "body": "private",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestBody": {
+            "app_id": "app-test",
+            "app_secret": "secret-test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextPage": 0,
+          "tags": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listTags-providerRejected",
+      "operation": "listTags"
+    },
+    {
+      "callId": "c5c20f6f-a4a4-502d-9bb3-e6e34010bf0b",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestBody": {
+            "app_id": "app-test",
+            "app_secret": "secret-test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPage": 0,
+          "tags": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listTags-invalidResponse",
+      "operation": "listTags"
+    },
+    {
+      "callId": "81a09e13-05b9-5881-b2f2-201a835d3d8b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPage": 0,
+          "tags": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "pageSize": 10
+      },
+      "name": "listTags-defect",
+      "operation": "listTags"
+    },
+    {
+      "callId": "c419a990-4ee6-5136-af8e-e3498c35e435",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestBody": {
+            "app_id": "app-test",
+            "app_secret": "secret-test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listTags-rateLimit",
+      "operation": "listTags"
+    },
+    {
+      "callId": "06f4b695-5b06-50c1-ac96-981314492b6d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestBody": {
+            "app_id": "app-test",
+            "app_secret": "secret-test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listTags-serverError",
+      "operation": "listTags"
+    },
+    {
+      "callId": "4d0ed2f5-5bd6-56e0-acf1-1db88b125d4a",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"access_token\":\"temporary-token\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestBody": {
+            "app_id": "app-test",
+            "app_secret": "secret-test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/tag/select/list",
+          "requestBody": {
+            "level": 1,
+            "page": 2,
+            "perPage": 10,
+            "tag_ids": []
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access_token": [
+              "temporary-token"
+            ],
+            "App_id": [
+              "app-test"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listTags-dataServerError",
+      "operation": "listTags"
+    },
+    {
+      "callId": "b23cd5bc-e1dc-54e4-b28b-a94756bd77bb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/oauth2/token",
+          "requestBody": {
+            "app_id": "app-test",
+            "app_secret": "secret-test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 10
+      },
+      "name": "listTags-transport",
+      "operation": "listTags"
+    }
+  ],
+  "schemaVersion": 1
+}
