@@ -52,7 +52,7 @@ func (operation ListVehicleBrandsOperation) Invoke(call sdkgo.Call, _ ListVehicl
 	if err != nil || credentials.Validate() != nil || !isValidAppID(credentials.AppID) || !isValidAppSecret(credentials.AppSecret.Reveal()) {
 		return brandsBranch(ListVehicleBrandsBranchDefect, sdkgo.FailureAuthentication, "Wapi app credentials are unavailable or invalid")
 	}
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.requestClock().Unix(), 10)
 	digest := md5.Sum([]byte("appid" + credentials.AppID + "formatjson" + "time" + timestamp + credentials.AppSecret.Reveal()))
 	endpoint, err := url.Parse(brandPriceEndpoint)
 	if err != nil {
