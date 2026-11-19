@@ -9,3 +9,7 @@ Sign in to the [MiMo API platform](https://platform.xiaomimimo.com) with a Xiaom
 ## Example
 
 The [runnable Flow](go/examples/list-models/) starts with `{}` and completes with a typed `ListModelsOutput`. Its default mock returns one model. Live MiMo authorization, model visibility and response variation remain unverified without a user-controlled Dex Web Connection.
+
+## Python
+
+The `python/` package provides the `listModels` Query. Run its checked-in example from `python/examples/`.
