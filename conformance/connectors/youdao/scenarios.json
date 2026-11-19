@@ -1,0 +1,741 @@
+{
+  "connector": "youdao",
+  "scenarios": [
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"0\",\"translation\":[\"你好，世界！\"]}",
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "translated",
+        "failureKind": "",
+        "output": {
+          "sourceLanguage": "en",
+          "targetLanguage": "zh-CHS",
+          "translation": [
+            "你好，世界！"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-success",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"202\"}",
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "sourceLanguage": "",
+          "targetLanguage": "",
+          "translation": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-provider-rejected",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "body": "{\"translation\":[\"你好\"]}",
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "sourceLanguage": "",
+          "targetLanguage": "",
+          "translation": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-invalid-response",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-rate-limit-429",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-unavailable-503",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-transport-failure",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"411\"}",
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-rate-code",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"303\"}",
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-unavailable-code",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "sourceLanguage": "",
+          "targetLanguage": "",
+          "translation": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-unauthorized-401",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"0\",\"translation\":[\"你好\"]}",
+          "form": {
+            "appKey": [
+              "synthetic-app-key"
+            ],
+            "curtime": [
+              "1795005296"
+            ],
+            "from": [
+              "en"
+            ],
+            "q": [
+              "Hello, world!"
+            ],
+            "salt": {
+              "$syntheticSha256": "996c0abe6eeb86ee2304e56aaf6324aba39826643bedb1f9a6b7b376db6b0f79"
+            },
+            "sign": {
+              "$syntheticSha256": "f1e1d6f1f5146b7fec7eb9c6ab02f2e4367e57b1b224e782880f1acd645d42d0"
+            },
+            "signType": [
+              "v3"
+            ],
+            "to": [
+              "zh-CHS"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "sourceLanguage": "",
+          "targetLanguage": "",
+          "translation": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": "Hello, world!"
+      },
+      "name": "translateText-oversize",
+      "operation": "translateText",
+      "randomFormFields": [
+        "salt",
+        "sign"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    },
+    {
+      "callId": "7b86e62b-4036-59c3-b7a4-b31d52fb2581",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "sourceLanguage": "",
+          "targetLanguage": "",
+          "translation": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-11-18T12:34:56Z",
+      "input": {
+        "sourceLanguage": "en",
+        "targetLanguage": "zh-CHS",
+        "text": ""
+      },
+      "name": "translateText-defect",
+      "operation": "translateText",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_YOUDAO_SIGNED_FORM"
+    }
+  ],
+  "schemaVersion": 1
+}
