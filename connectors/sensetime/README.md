@@ -9,3 +9,5 @@ Sign in to the [SenseCore console](https://console.sensecore.cn), activate Sense
 ## Example
 
 The [runnable Flow](go/examples/list-models/) starts with `{}` and completes with a typed `ListModelsOutput`. Its default mock returns one model. Live SenseNova authorization, model visibility and provider response variation remain unverified without a user-controlled Dex Web Connection.
+
+The [TypeScript package](typescript/) provides the same `ListModels` operation, Go-recorded conformance tests, and a runnable Dex Worker and Client example.
