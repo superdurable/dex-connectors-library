@@ -6,7 +6,7 @@ metadata:
   description: List knowledge entry metadata from TiankeChat.
   company: TiankeChat
   categories: [customer-support]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: tiankechat
   codegen:

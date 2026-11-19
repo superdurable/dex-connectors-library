@@ -23,9 +23,9 @@ import (
 // ListKnowledgeEntriesInput selects one knowledge page. Zero page and limit use 1 and 20.
 type ListKnowledgeEntriesInput struct {
 	// Page is the one-based page number; zero selects the first page.
-	Page int `json:"page"`
+	Page int `json:"page,omitempty"`
 	// Limit is the number of entries to request, from 1 to 100; zero uses 20.
-	Limit int `json:"limit"`
+	Limit int `json:"limit,omitempty"`
 }
 
 // KnowledgeEntry contains metadata only, excluding questions, answers, and attachments.
