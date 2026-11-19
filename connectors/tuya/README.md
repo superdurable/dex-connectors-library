@@ -13,3 +13,5 @@ Find the device ID under **Cloud > Development > My Cloud Projects > Open Projec
 The [device details example](go/examples/device-details/) runs a Worker with static Dex Web connection name `tuya`. Its Flow calls `tuya.NewGetDeviceDetailsStep` and completes on `found`. `notFound`, `providerRejected`, `invalidResponse`, and `defect` are optional branches; an unwired branch fails the Flow. Transient transport, rate limit, HTTP 408/5xx, and Tuya system/token-expiry codes retry under the default Query policy.
 
 No live Tuya credentials are bundled. The mock example exercises the real Dex Worker and Server; a live provider call requires your own linked cloud project and connection.
+
+The [TypeScript package](typescript/README.md) implements `getDeviceDetails`, replays exact Go-signed token and device scenarios, and includes a real Dex Worker/Client example. Live Tuya authorization remains unverified without user-controlled project credentials.
