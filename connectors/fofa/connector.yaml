@@ -8,9 +8,14 @@ metadata:
   categories: [security-identity, data-search]
   version: v0.1.0
 spec:
+  provider: fofa
   languages:
     python: {version: v0.1.0, operations: [searchDomainAssets], triggers: []}
-  provider: fofa
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-fofa"
+      operations: [searchDomainAssets]
+      triggers: []
   codegen:
     go:
       package: fofa

@@ -8,9 +8,14 @@ metadata:
   categories: [data-search]
   version: v0.1.0
 spec:
+  provider: haimou
   languages:
     python: {version: v0.1.0, operations: [lookupIPLocation], triggers: []}
-  provider: haimou
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-haimou"
+      operations: [lookupIPLocation]
+      triggers: []
   codegen:
     go:
       package: haimou

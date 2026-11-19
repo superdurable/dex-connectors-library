@@ -6,4 +6,6 @@ Sign in at the [developer center AppKey page](https://www.gugudata.com/developer
 
 See the [runnable Dex Flow](go/examples/segment-text/README.md) for local mock verification. A real GuGuData account and live API call have not been exercised.
 
+The [TypeScript package](typescript/) provides the same `segmentText` Query, Go-recorded provider replay, and a [runnable Dex Worker/Client Flow](typescript/examples/basic/).
+
 The [Python package](python/) implements `segmentText` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.

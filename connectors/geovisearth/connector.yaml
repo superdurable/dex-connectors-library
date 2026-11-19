@@ -8,9 +8,14 @@ metadata:
   categories: [data-search]
   version: v0.1.0
 spec:
+  provider: geovisearth
   languages:
     python: {version: v0.1.0, operations: [getCurrentWeather], triggers: []}
-  provider: geovisearth
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-geovisearth"
+      operations: [getCurrentWeather]
+      triggers: []
   codegen:
     go:
       package: geovisearth

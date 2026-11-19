@@ -8,9 +8,14 @@ metadata:
   categories: [ai]
   version: v0.1.0
 spec:
+  provider: gugudata
   languages:
     python: {version: v0.1.0, operations: [segmentText], triggers: []}
-  provider: gugudata
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-gugudata"
+      operations: [segmentText]
+      triggers: []
   codegen:
     go:
       package: gugudata
