@@ -7,3 +7,5 @@ Open [Kokoni World](https://api.kokoniworld.com), sign in, then create an API Ke
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "kokoniworld"`. Run the worker with `go run .` from its directory, then start `KokoniWorldModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [official developer documentation](https://api.kokoniworld.com/docs-local.html). Real provider authorization is unverified without a customer-controlled Key.
+
+The [Python package](python/) mirrors the Go Query and includes a [runnable Dex Worker/Client Flow](python/examples/list_models/) and Go scenario replay. Real provider credentials and live API behavior remain unverified.
