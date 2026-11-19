@@ -159,10 +159,10 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	defer budget.cancel()
 	credentials, err := operation.client.resolveCredentials(budget.attemptContext, call)
 	if err != nil {
-		return unavailableCredentialsAttempt(fence, decision, ReplyToMessageBranchDefect, "replyToMessage", err)
+		return unavailableCredentialsAttempt(fence, decision, ReplyToMessageBranchDefect, "replyToMessage", err, operation.client.receipt(call, "", ""))
 	}
 	if strings.TrimSpace(input.MessageID) == "" || strings.TrimSpace(input.TextBody) == "" {
-		return defectBeforeAnySend(decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"))
+		return operation.client.defectBeforeAnySend(call, decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"))
 	}
 	if attempt, isDecided := operation.client.reconcileEarlierSends(call, fence, decision, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{}); isDecided {
 		return attempt
@@ -180,28 +180,28 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 			return sdkgo.NewMutationRetry[SendMessageOutput](gmailOperationFailure("replyToMessage", sdkgo.FailureAvailability, "Gmail source message is temporarily unavailable"), delay)
 		}
 		if result.statusCode >= 200 && result.statusCode < 300 {
-			return rejectUnlessEarlierSendIsUnconfirmed(decision, ReplyToMessageBranchInvalidResponse, gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid source message response"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
+			return rejectUnlessEarlierSendIsUnconfirmed(call, decision, false, ReplyToMessageBranchInvalidResponse, gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid source message response"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
 		}
-		return rejectUnlessEarlierSendIsUnconfirmed(decision, ReplyToMessageBranchProviderRejected, gmailOperationFailure("replyToMessage", statusFailureKind(result.statusCode), "Gmail rejected the source message lookup"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
+		return rejectUnlessEarlierSendIsUnconfirmed(call, decision, isRefusedBeforeProcessing(result.statusCode), ReplyToMessageBranchProviderRejected, gmailOperationFailure("replyToMessage", statusFailureKind(result.statusCode), "Gmail rejected the source message lookup"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
 	}
 	message, err := decodeGmailMessage(resource)
 	if err != nil || message.ThreadID == "" || message.RFCMessageID == "" {
-		return rejectUnlessEarlierSendIsUnconfirmed(decision, ReplyToMessageBranchInvalidResponse, gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "source message lacks reply metadata"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
+		return rejectUnlessEarlierSendIsUnconfirmed(call, decision, false, ReplyToMessageBranchInvalidResponse, gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "source message lacks reply metadata"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
 	}
 	recipient, err := replyRecipient(message)
 	if err != nil {
-		return rejectUnlessEarlierSendIsUnconfirmed(decision, ReplyToMessageBranchInvalidResponse, gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid source sender"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
+		return rejectUnlessEarlierSendIsUnconfirmed(call, decision, false, ReplyToMessageBranchInvalidResponse, gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned an invalid source sender"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
 	}
 	if strings.ContainsAny(message.Subject+message.RFCMessageID+message.References, "\r\n") {
-		return rejectUnlessEarlierSendIsUnconfirmed(decision, ReplyToMessageBranchInvalidResponse, gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned invalid source reply headers"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
+		return rejectUnlessEarlierSendIsUnconfirmed(call, decision, false, ReplyToMessageBranchInvalidResponse, gmailOperationFailure("replyToMessage", sdkgo.FailureProtocol, "Gmail returned invalid source reply headers"), operation.client.receipt(call, googleRequestID(result.header), input.MessageID))
 	}
 	raw, err := buildReplyMIMEMessage(call, credentials.PrimaryEmail, recipient, message, input)
 	if err != nil || int64(len(raw)) > operation.client.maxMessageBytes {
-		return defectBeforeAnySend(decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "reply could not be encoded within the configured limit"))
+		return operation.client.defectBeforeAnySend(call, decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "reply could not be encoded within the configured limit"))
 	}
 	payload, err := json.Marshal(map[string]string{"raw": base64.RawURLEncoding.EncodeToString(raw), "threadId": message.ThreadID})
 	if err != nil {
-		return defectBeforeAnySend(decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureLocalDefect, "reply request could not be encoded"))
+		return operation.client.defectBeforeAnySend(call, decision, ReplyToMessageBranchDefect, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureLocalDefect, "reply request could not be encoded"))
 	}
 	return operation.client.sendAndConfirm(call, fence, decision, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{
 		payload: payload, recipients: []string{recipient}, requestedThreadID: message.ThreadID,

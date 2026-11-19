@@ -29,10 +29,12 @@ from dex_connectors.google_gmail.send import SendExecution, SendService
 
 
 def execution(operation_id: str = "sendMessage", attempt: int = 1) -> SendExecution:
-    """Supply explicit Dex attempt facts until the released Context exposes them."""
+    """Supply explicit Dex attempt facts and the manifest send cap."""
     call_id = CallID(str(uuid4()))
     connection = ConnectionRef("google", "support")
-    call = Call(call_id, connection, OperationRef("gmail", operation_id), IdempotencyKey(call_id))
+    call = Call(
+        call_id, connection, OperationRef("gmail", operation_id), IdempotencyKey(call_id), max_sends=3
+    )
     return SendExecution(
         call,
         attempt,

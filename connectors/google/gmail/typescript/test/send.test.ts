@@ -255,7 +255,7 @@ describe('Gmail send and reply classification', () => {
     expect(searches).toBe(4);
   });
 
-  it('resends an unconfirmed send with one Message-ID until the send cap, then only searches', async () => {
+  it('resends an unconfirmed send with one Message-ID below the send cap, then selects uncertain', async () => {
     const checkpoint: { value?: unknown } = {};
     const messageIds: string[] = [];
     let searches = 0;
@@ -267,13 +267,15 @@ describe('Gmail send and reply classification', () => {
     const maxSends = SendMessageDefinition.maxSends ?? 0;
     expect(maxSends).toBe(3);
     for (let attempt = 1; attempt <= maxSends; attempt++) {
-      expect((await operation.sendMessage(operationCall('sendMessage', attempt, checkpoint), sendInput, new Date(Date.now() + 30_000))).kind).toBe('retry');
+      const result = await operation.sendMessage(operationCall('sendMessage', attempt, checkpoint), sendInput, new Date(Date.now() + 30_000));
+      // The final send the cap allows selects uncertain when Sent Mail cannot confirm it.
+      expect(result.kind).toBe(attempt < maxSends ? 'retry' : 'uncertain');
       expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt, sendCount: attempt });
       // Attempt one polls four times; later attempts search once before the POST, then poll.
       expect(searches).toBe(5 * attempt - 1);
     }
     expect(await operation.sendMessage(operationCall('sendMessage', maxSends + 1, checkpoint), sendInput, new Date(Date.now() + 30_000)))
-      .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+      .toMatchObject({ kind: 'uncertain', failure: { kind: 'AVAILABILITY', message: 'Gmail sent-mail search found no message, and no further send is permitted' } });
     expect(messageIds).toHaveLength(maxSends);
     expect(new Set(messageIds).size).toBe(1);
     expect(searches).toBe(5 * maxSends);
@@ -301,9 +303,23 @@ describe('Gmail send and reply classification', () => {
       return response(400, {});
     });
     expect(await operation.sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000)))
-      .toMatchObject({ kind: 'retry', failure: { kind: 'PROVIDER_REJECTION', message: 'Gmail rejected the message; an earlier send may still be delivered' } });
+      .toMatchObject({ kind: 'uncertain', failure: { kind: 'PROVIDER_REJECTION', message: 'Gmail rejected the message; an earlier send may still be delivered' } });
     expect(posts).toBe(1);
     expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 2, sendCount: 2 });
+  });
+
+  it('retries an indefinitely refused resend below the cap and selects uncertain on the final send', async () => {
+    for (const [priorSends, expectedKind] of [[1, 'retry'], [2, 'uncertain']] as const) {
+      const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: priorSends, state: 'claimed', sendCount: priorSends } };
+      let posts = 0;
+      const operation = sender(async request => {
+        if (request.method === 'GET') return response(200, { messages: [] });
+        posts++;
+        return response(409, {});
+      });
+      expect((await operation.sendMessage(operationCall('sendMessage', priorSends + 1, checkpoint), sendInput, new Date(Date.now() + 30_000))).kind).toBe(expectedKind);
+      expect(posts).toBe(1);
+    }
   });
 
   it('keeps a possibly delivered send unknown through a transient credential failure', async () => {
@@ -322,9 +338,9 @@ describe('Gmail send and reply classification', () => {
         .toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION', message: 'Gmail credentials are temporarily unavailable; an earlier send may still be delivered' } });
       // No notSent: the claim stays, so the next attempt still reads back.
       expect(transientCheckpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
-      // Even a failure that needs reconnection never selects defect after a possible send.
+      // A failure that needs reconnection after a possible send selects uncertain, never defect.
       expect(await invoke(failingSender(new ReauthorizationRequiredError()), operationCall(operationId, 2, claimed())))
-        .toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION', message: 'Gmail credentials need reconnection; an earlier send may still be delivered' } });
+        .toMatchObject({ kind: 'uncertain', failure: { kind: 'AUTHENTICATION', message: 'Gmail credentials need reconnection; an earlier send may have been delivered' } });
       // Before any send, a transient failure retries; only a permanent one selects defect.
       expect(await invoke(failingSender(new Error('store unavailable')), operationCall(operationId)))
         .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
@@ -334,11 +350,11 @@ describe('Gmail send and reply classification', () => {
     expect(requests).toBe(0);
   });
 
-  it('retries invalid resolved credential material after a possible send', async () => {
+  it('selects uncertain for invalid resolved credential material after a possible send', async () => {
     const http = new GmailHTTPClient({ endpoint: 'http://127.0.0.1:8080' }, new StaticCredentialProvider([[connection, { accessToken: new SecretString('access-token'), primaryEmail: 'not an address' }]]), driver, async () => response(200, {}));
     const checkpoint = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'claimed', sendCount: 1 } as unknown };
     expect(await new GmailSender(http, new GmailProvider(http)).sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000)))
-      .toMatchObject({ kind: 'retry', failure: { message: expect.stringContaining('an earlier send may still be delivered') as unknown } });
+      .toMatchObject({ kind: 'uncertain', failure: { message: expect.stringContaining('an earlier send may have been delivered') as unknown } });
   });
 
   it('retries an unreadable or foreign checkpoint instead of selecting defect', async () => {
@@ -353,7 +369,7 @@ describe('Gmail send and reply classification', () => {
     expect(requests).toBe(0);
   });
 
-  it('retries invalid input after a possible send instead of selecting defect', async () => {
+  it('selects uncertain for invalid input after a possible send instead of defect', async () => {
     let posts = 0;
     const operation = sender(async request => {
       if (request.method === 'POST') posts++;
@@ -361,9 +377,9 @@ describe('Gmail send and reply classification', () => {
     });
     const claimed = () => ({ value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'claimed', sendCount: 1 } as unknown });
     expect(await operation.sendMessage(operationCall('sendMessage', 2, claimed()), { to: [], subject: '', textBody: '' }, new Date(Date.now() + 30_000)))
-      .toMatchObject({ kind: 'retry', failure: { kind: 'VALIDATION', message: expect.stringContaining('an earlier send may still be delivered') as unknown } });
+      .toMatchObject({ kind: 'uncertain', failure: { kind: 'VALIDATION', message: expect.stringContaining('an earlier send may still be delivered') as unknown } });
     expect(await operation.replyToMessage(operationCall('replyToMessage', 2, claimed()), { messageId: '', textBody: '' }, new Date(Date.now() + 30_000)))
-      .toMatchObject({ kind: 'retry', failure: { kind: 'VALIDATION', message: expect.stringContaining('an earlier send may still be delivered') as unknown } });
+      .toMatchObject({ kind: 'uncertain', failure: { kind: 'VALIDATION', message: expect.stringContaining('an earlier send may still be delivered') as unknown } });
     expect(posts).toBe(0);
   });
 
@@ -391,12 +407,13 @@ describe('Gmail send and reply classification', () => {
         if (request.url.includes('/users/me/messages/sent-1')) return response(404, {});
         return response(200, { messages: [] });
       });
-      for (let attempt = 1; attempt <= 4; attempt++) {
+      // The saved ID forbids a resend, so the second attempt's unconfirmed read-back is uncertain.
+      for (let attempt = 1; attempt <= 2; attempt++) {
         const call = operationCall(operationId, attempt, checkpoint);
         const result = operationId === 'sendMessage'
           ? await operation.sendMessage(call, sendInput, new Date(Date.now() + 30_000))
           : await operation.replyToMessage(call, replyInput, new Date(Date.now() + 30_000));
-        expect(result).toMatchObject({ kind: 'retry' });
+        expect(result).toMatchObject({ kind: attempt === 1 ? 'retry' : 'uncertain' });
       }
       expect(posts).toBe(1);
       expect(checkpoint.value).toMatchObject({ providerId: 'sent-1' });
@@ -531,7 +548,7 @@ describe('Gmail send and reply classification', () => {
     expect(checkpoint.value).toMatchObject({ state: 'canResend', attempt: 2 });
   });
 
-  it('keeps an earlier reply unknown when its source message is gone, but rejects a first reply', async () => {
+  it('selects uncertain for an earlier reply when its source message is gone, but rejects a first reply', async () => {
     let posts = 0;
     const operation = sender(async request => {
       if (request.url.includes('/source-1?')) return response(404, {});
@@ -540,13 +557,13 @@ describe('Gmail send and reply classification', () => {
     });
     const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'claimed', sendCount: 1 } };
     expect(await operation.replyToMessage(operationCall('replyToMessage', 2, checkpoint), replyInput, new Date(Date.now() + 30_000)))
-      .toMatchObject({ kind: 'retry', failure: { kind: 'NOT_FOUND' } });
+      .toMatchObject({ kind: 'uncertain', failure: { kind: 'NOT_FOUND' } });
     expect(await operation.replyToMessage(operationCall('replyToMessage'), replyInput, new Date(Date.now() + 30_000)))
       .toMatchObject({ kind: 'branch', branch: 'providerRejected' });
     expect(posts).toBe(0);
   });
 
-  it('keeps read-back-only behavior when the application lowers the send cap to one', async () => {
+  it('reads back only and selects uncertain when the application lowers the send cap to one', async () => {
     const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'claimed' } };
     let posts = 0;
     const operation = sender(async request => {
@@ -555,7 +572,56 @@ describe('Gmail send and reply classification', () => {
       return response(200, { id: 'sent-2', threadId: 'thread-1' });
     });
     const call = { ...operationCall('sendMessage', 2, checkpoint), maxSendsOverride: 1 } as Call;
-    expect((await operation.sendMessage(call, sendInput, new Date(Date.now() + 30_000))).kind).toBe('retry');
+    expect((await operation.sendMessage(call, sendInput, new Date(Date.now() + 30_000))).kind).toBe('uncertain');
+    expect(posts).toBe(0);
+  });
+
+  it('selects uncertain at the application send cap, not a fixed one', async () => {
+    for (const maxSendsOverride of [1, 5]) {
+      for (const operationId of ['sendMessage', 'replyToMessage'] as const) {
+        const checkpoint: { value?: unknown } = {};
+        let posts = 0;
+        const operation = sender(async request => {
+          if (request.method === 'POST') { posts++; return response(500, {}); }
+          if (request.url.includes('/users/me/messages/source-1')) return response(200, { id: 'source-1', threadId: 'thread-1', internalDate: '1772615700000', payload: { headers: [{ name: 'From', value: 'ada@example.com' }, { name: 'Message-ID', value: '<source@example.com>' }, { name: 'Subject', value: 'Question' }] } });
+          return response(200, { messages: [] });
+        });
+        for (let attempt = 1; attempt <= maxSendsOverride; attempt++) {
+          const call = { ...operationCall(operationId, attempt, checkpoint), maxSendsOverride } as Call;
+          const result = operationId === 'sendMessage'
+            ? await operation.sendMessage(call, sendInput, new Date(Date.now() + 30_000))
+            : await operation.replyToMessage(call, replyInput, new Date(Date.now() + 30_000));
+          expect(result.kind).toBe(attempt < maxSendsOverride ? 'retry' : 'uncertain');
+        }
+        expect(posts).toBe(maxSendsOverride);
+      }
+    }
+    // Each unconfirmed send polls Sent Mail with real backoff delays.
+  }, 20_000);
+
+  it('selects sent when Sent Mail confirms the final send the cap allows', async () => {
+    const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 2, state: 'claimed', sendCount: 2 } };
+    let searches = 0;
+    const operation = sender(async request => {
+      if (request.method === 'POST') return response(500, {});
+      searches++;
+      // The pre-send search misses; the post-send poll finds the final send.
+      return searches === 1 ? response(200, { messages: [] }) : response(200, { messages: [{ id: 'sent-3', threadId: 'thread-1' }] });
+    });
+    expect(await operation.sendMessage(operationCall('sendMessage', 3, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'branch', branch: 'sent', value: { messageId: 'sent-3' } });
+    expect(checkpoint.value).toMatchObject({ state: 'claimed', sendCount: 3, providerId: 'sent-3' });
+  });
+
+  it('selects sent when Sent Mail confirms an earlier send at the cap without another POST', async () => {
+    const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 3, state: 'claimed', sendCount: 3 } };
+    let posts = 0;
+    const operation = sender(async request => {
+      if (request.method === 'POST') posts++;
+      return response(200, { messages: [{ id: 'sent-3', threadId: 'thread-1' }] });
+    });
+    expect(await operation.sendMessage(operationCall('sendMessage', 4, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'branch', branch: 'sent', value: { messageId: 'sent-3' } });
     expect(posts).toBe(0);
   });
 

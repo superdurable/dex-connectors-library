@@ -137,6 +137,16 @@ def send_message_connection_lost() -> Case[SendMessageOutput]:
     )
 
 
+def send_message_send_outcome_unknown() -> Case[SendMessageOutput]:
+    """Select uncertain when the final send the cap allows stays unconfirmed by Sent Mail."""
+    return Case.uncertain(
+        SendMessageOutput(),
+        _failure(
+            "sendMessage", FailureKind.TRANSPORT, "The connection closed before Gmail confirmed the message."
+        ),
+    )
+
+
 def send_message_no_recipients() -> Case[SendMessageOutput]:
     """Select defect for a message with no recipients."""
     return Case.branch_result(
@@ -189,6 +199,16 @@ def reply_to_message_connection_lost() -> Case[SendMessageOutput]:
     )
 
 
+def reply_to_message_reply_outcome_unknown() -> Case[SendMessageOutput]:
+    """Select uncertain when the final reply the cap allows stays unconfirmed by Sent Mail."""
+    return Case.uncertain(
+        SendMessageOutput(),
+        _failure(
+            "replyToMessage", FailureKind.TRANSPORT, "The connection closed before Gmail confirmed the reply."
+        ),
+    )
+
+
 def reply_to_message_empty_body() -> Case[SendMessageOutput]:
     """Select defect for a reply without a body."""
     return Case.branch_result(
@@ -209,11 +229,13 @@ __all__ = [
     "send_message_sent_to_customer",
     "send_message_invalid_recipient",
     "send_message_connection_lost",
+    "send_message_send_outcome_unknown",
     "send_message_no_recipients",
     "send_message_unavailable",
     "reply_to_message_replied_in_thread",
     "reply_to_message_source_missing",
     "reply_to_message_malformed_source",
     "reply_to_message_connection_lost",
+    "reply_to_message_reply_outcome_unknown",
     "reply_to_message_empty_body",
 ]

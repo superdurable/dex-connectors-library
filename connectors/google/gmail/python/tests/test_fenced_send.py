@@ -287,7 +287,7 @@ async def test_inconclusive_read_back_resends_below_the_cap(operation_id: str) -
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 async def test_send_cap_reached_only_reads_back(operation_id: str) -> None:
-    """At the definition's send cap a Sent Mail miss retries without another POST."""
+    """At the definition's send cap a Sent Mail miss selects uncertain without another POST."""
     context = HeartbeatContext(4)
     call = _call(context, operation_id=operation_id)
     assert call.max_sends == 3
@@ -295,55 +295,152 @@ async def test_send_cap_reached_only_reads_back(operation_id: str) -> None:
     attempt, requests = await _invoke(call, httpx.MockTransport(_gmail(
         httpx.Response(200, json={"messages": []}), httpx.Response(200, json={"id": "sent-4"}),
     )))
-    assert attempt.kind == "retry"
+    assert attempt.kind == "uncertain" and attempt.failure is not None
+    assert "no further" in attempt.failure.message
     assert _methods(requests) == ["GET"]
     assert context.heartbeats == []
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_send_cap_reached_read_back_match_is_sent(operation_id: str) -> None:
+    """At the send cap a Sent Mail match still selects sent without another POST."""
+    context = HeartbeatContext(4)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 3, State.CLAIMED, send_count=call.max_sends)
+    attempt, requests = await _invoke(call, httpx.MockTransport(
+        lambda _: httpx.Response(200, json={"messages": [{"id": "sent-3", "threadId": "thread-1"}]})
+    ))
+    assert attempt.branch == "sent" and attempt.value.message_id == "sent-3"
+    assert "POST" not in _methods(requests)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_final_send_unconfirmed_selects_uncertain(operation_id: str) -> None:
+    """The final send the cap allows selects uncertain when Sent Mail cannot confirm it."""
+    context = HeartbeatContext(3)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 2, State.CLAIMED, send_count=2)
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(500)
+        if request.url.path.endswith("/messages/source-1"):
+            return _source_message()
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, requests = await _invoke(call, httpx.MockTransport(answer))
+    assert attempt.kind == "uncertain" and attempt.failure is not None
+    assert "the sent-mail search found no message" in attempt.failure.message
+    assert _methods(requests).count("POST") == 1
+    assert context.heartbeats[-1].state == State.CLAIMED
+    assert context.heartbeats[-1].send_count == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_unconfirmed_send_below_the_cap_reads_back_then_resends(operation_id: str) -> None:
+    """Below the cap an unconfirmed earlier send is read back, resent, and an unknown result retries."""
+    context = HeartbeatContext(2)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(500)
+        if request.url.path.endswith("/messages/source-1"):
+            return _source_message()
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, requests = await _invoke(call, httpx.MockTransport(answer))
+    assert attempt.kind == "retry"
+    assert _methods(requests)[0] == "GET"
+    assert _methods(requests).count("POST") == 1
+    assert context.heartbeats[-1].send_count == 2
+
+
+@pytest.mark.asyncio
 async def test_send_cap_override_of_one_never_resends() -> None:
-    """An application cap of one keeps the read-back-only behavior after a claim."""
+    """An application cap of one reads back only after a claim and selects uncertain on a miss."""
     context = HeartbeatContext(2)
     call = _call(context, max_sends=1)
     context.previous = Marker(call.id, 1, State.CLAIMED)
     attempt, requests = await _invoke(
         call, httpx.MockTransport(lambda _: httpx.Response(200, json={"messages": []}))
     )
-    assert attempt.kind == "retry"
+    assert attempt.kind == "uncertain"
     assert [request.method for request in requests] == ["GET"]
     assert context.heartbeats == []
 
 
 @pytest.mark.asyncio
+async def test_send_cap_override_of_one_selects_uncertain_after_the_first_unknown_send() -> None:
+    """An application cap of one selects uncertain when its only send stays unconfirmed."""
+    context = HeartbeatContext(1)
+    call = _call(context, max_sends=1)
+    attempt, requests = await _invoke(call, httpx.MockTransport(
+        lambda request: (
+            httpx.Response(500) if request.method == "POST" else httpx.Response(200, json={"messages": []})
+        )
+    ))
+    assert attempt.kind == "uncertain"
+    assert _methods(requests).count("POST") == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 async def test_saved_provider_id_is_never_resent(operation_id: str) -> None:
-    """A saved provider ID proves acceptance, so a Sent Mail miss retries without a POST."""
+    """A saved provider ID proves acceptance, so a Sent Mail miss selects uncertain without a POST."""
     context = HeartbeatContext(2)
     call = _call(context, operation_id=operation_id)
     context.previous = Marker(call.id, 1, State.CLAIMED, provider_id="sent-1", send_count=1)
     attempt, requests = await _invoke(call, httpx.MockTransport(_gmail(
         httpx.Response(200, json={"messages": []}), httpx.Response(200, json={"id": "sent-2"}),
     )))
-    assert attempt.kind == "retry"
+    assert attempt.kind == "uncertain"
     assert "POST" not in _methods(requests)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 async def test_rejected_resend_keeps_the_earlier_send_unknown(operation_id: str) -> None:
-    """A definite 4xx on a resend retries because the earlier send may still be delivered."""
+    """A definite 4xx on a resend selects uncertain because the earlier send may still be delivered."""
     context = HeartbeatContext(2)
     call = _call(context, operation_id=operation_id)
     context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
     attempt, requests = await _invoke(call, httpx.MockTransport(_gmail(
         httpx.Response(200, json={"messages": []}), httpx.Response(400),
     )))
-    assert attempt.kind == "retry" and attempt.failure is not None
+    assert attempt.kind == "uncertain" and attempt.failure is not None
     assert attempt.failure.kind.value == "PROVIDER_REJECTION"
     assert "an earlier send may still be delivered" in attempt.failure.message
     assert _methods(requests).count("POST") == 1
     assert context.heartbeats[-1].state == State.CLAIMED
     assert context.heartbeats[-1].send_count == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+@pytest.mark.parametrize(("prior_sends", "expected_kind"), [(1, "retry"), (2, "uncertain")])
+async def test_indefinite_resend_refusal_retries_below_the_cap(
+    operation_id: str, prior_sends: int, expected_kind: str
+) -> None:
+    """A 409 on a resend is an unknown outcome: Retry below the cap, uncertain on the final send."""
+    context = HeartbeatContext(prior_sends + 1)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, prior_sends, State.CLAIMED, send_count=prior_sends)
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(409)
+        if request.url.path.endswith("/messages/source-1"):
+            return _source_message()
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, requests = await _invoke(call, httpx.MockTransport(answer))
+    assert attempt.kind == expected_kind
+    assert _methods(requests).count("POST") == 1
 
 
 @pytest.mark.asyncio
@@ -399,13 +496,13 @@ def _missing_source(request: httpx.Request) -> httpx.Response:
 
 
 @pytest.mark.asyncio
-async def test_reply_source_missing_after_unconfirmed_send_retries() -> None:
-    """A source 404 after a possible earlier reply keeps that reply unknown."""
+async def test_reply_source_missing_after_unconfirmed_send_is_uncertain() -> None:
+    """A definite source 404 after a possible earlier reply selects uncertain."""
     context = HeartbeatContext(2)
     call = _call(context, operation_id="replyToMessage")
     context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
     attempt, requests = await _invoke(call, httpx.MockTransport(_missing_source))
-    assert attempt.kind == "retry" and attempt.failure is not None
+    assert attempt.kind == "uncertain" and attempt.failure is not None
     assert attempt.failure.kind.value == "NOT_FOUND"
     assert "POST" not in [request.method for request in requests]
 
@@ -502,23 +599,23 @@ async def test_transient_credential_failure_after_possible_send_retries(operatio
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 @pytest.mark.parametrize("error", [ReauthorizationRequiredError(), GmailCredentialMaterialError("invalid")])
-async def test_permanent_credential_failure_after_possible_send_retries(
+async def test_permanent_credential_failure_after_possible_send_selects_uncertain(
     operation_id: str, error: Exception
 ) -> None:
-    """Reauthorization or invalid material after a possible send never selects defect."""
+    """Reauthorization or invalid material after a possible send selects uncertain, never defect."""
     context = HeartbeatContext(2)
     call = _call(context, operation_id=operation_id)
     context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
     attempt, _ = await _invoke(call, httpx.MockTransport(lambda _: httpx.Response(200)), error)
-    assert attempt.kind == "retry" and attempt.failure is not None
-    assert "an earlier send may still be delivered" in attempt.failure.message
+    assert attempt.kind == "uncertain" and attempt.failure is not None
+    assert "need reconnection" in attempt.failure.message
     assert context.heartbeats == []
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
-async def test_invalid_input_after_possible_send_retries(operation_id: str) -> None:
-    """Invalid input after a possible send retries instead of selecting defect."""
+async def test_invalid_input_after_possible_send_is_uncertain(operation_id: str) -> None:
+    """Invalid input after a possible send selects uncertain instead of defect."""
     context = HeartbeatContext(2)
     call = _call(context, operation_id=operation_id)
     context.previous = Marker(call.id, 1, State.CLAIMED, send_count=1)
@@ -532,7 +629,7 @@ async def test_invalid_input_after_possible_send_retries(operation_id: str) -> N
         httpx.MockTransport(lambda _: httpx.Response(200, json={"messages": []})),
         message_input=invalid_input,
     )
-    assert attempt.kind == "retry" and attempt.failure is not None
+    assert attempt.kind == "uncertain" and attempt.failure is not None
     assert "an earlier send may still be delivered" in attempt.failure.message
     assert "POST" not in [request.method for request in requests]
 
@@ -562,7 +659,7 @@ async def test_refusal_naming_message_is_read_back_by_id(operation_id: str) -> N
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 async def test_unconfirmed_refusal_naming_message_is_never_resent(operation_id: str) -> None:
-    """A named message that read-back cannot confirm keeps retrying read-back without a POST."""
+    """A named message that read-back cannot confirm is never resent; a later miss is uncertain."""
     context = HeartbeatContext()
     call = _call(context, operation_id=operation_id)
 
@@ -580,7 +677,7 @@ async def test_unconfirmed_refusal_naming_message_is_never_resent(operation_id: 
     assert context.heartbeats[-1].provider_id == "sent-1"
     context.attempt, context.previous = 2, context.heartbeats[-1]
     attempt, later_requests = await _invoke(call, httpx.MockTransport(answer))
-    assert attempt.kind == "retry"
+    assert attempt.kind == "uncertain"
     assert [request.method for request in requests + later_requests].count("POST") == 1
 
 
