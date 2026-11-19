@@ -5,3 +5,5 @@ This connector calls the official [ZIM QueryRoomUserList API](https://doc-zh.zeg
 In [ZEGO Console](https://console.zego.im/), open 控制台 > 项目管理 for AppId, then click 查看 > 项目配置 for the matching ServerSecret. Save both in Dex Web Connections. Each request uses a fresh 8-byte random nonce and Unix timestamp; the signature is lowercase hex MD5 of `AppId + SignatureNonce + ServerSecret + Timestamp`. The secret and signed URL are not returned, persisted, or logged. Redirects are disabled.
 
 Run the [example Flow](go/examples/get-room-user-count/) with the generated mock or a user-controlled connection. Room IDs are assigned by the application and ZEGO limits this API to 20 calls per second. A missing or destroyed room is a terminal provider rejection.
+
+The [TypeScript package](typescript/) implements the same read-only Query and replays all nine Go conformance scenarios. Its [Worker and Client example](typescript/examples/basic/) persists the count through Dex. Live ZEGO authorization remains unverified.
