@@ -14,3 +14,5 @@ The [project catalog Flow](go/examples/project-catalog/) is a runnable Worker wi
 ## Python
 
 The first Python package implements the read-only `listProjects` operation and replays all Go-recorded outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/project_list/README.md). Live provider authorization and responses remain unverified.
+
+The [TypeScript package](typescript/) (v0.1.0) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay.

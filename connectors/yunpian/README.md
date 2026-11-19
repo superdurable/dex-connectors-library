@@ -14,3 +14,5 @@ The runnable Go example is in [`go/examples/balance-read`](go/examples/balance-r
 ## Python
 
 The first Python package implements the read-only `getAccountBalance` operation and replays all Go-recorded outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/account_balance/README.md). Live provider authorization and responses remain unverified.
+
+The [TypeScript package](typescript/) (v0.1.0) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay.

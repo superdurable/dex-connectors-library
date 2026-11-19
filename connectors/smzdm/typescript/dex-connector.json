@@ -1,0 +1,60 @@
+{
+  "connectorId": "smzdm",
+  "releaseTag": "connectors/smzdm/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-smzdm",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newSearchProductsStep",
+      "kind": "query",
+      "operationId": "searchProducts",
+      "inputType": "SearchProductsInput",
+      "description": "Search the first page of product-index entries for a bounded keyword, returning titles and prices only.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchProductsInput selects a bounded first page from the SMZDM product index.",
+        "properties": {
+          "keyword": {
+            "description": "Keyword is the product search term, limited to 100 Unicode characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyword"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

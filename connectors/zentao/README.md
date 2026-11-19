@@ -11,3 +11,5 @@ The logo uses the official [ZenTao website footer asset](https://static.zentao.n
 ## Python
 
 The first Python package implements the read-only product list and replays the Go-recorded provider outcomes. See the [Python package](python/README.md) and its [runnable Flow](python/examples/product_list/README.md). Live ZenTao authorization and responses remain unverified.
+
+The [TypeScript package](typescript/) (v0.1.0) includes a [runnable Dex Flow](typescript/examples/basic/) and Go conformance replay.

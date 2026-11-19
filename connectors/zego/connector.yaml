@@ -10,6 +10,11 @@ metadata:
 spec:
   provider: zego
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-zego"
+      operations: [getRoomUserCount]
+      triggers: []
     python: {version: v0.1.0, operations: [getRoomUserCount], triggers: []}
   codegen:
     go:
