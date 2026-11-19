@@ -1,0 +1,256 @@
+{
+  "connector": "shixiseng",
+  "scenarios": [
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"code\":100,\"msg\":{\"industry_list\":[\"Technology\",\"Retail\"]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/industry/list",
+          "query": {
+            "sign": [
+              "54319DD204B503E468D0C75C28500BEA"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/html"
+            ],
+            "Authorization": [
+              "bWVyY2hhbnQtaWQ6MTczMTUxMDAwMA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "industries": [
+            "Technology",
+            "Retail"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndustries-found",
+      "operation": "listIndustries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"code\":306,\"msg\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/industry/list",
+          "query": {
+            "sign": [
+              "54319DD204B503E468D0C75C28500BEA"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/html"
+            ],
+            "Authorization": [
+              "bWVyY2hhbnQtaWQ6MTczMTUxMDAwMA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "industries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndustries-providerRejected",
+      "operation": "listIndustries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"code\":100,\"msg\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/industry/list",
+          "query": {
+            "sign": [
+              "54319DD204B503E468D0C75C28500BEA"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/html"
+            ],
+            "Authorization": [
+              "bWVyY2hhbnQtaWQ6MTczMTUxMDAwMA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "industries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndustries-invalidResponse",
+      "operation": "listIndustries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "industries": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndustries-defect",
+      "operation": "listIndustries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/industry/list",
+          "query": {
+            "sign": [
+              "54319DD204B503E468D0C75C28500BEA"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/html"
+            ],
+            "Authorization": [
+              "bWVyY2hhbnQtaWQ6MTczMTUxMDAwMA=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndustries-retry429",
+      "operation": "listIndustries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/industry/list",
+          "query": {
+            "sign": [
+              "54319DD204B503E468D0C75C28500BEA"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/html"
+            ],
+            "Authorization": [
+              "bWVyY2hhbnQtaWQ6MTczMTUxMDAwMA=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndustries-retry503",
+      "operation": "listIndustries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/industry/list",
+          "query": {
+            "sign": [
+              "54319DD204B503E468D0C75C28500BEA"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/html"
+            ],
+            "Authorization": [
+              "bWVyY2hhbnQtaWQ6MTczMTUxMDAwMA=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listIndustries-transport",
+      "operation": "listIndustries"
+    }
+  ],
+  "schemaVersion": 1
+}
