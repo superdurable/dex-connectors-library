@@ -1,0 +1,267 @@
+{
+  "connector": "gugudata",
+  "scenarios": [
+    {
+      "callId": "b3e828a9-8917-5457-add1-41e4c452cc9f",
+      "exchanges": [
+        {
+          "body": "{\"DataStatus\":{\"StatusCode\":100},\"Data\":{\"SegmentaryText\":\"计算机,科学\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/text/segment",
+          "query": {
+            "text": [
+              "计算机科学"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Gugudata-Appkey": [
+              "test-gugudata-app-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "segmented",
+        "failureKind": "",
+        "output": {
+          "segmentedText": "计算机,科学"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "text": "计算机科学"
+      },
+      "name": "segmentText-segmented",
+      "operation": "segmentText"
+    },
+    {
+      "callId": "193210c1-05b4-5ad4-8e77-1edcf9ed6025",
+      "exchanges": [
+        {
+          "body": "{\"DataStatus\":{\"StatusCode\":504}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/text/segment",
+          "query": {
+            "text": [
+              "计算机科学"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Gugudata-Appkey": [
+              "test-gugudata-app-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "segmentedText": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "text": "计算机科学"
+      },
+      "name": "segmentText-providerRejected",
+      "operation": "segmentText"
+    },
+    {
+      "callId": "9c372675-323c-599c-be31-07fb80e15fe8",
+      "exchanges": [
+        {
+          "body": "{\"DataStatus\":{\"StatusCode\":100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/text/segment",
+          "query": {
+            "text": [
+              "计算机科学"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Gugudata-Appkey": [
+              "test-gugudata-app-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "segmentedText": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "text": "计算机科学"
+      },
+      "name": "segmentText-invalidResponse",
+      "operation": "segmentText"
+    },
+    {
+      "callId": "6a89acc9-109b-5687-9faf-565a9bf8c05d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "segmentedText": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "text": ""
+      },
+      "name": "segmentText-defect",
+      "operation": "segmentText"
+    },
+    {
+      "callId": "c554da1d-557e-5b51-833a-80b1e16edaa8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/text/segment",
+          "query": {
+            "text": [
+              "计算机科学"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Gugudata-Appkey": [
+              "test-gugudata-app-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "text": "计算机科学"
+      },
+      "name": "segmentText-rateLimit",
+      "operation": "segmentText"
+    },
+    {
+      "callId": "a23f9f18-f7d3-5a30-99db-5cf92447df67",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/text/segment",
+          "query": {
+            "text": [
+              "计算机科学"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Gugudata-Appkey": [
+              "test-gugudata-app-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "text": "计算机科学"
+      },
+      "name": "segmentText-serverError",
+      "operation": "segmentText"
+    },
+    {
+      "callId": "0575e153-f1b2-58dc-b6bc-e5a6392355f1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/text/segment",
+          "query": {
+            "text": [
+              "计算机科学"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Gugudata-Appkey": [
+              "test-gugudata-app-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "text": "计算机科学"
+      },
+      "name": "segmentText-transport",
+      "operation": "segmentText"
+    }
+  ],
+  "schemaVersion": 1
+}
