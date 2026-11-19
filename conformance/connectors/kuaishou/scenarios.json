@@ -1,0 +1,366 @@
+{
+  "connector": "kuaishou",
+  "scenarios": [
+    {
+      "callId": "0a701247-912c-5abb-9110-cac81e3a4178",
+      "exchanges": [
+        {
+          "body": "{\"result\":1,\"video_list\":[{\"photo_id\":\"3xwn3kkerxj6g9n\",\"caption\":\"测试标题\",\"cover\":\"https://example.test/cover\",\"play_url\":\"https://example.test/video\",\"create_time\":1596629598574,\"like_count\":1,\"comment_count\":2,\"view_count\":3,\"pending\":false}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/photo/list",
+          "query": {
+            "access_token": [
+              "token456"
+            ],
+            "app_id": [
+              "app123"
+            ],
+            "count": [
+              "20"
+            ],
+            "cursor": [
+              "priorID"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "3xwn3kkerxj6g9n",
+          "videos": [
+            {
+              "caption": "测试标题",
+              "commentCount": 2,
+              "createdAtMilliseconds": 1596629598574,
+              "likeCount": 1,
+              "pending": false,
+              "photoID": "3xwn3kkerxj6g9n",
+              "viewCount": 3
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "priorID"
+      },
+      "name": "listUserVideos-listed",
+      "operation": "listUserVideos"
+    },
+    {
+      "callId": "bcf7a47e-1728-5b60-822b-df8f0702d51a",
+      "exchanges": [
+        {
+          "body": "{\"result\":1,\"video_list\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/photo/list",
+          "query": {
+            "access_token": [
+              "token456"
+            ],
+            "app_id": [
+              "app123"
+            ],
+            "count": [
+              "20"
+            ],
+            "cursor": [
+              "priorID"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "videos": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "priorID"
+      },
+      "name": "listUserVideos-empty",
+      "operation": "listUserVideos"
+    },
+    {
+      "callId": "ace59b02-74db-5c0a-ae18-4fdee4231277",
+      "exchanges": [
+        {
+          "body": "{\"result\":100200108,\"error_msg\":\"token expired\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/photo/list",
+          "query": {
+            "access_token": [
+              "token456"
+            ],
+            "app_id": [
+              "app123"
+            ],
+            "count": [
+              "20"
+            ],
+            "cursor": [
+              "priorID"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "videos": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "priorID"
+      },
+      "name": "listUserVideos-providerRejected",
+      "operation": "listUserVideos"
+    },
+    {
+      "callId": "d12464cc-fc2e-58cb-8b54-34409dcf2e71",
+      "exchanges": [
+        {
+          "body": "{\"result\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/photo/list",
+          "query": {
+            "access_token": [
+              "token456"
+            ],
+            "app_id": [
+              "app123"
+            ],
+            "count": [
+              "20"
+            ],
+            "cursor": [
+              "priorID"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "videos": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "priorID"
+      },
+      "name": "listUserVideos-invalidResponse",
+      "operation": "listUserVideos"
+    },
+    {
+      "callId": "d30be813-efe8-5374-b8b3-baf4fd34f9e0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/photo/list",
+          "query": {
+            "access_token": [
+              "token456"
+            ],
+            "app_id": [
+              "app123"
+            ],
+            "count": [
+              "20"
+            ],
+            "cursor": [
+              "priorID"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "priorID"
+      },
+      "name": "listUserVideos-rateLimit",
+      "operation": "listUserVideos"
+    },
+    {
+      "callId": "a39ccbe7-6ebc-52ae-94f6-d4ff80e0e4b3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/photo/list",
+          "query": {
+            "access_token": [
+              "token456"
+            ],
+            "app_id": [
+              "app123"
+            ],
+            "count": [
+              "20"
+            ],
+            "cursor": [
+              "priorID"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "priorID"
+      },
+      "name": "listUserVideos-serverError",
+      "operation": "listUserVideos"
+    },
+    {
+      "callId": "47f1793e-48d0-560c-98cd-9b80c6b57a3c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "videos": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": " bad"
+      },
+      "name": "listUserVideos-defect",
+      "operation": "listUserVideos"
+    },
+    {
+      "callId": "a8e8d2e2-84f5-5a96-b2a2-75f57a515005",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/photo/list",
+          "query": {
+            "access_token": [
+              "token456"
+            ],
+            "app_id": [
+              "app123"
+            ],
+            "count": [
+              "20"
+            ],
+            "cursor": [
+              "priorID"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "priorID"
+      },
+      "name": "listUserVideos-transport",
+      "operation": "listUserVideos"
+    }
+  ],
+  "schemaVersion": 1
+}

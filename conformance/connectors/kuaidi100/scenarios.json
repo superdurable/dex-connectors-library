@@ -1,0 +1,338 @@
+{
+  "connector": "kuaidi100",
+  "scenarios": [
+    {
+      "callId": "e98e2168-beb1-5929-a6dc-9b3fa21b949a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"ok\",\"status\":\"200\",\"nu\":\"YT1234567890123\",\"com\":\"yuantong\",\"state\":\"0\",\"data\":[{\"time\":\"2026-11-13 10:00:00\",\"context\":\"Arrived\"},{\"time\":\"2026-11-12 15:30:00\",\"context\":\"Collected\"}],\"courierInfo\":{\"pickupManPhone\":\"private\"}}",
+          "form": {
+            "customer": [
+              "test-customer"
+            ],
+            "param": [
+              "{\"com\":\"yuantong\",\"num\":\"YT1234567890123\",\"phone\":\"13800000000\",\"show\":\"0\",\"order\":\"desc\"}"
+            ],
+            "sign": [
+              "14A5764148AFED458A8586AEBFF879A6"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/poll/query.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "carrierCode": "yuantong",
+          "events": [
+            {
+              "content": "Arrived",
+              "time": "2026-11-13 10:00:00"
+            },
+            {
+              "content": "Collected",
+              "time": "2026-11-12 15:30:00"
+            }
+          ],
+          "state": "0",
+          "trackingNumber": "YT1234567890123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "yuantong",
+        "phone": "13800000000",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-retrieved",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "5a153796-a3b7-5053-9271-6b8ef3d8e63c",
+      "exchanges": [
+        {
+          "body": "{\"result\":false,\"returnCode\":\"500\",\"message\":\"private waybill\"}",
+          "form": {
+            "customer": [
+              "test-customer"
+            ],
+            "param": [
+              "{\"com\":\"yuantong\",\"num\":\"YT1234567890123\",\"phone\":\"13800000000\",\"show\":\"0\",\"order\":\"desc\"}"
+            ],
+            "sign": [
+              "14A5764148AFED458A8586AEBFF879A6"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/poll/query.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "state": "",
+          "trackingNumber": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "yuantong",
+        "phone": "13800000000",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-providerRejected",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "85e5afa5-5ca7-53a8-bac8-cc934f63e334",
+      "exchanges": [
+        {
+          "body": "{\"nu\":\"OTHER123\",\"com\":\"yuantong\",\"status\":\"200\",\"state\":\"0\",\"data\":[]}",
+          "form": {
+            "customer": [
+              "test-customer"
+            ],
+            "param": [
+              "{\"com\":\"yuantong\",\"num\":\"YT1234567890123\",\"phone\":\"13800000000\",\"show\":\"0\",\"order\":\"desc\"}"
+            ],
+            "sign": [
+              "14A5764148AFED458A8586AEBFF879A6"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/poll/query.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "state": "",
+          "trackingNumber": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "yuantong",
+        "phone": "13800000000",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-invalidResponse",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "eb831dae-b338-599b-8cc7-4e62c3e8745f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "customer": [
+              "test-customer"
+            ],
+            "param": [
+              "{\"com\":\"yuantong\",\"num\":\"YT1234567890123\",\"phone\":\"13800000000\",\"show\":\"0\",\"order\":\"desc\"}"
+            ],
+            "sign": [
+              "14A5764148AFED458A8586AEBFF879A6"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/poll/query.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 1800000,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "yuantong",
+        "phone": "13800000000",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-rateLimit",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "8ed5f6c9-4a14-5409-add1-f923b4877743",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "customer": [
+              "test-customer"
+            ],
+            "param": [
+              "{\"com\":\"yuantong\",\"num\":\"YT1234567890123\",\"phone\":\"13800000000\",\"show\":\"0\",\"order\":\"desc\"}"
+            ],
+            "sign": [
+              "14A5764148AFED458A8586AEBFF879A6"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/poll/query.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 1800000,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "yuantong",
+        "phone": "13800000000",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-serverError",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "f231521f-debc-5da1-9990-109ec56d6c9a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "state": "",
+          "trackingNumber": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "yuantong",
+        "phone": "13800000000",
+        "trackingNumber": "short"
+      },
+      "name": "queryTracking-defect",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "23a40901-9bad-5c06-bda9-2ce767df7189",
+      "exchanges": [
+        {
+          "form": {
+            "customer": [
+              "test-customer"
+            ],
+            "param": [
+              "{\"com\":\"yuantong\",\"num\":\"YT1234567890123\",\"phone\":\"13800000000\",\"show\":\"0\",\"order\":\"desc\"}"
+            ],
+            "sign": [
+              "14A5764148AFED458A8586AEBFF879A6"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/poll/query.do",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 1800000,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "yuantong",
+        "phone": "13800000000",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-transport",
+      "operation": "queryTracking"
+    }
+  ],
+  "schemaVersion": 1
+}

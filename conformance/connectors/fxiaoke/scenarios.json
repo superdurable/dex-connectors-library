@@ -1,0 +1,838 @@
+{
+  "connector": "fxiaoke",
+  "scenarios": [
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":0,\"accessToken\":\"access-secret\",\"expiresIn\":7084,\"ea\":\"enterprise-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "746eef09-a9f8-4c15-b33c-0f3956b6b1b8"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"data\":{\"objects\":[{\"describeApiName\":\"AccountObj\",\"describeDisplayName\":\"客户\",\"isActive\":true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi/crm/v2/object/list",
+          "query": {
+            "thirdTraceId": [
+              "62b779e7-6be5-489f-b7c0-1e4ab678d02b"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer access-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Fs-Ea": [
+              "enterprise-123"
+            ],
+            "X-Fs-Userid": [
+              "employee-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "objects": [
+            {
+              "active": true,
+              "apiName": "AccountObj",
+              "displayName": "客户"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-listed",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-listed"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":0,\"accessToken\":\"access-secret\",\"expiresIn\":7084,\"ea\":\"enterprise-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "6bb8e738-30fa-4a9b-a614-51b8272b2389"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"data\":{\"objects\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi/crm/v2/object/list",
+          "query": {
+            "thirdTraceId": [
+              "fb6f010b-30d7-4a6e-b111-4522365b964d"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer access-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Fs-Ea": [
+              "enterprise-123"
+            ],
+            "X-Fs-Userid": [
+              "employee-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "objects": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-empty",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-empty"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":0,\"accessToken\":\"access-secret\",\"expiresIn\":7084,\"ea\":\"enterprise-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "f304d64d-6cff-4a45-bc49-1bc6e17aa59e"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":15003}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi/crm/v2/object/list",
+          "query": {
+            "thirdTraceId": [
+              "01f2ba4a-7c7d-4bc9-9f4e-a46fa300df74"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer access-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Fs-Ea": [
+              "enterprise-123"
+            ],
+            "X-Fs-Userid": [
+              "employee-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "objects": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-providerRejected",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-providerRejected"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":0,\"accessToken\":\"access-secret\",\"expiresIn\":7084,\"ea\":\"enterprise-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "ef6ea870-629b-44d7-a890-6820ea1e1a7c"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi/crm/v2/object/list",
+          "query": {
+            "thirdTraceId": [
+              "a2a5fa3a-c173-4af3-a05d-82053f942fe6"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer access-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Fs-Ea": [
+              "enterprise-123"
+            ],
+            "X-Fs-Userid": [
+              "employee-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "objects": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-invalidResponse",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-invalidResponse"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "objects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-defect",
+      "operation": "listObjectMetadata"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "2910aec1-c14c-49a7-a6e7-23936cf8f11a"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-429",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-429"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "0c513fe2-0f5f-490e-9125-634b30f2a9a9"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-503",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-503"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "38cfa504-f1be-4ff0-8dba-4a69173b4ea5"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-transport",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-transport"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":0,\"accessToken\":\"access-secret\",\"expiresIn\":7084,\"ea\":\"enterprise-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "321627e7-2dbe-4262-83f8-f8410a2c6c31"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-oversized",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-oversized"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":20006}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "84815dcd-0ce7-4af0-a094-a415be91cc9f"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-tokenRejected",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-tokenRejected"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":0,\"accessToken\":\"access-secret\",\"expiresIn\":7084}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "f2141dd0-9479-41f7-a433-67cdaf9dc8ae"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-tokenInvalid",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-tokenInvalid"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":0,\"accessToken\":\"access-secret\",\"expiresIn\":7084,\"ea\":\"enterprise-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "b28a47e7-4cff-470a-945c-18e6e801e781"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\":20016}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi/crm/v2/object/list",
+          "query": {
+            "thirdTraceId": [
+              "7fca9420-d7da-44c0-a00e-ef52f88f63cf"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer access-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Fs-Ea": [
+              "enterprise-123"
+            ],
+            "X-Fs-Userid": [
+              "employee-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-tokenExpired",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-tokenExpired"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000013",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":0,\"accessToken\":\"access-secret\",\"expiresIn\":7084,\"ea\":\"enterprise-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "837dfa75-11c6-44fc-9226-85569ec349c3"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi/crm/v2/object/list",
+          "query": {
+            "thirdTraceId": [
+              "b3e06148-3008-4fa3-b738-9f55b1c6573d"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer access-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Fs-Ea": [
+              "enterprise-123"
+            ],
+            "X-Fs-Userid": [
+              "employee-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-list429",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-list429"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000014",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":0,\"accessToken\":\"access-secret\",\"expiresIn\":7084,\"ea\":\"enterprise-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/oauth2.0/token",
+          "query": {
+            "thirdTraceId": [
+              "aa4ee50e-21e5-4e97-a521-57f9a83ce232"
+            ]
+          },
+          "requestBody": {
+            "appId": "FSAID_123",
+            "appSecret": "app-secret",
+            "grantType": "app_secret",
+            "permanentCode": "permanent-code"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cgi/crm/v2/object/list",
+          "query": {
+            "thirdTraceId": [
+              "f53c13c3-f19a-464a-aef7-6cbb4dfb1dc3"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer access-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Fs-Ea": [
+              "enterprise-123"
+            ],
+            "X-Fs-Userid": [
+              "employee-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listObjectMetadata-list503",
+      "operation": "listObjectMetadata",
+      "randomSeed": "SYNTHETIC_CONFORMANCE_fxiaoke_listObjectMetadata-list503"
+    }
+  ],
+  "schemaVersion": 1
+}

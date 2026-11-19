@@ -6,4 +6,10 @@ Sign in or register at [IPIP](https://user.ipip.net/) and obtain a token for you
 
 Run the [example Flow](go/examples/lookup-ip-location/) with its generated mock or a user-controlled connection. An IP address can identify a device or person; pass only addresses you are authorized to query. Live pricing and quota depend on your IPIP agreement and are not stated in the v2 API document.
 
+## Python
+
+The first Python package lives in [`python/`](python/). It implements `lookupIPLocation` with the same branches and retry decisions as Go. Its runnable [`IP location Flow`](python/examples/ip_location/) uses the static `ipip` connection and includes a real Dex Worker/Client integration test with a mock IPIP HTTP response. Live provider authorization has not been verified.
+
+## TypeScript
+
 The [TypeScript package](typescript/) adds the same lookup Query and a runnable Dex Worker/Client example. It replays the Go-recorded provider scenarios before release.

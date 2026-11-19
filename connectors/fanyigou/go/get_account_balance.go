@@ -4,10 +4,10 @@
 package fanyigou
 
 import (
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -44,7 +44,7 @@ func (operation GetAccountBalanceOperation) Invoke(call sdkgo.Call, _ GetAccount
 		return accountBranch(GetAccountBalanceBranchDefect, sdkgo.FailureAuthentication, "Fanyigou application credentials are unavailable or invalid")
 	}
 	nonce := make([]byte, 16)
-	if _, err := rand.Read(nonce); err != nil {
+	if _, err := io.ReadFull(operation.client.nonceReader, nonce); err != nil {
 		return accountRetry(sdkgo.FailureAvailability, "Fanyigou request nonce is unavailable", 0)
 	}
 	form := url.Values{"appid": {credentials.AppID.Reveal()}, "nonce_str": {hex.EncodeToString(nonce)}, "type": {"1"}}

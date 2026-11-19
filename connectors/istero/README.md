@@ -8,4 +8,10 @@ Sign in at [起零数据](https://api.istero.com/), open **开发者中心 > 应
 
 Run the [example Flow](go/examples/account-status/) with its generated mock or a user-controlled connection. It stores only ISID, today's used calls, and today's remaining calls. Authentication, quota, malformed response, transport, and retry outcomes have separate handling. Real provider authorization and response were not verified locally.
 
+## Python
+
+The first Python package lives in [`python/`](python/). It implements `getAccountStatus` with Go-equivalent branches and retries. Its runnable [account status Flow](python/examples/account_status/) uses the static `istero` connection and a real Dex Worker/Client integration test with a mock provider. Live ISAS authorization has not been verified.
+
+## TypeScript
+
 The [TypeScript package](typescript/) provides the same account-status Query with a runnable Dex Worker/Client example and Go-recorded conformance replay.

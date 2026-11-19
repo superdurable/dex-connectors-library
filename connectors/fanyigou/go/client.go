@@ -5,7 +5,9 @@
 package fanyigou
 
 import (
+	"crypto/rand"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -17,10 +19,12 @@ const accountBalanceEndpoint = "https://www.fanyigou.com/TranslateApi/api/getAcc
 // Option supplies a client dependency at construction.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ httpClient *http.Client }
+type nonceReaderOption struct{ reader io.Reader }
 
 func (option httpClientOption) applyClientOption(client *Client) {
 	client.httpClient = option.httpClient
 }
+func (option nonceReaderOption) applyClientOption(client *Client) { client.nonceReader = option.reader }
 
 // WithHTTPClient supplies a test transport or trusted proxy. Redirects remain disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -30,6 +34,7 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	nonceReader      io.Reader
 }
 
 // New validates local settings without making a provider request.
@@ -41,7 +46,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Validate() != nil || config.Timeout <= 0 || config.MaxResponseBytes <= 0 || config.MaxResponseBytes > 16<<20 {
 		return nil, errors.New("fanyigou configuration is invalid")
 	}
-	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{maxResponseBytes: config.MaxResponseBytes, credentials: credentials, nonceReader: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("fanyigou client option is required")

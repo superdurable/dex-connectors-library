@@ -5,8 +5,10 @@
 package fxiaoke
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -18,10 +20,12 @@ import (
 // Option supplies a client dependency at construction.
 type Option interface{ applyClientOption(*Client) }
 type httpClientOption struct{ httpClient *http.Client }
+type nonceReaderOption struct{ reader io.Reader }
 
 func (option httpClientOption) applyClientOption(client *Client) {
 	client.httpClient = option.httpClient
 }
+func (option nonceReaderOption) applyClientOption(client *Client) { client.nonceReader = option.reader }
 
 // WithHTTPClient supplies a test transport or trusted proxy. Redirects remain disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
@@ -33,6 +37,7 @@ type Client struct {
 	maxResponseBytes  int64
 	credentials       CredentialSource
 	httpClient        *http.Client
+	nonceReader       io.Reader
 	tokenMu           sync.Mutex
 	tokenKey          [32]byte
 	token             string
@@ -52,7 +57,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if !isValidCloudHost(config.CloudHost) || !isValidIdentifier(config.EmployeeID) || config.Timeout <= 0 || config.MaxResponseBytes <= 0 || config.MaxResponseBytes > 16<<20 {
 		return nil, errors.New("FXiaoke cloud host, employee ID, timeout, or response limit is invalid")
 	}
-	client := &Client{baseURL: "https://" + config.CloudHost, employeeID: config.EmployeeID, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: "https://" + config.CloudHost, employeeID: config.EmployeeID, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, nonceReader: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("FXiaoke client option is required")

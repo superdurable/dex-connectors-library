@@ -1,0 +1,367 @@
+{
+  "connector": "kuaidibird",
+  "scenarios": [
+    {
+      "callId": "a2bccccc-2861-5678-b4ce-ed83d221b015",
+      "exchanges": [
+        {
+          "body": "{\"EBusinessID\":\"1237100\",\"ShipperCode\":\"YTO\",\"LogisticCode\":\"YT1234567890123\",\"Success\":true,\"State\":2,\"Traces\":[{\"AcceptTime\":\"2026-11-12 15:30:00\",\"AcceptStation\":\"Collected\"},{\"AcceptTime\":\"2026-11-13 10:00:00\",\"AcceptStation\":\"Arrived\"}],\"Reason\":null}",
+          "form": {
+            "DataSign": [
+              "YjQzODg4YjY5ZThjZjNiNTNhZDA3M2ZhOTE5Nzg4NTE="
+            ],
+            "DataType": [
+              "2"
+            ],
+            "EBusinessID": [
+              "1237100"
+            ],
+            "RequestData": [
+              "{\"ShipperCode\":\"YTO\",\"LogisticCode\":\"YT1234567890123\"}"
+            ],
+            "RequestType": [
+              "1002"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Ebusiness/EbusinessOrderHandle.aspx",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retrieved",
+        "failureKind": "",
+        "output": {
+          "carrierCode": "YTO",
+          "events": [
+            {
+              "content": "Collected",
+              "time": "2026-11-12 15:30:00"
+            },
+            {
+              "content": "Arrived",
+              "time": "2026-11-13 10:00:00"
+            }
+          ],
+          "state": "2",
+          "trackingNumber": "YT1234567890123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-retrieved",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "708644d7-1c51-5f21-8d67-eaf690580521",
+      "exchanges": [
+        {
+          "body": "{\"EBusinessID\":\"1237100\",\"Success\":false,\"Reason\":\"private waybill\"}",
+          "form": {
+            "DataSign": [
+              "YjQzODg4YjY5ZThjZjNiNTNhZDA3M2ZhOTE5Nzg4NTE="
+            ],
+            "DataType": [
+              "2"
+            ],
+            "EBusinessID": [
+              "1237100"
+            ],
+            "RequestData": [
+              "{\"ShipperCode\":\"YTO\",\"LogisticCode\":\"YT1234567890123\"}"
+            ],
+            "RequestType": [
+              "1002"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Ebusiness/EbusinessOrderHandle.aspx",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "state": "",
+          "trackingNumber": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-providerRejected",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "483b69d5-0315-5f87-8627-9b951061a6b5",
+      "exchanges": [
+        {
+          "body": "{\"EBusinessID\":\"1237100\",\"Success\":true,\"ShipperCode\":\"YTO\",\"LogisticCode\":\"OTHER123\",\"State\":\"2\",\"Traces\":[]}",
+          "form": {
+            "DataSign": [
+              "YjQzODg4YjY5ZThjZjNiNTNhZDA3M2ZhOTE5Nzg4NTE="
+            ],
+            "DataType": [
+              "2"
+            ],
+            "EBusinessID": [
+              "1237100"
+            ],
+            "RequestData": [
+              "{\"ShipperCode\":\"YTO\",\"LogisticCode\":\"YT1234567890123\"}"
+            ],
+            "RequestType": [
+              "1002"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Ebusiness/EbusinessOrderHandle.aspx",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded;charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "state": "",
+          "trackingNumber": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-invalidResponse",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "8d7027d0-9c9d-5f4f-b074-b8709bf3245a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "DataSign": [
+              "YjQzODg4YjY5ZThjZjNiNTNhZDA3M2ZhOTE5Nzg4NTE="
+            ],
+            "DataType": [
+              "2"
+            ],
+            "EBusinessID": [
+              "1237100"
+            ],
+            "RequestData": [
+              "{\"ShipperCode\":\"YTO\",\"LogisticCode\":\"YT1234567890123\"}"
+            ],
+            "RequestType": [
+              "1002"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Ebusiness/EbusinessOrderHandle.aspx",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded;charset=utf-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-rateLimit",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "e8e9ef19-b115-5142-9a58-b05f9e93c819",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "DataSign": [
+              "YjQzODg4YjY5ZThjZjNiNTNhZDA3M2ZhOTE5Nzg4NTE="
+            ],
+            "DataType": [
+              "2"
+            ],
+            "EBusinessID": [
+              "1237100"
+            ],
+            "RequestData": [
+              "{\"ShipperCode\":\"YTO\",\"LogisticCode\":\"YT1234567890123\"}"
+            ],
+            "RequestType": [
+              "1002"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Ebusiness/EbusinessOrderHandle.aspx",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded;charset=utf-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-serverError",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "a71c0392-c7b2-5d7d-84b1-624300554d50",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "carrierCode": "",
+          "events": [],
+          "state": "",
+          "trackingNumber": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "yto",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-defect",
+      "operation": "queryTracking"
+    },
+    {
+      "callId": "11a555b6-d4d1-5c73-8571-00f3ba44fb77",
+      "exchanges": [
+        {
+          "form": {
+            "DataSign": [
+              "YjQzODg4YjY5ZThjZjNiNTNhZDA3M2ZhOTE5Nzg4NTE="
+            ],
+            "DataType": [
+              "2"
+            ],
+            "EBusinessID": [
+              "1237100"
+            ],
+            "RequestData": [
+              "{\"ShipperCode\":\"YTO\",\"LogisticCode\":\"YT1234567890123\"}"
+            ],
+            "RequestType": [
+              "1002"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Ebusiness/EbusinessOrderHandle.aspx",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded;charset=utf-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "carrierCode": "YTO",
+        "trackingNumber": "YT1234567890123"
+      },
+      "name": "queryTracking-transport",
+      "operation": "queryTracking"
+    }
+  ],
+  "schemaVersion": 1
+}

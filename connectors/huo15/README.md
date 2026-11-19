@@ -7,3 +7,5 @@ Open [Juxingyi](https://fireworks-simulator.huo15.com), sign in, then create an 
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "huo15"`. Run the worker with `go run .` from its directory, then start `Huo15ModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [official developer documentation](https://fireworks-simulator.huo15.com/square). Real provider authorization is unverified without a customer-controlled Key.
+
+The [Python package](python/) implements `listModels` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.

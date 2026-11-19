@@ -6,4 +6,10 @@ Open the [IPPlus360 product page](https://mall.ipplus360.com/pros/IPVFourGeoAPI)
 
 Run the [example Flow](go/examples/lookup-ip-location/) with its generated mock or a user-controlled connection. Pass only public IPv4 addresses you are authorized to query. Provider errors, malformed data, oversized bodies, and retryable transport failures have separate outcomes. Real provider authorization and billing have not been verified locally.
 
+## Python
+
+The first Python package lives in [`python/`](python/). It implements `lookupIPLocation` with Go-equivalent branches and retries. Its runnable [`IP location Flow`](python/examples/ip_location/) uses a static `ipplus360` connection and a real Dex Worker/Client test with a mock provider. Live provider authorization has not been verified.
+
+## TypeScript
+
 The [TypeScript package](typescript/) provides the same Query with a runnable Dex Worker/Client example and Go-recorded conformance replay.
