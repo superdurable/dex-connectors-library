@@ -11,3 +11,7 @@ Open [BigModel API Keys](https://bigmodel.cn/usercenter/proj-mgmt/apikeys), sele
 The [text generation example](go/examples/text-generation/) is a runnable Worker. Its Flow uses the static Dex Web connection name `zhipu` and `zhipu.NewGenerateTextStep`. `generated` completes the Flow; `truncated`, `blocked`, `providerRejected`, `invalidResponse`, and `defect` are optional branches and fail the Flow unless an application wires a business response. Transient failures retry up to three times under a one-hour budget. A repeated generation can be billed again.
 
 No live BigModel API key is bundled or required for mock verification. A real provider call requires saving your own connection in Dex Web.
+
+## Python
+
+The [`python/`](python/) package implements the `generateText` Query. Its checked-in example runs a Worker and a real Dex retry test; provider authorization remains unverified.
