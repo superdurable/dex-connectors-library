@@ -1,0 +1,52 @@
+{
+  "connectorId": "okki",
+  "releaseTag": "connectors/okki/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-okki",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_customer_fields_step",
+      "kind": "query",
+      "operationId": "listCustomerFields",
+      "inputType": "ListCustomerFieldsInput",
+      "description": "Return a bounded set of customer field IDs, labels, and types.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListCustomerFieldsInput selects the fixed OKKI company field dictionary.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
