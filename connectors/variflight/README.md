@@ -11,3 +11,7 @@ Establish a VariFlight DataWorks partner account from [Contact Us](https://dataw
 The [runnable Flow](go/examples/flight-status/) starts with flight number and `YYYY-MM-DD` departure date and completes with typed `GetFlightStatusOutput`. Its default mock returns a scheduled flight. Live partner authorization, IP allowlisting, billing and status response variation remain unverified without a user-controlled Dex Web Connection.
 
 Python v0.1.0: [package and runnable example](python/README.md).
+
+## TypeScript
+
+`@superdurable/connector-variflight` provides `getFlightStatus` and a runnable Dex Flow in `typescript/examples/basic/`. Its conformance suite replays the Go-recorded signed requests.
