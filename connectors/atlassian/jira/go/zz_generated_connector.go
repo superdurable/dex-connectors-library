@@ -566,7 +566,7 @@ var TransitionIssueDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: TransitionIssueBranchTransitioned, Description: "The issue is in the transition's destination status, including when it already was."},
 		{ID: TransitionIssueBranchNotFound, Description: "The issue does not exist or the connection cannot browse it.", Optional: true},
-		{ID: TransitionIssueBranchTransitionUnavailable, Description: "No available transition from the issue's current status matches the request, or several do; the Value lists the current status and the available transitions.", Optional: true},
+		{ID: TransitionIssueBranchTransitionUnavailable, Description: "No available transition from the issue's current status matches the request, or several do, or on a retry the issue is in neither the recorded source nor destination status; the Value lists the current status and the available transitions.", Optional: true},
 		{ID: TransitionIssueBranchProviderRejected, Description: "Jira conclusively rejected the transition, such as a required transition screen field or missing permission.", Optional: true},
 		{ID: TransitionIssueBranchInvalidResponse, Description: "Jira returned an invalid or oversized issue or transition list.", Optional: true},
 		{ID: TransitionIssueBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},

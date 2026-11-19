@@ -361,28 +361,45 @@ screen's resolution. The operation:
    status;
 3. selects `transitionUnavailable` when no available transition matches, or
    several do, with the current status and up to 50 available transitions;
-4. performs the transition once behind the `sdkgo/singledispatch` fence, and
-   after any response other than 2xx, 404, 429, or 503 reads the issue again.
-   When the issue reached the destination, the result is `transitioned`.
-   Otherwise a conclusive 4xx with a fully read body selects
-   `providerRejected` with the field IDs, and a 409, other 5xx, cut body, or
-   dropped connection retries. A 2xx whose body breaks, even at the write
-   deadline, is `transitioned`.
+4. records a heartbeat checkpoint with the chosen transition ID, the current
+   (source) status ID, and the transition's destination status ID, and returns
+   Retry without sending when Dex cannot record it;
+5. sends the transition once in this attempt. A 2xx, even one whose body
+   breaks, is `transitioned`; a 404 with a fully read body selects `notFound`;
+   another conclusive 4xx rereads the issue and selects `transitioned` when a
+   concurrent attempt already reached the destination, or `providerRejected`
+   with the field IDs. A 429, 503, provably unsent request, 409, other 5xx,
+   cut body, or dropped connection returns Retry.
 
-The manifest declares `repeatOnUnknown: safe` because a repeated attempt never
-sends the transition again after a possible earlier send: a workflow can offer
-a transition with the same name back, so a second POST could undo the first. A
-429, 503, refusal, or provably unsent request records `canResend`, and only
-then may the next attempt transition. Any number of such Retries in a row still
-let the next attempt send, because a cap-one fence permits a send only when no
-earlier send can have taken effect. After a possible earlier send, the
-attempt rereads the issue and selects `transitioned` when its status equals
-`DestinationStatusName` or the matched transition leads to the current status.
-Otherwise it returns Retry, never `notFound`, `transitionUnavailable`,
-`providerRejected`, `invalidResponse`, or `defect`, until the retry budget
-ends and the Flow fails for review. Set `DestinationStatusName` whenever the
-destination is known so a retried attempt can recognize a transition Jira
-already made.
+The manifest declares `repeatOnUnknown: safe` because a transition has a fixed
+destination and a retry never selects a transition again. A later attempt of
+the same Call reads the checkpoint and the issue, then:
+
+- selects `transitioned` without sending when the issue is in the recorded
+  destination status;
+- sends the recorded transition ID again when the issue is still in the
+  recorded source status and that transition is still offered;
+- selects `transitionUnavailable` without sending when the issue is in any
+  other status, because someone else moved it, or when the recorded transition
+  is no longer offered.
+
+It never matches `TransitionName` or `DestinationStatusName` again, because a
+workflow can offer a transition with the same name back and a second selection
+could undo the first. Dex can lose a recorded heartbeat, so a later attempt
+selects a transition only when the previous attempt recorded `notSent`, which
+every Retry before a send records. A later attempt with neither a checkpoint
+nor that record selects `transitioned` when the issue is already in
+`DestinationStatusName` or the matched transition leads to the current status,
+and otherwise returns Retry without sending until the retry budget ends. A
+`notSent` or `canResend` marker of an earlier release counts as `notSent`. An
+unreadable checkpoint returns Retry without any request. A transient read failure returns Retry; a definite read outcome, such
+as a 404, still selects its branch. A terminal credential failure after a
+checkpoint returns Retry instead of `defect`, because an earlier attempt may
+have moved the issue.
+
+The checkpoint is the Step's own Dex heartbeat value. Run `transitionIssue` in
+its own Step, as `NewTransitionIssueStep` does; a hand-written Step that also
+runs a fenced Mutation would overwrite one checkpoint with the other.
 
 ### addComment
 
@@ -399,17 +416,18 @@ attempt and retry rules. The create test records one request and one issue;
 the timeout tests check that an unconfirmed write is resent at most up to the
 send cap before `uncertain`. Keep these Steps sync to reduce replay risk.
 
-`transitionIssue` is also sync, because its fence checkpoint must be visible to
-the next attempt. A lost Worker after Jira applies the transition causes
-another Execute; it reads the issue and does not send the transition again.
-The integration test checks one POST.
+`transitionIssue` is also sync, because its transition checkpoint must be
+visible to the next attempt. A lost Worker after Jira applies the transition
+causes another Execute; it finds the issue in the recorded destination and does
+not send the transition again. The integration test checks one POST.
 
 In Python, the fence's write window cancels a dispatch whose body is still
 being read. Each write records the HTTP status when headers arrive, so a 2xx
 cut off by the write deadline counts as accepted: creates and comments are
-read back by their Call ID property and otherwise select `uncertain`, and a
-transition is `transitioned`. A refusal status whose body could not be read in
-full is an unknown outcome in every language.
+read back by their Call ID property and otherwise select `uncertain`. A
+transition answered with 2xx is `transitioned` even when its body breaks. A
+refusal status whose body could not be read in full is an unknown outcome in
+every language.
 
 Each create and comment includes a non-secret hash of the stable Call ID in a
 Jira entity property. The released `sdkgo/singledispatch` fence owns the Dex

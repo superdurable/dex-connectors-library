@@ -345,7 +345,10 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
-          "state": "claimed"
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
         },
         "output": {
           "issueId": "10043",
@@ -1169,7 +1172,10 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
-          "state": "canResend"
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
         },
         "requestCount": 1,
         "retry": true,
@@ -2498,7 +2504,10 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
-          "state": "canResend"
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
         },
         "output": {
           "issueId": "10043",
@@ -2673,13 +2682,220 @@
         "issueIdOrKey": "OPS-43",
         "transitionName": "Start Progress"
       },
-      "name": "transition_repeat_after_possible_send_never_transitions_again",
+      "name": "transition_retry_without_checkpoint_never_selects_again",
       "operation": "transitionIssue",
       "priorHeartbeat": {
         "attempt": 1,
         "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
         "sendCount": 1,
         "state": "claimed"
+      }
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[{\"id\":\"11\",\"name\":\"Start Progress\",\"to\":{\"id\":\"3\",\"name\":\"In Progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/transitions",
+          "requestBody": {
+            "transition": {
+              "id": "11"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "transitioned",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
+        },
+        "output": {
+          "issueId": "10043",
+          "issueKey": "OPS-43",
+          "previousStatus": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "To Do"
+          },
+          "status": {
+            "categoryKey": "indeterminate",
+            "id": "3",
+            "name": "In Progress"
+          },
+          "transition": {
+            "destinationStatus": {
+              "categoryKey": "indeterminate",
+              "id": "3",
+              "name": "In Progress"
+            },
+            "id": "11",
+            "name": "Start Progress"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "issueIdOrKey": "OPS-43",
+        "transitionName": "Start Progress"
+      },
+      "name": "transition_retry_after_not_sent_selects_and_sends",
+      "operation": "transitionIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+        "sendCount": 0,
+        "state": "notSent"
+      }
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[{\"id\":\"12\",\"name\":\"Start Progress\",\"to\":{\"id\":\"5\",\"name\":\"Done\",\"statusCategory\":{\"key\":\"done\"}}},{\"id\":\"11\",\"name\":\"Start Progress\",\"to\":{\"id\":\"3\",\"name\":\"In Progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/transitions",
+          "requestBody": {
+            "transition": {
+              "id": "11"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "transitioned",
+        "failureKind": "",
+        "output": {
+          "issueId": "10043",
+          "issueKey": "OPS-43",
+          "previousStatus": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "To Do"
+          },
+          "status": {
+            "categoryKey": "indeterminate",
+            "id": "3",
+            "name": "In Progress"
+          },
+          "transition": {
+            "destinationStatus": {
+              "categoryKey": "indeterminate",
+              "id": "3",
+              "name": "In Progress"
+            },
+            "id": "11",
+            "name": "Start Progress"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "issueIdOrKey": "OPS-43",
+        "transitionName": "Start Progress"
+      },
+      "name": "transition_retry_in_source_resends_recorded_transition",
+      "operation": "transitionIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
+        }
       }
     },
     {
@@ -2726,6 +2942,15 @@
             "categoryKey": "indeterminate",
             "id": "3",
             "name": "In Progress"
+          },
+          "transition": {
+            "destinationStatus": {
+              "categoryKey": "indeterminate",
+              "id": "3",
+              "name": "In Progress"
+            },
+            "id": "11",
+            "name": "Start Progress"
           }
         },
         "requestCount": 1,
@@ -2735,24 +2960,28 @@
       },
       "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
       "input": {
-        "destinationStatusName": "In Progress",
         "issueIdOrKey": "OPS-43",
-        "transitionId": "11"
+        "transitionName": "Start Progress"
       },
-      "name": "transition_repeat_after_possible_send_recognizes_destination",
+      "name": "transition_retry_in_recorded_destination_sends_nothing",
       "operation": "transitionIssue",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
-        "sendCount": 1,
-        "state": "claimed"
+        "value": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
+        }
       }
     },
     {
       "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
       "exchanges": [
         {
-          "body": "{\"errorMessages\":[\"Issue does not exist\"]}",
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"5\",\"name\":\"Done\",\"statusCategory\":{\"key\":\"done\"}}},\"transitions\":[{\"id\":\"51\",\"name\":\"Reopen\",\"to\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2773,12 +3002,92 @@
               "Bearer jira-access-token"
             ]
           },
-          "status": 404
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "transitionUnavailable",
+        "failureKind": "CONFLICT",
+        "output": {
+          "availableTransitions": [
+            {
+              "destinationStatus": {
+                "categoryKey": "new",
+                "id": "1",
+                "name": "To Do"
+              },
+              "id": "51",
+              "name": "Reopen"
+            }
+          ],
+          "issueId": "10043",
+          "issueKey": "OPS-43",
+          "previousStatus": {
+            "categoryKey": "done",
+            "id": "5",
+            "name": "Done"
+          },
+          "status": {
+            "categoryKey": "done",
+            "id": "5",
+            "name": "Done"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "issueIdOrKey": "OPS-43",
+        "transitionId": "11"
+      },
+      "name": "transition_retry_moved_elsewhere_is_unavailable",
+      "operation": "transitionIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
+        }
+      }
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"errorMessages\":[\"Internal server error\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 500
         }
       ],
       "expected": {
         "branch": "",
-        "failureKind": "NOT_FOUND",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2789,13 +3098,18 @@
         "issueIdOrKey": "OPS-43",
         "transitionId": "11"
       },
-      "name": "transition_repeat_after_possible_send_not_found_retries",
+      "name": "transition_retry_read_failure_retries",
       "operation": "transitionIssue",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
-        "sendCount": 1,
-        "state": "claimed"
+        "value": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
+        }
       }
     },
     {
