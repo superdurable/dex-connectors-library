@@ -7,3 +7,5 @@ In the [Infini AI console](https://cloud.infini-ai.com/), click your avatar, the
 The runnable [list-models Flow](go/examples/list-models/README.md) uses the generated operation-specific Step and static `infiniai` connection. Transient HTTP and transport failures retry under Dex's default one-hour retry budget; definite authentication and request rejections select the optional `providerRejected` branch. Real GenStudio authorization and model catalog contents remain to be tested with a user-controlled connection.
 
 The [Python package](python/) implements `listModels` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.
+
+The [TypeScript package](typescript/) implements the same Query and Go-recorded scenarios. Its runnable Flow tests retry and persistence against a real Dex Worker and Client.

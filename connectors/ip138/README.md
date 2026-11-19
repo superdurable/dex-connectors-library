@@ -7,3 +7,5 @@ Register at [iP138](https://user.ip138.com/), open iP查询 > 在线API申请, a
 Run the [example Flow](go/examples/get-token-usage/) with the generated mock or a user-controlled connection. The provider says HTTP 202 may indicate an invalid token, depleted balance, or malformed input; it is treated as a terminal rejection.
 
 The [Python package](python/) implements `getTokenUsage` and replays the Go-recorded provider scenarios. Its checked-in Flow tests retry and persistence against a real Dex Worker and Client.
+
+The [TypeScript package](typescript/) implements the same Query and Go-recorded scenarios. Its runnable Flow tests retry and persistence against a real Dex Worker and Client.
