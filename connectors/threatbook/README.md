@@ -5,3 +5,5 @@ This connector checks one inbound source IP through the [ThreatBook IP Reputatio
 Get a Cloud API Key from [我的API > 我的KEY](https://x.threatbook.com/apiDocs/start/get_api_key), ensure IP信誉 permission, and bind the Dex outbound public IP in the provider's allowlist. Save the Key in Dex Web Connections. The provider requires it in an HTTPS query parameter, so redirects are disabled and the Key, raw URL, and provider message never enter Flow output or failures. A request may consume plan quota; retries are bounded.
 
 Run the [example Flow](go/examples/check-ip-reputation/) with the generated mock or a user-controlled connection. Live verdicts, allowlist behavior, and quota use are unverified without a user-controlled Key.
+
+The [TypeScript package and runnable Flow](typescript/) replay the Go provider scenarios for `checkIPReputation`.

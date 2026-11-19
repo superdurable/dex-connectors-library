@@ -8,6 +8,12 @@ metadata:
   categories: [security-identity]
   version: v0.1.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-threatbook"
+      operations: [checkIPReputation]
+      triggers: []
   provider: threatbook
   codegen:
     go:
