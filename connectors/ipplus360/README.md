@@ -5,3 +5,7 @@ The [IPPlus360 district-level IPv4 API](https://mall.ipplus360.com/pros/IPVFourG
 Open the [IPPlus360 product page](https://mall.ipplus360.com/pros/IPVFourGeoAPI), activate the **区县级** IPv4 product, then sign in at [个人中心 > 我的订单](https://account.ipplus360.com/setting) to copy that product's KEY. Store it in Dex Web Connections. The provider's documented request puts the KEY in a query parameter; the connector omits it and raw provider messages from results and errors. Successful lookups may consume purchased quota.
 
 Run the [example Flow](go/examples/lookup-ip-location/) with its generated mock or a user-controlled connection. Pass only public IPv4 addresses you are authorized to query. Provider errors, malformed data, oversized bodies, and retryable transport failures have separate outcomes. Real provider authorization and billing have not been verified locally.
+
+## Python
+
+The first Python package lives in [`python/`](python/). It implements `lookupIPLocation` with Go-equivalent branches and retries. Its runnable [`IP location Flow`](python/examples/ip_location/) uses a static `ipplus360` connection and a real Dex Worker/Client test with a mock provider. Live provider authorization has not been verified.
