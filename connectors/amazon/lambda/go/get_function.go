@@ -41,7 +41,7 @@ func (operation GetFunctionOperation) Invoke(call sdkgo.Call, input GetFunctionI
 	if !functionNamePattern.MatchString(input.FunctionName) {
 		return functionBranch(GetFunctionBranchDefect, sdkgo.FailureValidation, "Lambda function name is invalid")
 	}
-	response := operation.client.getFunction(call, input.FunctionName)
+	response := operation.client.send(call, http.MethodGet, "/2015-03-31/functions/"+input.FunctionName, nil)
 	if errors.Is(response.err, errCredential) {
 		return functionBranch(GetFunctionBranchDefect, sdkgo.FailureAuthentication, "Lambda credentials are unavailable or invalid")
 	}

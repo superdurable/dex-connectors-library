@@ -41,17 +41,33 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetObject() sdkgo.Query[ObjectInput, ObjectRecord]
+	ListIndices() sdkgo.Query[ListIndicesInput, IndexPage]
 	Search() sdkgo.Query[SearchInput, SearchPage]
 	SaveObject() sdkgo.Mutation[SaveObjectInput, SavedObject]
+	PartialUpdateObject() sdkgo.Mutation[PartialUpdateObjectInput, SavedObject]
+	DeleteObject() sdkgo.Mutation[ObjectInput, SavedObject]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetObject() sdkgo.Query[ObjectInput, ObjectRecord] {
+	return operations.client.GetObject()
+}
+func (operations clientOperations) ListIndices() sdkgo.Query[ListIndicesInput, IndexPage] {
+	return operations.client.ListIndices()
+}
 func (operations clientOperations) Search() sdkgo.Query[SearchInput, SearchPage] {
 	return operations.client.Search()
 }
 func (operations clientOperations) SaveObject() sdkgo.Mutation[SaveObjectInput, SavedObject] {
 	return operations.client.SaveObject()
+}
+func (operations clientOperations) PartialUpdateObject() sdkgo.Mutation[PartialUpdateObjectInput, SavedObject] {
+	return operations.client.PartialUpdateObject()
+}
+func (operations clientOperations) DeleteObject() sdkgo.Mutation[ObjectInput, SavedObject] {
+	return operations.client.DeleteObject()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -196,6 +212,154 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const GetObjectBranchFound sdkgo.BranchID = "found"
+const GetObjectBranchMissing sdkgo.BranchID = "missing"
+const GetObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetObjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetObjectDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetObjectBranchFound, Description: "Algolia returned the record."},
+		{ID: GetObjectBranchMissing, Description: "No record has the specified object ID.", Optional: true},
+		{ID: GetObjectBranchProviderRejected, Description: "Algolia rejected the lookup or key.", Optional: true},
+		{ID: GetObjectBranchInvalidResponse, Description: "Algolia returned malformed or oversized record data.", Optional: true},
+		{ID: GetObjectBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetObjectResult = sdkgo.QueryResult[ObjectRecord]
+
+type GetObjectStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=algolia"`
+	operationID                    struct{}                                        `connector:"operationId=getObject"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ObjectInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetObjectResult]                   `connector:"branch=found"`
+	Missing                        sdkgo.Target[GetObjectResult]                   `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[GetObjectResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetObjectResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetObjectResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ObjectRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetObjectStep[IN any](config GetObjectStepConfig[IN]) sdkgo.QueryStep[IN, ObjectInput, ObjectRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("algolia connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ObjectInput, ObjectRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetObjectResult] {
+			branches := make([]sdkgo.BranchTarget[GetObjectResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetObjectBranchFound))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(GetObjectBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetObjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetObjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListIndicesBranchListed sdkgo.BranchID = "listed"
+const ListIndicesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListIndicesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListIndicesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListIndicesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listIndices"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListIndicesBranchListed, Description: "Algolia returned an index page."},
+		{ID: ListIndicesBranchProviderRejected, Description: "Algolia rejected the listing or key.", Optional: true},
+		{ID: ListIndicesBranchInvalidResponse, Description: "Algolia returned malformed or oversized index data.", Optional: true},
+		{ID: ListIndicesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListIndicesResult = sdkgo.QueryResult[IndexPage]
+
+type ListIndicesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=algolia"`
+	operationID                    struct{}                                     `connector:"operationId=listIndices"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListIndicesInput                    `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListIndicesResult]              `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListIndicesResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListIndicesResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListIndicesResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[IndexPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListIndicesStep[IN any](config ListIndicesStepConfig[IN]) sdkgo.QueryStep[IN, ListIndicesInput, IndexPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("algolia connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListIndicesInput, IndexPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListIndices(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListIndicesResult] {
+			branches := make([]sdkgo.BranchTarget[ListIndicesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListIndicesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListIndicesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListIndicesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListIndicesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const SearchBranchSearched sdkgo.BranchID = "searched"
 const SearchBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const SearchBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
@@ -330,6 +494,148 @@ func NewSaveObjectStep[IN any](config SaveObjectStepConfig[IN]) sdkgo.MutationSt
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SaveObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PartialUpdateObjectBranchUpdated sdkgo.BranchID = "updated"
+const PartialUpdateObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PartialUpdateObjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PartialUpdateObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PartialUpdateObjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "partialUpdateObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PartialUpdateObjectBranchUpdated, Description: "Algolia queued the attribute update."},
+		{ID: PartialUpdateObjectBranchProviderRejected, Description: "Algolia rejected the update or key.", Optional: true},
+		{ID: PartialUpdateObjectBranchInvalidResponse, Description: "Algolia returned malformed or oversized task data.", Optional: true},
+		{ID: PartialUpdateObjectBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type PartialUpdateObjectResult = sdkgo.MutationResult[SavedObject]
+
+type PartialUpdateObjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=algolia"`
+	operationID                       struct{}                                          `connector:"operationId=partialUpdateObject"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) PartialUpdateObjectInput                 `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[PartialUpdateObjectResult]           `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[PartialUpdateObjectResult]           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[PartialUpdateObjectResult]           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[PartialUpdateObjectResult]           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SavedObject]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewPartialUpdateObjectStep[IN any](config PartialUpdateObjectStepConfig[IN]) sdkgo.MutationStep[IN, PartialUpdateObjectInput, SavedObject] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("algolia connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PartialUpdateObjectInput, SavedObject]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PartialUpdateObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PartialUpdateObjectResult] {
+			branches := make([]sdkgo.BranchTarget[PartialUpdateObjectResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(PartialUpdateObjectBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PartialUpdateObjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PartialUpdateObjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PartialUpdateObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteObjectBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteObjectBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteObjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteObjectBranchDeleted, Description: "Algolia queued the deletion task."},
+		{ID: DeleteObjectBranchProviderRejected, Description: "Algolia rejected the deletion or key.", Optional: true},
+		{ID: DeleteObjectBranchInvalidResponse, Description: "Algolia returned malformed or oversized task data.", Optional: true},
+		{ID: DeleteObjectBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteObjectResult = sdkgo.MutationResult[SavedObject]
+
+type DeleteObjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=algolia"`
+	operationID                       struct{}                                          `connector:"operationId=deleteObject"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) ObjectInput                              `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteObjectResult]                  `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteObjectResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteObjectResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteObjectResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SavedObject]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteObjectStep[IN any](config DeleteObjectStepConfig[IN]) sdkgo.MutationStep[IN, ObjectInput, SavedObject] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("algolia connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ObjectInput, SavedObject]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteObjectResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteObjectResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteObjectBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteObjectBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteObjectBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteObjectBranchDefect))
 			}
 			return branches
 		}(),

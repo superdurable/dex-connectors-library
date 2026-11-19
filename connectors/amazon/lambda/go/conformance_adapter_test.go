@@ -19,5 +19,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	credentials := Credentials{AccessKeyID: sdkgo.NewSecretString("AKIALAMBDACONNECTOR"), SecretAccessKey: sdkgo.NewSecretString("lambda-test-secret"), SessionToken: sdkgo.NewSecretString("")}
 	client, err := New(Config{Endpoint: endpoint, Region: "eu-west-1"}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport), signingTimeOption{now: func() time.Time { return time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC) }})
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{"getFunction": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetFunction(), reference)}}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"getFunction": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetFunction(), reference),
+		"listFunctions": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListFunctions(), reference),
+		"updateFunctionDescription": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateFunctionDescription(), reference, scenario.CallID),
+		"deleteFunction": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteFunction(), reference, scenario.CallID),
+	}}
 }

@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createRecord/createdReviewRecord/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[airtable.Record](`{"id":"recReviewCreated1","createdTime":"2026-11-16T09:00:00Z","fields":{"Case ID":"case-created"}}`)
+			return err
+		}},
+		{name: "deleteRecord/deletedReviewRecord/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[airtable.DeletedRecord](`{"recordId":"recReviewCreated1"}`)
+			return err
+		}},
 		{name: "listRecords/standardRefundPolicy/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[airtable.RecordPage](`{"records":[{"id":"recPolicyStandard","createdTime":"2026-09-01T09:00:00Z","fields":{"Policy Key":"refund-standard","Approval Limit USD":250}}],"offset":"policies-page-2","filterFormula":"{Policy Key} = \"refund-standard\""}`)
 			return err
@@ -50,6 +58,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateRecord().Definition().Operation.OperationID != "createRecord" {
+		t.Errorf("createRecord mock has another definition")
+	}
+	if mock.DeleteRecord().Definition().Operation.OperationID != "deleteRecord" {
+		t.Errorf("deleteRecord mock has another definition")
+	}
 	if mock.ListRecords().Definition().Operation.OperationID != "listRecords" {
 		t.Errorf("listRecords mock has another definition")
 	}

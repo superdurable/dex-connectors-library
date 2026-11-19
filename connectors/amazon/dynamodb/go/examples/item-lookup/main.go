@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{itemlookup.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{itemlookup.NewFlow(connection), itemlookup.NewPutItemFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Amazon DynamoDB item lookup Flow: %w", err)
 	}

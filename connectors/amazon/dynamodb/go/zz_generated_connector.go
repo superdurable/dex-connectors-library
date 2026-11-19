@@ -44,12 +44,28 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetItem() sdkgo.Query[GetItemInput, ItemResult]
+	PutItem() sdkgo.Mutation[PutItemInput, ItemWriteResult]
+	UpdateItem() sdkgo.Mutation[UpdateItemInput, ItemWriteResult]
+	DeleteItem() sdkgo.Mutation[DeleteItemInput, ItemWriteResult]
+	ScanItems() sdkgo.Query[ScanItemsInput, ItemPage]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetItem() sdkgo.Query[GetItemInput, ItemResult] {
 	return operations.client.GetItem()
+}
+func (operations clientOperations) PutItem() sdkgo.Mutation[PutItemInput, ItemWriteResult] {
+	return operations.client.PutItem()
+}
+func (operations clientOperations) UpdateItem() sdkgo.Mutation[UpdateItemInput, ItemWriteResult] {
+	return operations.client.UpdateItem()
+}
+func (operations clientOperations) DeleteItem() sdkgo.Mutation[DeleteItemInput, ItemWriteResult] {
+	return operations.client.DeleteItem()
+}
+func (operations clientOperations) ScanItems() sdkgo.Query[ScanItemsInput, ItemPage] {
+	return operations.client.ScanItems()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -265,6 +281,290 @@ func NewGetItemStep[IN any](config GetItemStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PutItemBranchWritten sdkgo.BranchID = "written"
+const PutItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PutItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PutItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PutItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "putItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PutItemBranchWritten, Description: "DynamoDB accepted the item replacement."},
+		{ID: PutItemBranchProviderRejected, Description: "DynamoDB conclusively rejected the write or credentials.", Optional: true},
+		{ID: PutItemBranchInvalidResponse, Description: "DynamoDB returned malformed or oversized write JSON.", Optional: true},
+		{ID: PutItemBranchDefect, Description: "The table or item is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type PutItemResult = sdkgo.MutationResult[ItemWriteResult]
+
+type PutItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=amazon-dynamodb"`
+	operationID                       struct{}                                              `connector:"operationId=putItem"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) PutItemInput                                 `connector:"mapToOperationInput"`
+	Written                           sdkgo.Target[PutItemResult]                           `connector:"branch=written"`
+	ProviderRejected                  sdkgo.Target[PutItemResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[PutItemResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[PutItemResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ItemWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewPutItemStep[IN any](config PutItemStepConfig[IN]) sdkgo.MutationStep[IN, PutItemInput, ItemWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-dynamodb connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PutItemInput, ItemWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PutItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PutItemResult] {
+			branches := make([]sdkgo.BranchTarget[PutItemResult], 0, 4)
+			if config.Written.HasStep() {
+				branches = append(branches, config.Written.BranchTarget(PutItemBranchWritten))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PutItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PutItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PutItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateItemBranchUpdated sdkgo.BranchID = "updated"
+const UpdateItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateItemBranchUpdated, Description: "DynamoDB accepted the absolute attribute update."},
+		{ID: UpdateItemBranchProviderRejected, Description: "DynamoDB conclusively rejected the update or credentials.", Optional: true},
+		{ID: UpdateItemBranchInvalidResponse, Description: "DynamoDB returned malformed or oversized update JSON.", Optional: true},
+		{ID: UpdateItemBranchDefect, Description: "The table, key, or attributes are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateItemResult = sdkgo.MutationResult[ItemWriteResult]
+
+type UpdateItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=amazon-dynamodb"`
+	operationID                       struct{}                                              `connector:"operationId=updateItem"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateItemInput                              `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateItemResult]                        `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateItemResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateItemResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateItemResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ItemWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateItemStep[IN any](config UpdateItemStepConfig[IN]) sdkgo.MutationStep[IN, UpdateItemInput, ItemWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-dynamodb connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateItemInput, ItemWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateItemResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateItemResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateItemBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteItemBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteItemBranchDeleted, Description: "DynamoDB accepted the deletion."},
+		{ID: DeleteItemBranchProviderRejected, Description: "DynamoDB conclusively rejected the deletion or credentials.", Optional: true},
+		{ID: DeleteItemBranchInvalidResponse, Description: "DynamoDB returned malformed or oversized deletion JSON.", Optional: true},
+		{ID: DeleteItemBranchDefect, Description: "The table or key is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteItemResult = sdkgo.MutationResult[ItemWriteResult]
+
+type DeleteItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=amazon-dynamodb"`
+	operationID                       struct{}                                              `connector:"operationId=deleteItem"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteItemInput                              `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteItemResult]                        `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteItemResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteItemResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteItemResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ItemWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteItemStep[IN any](config DeleteItemStepConfig[IN]) sdkgo.MutationStep[IN, DeleteItemInput, ItemWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-dynamodb connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteItemInput, ItemWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteItemResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteItemResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteItemBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ScanItemsBranchScanned sdkgo.BranchID = "scanned"
+const ScanItemsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ScanItemsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ScanItemsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ScanItemsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "scanItems"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ScanItemsBranchScanned, Description: "DynamoDB returned an item page, possibly empty."},
+		{ID: ScanItemsBranchProviderRejected, Description: "DynamoDB conclusively rejected the scan or credentials.", Optional: true},
+		{ID: ScanItemsBranchInvalidResponse, Description: "DynamoDB returned malformed or oversized page JSON.", Optional: true},
+		{ID: ScanItemsBranchDefect, Description: "The table, limit, or continuation key is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ScanItemsResult = sdkgo.QueryResult[ItemPage]
+
+type ScanItemsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=amazon-dynamodb"`
+	operationID                    struct{}                                    `connector:"operationId=scanItems"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ScanItemsInput                     `connector:"mapToOperationInput"`
+	Scanned                        sdkgo.Target[ScanItemsResult]               `connector:"branch=scanned"`
+	ProviderRejected               sdkgo.Target[ScanItemsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ScanItemsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ScanItemsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ItemPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewScanItemsStep[IN any](config ScanItemsStepConfig[IN]) sdkgo.QueryStep[IN, ScanItemsInput, ItemPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-dynamodb connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ScanItemsInput, ItemPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ScanItems(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ScanItemsResult] {
+			branches := make([]sdkgo.BranchTarget[ScanItemsResult], 0, 4)
+			if config.Scanned.HasStep() {
+				branches = append(branches, config.Scanned.BranchTarget(ScanItemsBranchScanned))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ScanItemsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ScanItemsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ScanItemsBranchDefect))
 			}
 			return branches
 		}(),

@@ -8,7 +8,7 @@ import { AdyenClient } from '../src/client.js';
 import { GetPaymentLinkInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/adyen/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/adyen/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getPaymentLink');
 const connection = { provider: 'adyen', name: 'adyen' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAdyen, '/v72'));
 

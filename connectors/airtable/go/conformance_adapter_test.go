@@ -27,5 +27,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getRecord":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetRecord(), airtableConnection),
 		"upsertRecords": newConformanceMutationInvocation(t, scenario.Input, context, client.UpsertRecords(), airtableConnection, scenario.CallID),
 		"updateRecords": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateRecords(), airtableConnection, scenario.CallID),
+		"createRecord": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateRecord(), airtableConnection, scenario.CallID),
+		"deleteRecord": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteRecord(), airtableConnection, scenario.CallID),
 	}}
 }

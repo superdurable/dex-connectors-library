@@ -18,9 +18,16 @@ import (
 // Mock is a scripted amazon-sqs connection. Script each operation through its accessor.
 type Mock struct {
 	connection              sqs.Connection
+	sendMessage             *connectormock.Mutation[sqs.SendMessageInput, sqs.SentMessage]
 	receiveMessages         *connectormock.Mutation[sqs.ReceiveMessagesInput, sqs.ReceivedMessages]
 	deleteMessage           *connectormock.Mutation[sqs.DeleteMessageInput, sqs.DeletedMessage]
 	changeMessageVisibility *connectormock.Mutation[sqs.ChangeMessageVisibilityInput, sqs.ChangedMessageVisibility]
+	listQueues              *connectormock.Query[sqs.ListQueuesInput, sqs.QueuePage]
+	createQueue             *connectormock.Mutation[sqs.CreateQueueInput, sqs.QueueIdentity]
+	getQueueURL             *connectormock.Query[sqs.QueueNameInput, sqs.QueueIdentity]
+	getQueueAttributes      *connectormock.Query[sqs.QueueURLInput, sqs.QueueAttributes]
+	setQueueAttribute       *connectormock.Mutation[sqs.SetQueueAttributeInput, sqs.QueueIdentity]
+	deleteQueue             *connectormock.Mutation[sqs.QueueURLInput, sqs.QueueIdentity]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,13 +35,27 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		sendMessage:             connectormock.NewMutation[sqs.SendMessageInput, sqs.SentMessage](t, sqs.SendMessageDefinition),
 		receiveMessages:         connectormock.NewMutation[sqs.ReceiveMessagesInput, sqs.ReceivedMessages](t, sqs.ReceiveMessagesDefinition),
 		deleteMessage:           connectormock.NewMutation[sqs.DeleteMessageInput, sqs.DeletedMessage](t, sqs.DeleteMessageDefinition),
 		changeMessageVisibility: connectormock.NewMutation[sqs.ChangeMessageVisibilityInput, sqs.ChangedMessageVisibility](t, sqs.ChangeMessageVisibilityDefinition),
+		listQueues:              connectormock.NewQuery[sqs.ListQueuesInput, sqs.QueuePage](t, sqs.ListQueuesDefinition),
+		createQueue:             connectormock.NewMutation[sqs.CreateQueueInput, sqs.QueueIdentity](t, sqs.CreateQueueDefinition),
+		getQueueURL:             connectormock.NewQuery[sqs.QueueNameInput, sqs.QueueIdentity](t, sqs.GetQueueURLDefinition),
+		getQueueAttributes:      connectormock.NewQuery[sqs.QueueURLInput, sqs.QueueAttributes](t, sqs.GetQueueAttributesDefinition),
+		setQueueAttribute:       connectormock.NewMutation[sqs.SetQueueAttributeInput, sqs.QueueIdentity](t, sqs.SetQueueAttributeDefinition),
+		deleteQueue:             connectormock.NewMutation[sqs.QueueURLInput, sqs.QueueIdentity](t, sqs.DeleteQueueDefinition),
 	}
+	mock.sendMessage.Default(SendMessageDefault())
 	mock.receiveMessages.Default(ReceiveMessagesDefault())
 	mock.deleteMessage.Default(DeleteMessageDefault())
 	mock.changeMessageVisibility.Default(ChangeMessageVisibilityDefault())
+	mock.listQueues.Default(ListQueuesDefault())
+	mock.createQueue.Default(CreateQueueDefault())
+	mock.getQueueURL.Default(GetQueueURLDefault())
+	mock.getQueueAttributes.Default(GetQueueAttributesDefault())
+	mock.setQueueAttribute.Default(SetQueueAttributeDefault())
+	mock.deleteQueue.Default(DeleteQueueDefault())
 	connection, err := sqs.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-sqs", Name: connectionName})
 	if err != nil {
 		t.Fatalf("amazon-sqs mock connection: %v", err)
@@ -45,6 +66,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sqs.Connection { return mock.connection }
+
+// SendMessage returns the sendMessage script.
+func (mock *Mock) SendMessage() *connectormock.Mutation[sqs.SendMessageInput, sqs.SentMessage] {
+	return mock.sendMessage
+}
 
 // ReceiveMessages returns the receiveMessages script.
 func (mock *Mock) ReceiveMessages() *connectormock.Mutation[sqs.ReceiveMessagesInput, sqs.ReceivedMessages] {
@@ -61,8 +87,41 @@ func (mock *Mock) ChangeMessageVisibility() *connectormock.Mutation[sqs.ChangeMe
 	return mock.changeMessageVisibility
 }
 
+// ListQueues returns the listQueues script.
+func (mock *Mock) ListQueues() *connectormock.Query[sqs.ListQueuesInput, sqs.QueuePage] {
+	return mock.listQueues
+}
+
+// CreateQueue returns the createQueue script.
+func (mock *Mock) CreateQueue() *connectormock.Mutation[sqs.CreateQueueInput, sqs.QueueIdentity] {
+	return mock.createQueue
+}
+
+// GetQueueURL returns the getQueueURL script.
+func (mock *Mock) GetQueueURL() *connectormock.Query[sqs.QueueNameInput, sqs.QueueIdentity] {
+	return mock.getQueueURL
+}
+
+// GetQueueAttributes returns the getQueueAttributes script.
+func (mock *Mock) GetQueueAttributes() *connectormock.Query[sqs.QueueURLInput, sqs.QueueAttributes] {
+	return mock.getQueueAttributes
+}
+
+// SetQueueAttribute returns the setQueueAttribute script.
+func (mock *Mock) SetQueueAttribute() *connectormock.Mutation[sqs.SetQueueAttributeInput, sqs.QueueIdentity] {
+	return mock.setQueueAttribute
+}
+
+// DeleteQueue returns the deleteQueue script.
+func (mock *Mock) DeleteQueue() *connectormock.Mutation[sqs.QueueURLInput, sqs.QueueIdentity] {
+	return mock.deleteQueue
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) SendMessage() sdkgo.Mutation[sqs.SendMessageInput, sqs.SentMessage] {
+	return operations.mock.sendMessage
+}
 func (operations mockOperations) ReceiveMessages() sdkgo.Mutation[sqs.ReceiveMessagesInput, sqs.ReceivedMessages] {
 	return operations.mock.receiveMessages
 }
@@ -72,6 +131,58 @@ func (operations mockOperations) DeleteMessage() sdkgo.Mutation[sqs.DeleteMessag
 func (operations mockOperations) ChangeMessageVisibility() sdkgo.Mutation[sqs.ChangeMessageVisibilityInput, sqs.ChangedMessageVisibility] {
 	return operations.mock.changeMessageVisibility
 }
+func (operations mockOperations) ListQueues() sdkgo.Query[sqs.ListQueuesInput, sqs.QueuePage] {
+	return operations.mock.listQueues
+}
+func (operations mockOperations) CreateQueue() sdkgo.Mutation[sqs.CreateQueueInput, sqs.QueueIdentity] {
+	return operations.mock.createQueue
+}
+func (operations mockOperations) GetQueueURL() sdkgo.Query[sqs.QueueNameInput, sqs.QueueIdentity] {
+	return operations.mock.getQueueURL
+}
+func (operations mockOperations) GetQueueAttributes() sdkgo.Query[sqs.QueueURLInput, sqs.QueueAttributes] {
+	return operations.mock.getQueueAttributes
+}
+func (operations mockOperations) SetQueueAttribute() sdkgo.Mutation[sqs.SetQueueAttributeInput, sqs.QueueIdentity] {
+	return operations.mock.setQueueAttribute
+}
+func (operations mockOperations) DeleteQueue() sdkgo.Mutation[sqs.QueueURLInput, sqs.QueueIdentity] {
+	return operations.mock.deleteQueue
+}
+
+// SendMessageSent selects the sent branch: SQS accepted the message and returned its message ID.
+func SendMessageSent(value sqs.SentMessage, failure *sdkgo.Failure) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Branch(sqs.SendMessageBranchSent, value, failure)
+}
+
+// SendMessageProviderRejected selects the providerRejected branch: SQS conclusively rejected the queue or message.
+func SendMessageProviderRejected(value sqs.SentMessage, failure *sdkgo.Failure) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Branch(sqs.SendMessageBranchProviderRejected, value, failure)
+}
+
+// SendMessageUncertain returns an uncertain sendMessage outcome.
+func SendMessageUncertain(value sqs.SentMessage, failure sdkgo.Failure) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendMessageDefect selects the defect branch: The queue URL, message, or connection is invalid.
+func SendMessageDefect(value sqs.SentMessage, failure *sdkgo.Failure) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Branch(sqs.SendMessageBranchDefect, value, failure)
+}
+
+// SendMessageRetry asks Dex to retry the sendMessage Step, after the delay when it is positive.
+func SendMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sqs.SentMessage] {
+	return connectormock.Retry[sqs.SentMessage](failure, after)
+}
+
+// SendMessageSentOrder is the manifest mock sentOrder: The order event was accepted by SQS.
+func SendMessageSentOrder() connectormock.Case[sqs.SentMessage] {
+	value := connectormock.MustDecodeOutput[sqs.SentMessage](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders","messageId":"order-1042","md5OfBody":"457ba27172a5858e4fed7600ec948c39"}`)
+	return connectormock.Branch(sqs.SendMessageBranchSent, value, nil)
+}
+
+// SendMessageDefault is the manifest default, sentOrder, which New installs.
+func SendMessageDefault() connectormock.Case[sqs.SentMessage] { return SendMessageSentOrder() }
 
 // ReceiveMessagesReceived selects the received branch: SQS returned at least one message.
 func ReceiveMessagesReceived(value sqs.ReceivedMessages, failure *sdkgo.Failure) connectormock.Case[sqs.ReceivedMessages] {
@@ -221,3 +332,211 @@ func ChangeMessageVisibilityVisibilityDenied() connectormock.Case[sqs.ChangedMes
 func ChangeMessageVisibilityDefault() connectormock.Case[sqs.ChangedMessageVisibility] {
 	return ChangeMessageVisibilityReleasedOrder()
 }
+
+// ListQueuesPage selects the page branch: SQS returned a page of queue URLs.
+func ListQueuesPage(value sqs.QueuePage, failure *sdkgo.Failure) connectormock.Case[sqs.QueuePage] {
+	return connectormock.Branch(sqs.ListQueuesBranchPage, value, failure)
+}
+
+// ListQueuesProviderRejected selects the providerRejected branch: SQS refused the list.
+func ListQueuesProviderRejected(value sqs.QueuePage, failure *sdkgo.Failure) connectormock.Case[sqs.QueuePage] {
+	return connectormock.Branch(sqs.ListQueuesBranchProviderRejected, value, failure)
+}
+
+// ListQueuesInvalidResponse selects the invalidResponse branch: SQS returned invalid queue data.
+func ListQueuesInvalidResponse(value sqs.QueuePage, failure *sdkgo.Failure) connectormock.Case[sqs.QueuePage] {
+	return connectormock.Branch(sqs.ListQueuesBranchInvalidResponse, value, failure)
+}
+
+// ListQueuesDefect selects the defect branch: Queue filter or credentials are invalid.
+func ListQueuesDefect(value sqs.QueuePage, failure *sdkgo.Failure) connectormock.Case[sqs.QueuePage] {
+	return connectormock.Branch(sqs.ListQueuesBranchDefect, value, failure)
+}
+
+// ListQueuesRetry asks Dex to retry the listQueues Step, after the delay when it is positive.
+func ListQueuesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sqs.QueuePage] {
+	return connectormock.Retry[sqs.QueuePage](failure, after)
+}
+
+// ListQueuesQueuesDefault is the manifest mock queuesDefault: SQS returned the orders queue.
+func ListQueuesQueuesDefault() connectormock.Case[sqs.QueuePage] {
+	value := connectormock.MustDecodeOutput[sqs.QueuePage](`{"queueUrls":["https://sqs.eu-west-1.amazonaws.com/123456789012/orders"],"nextToken":""}`)
+	return connectormock.Branch(sqs.ListQueuesBranchPage, value, nil)
+}
+
+// ListQueuesDefault is the manifest default, queuesDefault, which New installs.
+func ListQueuesDefault() connectormock.Case[sqs.QueuePage] { return ListQueuesQueuesDefault() }
+
+// CreateQueueCreated selects the created branch: SQS returned the queue URL.
+func CreateQueueCreated(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.CreateQueueBranchCreated, value, failure)
+}
+
+// CreateQueueProviderRejected selects the providerRejected branch: SQS refused the creation or the name already has different attributes.
+func CreateQueueProviderRejected(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.CreateQueueBranchProviderRejected, value, failure)
+}
+
+// CreateQueueInvalidResponse selects the invalidResponse branch: SQS returned an invalid queue URL.
+func CreateQueueInvalidResponse(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.CreateQueueBranchInvalidResponse, value, failure)
+}
+
+// CreateQueueDefect selects the defect branch: Queue name, attributes, or credentials are invalid.
+func CreateQueueDefect(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.CreateQueueBranchDefect, value, failure)
+}
+
+// CreateQueueRetry asks Dex to retry the createQueue Step, after the delay when it is positive.
+func CreateQueueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Retry[sqs.QueueIdentity](failure, after)
+}
+
+// CreateQueueCreatedDefault is the manifest mock createdDefault: SQS created the orders queue.
+func CreateQueueCreatedDefault() connectormock.Case[sqs.QueueIdentity] {
+	value := connectormock.MustDecodeOutput[sqs.QueueIdentity](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders"}`)
+	return connectormock.Branch(sqs.CreateQueueBranchCreated, value, nil)
+}
+
+// CreateQueueDefault is the manifest default, createdDefault, which New installs.
+func CreateQueueDefault() connectormock.Case[sqs.QueueIdentity] { return CreateQueueCreatedDefault() }
+
+// GetQueueURLFound selects the found branch: SQS returned the queue URL.
+func GetQueueURLFound(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.GetQueueURLBranchFound, value, failure)
+}
+
+// GetQueueURLMissing selects the missing branch: The queue does not exist.
+func GetQueueURLMissing(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.GetQueueURLBranchMissing, value, failure)
+}
+
+// GetQueueURLProviderRejected selects the providerRejected branch: SQS refused the lookup.
+func GetQueueURLProviderRejected(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.GetQueueURLBranchProviderRejected, value, failure)
+}
+
+// GetQueueURLInvalidResponse selects the invalidResponse branch: SQS returned an invalid queue URL.
+func GetQueueURLInvalidResponse(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.GetQueueURLBranchInvalidResponse, value, failure)
+}
+
+// GetQueueURLDefect selects the defect branch: Queue name or credentials are invalid.
+func GetQueueURLDefect(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.GetQueueURLBranchDefect, value, failure)
+}
+
+// GetQueueURLRetry asks Dex to retry the getQueueURL Step, after the delay when it is positive.
+func GetQueueURLRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Retry[sqs.QueueIdentity](failure, after)
+}
+
+// GetQueueURLFoundDefault is the manifest mock foundDefault: SQS found the orders queue.
+func GetQueueURLFoundDefault() connectormock.Case[sqs.QueueIdentity] {
+	value := connectormock.MustDecodeOutput[sqs.QueueIdentity](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders"}`)
+	return connectormock.Branch(sqs.GetQueueURLBranchFound, value, nil)
+}
+
+// GetQueueURLDefault is the manifest default, foundDefault, which New installs.
+func GetQueueURLDefault() connectormock.Case[sqs.QueueIdentity] { return GetQueueURLFoundDefault() }
+
+// GetQueueAttributesFound selects the found branch: SQS returned queue attributes.
+func GetQueueAttributesFound(value sqs.QueueAttributes, failure *sdkgo.Failure) connectormock.Case[sqs.QueueAttributes] {
+	return connectormock.Branch(sqs.GetQueueAttributesBranchFound, value, failure)
+}
+
+// GetQueueAttributesMissing selects the missing branch: The queue does not exist.
+func GetQueueAttributesMissing(value sqs.QueueAttributes, failure *sdkgo.Failure) connectormock.Case[sqs.QueueAttributes] {
+	return connectormock.Branch(sqs.GetQueueAttributesBranchMissing, value, failure)
+}
+
+// GetQueueAttributesProviderRejected selects the providerRejected branch: SQS refused the read.
+func GetQueueAttributesProviderRejected(value sqs.QueueAttributes, failure *sdkgo.Failure) connectormock.Case[sqs.QueueAttributes] {
+	return connectormock.Branch(sqs.GetQueueAttributesBranchProviderRejected, value, failure)
+}
+
+// GetQueueAttributesInvalidResponse selects the invalidResponse branch: SQS returned invalid attributes.
+func GetQueueAttributesInvalidResponse(value sqs.QueueAttributes, failure *sdkgo.Failure) connectormock.Case[sqs.QueueAttributes] {
+	return connectormock.Branch(sqs.GetQueueAttributesBranchInvalidResponse, value, failure)
+}
+
+// GetQueueAttributesDefect selects the defect branch: Queue URL or credentials are invalid.
+func GetQueueAttributesDefect(value sqs.QueueAttributes, failure *sdkgo.Failure) connectormock.Case[sqs.QueueAttributes] {
+	return connectormock.Branch(sqs.GetQueueAttributesBranchDefect, value, failure)
+}
+
+// GetQueueAttributesRetry asks Dex to retry the getQueueAttributes Step, after the delay when it is positive.
+func GetQueueAttributesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sqs.QueueAttributes] {
+	return connectormock.Retry[sqs.QueueAttributes](failure, after)
+}
+
+// GetQueueAttributesAttributesDefault is the manifest mock attributesDefault: SQS returned queue settings.
+func GetQueueAttributesAttributesDefault() connectormock.Case[sqs.QueueAttributes] {
+	value := connectormock.MustDecodeOutput[sqs.QueueAttributes](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders","attributes":{"VisibilityTimeout":"30"}}`)
+	return connectormock.Branch(sqs.GetQueueAttributesBranchFound, value, nil)
+}
+
+// GetQueueAttributesDefault is the manifest default, attributesDefault, which New installs.
+func GetQueueAttributesDefault() connectormock.Case[sqs.QueueAttributes] {
+	return GetQueueAttributesAttributesDefault()
+}
+
+// SetQueueAttributeUpdated selects the updated branch: SQS accepted the new setting.
+func SetQueueAttributeUpdated(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.SetQueueAttributeBranchUpdated, value, failure)
+}
+
+// SetQueueAttributeProviderRejected selects the providerRejected branch: SQS refused the setting.
+func SetQueueAttributeProviderRejected(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.SetQueueAttributeBranchProviderRejected, value, failure)
+}
+
+// SetQueueAttributeDefect selects the defect branch: Queue URL, setting, or credentials are invalid.
+func SetQueueAttributeDefect(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.SetQueueAttributeBranchDefect, value, failure)
+}
+
+// SetQueueAttributeRetry asks Dex to retry the setQueueAttribute Step, after the delay when it is positive.
+func SetQueueAttributeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Retry[sqs.QueueIdentity](failure, after)
+}
+
+// SetQueueAttributeUpdatedDefault is the manifest mock updatedDefault: SQS updated the visibility timeout.
+func SetQueueAttributeUpdatedDefault() connectormock.Case[sqs.QueueIdentity] {
+	value := connectormock.MustDecodeOutput[sqs.QueueIdentity](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders"}`)
+	return connectormock.Branch(sqs.SetQueueAttributeBranchUpdated, value, nil)
+}
+
+// SetQueueAttributeDefault is the manifest default, updatedDefault, which New installs.
+func SetQueueAttributeDefault() connectormock.Case[sqs.QueueIdentity] {
+	return SetQueueAttributeUpdatedDefault()
+}
+
+// DeleteQueueDeleted selects the deleted branch: SQS accepted queue deletion.
+func DeleteQueueDeleted(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.DeleteQueueBranchDeleted, value, failure)
+}
+
+// DeleteQueueProviderRejected selects the providerRejected branch: SQS refused queue deletion.
+func DeleteQueueProviderRejected(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.DeleteQueueBranchProviderRejected, value, failure)
+}
+
+// DeleteQueueDefect selects the defect branch: Queue URL or credentials are invalid.
+func DeleteQueueDefect(value sqs.QueueIdentity, failure *sdkgo.Failure) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Branch(sqs.DeleteQueueBranchDefect, value, failure)
+}
+
+// DeleteQueueRetry asks Dex to retry the deleteQueue Step, after the delay when it is positive.
+func DeleteQueueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sqs.QueueIdentity] {
+	return connectormock.Retry[sqs.QueueIdentity](failure, after)
+}
+
+// DeleteQueueDeletedDefault is the manifest mock deletedDefault: SQS deleted the orders queue.
+func DeleteQueueDeletedDefault() connectormock.Case[sqs.QueueIdentity] {
+	value := connectormock.MustDecodeOutput[sqs.QueueIdentity](`{"queueUrl":"https://sqs.eu-west-1.amazonaws.com/123456789012/orders"}`)
+	return connectormock.Branch(sqs.DeleteQueueBranchDeleted, value, nil)
+}
+
+// DeleteQueueDefault is the manifest default, deletedDefault, which New installs.
+func DeleteQueueDefault() connectormock.Case[sqs.QueueIdentity] { return DeleteQueueDeletedDefault() }

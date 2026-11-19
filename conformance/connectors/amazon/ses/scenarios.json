@@ -2,6 +2,499 @@
   "connector": "amazon-ses",
   "scenarios": [
     {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"IdentityType\":\"DOMAIN\",\"VerifiedForSendingStatus\":false,\"DkimAttributes\":{\"Tokens\":[\"token-a\",\"token-b\",\"token-c\"]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "dkimTokens": [
+            "token-a",
+            "token-b",
+            "token-c"
+          ],
+          "identityType": "DOMAIN",
+          "name": "example.com",
+          "verifiedForSending": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-created",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"bad request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "identityType": "",
+          "name": "",
+          "verifiedForSending": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-rejected",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "identityType": "",
+          "name": "",
+          "verifiedForSending": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": ""
+      },
+      "name": "createIdentity-defect",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-malformed",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"throttled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-rate-limit",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-service-unavailable",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"failure\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-server-failure",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-transport",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "attempts": 2,
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"IdentityType\":\"DOMAIN\",\"VerifiedForSendingStatus\":false,\"DkimAttributes\":{\"Tokens\":[\"token-a\",\"token-b\",\"token-c\"]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/identities/example.com",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=72b8213b8e0c3d494186c31bff4345e11185ecfdfcecc6cef9fd3aab824f9514"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "dkimTokens": [
+            "token-a",
+            "token-b",
+            "token-c"
+          ],
+          "identityType": "DOMAIN",
+          "name": "example.com",
+          "verifiedForSending": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createIdentity-readback",
+      "operation": "createEmailIdentity"
+    },
+    {
+      "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/identities/example.com",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=72b8213b8e0c3d494186c31bff4345e11185ecfdfcecc6cef9fd3aab824f9514"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "identityType": "",
+          "name": "",
+          "verifiedForSending": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "createIdentity-uncertain-cap",
+      "operation": "createEmailIdentity",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
       "callId": "f0e4657a-c5de-5456-b5e7-066d411fdc17",
       "exchanges": [
         {
@@ -311,6 +804,5197 @@
       },
       "name": "getEmailIdentity-transportFailure",
       "operation": "getEmailIdentity"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [
+        {
+          "body": "{\"EmailIdentities\":[{\"IdentityName\":\"example.com\",\"IdentityType\":\"DOMAIN\",\"VerificationStatus\":\"SUCCESS\",\"SendingEnabled\":true}],\"NextToken\":\"more\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/list-identities",
+          "requestBody": {
+            "NextToken": "previous",
+            "PageSize": 2
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=785642318b95a3a93dd33ce6ab30860b67f54bd6f306cc0d9c8c0afdd1406877"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "page",
+        "failureKind": "",
+        "output": {
+          "identities": [
+            {
+              "identityType": "DOMAIN",
+              "name": "example.com",
+              "sendingEnabled": true,
+              "verificationStatus": "SUCCESS"
+            }
+          ],
+          "nextToken": "more"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "previous",
+        "pageSize": 2
+      },
+      "name": "list-page",
+      "operation": "listEmailIdentities"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/list-identities",
+          "requestBody": {
+            "PageSize": 2
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f97fdb4925d08f45c048a33b0ec3b1bfc652847a8caeeb14fbcb3446afec6789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "identities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "list-rejected",
+      "operation": "listEmailIdentities"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/list-identities",
+          "requestBody": {
+            "PageSize": 2
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f97fdb4925d08f45c048a33b0ec3b1bfc652847a8caeeb14fbcb3446afec6789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "identities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "list-invalid",
+      "operation": "listEmailIdentities"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "identities": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 1001
+      },
+      "name": "list-defect",
+      "operation": "listEmailIdentities"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/list-identities",
+          "requestBody": {
+            "PageSize": 2
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f97fdb4925d08f45c048a33b0ec3b1bfc652847a8caeeb14fbcb3446afec6789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "list-rate-limit",
+      "operation": "listEmailIdentities"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/list-identities",
+          "requestBody": {
+            "PageSize": 2
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f97fdb4925d08f45c048a33b0ec3b1bfc652847a8caeeb14fbcb3446afec6789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "list-server-failure",
+      "operation": "listEmailIdentities"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/list-identities",
+          "requestBody": {
+            "PageSize": 2
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f97fdb4925d08f45c048a33b0ec3b1bfc652847a8caeeb14fbcb3446afec6789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "list-transport",
+      "operation": "listEmailIdentities"
+    },
+    {
+      "callId": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/identities/example.com",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=016858b44f89e2ca851d8cf64f1aabc4095ff2af44073ee28addfb909d2293e3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "delete-deleted",
+      "operation": "deleteEmailIdentity"
+    },
+    {
+      "callId": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/identities/example.com",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=016858b44f89e2ca851d8cf64f1aabc4095ff2af44073ee28addfb909d2293e3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": "example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "delete-rejected",
+      "operation": "deleteEmailIdentity"
+    },
+    {
+      "callId": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "input": {
+        "emailIdentity": "bad/name"
+      },
+      "name": "delete-defect",
+      "operation": "deleteEmailIdentity"
+    },
+    {
+      "callId": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/identities/example.com",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=016858b44f89e2ca851d8cf64f1aabc4095ff2af44073ee28addfb909d2293e3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "delete-rate-limit",
+      "operation": "deleteEmailIdentity"
+    },
+    {
+      "callId": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/identities/example.com",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=016858b44f89e2ca851d8cf64f1aabc4095ff2af44073ee28addfb909d2293e3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "delete-server-failure",
+      "operation": "deleteEmailIdentity"
+    },
+    {
+      "callId": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/identities/example.com",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=016858b44f89e2ca851d8cf64f1aabc4095ff2af44073ee28addfb909d2293e3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0314958f-7422-5d02-a9db-8af35ced3c56",
+      "input": {
+        "emailIdentity": "example.com"
+      },
+      "name": "delete-transport",
+      "operation": "deleteEmailIdentity"
+    },
+    {
+      "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "exchanges": [
+        {
+          "body": "{\"MessageId\":\"message-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Simple": {
+                "Body": {
+                  "Text": {
+                    "Charset": "UTF-8",
+                    "Data": "The report is ready."
+                  }
+                },
+                "Subject": {
+                  "Charset": "UTF-8",
+                  "Data": "Report ready"
+                }
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=48fcb16b90af09532345afaa267d191f1bcfd6ea89f41da8e5dca4bb0d62289b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "message-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "subject": "Report ready",
+        "textBody": "The report is ready.",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "send-sent",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Simple": {
+                "Body": {
+                  "Text": {
+                    "Charset": "UTF-8",
+                    "Data": "The report is ready."
+                  }
+                },
+                "Subject": {
+                  "Charset": "UTF-8",
+                  "Data": "Report ready"
+                }
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=48fcb16b90af09532345afaa267d191f1bcfd6ea89f41da8e5dca4bb0d62289b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "subject": "Report ready",
+        "textBody": "The report is ready.",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "send-rejected",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "input": {
+        "fromEmailAddress": "bad",
+        "subject": "Report ready",
+        "textBody": "The report is ready.",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "send-defect",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Simple": {
+                "Body": {
+                  "Text": {
+                    "Charset": "UTF-8",
+                    "Data": "The report is ready."
+                  }
+                },
+                "Subject": {
+                  "Charset": "UTF-8",
+                  "Data": "Report ready"
+                }
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=48fcb16b90af09532345afaa267d191f1bcfd6ea89f41da8e5dca4bb0d62289b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "subject": "Report ready",
+        "textBody": "The report is ready.",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "send-rate-limit",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Simple": {
+                "Body": {
+                  "Text": {
+                    "Charset": "UTF-8",
+                    "Data": "The report is ready."
+                  }
+                },
+                "Subject": {
+                  "Charset": "UTF-8",
+                  "Data": "Report ready"
+                }
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=48fcb16b90af09532345afaa267d191f1bcfd6ea89f41da8e5dca4bb0d62289b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "subject": "Report ready",
+        "textBody": "The report is ready.",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "send-service-unavailable",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Simple": {
+                "Body": {
+                  "Text": {
+                    "Charset": "UTF-8",
+                    "Data": "The report is ready."
+                  }
+                },
+                "Subject": {
+                  "Charset": "UTF-8",
+                  "Data": "Report ready"
+                }
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=48fcb16b90af09532345afaa267d191f1bcfd6ea89f41da8e5dca4bb0d62289b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "subject": "Report ready",
+        "textBody": "The report is ready.",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "send-server-failure",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Simple": {
+                "Body": {
+                  "Text": {
+                    "Charset": "UTF-8",
+                    "Data": "The report is ready."
+                  }
+                },
+                "Subject": {
+                  "Charset": "UTF-8",
+                  "Data": "Report ready"
+                }
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=48fcb16b90af09532345afaa267d191f1bcfd6ea89f41da8e5dca4bb0d62289b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "subject": "Report ready",
+        "textBody": "The report is ready.",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "send-transport",
+      "operation": "sendEmail"
+    },
+    {
+      "attempts": 3,
+      "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Simple": {
+                "Body": {
+                  "Text": {
+                    "Charset": "UTF-8",
+                    "Data": "The report is ready."
+                  }
+                },
+                "Subject": {
+                  "Charset": "UTF-8",
+                  "Data": "Report ready"
+                }
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=48fcb16b90af09532345afaa267d191f1bcfd6ea89f41da8e5dca4bb0d62289b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Simple": {
+                "Body": {
+                  "Text": {
+                    "Charset": "UTF-8",
+                    "Data": "The report is ready."
+                  }
+                },
+                "Subject": {
+                  "Charset": "UTF-8",
+                  "Data": "Report ready"
+                }
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=48fcb16b90af09532345afaa267d191f1bcfd6ea89f41da8e5dca4bb0d62289b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Simple": {
+                "Body": {
+                  "Text": {
+                    "Charset": "UTF-8",
+                    "Data": "The report is ready."
+                  }
+                },
+                "Subject": {
+                  "Charset": "UTF-8",
+                  "Data": "Report ready"
+                }
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=48fcb16b90af09532345afaa267d191f1bcfd6ea89f41da8e5dca4bb0d62289b"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "subject": "Report ready",
+        "textBody": "The report is ready.",
+        "toEmailAddress": "reader@example.net"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "send-three-unknown-retries",
+      "operation": "sendEmail"
+    },
+    {
+      "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "subject": "Report ready",
+        "textBody": "The report is ready.",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "send-uncertain-cap",
+      "operation": "sendEmail",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-created",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-rejected",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "BAD NAME"
+      },
+      "name": "template-create-defect",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-429",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-503",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-500",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-transport",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "attempts": 2,
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TemplateContent\":{\"Subject\":\"Weekly report\",\"Text\":\"Hello {{name}}\",\"Html\":\"\u003cp\u003eHello {{name}}\u003c/p\u003e\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "template-create-readback",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"TemplateContent\":{\"Subject\":\"Weekly report\",\"Text\":\"Hello {{name}}\",\"Html\":\"\u003cp\u003eHello {{name}}\u003c/p\u003e\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-found",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-missing",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-rejected",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-invalid",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "BAD NAME"
+      },
+      "name": "template-get-defect",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-429",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-500",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-transport",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"TemplatesMetadata\":[{\"TemplateName\":\"weekly-report\",\"CreatedTimestamp\":1792918800}],\"NextToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "NextToken": [
+              "page-2"
+            ],
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=8e622fa02323cc13255a1b67e240c864ee4de56455de4b4ab78010741e7b8a91"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "page",
+        "failureKind": "",
+        "output": {
+          "nextToken": "next",
+          "templates": [
+            {
+              "createdAt": "2026-10-25T09:00:00Z",
+              "name": "weekly-report"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-2",
+        "pageSize": 2
+      },
+      "name": "template-list-page",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "templates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-rejected",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "templates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-invalid",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "templates": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 101
+      },
+      "name": "template-list-defect",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-429",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-500",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-transport",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-updated",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-rejected",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "BAD NAME"
+      },
+      "name": "template-update-defect",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-429",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-500",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-transport",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-deleted",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-missing",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-rejected",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "BAD NAME"
+      },
+      "name": "template-delete-defect",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-429",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-500",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-transport",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{\"MessageId\":\"template-message-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "template-message-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-sent",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-rejected",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "BAD NAME",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-defect",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-429",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-503",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-500",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-transport",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-uncertain-cap",
+      "operation": "createEmailTemplate",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-uncertain-cap",
+      "operation": "sendTemplatedEmail",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/custom-verification-email-templates",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateName": "verify-customer",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac2a14422ad888279ffbe5f6d39bee1b7af0b1cfca3e1c1b1afb0547c454dfd5"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-create-created",
+      "operation": "createCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/custom-verification-email-templates",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateName": "verify-customer",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac2a14422ad888279ffbe5f6d39bee1b7af0b1cfca3e1c1b1afb0547c454dfd5"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": "",
+          "failureRedirectionURL": "",
+          "fromEmailAddress": "",
+          "name": "",
+          "subject": "",
+          "successRedirectionURL": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-create-rejected",
+      "operation": "createCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": "",
+          "failureRedirectionURL": "",
+          "fromEmailAddress": "",
+          "name": "",
+          "subject": "",
+          "successRedirectionURL": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-create-defect",
+      "operation": "createCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/custom-verification-email-templates",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateName": "verify-customer",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac2a14422ad888279ffbe5f6d39bee1b7af0b1cfca3e1c1b1afb0547c454dfd5"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-create-429",
+      "operation": "createCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/custom-verification-email-templates",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateName": "verify-customer",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac2a14422ad888279ffbe5f6d39bee1b7af0b1cfca3e1c1b1afb0547c454dfd5"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-create-500",
+      "operation": "createCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/custom-verification-email-templates",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateName": "verify-customer",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac2a14422ad888279ffbe5f6d39bee1b7af0b1cfca3e1c1b1afb0547c454dfd5"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-create-transport",
+      "operation": "createCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/custom-verification-email-templates",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateName": "verify-customer",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac2a14422ad888279ffbe5f6d39bee1b7af0b1cfca3e1c1b1afb0547c454dfd5"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-create-503",
+      "operation": "createCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"TemplateName\":\"verify-customer\",\"FromEmailAddress\":\"sender@example.com\",\"TemplateSubject\":\"Verify your address\",\"TemplateContent\":\"Open the link to verify.\",\"SuccessRedirectionURL\":\"https://example.com/success\",\"FailureRedirectionURL\":\"https://example.com/failure\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-get-found",
+      "operation": "getCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": "",
+          "failureRedirectionURL": "",
+          "fromEmailAddress": "",
+          "name": "",
+          "subject": "",
+          "successRedirectionURL": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-get-rejected",
+      "operation": "getCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": "",
+          "failureRedirectionURL": "",
+          "fromEmailAddress": "",
+          "name": "",
+          "subject": "",
+          "successRedirectionURL": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": ""
+      },
+      "name": "custom-get-defect",
+      "operation": "getCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-get-429",
+      "operation": "getCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-get-500",
+      "operation": "getCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-get-transport",
+      "operation": "getCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "content": "",
+          "failureRedirectionURL": "",
+          "fromEmailAddress": "",
+          "name": "",
+          "subject": "",
+          "successRedirectionURL": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-get-missing",
+      "operation": "getCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": "",
+          "failureRedirectionURL": "",
+          "fromEmailAddress": "",
+          "name": "",
+          "subject": "",
+          "successRedirectionURL": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-get-invalid",
+      "operation": "getCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"CustomVerificationEmailTemplates\":[{\"TemplateName\":\"verify-customer\",\"FromEmailAddress\":\"sender@example.com\",\"TemplateSubject\":\"Verify your address\",\"SuccessRedirectionURL\":\"https://example.com/success\",\"FailureRedirectionURL\":\"https://example.com/failure\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates",
+          "query": {
+            "NextToken": [
+              "page-2"
+            ],
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=b5d37502fba3383a6520fa8e8945f2b8f4394f38fdabeb46e65c7fc8c0050e2c"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "page",
+        "failureKind": "",
+        "output": {
+          "templates": [
+            {
+              "failureRedirectionURL": "https://example.com/failure",
+              "fromEmailAddress": "sender@example.com",
+              "name": "verify-customer",
+              "subject": "Verify your address",
+              "successRedirectionURL": "https://example.com/success"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-2",
+        "pageSize": 2
+      },
+      "name": "custom-list-page",
+      "operation": "listCustomVerificationEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=5404dc5f17845f904d9f0b24eca57d445603901bcd9938e086a77eed4517f0d3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "templates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "custom-list-rejected",
+      "operation": "listCustomVerificationEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "templates": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": -1
+      },
+      "name": "custom-list-defect",
+      "operation": "listCustomVerificationEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=5404dc5f17845f904d9f0b24eca57d445603901bcd9938e086a77eed4517f0d3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "custom-list-429",
+      "operation": "listCustomVerificationEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=5404dc5f17845f904d9f0b24eca57d445603901bcd9938e086a77eed4517f0d3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "custom-list-500",
+      "operation": "listCustomVerificationEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=5404dc5f17845f904d9f0b24eca57d445603901bcd9938e086a77eed4517f0d3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "custom-list-transport",
+      "operation": "listCustomVerificationEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=5404dc5f17845f904d9f0b24eca57d445603901bcd9938e086a77eed4517f0d3"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "templates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "custom-list-invalid",
+      "operation": "listCustomVerificationEmailTemplates"
+    },
+    {
+      "callId": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=6776279eff479e1d57ffd52315f356100b78aa9690509d5f6c0b329adec93e22"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-update-updated",
+      "operation": "updateCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=6776279eff479e1d57ffd52315f356100b78aa9690509d5f6c0b329adec93e22"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": "",
+          "failureRedirectionURL": "",
+          "fromEmailAddress": "",
+          "name": "",
+          "subject": "",
+          "successRedirectionURL": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-update-rejected",
+      "operation": "updateCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": "",
+          "failureRedirectionURL": "",
+          "fromEmailAddress": "",
+          "name": "",
+          "subject": "",
+          "successRedirectionURL": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-update-defect",
+      "operation": "updateCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=6776279eff479e1d57ffd52315f356100b78aa9690509d5f6c0b329adec93e22"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-update-429",
+      "operation": "updateCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=6776279eff479e1d57ffd52315f356100b78aa9690509d5f6c0b329adec93e22"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-update-500",
+      "operation": "updateCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=6776279eff479e1d57ffd52315f356100b78aa9690509d5f6c0b329adec93e22"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "43e23d7f-6612-5174-bac3-e1920e92a677",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-update-transport",
+      "operation": "updateCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=fafd8b60eaa701812bda00d84e7c03a3f6c10868c3fd203fddd4b8b8efbd1dad"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "verify-customer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-delete-deleted",
+      "operation": "deleteCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=fafd8b60eaa701812bda00d84e7c03a3f6c10868c3fd203fddd4b8b8efbd1dad"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-delete-rejected",
+      "operation": "deleteCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "input": {
+        "templateName": ""
+      },
+      "name": "custom-delete-defect",
+      "operation": "deleteCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=fafd8b60eaa701812bda00d84e7c03a3f6c10868c3fd203fddd4b8b8efbd1dad"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-delete-429",
+      "operation": "deleteCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=fafd8b60eaa701812bda00d84e7c03a3f6c10868c3fd203fddd4b8b8efbd1dad"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-delete-500",
+      "operation": "deleteCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=fafd8b60eaa701812bda00d84e7c03a3f6c10868c3fd203fddd4b8b8efbd1dad"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-delete-transport",
+      "operation": "deleteCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=fafd8b60eaa701812bda00d84e7c03a3f6c10868c3fd203fddd4b8b8efbd1dad"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "verify-customer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
+      "input": {
+        "templateName": "verify-customer"
+      },
+      "name": "custom-delete-missing",
+      "operation": "deleteCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "exchanges": [
+        {
+          "body": "{\"MessageId\":\"custom-message-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-custom-verification-emails",
+          "requestBody": {
+            "ConfigurationSetName": "transactional",
+            "EmailAddress": "reader@example.net",
+            "TemplateName": "verify-customer"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=7aab7171a70159d116427cb274028ac171ff3e0650fbdad5898c3b6b5943ea69"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "custom-message-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "input": {
+        "configurationSetName": "transactional",
+        "emailAddress": "reader@example.net",
+        "templateName": "verify-customer"
+      },
+      "name": "custom-send-sent",
+      "operation": "sendCustomVerificationEmail"
+    },
+    {
+      "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-custom-verification-emails",
+          "requestBody": {
+            "EmailAddress": "reader@example.net",
+            "TemplateName": "verify-customer"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=93cae701485197a1173705ff8149f7d6ac49091bc49f555d7ea85457b7e303c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "input": {
+        "emailAddress": "reader@example.net",
+        "templateName": "verify-customer"
+      },
+      "name": "custom-send-rejected",
+      "operation": "sendCustomVerificationEmail"
+    },
+    {
+      "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "input": {
+        "emailAddress": "invalid",
+        "templateName": "verify-customer"
+      },
+      "name": "custom-send-defect",
+      "operation": "sendCustomVerificationEmail"
+    },
+    {
+      "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-custom-verification-emails",
+          "requestBody": {
+            "EmailAddress": "reader@example.net",
+            "TemplateName": "verify-customer"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=93cae701485197a1173705ff8149f7d6ac49091bc49f555d7ea85457b7e303c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "input": {
+        "emailAddress": "reader@example.net",
+        "templateName": "verify-customer"
+      },
+      "name": "custom-send-429",
+      "operation": "sendCustomVerificationEmail"
+    },
+    {
+      "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-custom-verification-emails",
+          "requestBody": {
+            "EmailAddress": "reader@example.net",
+            "TemplateName": "verify-customer"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=93cae701485197a1173705ff8149f7d6ac49091bc49f555d7ea85457b7e303c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "input": {
+        "emailAddress": "reader@example.net",
+        "templateName": "verify-customer"
+      },
+      "name": "custom-send-500",
+      "operation": "sendCustomVerificationEmail"
+    },
+    {
+      "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-custom-verification-emails",
+          "requestBody": {
+            "EmailAddress": "reader@example.net",
+            "TemplateName": "verify-customer"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=93cae701485197a1173705ff8149f7d6ac49091bc49f555d7ea85457b7e303c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "input": {
+        "emailAddress": "reader@example.net",
+        "templateName": "verify-customer"
+      },
+      "name": "custom-send-transport",
+      "operation": "sendCustomVerificationEmail"
+    },
+    {
+      "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-custom-verification-emails",
+          "requestBody": {
+            "EmailAddress": "reader@example.net",
+            "TemplateName": "verify-customer"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=93cae701485197a1173705ff8149f7d6ac49091bc49f555d7ea85457b7e303c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "input": {
+        "emailAddress": "reader@example.net",
+        "templateName": "verify-customer"
+      },
+      "name": "custom-send-503",
+      "operation": "sendCustomVerificationEmail"
+    },
+    {
+      "attempts": 2,
+      "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/custom-verification-email-templates",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateName": "verify-customer",
+            "TemplateSubject": "Verify your address"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac2a14422ad888279ffbe5f6d39bee1b7af0b1cfca3e1c1b1afb0547c454dfd5"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TemplateName\":\"verify-customer\",\"FromEmailAddress\":\"sender@example.com\",\"TemplateSubject\":\"Verify your address\",\"TemplateContent\":\"Open the link to verify.\",\"SuccessRedirectionURL\":\"https://example.com/success\",\"FailureRedirectionURL\":\"https://example.com/failure\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "custom-create-readback",
+      "operation": "createCustomVerificationEmailTemplate"
+    },
+    {
+      "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+      "input": {
+        "template": {
+          "content": "Open the link to verify.",
+          "failureRedirectionURL": "https://example.com/failure",
+          "fromEmailAddress": "sender@example.com",
+          "name": "verify-customer",
+          "subject": "Verify your address",
+          "successRedirectionURL": "https://example.com/success"
+        }
+      },
+      "name": "custom-create-uncertain-cap",
+      "operation": "createCustomVerificationEmailTemplate",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+      "input": {
+        "configurationSetName": "transactional",
+        "emailAddress": "reader@example.net",
+        "templateName": "verify-customer"
+      },
+      "name": "custom-send-uncertain-cap",
+      "operation": "sendCustomVerificationEmail",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

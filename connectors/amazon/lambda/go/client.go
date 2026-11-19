@@ -88,7 +88,7 @@ type providerResponse struct {
 	err        error
 }
 
-func (client *Client) getFunction(call sdkgo.Call, name string) providerResponse {
+func (client *Client) send(call sdkgo.Call, method, path string, body []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -99,11 +99,14 @@ func (client *Client) getFunction(call sdkgo.Call, name string) providerResponse
 	if !providerhttp.IsHeaderSafeCredential(accessKey) || !providerhttp.IsHeaderSafeCredential(secretKey) || (sessionToken != "" && !providerhttp.IsHeaderSafeCredential(sessionToken)) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.endpoint+"/2015-03-31/functions/"+name, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.endpoint+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	digest := sha256.Sum256(nil)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	digest := sha256.Sum256(body)
 	signingCredentials := aws.Credentials{AccessKeyID: accessKey, SecretAccessKey: secretKey, SessionToken: sessionToken}
 	if err := client.signer.SignHTTP(request.Context(), signingCredentials, request, hex.EncodeToString(digest[:]), "lambda", client.region, client.now().UTC()); err != nil {
 		return providerResponse{err: errRequest}

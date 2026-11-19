@@ -16,6 +16,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "queryChart/chartDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.ChartResult](`{"chartID":"abc123","dataJSON":"{\"series\":[[1,2]],\"xValues\":[\"2026-11-01\",\"2026-11-02\"]}"}`)
+			return err
+		}},
+		{name: "getActiveUserCounts/countsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.ActiveUserCounts](`{"startDate":"20261101","endDate":"20261102","metric":"active","intervalDays":1,"dates":["2026-11-01","2026-11-02"],"series":[[42,51]]}`)
+			return err
+		}},
+		{name: "getUserActivity/userActivityDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.UserActivity](`{"amplitudeID":"12345","userID":"example-user","eventCount":142,"sessionCount":23,"returnedEvents":2}`)
+			return err
+		}},
+		{name: "unsetUserProperty/unsetDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.IdentifiedUser](`{"userID":"example-user","propertyName":"oldPlan"}`)
+			return err
+		}},
+		{name: "trackEvent/trackedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.TrackedEvent](`{"userID":"example-user","eventType":"purchase","insertID":"example-insert-id"}`)
+			return err
+		}},
+		{name: "identifyUser/identifiedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[amplitude.IdentifiedUser](`{"userID":"example-user","propertyName":"plan"}`)
+			return err
+		}},
 		{name: "searchUsers/searchedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[amplitude.UserSearchPage](`{"user":"example-user","userIDs":["example-user"],"matchType":"match_user_or_device_id"}`)
 			return err
@@ -30,6 +54,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.QueryChart().Definition().Operation.OperationID != "queryChart" {
+		t.Errorf("queryChart mock has another definition")
+	}
+	if mock.GetActiveUserCounts().Definition().Operation.OperationID != "getActiveUserCounts" {
+		t.Errorf("getActiveUserCounts mock has another definition")
+	}
+	if mock.GetUserActivity().Definition().Operation.OperationID != "getUserActivity" {
+		t.Errorf("getUserActivity mock has another definition")
+	}
+	if mock.UnsetUserProperty().Definition().Operation.OperationID != "unsetUserProperty" {
+		t.Errorf("unsetUserProperty mock has another definition")
+	}
+	if mock.TrackEvent().Definition().Operation.OperationID != "trackEvent" {
+		t.Errorf("trackEvent mock has another definition")
+	}
+	if mock.IdentifyUser().Definition().Operation.OperationID != "identifyUser" {
+		t.Errorf("identifyUser mock has another definition")
+	}
 	if mock.SearchUsers().Definition().Operation.OperationID != "searchUsers" {
 		t.Errorf("searchUsers mock has another definition")
 	}

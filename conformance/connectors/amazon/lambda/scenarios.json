@@ -273,6 +273,870 @@
       },
       "name": "getFunction-transportFailure",
       "operation": "getFunction"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000101",
+      "exchanges": [
+        {
+          "body": "{\"Functions\":[{\"FunctionName\":\"example-function\",\"FunctionArn\":\"arn:aws:lambda:eu-west-1:123456789012:function:example-function\"}],\"NextMarker\":\"page-3\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2015-03-31/functions",
+          "query": {
+            "Marker": [
+              "page-2"
+            ],
+            "MaxItems": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=3129421ff1a90b69208afb249e98091456ca36e89bedaa4ab7f31aa37f49dcff"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "functions": [
+            {
+              "arn": "arn:aws:lambda:eu-west-1:123456789012:function:example-function",
+              "name": "example-function"
+            }
+          ],
+          "nextMarker": "page-3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "page-2",
+        "maxItems": 2
+      },
+      "name": "listFunctions-listed",
+      "operation": "listFunctions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000102",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2015-03-31/functions",
+          "query": {
+            "Marker": [
+              "page-2"
+            ],
+            "MaxItems": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=3129421ff1a90b69208afb249e98091456ca36e89bedaa4ab7f31aa37f49dcff"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "functions": [],
+          "nextMarker": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "page-2",
+        "maxItems": 2
+      },
+      "name": "listFunctions-providerRejected",
+      "operation": "listFunctions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000103",
+      "exchanges": [
+        {
+          "body": "{\"Functions\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2015-03-31/functions",
+          "query": {
+            "Marker": [
+              "page-2"
+            ],
+            "MaxItems": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=3129421ff1a90b69208afb249e98091456ca36e89bedaa4ab7f31aa37f49dcff"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "functions": [],
+          "nextMarker": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "page-2",
+        "maxItems": 2
+      },
+      "name": "listFunctions-invalidResponse",
+      "operation": "listFunctions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000104",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "functions": [],
+          "nextMarker": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "page-2",
+        "maxItems": 51
+      },
+      "name": "listFunctions-defect",
+      "operation": "listFunctions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000105",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2015-03-31/functions",
+          "query": {
+            "Marker": [
+              "page-2"
+            ],
+            "MaxItems": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=3129421ff1a90b69208afb249e98091456ca36e89bedaa4ab7f31aa37f49dcff"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "page-2",
+        "maxItems": 2
+      },
+      "name": "listFunctions-rateLimit",
+      "operation": "listFunctions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000106",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2015-03-31/functions",
+          "query": {
+            "Marker": [
+              "page-2"
+            ],
+            "MaxItems": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=3129421ff1a90b69208afb249e98091456ca36e89bedaa4ab7f31aa37f49dcff"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "page-2",
+        "maxItems": 2
+      },
+      "name": "listFunctions-unavailable",
+      "operation": "listFunctions"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000107",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2015-03-31/functions",
+          "query": {
+            "Marker": [
+              "page-2"
+            ],
+            "MaxItems": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=3129421ff1a90b69208afb249e98091456ca36e89bedaa4ab7f31aa37f49dcff"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "marker": "page-2",
+        "maxItems": 2
+      },
+      "name": "listFunctions-transportFailure",
+      "operation": "listFunctions"
+    },
+    {
+      "callId": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "exchanges": [
+        {
+          "body": "{\"FunctionName\":\"example-function\",\"FunctionArn\":\"arn:aws:lambda:eu-west-1:123456789012:function:example-function\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2015-03-31/functions/example-function/configuration",
+          "requestBody": {
+            "Description": "Example worker"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac99f361f6dba438e0bad57df51c36af8fb48607b6b23d09cb099f599afb86bf"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "arn": "arn:aws:lambda:eu-west-1:123456789012:function:example-function",
+          "name": "example-function"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "input": {
+        "description": "Example worker",
+        "functionName": "example-function"
+      },
+      "name": "updateFunctionDescription-updated",
+      "operation": "updateFunctionDescription"
+    },
+    {
+      "callId": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2015-03-31/functions/example-function/configuration",
+          "requestBody": {
+            "Description": "Example worker"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac99f361f6dba438e0bad57df51c36af8fb48607b6b23d09cb099f599afb86bf"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "arn": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "input": {
+        "description": "Example worker",
+        "functionName": "example-function"
+      },
+      "name": "updateFunctionDescription-missing",
+      "operation": "updateFunctionDescription"
+    },
+    {
+      "callId": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2015-03-31/functions/example-function/configuration",
+          "requestBody": {
+            "Description": "Example worker"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac99f361f6dba438e0bad57df51c36af8fb48607b6b23d09cb099f599afb86bf"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "arn": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "input": {
+        "description": "Example worker",
+        "functionName": "example-function"
+      },
+      "name": "updateFunctionDescription-providerRejected",
+      "operation": "updateFunctionDescription"
+    },
+    {
+      "callId": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "exchanges": [
+        {
+          "body": "{\"FunctionName\":\"wrong\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2015-03-31/functions/example-function/configuration",
+          "requestBody": {
+            "Description": "Example worker"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac99f361f6dba438e0bad57df51c36af8fb48607b6b23d09cb099f599afb86bf"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "arn": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "input": {
+        "description": "Example worker",
+        "functionName": "example-function"
+      },
+      "name": "updateFunctionDescription-invalidResponse",
+      "operation": "updateFunctionDescription"
+    },
+    {
+      "callId": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "arn": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "input": {
+        "description": "Example worker",
+        "functionName": "bad/name"
+      },
+      "name": "updateFunctionDescription-defect",
+      "operation": "updateFunctionDescription"
+    },
+    {
+      "callId": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2015-03-31/functions/example-function/configuration",
+          "requestBody": {
+            "Description": "Example worker"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac99f361f6dba438e0bad57df51c36af8fb48607b6b23d09cb099f599afb86bf"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "input": {
+        "description": "Example worker",
+        "functionName": "example-function"
+      },
+      "name": "updateFunctionDescription-rateLimit",
+      "operation": "updateFunctionDescription"
+    },
+    {
+      "callId": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2015-03-31/functions/example-function/configuration",
+          "requestBody": {
+            "Description": "Example worker"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac99f361f6dba438e0bad57df51c36af8fb48607b6b23d09cb099f599afb86bf"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "input": {
+        "description": "Example worker",
+        "functionName": "example-function"
+      },
+      "name": "updateFunctionDescription-unavailable",
+      "operation": "updateFunctionDescription"
+    },
+    {
+      "callId": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2015-03-31/functions/example-function/configuration",
+          "requestBody": {
+            "Description": "Example worker"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac99f361f6dba438e0bad57df51c36af8fb48607b6b23d09cb099f599afb86bf"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "584541d3-b0c1-5cc7-a4be-7f76d887fdef",
+      "input": {
+        "description": "Example worker",
+        "functionName": "example-function"
+      },
+      "name": "updateFunctionDescription-transportFailure",
+      "operation": "updateFunctionDescription"
+    },
+    {
+      "callId": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2015-03-31/functions/example-function",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=cbffe6588869d4dd08c3e592567752b6d8784b595b004e027a2f6f087a5e4809"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "applied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "input": {
+        "functionName": "example-function"
+      },
+      "name": "deleteFunction-deleted",
+      "operation": "deleteFunction"
+    },
+    {
+      "callId": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2015-03-31/functions/example-function",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=cbffe6588869d4dd08c3e592567752b6d8784b595b004e027a2f6f087a5e4809"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "applied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "input": {
+        "functionName": "example-function"
+      },
+      "name": "deleteFunction-alreadyAbsent",
+      "operation": "deleteFunction"
+    },
+    {
+      "callId": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2015-03-31/functions/example-function",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=cbffe6588869d4dd08c3e592567752b6d8784b595b004e027a2f6f087a5e4809"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "input": {
+        "functionName": "example-function"
+      },
+      "name": "deleteFunction-providerRejected",
+      "operation": "deleteFunction"
+    },
+    {
+      "callId": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "input": {
+        "functionName": "bad/name"
+      },
+      "name": "deleteFunction-defect",
+      "operation": "deleteFunction"
+    },
+    {
+      "callId": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2015-03-31/functions/example-function",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=cbffe6588869d4dd08c3e592567752b6d8784b595b004e027a2f6f087a5e4809"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "input": {
+        "functionName": "example-function"
+      },
+      "name": "deleteFunction-rateLimit",
+      "operation": "deleteFunction"
+    },
+    {
+      "callId": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2015-03-31/functions/example-function",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=cbffe6588869d4dd08c3e592567752b6d8784b595b004e027a2f6f087a5e4809"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "input": {
+        "functionName": "example-function"
+      },
+      "name": "deleteFunction-unavailable",
+      "operation": "deleteFunction"
+    },
+    {
+      "callId": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2015-03-31/functions/example-function",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIALAMBDACONNECTOR/20261030/eu-west-1/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=cbffe6588869d4dd08c3e592567752b6d8784b595b004e027a2f6f087a5e4809"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "276defaa-2a1b-51b3-b3a9-c90f8ad52393",
+      "input": {
+        "functionName": "example-function"
+      },
+      "name": "deleteFunction-transportFailure",
+      "operation": "deleteFunction"
     }
   ],
   "schemaVersion": 1
