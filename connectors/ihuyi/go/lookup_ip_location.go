@@ -57,7 +57,7 @@ func (operation LookupIPLocationOperation) Invoke(call sdkgo.Call, input LookupI
 	if err != nil || credentials.Validate() != nil || !isValidCredentialValue(credentials.APIID) || !isValidCredentialValue(credentials.APIKey.Reveal()) {
 		return locationBranch(LookupIPLocationBranchDefect, sdkgo.FailureAuthentication, "Ihuyi credentials are unavailable or invalid")
 	}
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.now().Unix(), 10)
 	digest := md5.Sum([]byte(credentials.APIID + credentials.APIKey.Reveal() + timestamp))
 	form := url.Values{
 		"account":  {credentials.APIID},
