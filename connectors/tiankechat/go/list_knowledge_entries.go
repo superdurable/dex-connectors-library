@@ -5,11 +5,11 @@ package tiankechat
 
 import (
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -81,10 +81,10 @@ func (operation ListKnowledgeEntriesOperation) Invoke(call sdkgo.Call, input Lis
 	parameters.Set("limit", strconv.Itoa(limit))
 	path := "/api/openapi/knowledge?" + parameters.Encode()
 	nonceBytes := make([]byte, 16)
-	if _, err := rand.Read(nonceBytes); err != nil {
+	if _, err := io.ReadFull(operation.client.requestRandom, nonceBytes); err != nil {
 		return knowledgeCatalogRetry(sdkgo.FailureAvailability, "secure nonce generation failed", 0)
 	}
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	timestamp := strconv.FormatInt(operation.client.requestClock().Unix(), 10)
 	nonce := hex.EncodeToString(nonceBytes)
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, operation.client.baseURL+path, nil)
 	if err != nil {

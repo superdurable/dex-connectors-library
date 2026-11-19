@@ -5,10 +5,13 @@
 package tiankechat
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
@@ -30,6 +33,8 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	requestClock     func() time.Time
+	requestRandom    io.Reader
 }
 
 // New validates configuration without contacting TiankeChat. Rotated credentials take effect on the next call.
@@ -52,7 +57,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil || parsed.Path != "" {
 		return nil, errors.New("TiankeChat base URL must be an HTTPS origin without a path")
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials, requestClock: time.Now, requestRandom: rand.Reader}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("TiankeChat client option is required")
