@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: personio
   displayName: Personio
-  description: Read selected Personio v2 person profile fields.
+  description: Read and list selected Personio v2 person profile fields.
   company: Personio
   categories: [hr-recruiting]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: personio
   languages:
@@ -79,6 +79,26 @@ spec:
         - {credential: access_token, source: access_token}
       terminalErrorCodes: [invalid_client, unauthorized_client, invalid_scope]
   operations:
+    - name: listPersons
+      goName: ListPersons
+      inputType: ListPersonsInput
+      outputType: PersonPage
+      kind: query
+      description: List one page of persons with optional name and employment-status filters.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Personio returned one page of selected persons.}
+        - {id: providerRejected, goName: ProviderRejected, description: Personio conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Personio returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local filters or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample page of Personio persons is returned.
+          output: {persons: [{id: '3003', firstName: Jane, lastName: Doe}], nextCursor: ''}
     - name: getPerson
       goName: GetPerson
       inputType: GetPersonInput

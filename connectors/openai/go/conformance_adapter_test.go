@@ -5,6 +5,7 @@ package openai
 
 import (
 	contextpkg "context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptrace"
 	"strings"
@@ -31,16 +32,28 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(&clientTransport))
 	require.NoError(t, err)
 	context := testsupport.NewDexContext("conformance-flow", "openai-response")
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) {
+		var checkpoint any
+		require.NoError(t, json.Unmarshal(value, &checkpoint))
+		require.NoError(t, context.RecordHeartbeat(checkpoint))
+	})
 	if strings.HasSuffix(scenario.Name, "-deadline") {
 		deadlineContext, cancel := contextpkg.WithTimeout(context.Context, 6*time.Second)
 		t.Cleanup(cancel)
 		context.Context = deadlineContext
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
-		context.AttemptNo = int32(attempt)
+		context.AttemptNo = priorAttempt + int32(attempt)
 	}, actions: map[string]conformanceOperationInvocation{
-		"createResponse":   newConformanceMutationInvocation(t, scenario.Input, context, client.CreateResponse(), reference, scenario.CallID),
-		"retrieveResponse": newConformanceQueryInvocation(t, scenario.Input, context, client.RetrieveResponse(), reference),
+		"createResponse":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateResponse(), reference, scenario.CallID),
+		"retrieveResponse":     newConformanceQueryInvocation(t, scenario.Input, context, client.RetrieveResponse(), reference),
+		"deleteResponse":       newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteResponse(), reference, scenario.CallID),
+		"createConversation":   newConformanceMutationInvocation(t, scenario.Input, context, client.CreateConversation(), reference, scenario.CallID),
+		"retrieveConversation": newConformanceQueryInvocation(t, scenario.Input, context, client.RetrieveConversation(), reference),
+		"updateConversation":   newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateConversation(), reference, scenario.CallID),
+		"deleteConversation":   newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteConversation(), reference, scenario.CallID),
+		"listFiles":            newConformanceQueryInvocation(t, scenario.Input, context, client.ListFiles(), reference),
+		"deleteFile":           newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteFile(), reference, scenario.CallID),
 	}}
 }
 

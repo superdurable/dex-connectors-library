@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: pandadoc
   displayName: PandaDoc
-  description: Read a document's name and status through the PandaDoc Public API.
+  description: Create, search, update, send, and delete documents through the PandaDoc Public API.
   company: PandaDoc
   categories: [files-documents, crm-sales]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: pandadoc
   languages:
@@ -76,3 +76,103 @@ spec:
           default: true
           description: One example completed document is returned.
           output: {id: fANp5wW5EwY7AkiTkTGekZ, name: Example agreement, status: document.completed}
+    - name: listDocuments
+      goName: ListDocuments
+      inputType: ListDocumentsInput
+      outputType: DocumentPage
+      kind: query
+      description: Search one page of documents by name or reference number.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: PandaDoc returned a document page.}
+        - {id: providerRejected, goName: ProviderRejected, description: PandaDoc rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: PandaDoc returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The page request or connection is invalid., optional: true}
+      mocks:
+        - name: listDocumentsDefault
+          branch: listed
+          default: true
+          description: One document in a search result.
+          output: {results: [{id: fANp5wW5EwY7AkiTkTGekZ, name: Example agreement, status: document.draft}], count: 1}
+    - name: updateDocument
+      goName: UpdateDocument
+      inputType: UpdateDocumentInput
+      outputType: DocumentAction
+      kind: mutation
+      description: Replace a draft document's name.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: PandaDoc accepted the draft update.}
+        - {id: notFound, goName: NotFound, description: The document does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: PandaDoc rejected the draft update., optional: true}
+        - {id: defect, goName: Defect, description: "The document ID, name, or connection is invalid.", optional: true}
+      mocks:
+        - name: updateDocumentDefault
+          branch: updated
+          default: true
+          description: A renamed draft document.
+          output: {documentId: fANp5wW5EwY7AkiTkTGekZ}
+    - name: deleteDocument
+      goName: DeleteDocument
+      inputType: DeleteDocumentInput
+      outputType: DocumentAction
+      kind: mutation
+      description: Delete a document by ID.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: PandaDoc deleted the document or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: PandaDoc rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: The document ID or connection is invalid., optional: true}
+      mocks:
+        - name: deleteDocumentDefault
+          branch: deleted
+          default: true
+          description: A deleted document.
+          output: {documentId: fANp5wW5EwY7AkiTkTGekZ}
+    - name: createDocument
+      goName: CreateDocument
+      inputType: CreateDocumentInput
+      outputType: DocumentStatus
+      kind: mutation
+      description: Create a document from a template and recipient list.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, dispatchFence: true, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: PandaDoc returned the new document.}
+        - {id: providerRejected, goName: ProviderRejected, description: PandaDoc rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: "The template, recipients, name, or connection is invalid.", optional: true}
+      mocks:
+        - name: createDocumentDefault
+          branch: created
+          default: true
+          description: A document created from a template.
+          output: {id: fANp5wW5EwY7AkiTkTGekZ, name: Example agreement, status: document.uploaded}
+    - name: sendDocument
+      goName: SendDocument
+      inputType: SendDocumentInput
+      outputType: DocumentAction
+      kind: mutation
+      description: Send a draft document to its recipients.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, dispatchFence: true, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: sent, goName: Sent, description: PandaDoc accepted the send request.}
+        - {id: notFound, goName: NotFound, description: The document does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: PandaDoc rejected the send request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The document may have been sent but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: The document ID or connection is invalid., optional: true}
+      mocks:
+        - name: sendDocumentDefault
+          branch: sent
+          default: true
+          description: PandaDoc accepted the send request.
+          output: {documentId: fANp5wW5EwY7AkiTkTGekZ}

@@ -1,10 +1,10 @@
 # PayPal connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/paypal/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/paypal/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/paypal`.
 
-Read-only Dex Query Steps for PayPal. The module is `github.com/superdurable/dex-connectors-library/connectors/paypal/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
+Typed Dex Steps for PayPal order and transaction reads and payout batch and item operations. The module is `github.com/superdurable/dex-connectors-library/connectors/paypal/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
 
 ## Operations
 
@@ -12,8 +12,12 @@ Read-only Dex Query Steps for PayPal. The module is `github.com/superdurable/dex
 | --- | --- | --- | --- |
 | `GetOrder` | `GetOrderInput` | `Order` | `found` |
 | `ListTransactions` | `ListTransactionsInput` | `TransactionPage` | `listed` |
+| `GetPayoutBatch` | `GetPayoutBatchInput` | `PayoutBatch` | `found` |
+| `GetPayoutItem` | `GetPayoutItemInput` | `PayoutItem` | `found` |
+| `CreatePayoutBatch` | `CreatePayoutBatchInput` | `PayoutBatch` | `created` |
+| `CancelPayoutItem` | `CancelPayoutItemInput` | `PayoutItem` | `canceled` |
 
-Each operation has optional `notFound`, `providerRejected`, `invalidResponse`, and `defect` branches. Unwired optional branches fail the Flow. All reads use async Execute durability and the default one-hour retry budget.
+Each operation has optional applicable `notFound`, `providerRejected`, `invalidResponse`, and `defect` branches. Unwired optional branches fail the Flow. All operations use async Execute durability and the default one-hour retry budget. `CreatePayoutBatch` sends a Dex call ID as `sender_batch_id`; [PayPal deduplicates this value for 30 days](https://developer.paypal.com/api/payments.payouts-batch/v1/definitions/create_payout_request/), longer than the retry budget. Payouts require an enabled Payouts capability on the REST app and can move real funds.
 
 PayPal Transaction Search requires the reporting/search/read permission, returns transactions with up to a three-hour visibility delay, and supports only the previous three years. [PayPal publishes the endpoint and scope](https://github.com/paypal/paypal-rest-api-specifications/blob/main/openapi/reporting_transactions_v1.json). This connector reads only the minimal transaction_info fields.
 
@@ -35,7 +39,7 @@ Follow the authorization guide in `connector.yaml` from [https://developer.paypa
 | Malformed or oversized JSON | `invalidResponse` |
 | Invalid local input or unavailable credentials | `defect` |
 
-Provider error text is never copied into a Failure. Responses are bounded and redirects are not followed. The APIs are read-only, so there is no `uncertain` branch.
+Provider error text is never copied into a Failure. Responses are bounded and redirects are not followed. PayPal's 30-day payout deduplication supports safe retry of batch creation. Cancellation applies only to unclaimed payout items.
 
 ## Mocks
 
@@ -51,6 +55,7 @@ flow := resourceread.NewFlow(mock.Connection())
 - [https://developer.paypal.com/api/rest/authentication](https://developer.paypal.com/api/rest/authentication)
 - [https://developer.paypal.com/docs/api/orders/v2/](https://developer.paypal.com/docs/api/orders/v2/)
 - [https://github.com/paypal/paypal-rest-api-specifications/blob/main/openapi/reporting_transactions_v1.json](https://github.com/paypal/paypal-rest-api-specifications/blob/main/openapi/reporting_transactions_v1.json)
+- [Payouts v1 API](https://developer.paypal.com/api/payments.payouts-batch/v1/)
 
 ## Unverified live behavior
 

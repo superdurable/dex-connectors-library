@@ -20,6 +20,50 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[onespansign.PackageStatus](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=","name":"Example agreement","status":"COMPLETED"}`)
 			return err
 		}},
+		{name: "listPackages/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.PackagesPage](`{"packages":[{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=","name":"Example agreement","status":"DRAFT"}],"count":1}`)
+			return err
+		}},
+		{name: "createDraftPackage/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.CreatedPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI="}`)
+			return err
+		}},
+		{name: "updatePackageName/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.UpdatedPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=","name":"Example agreement"}`)
+			return err
+		}},
+		{name: "sendPackage/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.SentPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=","status":"SENT"}`)
+			return err
+		}},
+		{name: "trashPackage/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.TrashedPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI="}`)
+			return err
+		}},
+		{name: "deletePackage/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.DeletedPackage](`{"id":"9sKhW-h-qS9m6Ho3zRv3n2a-rkI="}`)
+			return err
+		}},
+		{name: "listSignerRoles/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.SignerRoleIDsPage](`{"roleIds":["Signer1"]}`)
+			return err
+		}},
+		{name: "getSignerRole/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.SignerRoleID](`{"roleId":"Signer1"}`)
+			return err
+		}},
+		{name: "addSigner/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.SignerRoleID](`{"roleId":"Signer1"}`)
+			return err
+		}},
+		{name: "updateSigner/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.SignerRoleID](`{"roleId":"Signer1"}`)
+			return err
+		}},
+		{name: "removeSigner/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[onespansign.SignerRoleID](`{"roleId":"Signer1"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +76,38 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetPackage().Definition().Operation.OperationID != "getPackage" {
 		t.Errorf("getPackage mock has another definition")
+	}
+	if mock.ListPackages().Definition().Operation.OperationID != "listPackages" {
+		t.Errorf("listPackages mock has another definition")
+	}
+	if mock.CreateDraftPackage().Definition().Operation.OperationID != "createDraftPackage" {
+		t.Errorf("createDraftPackage mock has another definition")
+	}
+	if mock.UpdatePackageName().Definition().Operation.OperationID != "updatePackageName" {
+		t.Errorf("updatePackageName mock has another definition")
+	}
+	if mock.SendPackage().Definition().Operation.OperationID != "sendPackage" {
+		t.Errorf("sendPackage mock has another definition")
+	}
+	if mock.TrashPackage().Definition().Operation.OperationID != "trashPackage" {
+		t.Errorf("trashPackage mock has another definition")
+	}
+	if mock.DeletePackage().Definition().Operation.OperationID != "deletePackage" {
+		t.Errorf("deletePackage mock has another definition")
+	}
+	if mock.ListSignerRoles().Definition().Operation.OperationID != "listSignerRoles" {
+		t.Errorf("listSignerRoles mock has another definition")
+	}
+	if mock.GetSignerRole().Definition().Operation.OperationID != "getSignerRole" {
+		t.Errorf("getSignerRole mock has another definition")
+	}
+	if mock.AddSigner().Definition().Operation.OperationID != "addSigner" {
+		t.Errorf("addSigner mock has another definition")
+	}
+	if mock.UpdateSigner().Definition().Operation.OperationID != "updateSigner" {
+		t.Errorf("updateSigner mock has another definition")
+	}
+	if mock.RemoveSigner().Definition().Operation.OperationID != "removeSigner" {
+		t.Errorf("removeSigner mock has another definition")
 	}
 }

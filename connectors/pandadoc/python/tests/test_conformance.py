@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/pandadoc/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/pandadoc/scenarios.json")
+    if scenario["operation"] == "getDocument"
+]
 CONNECTION = sdk.ConnectionRef("pandadoc", "pandadoc")
 TEST_CREDENTIALS = pandadoc.Credentials(sdk.SecretString("sample-pandadoc-api-key"))
 ADAPTER = conformance.PythonOperationAdapter(

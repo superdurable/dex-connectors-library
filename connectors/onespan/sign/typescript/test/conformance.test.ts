@@ -8,7 +8,7 @@ import { OneSpanSignClient } from '../src/client.js';
 import { GetPackageInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/onespan/sign/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/onespan/sign/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getPackage');
 const connection = { provider: 'onespan-sign', name: 'onespan-sign' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeOneSpanSign, '/api'));
 

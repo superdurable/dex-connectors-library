@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{sampleflow.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{sampleflow.NewFlow(connection), sampleflow.NewVectorFetchFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Pinecone sample Flow: %w", err)
 	}

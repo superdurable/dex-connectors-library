@@ -35,6 +35,39 @@ type ContactIDsPage struct {
 	Total int `json:"total"`
 }
 
+// SearchContactIDsInput searches contact IDs by a provider keyword.
+type SearchContactIDsInput struct {
+	// Keyword is the text Nimble searches across contact fields.
+	Keyword string `json:"keyword"`
+	// Page is the one-based page number.
+	Page int `json:"page"`
+	// PerPage is the page size from 1 through 100.
+	PerPage int `json:"perPage"`
+}
+
+// SearchContactIDsOperation reads one keyword-matched contact ID page.
+type SearchContactIDsOperation struct{ client *Client }
+
+// SearchContactIDs binds the search Query to this client.
+func (client *Client) SearchContactIDs() SearchContactIDsOperation {
+	return SearchContactIDsOperation{client}
+}
+
+// Definition returns the generated search Query contract.
+func (SearchContactIDsOperation) Definition() sdkgo.QueryDefinition {
+	return SearchContactIDsDefinition
+}
+
+// Invoke searches contact IDs with one bounded provider request.
+func (operation SearchContactIDsOperation) Invoke(call sdkgo.Call, input SearchContactIDsInput) sdkgo.QueryAttempt[ContactIDsPage] {
+	branches := queryBranches{found: SearchContactIDsBranchListed, rejected: SearchContactIDsBranchProviderRejected, invalid: SearchContactIDsBranchInvalidResponse, defect: SearchContactIDsBranchDefect}
+	if strings.TrimSpace(input.Keyword) == "" || input.Page < 1 || input.PerPage < 1 || input.PerPage > 100 {
+		return queryBranch("searchContactIDs", branches.defect, ContactIDsPage{}, sdkgo.FailureValidation, "keyword and bounded page are required")
+	}
+	query := url.Values{"keyword": {input.Keyword}, "page": {strconv.Itoa(input.Page)}, "per_page": {strconv.Itoa(input.PerPage)}}
+	return invokeQuery(call, operation.client, "searchContactIDs", "/contacts/ids?"+query.Encode(), branches, decodeContactIDsPage)
+}
+
 // GetContactInput selects one Nimble contact by its BSON identifier.
 type GetContactInput struct {
 	// ContactID is the 24-character hexadecimal ID returned by Nimble.

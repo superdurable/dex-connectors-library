@@ -51,4 +51,7 @@ func TestCompanyNewsUsesMockDefaultWithRealDex(t *testing.T) {
 	require.Equal(t, expectedInput, calls[0].Input)
 	require.Contains(t, []string{expectedFromBeforeRun, expectedFromAfterRun}, calls[0].Input.From)
 	require.Equal(t, newsapi.SearchArticlesBranchSearched, calls[0].Branch)
+	headlineCalls := mock.GetTopHeadlines().Calls()
+	require.Len(t, headlineCalls, 1)
+	require.Equal(t, "Meridian", headlineCalls[0].Input.Query)
 }

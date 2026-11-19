@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted netlify connection. Script each operation through its accessor.
 type Mock struct {
-	connection  netlify.Connection
-	listSites   *connectormock.Query[netlify.ListSitesInput, netlify.SitesPage]
-	listDeploys *connectormock.Query[netlify.ListDeploysInput, netlify.DeploysPage]
+	connection   netlify.Connection
+	listSites    *connectormock.Query[netlify.ListSitesInput, netlify.SitesPage]
+	listDeploys  *connectormock.Query[netlify.ListDeploysInput, netlify.DeploysPage]
+	getSite      *connectormock.Query[netlify.GetSiteInput, netlify.Site]
+	getDeploy    *connectormock.Query[netlify.GetDeployInput, netlify.Deploy]
+	deleteSite   *connectormock.Mutation[netlify.DeleteSiteInput, netlify.DeletedSite]
+	cancelDeploy *connectormock.Mutation[netlify.CancelDeployInput, netlify.Deploy]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +31,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listSites:   connectormock.NewQuery[netlify.ListSitesInput, netlify.SitesPage](t, netlify.ListSitesDefinition),
-		listDeploys: connectormock.NewQuery[netlify.ListDeploysInput, netlify.DeploysPage](t, netlify.ListDeploysDefinition),
+		listSites:    connectormock.NewQuery[netlify.ListSitesInput, netlify.SitesPage](t, netlify.ListSitesDefinition),
+		listDeploys:  connectormock.NewQuery[netlify.ListDeploysInput, netlify.DeploysPage](t, netlify.ListDeploysDefinition),
+		getSite:      connectormock.NewQuery[netlify.GetSiteInput, netlify.Site](t, netlify.GetSiteDefinition),
+		getDeploy:    connectormock.NewQuery[netlify.GetDeployInput, netlify.Deploy](t, netlify.GetDeployDefinition),
+		deleteSite:   connectormock.NewMutation[netlify.DeleteSiteInput, netlify.DeletedSite](t, netlify.DeleteSiteDefinition),
+		cancelDeploy: connectormock.NewMutation[netlify.CancelDeployInput, netlify.Deploy](t, netlify.CancelDeployDefinition),
 	}
 	mock.listSites.Default(ListSitesDefault())
 	mock.listDeploys.Default(ListDeploysDefault())
+	mock.getSite.Default(GetSiteDefault())
+	mock.getDeploy.Default(GetDeployDefault())
+	mock.deleteSite.Default(DeleteSiteDefault())
+	mock.cancelDeploy.Default(CancelDeployDefault())
 	connection, err := netlify.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "netlify", Name: connectionName})
 	if err != nil {
 		t.Fatalf("netlify mock connection: %v", err)
@@ -53,6 +65,26 @@ func (mock *Mock) ListDeploys() *connectormock.Query[netlify.ListDeploysInput, n
 	return mock.listDeploys
 }
 
+// GetSite returns the getSite script.
+func (mock *Mock) GetSite() *connectormock.Query[netlify.GetSiteInput, netlify.Site] {
+	return mock.getSite
+}
+
+// GetDeploy returns the getDeploy script.
+func (mock *Mock) GetDeploy() *connectormock.Query[netlify.GetDeployInput, netlify.Deploy] {
+	return mock.getDeploy
+}
+
+// DeleteSite returns the deleteSite script.
+func (mock *Mock) DeleteSite() *connectormock.Mutation[netlify.DeleteSiteInput, netlify.DeletedSite] {
+	return mock.deleteSite
+}
+
+// CancelDeploy returns the cancelDeploy script.
+func (mock *Mock) CancelDeploy() *connectormock.Mutation[netlify.CancelDeployInput, netlify.Deploy] {
+	return mock.cancelDeploy
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSites() sdkgo.Query[netlify.ListSitesInput, netlify.SitesPage] {
@@ -60,6 +92,18 @@ func (operations mockOperations) ListSites() sdkgo.Query[netlify.ListSitesInput,
 }
 func (operations mockOperations) ListDeploys() sdkgo.Query[netlify.ListDeploysInput, netlify.DeploysPage] {
 	return operations.mock.listDeploys
+}
+func (operations mockOperations) GetSite() sdkgo.Query[netlify.GetSiteInput, netlify.Site] {
+	return operations.mock.getSite
+}
+func (operations mockOperations) GetDeploy() sdkgo.Query[netlify.GetDeployInput, netlify.Deploy] {
+	return operations.mock.getDeploy
+}
+func (operations mockOperations) DeleteSite() sdkgo.Mutation[netlify.DeleteSiteInput, netlify.DeletedSite] {
+	return operations.mock.deleteSite
+}
+func (operations mockOperations) CancelDeploy() sdkgo.Mutation[netlify.CancelDeployInput, netlify.Deploy] {
+	return operations.mock.cancelDeploy
 }
 
 // ListSitesListed selects the listed branch: List sites visible to the Netlify token.
@@ -134,3 +178,154 @@ func ListDeploysListedDefault() connectormock.Case[netlify.DeploysPage] {
 
 // ListDeploysDefault is the manifest default, listedDefault, which New installs.
 func ListDeploysDefault() connectormock.Case[netlify.DeploysPage] { return ListDeploysListedDefault() }
+
+// GetSiteFound selects the found branch: The site was found.
+func GetSiteFound(value netlify.Site, failure *sdkgo.Failure) connectormock.Case[netlify.Site] {
+	return connectormock.Branch(netlify.GetSiteBranchFound, value, failure)
+}
+
+// GetSiteNotFound selects the notFound branch: The site was not found.
+func GetSiteNotFound(value netlify.Site, failure *sdkgo.Failure) connectormock.Case[netlify.Site] {
+	return connectormock.Branch(netlify.GetSiteBranchNotFound, value, failure)
+}
+
+// GetSiteProviderRejected selects the providerRejected branch: The provider rejected the request.
+func GetSiteProviderRejected(value netlify.Site, failure *sdkgo.Failure) connectormock.Case[netlify.Site] {
+	return connectormock.Branch(netlify.GetSiteBranchProviderRejected, value, failure)
+}
+
+// GetSiteInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func GetSiteInvalidResponse(value netlify.Site, failure *sdkgo.Failure) connectormock.Case[netlify.Site] {
+	return connectormock.Branch(netlify.GetSiteBranchInvalidResponse, value, failure)
+}
+
+// GetSiteDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetSiteDefect(value netlify.Site, failure *sdkgo.Failure) connectormock.Case[netlify.Site] {
+	return connectormock.Branch(netlify.GetSiteBranchDefect, value, failure)
+}
+
+// GetSiteRetry asks Dex to retry the getSite Step, after the delay when it is positive.
+func GetSiteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[netlify.Site] {
+	return connectormock.Retry[netlify.Site](failure, after)
+}
+
+// GetSiteFoundDefault is the manifest mock foundDefault: A Meridian example site.
+func GetSiteFoundDefault() connectormock.Case[netlify.Site] {
+	value := connectormock.MustDecodeOutput[netlify.Site](`{"id":"site-meridian","name":"meridian-web","url":"https://meridian.netlify.app"}`)
+	return connectormock.Branch(netlify.GetSiteBranchFound, value, nil)
+}
+
+// GetSiteDefault is the manifest default, foundDefault, which New installs.
+func GetSiteDefault() connectormock.Case[netlify.Site] { return GetSiteFoundDefault() }
+
+// GetDeployFound selects the found branch: The deploy was found.
+func GetDeployFound(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.GetDeployBranchFound, value, failure)
+}
+
+// GetDeployNotFound selects the notFound branch: The deploy was not found.
+func GetDeployNotFound(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.GetDeployBranchNotFound, value, failure)
+}
+
+// GetDeployProviderRejected selects the providerRejected branch: The provider rejected the request.
+func GetDeployProviderRejected(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.GetDeployBranchProviderRejected, value, failure)
+}
+
+// GetDeployInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func GetDeployInvalidResponse(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.GetDeployBranchInvalidResponse, value, failure)
+}
+
+// GetDeployDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetDeployDefect(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.GetDeployBranchDefect, value, failure)
+}
+
+// GetDeployRetry asks Dex to retry the getDeploy Step, after the delay when it is positive.
+func GetDeployRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[netlify.Deploy] {
+	return connectormock.Retry[netlify.Deploy](failure, after)
+}
+
+// GetDeployFoundDefault is the manifest mock foundDefault: A Meridian example deploy.
+func GetDeployFoundDefault() connectormock.Case[netlify.Deploy] {
+	value := connectormock.MustDecodeOutput[netlify.Deploy](`{"id":"deploy-meridian","site_id":"site-meridian","state":"ready"}`)
+	return connectormock.Branch(netlify.GetDeployBranchFound, value, nil)
+}
+
+// GetDeployDefault is the manifest default, foundDefault, which New installs.
+func GetDeployDefault() connectormock.Case[netlify.Deploy] { return GetDeployFoundDefault() }
+
+// DeleteSiteDeleted selects the deleted branch: The site was deleted.
+func DeleteSiteDeleted(value netlify.DeletedSite, failure *sdkgo.Failure) connectormock.Case[netlify.DeletedSite] {
+	return connectormock.Branch(netlify.DeleteSiteBranchDeleted, value, failure)
+}
+
+// DeleteSiteNotFound selects the notFound branch: The site was not found.
+func DeleteSiteNotFound(value netlify.DeletedSite, failure *sdkgo.Failure) connectormock.Case[netlify.DeletedSite] {
+	return connectormock.Branch(netlify.DeleteSiteBranchNotFound, value, failure)
+}
+
+// DeleteSiteProviderRejected selects the providerRejected branch: The provider rejected the request.
+func DeleteSiteProviderRejected(value netlify.DeletedSite, failure *sdkgo.Failure) connectormock.Case[netlify.DeletedSite] {
+	return connectormock.Branch(netlify.DeleteSiteBranchProviderRejected, value, failure)
+}
+
+// DeleteSiteDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteSiteDefect(value netlify.DeletedSite, failure *sdkgo.Failure) connectormock.Case[netlify.DeletedSite] {
+	return connectormock.Branch(netlify.DeleteSiteBranchDefect, value, failure)
+}
+
+// DeleteSiteRetry asks Dex to retry the deleteSite Step, after the delay when it is positive.
+func DeleteSiteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[netlify.DeletedSite] {
+	return connectormock.Retry[netlify.DeletedSite](failure, after)
+}
+
+// DeleteSiteDeletedDefault is the manifest mock deletedDefault: A Meridian example site deletion.
+func DeleteSiteDeletedDefault() connectormock.Case[netlify.DeletedSite] {
+	value := connectormock.MustDecodeOutput[netlify.DeletedSite](`{"siteId":"site-meridian"}`)
+	return connectormock.Branch(netlify.DeleteSiteBranchDeleted, value, nil)
+}
+
+// DeleteSiteDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSiteDefault() connectormock.Case[netlify.DeletedSite] { return DeleteSiteDeletedDefault() }
+
+// CancelDeployCancelled selects the cancelled branch: The deploy was cancelled.
+func CancelDeployCancelled(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.CancelDeployBranchCancelled, value, failure)
+}
+
+// CancelDeployNotFound selects the notFound branch: The deploy was not found.
+func CancelDeployNotFound(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.CancelDeployBranchNotFound, value, failure)
+}
+
+// CancelDeployProviderRejected selects the providerRejected branch: The provider rejected the request.
+func CancelDeployProviderRejected(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.CancelDeployBranchProviderRejected, value, failure)
+}
+
+// CancelDeployInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func CancelDeployInvalidResponse(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.CancelDeployBranchInvalidResponse, value, failure)
+}
+
+// CancelDeployDefect selects the defect branch: Local input or connection credentials are invalid.
+func CancelDeployDefect(value netlify.Deploy, failure *sdkgo.Failure) connectormock.Case[netlify.Deploy] {
+	return connectormock.Branch(netlify.CancelDeployBranchDefect, value, failure)
+}
+
+// CancelDeployRetry asks Dex to retry the cancelDeploy Step, after the delay when it is positive.
+func CancelDeployRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[netlify.Deploy] {
+	return connectormock.Retry[netlify.Deploy](failure, after)
+}
+
+// CancelDeployCancelledDefault is the manifest mock cancelledDefault: A Meridian example cancelled deploy.
+func CancelDeployCancelledDefault() connectormock.Case[netlify.Deploy] {
+	value := connectormock.MustDecodeOutput[netlify.Deploy](`{"id":"deploy-meridian","site_id":"site-meridian","state":"cancelled"}`)
+	return connectormock.Branch(netlify.CancelDeployBranchCancelled, value, nil)
+}
+
+// CancelDeployDefault is the manifest default, cancelledDefault, which New installs.
+func CancelDeployDefault() connectormock.Case[netlify.Deploy] { return CancelDeployCancelledDefault() }
