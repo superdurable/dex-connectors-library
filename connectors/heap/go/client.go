@@ -153,6 +153,20 @@ func isDefiniteRefusalStatus(status int) bool {
 	return false
 }
 
+func isDefiniteHeapRefusal(status int, body []byte) bool {
+	if !isDefiniteRefusalStatus(status) {
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil || len(fields) != 1 {
+		return false
+	}
+	var envelope struct {
+		Error string `json:"error"`
+	}
+	return json.Unmarshal(body, &envelope) == nil && envelope.Error != ""
+}
+
 func validAppID(appID string) bool {
 	if len(appID) == 0 || len(appID) > 32 {
 		return false

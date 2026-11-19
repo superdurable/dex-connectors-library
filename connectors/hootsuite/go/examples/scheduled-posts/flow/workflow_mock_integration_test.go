@@ -54,9 +54,10 @@ func TestScheduledPostsUsesDefaultMockWithRealDex(t *testing.T) {
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	var output hootsuite.ScheduledPostsPage
+	var output hootsuite.OutboundMessage
 	require.NoError(t, result.DecodeSingleOutput(&output))
-	require.Equal(t, "4138476039", output.Posts[0].ID)
-	require.Equal(t, "115185509", output.Posts[0].SocialProfileID)
+	require.Equal(t, "4138476039", output.ID)
+	require.Equal(t, "115185509", output.SocialProfileID)
 	require.Len(t, mock.ListScheduledPosts().Calls(), 1)
+	require.Len(t, mock.GetMessage().Calls(), 1)
 }

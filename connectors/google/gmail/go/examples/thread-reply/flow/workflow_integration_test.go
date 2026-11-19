@@ -437,7 +437,7 @@ func newGmailIntegrationHarness(t *testing.T, endpoint string) (*Flow, *gmailInt
 func newGmailIntegrationHarnessWithConnection(t *testing.T, connection gmail.Connection) (*Flow, *gmailIntegrationHarness) {
 	t.Helper()
 	flow := NewFlow(connection)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewSearchMailboxFlow(connection)})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)

@@ -17,10 +17,18 @@ import (
 
 // Mock is a scripted google-sheets connection. Script each operation through its accessor.
 type Mock struct {
-	connection spreadsheet.Connection
-	getValues  *connectormock.Query[spreadsheet.GetValuesInput, spreadsheet.GetValuesOutput]
-	findRow    *connectormock.Query[spreadsheet.FindRowInput, spreadsheet.FindRowOutput]
-	upsertRow  *connectormock.Mutation[spreadsheet.UpsertRowInput, spreadsheet.UpsertRowOutput]
+	connection        spreadsheet.Connection
+	getSpreadsheet    *connectormock.Query[spreadsheet.GetSpreadsheetInput, spreadsheet.SpreadsheetInfo]
+	createSpreadsheet *connectormock.Mutation[spreadsheet.CreateSpreadsheetInput, spreadsheet.SpreadsheetInfo]
+	deleteSpreadsheet *connectormock.Mutation[spreadsheet.DeleteSpreadsheetInput, spreadsheet.DeletedSpreadsheet]
+	createSheet       *connectormock.Mutation[spreadsheet.CreateSheetInput, spreadsheet.SpreadsheetTab]
+	deleteSheet       *connectormock.Mutation[spreadsheet.DeleteSheetInput, spreadsheet.DeletedSheet]
+	clearValues       *connectormock.Mutation[spreadsheet.ClearValuesInput, spreadsheet.ClearedValues]
+	getValues         *connectormock.Query[spreadsheet.GetValuesInput, spreadsheet.GetValuesOutput]
+	findRow           *connectormock.Query[spreadsheet.FindRowInput, spreadsheet.FindRowOutput]
+	appendRow         *connectormock.Mutation[spreadsheet.AppendRowInput, spreadsheet.RowWriteResult]
+	updateRow         *connectormock.Mutation[spreadsheet.UpdateRowInput, spreadsheet.RowWriteResult]
+	upsertRow         *connectormock.Mutation[spreadsheet.UpsertRowInput, spreadsheet.UpsertRowOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,12 +36,28 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getValues: connectormock.NewQuery[spreadsheet.GetValuesInput, spreadsheet.GetValuesOutput](t, spreadsheet.GetValuesDefinition),
-		findRow:   connectormock.NewQuery[spreadsheet.FindRowInput, spreadsheet.FindRowOutput](t, spreadsheet.FindRowDefinition),
-		upsertRow: connectormock.NewMutation[spreadsheet.UpsertRowInput, spreadsheet.UpsertRowOutput](t, spreadsheet.UpsertRowDefinition),
+		getSpreadsheet:    connectormock.NewQuery[spreadsheet.GetSpreadsheetInput, spreadsheet.SpreadsheetInfo](t, spreadsheet.GetSpreadsheetDefinition),
+		createSpreadsheet: connectormock.NewMutation[spreadsheet.CreateSpreadsheetInput, spreadsheet.SpreadsheetInfo](t, spreadsheet.CreateSpreadsheetDefinition),
+		deleteSpreadsheet: connectormock.NewMutation[spreadsheet.DeleteSpreadsheetInput, spreadsheet.DeletedSpreadsheet](t, spreadsheet.DeleteSpreadsheetDefinition),
+		createSheet:       connectormock.NewMutation[spreadsheet.CreateSheetInput, spreadsheet.SpreadsheetTab](t, spreadsheet.CreateSheetDefinition),
+		deleteSheet:       connectormock.NewMutation[spreadsheet.DeleteSheetInput, spreadsheet.DeletedSheet](t, spreadsheet.DeleteSheetDefinition),
+		clearValues:       connectormock.NewMutation[spreadsheet.ClearValuesInput, spreadsheet.ClearedValues](t, spreadsheet.ClearValuesDefinition),
+		getValues:         connectormock.NewQuery[spreadsheet.GetValuesInput, spreadsheet.GetValuesOutput](t, spreadsheet.GetValuesDefinition),
+		findRow:           connectormock.NewQuery[spreadsheet.FindRowInput, spreadsheet.FindRowOutput](t, spreadsheet.FindRowDefinition),
+		appendRow:         connectormock.NewMutation[spreadsheet.AppendRowInput, spreadsheet.RowWriteResult](t, spreadsheet.AppendRowDefinition),
+		updateRow:         connectormock.NewMutation[spreadsheet.UpdateRowInput, spreadsheet.RowWriteResult](t, spreadsheet.UpdateRowDefinition),
+		upsertRow:         connectormock.NewMutation[spreadsheet.UpsertRowInput, spreadsheet.UpsertRowOutput](t, spreadsheet.UpsertRowDefinition),
 	}
+	mock.getSpreadsheet.Default(GetSpreadsheetDefault())
+	mock.createSpreadsheet.Default(CreateSpreadsheetDefault())
+	mock.deleteSpreadsheet.Default(DeleteSpreadsheetDefault())
+	mock.createSheet.Default(CreateSheetDefault())
+	mock.deleteSheet.Default(DeleteSheetDefault())
+	mock.clearValues.Default(ClearValuesDefault())
 	mock.getValues.Default(GetValuesDefault())
 	mock.findRow.Default(FindRowDefault())
+	mock.appendRow.Default(AppendRowDefault())
+	mock.updateRow.Default(UpdateRowDefault())
 	mock.upsertRow.Default(UpsertRowDefault())
 	connection, err := spreadsheet.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google", Name: connectionName})
 	if err != nil {
@@ -46,6 +70,36 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() spreadsheet.Connection { return mock.connection }
 
+// GetSpreadsheet returns the getSpreadsheet script.
+func (mock *Mock) GetSpreadsheet() *connectormock.Query[spreadsheet.GetSpreadsheetInput, spreadsheet.SpreadsheetInfo] {
+	return mock.getSpreadsheet
+}
+
+// CreateSpreadsheet returns the createSpreadsheet script.
+func (mock *Mock) CreateSpreadsheet() *connectormock.Mutation[spreadsheet.CreateSpreadsheetInput, spreadsheet.SpreadsheetInfo] {
+	return mock.createSpreadsheet
+}
+
+// DeleteSpreadsheet returns the deleteSpreadsheet script.
+func (mock *Mock) DeleteSpreadsheet() *connectormock.Mutation[spreadsheet.DeleteSpreadsheetInput, spreadsheet.DeletedSpreadsheet] {
+	return mock.deleteSpreadsheet
+}
+
+// CreateSheet returns the createSheet script.
+func (mock *Mock) CreateSheet() *connectormock.Mutation[spreadsheet.CreateSheetInput, spreadsheet.SpreadsheetTab] {
+	return mock.createSheet
+}
+
+// DeleteSheet returns the deleteSheet script.
+func (mock *Mock) DeleteSheet() *connectormock.Mutation[spreadsheet.DeleteSheetInput, spreadsheet.DeletedSheet] {
+	return mock.deleteSheet
+}
+
+// ClearValues returns the clearValues script.
+func (mock *Mock) ClearValues() *connectormock.Mutation[spreadsheet.ClearValuesInput, spreadsheet.ClearedValues] {
+	return mock.clearValues
+}
+
 // GetValues returns the getValues script.
 func (mock *Mock) GetValues() *connectormock.Query[spreadsheet.GetValuesInput, spreadsheet.GetValuesOutput] {
 	return mock.getValues
@@ -56,6 +110,16 @@ func (mock *Mock) FindRow() *connectormock.Query[spreadsheet.FindRowInput, sprea
 	return mock.findRow
 }
 
+// AppendRow returns the appendRow script.
+func (mock *Mock) AppendRow() *connectormock.Mutation[spreadsheet.AppendRowInput, spreadsheet.RowWriteResult] {
+	return mock.appendRow
+}
+
+// UpdateRow returns the updateRow script.
+func (mock *Mock) UpdateRow() *connectormock.Mutation[spreadsheet.UpdateRowInput, spreadsheet.RowWriteResult] {
+	return mock.updateRow
+}
+
 // UpsertRow returns the upsertRow script.
 func (mock *Mock) UpsertRow() *connectormock.Mutation[spreadsheet.UpsertRowInput, spreadsheet.UpsertRowOutput] {
 	return mock.upsertRow
@@ -63,14 +127,264 @@ func (mock *Mock) UpsertRow() *connectormock.Mutation[spreadsheet.UpsertRowInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetSpreadsheet() sdkgo.Query[spreadsheet.GetSpreadsheetInput, spreadsheet.SpreadsheetInfo] {
+	return operations.mock.getSpreadsheet
+}
+func (operations mockOperations) CreateSpreadsheet() sdkgo.Mutation[spreadsheet.CreateSpreadsheetInput, spreadsheet.SpreadsheetInfo] {
+	return operations.mock.createSpreadsheet
+}
+func (operations mockOperations) DeleteSpreadsheet() sdkgo.Mutation[spreadsheet.DeleteSpreadsheetInput, spreadsheet.DeletedSpreadsheet] {
+	return operations.mock.deleteSpreadsheet
+}
+func (operations mockOperations) CreateSheet() sdkgo.Mutation[spreadsheet.CreateSheetInput, spreadsheet.SpreadsheetTab] {
+	return operations.mock.createSheet
+}
+func (operations mockOperations) DeleteSheet() sdkgo.Mutation[spreadsheet.DeleteSheetInput, spreadsheet.DeletedSheet] {
+	return operations.mock.deleteSheet
+}
+func (operations mockOperations) ClearValues() sdkgo.Mutation[spreadsheet.ClearValuesInput, spreadsheet.ClearedValues] {
+	return operations.mock.clearValues
+}
 func (operations mockOperations) GetValues() sdkgo.Query[spreadsheet.GetValuesInput, spreadsheet.GetValuesOutput] {
 	return operations.mock.getValues
 }
 func (operations mockOperations) FindRow() sdkgo.Query[spreadsheet.FindRowInput, spreadsheet.FindRowOutput] {
 	return operations.mock.findRow
 }
+func (operations mockOperations) AppendRow() sdkgo.Mutation[spreadsheet.AppendRowInput, spreadsheet.RowWriteResult] {
+	return operations.mock.appendRow
+}
+func (operations mockOperations) UpdateRow() sdkgo.Mutation[spreadsheet.UpdateRowInput, spreadsheet.RowWriteResult] {
+	return operations.mock.updateRow
+}
 func (operations mockOperations) UpsertRow() sdkgo.Mutation[spreadsheet.UpsertRowInput, spreadsheet.UpsertRowOutput] {
 	return operations.mock.upsertRow
+}
+
+// GetSpreadsheetFound selects the found branch: Google returned spreadsheet metadata.
+func GetSpreadsheetFound(value spreadsheet.SpreadsheetInfo, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Branch(spreadsheet.GetSpreadsheetBranchFound, value, failure)
+}
+
+// GetSpreadsheetNotFound selects the notFound branch: The spreadsheet is unavailable.
+func GetSpreadsheetNotFound(value spreadsheet.SpreadsheetInfo, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Branch(spreadsheet.GetSpreadsheetBranchNotFound, value, failure)
+}
+
+// GetSpreadsheetProviderRejected selects the providerRejected branch: Google conclusively rejected the read.
+func GetSpreadsheetProviderRejected(value spreadsheet.SpreadsheetInfo, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Branch(spreadsheet.GetSpreadsheetBranchProviderRejected, value, failure)
+}
+
+// GetSpreadsheetInvalidResponse selects the invalidResponse branch: Google returned malformed metadata.
+func GetSpreadsheetInvalidResponse(value spreadsheet.SpreadsheetInfo, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Branch(spreadsheet.GetSpreadsheetBranchInvalidResponse, value, failure)
+}
+
+// GetSpreadsheetDefect selects the defect branch: Local spreadsheet ID or credentials are invalid.
+func GetSpreadsheetDefect(value spreadsheet.SpreadsheetInfo, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Branch(spreadsheet.GetSpreadsheetBranchDefect, value, failure)
+}
+
+// GetSpreadsheetRetry asks Dex to retry the getSpreadsheet Step, after the delay when it is positive.
+func GetSpreadsheetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Retry[spreadsheet.SpreadsheetInfo](failure, after)
+}
+
+// GetSpreadsheetFoundDefault is the manifest mock foundDefault: A Contacts spreadsheet is accessible.
+func GetSpreadsheetFoundDefault() connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	value := connectormock.MustDecodeOutput[spreadsheet.SpreadsheetInfo](`{"spreadsheetId":"sample-spreadsheet","title":"Contacts","sheets":[{"sheetId":1,"title":"Contacts"}]}`)
+	return connectormock.Branch(spreadsheet.GetSpreadsheetBranchFound, value, nil)
+}
+
+// GetSpreadsheetDefault is the manifest default, foundDefault, which New installs.
+func GetSpreadsheetDefault() connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return GetSpreadsheetFoundDefault()
+}
+
+// CreateSpreadsheetCreated selects the created branch: Google created the spreadsheet.
+func CreateSpreadsheetCreated(value spreadsheet.SpreadsheetInfo, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Branch(spreadsheet.CreateSpreadsheetBranchCreated, value, failure)
+}
+
+// CreateSpreadsheetProviderRejected selects the providerRejected branch: Google conclusively rejected the create.
+func CreateSpreadsheetProviderRejected(value spreadsheet.SpreadsheetInfo, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Branch(spreadsheet.CreateSpreadsheetBranchProviderRejected, value, failure)
+}
+
+// CreateSpreadsheetUncertain returns an uncertain createSpreadsheet outcome.
+func CreateSpreadsheetUncertain(value spreadsheet.SpreadsheetInfo, failure sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSpreadsheetDefect selects the defect branch: Local title or credentials are invalid.
+func CreateSpreadsheetDefect(value spreadsheet.SpreadsheetInfo, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Branch(spreadsheet.CreateSpreadsheetBranchDefect, value, failure)
+}
+
+// CreateSpreadsheetRetry asks Dex to retry the createSpreadsheet Step, after the delay when it is positive.
+func CreateSpreadsheetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return connectormock.Retry[spreadsheet.SpreadsheetInfo](failure, after)
+}
+
+// CreateSpreadsheetCreatedDefault is the manifest mock createdDefault: Google created a Contacts spreadsheet.
+func CreateSpreadsheetCreatedDefault() connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	value := connectormock.MustDecodeOutput[spreadsheet.SpreadsheetInfo](`{"spreadsheetId":"sample-spreadsheet","title":"Contacts","sheets":[{"sheetId":1,"title":"Sheet1"}]}`)
+	return connectormock.Branch(spreadsheet.CreateSpreadsheetBranchCreated, value, nil)
+}
+
+// CreateSpreadsheetDefault is the manifest default, createdDefault, which New installs.
+func CreateSpreadsheetDefault() connectormock.Case[spreadsheet.SpreadsheetInfo] {
+	return CreateSpreadsheetCreatedDefault()
+}
+
+// DeleteSpreadsheetDeleted selects the deleted branch: Google deleted the spreadsheet or it was already absent.
+func DeleteSpreadsheetDeleted(value spreadsheet.DeletedSpreadsheet, failure *sdkgo.Failure) connectormock.Case[spreadsheet.DeletedSpreadsheet] {
+	return connectormock.Branch(spreadsheet.DeleteSpreadsheetBranchDeleted, value, failure)
+}
+
+// DeleteSpreadsheetProviderRejected selects the providerRejected branch: Google conclusively rejected the delete.
+func DeleteSpreadsheetProviderRejected(value spreadsheet.DeletedSpreadsheet, failure *sdkgo.Failure) connectormock.Case[spreadsheet.DeletedSpreadsheet] {
+	return connectormock.Branch(spreadsheet.DeleteSpreadsheetBranchProviderRejected, value, failure)
+}
+
+// DeleteSpreadsheetDefect selects the defect branch: Local spreadsheet ID or credentials are invalid.
+func DeleteSpreadsheetDefect(value spreadsheet.DeletedSpreadsheet, failure *sdkgo.Failure) connectormock.Case[spreadsheet.DeletedSpreadsheet] {
+	return connectormock.Branch(spreadsheet.DeleteSpreadsheetBranchDefect, value, failure)
+}
+
+// DeleteSpreadsheetRetry asks Dex to retry the deleteSpreadsheet Step, after the delay when it is positive.
+func DeleteSpreadsheetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spreadsheet.DeletedSpreadsheet] {
+	return connectormock.Retry[spreadsheet.DeletedSpreadsheet](failure, after)
+}
+
+// DeleteSpreadsheetDeletedDefault is the manifest mock deletedDefault: Google deleted the sample spreadsheet.
+func DeleteSpreadsheetDeletedDefault() connectormock.Case[spreadsheet.DeletedSpreadsheet] {
+	value := connectormock.MustDecodeOutput[spreadsheet.DeletedSpreadsheet](`{"spreadsheetId":"sample-spreadsheet"}`)
+	return connectormock.Branch(spreadsheet.DeleteSpreadsheetBranchDeleted, value, nil)
+}
+
+// DeleteSpreadsheetDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSpreadsheetDefault() connectormock.Case[spreadsheet.DeletedSpreadsheet] {
+	return DeleteSpreadsheetDeletedDefault()
+}
+
+// CreateSheetCreated selects the created branch: Google added the tab.
+func CreateSheetCreated(value spreadsheet.SpreadsheetTab, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetTab] {
+	return connectormock.Branch(spreadsheet.CreateSheetBranchCreated, value, failure)
+}
+
+// CreateSheetNotFound selects the notFound branch: The spreadsheet does not exist.
+func CreateSheetNotFound(value spreadsheet.SpreadsheetTab, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetTab] {
+	return connectormock.Branch(spreadsheet.CreateSheetBranchNotFound, value, failure)
+}
+
+// CreateSheetProviderRejected selects the providerRejected branch: Google rejected the new tab.
+func CreateSheetProviderRejected(value spreadsheet.SpreadsheetTab, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetTab] {
+	return connectormock.Branch(spreadsheet.CreateSheetBranchProviderRejected, value, failure)
+}
+
+// CreateSheetInvalidResponse selects the invalidResponse branch: Google returned malformed tab metadata.
+func CreateSheetInvalidResponse(value spreadsheet.SpreadsheetTab, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetTab] {
+	return connectormock.Branch(spreadsheet.CreateSheetBranchInvalidResponse, value, failure)
+}
+
+// CreateSheetDefect selects the defect branch: Local spreadsheet ID or title is invalid.
+func CreateSheetDefect(value spreadsheet.SpreadsheetTab, failure *sdkgo.Failure) connectormock.Case[spreadsheet.SpreadsheetTab] {
+	return connectormock.Branch(spreadsheet.CreateSheetBranchDefect, value, failure)
+}
+
+// CreateSheetRetry asks Dex to retry the createSheet Step, after the delay when it is positive.
+func CreateSheetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spreadsheet.SpreadsheetTab] {
+	return connectormock.Retry[spreadsheet.SpreadsheetTab](failure, after)
+}
+
+// CreateSheetCreatedDefault is the manifest mock createdDefault: A Contacts tab was added.
+func CreateSheetCreatedDefault() connectormock.Case[spreadsheet.SpreadsheetTab] {
+	value := connectormock.MustDecodeOutput[spreadsheet.SpreadsheetTab](`{"sheetId":1,"title":"Contacts"}`)
+	return connectormock.Branch(spreadsheet.CreateSheetBranchCreated, value, nil)
+}
+
+// CreateSheetDefault is the manifest default, createdDefault, which New installs.
+func CreateSheetDefault() connectormock.Case[spreadsheet.SpreadsheetTab] {
+	return CreateSheetCreatedDefault()
+}
+
+// DeleteSheetDeleted selects the deleted branch: Google deleted the tab or it was already absent.
+func DeleteSheetDeleted(value spreadsheet.DeletedSheet, failure *sdkgo.Failure) connectormock.Case[spreadsheet.DeletedSheet] {
+	return connectormock.Branch(spreadsheet.DeleteSheetBranchDeleted, value, failure)
+}
+
+// DeleteSheetNotFound selects the notFound branch: The spreadsheet does not exist.
+func DeleteSheetNotFound(value spreadsheet.DeletedSheet, failure *sdkgo.Failure) connectormock.Case[spreadsheet.DeletedSheet] {
+	return connectormock.Branch(spreadsheet.DeleteSheetBranchNotFound, value, failure)
+}
+
+// DeleteSheetProviderRejected selects the providerRejected branch: Google rejected the tab deletion.
+func DeleteSheetProviderRejected(value spreadsheet.DeletedSheet, failure *sdkgo.Failure) connectormock.Case[spreadsheet.DeletedSheet] {
+	return connectormock.Branch(spreadsheet.DeleteSheetBranchProviderRejected, value, failure)
+}
+
+// DeleteSheetDefect selects the defect branch: Local spreadsheet or tab ID is invalid.
+func DeleteSheetDefect(value spreadsheet.DeletedSheet, failure *sdkgo.Failure) connectormock.Case[spreadsheet.DeletedSheet] {
+	return connectormock.Branch(spreadsheet.DeleteSheetBranchDefect, value, failure)
+}
+
+// DeleteSheetRetry asks Dex to retry the deleteSheet Step, after the delay when it is positive.
+func DeleteSheetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spreadsheet.DeletedSheet] {
+	return connectormock.Retry[spreadsheet.DeletedSheet](failure, after)
+}
+
+// DeleteSheetDeletedDefault is the manifest mock deletedDefault: A Contacts tab was deleted.
+func DeleteSheetDeletedDefault() connectormock.Case[spreadsheet.DeletedSheet] {
+	value := connectormock.MustDecodeOutput[spreadsheet.DeletedSheet](`{"spreadsheetId":"sample-spreadsheet","sheetId":1}`)
+	return connectormock.Branch(spreadsheet.DeleteSheetBranchDeleted, value, nil)
+}
+
+// DeleteSheetDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSheetDefault() connectormock.Case[spreadsheet.DeletedSheet] {
+	return DeleteSheetDeletedDefault()
+}
+
+// ClearValuesCleared selects the cleared branch: Google cleared the range.
+func ClearValuesCleared(value spreadsheet.ClearedValues, failure *sdkgo.Failure) connectormock.Case[spreadsheet.ClearedValues] {
+	return connectormock.Branch(spreadsheet.ClearValuesBranchCleared, value, failure)
+}
+
+// ClearValuesNotFound selects the notFound branch: The spreadsheet or range does not exist.
+func ClearValuesNotFound(value spreadsheet.ClearedValues, failure *sdkgo.Failure) connectormock.Case[spreadsheet.ClearedValues] {
+	return connectormock.Branch(spreadsheet.ClearValuesBranchNotFound, value, failure)
+}
+
+// ClearValuesProviderRejected selects the providerRejected branch: Google rejected the clear.
+func ClearValuesProviderRejected(value spreadsheet.ClearedValues, failure *sdkgo.Failure) connectormock.Case[spreadsheet.ClearedValues] {
+	return connectormock.Branch(spreadsheet.ClearValuesBranchProviderRejected, value, failure)
+}
+
+// ClearValuesInvalidResponse selects the invalidResponse branch: Google returned malformed clear metadata.
+func ClearValuesInvalidResponse(value spreadsheet.ClearedValues, failure *sdkgo.Failure) connectormock.Case[spreadsheet.ClearedValues] {
+	return connectormock.Branch(spreadsheet.ClearValuesBranchInvalidResponse, value, failure)
+}
+
+// ClearValuesDefect selects the defect branch: Local spreadsheet ID or range is invalid.
+func ClearValuesDefect(value spreadsheet.ClearedValues, failure *sdkgo.Failure) connectormock.Case[spreadsheet.ClearedValues] {
+	return connectormock.Branch(spreadsheet.ClearValuesBranchDefect, value, failure)
+}
+
+// ClearValuesRetry asks Dex to retry the clearValues Step, after the delay when it is positive.
+func ClearValuesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spreadsheet.ClearedValues] {
+	return connectormock.Retry[spreadsheet.ClearedValues](failure, after)
+}
+
+// ClearValuesClearedDefault is the manifest mock clearedDefault: Contact values were cleared.
+func ClearValuesClearedDefault() connectormock.Case[spreadsheet.ClearedValues] {
+	value := connectormock.MustDecodeOutput[spreadsheet.ClearedValues](`{"spreadsheetId":"sample-spreadsheet","clearedRange":"Contacts!A2:C3"}`)
+	return connectormock.Branch(spreadsheet.ClearValuesBranchCleared, value, nil)
+}
+
+// ClearValuesDefault is the manifest default, clearedDefault, which New installs.
+func ClearValuesDefault() connectormock.Case[spreadsheet.ClearedValues] {
+	return ClearValuesClearedDefault()
 }
 
 // GetValuesRead selects the read branch: The range was read.
@@ -187,6 +501,88 @@ func FindRowFindRejected() connectormock.Case[spreadsheet.FindRowOutput] {
 
 // FindRowDefault is the manifest default, contactFound, which New installs.
 func FindRowDefault() connectormock.Case[spreadsheet.FindRowOutput] { return FindRowContactFound() }
+
+// AppendRowAppended selects the appended branch: Google appended the row.
+func AppendRowAppended(value spreadsheet.RowWriteResult, failure *sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Branch(spreadsheet.AppendRowBranchAppended, value, failure)
+}
+
+// AppendRowNotFound selects the notFound branch: The spreadsheet or sheet does not exist.
+func AppendRowNotFound(value spreadsheet.RowWriteResult, failure *sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Branch(spreadsheet.AppendRowBranchNotFound, value, failure)
+}
+
+// AppendRowProviderRejected selects the providerRejected branch: Google rejected the append.
+func AppendRowProviderRejected(value spreadsheet.RowWriteResult, failure *sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Branch(spreadsheet.AppendRowBranchProviderRejected, value, failure)
+}
+
+// AppendRowInvalidResponse selects the invalidResponse branch: Google returned malformed append metadata.
+func AppendRowInvalidResponse(value spreadsheet.RowWriteResult, failure *sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Branch(spreadsheet.AppendRowBranchInvalidResponse, value, failure)
+}
+
+// AppendRowUncertain returns an uncertain appendRow outcome.
+func AppendRowUncertain(value spreadsheet.RowWriteResult, failure sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// AppendRowDefect selects the defect branch: Local spreadsheet ID, tab, or values are invalid.
+func AppendRowDefect(value spreadsheet.RowWriteResult, failure *sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Branch(spreadsheet.AppendRowBranchDefect, value, failure)
+}
+
+// AppendRowRetry asks Dex to retry the appendRow Step, after the delay when it is positive.
+func AppendRowRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Retry[spreadsheet.RowWriteResult](failure, after)
+}
+
+// AppendRowAppendedDefault is the manifest mock appendedDefault: A contact row was appended.
+func AppendRowAppendedDefault() connectormock.Case[spreadsheet.RowWriteResult] {
+	value := connectormock.MustDecodeOutput[spreadsheet.RowWriteResult](`{"rowNumber":2,"updatedRange":"Contacts!A2:C2"}`)
+	return connectormock.Branch(spreadsheet.AppendRowBranchAppended, value, nil)
+}
+
+// AppendRowDefault is the manifest default, appendedDefault, which New installs.
+func AppendRowDefault() connectormock.Case[spreadsheet.RowWriteResult] {
+	return AppendRowAppendedDefault()
+}
+
+// UpdateRowUpdated selects the updated branch: Google replaced the row.
+func UpdateRowUpdated(value spreadsheet.RowWriteResult, failure *sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Branch(spreadsheet.UpdateRowBranchUpdated, value, failure)
+}
+
+// UpdateRowNotFound selects the notFound branch: The spreadsheet or sheet does not exist.
+func UpdateRowNotFound(value spreadsheet.RowWriteResult, failure *sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Branch(spreadsheet.UpdateRowBranchNotFound, value, failure)
+}
+
+// UpdateRowProviderRejected selects the providerRejected branch: Google rejected the replacement.
+func UpdateRowProviderRejected(value spreadsheet.RowWriteResult, failure *sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Branch(spreadsheet.UpdateRowBranchProviderRejected, value, failure)
+}
+
+// UpdateRowDefect selects the defect branch: Local spreadsheet ID, tab, row, or values are invalid.
+func UpdateRowDefect(value spreadsheet.RowWriteResult, failure *sdkgo.Failure) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Branch(spreadsheet.UpdateRowBranchDefect, value, failure)
+}
+
+// UpdateRowRetry asks Dex to retry the updateRow Step, after the delay when it is positive.
+func UpdateRowRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spreadsheet.RowWriteResult] {
+	return connectormock.Retry[spreadsheet.RowWriteResult](failure, after)
+}
+
+// UpdateRowUpdatedDefault is the manifest mock updatedDefault: A contact row was replaced.
+func UpdateRowUpdatedDefault() connectormock.Case[spreadsheet.RowWriteResult] {
+	value := connectormock.MustDecodeOutput[spreadsheet.RowWriteResult](`{"rowNumber":2,"updatedRange":"Contacts!A2:C2"}`)
+	return connectormock.Branch(spreadsheet.UpdateRowBranchUpdated, value, nil)
+}
+
+// UpdateRowDefault is the manifest default, updatedDefault, which New installs.
+func UpdateRowDefault() connectormock.Case[spreadsheet.RowWriteResult] {
+	return UpdateRowUpdatedDefault()
+}
 
 // UpsertRowUpserted selects the upserted branch: One row was inserted or updated.
 func UpsertRowUpserted(value spreadsheet.UpsertRowOutput, failure *sdkgo.Failure) connectormock.Case[spreadsheet.UpsertRowOutput] {

@@ -1,6 +1,7 @@
 # Gemini generate-summary example
 
-This example runs one operation-only Flow from Dex Web **Start Flow**:
+This example runs two operation-only Flows from Dex Web **Start Flow**.
+`GeminiGenerateSummary` uses these Steps:
 
 1. `RecordSummaryRequest` validates the typed start input and persists it in the
    `gemini-summary-request` Attribute;
@@ -11,6 +12,11 @@ This example runs one operation-only Flow from Dex Web **Start Flow**:
 
 The completion Step writes the `gemini-summary-outcome` Attribute. The
 summary and display RPCs show the request and the outcome in Dex Web.
+
+`GeminiFileSearchStoreInventory` accepts an optional `pageSize` (1 to 20) and
+`pageToken`, calls `listFileSearchStores`, persists the returned page, and
+completes with its store names and next token. Its provider-fake integration
+test runs the checked-in Flow against a real local Dex server.
 
 The example wires only `generated`. Truncated, blocked, `providerRejected`,
 `invalidResponse`, and `defect` outcomes fail the Flow. For example, a Gemini project without prepay credits returns
@@ -62,7 +68,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/gemini/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/gemini/go \
-  --version v0.23.0 --tag connectors/google/gemini/go/v0.23.0 \
+  --version v0.24.0 --tag connectors/google/gemini/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/gemini-release/connector-ui.tgz \
   --ui-digest /tmp/gemini-release/connector-ui.tgz.sha256 \

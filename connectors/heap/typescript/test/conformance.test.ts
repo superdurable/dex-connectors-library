@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { HeapClient } from '../src/client.js';
 import { SetUserPropertiesInputSchema, type SetUserPropertiesInput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/heap/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/heap/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'setUserProperties');
 const connection = { provider: 'heap', name: 'heap' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeHeap));

@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted greenhouse connection. Script each operation through its accessor.
 type Mock struct {
-	connection   greenhouse.Connection
-	getCandidate *connectormock.Query[greenhouse.GetCandidateInput, greenhouse.CandidateProfile]
+	connection     greenhouse.Connection
+	listCandidates *connectormock.Query[greenhouse.ListCandidatesInput, greenhouse.CandidateProfilesPage]
+	getCandidate   *connectormock.Query[greenhouse.GetCandidateInput, greenhouse.CandidateProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +27,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getCandidate: connectormock.NewQuery[greenhouse.GetCandidateInput, greenhouse.CandidateProfile](t, greenhouse.GetCandidateDefinition),
+		listCandidates: connectormock.NewQuery[greenhouse.ListCandidatesInput, greenhouse.CandidateProfilesPage](t, greenhouse.ListCandidatesDefinition),
+		getCandidate:   connectormock.NewQuery[greenhouse.GetCandidateInput, greenhouse.CandidateProfile](t, greenhouse.GetCandidateDefinition),
 	}
+	mock.listCandidates.Default(ListCandidatesDefault())
 	mock.getCandidate.Default(GetCandidateDefault())
 	connection, err := greenhouse.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "greenhouse", Name: connectionName})
 	if err != nil {
@@ -40,6 +43,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() greenhouse.Connection { return mock.connection }
 
+// ListCandidates returns the listCandidates script.
+func (mock *Mock) ListCandidates() *connectormock.Query[greenhouse.ListCandidatesInput, greenhouse.CandidateProfilesPage] {
+	return mock.listCandidates
+}
+
 // GetCandidate returns the getCandidate script.
 func (mock *Mock) GetCandidate() *connectormock.Query[greenhouse.GetCandidateInput, greenhouse.CandidateProfile] {
 	return mock.getCandidate
@@ -47,8 +55,47 @@ func (mock *Mock) GetCandidate() *connectormock.Query[greenhouse.GetCandidateInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCandidates() sdkgo.Query[greenhouse.ListCandidatesInput, greenhouse.CandidateProfilesPage] {
+	return operations.mock.listCandidates
+}
 func (operations mockOperations) GetCandidate() sdkgo.Query[greenhouse.GetCandidateInput, greenhouse.CandidateProfile] {
 	return operations.mock.getCandidate
+}
+
+// ListCandidatesListed selects the listed branch: Greenhouse returned a candidate page.
+func ListCandidatesListed(value greenhouse.CandidateProfilesPage, failure *sdkgo.Failure) connectormock.Case[greenhouse.CandidateProfilesPage] {
+	return connectormock.Branch(greenhouse.ListCandidatesBranchListed, value, failure)
+}
+
+// ListCandidatesProviderRejected selects the providerRejected branch: Greenhouse conclusively rejected the list request.
+func ListCandidatesProviderRejected(value greenhouse.CandidateProfilesPage, failure *sdkgo.Failure) connectormock.Case[greenhouse.CandidateProfilesPage] {
+	return connectormock.Branch(greenhouse.ListCandidatesBranchProviderRejected, value, failure)
+}
+
+// ListCandidatesInvalidResponse selects the invalidResponse branch: Greenhouse returned malformed or oversized page data.
+func ListCandidatesInvalidResponse(value greenhouse.CandidateProfilesPage, failure *sdkgo.Failure) connectormock.Case[greenhouse.CandidateProfilesPage] {
+	return connectormock.Branch(greenhouse.ListCandidatesBranchInvalidResponse, value, failure)
+}
+
+// ListCandidatesDefect selects the defect branch: Page settings or connection credentials are invalid.
+func ListCandidatesDefect(value greenhouse.CandidateProfilesPage, failure *sdkgo.Failure) connectormock.Case[greenhouse.CandidateProfilesPage] {
+	return connectormock.Branch(greenhouse.ListCandidatesBranchDefect, value, failure)
+}
+
+// ListCandidatesRetry asks Dex to retry the listCandidates Step, after the delay when it is positive.
+func ListCandidatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[greenhouse.CandidateProfilesPage] {
+	return connectormock.Retry[greenhouse.CandidateProfilesPage](failure, after)
+}
+
+// ListCandidatesListedDefault is the manifest mock listedDefault: A sample candidate page is returned.
+func ListCandidatesListedDefault() connectormock.Case[greenhouse.CandidateProfilesPage] {
+	value := connectormock.MustDecodeOutput[greenhouse.CandidateProfilesPage](`{"candidates":[{"id":53883394,"firstName":"Sample","lastName":"Candidate"}],"nextCursor":""}`)
+	return connectormock.Branch(greenhouse.ListCandidatesBranchListed, value, nil)
+}
+
+// ListCandidatesDefault is the manifest default, listedDefault, which New installs.
+func ListCandidatesDefault() connectormock.Case[greenhouse.CandidateProfilesPage] {
+	return ListCandidatesListedDefault()
 }
 
 // GetCandidateFound selects the found branch: Greenhouse returned the candidate.
