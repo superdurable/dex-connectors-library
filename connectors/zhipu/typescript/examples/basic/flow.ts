@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { QueryResult } from '@superdurable/connectors-sdk';
-import { newGenerateTextStep, type Connection, type GenerateTextInput, type GenerateTextOutput } from '@superdurable/connector-zhipu';
+import { newGenerateTextStep, type Connection, type GenerateTextInput, type GenerateTextOutput } from '../../src/index.js';
 
 /** Static Dex Web connection for this example. */
 export const ConnectionName = 'zhipu';
