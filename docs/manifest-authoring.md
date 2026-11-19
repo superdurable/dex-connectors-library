@@ -294,7 +294,8 @@ before the request left the process, a 429, and a 503 return Retry. Exhausted
 retries never become uncertainty. Every `limited` or `unsafe` Mutation,
 including one that omits `repeatOnUnknown` and so defaults to `limited`, must
 declare an optional `uncertain` branch; `connectorctl validate` and the
-manifest JSON Schema reject one without it.
+manifest JSON Schema reject one without it or with an `uncertain` branch
+that is not `optional: true`.
 
 For a module whose `go/go.mod` requires `sdkgo` v0.37.0 or later, `connectorctl
 generate` writes the resolved tier and cap into each Mutation definition

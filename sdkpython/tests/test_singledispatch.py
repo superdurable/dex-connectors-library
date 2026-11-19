@@ -110,6 +110,17 @@ def test_legacy_own_marker_is_read() -> None:
     )
 
 
+def test_marker_instance_is_not_a_heartbeat() -> None:
+    """Only wire JSON is read; a Marker instance counts as no marker, and its wire form is read."""
+    accepted = Marker(CALL_ID, 1, State.CLAIMED, "object-1", 1)
+    ignored = decide_dispatch(CALL_ID, 2, accepted, max_sends=3)
+    assert (ignored.kind, ignored.marker, ignored.prior_send_upper_bound) == (
+        DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, None, 1
+    )
+    read = decide_dispatch(CALL_ID, 2, accepted.to_wire(), max_sends=3)
+    assert read.marker == accepted
+
+
 def test_unreadable_or_legacy_heartbeats_count_as_no_marker() -> None:
     """A foreign legacy marker, garbage, or a mismatched entry never fails closed."""
     proven = Marker(CALL_ID, 1, State.NOT_SENT)
@@ -217,10 +228,12 @@ def test_default_send_cap_matches_previous_decisions() -> None:
          DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 3),
         (2, Marker(CALL_ID, 1, State.NOT_SENT, "object-42"), 3,
          DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 0),
-        # A marker from this or a later attempt cannot bound earlier sends.
-        (2, Marker(CALL_ID, 2, State.NOT_SENT), 3, DecisionKind.READ_BACK_REQUIRED, 0),
+        # A marker from this or a later attempt never permits a resend; its count is the bound.
+        (2, Marker(CALL_ID, 2, State.NOT_SENT), 3, DecisionKind.READ_BACK_REQUIRED, 1),
         (2, Marker(CALL_ID, 5, State.CLAIMED, send_count=1), 10,
-         DecisionKind.READ_BACK_REQUIRED, 0),
+         DecisionKind.READ_BACK_REQUIRED, 1),
+        (3, Marker(CALL_ID, 4, State.CLAIMED, send_count=3), 10,
+         DecisionKind.READ_BACK_REQUIRED, 3),
     ],
 )
 def test_bounded_resend_decisions(

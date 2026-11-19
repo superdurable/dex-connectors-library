@@ -133,9 +133,11 @@ def decide_dispatch(
 ) -> Decision:
     """Permit a send only when proven safe or while the send cap allows another.
 
-    `previous_heartbeat` is the previous attempt's whole heartbeat value, or
-    `None` when it recorded none. Only this call's entry in the checkpoint
-    map counts. A single marker that an earlier release recorded as the
+    `previous_heartbeat` is the previous attempt's whole heartbeat value as
+    decoded wire JSON (a `dict`), or `None` when it recorded none. A `Marker`
+    instance is not accepted as a heartbeat: since `0.13.0` it counts as no
+    marker, so pass `marker.to_wire()` instead. Only this call's entry in
+    the checkpoint map counts. A single marker that an earlier release recorded as the
     whole heartbeat is this call's entry when its call ID matches, keeping
     its state and provider ID; a missing send count is read as its attempt
     for `claimed` and its attempt minus one otherwise. A missing entry, a
@@ -163,8 +165,8 @@ def decide_dispatch(
     if not _has_possible_send_count(marker):
         return Decision(DecisionKind.FAIL_CLOSED, marker, "invalid single-dispatch checkpoint")
     if marker.attempt >= attempt:
-        # A current or future attempt's marker cannot bound earlier sends.
-        return Decision(DecisionKind.READ_BACK_REQUIRED, marker)
+        # A current or future attempt's marker never permits a resend; Go and TS report its count.
+        return Decision(DecisionKind.READ_BACK_REQUIRED, marker, prior_send_upper_bound=marker.send_count)
     prior_send_upper_bound = marker.send_count + (attempt - 1 - marker.attempt)
     if (
         marker.attempt == attempt - 1

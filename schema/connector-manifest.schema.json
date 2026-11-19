@@ -968,7 +968,7 @@
           "then": { "properties": { "idempotency": { "const": "none" } } }
         },
         {
-          "$comment": "A limited or unsafe mutation must declare an uncertain branch and keep it selectable at the send cap.",
+          "$comment": "A limited or unsafe mutation must declare an optional uncertain branch and keep it selectable at the send cap.",
           "if": {
             "required": ["kind"],
             "properties": { "kind": { "const": "mutation" } },
@@ -988,7 +988,7 @@
           "then": {
             "properties": {
               "branches": {
-                "contains": { "required": ["id"], "properties": { "id": { "const": "uncertain" } } },
+                "contains": { "required": ["id", "optional"], "properties": { "id": { "const": "uncertain" }, "optional": { "const": true } } },
                 "not": {
                   "contains": { "required": ["id", "retired"], "properties": { "id": { "const": "uncertain" }, "retired": { "const": true } } }
                 }
