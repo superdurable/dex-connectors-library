@@ -1,0 +1,52 @@
+{
+  "connectorId": "polyv",
+  "releaseTag": "connectors/polyv/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-polyv",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_channels_step",
+      "kind": "query",
+      "operationId": "listChannels",
+      "inputType": "ListChannelsInput",
+      "description": "List all live channel IDs visible to this Polyv account.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListChannelsInput requests the complete live channel-ID list for the account.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

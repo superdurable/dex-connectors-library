@@ -11,3 +11,7 @@ Sign in to the [Polyv live console](https://console.polyv.net/live/index.html#/d
 ## Example
 
 The [channel catalog Flow](go/examples/channel-catalog/) is a runnable Worker with static Dex connection name `polyv`. Its mock uses synthetic channel IDs and is verified against a real Dex Worker and Client. Live Polyv authorization and channel-list behavior require a user-controlled connection and remain unverified here.
+
+## Python
+
+The `dex-connector-polyv` Python package implements `listChannels` with the same signed request and provider decisions as Go. See [its runnable Flow](python/examples/channel_catalog/). Live Polyv authorization has not been verified.
