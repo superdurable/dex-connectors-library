@@ -1,0 +1,52 @@
+{
+  "connectorId": "agora",
+  "releaseTag": "connectors/agora/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-agora",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_running_agents_step",
+      "kind": "query",
+      "operationId": "listRunningAgents",
+      "inputType": "ListRunningAgentsInput",
+      "description": "Read one page of currently running Conversational AI agents from the preceding two hours.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListRunningAgentsInput has no parameters; the connection identifies the project.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}
