@@ -1,0 +1,464 @@
+{
+  "connector": "honor",
+  "scenarios": [
+    {
+      "callId": "969605c7-7f96-5924-a086-941f8195f750",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-token\",\"expires_in\":3600,\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "test-client"
+            ],
+            "client_secret": [
+              "test-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth/token",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":[{\"appId\":123456,\"packageName\":\"com.example.app\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/publish/get-app-id",
+          "query": {
+            "pkgName": [
+              "com.example.app"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "appID": 123456,
+          "packageName": "com.example.app"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "lookupAppID-found",
+      "operation": "lookupAppID"
+    },
+    {
+      "callId": "ade61a21-86a6-5b48-b881-b56fe9178061",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-token\",\"expires_in\":3600,\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "test-client"
+            ],
+            "client_secret": [
+              "test-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth/token",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":0,\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/publish/get-app-id",
+          "query": {
+            "pkgName": [
+              "com.example.app"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "",
+        "output": {
+          "appID": 0,
+          "packageName": "com.example.app"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "lookupAppID-notFound",
+      "operation": "lookupAppID"
+    },
+    {
+      "callId": "fc4bbb5e-1020-5753-aeef-0de4f0a57676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "client_id": [
+              "test-client"
+            ],
+            "client_secret": [
+              "test-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth/token",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "appID": 0,
+          "packageName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "lookupAppID-providerRejected",
+      "operation": "lookupAppID"
+    },
+    {
+      "callId": "05e9ed50-e819-58d3-aa1f-c76b6b81f6d7",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-token\"}",
+          "form": {
+            "client_id": [
+              "test-client"
+            ],
+            "client_secret": [
+              "test-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth/token",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appID": 0,
+          "packageName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "lookupAppID-invalidResponse",
+      "operation": "lookupAppID"
+    },
+    {
+      "callId": "63506918-595c-5937-b08a-d6149873eddd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appID": 0,
+          "packageName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "bad name"
+      },
+      "name": "lookupAppID-defect",
+      "operation": "lookupAppID"
+    },
+    {
+      "callId": "91d6126e-060b-5bd9-903e-fd34762ef517",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "client_id": [
+              "test-client"
+            ],
+            "client_secret": [
+              "test-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth/token",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "lookupAppID-rateLimit",
+      "operation": "lookupAppID"
+    },
+    {
+      "callId": "e4aa5198-024e-5a3a-a4c0-a26995815b4c",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-token\",\"expires_in\":3600,\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "test-client"
+            ],
+            "client_secret": [
+              "test-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth/token",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/openapi/v1/publish/get-app-id",
+          "query": {
+            "pkgName": [
+              "com.example.app"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "lookupAppID-serverError",
+      "operation": "lookupAppID"
+    },
+    {
+      "callId": "feb5d725-1a7f-5ce5-b2c4-b6c645a55a6d",
+      "exchanges": [
+        {
+          "form": {
+            "client_id": [
+              "test-client"
+            ],
+            "client_secret": [
+              "test-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth/token",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "lookupAppID-transport",
+      "operation": "lookupAppID"
+    },
+    {
+      "callId": "f858497c-02ea-5225-8c86-ea9e14830e43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "client_id": [
+              "test-client"
+            ],
+            "client_secret": [
+              "test-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/auth/token",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageName": "com.example.app"
+      },
+      "name": "lookupAppID-tokenServerError",
+      "operation": "lookupAppID"
+    }
+  ],
+  "schemaVersion": 1
+}
