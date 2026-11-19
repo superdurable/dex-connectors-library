@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-search-console
   displayName: Google Search Console
-  description: List Search Console properties accessible to the connected Google account.
+  description: Read Search Console properties, search analytics, sitemaps, and URL inspection status.
   company: Google
   categories: [marketing, analytics]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: google-search-console
   languages:
@@ -36,8 +36,13 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Positive maximum complete Search Console response in bytes. Blank uses the displayed default; increase only for an account with many properties.
+        description: Positive maximum complete Search Console response in bytes. Blank uses the displayed default; increase for large analytics or sitemap pages.
         default: 1048576
+      - name: inspectionBaseUrl
+        goName: InspectionBaseURL
+        type: url
+        description: URL Inspection API HTTPS origin. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
+        default: https://searchconsole.googleapis.com
   auth:
     type: oauth2
     refreshable: true
@@ -70,6 +75,8 @@ spec:
         - Open Google Auth Platform > Data Access and add the displayed webmasters.readonly scope. Under Clients > Create client > Web application, register the exact redirect URI shown by Dex Web.
         - Copy the Web application's Client ID and Client Secret into Dex Web. Authorize with a Google user that has access to the desired Search Console properties; Dex requests offline access and refreshes tokens.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Properties and permission levels come from the API and require no manual site ID configuration.
+        - In Search Console at https://search.google.com/search-console, use the property selector to copy the exact URL-prefix property including trailing slash or sc-domain property name. Use that value for site, analytics, sitemap, and inspection requests; start and end dates use YYYY-MM-DD in Pacific time.
+        - In Search Console > Sitemaps, copy a submitted sitemap's full URL to get its status. In URL Inspection, enter the full page URL under the selected property; leave languageCode blank for English. Leave inspectionBaseUrl blank for Google's displayed endpoint.
     oauth2:
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
       tokenEndpoint: https://oauth2.googleapis.com/token
@@ -88,6 +95,91 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getSite
+      goName: GetSite
+      inputType: GetSiteInput
+      outputType: Site
+      kind: query
+      description: Read one accessible property and permission level.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the property.}
+        - {id: notFound, goName: NotFound, description: The property is not accessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed property JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local property URL or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: The example property is accessible., output: {siteUrl: 'sc-domain:example.com', permissionLevel: siteOwner}}
+    - name: querySearchAnalytics
+      goName: QuerySearchAnalytics
+      inputType: QuerySearchAnalyticsInput
+      outputType: SearchAnalyticsResult
+      kind: query
+      description: Query bounded search performance rows for a property and date range.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: queried, goName: Queried, description: Google returned search performance rows.}
+        - {id: notFound, goName: NotFound, description: The property is not accessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed analytics JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local property, date, row input, or credentials are invalid.", optional: true}
+      mocks:
+        - {name: queriedDefault, branch: queried, default: true, description: One sample search row is available., output: {rows: [{keys: [example], clicks: 5, impressions: 100, ctr: 0.05, position: 3.2}], responseAggregationType: byProperty}}
+    - name: listSitemaps
+      goName: ListSitemaps
+      inputType: ListSitemapsInput
+      outputType: SitemapsPage
+      kind: query
+      description: List sitemaps submitted for a property.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned the sitemaps.}
+        - {id: notFound, goName: NotFound, description: The property is not accessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed sitemap JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local property URL or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One sitemap is submitted., output: {sitemaps: [{path: 'https://example.com/sitemap.xml', type: sitemap}]}}
+    - name: getSitemap
+      goName: GetSitemap
+      inputType: GetSitemapInput
+      outputType: Sitemap
+      kind: query
+      description: Read submission and error status for one sitemap.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Google returned the sitemap.}
+        - {id: notFound, goName: NotFound, description: The sitemap is not submitted., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed sitemap JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local property or sitemap URL or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: The sample sitemap exists., output: {path: 'https://example.com/sitemap.xml', type: sitemap}}
+    - name: inspectURL
+      goName: InspectURL
+      inputType: InspectURLInput
+      outputType: URLInspectionResult
+      kind: query
+      description: Read Google's indexed status for a page URL.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: inspected, goName: Inspected, description: Google returned the indexed URL status.}
+        - {id: notFound, goName: NotFound, description: The property or URL is not accessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the inspection., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed inspection JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local property or page URL or credentials are invalid., optional: true}
+      mocks:
+        - {name: inspectedDefault, branch: inspected, default: true, description: The sample page is indexed., output: {indexStatusResult: {verdict: PASS, coverageState: 'Submitted and indexed'}}}
     - name: listSites
       goName: ListSites
       inputType: ListSitesInput

@@ -1,5 +1,7 @@
 # ActiveCampaign contact-inspection Flow
 
+This Worker registers `ActiveCampaignContactInspection`, `ActiveCampaignSyncContact`, `ActiveCampaignListInspection`, `ActiveCampaignCreateTag`, `ActiveCampaignCreateDeal`, `ActiveCampaignCreateDealNote`, `ActiveCampaignApplyTagToContact`, and `ActiveCampaignSubscribeContactToList`. The deal, note, and subscription Flows use bounded sends; the tag-assignment Flow applies an existing tag by ID. Their checked-in mock integration tests exercise each mutation against a real local Dex Server. The tag Flow creates a contact tag definition by name, and the sync Flow upserts a contact by email. The production connection uses the same static `activecampaign` name for all Flows.
+
 This runnable Flow calls `listContacts` with the static `activecampaign` connection. Its happy-path contact page is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only basic contact fields enter the Flow result; the API Key does not.
 
 ## Strict FDG 2.0 generation

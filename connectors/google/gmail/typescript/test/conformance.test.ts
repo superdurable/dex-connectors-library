@@ -8,7 +8,8 @@ import { GmailClient } from '../src/client.js';
 import { GetMessageInputSchema, ReplyToMessageInputSchema, SendMessageInputSchema, type Credentials } from '../src/models.js';
 import { answerRecordedRequest, ExchangeRecorder, HeartbeatContext, invokeProductionMutation, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/gmail/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/gmail/scenarios.json', import.meta.url))
+  .filter(scenario => ['getMessage', 'sendMessage', 'replyToMessage'].includes(scenario.operation));
 const connection = { provider: 'google', name: 'support' };
 const credentials: Credentials = { accessToken: new SecretString('gmail-token'), primaryEmail: 'owner@example.com' };
 

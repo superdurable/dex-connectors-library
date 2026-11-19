@@ -44,12 +44,28 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetStatementResult() sdkgo.Query[GetStatementResultInput, StatementResultPage]
+	ExecuteStatement() sdkgo.Mutation[ExecuteStatementInput, StatementIdentity]
+	DescribeStatement() sdkgo.Query[DescribeStatementInput, StatementStatus]
+	ListStatements() sdkgo.Query[ListStatementsInput, StatementPage]
+	CancelStatement() sdkgo.Mutation[CancelStatementInput, StatementCancellation]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetStatementResult() sdkgo.Query[GetStatementResultInput, StatementResultPage] {
 	return operations.client.GetStatementResult()
+}
+func (operations clientOperations) ExecuteStatement() sdkgo.Mutation[ExecuteStatementInput, StatementIdentity] {
+	return operations.client.ExecuteStatement()
+}
+func (operations clientOperations) DescribeStatement() sdkgo.Query[DescribeStatementInput, StatementStatus] {
+	return operations.client.DescribeStatement()
+}
+func (operations clientOperations) ListStatements() sdkgo.Query[ListStatementsInput, StatementPage] {
+	return operations.client.ListStatements()
+}
+func (operations clientOperations) CancelStatement() sdkgo.Mutation[CancelStatementInput, StatementCancellation] {
+	return operations.client.CancelStatement()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -265,6 +281,308 @@ func NewGetStatementResultStep[IN any](config GetStatementResultStepConfig[IN]) 
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetStatementResultBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ExecuteStatementBranchSubmitted sdkgo.BranchID = "submitted"
+const ExecuteStatementBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ExecuteStatementBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ExecuteStatementBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ExecuteStatementDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "executeStatement"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ExecuteStatementBranchSubmitted, Description: "Redshift accepted the SQL statement."},
+		{ID: ExecuteStatementBranchProviderRejected, Description: "Redshift conclusively rejected the submission.", Optional: true},
+		{ID: ExecuteStatementBranchInvalidResponse, Description: "Redshift returned malformed or oversized submission JSON.", Optional: true},
+		{ID: ExecuteStatementBranchDefect, Description: "The workgroup or SQL input or connection settings are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ExecuteStatementResult = sdkgo.MutationResult[StatementIdentity]
+
+type ExecuteStatementStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=amazon-redshift"`
+	operationID                       struct{}                                                `connector:"operationId=executeStatement"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) ExecuteStatementInput                          `connector:"mapToOperationInput"`
+	Submitted                         sdkgo.Target[ExecuteStatementResult]                    `connector:"branch=submitted"`
+	ProviderRejected                  sdkgo.Target[ExecuteStatementResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ExecuteStatementResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ExecuteStatementResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[StatementIdentity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewExecuteStatementStep[IN any](config ExecuteStatementStepConfig[IN]) sdkgo.MutationStep[IN, ExecuteStatementInput, StatementIdentity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-redshift connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ExecuteStatementInput, StatementIdentity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ExecuteStatement(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ExecuteStatementResult] {
+			branches := make([]sdkgo.BranchTarget[ExecuteStatementResult], 0, 4)
+			if config.Submitted.HasStep() {
+				branches = append(branches, config.Submitted.BranchTarget(ExecuteStatementBranchSubmitted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ExecuteStatementBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ExecuteStatementBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ExecuteStatementBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DescribeStatementBranchDescribed sdkgo.BranchID = "described"
+const DescribeStatementBranchMissing sdkgo.BranchID = "missing"
+const DescribeStatementBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DescribeStatementBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DescribeStatementBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DescribeStatementDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "describeStatement"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DescribeStatementBranchDescribed, Description: "Redshift returned the statement status."},
+		{ID: DescribeStatementBranchMissing, Description: "Redshift does not retain the statement.", Optional: true},
+		{ID: DescribeStatementBranchProviderRejected, Description: "Redshift conclusively rejected the lookup.", Optional: true},
+		{ID: DescribeStatementBranchInvalidResponse, Description: "Redshift returned malformed or oversized status JSON.", Optional: true},
+		{ID: DescribeStatementBranchDefect, Description: "The statement ID or connection settings are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DescribeStatementResult = sdkgo.QueryResult[StatementStatus]
+
+type DescribeStatementStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=amazon-redshift"`
+	operationID                    struct{}                                           `connector:"operationId=describeStatement"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) DescribeStatementInput                    `connector:"mapToOperationInput"`
+	Described                      sdkgo.Target[DescribeStatementResult]              `connector:"branch=described"`
+	Missing                        sdkgo.Target[DescribeStatementResult]              `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[DescribeStatementResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[DescribeStatementResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[DescribeStatementResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[StatementStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDescribeStatementStep[IN any](config DescribeStatementStepConfig[IN]) sdkgo.QueryStep[IN, DescribeStatementInput, StatementStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-redshift connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, DescribeStatementInput, StatementStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DescribeStatement(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DescribeStatementResult] {
+			branches := make([]sdkgo.BranchTarget[DescribeStatementResult], 0, 5)
+			if config.Described.HasStep() {
+				branches = append(branches, config.Described.BranchTarget(DescribeStatementBranchDescribed))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(DescribeStatementBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DescribeStatementBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DescribeStatementBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DescribeStatementBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListStatementsBranchListed sdkgo.BranchID = "listed"
+const ListStatementsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListStatementsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListStatementsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListStatementsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listStatements"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListStatementsBranchListed, Description: "Redshift returned a statement page."},
+		{ID: ListStatementsBranchProviderRejected, Description: "Redshift conclusively rejected the list request.", Optional: true},
+		{ID: ListStatementsBranchInvalidResponse, Description: "Redshift returned malformed or oversized list JSON.", Optional: true},
+		{ID: ListStatementsBranchDefect, Description: "The page input or connection settings are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListStatementsResult = sdkgo.QueryResult[StatementPage]
+
+type ListStatementsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=amazon-redshift"`
+	operationID                    struct{}                                         `connector:"operationId=listStatements"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListStatementsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListStatementsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListStatementsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListStatementsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListStatementsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[StatementPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListStatementsStep[IN any](config ListStatementsStepConfig[IN]) sdkgo.QueryStep[IN, ListStatementsInput, StatementPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-redshift connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListStatementsInput, StatementPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListStatements(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListStatementsResult] {
+			branches := make([]sdkgo.BranchTarget[ListStatementsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListStatementsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListStatementsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListStatementsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListStatementsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelStatementBranchCanceled sdkgo.BranchID = "canceled"
+const CancelStatementBranchNotCanceled sdkgo.BranchID = "notCanceled"
+const CancelStatementBranchMissing sdkgo.BranchID = "missing"
+const CancelStatementBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelStatementBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelStatementBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelStatementDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelStatement"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelStatementBranchCanceled, Description: "Redshift accepted the cancellation."},
+		{ID: CancelStatementBranchNotCanceled, Description: "The statement was not running or could not be canceled.", Optional: true},
+		{ID: CancelStatementBranchMissing, Description: "Redshift does not retain the statement.", Optional: true},
+		{ID: CancelStatementBranchProviderRejected, Description: "Redshift conclusively rejected the cancellation.", Optional: true},
+		{ID: CancelStatementBranchInvalidResponse, Description: "Redshift returned malformed or oversized cancellation JSON.", Optional: true},
+		{ID: CancelStatementBranchDefect, Description: "The statement ID or connection settings are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CancelStatementResult = sdkgo.MutationResult[StatementCancellation]
+
+type CancelStatementStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=amazon-redshift"`
+	operationID                       struct{}                                                    `connector:"operationId=cancelStatement"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelStatementInput                               `connector:"mapToOperationInput"`
+	Canceled                          sdkgo.Target[CancelStatementResult]                         `connector:"branch=canceled"`
+	NotCanceled                       sdkgo.Target[CancelStatementResult]                         `connector:"branch=notCanceled,optional"`
+	Missing                           sdkgo.Target[CancelStatementResult]                         `connector:"branch=missing,optional"`
+	ProviderRejected                  sdkgo.Target[CancelStatementResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelStatementResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelStatementResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[StatementCancellation]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewCancelStatementStep[IN any](config CancelStatementStepConfig[IN]) sdkgo.MutationStep[IN, CancelStatementInput, StatementCancellation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-redshift connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelStatementInput, StatementCancellation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelStatement(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelStatementResult] {
+			branches := make([]sdkgo.BranchTarget[CancelStatementResult], 0, 6)
+			if config.Canceled.HasStep() {
+				branches = append(branches, config.Canceled.BranchTarget(CancelStatementBranchCanceled))
+			}
+			if config.NotCanceled.HasStep() {
+				branches = append(branches, config.NotCanceled.BranchTarget(CancelStatementBranchNotCanceled))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(CancelStatementBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelStatementBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelStatementBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelStatementBranchDefect))
 			}
 			return branches
 		}(),

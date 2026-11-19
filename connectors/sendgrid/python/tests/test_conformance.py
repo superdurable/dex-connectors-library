@@ -14,7 +14,12 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/sendgrid/scenarios.json")
+IMPLEMENTED_OPERATIONS = frozenset({"getStats", "listTemplates"})
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/sendgrid/scenarios.json")
+    if scenario["operation"] in IMPLEMENTED_OPERATIONS
+]
 CONNECTION = sdk.ConnectionRef("sendgrid", "sendgrid")
 ADAPTER = PythonOperationAdapter(
     "sendgrid",

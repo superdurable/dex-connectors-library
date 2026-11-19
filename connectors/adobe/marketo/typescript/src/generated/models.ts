@@ -12,9 +12,9 @@ export interface Config {
   restEndpoint: string;
   /** Non-secret Identity URL from https://app.marketo.com/ > Admin > Integration > Web Services > REST API > Identity, followed by /oauth/token. Enter a complete HTTPS URL ending in /identity/oauth/token on the same subscription host as restEndpoint; blank prevents token minting. */
   tokenEndpoint: string;
-  /** Maximum duration of one lead read as a positive Go duration. Leave blank for the displayed default; increase only for slow Marketo responses. Runtime value in milliseconds. */
+  /** Maximum duration of one Marketo API request as a positive Go duration. Leave blank for the displayed default; increase only for slow provider responses. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum bytes in one complete lead response as a positive integer. Leave blank for the displayed default; increase only for unusually large responses. */
+  /** Maximum bytes in one complete Marketo response as a positive integer. Leave blank for the displayed default; increase only for unusually large responses. */
   maxResponseBytes?: number;
 }
 

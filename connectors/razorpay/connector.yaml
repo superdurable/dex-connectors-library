@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: razorpay
   displayName: Razorpay
-  description: Read selected Razorpay payment fields from the Payments API.
+  description: Read and act on Razorpay payments, orders, refunds, and standard payment links.
   company: Razorpay
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: razorpay
   languages:
@@ -60,6 +60,244 @@ spec:
         - Sign in to the Razorpay Dashboard, select Test or Live Mode, then open Account & Settings > API Keys > Generate Key. Copy the Key ID beginning rzp_test_ or rzp_live_ and its paired opaque Key Secret into Dex Web secret key_id and key_secret. Blank is invalid. Regenerate the pair on the same page to rotate it; Test and Live keys cannot be mixed.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret pay_ payment ID on the Dashboard Payments page or from an API response and pass it as paymentId; blank is invalid. The payment amount returned is in currency subunits.
   operations:
+    - name: listPaymentLinks
+      goName: ListPaymentLinks
+      inputType: ListPaymentLinksInput
+      outputType: PaymentLinkPage
+      kind: query
+      description: List standard payment links with safe metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Razorpay returned payment links.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable link data., optional: true}
+        - {id: defect, goName: Defect, description: The credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample payment link was returned.
+          output: {links: [{id: plink_ExjpAUN3gVHrPJ, status: created, amount: 1000, currencyCode: INR, referenceId: dex_0123456789abcdef0123456789abcdef, shortUrl: https://rzp.io/i/example}]}
+    - name: getPaymentLink
+      goName: GetPaymentLink
+      inputType: GetPaymentLinkInput
+      outputType: PaymentLinkSummary
+      kind: query
+      description: Read one standard payment link by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Razorpay returned the payment link.}
+        - {id: notFound, goName: NotFound, description: The payment link was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable link data., optional: true}
+        - {id: defect, goName: Defect, description: The link ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample payment link was returned.
+          output: {id: plink_ExjpAUN3gVHrPJ, status: created, amount: 1000, currencyCode: INR, referenceId: dex_0123456789abcdef0123456789abcdef, shortUrl: https://rzp.io/i/example}
+    - name: createPaymentLink
+      goName: CreatePaymentLink
+      inputType: CreatePaymentLinkInput
+      outputType: PaymentLinkSummary
+      kind: mutation
+      description: Create a standard payment link without sending notifications.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Razorpay created or confirmed the payment link.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected link creation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid amount or currency or credentials., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample link was created without notifications.
+          output: {id: plink_ExjpAUN3gVHrPJ, status: created, amount: 1000, currencyCode: INR, referenceId: dex_0123456789abcdef0123456789abcdef, shortUrl: https://rzp.io/i/example}
+    - name: cancelPaymentLink
+      goName: CancelPaymentLink
+      inputType: CancelPaymentLinkInput
+      outputType: PaymentLinkSummary
+      kind: mutation
+      description: Cancel one unpaid standard payment link.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: cancelled, goName: Cancelled, description: The link is cancelled.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected cancellation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid link ID or credentials., optional: true}
+      mocks:
+        - name: cancelledDefault
+          branch: cancelled
+          default: true
+          description: One sample link was cancelled.
+          output: {id: plink_ExjpAUN3gVHrPJ, status: cancelled, amount: 1000, currencyCode: INR, referenceId: dex_0123456789abcdef0123456789abcdef, shortUrl: https://rzp.io/i/example}
+    - name: listRefunds
+      goName: ListRefunds
+      inputType: ListRefundsInput
+      outputType: RefundPage
+      kind: query
+      description: List one bounded page of refund statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Razorpay returned a refund page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the refund list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable refund data., optional: true}
+        - {id: defect, goName: Defect, description: The page input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample refund page was returned.
+          output: {refunds: [{id: rfnd_FP8QHiV938haTz, paymentId: pay_DG4ZdRK8ZnXC3k, status: processed, amount: 100, currencyCode: INR}], count: 1}
+    - name: getRefund
+      goName: GetRefund
+      inputType: GetRefundInput
+      outputType: RefundStatus
+      kind: query
+      description: Read one refund by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Razorpay returned the refund.}
+        - {id: notFound, goName: NotFound, description: The refund was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the refund lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable refund data., optional: true}
+        - {id: defect, goName: Defect, description: The refund ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample processed refund was returned.
+          output: {id: rfnd_FP8QHiV938haTz, paymentId: pay_DG4ZdRK8ZnXC3k, status: processed, amount: 100, currencyCode: INR}
+    - name: createNormalRefund
+      goName: CreateNormalRefund
+      inputType: CreateNormalRefundInput
+      outputType: RefundStatus
+      kind: mutation
+      description: Create a normal refund using Razorpay's idempotency header.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Razorpay accepted the normal refund.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the refund., optional: true}
+        - {id: defect, goName: Defect, description: The refund input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One normal refund was accepted.
+          output: {id: rfnd_FP8QHiV938haTz, paymentId: pay_DG4ZdRK8ZnXC3k, status: processed, amount: 100, currencyCode: INR}
+    - name: listPayments
+      goName: ListPayments
+      inputType: ListPaymentsInput
+      outputType: PaymentPage
+      kind: query
+      description: List one bounded page of payment statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Razorpay returned a payment page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the payment list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable payment data., optional: true}
+        - {id: defect, goName: Defect, description: The page input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample payment page was returned.
+          output: {payments: [{id: pay_DG4ZdRK8ZnXC3k, status: captured, amount: 100, currencyCode: INR}], count: 1}
+    - name: capturePayment
+      goName: CapturePayment
+      inputType: CapturePaymentInput
+      outputType: PaymentStatus
+      kind: mutation
+      description: Capture one authorized payment for its full amount.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: captured, goName: Captured, description: The payment is captured for the requested amount.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected capture., optional: true}
+        - {id: defect, goName: Defect, description: The payment input or credentials are invalid., optional: true}
+      mocks:
+        - name: capturedDefault
+          branch: captured
+          default: true
+          description: One sample payment was captured.
+          output: {id: pay_DG4ZdRK8ZnXC3k, status: captured, amount: 100, currencyCode: INR}
+    - name: listOrders
+      goName: ListOrders
+      inputType: ListOrdersInput
+      outputType: OrderPage
+      kind: query
+      description: List one bounded page of order summaries.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Razorpay returned an order page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the order list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable order data., optional: true}
+        - {id: defect, goName: Defect, description: The page input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample order page was returned.
+          output: {orders: [{id: order_RB58MiP5SPFYyM, status: created, amount: 5000, currencyCode: INR, receipt: receipt-1}], count: 1}
+    - name: getOrder
+      goName: GetOrder
+      inputType: GetOrderInput
+      outputType: OrderSummary
+      kind: query
+      description: Read one order by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Razorpay returned the order.}
+        - {id: notFound, goName: NotFound, description: The order was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the order lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned unusable order data., optional: true}
+        - {id: defect, goName: Defect, description: The order ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample order was returned.
+          output: {id: order_RB58MiP5SPFYyM, status: created, amount: 5000, currencyCode: INR, receipt: receipt-1}
+    - name: createOrder
+      goName: CreateOrder
+      inputType: CreateOrderInput
+      outputType: OrderSummary
+      kind: mutation
+      description: Create an order with a call-derived unique receipt for safe retries.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Razorpay created or confirmed this order.}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected order creation., optional: true}
+        - {id: defect, goName: Defect, description: The order input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample INR order was created.
+          output: {id: order_RB58MiP5SPFYyM, status: created, amount: 5000, currencyCode: INR, receipt: dex_0123456789abcdef0123456789abcdef}
     - name: getPayment
       goName: GetPayment
       inputType: GetPaymentInput

@@ -89,7 +89,7 @@ type providerResponse struct {
 	err        error
 }
 
-func (client *Client) getItem(call sdkgo.Call, payload []byte) providerResponse {
+func (client *Client) send(call sdkgo.Call, target string, payload []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -105,7 +105,7 @@ func (client *Client) getItem(call sdkgo.Call, payload []byte) providerResponse 
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Content-Type", "application/x-amz-json-1.0")
-	request.Header.Set("X-Amz-Target", "DynamoDB_20120810.GetItem")
+	request.Header.Set("X-Amz-Target", "DynamoDB_20120810."+target)
 	digest := sha256.Sum256(payload)
 	signingCredentials := aws.Credentials{AccessKeyID: accessKey, SecretAccessKey: secretKey, SessionToken: sessionToken}
 	if err := client.signer.SignHTTP(request.Context(), signingCredentials, request, hex.EncodeToString(digest[:]), "dynamodb", client.region, client.now().UTC()); err != nil {

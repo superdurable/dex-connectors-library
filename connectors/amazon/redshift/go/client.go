@@ -89,7 +89,7 @@ type providerResponse struct {
 	err        error
 }
 
-func (client *Client) getStatementResult(call sdkgo.Call, payload []byte) providerResponse {
+func (client *Client) send(call sdkgo.Call, operation string, payload []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -105,7 +105,7 @@ func (client *Client) getStatementResult(call sdkgo.Call, payload []byte) provid
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Content-Type", "application/x-amz-json-1.1")
-	request.Header.Set("X-Amz-Target", "RedshiftData.GetStatementResult")
+	request.Header.Set("X-Amz-Target", "RedshiftData."+operation)
 	digest := sha256.Sum256(payload)
 	signingCredentials := aws.Credentials{AccessKeyID: accessKey, SecretAccessKey: secretKey, SessionToken: sessionToken}
 	if err := client.signer.SignHTTP(request.Context(), signingCredentials, request, hex.EncodeToString(digest[:]), "redshift-data", client.region, client.now().UTC()); err != nil {

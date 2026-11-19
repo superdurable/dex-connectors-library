@@ -24,7 +24,8 @@ import (
 func TestWorkerInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := ripplingmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	rosterFlow := NewRosterFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, rosterFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -58,4 +59,15 @@ func TestWorkerInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "Engineer", output.Title)
 	require.Equal(t, "ACTIVE", output.Status)
 	require.Len(t, mock.GetWorker().Calls(), 1)
+	rosterID := "rippling-roster-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, rosterFlow, rosterID, rippling.ListWorkersInput{Limit: 1}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	rosterResult, err := client.WaitForFlow(ctx, rosterID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, rosterResult.Status, rosterResult.ErrorMessage)
+	var roster rippling.WorkerPage
+	require.NoError(t, rosterResult.DecodeSingleOutput(&roster))
+	require.Len(t, roster.Workers, 1)
+	require.Equal(t, "65699281fb7bc7c3510f44a6", roster.Workers[0].ID)
+	require.Len(t, mock.ListWorkers().Calls(), 1)
 }

@@ -24,6 +24,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[insightly.ContactMetadata](`{"id":45678,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
 			return err
 		}},
+		{name: "listRecords/listedLeads/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[insightly.RecordsPage](`{"records":[{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"FIRST_NAME":"Ada","LAST_NAME":"Lovelace"}}]}`)
+			return err
+		}},
+		{name: "getRecord/foundLead/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[insightly.Record](`{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"FIRST_NAME":"Ada","LAST_NAME":"Lovelace"}}`)
+			return err
+		}},
+		{name: "searchRecords/matchingLead/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[insightly.RecordsPage](`{"records":[{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"EMAIL":"ada@example.com"}}]}`)
+			return err
+		}},
+		{name: "createRecord/createdLead/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[insightly.Record](`{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"FIRST_NAME":"Ada","LAST_NAME":"Lovelace"}}`)
+			return err
+		}},
+		{name: "updateRecord/updatedLead/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[insightly.Record](`{"recordType":"leads","id":1201,"fields":{"LEAD_ID":1201,"FIRST_NAME":"Ada","LAST_NAME":"Byron"}}`)
+			return err
+		}},
+		{name: "deleteRecord/deletedLead/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[insightly.DeletedRecord](`{"recordType":"leads","id":1201}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +63,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListRecords().Definition().Operation.OperationID != "listRecords" {
+		t.Errorf("listRecords mock has another definition")
+	}
+	if mock.GetRecord().Definition().Operation.OperationID != "getRecord" {
+		t.Errorf("getRecord mock has another definition")
+	}
+	if mock.SearchRecords().Definition().Operation.OperationID != "searchRecords" {
+		t.Errorf("searchRecords mock has another definition")
+	}
+	if mock.CreateRecord().Definition().Operation.OperationID != "createRecord" {
+		t.Errorf("createRecord mock has another definition")
+	}
+	if mock.UpdateRecord().Definition().Operation.OperationID != "updateRecord" {
+		t.Errorf("updateRecord mock has another definition")
+	}
+	if mock.DeleteRecord().Definition().Operation.OperationID != "deleteRecord" {
+		t.Errorf("deleteRecord mock has another definition")
 	}
 }

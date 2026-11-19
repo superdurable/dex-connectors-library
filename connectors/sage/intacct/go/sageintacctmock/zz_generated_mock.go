@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted sage-intacct connection. Script each operation through its accessor.
 type Mock struct {
-	connection sageintacct.Connection
-	getInvoice *connectormock.Query[sageintacct.GetInvoiceInput, sageintacct.InvoiceSummary]
+	connection   sageintacct.Connection
+	getInvoice   *connectormock.Query[sageintacct.GetInvoiceInput, sageintacct.InvoiceSummary]
+	listInvoices *connectormock.Query[sageintacct.ListInvoicesInput, sageintacct.InvoiceList]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +27,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getInvoice: connectormock.NewQuery[sageintacct.GetInvoiceInput, sageintacct.InvoiceSummary](t, sageintacct.GetInvoiceDefinition),
+		getInvoice:   connectormock.NewQuery[sageintacct.GetInvoiceInput, sageintacct.InvoiceSummary](t, sageintacct.GetInvoiceDefinition),
+		listInvoices: connectormock.NewQuery[sageintacct.ListInvoicesInput, sageintacct.InvoiceList](t, sageintacct.ListInvoicesDefinition),
 	}
 	mock.getInvoice.Default(GetInvoiceDefault())
+	mock.listInvoices.Default(ListInvoicesDefault())
 	connection, err := sageintacct.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "sage-intacct", Name: connectionName})
 	if err != nil {
 		t.Fatalf("sage-intacct mock connection: %v", err)
@@ -45,10 +48,18 @@ func (mock *Mock) GetInvoice() *connectormock.Query[sageintacct.GetInvoiceInput,
 	return mock.getInvoice
 }
 
+// ListInvoices returns the listInvoices script.
+func (mock *Mock) ListInvoices() *connectormock.Query[sageintacct.ListInvoicesInput, sageintacct.InvoiceList] {
+	return mock.listInvoices
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetInvoice() sdkgo.Query[sageintacct.GetInvoiceInput, sageintacct.InvoiceSummary] {
 	return operations.mock.getInvoice
+}
+func (operations mockOperations) ListInvoices() sdkgo.Query[sageintacct.ListInvoicesInput, sageintacct.InvoiceList] {
+	return operations.mock.listInvoices
 }
 
 // GetInvoiceFound selects the found branch: Sage Intacct returned the requested invoice.
@@ -90,4 +101,40 @@ func GetInvoiceFoundDefault() connectormock.Case[sageintacct.InvoiceSummary] {
 // GetInvoiceDefault is the manifest default, foundDefault, which New installs.
 func GetInvoiceDefault() connectormock.Case[sageintacct.InvoiceSummary] {
 	return GetInvoiceFoundDefault()
+}
+
+// ListInvoicesFound selects the found branch: Sage Intacct returned an invoice page.
+func ListInvoicesFound(value sageintacct.InvoiceList, failure *sdkgo.Failure) connectormock.Case[sageintacct.InvoiceList] {
+	return connectormock.Branch(sageintacct.ListInvoicesBranchFound, value, failure)
+}
+
+// ListInvoicesProviderRejected selects the providerRejected branch: Sage Intacct conclusively rejected the list request.
+func ListInvoicesProviderRejected(value sageintacct.InvoiceList, failure *sdkgo.Failure) connectormock.Case[sageintacct.InvoiceList] {
+	return connectormock.Branch(sageintacct.ListInvoicesBranchProviderRejected, value, failure)
+}
+
+// ListInvoicesInvalidResponse selects the invalidResponse branch: Sage Intacct returned malformed or oversized list JSON.
+func ListInvoicesInvalidResponse(value sageintacct.InvoiceList, failure *sdkgo.Failure) connectormock.Case[sageintacct.InvoiceList] {
+	return connectormock.Branch(sageintacct.ListInvoicesBranchInvalidResponse, value, failure)
+}
+
+// ListInvoicesDefect selects the defect branch: Local connection credentials are invalid.
+func ListInvoicesDefect(value sageintacct.InvoiceList, failure *sdkgo.Failure) connectormock.Case[sageintacct.InvoiceList] {
+	return connectormock.Branch(sageintacct.ListInvoicesBranchDefect, value, failure)
+}
+
+// ListInvoicesRetry asks Dex to retry the listInvoices Step, after the delay when it is positive.
+func ListInvoicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sageintacct.InvoiceList] {
+	return connectormock.Retry[sageintacct.InvoiceList](failure, after)
+}
+
+// ListInvoicesFoundDefault is the manifest mock foundDefault: A sample invoice page is returned.
+func ListInvoicesFoundDefault() connectormock.Case[sageintacct.InvoiceList] {
+	value := connectormock.MustDecodeOutput[sageintacct.InvoiceList](`{"invoices":[{"key":"443","id":"INV-443"}],"next":""}`)
+	return connectormock.Branch(sageintacct.ListInvoicesBranchFound, value, nil)
+}
+
+// ListInvoicesDefault is the manifest default, foundDefault, which New installs.
+func ListInvoicesDefault() connectormock.Case[sageintacct.InvoiceList] {
+	return ListInvoicesFoundDefault()
 }

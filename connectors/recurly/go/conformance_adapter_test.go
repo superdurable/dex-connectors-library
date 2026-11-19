@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/api"
@@ -21,7 +22,27 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		reference: {APIKey: sdkgo.NewSecretString("sample-recurly-api-key")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getAccount": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAccount(), reference),
+	mutationContext := singledispatchtest.NewContext("recurly-conformance", "create-account")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			mutationContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"getAccount":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAccount(), reference),
+		"listAccounts":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAccounts(), reference),
+		"createAccount":          newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreateAccount(), reference, scenario.CallID),
+		"listSubscriptions":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSubscriptions(), reference),
+		"getSubscription":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSubscription(), reference),
+		"cancelSubscription":     newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CancelSubscription(), reference, scenario.CallID),
+		"reactivateSubscription": newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.ReactivateSubscription(), reference, scenario.CallID),
+		"listPlans":              newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPlans(), reference),
+		"getPlan":                newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPlan(), reference),
+		"createPlan":             newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.CreatePlan(), reference, scenario.CallID),
+		"renamePlan":             newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.RenamePlan(), reference, scenario.CallID),
+		"deletePlan":             newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.DeletePlan(), reference, scenario.CallID),
+		"listInvoices":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListInvoices(), reference),
+		"getInvoice":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetInvoice(), reference),
+		"setAccountTimeZone":     newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.SetAccountTimeZone(), reference, scenario.CallID),
+		"reactivateAccount":      newConformanceMutationInvocation(t, scenario.Input, mutationContext, client.ReactivateAccount(), reference, scenario.CallID),
 	}}
 }

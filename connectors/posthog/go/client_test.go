@@ -139,7 +139,13 @@ func TestCaptureEventRetriesUnknownStatusesAndRejectsOnlyDefiniteRefusals(t *tes
 		http.StatusCreated: false, http.StatusFound: false, http.StatusConflict: false, http.StatusTooEarly: false,
 		http.StatusUnavailableForLegalReasons: false, http.StatusBadRequest: true, http.StatusUnauthorized: true, http.StatusUnprocessableEntity: true,
 	} {
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(status) }))
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(status)
+			if isDefinite {
+				_, err := w.Write([]byte(`{"error":"request rejected"}`))
+				require.NoError(t, err)
+			}
+		}))
 		result, err := sdkgo.RunMutation(providerContext{}, newProviderClient(t, server.URL).CaptureEvent(), testConnection, CaptureEventInput{Event: "Signed Up", DistinctID: "member-1", Timestamp: "2026-10-29T00:00:00Z"})
 		server.Close()
 		if isDefinite {

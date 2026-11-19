@@ -18,6 +18,7 @@ const (
 	// ConnectionName is the static Dex Web connection used by this example.
 	ConnectionName    = "hootsuite"
 	operationStepType = "CallListScheduledPosts"
+	messageStepType   = "CallGetMessage"
 )
 
 var scheduledPostsPageAttribute = dex.DefineAttribute[hootsuite.ScheduledPostsPage]("hootsuite-scheduled-posts-page")
@@ -45,7 +46,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Hootsuite", Explanation: "Call the provider's listScheduledPosts operation."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Listed:              sdkgo.GoTo(completeResult{}),
+			Listed:              sdkgo.GoTo(afterList{}),
+		})),
+		dex.DefineStep(afterList{}),
+		dex.DefineStep(hootsuite.NewGetMessageStep(hootsuite.GetMessageStepConfig[hootsuite.GetMessageInput]{
+			StepType: messageStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Hootsuite", Explanation: "Read the first scheduled message by ID."},
+			MapToOperationInput: MapToGetMessageInput, Found: sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
 	}
@@ -90,6 +97,9 @@ func MapToOperationInput(input hootsuite.ListScheduledPostsInput) hootsuite.List
 	return input
 }
 
+// MapToGetMessageInput preserves the selected message ID.
+func MapToGetMessageInput(input hootsuite.GetMessageInput) hootsuite.GetMessageInput { return input }
+
 // dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Pass the typed start input to the provider Step."
 type startRequest struct{ dex.StepDefaults }
@@ -103,16 +113,30 @@ func (startRequest) Execute(_ dex.Context, input hootsuite.ListScheduledPostsInp
 }
 
 // dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow with the provider's typed result."
-type completeResult struct {
+// dex:explanation text:"Read the first scheduled message's details."
+type afterList struct {
 	dex.StepDefaultsNoWaitFor[hootsuite.ListScheduledPostsResult]
 }
 
-func (completeResult) GetStepType() string { return "CompleteListScheduledPosts" }
-func (completeResult) Execute(ctx dex.Context, result hootsuite.ListScheduledPostsResult) (*dex.StepDecision, error) {
+func (afterList) GetStepType() string { return "AfterListScheduledPosts" }
+func (afterList) Execute(ctx dex.Context, result hootsuite.ListScheduledPostsResult) (*dex.StepDecision, error) {
 	if err := scheduledPostsPageAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
+	if len(result.Value.Posts) == 0 {
+		return nil, errors.New("no scheduled posts to inspect")
+	}
+	return dex.GoTo(sdkgo.StepRef[hootsuite.GetMessageInput](messageStepType), hootsuite.GetMessageInput{ID: result.Value.Posts[0].ID}), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete the Flow with the provider's typed result."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[hootsuite.GetMessageResult]
+}
+
+func (completeResult) GetStepType() string { return "CompleteListScheduledPosts" }
+func (completeResult) Execute(_ dex.Context, result hootsuite.GetMessageResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(result.Value), nil
 }
 

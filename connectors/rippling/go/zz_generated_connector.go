@@ -41,12 +41,16 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	GetWorker() sdkgo.Query[GetWorkerInput, WorkerSummary]
+	ListWorkers() sdkgo.Query[ListWorkersInput, WorkerPage]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) GetWorker() sdkgo.Query[GetWorkerInput, WorkerSummary] {
 	return operations.client.GetWorker()
+}
+func (operations clientOperations) ListWorkers() sdkgo.Query[ListWorkersInput, WorkerPage] {
+	return operations.client.ListWorkers()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -255,6 +259,77 @@ func NewGetWorkerStep[IN any](config GetWorkerStepConfig[IN]) sdkgo.QueryStep[IN
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetWorkerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListWorkersBranchFound sdkgo.BranchID = "found"
+const ListWorkersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWorkersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWorkersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWorkersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWorkers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWorkersBranchFound, Description: "Rippling returned the worker page."},
+		{ID: ListWorkersBranchProviderRejected, Description: "Rippling conclusively rejected the list request.", Optional: true},
+		{ID: ListWorkersBranchInvalidResponse, Description: "Rippling returned malformed or oversized JSON.", Optional: true},
+		{ID: ListWorkersBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWorkersResult = sdkgo.QueryResult[WorkerPage]
+
+type ListWorkersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=rippling"`
+	operationID                    struct{}                                      `connector:"operationId=listWorkers"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListWorkersInput                     `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[ListWorkersResult]               `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[ListWorkersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWorkersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWorkersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[WorkerPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListWorkersStep[IN any](config ListWorkersStepConfig[IN]) sdkgo.QueryStep[IN, ListWorkersInput, WorkerPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("rippling connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWorkersInput, WorkerPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListWorkers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWorkersResult] {
+			branches := make([]sdkgo.BranchTarget[ListWorkersResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(ListWorkersBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWorkersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWorkersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWorkersBranchDefect))
 			}
 			return branches
 		}(),

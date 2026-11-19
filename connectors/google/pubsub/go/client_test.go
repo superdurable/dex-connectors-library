@@ -6,6 +6,7 @@ package pubsub
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -39,6 +41,36 @@ func newTestClient(t *testing.T, baseURL string) *Client {
 	client, err := New(Config{BaseURL: baseURL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials})
 	require.NoError(t, err)
 	return client
+}
+
+func TestPublishMessageFailClosedRetriesWithoutDispatch(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { requests++ }))
+	defer server.Close()
+	ctx := singledispatchtest.NewContext("pubsub-fail-closed", "publish")
+	ctx.SetReadError(errors.New("heartbeat unavailable"))
+	_, err := sdkgo.RunMutation(ctx, newTestClient(t, server.URL).PublishMessage(), testConnection,
+		PublishMessageInput{Topic: "projects/sample-project/topics/events", Text: "event"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Zero(t, requests)
+}
+
+func TestPubSubRefusalRequiresClearNonAcceptance(t *testing.T) {
+	cases := []struct {
+		status int
+		body   string
+		want   bool
+	}{
+		{http.StatusForbidden, `{"error":{"code":403,"status":"PERMISSION_DENIED"}}`, true},
+		{http.StatusConflict, `{"error":{"code":409,"status":"ALREADY_EXISTS"}}`, false},
+		{http.StatusMethodNotAllowed, `{"error":{"code":405,"status":"METHOD_NOT_ALLOWED"}}`, false},
+		{http.StatusBadRequest, ``, false},
+		{http.StatusBadRequest, `{"error":{"code":400,"status":"INVALID_ARGUMENT"},"messageIds":["accepted"]}`, false},
+	}
+	for _, test := range cases {
+		require.Equal(t, test.want, isDefinitePubSubRefusal(providerResponse{status: test.status, body: []byte(test.body)}))
+	}
 }
 
 func TestListTopicsProjectsOneCursorPage(t *testing.T) {

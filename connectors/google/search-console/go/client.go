@@ -27,11 +27,12 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 
 // Client holds immutable Search Console API settings and resolves credentials per call.
 type Client struct {
-	baseURL          string
-	maxResponseBytes int64
-	credentials      CredentialSource
-	refreshDriver    *CredentialRefreshDriver
-	httpClient       *http.Client
+	baseURL           string
+	inspectionBaseURL string
+	maxResponseBytes  int64
+	credentials       CredentialSource
+	refreshDriver     *CredentialRefreshDriver
+	httpClient        *http.Client
 }
 
 // New validates connection configuration without contacting Search Console.
@@ -47,7 +48,11 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Search Console API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	inspectionBaseURL, err := providerhttp.ValidateBaseURL(config.InspectionBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Search Console inspection API URL: %w", err)
+	}
+	client := &Client{baseURL: baseURL, inspectionBaseURL: inspectionBaseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Search Console client option is required")
@@ -70,6 +75,10 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, http.MethodGet, client.baseURL, path, nil)
+}
+
+func (client *Client) request(call sdkgo.Call, method, baseURL, path string, body []byte) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -84,22 +93,25 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Authorization", "Bearer "+accessToken)
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
-	if bytes.Contains(body, []byte(accessToken)) {
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if bytes.Contains(responseBody, []byte(accessToken)) {
 		return providerResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
-	return providerResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+	return providerResponse{body: responseBody, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }

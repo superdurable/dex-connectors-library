@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: MIT
 
 // Package salesforce implements bounded Salesforce REST API operations for
-// Dex: SOQL queries with typed bind values, single-record reads, upserts keyed
-// by an External ID field, and field updates by record ID, plus the
+// Dex: SOQL queries with typed bind values, single-record reads, creates,
+// upserts keyed by an External ID field, updates, and deletes, plus the
 // recordModifiedPolled Trigger, which polls one object for created and
 // modified records.
 //
 // Applications use the generated operation-specific Step factories, such as
 // NewQueryRecordsStep and NewUpsertRecordByExternalIDStep, with a Connection
 // built by NewProjectConnection or NewConnection. The runnable example in
-// examples/record-sync uses every operation in one Flow, and
+// examples/record-sync demonstrates lookup, update, upsert, read-back, and optional deletion, and
 // examples/record-changes starts one Flow per created or modified record.
 //
 // Every request goes to the org's instance URL, which Salesforce returns with
@@ -261,8 +261,17 @@ func (client *Client) UpdateRecord() UpdateRecordOperation {
 	return UpdateRecordOperation{client: client}
 }
 
-// resolveCredential selects providerRejected for a terminal refresh failure, defect for an absent,
-// unselected, or broker-refused connection, and retries any other failure.
+// DeleteRecord returns the DeleteRecord operation bound to this client.
+func (client *Client) DeleteRecord() DeleteRecordOperation {
+	return DeleteRecordOperation{client: client}
+}
+
+// CreateRecord returns the CreateRecord operation bound to this client.
+func (client *Client) CreateRecord() CreateRecordOperation {
+	return CreateRecordOperation{client: client}
+}
+
+// resolveCredential selects providerRejected for terminal refresh, defect for absent or refused connections, and retries other failures.
 func (client *Client) resolveCredential(call sdkgo.Call, branches operationBranches) (Credentials, *providerOutcome) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) || errors.Is(err, projectconfig.ErrReauthorizationRequired) {
@@ -303,7 +312,7 @@ func (client *Client) send(
 		}
 	}
 	if err != nil {
-		// Every operation is safe to repeat, including both writes, so an unknown outcome is retried.
+		// This helper serves only reads and repeat-safe writes; limited creates use their own fence.
 		return response, &providerOutcome{route: routeRetry, failure: salesforceFailure(sdkgo.FailureTransport, branches.operationID, "Salesforce request outcome is unknown")}
 	}
 	if (response.status >= 200 && response.status < 300) || response.status == http.StatusMultipleChoices {
@@ -495,8 +504,8 @@ func mutationAttemptFromOutcome[T any](
 ) sdkgo.MutationAttempt[T] {
 	branch := branches.branch(outcome.route)
 	// Both writes are repeat-safe, so a status that does not prove a refusal, such as 409, is retried.
-	isUnknownStatus := outcome.statusCode != 0 && !isDefiniteRefusalStatus(outcome.statusCode)
-	if branch == "" || isUnknownStatus {
+	isUnknownStatus := outcome.statusCode != 0 && (!isDefiniteRefusalStatus(outcome.statusCode) || len(outcome.providerErrors) == 0)
+	if branch == "" || isUnknownStatus || outcome.route == routeInvalidResponse {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	failure := outcome.failure

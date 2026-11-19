@@ -68,7 +68,11 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	lifecycleFlow, err := refunddecision.NewRecordLifecycleFlow(connection, &settings)
+	if err != nil {
+		return err
+	}
+	registry, err := dex.NewRegistry([]dex.Flow{flow, lifecycleFlow})
 	if err != nil {
 		return fmt.Errorf("register Airtable refund decision Flow: %w", err)
 	}

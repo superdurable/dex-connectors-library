@@ -18,7 +18,7 @@ const conformanceEndpointPath, conformanceFixturePathPrefix = "/v4", "/v4"
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: endpoint, DriveBaseURL: endpoint}, sdkgo.StaticCredentialProvider[spreadsheet.Credentials]{
 		sheetsConnection: {AccessToken: sdkgo.NewSecretString("sheets-token")},
 	}, spreadsheet.WithHTTPClient(transport))
 	require.NoError(t, err)
@@ -31,8 +31,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"getValues": newConformanceQueryInvocation(t, scenario.Input, context, client.GetValues(), sheetsConnection),
-		"findRow":   newConformanceQueryInvocation(t, scenario.Input, context, client.FindRow(), sheetsConnection),
-		"upsertRow": newConformanceMutationInvocation(t, scenario.Input, context, client.UpsertRow(), sheetsConnection, scenario.CallID),
+		"getValues":         newConformanceQueryInvocation(t, scenario.Input, context, client.GetValues(), sheetsConnection),
+		"findRow":           newConformanceQueryInvocation(t, scenario.Input, context, client.FindRow(), sheetsConnection),
+		"upsertRow":         newConformanceMutationInvocation(t, scenario.Input, context, client.UpsertRow(), sheetsConnection, scenario.CallID),
+		"getSpreadsheet":    newConformanceQueryInvocation(t, scenario.Input, context, client.GetSpreadsheet(), sheetsConnection),
+		"createSpreadsheet": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateSpreadsheet(), sheetsConnection, scenario.CallID),
+		"deleteSpreadsheet": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteSpreadsheet(), sheetsConnection, scenario.CallID),
+		"createSheet": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateSheet(), sheetsConnection, scenario.CallID),
+		"deleteSheet": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteSheet(), sheetsConnection, scenario.CallID),
+		"clearValues": newConformanceMutationInvocation(t, scenario.Input, context, client.ClearValues(), sheetsConnection, scenario.CallID),
+		"appendRow": newConformanceMutationInvocation(t, scenario.Input, context, client.AppendRow(), sheetsConnection, scenario.CallID),
+		"updateRow": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateRow(), sheetsConnection, scenario.CallID),
 	}}
 }

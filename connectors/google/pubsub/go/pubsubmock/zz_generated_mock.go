@@ -17,8 +17,20 @@ import (
 
 // Mock is a scripted google-pubsub connection. Script each operation through its accessor.
 type Mock struct {
-	connection pubsub.Connection
-	listTopics *connectormock.Query[pubsub.ListTopicsInput, pubsub.TopicsPage]
+	connection               pubsub.Connection
+	publishMessage           *connectormock.Mutation[pubsub.PublishMessageInput, pubsub.PublishedMessage]
+	pullMessages             *connectormock.Query[pubsub.PullMessagesInput, pubsub.PulledMessages]
+	acknowledgeMessages      *connectormock.Mutation[pubsub.AcknowledgeMessagesInput, pubsub.AcknowledgedMessages]
+	listSubscriptions        *connectormock.Query[pubsub.ListSubscriptionsInput, pubsub.SubscriptionsPage]
+	getSubscription          *connectormock.Query[pubsub.GetSubscriptionInput, pubsub.Subscription]
+	createSubscription       *connectormock.Mutation[pubsub.CreateSubscriptionInput, pubsub.Subscription]
+	updateSubscriptionLabels *connectormock.Mutation[pubsub.UpdateSubscriptionLabelsInput, pubsub.Subscription]
+	deleteSubscription       *connectormock.Mutation[pubsub.DeleteSubscriptionInput, pubsub.DeletedSubscription]
+	getTopic                 *connectormock.Query[pubsub.GetTopicInput, pubsub.Topic]
+	createTopic              *connectormock.Mutation[pubsub.CreateTopicInput, pubsub.Topic]
+	updateTopicLabels        *connectormock.Mutation[pubsub.UpdateTopicLabelsInput, pubsub.Topic]
+	deleteTopic              *connectormock.Mutation[pubsub.DeleteTopicInput, pubsub.DeletedTopic]
+	listTopics               *connectormock.Query[pubsub.ListTopicsInput, pubsub.TopicsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +38,32 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listTopics: connectormock.NewQuery[pubsub.ListTopicsInput, pubsub.TopicsPage](t, pubsub.ListTopicsDefinition),
+		publishMessage:           connectormock.NewMutation[pubsub.PublishMessageInput, pubsub.PublishedMessage](t, pubsub.PublishMessageDefinition),
+		pullMessages:             connectormock.NewQuery[pubsub.PullMessagesInput, pubsub.PulledMessages](t, pubsub.PullMessagesDefinition),
+		acknowledgeMessages:      connectormock.NewMutation[pubsub.AcknowledgeMessagesInput, pubsub.AcknowledgedMessages](t, pubsub.AcknowledgeMessagesDefinition),
+		listSubscriptions:        connectormock.NewQuery[pubsub.ListSubscriptionsInput, pubsub.SubscriptionsPage](t, pubsub.ListSubscriptionsDefinition),
+		getSubscription:          connectormock.NewQuery[pubsub.GetSubscriptionInput, pubsub.Subscription](t, pubsub.GetSubscriptionDefinition),
+		createSubscription:       connectormock.NewMutation[pubsub.CreateSubscriptionInput, pubsub.Subscription](t, pubsub.CreateSubscriptionDefinition),
+		updateSubscriptionLabels: connectormock.NewMutation[pubsub.UpdateSubscriptionLabelsInput, pubsub.Subscription](t, pubsub.UpdateSubscriptionLabelsDefinition),
+		deleteSubscription:       connectormock.NewMutation[pubsub.DeleteSubscriptionInput, pubsub.DeletedSubscription](t, pubsub.DeleteSubscriptionDefinition),
+		getTopic:                 connectormock.NewQuery[pubsub.GetTopicInput, pubsub.Topic](t, pubsub.GetTopicDefinition),
+		createTopic:              connectormock.NewMutation[pubsub.CreateTopicInput, pubsub.Topic](t, pubsub.CreateTopicDefinition),
+		updateTopicLabels:        connectormock.NewMutation[pubsub.UpdateTopicLabelsInput, pubsub.Topic](t, pubsub.UpdateTopicLabelsDefinition),
+		deleteTopic:              connectormock.NewMutation[pubsub.DeleteTopicInput, pubsub.DeletedTopic](t, pubsub.DeleteTopicDefinition),
+		listTopics:               connectormock.NewQuery[pubsub.ListTopicsInput, pubsub.TopicsPage](t, pubsub.ListTopicsDefinition),
 	}
+	mock.publishMessage.Default(PublishMessageDefault())
+	mock.pullMessages.Default(PullMessagesDefault())
+	mock.acknowledgeMessages.Default(AcknowledgeMessagesDefault())
+	mock.listSubscriptions.Default(ListSubscriptionsDefault())
+	mock.getSubscription.Default(GetSubscriptionDefault())
+	mock.createSubscription.Default(CreateSubscriptionDefault())
+	mock.updateSubscriptionLabels.Default(UpdateSubscriptionLabelsDefault())
+	mock.deleteSubscription.Default(DeleteSubscriptionDefault())
+	mock.getTopic.Default(GetTopicDefault())
+	mock.createTopic.Default(CreateTopicDefault())
+	mock.updateTopicLabels.Default(UpdateTopicLabelsDefault())
+	mock.deleteTopic.Default(DeleteTopicDefault())
 	mock.listTopics.Default(ListTopicsDefault())
 	connection, err := pubsub.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google-pubsub", Name: connectionName})
 	if err != nil {
@@ -40,6 +76,66 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() pubsub.Connection { return mock.connection }
 
+// PublishMessage returns the publishMessage script.
+func (mock *Mock) PublishMessage() *connectormock.Mutation[pubsub.PublishMessageInput, pubsub.PublishedMessage] {
+	return mock.publishMessage
+}
+
+// PullMessages returns the pullMessages script.
+func (mock *Mock) PullMessages() *connectormock.Query[pubsub.PullMessagesInput, pubsub.PulledMessages] {
+	return mock.pullMessages
+}
+
+// AcknowledgeMessages returns the acknowledgeMessages script.
+func (mock *Mock) AcknowledgeMessages() *connectormock.Mutation[pubsub.AcknowledgeMessagesInput, pubsub.AcknowledgedMessages] {
+	return mock.acknowledgeMessages
+}
+
+// ListSubscriptions returns the listSubscriptions script.
+func (mock *Mock) ListSubscriptions() *connectormock.Query[pubsub.ListSubscriptionsInput, pubsub.SubscriptionsPage] {
+	return mock.listSubscriptions
+}
+
+// GetSubscription returns the getSubscription script.
+func (mock *Mock) GetSubscription() *connectormock.Query[pubsub.GetSubscriptionInput, pubsub.Subscription] {
+	return mock.getSubscription
+}
+
+// CreateSubscription returns the createSubscription script.
+func (mock *Mock) CreateSubscription() *connectormock.Mutation[pubsub.CreateSubscriptionInput, pubsub.Subscription] {
+	return mock.createSubscription
+}
+
+// UpdateSubscriptionLabels returns the updateSubscriptionLabels script.
+func (mock *Mock) UpdateSubscriptionLabels() *connectormock.Mutation[pubsub.UpdateSubscriptionLabelsInput, pubsub.Subscription] {
+	return mock.updateSubscriptionLabels
+}
+
+// DeleteSubscription returns the deleteSubscription script.
+func (mock *Mock) DeleteSubscription() *connectormock.Mutation[pubsub.DeleteSubscriptionInput, pubsub.DeletedSubscription] {
+	return mock.deleteSubscription
+}
+
+// GetTopic returns the getTopic script.
+func (mock *Mock) GetTopic() *connectormock.Query[pubsub.GetTopicInput, pubsub.Topic] {
+	return mock.getTopic
+}
+
+// CreateTopic returns the createTopic script.
+func (mock *Mock) CreateTopic() *connectormock.Mutation[pubsub.CreateTopicInput, pubsub.Topic] {
+	return mock.createTopic
+}
+
+// UpdateTopicLabels returns the updateTopicLabels script.
+func (mock *Mock) UpdateTopicLabels() *connectormock.Mutation[pubsub.UpdateTopicLabelsInput, pubsub.Topic] {
+	return mock.updateTopicLabels
+}
+
+// DeleteTopic returns the deleteTopic script.
+func (mock *Mock) DeleteTopic() *connectormock.Mutation[pubsub.DeleteTopicInput, pubsub.DeletedTopic] {
+	return mock.deleteTopic
+}
+
 // ListTopics returns the listTopics script.
 func (mock *Mock) ListTopics() *connectormock.Query[pubsub.ListTopicsInput, pubsub.TopicsPage] {
 	return mock.listTopics
@@ -47,9 +143,486 @@ func (mock *Mock) ListTopics() *connectormock.Query[pubsub.ListTopicsInput, pubs
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) PublishMessage() sdkgo.Mutation[pubsub.PublishMessageInput, pubsub.PublishedMessage] {
+	return operations.mock.publishMessage
+}
+func (operations mockOperations) PullMessages() sdkgo.Query[pubsub.PullMessagesInput, pubsub.PulledMessages] {
+	return operations.mock.pullMessages
+}
+func (operations mockOperations) AcknowledgeMessages() sdkgo.Mutation[pubsub.AcknowledgeMessagesInput, pubsub.AcknowledgedMessages] {
+	return operations.mock.acknowledgeMessages
+}
+func (operations mockOperations) ListSubscriptions() sdkgo.Query[pubsub.ListSubscriptionsInput, pubsub.SubscriptionsPage] {
+	return operations.mock.listSubscriptions
+}
+func (operations mockOperations) GetSubscription() sdkgo.Query[pubsub.GetSubscriptionInput, pubsub.Subscription] {
+	return operations.mock.getSubscription
+}
+func (operations mockOperations) CreateSubscription() sdkgo.Mutation[pubsub.CreateSubscriptionInput, pubsub.Subscription] {
+	return operations.mock.createSubscription
+}
+func (operations mockOperations) UpdateSubscriptionLabels() sdkgo.Mutation[pubsub.UpdateSubscriptionLabelsInput, pubsub.Subscription] {
+	return operations.mock.updateSubscriptionLabels
+}
+func (operations mockOperations) DeleteSubscription() sdkgo.Mutation[pubsub.DeleteSubscriptionInput, pubsub.DeletedSubscription] {
+	return operations.mock.deleteSubscription
+}
+func (operations mockOperations) GetTopic() sdkgo.Query[pubsub.GetTopicInput, pubsub.Topic] {
+	return operations.mock.getTopic
+}
+func (operations mockOperations) CreateTopic() sdkgo.Mutation[pubsub.CreateTopicInput, pubsub.Topic] {
+	return operations.mock.createTopic
+}
+func (operations mockOperations) UpdateTopicLabels() sdkgo.Mutation[pubsub.UpdateTopicLabelsInput, pubsub.Topic] {
+	return operations.mock.updateTopicLabels
+}
+func (operations mockOperations) DeleteTopic() sdkgo.Mutation[pubsub.DeleteTopicInput, pubsub.DeletedTopic] {
+	return operations.mock.deleteTopic
+}
 func (operations mockOperations) ListTopics() sdkgo.Query[pubsub.ListTopicsInput, pubsub.TopicsPage] {
 	return operations.mock.listTopics
 }
+
+// PublishMessagePublished selects the published branch: Pub/Sub accepted the message.
+func PublishMessagePublished(value pubsub.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[pubsub.PublishedMessage] {
+	return connectormock.Branch(pubsub.PublishMessageBranchPublished, value, failure)
+}
+
+// PublishMessageProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the message.
+func PublishMessageProviderRejected(value pubsub.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[pubsub.PublishedMessage] {
+	return connectormock.Branch(pubsub.PublishMessageBranchProviderRejected, value, failure)
+}
+
+// PublishMessageUncertain returns an uncertain publishMessage outcome.
+func PublishMessageUncertain(value pubsub.PublishedMessage, failure sdkgo.Failure) connectormock.Case[pubsub.PublishedMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// PublishMessageDefect selects the defect branch: Local message input or credentials are invalid.
+func PublishMessageDefect(value pubsub.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[pubsub.PublishedMessage] {
+	return connectormock.Branch(pubsub.PublishMessageBranchDefect, value, failure)
+}
+
+// PublishMessageRetry asks Dex to retry the publishMessage Step, after the delay when it is positive.
+func PublishMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.PublishedMessage] {
+	return connectormock.Retry[pubsub.PublishedMessage](failure, after)
+}
+
+// PublishMessagePublishedDefault is the manifest mock publishedDefault: Pub/Sub accepted the example message.
+func PublishMessagePublishedDefault() connectormock.Case[pubsub.PublishedMessage] {
+	value := connectormock.MustDecodeOutput[pubsub.PublishedMessage](`{"messageId":"1234567890"}`)
+	return connectormock.Branch(pubsub.PublishMessageBranchPublished, value, nil)
+}
+
+// PublishMessageDefault is the manifest default, publishedDefault, which New installs.
+func PublishMessageDefault() connectormock.Case[pubsub.PublishedMessage] {
+	return PublishMessagePublishedDefault()
+}
+
+// PullMessagesPulled selects the pulled branch: Pub/Sub returned the available messages.
+func PullMessagesPulled(value pubsub.PulledMessages, failure *sdkgo.Failure) connectormock.Case[pubsub.PulledMessages] {
+	return connectormock.Branch(pubsub.PullMessagesBranchPulled, value, failure)
+}
+
+// PullMessagesNotFound selects the notFound branch: The subscription does not exist.
+func PullMessagesNotFound(value pubsub.PulledMessages, failure *sdkgo.Failure) connectormock.Case[pubsub.PulledMessages] {
+	return connectormock.Branch(pubsub.PullMessagesBranchNotFound, value, failure)
+}
+
+// PullMessagesProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the pull.
+func PullMessagesProviderRejected(value pubsub.PulledMessages, failure *sdkgo.Failure) connectormock.Case[pubsub.PulledMessages] {
+	return connectormock.Branch(pubsub.PullMessagesBranchProviderRejected, value, failure)
+}
+
+// PullMessagesInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed pull JSON.
+func PullMessagesInvalidResponse(value pubsub.PulledMessages, failure *sdkgo.Failure) connectormock.Case[pubsub.PulledMessages] {
+	return connectormock.Branch(pubsub.PullMessagesBranchInvalidResponse, value, failure)
+}
+
+// PullMessagesDefect selects the defect branch: Local pull input or credentials are invalid.
+func PullMessagesDefect(value pubsub.PulledMessages, failure *sdkgo.Failure) connectormock.Case[pubsub.PulledMessages] {
+	return connectormock.Branch(pubsub.PullMessagesBranchDefect, value, failure)
+}
+
+// PullMessagesRetry asks Dex to retry the pullMessages Step, after the delay when it is positive.
+func PullMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.PulledMessages] {
+	return connectormock.Retry[pubsub.PulledMessages](failure, after)
+}
+
+// PullMessagesPulledDefault is the manifest mock pulledDefault: One message is available.
+func PullMessagesPulledDefault() connectormock.Case[pubsub.PulledMessages] {
+	value := connectormock.MustDecodeOutput[pubsub.PulledMessages](`{"receivedMessages":[{"ackId":"sample-ack-id","message":{"messageId":"1234567890","data":"ZXZlbnQ="}}]}`)
+	return connectormock.Branch(pubsub.PullMessagesBranchPulled, value, nil)
+}
+
+// PullMessagesDefault is the manifest default, pulledDefault, which New installs.
+func PullMessagesDefault() connectormock.Case[pubsub.PulledMessages] {
+	return PullMessagesPulledDefault()
+}
+
+// AcknowledgeMessagesAcknowledged selects the acknowledged branch: Pub/Sub acknowledged the message IDs.
+func AcknowledgeMessagesAcknowledged(value pubsub.AcknowledgedMessages, failure *sdkgo.Failure) connectormock.Case[pubsub.AcknowledgedMessages] {
+	return connectormock.Branch(pubsub.AcknowledgeMessagesBranchAcknowledged, value, failure)
+}
+
+// AcknowledgeMessagesNotFound selects the notFound branch: The subscription does not exist.
+func AcknowledgeMessagesNotFound(value pubsub.AcknowledgedMessages, failure *sdkgo.Failure) connectormock.Case[pubsub.AcknowledgedMessages] {
+	return connectormock.Branch(pubsub.AcknowledgeMessagesBranchNotFound, value, failure)
+}
+
+// AcknowledgeMessagesProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the acknowledgement.
+func AcknowledgeMessagesProviderRejected(value pubsub.AcknowledgedMessages, failure *sdkgo.Failure) connectormock.Case[pubsub.AcknowledgedMessages] {
+	return connectormock.Branch(pubsub.AcknowledgeMessagesBranchProviderRejected, value, failure)
+}
+
+// AcknowledgeMessagesDefect selects the defect branch: Local acknowledgement input or credentials are invalid.
+func AcknowledgeMessagesDefect(value pubsub.AcknowledgedMessages, failure *sdkgo.Failure) connectormock.Case[pubsub.AcknowledgedMessages] {
+	return connectormock.Branch(pubsub.AcknowledgeMessagesBranchDefect, value, failure)
+}
+
+// AcknowledgeMessagesRetry asks Dex to retry the acknowledgeMessages Step, after the delay when it is positive.
+func AcknowledgeMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.AcknowledgedMessages] {
+	return connectormock.Retry[pubsub.AcknowledgedMessages](failure, after)
+}
+
+// AcknowledgeMessagesAcknowledgedDefault is the manifest mock acknowledgedDefault: Pub/Sub acknowledged one message.
+func AcknowledgeMessagesAcknowledgedDefault() connectormock.Case[pubsub.AcknowledgedMessages] {
+	value := connectormock.MustDecodeOutput[pubsub.AcknowledgedMessages](`{"acknowledgedCount":1}`)
+	return connectormock.Branch(pubsub.AcknowledgeMessagesBranchAcknowledged, value, nil)
+}
+
+// AcknowledgeMessagesDefault is the manifest default, acknowledgedDefault, which New installs.
+func AcknowledgeMessagesDefault() connectormock.Case[pubsub.AcknowledgedMessages] {
+	return AcknowledgeMessagesAcknowledgedDefault()
+}
+
+// ListSubscriptionsListed selects the listed branch: Pub/Sub returned the subscription page.
+func ListSubscriptionsListed(value pubsub.SubscriptionsPage, failure *sdkgo.Failure) connectormock.Case[pubsub.SubscriptionsPage] {
+	return connectormock.Branch(pubsub.ListSubscriptionsBranchListed, value, failure)
+}
+
+// ListSubscriptionsProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the read.
+func ListSubscriptionsProviderRejected(value pubsub.SubscriptionsPage, failure *sdkgo.Failure) connectormock.Case[pubsub.SubscriptionsPage] {
+	return connectormock.Branch(pubsub.ListSubscriptionsBranchProviderRejected, value, failure)
+}
+
+// ListSubscriptionsInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed subscription JSON.
+func ListSubscriptionsInvalidResponse(value pubsub.SubscriptionsPage, failure *sdkgo.Failure) connectormock.Case[pubsub.SubscriptionsPage] {
+	return connectormock.Branch(pubsub.ListSubscriptionsBranchInvalidResponse, value, failure)
+}
+
+// ListSubscriptionsDefect selects the defect branch: Local project input or credentials are invalid.
+func ListSubscriptionsDefect(value pubsub.SubscriptionsPage, failure *sdkgo.Failure) connectormock.Case[pubsub.SubscriptionsPage] {
+	return connectormock.Branch(pubsub.ListSubscriptionsBranchDefect, value, failure)
+}
+
+// ListSubscriptionsRetry asks Dex to retry the listSubscriptions Step, after the delay when it is positive.
+func ListSubscriptionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.SubscriptionsPage] {
+	return connectormock.Retry[pubsub.SubscriptionsPage](failure, after)
+}
+
+// ListSubscriptionsListedDefault is the manifest mock listedDefault: One pull subscription is visible.
+func ListSubscriptionsListedDefault() connectormock.Case[pubsub.SubscriptionsPage] {
+	value := connectormock.MustDecodeOutput[pubsub.SubscriptionsPage](`{"subscriptions":[{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}],"nextPageToken":""}`)
+	return connectormock.Branch(pubsub.ListSubscriptionsBranchListed, value, nil)
+}
+
+// ListSubscriptionsDefault is the manifest default, listedDefault, which New installs.
+func ListSubscriptionsDefault() connectormock.Case[pubsub.SubscriptionsPage] {
+	return ListSubscriptionsListedDefault()
+}
+
+// GetSubscriptionFound selects the found branch: Pub/Sub returned the subscription.
+func GetSubscriptionFound(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.GetSubscriptionBranchFound, value, failure)
+}
+
+// GetSubscriptionNotFound selects the notFound branch: The subscription does not exist.
+func GetSubscriptionNotFound(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.GetSubscriptionBranchNotFound, value, failure)
+}
+
+// GetSubscriptionProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the read.
+func GetSubscriptionProviderRejected(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.GetSubscriptionBranchProviderRejected, value, failure)
+}
+
+// GetSubscriptionInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed subscription JSON.
+func GetSubscriptionInvalidResponse(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.GetSubscriptionBranchInvalidResponse, value, failure)
+}
+
+// GetSubscriptionDefect selects the defect branch: Local subscription name or credentials are invalid.
+func GetSubscriptionDefect(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.GetSubscriptionBranchDefect, value, failure)
+}
+
+// GetSubscriptionRetry asks Dex to retry the getSubscription Step, after the delay when it is positive.
+func GetSubscriptionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Retry[pubsub.Subscription](failure, after)
+}
+
+// GetSubscriptionFoundDefault is the manifest mock foundDefault: The pull subscription exists.
+func GetSubscriptionFoundDefault() connectormock.Case[pubsub.Subscription] {
+	value := connectormock.MustDecodeOutput[pubsub.Subscription](`{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}`)
+	return connectormock.Branch(pubsub.GetSubscriptionBranchFound, value, nil)
+}
+
+// GetSubscriptionDefault is the manifest default, foundDefault, which New installs.
+func GetSubscriptionDefault() connectormock.Case[pubsub.Subscription] {
+	return GetSubscriptionFoundDefault()
+}
+
+// CreateSubscriptionCreated selects the created branch: Pub/Sub created or confirmed the subscription.
+func CreateSubscriptionCreated(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.CreateSubscriptionBranchCreated, value, failure)
+}
+
+// CreateSubscriptionProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the create.
+func CreateSubscriptionProviderRejected(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.CreateSubscriptionBranchProviderRejected, value, failure)
+}
+
+// CreateSubscriptionInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed subscription JSON.
+func CreateSubscriptionInvalidResponse(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.CreateSubscriptionBranchInvalidResponse, value, failure)
+}
+
+// CreateSubscriptionDefect selects the defect branch: Local subscription input or credentials are invalid.
+func CreateSubscriptionDefect(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.CreateSubscriptionBranchDefect, value, failure)
+}
+
+// CreateSubscriptionRetry asks Dex to retry the createSubscription Step, after the delay when it is positive.
+func CreateSubscriptionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Retry[pubsub.Subscription](failure, after)
+}
+
+// CreateSubscriptionCreatedDefault is the manifest mock createdDefault: Pub/Sub created the pull subscription.
+func CreateSubscriptionCreatedDefault() connectormock.Case[pubsub.Subscription] {
+	value := connectormock.MustDecodeOutput[pubsub.Subscription](`{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10}`)
+	return connectormock.Branch(pubsub.CreateSubscriptionBranchCreated, value, nil)
+}
+
+// CreateSubscriptionDefault is the manifest default, createdDefault, which New installs.
+func CreateSubscriptionDefault() connectormock.Case[pubsub.Subscription] {
+	return CreateSubscriptionCreatedDefault()
+}
+
+// UpdateSubscriptionLabelsUpdated selects the updated branch: Pub/Sub replaced the subscription labels.
+func UpdateSubscriptionLabelsUpdated(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.UpdateSubscriptionLabelsBranchUpdated, value, failure)
+}
+
+// UpdateSubscriptionLabelsNotFound selects the notFound branch: The subscription does not exist.
+func UpdateSubscriptionLabelsNotFound(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.UpdateSubscriptionLabelsBranchNotFound, value, failure)
+}
+
+// UpdateSubscriptionLabelsProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the update.
+func UpdateSubscriptionLabelsProviderRejected(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.UpdateSubscriptionLabelsBranchProviderRejected, value, failure)
+}
+
+// UpdateSubscriptionLabelsInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed subscription JSON.
+func UpdateSubscriptionLabelsInvalidResponse(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.UpdateSubscriptionLabelsBranchInvalidResponse, value, failure)
+}
+
+// UpdateSubscriptionLabelsDefect selects the defect branch: Local subscription input or credentials are invalid.
+func UpdateSubscriptionLabelsDefect(value pubsub.Subscription, failure *sdkgo.Failure) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Branch(pubsub.UpdateSubscriptionLabelsBranchDefect, value, failure)
+}
+
+// UpdateSubscriptionLabelsRetry asks Dex to retry the updateSubscriptionLabels Step, after the delay when it is positive.
+func UpdateSubscriptionLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.Subscription] {
+	return connectormock.Retry[pubsub.Subscription](failure, after)
+}
+
+// UpdateSubscriptionLabelsUpdatedDefault is the manifest mock updatedDefault: Pub/Sub replaced the labels.
+func UpdateSubscriptionLabelsUpdatedDefault() connectormock.Case[pubsub.Subscription] {
+	value := connectormock.MustDecodeOutput[pubsub.Subscription](`{"name":"projects/sample-project/subscriptions/events-reader","topic":"projects/sample-project/topics/events","ackDeadlineSeconds":10,"labels":{"team":"operations"}}`)
+	return connectormock.Branch(pubsub.UpdateSubscriptionLabelsBranchUpdated, value, nil)
+}
+
+// UpdateSubscriptionLabelsDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSubscriptionLabelsDefault() connectormock.Case[pubsub.Subscription] {
+	return UpdateSubscriptionLabelsUpdatedDefault()
+}
+
+// DeleteSubscriptionDeleted selects the deleted branch: Pub/Sub deleted the subscription or it was already absent.
+func DeleteSubscriptionDeleted(value pubsub.DeletedSubscription, failure *sdkgo.Failure) connectormock.Case[pubsub.DeletedSubscription] {
+	return connectormock.Branch(pubsub.DeleteSubscriptionBranchDeleted, value, failure)
+}
+
+// DeleteSubscriptionProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the delete.
+func DeleteSubscriptionProviderRejected(value pubsub.DeletedSubscription, failure *sdkgo.Failure) connectormock.Case[pubsub.DeletedSubscription] {
+	return connectormock.Branch(pubsub.DeleteSubscriptionBranchProviderRejected, value, failure)
+}
+
+// DeleteSubscriptionDefect selects the defect branch: Local subscription name or credentials are invalid.
+func DeleteSubscriptionDefect(value pubsub.DeletedSubscription, failure *sdkgo.Failure) connectormock.Case[pubsub.DeletedSubscription] {
+	return connectormock.Branch(pubsub.DeleteSubscriptionBranchDefect, value, failure)
+}
+
+// DeleteSubscriptionRetry asks Dex to retry the deleteSubscription Step, after the delay when it is positive.
+func DeleteSubscriptionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.DeletedSubscription] {
+	return connectormock.Retry[pubsub.DeletedSubscription](failure, after)
+}
+
+// DeleteSubscriptionDeletedDefault is the manifest mock deletedDefault: Pub/Sub deleted the pull subscription.
+func DeleteSubscriptionDeletedDefault() connectormock.Case[pubsub.DeletedSubscription] {
+	value := connectormock.MustDecodeOutput[pubsub.DeletedSubscription](`{"name":"projects/sample-project/subscriptions/events-reader"}`)
+	return connectormock.Branch(pubsub.DeleteSubscriptionBranchDeleted, value, nil)
+}
+
+// DeleteSubscriptionDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSubscriptionDefault() connectormock.Case[pubsub.DeletedSubscription] {
+	return DeleteSubscriptionDeletedDefault()
+}
+
+// GetTopicFound selects the found branch: Pub/Sub returned the topic.
+func GetTopicFound(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchFound, value, failure)
+}
+
+// GetTopicNotFound selects the notFound branch: No topic has that name.
+func GetTopicNotFound(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchNotFound, value, failure)
+}
+
+// GetTopicProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the read.
+func GetTopicProviderRejected(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchProviderRejected, value, failure)
+}
+
+// GetTopicInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed or oversized topic JSON.
+func GetTopicInvalidResponse(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchInvalidResponse, value, failure)
+}
+
+// GetTopicDefect selects the defect branch: Local topic name or credentials are invalid.
+func GetTopicDefect(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchDefect, value, failure)
+}
+
+// GetTopicRetry asks Dex to retry the getTopic Step, after the delay when it is positive.
+func GetTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.Topic] {
+	return connectormock.Retry[pubsub.Topic](failure, after)
+}
+
+// GetTopicFoundDefault is the manifest mock foundDefault: An events topic exists.
+func GetTopicFoundDefault() connectormock.Case[pubsub.Topic] {
+	value := connectormock.MustDecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+	return connectormock.Branch(pubsub.GetTopicBranchFound, value, nil)
+}
+
+// GetTopicDefault is the manifest default, foundDefault, which New installs.
+func GetTopicDefault() connectormock.Case[pubsub.Topic] { return GetTopicFoundDefault() }
+
+// CreateTopicCreated selects the created branch: Pub/Sub created the topic or a retry confirmed it exists.
+func CreateTopicCreated(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.CreateTopicBranchCreated, value, failure)
+}
+
+// CreateTopicProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the create.
+func CreateTopicProviderRejected(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.CreateTopicBranchProviderRejected, value, failure)
+}
+
+// CreateTopicInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed topic JSON.
+func CreateTopicInvalidResponse(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.CreateTopicBranchInvalidResponse, value, failure)
+}
+
+// CreateTopicDefect selects the defect branch: Local topic name, labels, or credentials are invalid.
+func CreateTopicDefect(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.CreateTopicBranchDefect, value, failure)
+}
+
+// CreateTopicRetry asks Dex to retry the createTopic Step, after the delay when it is positive.
+func CreateTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.Topic] {
+	return connectormock.Retry[pubsub.Topic](failure, after)
+}
+
+// CreateTopicCreatedDefault is the manifest mock createdDefault: Pub/Sub created an events topic.
+func CreateTopicCreatedDefault() connectormock.Case[pubsub.Topic] {
+	value := connectormock.MustDecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+	return connectormock.Branch(pubsub.CreateTopicBranchCreated, value, nil)
+}
+
+// CreateTopicDefault is the manifest default, createdDefault, which New installs.
+func CreateTopicDefault() connectormock.Case[pubsub.Topic] { return CreateTopicCreatedDefault() }
+
+// UpdateTopicLabelsUpdated selects the updated branch: Pub/Sub replaced the topic labels.
+func UpdateTopicLabelsUpdated(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchUpdated, value, failure)
+}
+
+// UpdateTopicLabelsNotFound selects the notFound branch: The topic does not exist.
+func UpdateTopicLabelsNotFound(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchNotFound, value, failure)
+}
+
+// UpdateTopicLabelsProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the update.
+func UpdateTopicLabelsProviderRejected(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchProviderRejected, value, failure)
+}
+
+// UpdateTopicLabelsInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed topic JSON.
+func UpdateTopicLabelsInvalidResponse(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchInvalidResponse, value, failure)
+}
+
+// UpdateTopicLabelsDefect selects the defect branch: Local topic name, labels, or credentials are invalid.
+func UpdateTopicLabelsDefect(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchDefect, value, failure)
+}
+
+// UpdateTopicLabelsRetry asks Dex to retry the updateTopicLabels Step, after the delay when it is positive.
+func UpdateTopicLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.Topic] {
+	return connectormock.Retry[pubsub.Topic](failure, after)
+}
+
+// UpdateTopicLabelsUpdatedDefault is the manifest mock updatedDefault: Pub/Sub replaced the topic labels.
+func UpdateTopicLabelsUpdatedDefault() connectormock.Case[pubsub.Topic] {
+	value := connectormock.MustDecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchUpdated, value, nil)
+}
+
+// UpdateTopicLabelsDefault is the manifest default, updatedDefault, which New installs.
+func UpdateTopicLabelsDefault() connectormock.Case[pubsub.Topic] {
+	return UpdateTopicLabelsUpdatedDefault()
+}
+
+// DeleteTopicDeleted selects the deleted branch: Pub/Sub deleted the topic or it was already absent.
+func DeleteTopicDeleted(value pubsub.DeletedTopic, failure *sdkgo.Failure) connectormock.Case[pubsub.DeletedTopic] {
+	return connectormock.Branch(pubsub.DeleteTopicBranchDeleted, value, failure)
+}
+
+// DeleteTopicProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the delete.
+func DeleteTopicProviderRejected(value pubsub.DeletedTopic, failure *sdkgo.Failure) connectormock.Case[pubsub.DeletedTopic] {
+	return connectormock.Branch(pubsub.DeleteTopicBranchProviderRejected, value, failure)
+}
+
+// DeleteTopicDefect selects the defect branch: Local topic name or credentials are invalid.
+func DeleteTopicDefect(value pubsub.DeletedTopic, failure *sdkgo.Failure) connectormock.Case[pubsub.DeletedTopic] {
+	return connectormock.Branch(pubsub.DeleteTopicBranchDefect, value, failure)
+}
+
+// DeleteTopicRetry asks Dex to retry the deleteTopic Step, after the delay when it is positive.
+func DeleteTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.DeletedTopic] {
+	return connectormock.Retry[pubsub.DeletedTopic](failure, after)
+}
+
+// DeleteTopicDeletedDefault is the manifest mock deletedDefault: Pub/Sub deleted the events topic.
+func DeleteTopicDeletedDefault() connectormock.Case[pubsub.DeletedTopic] {
+	value := connectormock.MustDecodeOutput[pubsub.DeletedTopic](`{"name":"projects/sample-project/topics/events"}`)
+	return connectormock.Branch(pubsub.DeleteTopicBranchDeleted, value, nil)
+}
+
+// DeleteTopicDefault is the manifest default, deletedDefault, which New installs.
+func DeleteTopicDefault() connectormock.Case[pubsub.DeletedTopic] { return DeleteTopicDeletedDefault() }
 
 // ListTopicsListed selects the listed branch: Pub/Sub returned the selected topic page.
 func ListTopicsListed(value pubsub.TopicsPage, failure *sdkgo.Failure) connectormock.Case[pubsub.TopicsPage] {
