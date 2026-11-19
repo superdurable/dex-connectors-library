@@ -300,8 +300,14 @@ Limitations:
 - A status posted after a pull request's CI started counts only on a rerun or
   in the merge queue.
 - The skipped jobs are not re-run on `main` after an attested pull request
-  merges. Scheduled and manual runs never skip jobs, so the daily scheduled
-  run is the only complete run of merged results for attested pull requests.
+  merges. Scheduled and manual runs are never trusted. Of the skipped jobs,
+  the daily scheduled run covers the full catalog with `connectors`,
+  `connector-conformance`, `language-connectors`,
+  `python-connectors-latest-sdk`, and `dex-compat-latest-go-sdk`, but it
+  skips `dex-integration-connectors` and `dex-compat-current`, as it always
+  does. For attested pull requests those two run on merged results only when
+  someone starts CI manually with `workflow_dispatch`, which tests every
+  connector.
 - API errors make the run untrusted.
 
 ## Studio UI distribution

@@ -91,7 +91,9 @@ CI behavior is accepted when:
   the Mac Studio tooling `remote-test.py attest`, skips the heavy connector
   jobs and runs `connector-generation` instead, and so does the push to `main`
   that adds its squash commit; skipped jobs are not re-run on the merge-group
-  commit or on `main`, and the daily scheduled run stays complete, as
+  commit or on `main`; the daily scheduled run still skips
+  `dex-integration-connectors` and `dex-compat-current`, so only a manual
+  `workflow_dispatch` runs them on merged results, as
   [Mac Studio verified pull requests](architecture.md#mac-studio-verified-pull-requests)
   describes;
 - scheduled compatibility selects the complete catalog;

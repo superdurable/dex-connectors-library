@@ -216,6 +216,31 @@ class DecidePushTest(unittest.TestCase):
             with self.subTest(pull_request=pull_request):
                 self.assertFalse(self.decide(self.reader([pull_request])).is_trusted)
 
+    def test_missing_or_malformed_head_sha_or_number_never_reaches_the_statuses_api(self) -> None:
+        malformed = []
+        for head_sha in (None, "", "None", "main", HEAD_SHA[:39], HEAD_SHA.upper()):
+            pull_request = merged_pull_request()
+            pull_request["head"] = {"sha": head_sha}
+            malformed.append(pull_request)
+        missing_head = merged_pull_request()
+        del missing_head["head"]
+        malformed.append(missing_head)
+        for number in (None, 0, -1, "42", True):
+            pull_request = merged_pull_request()
+            pull_request["number"] = number
+            malformed.append(pull_request)
+        missing_number = merged_pull_request()
+        del missing_number["number"]
+        malformed.append(missing_number)
+        for pull_request in malformed:
+            with self.subTest(pull_request=pull_request):
+                # A ref named like the bad value carries a trusted status; it must stay unread.
+                statuses = {str(value): [verification_status("success")]
+                            for value in ((pull_request.get("head") or {}).get("sha"), "None", "main")}
+                reader = self.reader([pull_request], statuses=statuses)
+                self.assertFalse(self.decide(reader).is_trusted)
+                self.assertFalse([call for call in reader.calls if call[0] == "statuses"])
+
     def test_push_that_adds_several_commits_is_untrusted(self) -> None:
         for parents in (["f" * 40], [BEFORE_SHA, "f" * 40], []):
             with self.subTest(parents=parents):

@@ -31,9 +31,10 @@ STATUS_PAGE_SIZE = 100
 API_TIMEOUT_SECONDS = 20
 MERGE_GROUP_HEAD_REF_PATTERN = re.compile(
     r"^(?:refs/heads/)?gh-readonly-queue/(?P<base_branch>.+)/pr-(?P<pull_request_number>[1-9][0-9]*)-[0-9a-f]{40}$")
-# Scheduled and manual runs are never trusted, so the daily run stays complete.
+# Scheduled and manual runs are never trusted, so they keep their usual job selection.
 LOCALLY_VERIFIABLE_EVENTS = frozenset({"pull_request", "merge_group", "push"})
 TRUSTED_PUSH_REF = "refs/heads/main"
+COMMIT_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 # Compare statuses meaning the merge group base is already on its base branch.
 BASE_ON_BRANCH_COMPARE_STATUSES = frozenset({"identical", "ahead"})
 
@@ -159,12 +160,17 @@ class LocalVerificationDecider:
             return LocalVerificationDecision(False, f"push {pushed_sha} belongs to {len(pull_requests)} pull requests, not exactly one")
         pull_request = pull_requests[0]
         pull_request_number = pull_request.get("number")
+        if isinstance(pull_request_number, bool) or not isinstance(pull_request_number, int) or pull_request_number < 1:
+            return LocalVerificationDecision(False, f"pull request number {pull_request_number!r} is not a positive integer")
+        head_sha = (pull_request.get("head") or {}).get("sha")
+        # The statuses API also resolves branch and tag names, so only a full commit SHA may reach it.
+        if not isinstance(head_sha, str) or not COMMIT_SHA_PATTERN.fullmatch(head_sha):
+            return LocalVerificationDecision(False, f"pull request #{pull_request_number} head {head_sha!r} is not a commit SHA")
         if (not pull_request.get("merged_at") or pull_request.get("merge_commit_sha") != pushed_sha
                 or (pull_request.get("base") or {}).get("ref") != TRUSTED_PUSH_REF.removeprefix("refs/heads/")):
             return LocalVerificationDecision(
                 False, f"pull request #{pull_request_number} was not merged into main as {pushed_sha}")
         # The squash commit never carries the status; the merged pull request head does.
-        head_sha = str(pull_request["head"]["sha"])
         decision = self.decide_commit(head_sha)
         return LocalVerificationDecision(decision.is_trusted, f"merged pull request #{pull_request_number}: {decision.reason}")
 
