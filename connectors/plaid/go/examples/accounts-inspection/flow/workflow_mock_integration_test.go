@@ -57,4 +57,5 @@ func TestAccountsInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "item_123456", output.ItemID)
 	require.Equal(t, []plaid.AccountSummary{{ID: "account_123456", Type: "depository", Subtype: "checking"}}, output.Accounts)
 	require.Len(t, mock.GetAccounts().Calls(), 1)
+	require.Len(t, mock.GetItem().Calls(), 1)
 }

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: rabbitmq
   displayName: RabbitMQ
-  description: Inspect one queue through the RabbitMQ Management HTTP API.
+  description: Inspect queues and publish messages through the RabbitMQ Management HTTP API.
   company: RabbitMQ
   categories: [developer-tools]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: rabbitmq
   languages:
@@ -61,6 +61,27 @@ spec:
         - In that Management UI open Admin > Users. Create or select a user with read permission for the target virtual host, and enter its exact username and secret password. Blank credentials prevent requests; do not use the default guest account remotely.
         - Leave timeout and maxResponseBytes blank for the displayed defaults. The same URL and credentials must reach the Management HTTP API from the Dex Worker.
   operations:
+    - name: publishMessage
+      goName: PublishMessage
+      inputType: PublishMessageInput
+      outputType: PublishedMessage
+      kind: mutation
+      description: Publish one UTF-8 message to an exchange with a routing key.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: published, goName: Published, description: RabbitMQ routed the message to at least one queue.}
+        - {id: unroutable, goName: Unroutable, description: RabbitMQ accepted the message but routed it to no queue., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: RabbitMQ conclusively rejected the publish request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The publish outcome could not be confirmed within the send limit., optional: true}
+        - {id: defect, goName: Defect, description: The publish input or credentials are invalid., optional: true}
+      mocks:
+        - name: publishedDefault
+          branch: published
+          default: true
+          description: One example message was routed.
+          output: {routed: true}
     - name: getQueueMetrics
       goName: GetQueueMetrics
       inputType: GetQueueMetricsInput

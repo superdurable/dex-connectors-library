@@ -1,6 +1,6 @@
 {
   "connectorId": "shopify",
-  "releaseTag": "connectors/shopify/go/v0.2.0",
+  "releaseTag": "connectors/shopify/go/v0.3.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-shopify",
@@ -104,9 +104,61 @@
         "additionalProperties": false,
         "description": "ListOrdersInput selects one bounded page of Shopify orders.",
         "properties": {
+          "attributionAppId": {
+            "description": "AttributionAppID filters orders attributed to this numeric app ID or \"current\".",
+            "type": "string"
+          },
+          "createdAtMax": {
+            "description": "CreatedAtMax filters orders created on or before an RFC3339 timestamp.",
+            "type": "string"
+          },
+          "createdAtMin": {
+            "description": "CreatedAtMin filters orders created on or after an RFC3339 timestamp.",
+            "type": "string"
+          },
+          "financialStatus": {
+            "description": "FinancialStatus filters by Shopify's order financial status; blank omits the filter.",
+            "type": "string"
+          },
+          "fulfillmentStatus": {
+            "description": "FulfillmentStatus filters by Shopify's order fulfillment status; blank omits the filter.",
+            "type": "string"
+          },
+          "ids": {
+            "description": "IDs selects a comma-separated list of numeric Shopify order IDs.",
+            "type": "string"
+          },
           "limit": {
             "description": "Limit bounds one page from 1 through 250; zero uses Shopify default.",
             "type": "integer"
+          },
+          "pageInfo": {
+            "description": "PageInfo is the opaque cursor returned by a previous listOrders page.",
+            "type": "string"
+          },
+          "processedAtMax": {
+            "description": "ProcessedAtMax filters orders processed on or before an RFC3339 timestamp.",
+            "type": "string"
+          },
+          "processedAtMin": {
+            "description": "ProcessedAtMin filters orders processed on or after an RFC3339 timestamp.",
+            "type": "string"
+          },
+          "sinceId": {
+            "description": "SinceID selects orders after a numeric Shopify order ID.",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status filters open, closed, cancelled, or any orders; blank means any.",
+            "type": "string"
+          },
+          "updatedAtMax": {
+            "description": "UpdatedAtMax filters orders updated on or before an RFC3339 timestamp.",
+            "type": "string"
+          },
+          "updatedAtMin": {
+            "description": "UpdatedAtMin filters orders updated on or after an RFC3339 timestamp.",
+            "type": "string"
           }
         },
         "type": "object"

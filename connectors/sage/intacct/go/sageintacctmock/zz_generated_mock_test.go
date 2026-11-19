@@ -20,6 +20,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sageintacct.InvoiceSummary](`{"key":"443","id":"INV-443"}`)
 			return err
 		}},
+		{name: "listInvoices/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sageintacct.InvoiceList](`{"invoices":[{"key":"443","id":"INV-443"}],"next":""}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +36,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
 		t.Errorf("getInvoice mock has another definition")
+	}
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
 	}
 }

@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "publishMessage/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[rabbitmq.PublishedMessage](`{"routed":true}`)
+			return err
+		}},
 		{name: "getQueueMetrics/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[rabbitmq.QueueMetrics](`{"virtualHost":"/","name":"work","messages":3,"consumers":1,"state":"running"}`)
 			return err
@@ -30,6 +34,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.PublishMessage().Definition().Operation.OperationID != "publishMessage" {
+		t.Errorf("publishMessage mock has another definition")
+	}
 	if mock.GetQueueMetrics().Definition().Operation.OperationID != "getQueueMetrics" {
 		t.Errorf("getQueueMetrics mock has another definition")
 	}

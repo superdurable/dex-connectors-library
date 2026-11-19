@@ -38,7 +38,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{resourceread.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{resourceread.NewFlow(connection), resourceread.NewCountFlow(connection), resourceread.NewCreateOrderFlow(connection), resourceread.NewCreateProductFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register shopify Flow: %w", err)
 	}
