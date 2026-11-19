@@ -569,7 +569,10 @@ class LocalVerificationJobsTest(unittest.TestCase):
         job = workflow_job(self.workflow, "local-verification")
         for line in ("GITHUB_TOKEN: ${{ github.token }}", "PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}",
                      "MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}",
-                     "MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}", "run: python3 script/ci_local_verification.py"):
+                     "MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}",
+                     "PUSH_REF: ${{ github.event_name == 'push' && github.ref || '' }}",
+                     "PUSH_SHA: ${{ github.event_name == 'push' && github.sha || '' }}",
+                     "PUSH_BEFORE_SHA: ${{ github.event.before }}", "run: python3 script/ci_local_verification.py"):
             self.assertIn(line, job)
 
     def test_workflow_skips_exactly_the_summary_heavy_jobs_when_trusted(self) -> None:

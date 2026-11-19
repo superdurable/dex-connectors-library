@@ -5,7 +5,7 @@
 A job the plan selects must succeed. A job the plan does not select may be skipped, but never
 fail or be cancelled. Queue-only jobs need a Dex stack, service containers, or Docker; pull
 requests skip them by design and the merge queue, pushes to main, and manual runs require them.
-When local-verification trusts a Mac Studio verified pull request or merge group, the heavy jobs
+When local-verification trusts a Mac Studio verified pull request, merge group, or main push, the heavy jobs
 may skip and the single generation-check job replaces their generation checks.
 """
 
@@ -93,8 +93,8 @@ LOCALLY_VERIFIED_SKIPPED_JOBS = frozenset({
     "python-connectors-latest-sdk",
 })
 
-# Only these events can carry a Mac Studio verification; others ignore a trusted output.
-LOCALLY_VERIFIABLE_EVENTS = frozenset({"pull_request", "merge_group"})
+# Only these events can carry a Mac Studio verification; schedule and workflow_dispatch ignore a trusted output.
+LOCALLY_VERIFIABLE_EVENTS = frozenset({"pull_request", "merge_group", "push"})
 
 SCHEDULE_SKIPPED_JOBS = frozenset({
     "dex-integration-connectors",
@@ -141,7 +141,7 @@ def find_failed_jobs(results: Mapping[str, str], event_name: str, plan: Mapping[
     """Returns each job that breaks the check, mapped to the reason.
 
     is_locally_verified is the local-verification job's trusted output; it applies only when that
-    job succeeded on a pull_request or merge_group event.
+    job succeeded on a pull_request, merge_group, or push event.
     """
     failed = {name: f"{result}, which is not a known job result" for name, result in results.items()
               if result not in JOB_RESULT_VALUES}
@@ -168,7 +168,7 @@ def find_failed_jobs(results: Mapping[str, str], event_name: str, plan: Mapping[
 
 
 def is_locally_trusted(results: Mapping[str, str], event_name: str, is_locally_verified: bool) -> bool:
-    """Reports whether a successful local-verification job trusted this pull_request or merge_group run."""
+    """Reports whether a successful local-verification job trusted this pull_request, merge_group, or push run."""
     return is_locally_verified and event_name in LOCALLY_VERIFIABLE_EVENTS and results.get("local-verification") == "success"
 
 
