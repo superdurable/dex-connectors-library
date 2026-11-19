@@ -706,6 +706,8 @@ export class TransitionTicketOperation implements Mutation<TransitionTicketInput
     const first = await this.readSnapshot(call, session, issue);
     if ('kind' in first) {
       if (first.kind === 'retry') await recordTransitionNotSent(call, history);
+      // After a possible earlier transition, a local failure is no proof that nothing moved.
+      if (first.kind === 'defect' && !history.canSelect) return newMutationRetry(first.failure!);
       return mutationClassified(first, zeroTransition);
     }
     const { snapshot, receipt } = first;
@@ -751,12 +753,12 @@ export class TransitionTicketOperation implements Mutation<TransitionTicketInput
     const isAccepted = result.error ? result.acceptedStatus !== undefined : result.response!.status >= 200 && result.response!.status < 300;
     if (isAccepted) return newMutationBranch('transitioned', { ...output, status: chosen.destinationStatus }, writeReceipt);
     if (isCompleteResponse(result) && result.response!.status === 404) return newMutationBranch('notFound', output, writeReceipt, failure('transitionTicket', 'NOT_FOUND', 'Jira issue was not found'));
-    if (!result.error && result.response!.status === 429) return newMutationRetry(failure('transitionTicket', 'RATE_LIMIT', 'Jira rate limited the transition'));
-    if (!result.error && result.response!.status === 503) return newMutationRetry(failure('transitionTicket', 'AVAILABILITY', 'Jira transitions are temporarily unavailable'));
+    if (!result.error && result.response!.status === 429) return newMutationRetry(failure('transitionTicket', 'RATE_LIMIT', 'Jira rate limited the transition'), this.client.retryAfter(result.response!));
+    if (!result.error && result.response!.status === 503) return newMutationRetry(failure('transitionTicket', 'AVAILABILITY', 'Jira transitions are temporarily unavailable'), this.client.retryAfter(result.response!));
     if (result.error && result.isProvablyNotSent) return newMutationRetry(failure('transitionTicket', 'TRANSPORT', 'Jira could not be reached'));
     if (isCompleteResponse(result) && definiteWriteRefusalStatuses.has(result.response!.status)) return this.classifyRefusedTransition(call, session, issue, chosen, output, result, writeReceipt);
     if (!result.error && result.response!.status < 400) return newMutationRetry(failure('transitionTicket', 'PROTOCOL', `Jira returned unexpected HTTP ${result.response!.status} for the transition`));
-    return newMutationRetry(failure('transitionTicket', result.response?.status === 409 ? 'CONFLICT' : 'AVAILABILITY', 'Jira did not confirm the transition; the next attempt reads the request before sending it again'));
+    return newMutationRetry(failure('transitionTicket', result.response?.status === 409 ? 'CONFLICT' : 'AVAILABILITY', 'Jira did not confirm the transition; the next attempt reads the request before sending it again'), result.response ? this.client.retryAfter(result.response) : 0);
   }
   /** Reread the request, because a concurrent duplicate may have made the transition first. */
   private async classifyRefusedTransition(call: Call, session: { token: string; cloudID: string }, issue: string, chosen: TransitionReference, output: TransitionTicketOutput, result: JiraResult, writeReceipt: ReceiptDraft): Promise<MutationAttempt<TransitionTicketOutput>> {
@@ -768,7 +770,8 @@ export class TransitionTicketOperation implements Mutation<TransitionTicketInput
   }
   private async readSnapshot(call: Call, session: { token: string; cloudID: string }, issue: string): Promise<{ snapshot: { id: string; key: string; status: TicketStatus; transitions: NonNullable<TransitionTicketOutput['availableTransitions']> }; receipt: ReceiptDraft } | Classification> {
     const result = await this.client.exchange(call, session, { method: 'GET', api: 'platform', path: issuePath(issue), query: { fields: 'status', expand: 'transitions' } });
-    const classification = this.client.read(call, 'transitionTicket', 'request', result, issue);
+    // Only a complete 404 or definite refusal selects a branch; any other unusable read is unknown.
+    const classification = this.client.repeatableWrite(call, 'transitionTicket', 'request', result, issue);
     if (classification.kind !== 'success') return classification;
     try {
       const resource = parsedObject(result);
@@ -780,7 +783,7 @@ export class TransitionTicketOperation implements Mutation<TransitionTicketInput
         return [{ id: requiredString(value.id), name: optionalString(value.name), destinationStatus: statusView(value.to) }];
       }).slice(0, 50);
       return { snapshot: { id, key, status, transitions }, receipt: { ...classification.receipt, providerObjectId: key } };
-    } catch { return this.client.classification('invalidResponse', 'transitionTicket', 'PROTOCOL', 'Jira returned an invalid issue or transition list', classification.receipt); }
+    } catch { return this.client.classification('retry', 'transitionTicket', 'PROTOCOL', 'Jira returned an invalid issue or transition list', classification.receipt); }
   }
 }
 function statusView(value: Record<string, unknown>): TicketStatus {

@@ -32,7 +32,7 @@ Python bounds each operation to 25 seconds or the Execute deadline minus five se
 | `getTicket` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `createTicket` | Mutation | sync | `created` | `providerRejected`, `uncertain`, `defect` |
 | `updateTicket` | Mutation | async | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| `transitionTicket` | Mutation | sync | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
+| `transitionTicket` | Mutation | sync | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse` (retired, never selected), `defect` |
 | `addComment` | Mutation | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
 
 Only the happy branch of each operation is required; every other branch is
@@ -241,8 +241,10 @@ destination status ID; when Dex cannot record it, the attempt returns Retry
 without sending. A 2xx, even one whose body breaks, is `transitioned`. A
 conclusive refusal rereads the request and selects `transitioned` when a
 concurrent attempt already reached the destination, otherwise
-`providerRejected`. A 429, 503, provably unsent request, 409, other 5xx, cut
-body, or dropped connection returns Retry.
+`providerRejected`. A 401 first refreshes the access token and sends the
+transition once more. A 429 or 503 returns Retry after `Retry-After`; a
+provably unsent request, 409, other 5xx, cut body, or dropped connection
+returns Retry.
 
 A later attempt of the same Call never selects a transition again, because a
 workflow can offer a transition with the same name back and a second selection
@@ -251,18 +253,35 @@ could undo the first. It reads the checkpoint and the request, then selects
 sends the recorded transition ID again while the request is still in the
 recorded source status, and selects `transitionUnavailable` without sending
 when someone else moved the request to another status or the recorded
-transition is no longer offered. Dex can lose a recorded heartbeat, so a later
-attempt selects a transition only when the previous attempt recorded `notSent`,
-which every Retry before a send records, or left an earlier release's `notSent`
-or `canResend` marker. Without a checkpoint or that record it selects
-`transitioned` only when the request is already in `DestinationStatusName` or
-the matched transition leads to the current status, and otherwise returns
-Retry without sending. An unreadable checkpoint returns Retry without any
-request; a transient read failure returns Retry and a definite read outcome
-keeps its branch. A terminal credential failure after a checkpoint returns
-Retry instead of `defect`. Run `transitionTicket` in its own Step, as
-`NewTransitionTicketStep` does, because the checkpoint is the Step's heartbeat
-value.
+transition is no longer offered.
+
+`transitionUnavailable` on a retry does not prove that this Call's transition
+was never applied: the first request may have moved the request from the
+source to the destination before an agent or an automation moved it on to a
+third status. Check the request's history before you act on that branch. If
+someone moves the request back to the recorded source status before the next
+attempt, that attempt sends the recorded transition again.
+
+Dex can lose a recorded heartbeat, so a later attempt selects a transition
+only when the previous attempt recorded `notSent`, which every Retry before a
+send records, or left an earlier release's `notSent` or `canResend` marker.
+Without a checkpoint or that record it selects `transitioned` only when the
+request is already in `DestinationStatusName` or the matched transition leads
+to the current status, and otherwise returns Retry without sending. Set
+`DestinationStatusName` whenever the destination is known: after a lost
+checkpoint, it is how a retried attempt recognizes a transition Jira already
+made and finishes instead of retrying until the budget ends.
+
+An unreadable checkpoint returns Retry without any request. On every attempt,
+only a definite read outcome selects a branch: a 404 with a fully read body
+selects `notFound`, and a 400, 401, 403, 411, 413, 414, 415, or 422 with a
+fully read body selects `providerRejected`. Every other read returns Retry,
+including a 409, 425, any other 4xx, a refusal whose body was cut, a 1xx or
+3xx, and a 2xx that is unparseable, oversized, or echoes the access token;
+`invalidResponse` is no longer selected. A local failure or a terminal
+credential failure after a checkpoint returns Retry instead of `defect`. Run
+`transitionTicket` in its own Step, as `NewTransitionTicketStep` does, because
+the checkpoint is the Step's heartbeat value.
 
 ### addComment
 
@@ -369,14 +388,14 @@ token, such as
 | Response | Reads, updateTicket, transitionTicket | createTicket, addComment |
 | --- | --- | --- |
 | 400, 401 after one refresh, 403, 411, 413, 414, 415, 422 | `providerRejected` | `providerRejected` on the first POST; `uncertain` after an earlier possible POST |
-| 409 | Reads: `providerRejected`; updateTicket and writes: Retry | Read back by a returned ID; otherwise Retry and resend below the send cap, `uncertain` at the cap |
-| definite refusal or 404 whose body broke, is oversized, or echoes the token | Reads: as above; updateTicket: Retry | As the next row with an unreadable body: Retry and resend below the send cap, `uncertain` at the cap |
+| 409 | Reads: `providerRejected`; updateTicket, transitionTicket, and writes: Retry | Read back by a returned ID; otherwise Retry and resend below the send cap, `uncertain` at the cap |
+| definite refusal or 404 whose body broke, is oversized, or echoes the token | Reads: as above; updateTicket and transitionTicket: Retry | As the next row with an unreadable body: Retry and resend below the send cap, `uncertain` at the cap |
 | 404 | `notFound` where declared | `notFound` (`addComment`), `providerRejected` (`createTicket`), as above |
 | 429, 503 | Retry after `Retry-After` | Checkpoint `canResend`, then Retry |
 | connection refused before sending | Retry | Retry |
 | 408, other 4xx or 5xx, response lost before its status | Retry | Retry and resend below the send cap, `uncertain` at the cap |
-| 3xx | Reads: `invalidResponse`; updateTicket and writes: Retry | Retry and resend below the send cap, `uncertain` at the cap |
-| interrupted, oversized, malformed, or token-reflecting 2xx | Reads: `invalidResponse`; updateTicket and writes: Retry | Read back by a returned ID; otherwise `uncertain`, never resent |
+| 3xx | Reads: `invalidResponse`; updateTicket, transitionTicket, and writes: Retry | Retry and resend below the send cap, `uncertain` at the cap |
+| interrupted, oversized, malformed, or token-reflecting 2xx | Reads: `invalidResponse`; updateTicket, transitionTicket, and writes: Retry | Read back by a returned ID; otherwise `uncertain`, never resent |
 | invalid input or terminal credential failure | `defect`, no request | `defect`, no request |
 | credential store or broker outage | Retry, no request | Retry, no request |
 

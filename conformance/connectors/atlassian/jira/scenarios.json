@@ -2580,22 +2580,15 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "issueId": "",
-          "issueKey": "",
-          "previousStatus": {
-            "id": "",
-            "name": ""
-          },
-          "status": {
-            "id": "",
-            "name": ""
-          }
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "state": "notSent"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2607,7 +2600,7 @@
         "transitionId": "11",
         "transitionName": "Start Progress"
       },
-      "name": "transition_invalid",
+      "name": "transition_unusable_read_retries",
       "operation": "transitionIssue"
     },
     {
@@ -3099,6 +3092,116 @@
         "transitionId": "11"
       },
       "name": "transition_retry_read_failure_retries",
+      "operation": "transitionIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
+        }
+      }
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"errorMessages\":[\"Conflict\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "issueIdOrKey": "OPS-43",
+        "transitionId": "11"
+      },
+      "name": "transition_retry_conflicting_read_retries",
+      "operation": "transitionIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+          "destinationStatusId": "3",
+          "sourceStatusId": "1",
+          "transitionId": "11",
+          "transitionName": "Start Progress"
+        }
+      }
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "issueIdOrKey": "OPS-43",
+        "transitionId": "11"
+      },
+      "name": "transition_retry_unusable_read_retries",
       "operation": "transitionIssue",
       "priorHeartbeat": {
         "attempt": 1,

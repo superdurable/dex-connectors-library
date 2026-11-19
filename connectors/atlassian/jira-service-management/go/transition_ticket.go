@@ -172,6 +172,10 @@ func (operation TransitionTicketOperation) Invoke(call sdkgo.Call, input Transit
 		if readFailure.classification.outcome == readRetry {
 			history.recordNotSent(call)
 		}
+		// After a possible earlier transition, a local failure is no proof that nothing moved.
+		if readFailure.classification.outcome == readDefect && !history.canSelect {
+			return sdkgo.NewMutationRetry[TransitionTicketOutput](readFailure.classification.failure, 0)
+		}
 		return readFailure.attempt(client.receipt(session, response, selection.issueIDOrKey))
 	}
 	receipt := client.receipt(session, response, snapshot.issueKey)
@@ -379,7 +383,8 @@ func (operation TransitionTicketOperation) readIssueTransitions(session *operati
 	result := client.exchange(session, providerRequest{
 		method: http.MethodGet, api: jiraPlatformAPI, path: issuePath(issueIDOrKey), query: url.Values{"fields": {"status"}, "expand": {"transitions"}},
 	})
-	classification := client.classifyRead(transitionTicketOperationID, transitionTicketReadSubject, result)
+	// Only a complete 404 or definite refusal selects a branch; any other unusable read is unknown.
+	classification := client.classifyRepeatableWrite(transitionTicketOperationID, transitionTicketReadSubject, result)
 	if classification.outcome != readSucceeded {
 		return issueTransitionSnapshot{}, result.response, &transitionReadFailure{classification: classification}
 	}
@@ -387,7 +392,7 @@ func (operation TransitionTicketOperation) readIssueTransitions(session *operati
 	if err := json.Unmarshal(result.response.body, &resource); err != nil || resource.Fields.Status == nil ||
 		!numericIDPattern.MatchString(resource.ID) || !issueKeyPattern.MatchString(resource.Key) {
 		return issueTransitionSnapshot{}, result.response, &transitionReadFailure{classification: readClassification{
-			outcome: readInvalid, failure: newFailure(transitionTicketOperationID, sdkgo.FailureProtocol, "Jira returned an invalid issue or transition list"),
+			outcome: readRetry, failure: newFailure(transitionTicketOperationID, sdkgo.FailureProtocol, "Jira returned an invalid issue or transition list"),
 		}}
 	}
 	snapshot := issueTransitionSnapshot{issueID: resource.ID, issueKey: resource.Key, status: resource.Fields.Status.view()}
@@ -409,8 +414,6 @@ func (failure *transitionReadFailure) attempt(receipt sdkgo.Receipt) sdkgo.Mutat
 		return sdkgo.NewMutationBranch(TransitionTicketBranchNotFound, TransitionTicketOutput{}, &classification.failure, receipt)
 	case readDefect:
 		return sdkgo.NewMutationBranch(TransitionTicketBranchDefect, TransitionTicketOutput{}, &classification.failure, receipt)
-	case readInvalid:
-		return sdkgo.NewMutationBranch(TransitionTicketBranchInvalidResponse, TransitionTicketOutput{}, &classification.failure, receipt)
 	default:
 		return sdkgo.NewMutationBranch(TransitionTicketBranchProviderRejected, TransitionTicketOutput{}, &classification.failure, receipt)
 	}

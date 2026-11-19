@@ -1541,7 +1541,8 @@ class TransitionTicketOperation:
             "/issue/" + path_escape(issue),
             query={"fields": "status", "expand": "transitions"},
         )
-        classification = self.client.classify_read("transitionTicket", "request", response)
+        # Only a complete 404 or definite refusal selects a branch; any other unusable read is unknown.
+        classification = self.client.classify_repeatable_write("transitionTicket", "request", response)
         if classification.outcome != "success":
             return None, response, classification
         try:
@@ -1575,7 +1576,7 @@ class TransitionTicketOperation:
                 None,
                 response,
                 Classification(
-                    "invalidResponse",
+                    "retry",
                     failure(
                         "transitionTicket",
                         FailureKind.PROTOCOL,
@@ -1651,6 +1652,10 @@ class TransitionTicketOperation:
         if snapshot is None:
             if classification.outcome == "retry":
                 await history.record_not_sent(call)
+            # After a possible earlier transition, a local failure is no proof that nothing moved.
+            if classification.outcome == "defect" and not history.can_select:
+                assert classification.failure is not None
+                return MutationAttempt.retry(classification.failure)
             return _mutation_failure(classification, empty, receipt)
         issue_id, issue_key, status, transitions = snapshot
         receipt = replace(receipt, provider_object_id=issue_key)

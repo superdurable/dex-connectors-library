@@ -262,7 +262,7 @@ func TransitionIssueProviderRejected(value jira.TransitionIssueOutput, failure *
 	return connectormock.Branch(jira.TransitionIssueBranchProviderRejected, value, failure)
 }
 
-// TransitionIssueInvalidResponse selects the invalidResponse branch: Jira returned an invalid or oversized issue or transition list.
+// TransitionIssueInvalidResponse selects the invalidResponse branch: No longer selected. An invalid or oversized issue or transition list proves nothing about the issue, so the Step retries; the branch stays declared for compatibility.
 func TransitionIssueInvalidResponse(value jira.TransitionIssueOutput, failure *sdkgo.Failure) connectormock.Case[jira.TransitionIssueOutput] {
 	return connectormock.Branch(jira.TransitionIssueBranchInvalidResponse, value, failure)
 }

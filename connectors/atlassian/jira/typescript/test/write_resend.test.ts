@@ -307,6 +307,49 @@ describe('Jira transition with a recorded checkpoint', () => {
     expect(requests).toHaveLength(1);
   });
 
+  // Issue reads that prove nothing about the issue.
+  const unknownTransitionReads: [string, number, string][] = [
+    ['409', 409, '{"errorMessages":["SENTINEL"]}'], ['425', 425, '{}'], ['unlisted 4xx', 418, '{}'],
+    ['cut 403', 403, oversizedBody], ['cut 404', 404, oversizedBody], ['oversized 2xx', 200, oversizedBody],
+    ['unparseable 2xx', 200, '{}'], ['token-reflecting 2xx', 200, '{"token":"jira-access-token"}'],
+  ];
+
+  it.each(unknownTransitionReads)('retries a first read without a definite outcome and records notSent (%s)', async (_name, status, body) => {
+    const { client, requests } = newStallingClient(() => ({ status, body }));
+    const context = new AttemptContext();
+    expect(branchOf(await runTransition(client, context))).toBe('retry');
+    expect(posts(requests, '/transitions')).toBe(0);
+    expect(context.marker).toEqual({ callId, attempt: 1, state: 'notSent' });
+  });
+
+  it.each(unknownTransitionReads)('retries a read without a definite outcome after a recorded send (%s)', async (_name, status, body) => {
+    const { client, requests } = newStallingClient(() => ({ status, body }));
+    const context = new AttemptContext(2, recordedStopProgress);
+    expect(branchOf(await runTransition(client, context)), 'a possible earlier transition never selects a failure branch').toBe('retry');
+    expect(requests).toHaveLength(1);
+    expect(context.marker, 'the recorded plan is kept').toEqual(recordedStopProgress);
+  });
+
+  it('keeps a definite refusal of the read', async () => {
+    const { client, requests } = newStallingClient(() => ({ status: 403, body: '{"errorMessages":["SENTINEL"]}' }));
+    expect(branchOf(await runTransition(client, new AttemptContext()))).toBe('providerRejected');
+    expect(posts(requests, '/transitions')).toBe(0);
+  });
+
+  it('refreshes a rejected token and resends the transition once', async () => {
+    const replacement = { ...credentials, accessToken: new SecretString('replacement-token') };
+    let forcedRefreshes = 0;
+    const refreshing = { ...source, resolveAfterRejection: async () => { forcedRefreshes++; return replacement; } };
+    const { client, requests } = newStallingClient(request => {
+      if (request.method === 'GET') return { status: 200, body: inProgressIssue };
+      return request.headers?.Authorization === 'Bearer jira-access-token' ? { status: 401, body: '{"code":401,"message":"SENTINEL Unauthorized"}' } : { status: 204, body: '' };
+    }, refreshing);
+    expect(branchOf(await runTransition(client, new AttemptContext()))).toBe('transitioned');
+    expect(posts(requests, '/transitions'), 'a 401 proves Jira did not apply the first transition').toBe(2);
+    expect(forcedRefreshes).toBe(1);
+    expect(requests.at(-1)?.headers?.Authorization).toBe('Bearer replacement-token');
+  });
+
   it('lets the next attempt send after a rate limit', async () => {
     const statuses = [429, 204];
     const { client, requests } = newStallingClient(request => request.method === 'GET' ? { status: 200, body: inProgressIssue } : { status: statuses.shift()!, body: '' });

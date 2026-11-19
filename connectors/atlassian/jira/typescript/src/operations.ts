@@ -502,6 +502,18 @@ async function recordTransitionNotSent(call: Call, history: TransitionHistory): 
   try { await call.context.recordHeartbeat({ callId: call.id, attempt: call.context.attempt, state: 'notSent' }); } catch { /* A lost record only makes the next attempt read without transitioning. */ }
 }
 
+/** Keep a branch only for a complete 404 or definite refusal; other unusable reads Retry. */
+function classifyDefiniteTransitionRead(exchange: JiraExchange, classified: ReadResult): ReadResult {
+  if (classified.kind !== 'branch') return classified;
+  if (!('response' in exchange)) return { kind: 'retry', failure: classified.failure, retryAfterMs: 0 };
+  const status = exchange.response.status;
+  if (classified.branch !== 'invalidResponse') {
+    if (definiteWriteRefusalStatuses.has(status) && isCompleteResponse(exchange)) return classified;
+    return { kind: 'retry', failure: jiraFailure('transitionIssue', 'AVAILABILITY', `Jira answered the issue read with HTTP ${status}, which proves nothing about the issue`), retryAfterMs: retryAfter(exchange.response) };
+  }
+  return { kind: 'retry', failure: classified.failure, retryAfterMs: 0 };
+}
+
 /** Report a response whose body was read in full; only then can it prove a refusal. */
 function isCompleteResponse(exchange: JiraExchange): boolean {
   return 'response' in exchange && !exchange.isTooLarge && !exchange.reflectsSecret && !exchange.isBodyIncomplete;
@@ -539,6 +551,8 @@ export class TransitionIssueOperation implements Mutation<TransitionIssueInput, 
     const first = await this.readTransitions(session, issue);
     if (first.kind !== 'ok') {
       if (first.kind === 'retry') await recordTransitionNotSent(call, history);
+      // After a possible earlier transition, a local failure is no proof that nothing moved.
+      if (first.kind === 'branch' && first.branch === 'defect' && !history.canSelect) return newMutationRetry(first.failure);
       return this.readFailure(first);
     }
     const snapshot = first.snapshot, receipt = first.receipt;
@@ -573,7 +587,8 @@ export class TransitionIssueOperation implements Mutation<TransitionIssueInput, 
   private async sendTransition(session: JiraSession, issue: string, resolutionName: string, chosen: TransitionReference, original: TransitionIssueOutput): Promise<MutationAttempt<TransitionIssueOutput>> {
     const output: TransitionIssueOutput = { ...original, transition: chosen };
     const payload = { transition: { id: chosen.id }, ...(resolutionName ? { fields: { resolution: { name: resolutionName } } } : {}) };
-    const write = await this.client.exchangeFencedWrite(session, 'POST', `/issue/${pathEscape(issue)}/transitions`, payload, session.signal);
+    // A rejected token refreshes and resends once: a 401 proves Jira did not apply the transition.
+    const write = await this.client.exchange(session, 'POST', `/issue/${pathEscape(issue)}/transitions`, undefined, payload, session.signal);
     const writeResponse = 'response' in write ? write.response : undefined;
     const writeReceipt = this.client.receipt(session, writeResponse, output.issueKey);
     // A 2xx whose body broke still moved the issue.
@@ -598,7 +613,7 @@ export class TransitionIssueOperation implements Mutation<TransitionIssueInput, 
   }
   private async readTransitions(session: JiraSession, issue: string): Promise<{ kind: 'ok'; snapshot: { issueId: string; issueKey: string; status: IssueStatus; transitions: TransitionReference[] }; receipt: ReceiptDraft } | { kind: 'retry'; failure: Failure; retryAfterMs: number } | { kind: 'branch'; branch: string; failure: Failure; receipt: ReceiptDraft }> {
     const exchange = await this.client.exchange(session, 'GET', `/issue/${pathEscape(issue)}`, { expand: 'transitions', fields: 'status' });
-    const classified = classifyRead(this.client, session, 'transitionIssue', 'issue', exchange, issue);
+    const classified = classifyDefiniteTransitionRead(exchange, classifyRead(this.client, session, 'transitionIssue', 'issue', exchange, issue));
     if (classified.kind !== 'ok') return classified;
     try {
       const value = decodeObject(classified.response.body), id = requireString(value.id), key = requireString(value.key), fields = requireObject(value.fields);
@@ -610,7 +625,7 @@ export class TransitionIssueOperation implements Mutation<TransitionIssueInput, 
         transitions.push({ id: requireString(item.id), name: optionalString(item.name), destinationStatus: decodeStatus(item.to) });
       }
       return { kind: 'ok', snapshot: { issueId: id, issueKey: key, status, transitions }, receipt: classified.receipt };
-    } catch { return { kind: 'branch', branch: 'invalidResponse', failure: jiraFailure('transitionIssue', 'PROTOCOL', 'Jira returned an invalid issue or transition list'), receipt: classified.receipt }; }
+    } catch { return { kind: 'retry', failure: jiraFailure('transitionIssue', 'PROTOCOL', 'Jira returned an invalid issue or transition list'), retryAfterMs: 0 }; }
   }
   private readFailure(failure: { kind: 'retry'; failure: Failure; retryAfterMs: number } | { kind: 'branch'; branch: string; failure: Failure; receipt: ReceiptDraft }): MutationAttempt<TransitionIssueOutput> {
     if (failure.kind === 'retry') return newMutationRetry(failure.failure, failure.retryAfterMs);

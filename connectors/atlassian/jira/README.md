@@ -25,7 +25,7 @@ API behavior remain unverified.
 | `searchIssues` | Query | async | `searched` | `providerRejected`, `invalidResponse`, `defect` |
 | `getIssue` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `createIssue` | Mutation | sync | `created` | `providerRejected`, `uncertain`, `defect` |
-| `transitionIssue` | Mutation | sync | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse`, `defect` |
+| `transitionIssue` | Mutation | sync | `transitioned` | `notFound`, `transitionUnavailable`, `providerRejected`, `invalidResponse` (retired, never selected), `defect` |
 | `addComment` | Mutation | sync | `added` | `notFound`, `providerRejected`, `uncertain`, `defect` |
 
 Status, issue type, and priority names are the site's own values and are never
@@ -368,8 +368,10 @@ screen's resolution. The operation:
    breaks, is `transitioned`; a 404 with a fully read body selects `notFound`;
    another conclusive 4xx rereads the issue and selects `transitioned` when a
    concurrent attempt already reached the destination, or `providerRejected`
-   with the field IDs. A 429, 503, provably unsent request, 409, other 5xx,
-   cut body, or dropped connection returns Retry.
+   with the field IDs. A 401 first refreshes the access token and sends the
+   transition once more, because Jira refused the first request without
+   applying it. A 429, 503, provably unsent request, 409, other 5xx, cut body,
+   or dropped connection returns Retry.
 
 The manifest declares `repeatOnUnknown: safe` because a transition has a fixed
 destination and a retry never selects a transition again. A later attempt of
@@ -383,6 +385,13 @@ the same Call reads the checkpoint and the issue, then:
   other status, because someone else moved it, or when the recorded transition
   is no longer offered.
 
+`transitionUnavailable` on a retry does not prove that this Call's transition
+was never applied: the first request may have moved the issue from the source
+to the destination before a person or an automation moved it on to a third
+status. Check the issue's history before you act on that branch. If someone
+moves the issue back to the recorded source status before the next attempt,
+that attempt sends the recorded transition again.
+
 It never matches `TransitionName` or `DestinationStatusName` again, because a
 workflow can offer a transition with the same name back and a second selection
 could undo the first. Dex can lose a recorded heartbeat, so a later attempt
@@ -391,11 +400,20 @@ every Retry before a send records. A later attempt with neither a checkpoint
 nor that record selects `transitioned` when the issue is already in
 `DestinationStatusName` or the matched transition leads to the current status,
 and otherwise returns Retry without sending until the retry budget ends. A
-`notSent` or `canResend` marker of an earlier release counts as `notSent`. An
-unreadable checkpoint returns Retry without any request. A transient read failure returns Retry; a definite read outcome, such
-as a 404, still selects its branch. A terminal credential failure after a
-checkpoint returns Retry instead of `defect`, because an earlier attempt may
-have moved the issue.
+`notSent` or `canResend` marker of an earlier release counts as `notSent`. Set
+`DestinationStatusName` whenever the destination is known: after a lost
+checkpoint, it is how a retried attempt recognizes a transition Jira already
+made and finishes instead of retrying until the budget ends.
+
+An unreadable checkpoint returns Retry without any request. On every attempt,
+only a definite read outcome selects a branch: a 404 with a fully read body
+selects `notFound`, and a 400, 401, 403, 411, 413, 414, 415, or 422 with a
+fully read body selects `providerRejected`. Every other read returns Retry,
+including a 409, 425, any other 4xx, a refusal whose body was cut, a 1xx or
+3xx, and a 2xx that is unparseable, oversized, or echoes the access token;
+`invalidResponse` is no longer selected. A local failure or a terminal
+credential failure after a checkpoint returns Retry instead of `defect`,
+because an earlier attempt may have moved the issue.
 
 The checkpoint is the Step's own Dex heartbeat value. Run `transitionIssue` in
 its own Step, as `NewTransitionIssueStep` does; a hand-written Step that also

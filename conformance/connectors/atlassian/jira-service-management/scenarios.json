@@ -1849,22 +1849,15 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "issueId": "",
-          "issueKey": "",
-          "previousStatus": {
-            "id": "",
-            "name": ""
-          },
-          "status": {
-            "id": "",
-            "name": ""
-          }
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "state": "notSent"
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1876,7 +1869,7 @@
         "transitionId": "31",
         "transitionName": "Start Progress"
       },
-      "name": "transitionTicket-invalid-response",
+      "name": "transitionTicket-unusable-read-retries",
       "operation": "transitionTicket"
     },
     {
@@ -4543,6 +4536,116 @@
         "transitionId": "31"
       },
       "name": "transitionTicket-retry-read-failure-retries",
+      "operation": "transitionTicket",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "destinationStatusId": "10002",
+          "sourceStatusId": "10001",
+          "transitionId": "31",
+          "transitionName": "Start Progress"
+        }
+      }
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"errorMessages\":[\"Conflict\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "issueIdOrKey": "ITH-42",
+        "transitionId": "31"
+      },
+      "name": "transitionTicket-retry-conflicting-read-retries",
+      "operation": "transitionTicket",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+          "destinationStatusId": "10002",
+          "sourceStatusId": "10001",
+          "transitionId": "31",
+          "transitionName": "Start Progress"
+        }
+      }
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "issueIdOrKey": "ITH-42",
+        "transitionId": "31"
+      },
+      "name": "transitionTicket-retry-unusable-read-retries",
       "operation": "transitionTicket",
       "priorHeartbeat": {
         "attempt": 1,

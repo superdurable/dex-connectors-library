@@ -164,6 +164,10 @@ func (operation TransitionIssueOperation) Invoke(call sdkgo.Call, input Transiti
 		if readFailure.classification.outcome == readRetry {
 			history.recordNotSent(call)
 		}
+		// After a possible earlier transition, a local failure is no proof that nothing moved.
+		if readFailure.classification.outcome == readDefect && !history.canSelect {
+			return sdkgo.NewMutationRetry[TransitionIssueOutput](readFailure.classification.failure, 0)
+		}
 		return readFailure.attempt(client.receipt(session, response, selection.issueIDOrKey))
 	}
 	receipt := client.receipt(session, response, snapshot.issueKey)
@@ -282,7 +286,8 @@ func (operation TransitionIssueOperation) sendTransition(
 ) sdkgo.MutationAttempt[TransitionIssueOutput] {
 	client := operation.client
 	output.Transition = &chosen
-	result := client.exchangeFencedWrite(session, session.context, jiraRequest{
+	// A rejected token refreshes and resends once: a 401 proves Jira did not apply the transition.
+	result := client.exchange(session, jiraRequest{
 		method: http.MethodPost, path: issuePath(selection.issueIDOrKey) + "/transitions", payload: selection.requestBody(chosen.ID),
 	})
 	receipt := client.receipt(session, result.response, output.IssueKey)
@@ -376,7 +381,7 @@ func (operation TransitionIssueOperation) readIssueTransitions(session *operatio
 	result := client.exchange(session, jiraRequest{
 		method: http.MethodGet, path: issuePath(issueIDOrKey), query: url.Values{"fields": {"status"}, "expand": {"transitions"}},
 	})
-	classification := client.classifyRead(transitionIssueOperationID, getIssueFailureSubject, result)
+	classification := client.classifyDefiniteTransitionRead(client.classifyRead(transitionIssueOperationID, getIssueFailureSubject, result), result.response)
 	if classification.outcome != readSucceeded {
 		return issueTransitionSnapshot{}, result.response, &transitionReadFailure{classification: classification}
 	}
@@ -384,7 +389,7 @@ func (operation TransitionIssueOperation) readIssueTransitions(session *operatio
 	if err := json.Unmarshal(result.response.body, &resource); err != nil || resource.Fields.Status == nil ||
 		!numericIDPattern.MatchString(resource.ID) || !issueKeyPattern.MatchString(resource.Key) {
 		return issueTransitionSnapshot{}, result.response, &transitionReadFailure{classification: readClassification{
-			outcome: readInvalid, failure: newFailure(transitionIssueOperationID, sdkgo.FailureProtocol, "Jira returned an invalid issue or transition list"),
+			outcome: readRetry, failure: newFailure(transitionIssueOperationID, sdkgo.FailureProtocol, "Jira returned an invalid issue or transition list"),
 		}}
 	}
 	snapshot := issueTransitionSnapshot{issueID: resource.ID, issueKey: resource.Key, status: resource.Fields.Status.view()}
@@ -397,6 +402,23 @@ func (operation TransitionIssueOperation) readIssueTransitions(session *operatio
 	return snapshot, result.response, nil
 }
 
+// classifyDefiniteTransitionRead keeps a branch only for a complete 404 or definite refusal; other unusable reads Retry.
+func (client *Client) classifyDefiniteTransitionRead(classification readClassification, response jiraResponse) readClassification {
+	switch classification.outcome {
+	case readSucceeded, readRetry, readDefect:
+		return classification
+	case readNotFound, readRejected:
+		if isDefiniteWriteRefusalStatus(response.statusCode) && isCompleteResponse(response) {
+			return classification
+		}
+		return readClassification{outcome: readRetry, retryAfter: client.retryAfter(response), failure: newFailure(transitionIssueOperationID, sdkgo.FailureAvailability,
+			fmt.Sprintf("Jira answered the issue read with HTTP %d, which proves nothing about the issue", response.statusCode))}
+	default:
+		classification.outcome = readRetry
+		return classification
+	}
+}
+
 func (failure *transitionReadFailure) attempt(receipt sdkgo.Receipt) sdkgo.MutationAttempt[TransitionIssueOutput] {
 	classification := failure.classification
 	switch classification.outcome {
@@ -406,8 +428,6 @@ func (failure *transitionReadFailure) attempt(receipt sdkgo.Receipt) sdkgo.Mutat
 		return sdkgo.NewMutationBranch(TransitionIssueBranchNotFound, TransitionIssueOutput{}, &classification.failure, receipt)
 	case readDefect:
 		return sdkgo.NewMutationBranch(TransitionIssueBranchDefect, TransitionIssueOutput{}, &classification.failure, receipt)
-	case readInvalid:
-		return sdkgo.NewMutationBranch(TransitionIssueBranchInvalidResponse, TransitionIssueOutput{}, &classification.failure, receipt)
 	default:
 		return sdkgo.NewMutationBranch(TransitionIssueBranchProviderRejected, TransitionIssueOutput{}, &classification.failure, receipt)
 	}

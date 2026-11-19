@@ -41,6 +41,7 @@ from ._generated.definitions import (
 )
 from .client import (
     DEFINITE_WRITE_REFUSAL_STATUSES,
+    Classification,
     Client,
     Exchange,
     SessionError,
@@ -567,11 +568,13 @@ async def _transition_snapshot(
         cloud_id=cloud_id,
         query={"fields": "status", "expand": "transitions"},
     )
-    result = _read_result(
-        client, call, "transitionIssue", "issue", response, TransitionIssueOutput(), issue_id, True
-    )
-    if result is not None:
-        return None, cast(MutationAttempt[TransitionIssueOutput], result)
+    classified = _classify_definite_transition_read(client, response)
+    if classified.outcome == "retry":
+        assert classified.failure is not None
+        return None, MutationAttempt.retry(classified.failure, classified.retry_after)
+    if classified.outcome != "success":
+        receipt = client.receipt(call, response, issue_id)
+        return None, _mutation(classified.outcome, TransitionIssueOutput(), receipt, classified.failure)
     try:
         source = _object(json.loads(response.body))
         found_id, key = _field_string(source, "id"), _field_string(source, "key")
@@ -590,14 +593,32 @@ async def _transition_snapshot(
                 )
         return (found_id, key, status, tuple(transitions)), None
     except (ValueError, TypeError, KeyError):
-        return None, _mutation(
-            "invalidResponse",
-            TransitionIssueOutput(),
-            client.receipt(call, response, issue_id),
+        return None, MutationAttempt.retry(
             failure(
                 "transitionIssue", FailureKind.PROTOCOL, "Jira returned an invalid issue or transition list"
-            ),
+            )
         )
+
+
+def _classify_definite_transition_read(client: Client, response: Exchange) -> Classification:
+    """Keep a branch only for a complete 404 or definite refusal; other unusable reads Retry."""
+    classified = client.classify_read("transitionIssue", "issue", response)
+    if classified.outcome in ("success", "retry", "defect"):
+        return classified
+    if classified.outcome in ("notFound", "providerRejected"):
+        if response.is_complete and response.status in DEFINITE_WRITE_REFUSAL_STATUSES:
+            return classified
+        return Classification(
+            "retry",
+            failure(
+                "transitionIssue",
+                FailureKind.AVAILABILITY,
+                f"Jira answered the issue read with HTTP {response.status}, "
+                "which proves nothing about the issue",
+            ),
+            client.retry_after(response),
+        )
+    return Classification("retry", classified.failure)
 
 
 @dataclass(frozen=True)
@@ -749,6 +770,10 @@ class TransitionIssueOperation:
         if early is not None:
             if early.kind == "retry":
                 await history.record_not_sent(call)
+            # After a possible earlier transition, a local failure is no proof that nothing moved.
+            if early.branch == "defect" and not history.can_select:
+                assert early.failure is not None
+                return MutationAttempt.retry(early.failure)
             return early
         assert snapshot is not None
         found_id, key, status, available = snapshot
@@ -878,8 +903,9 @@ class _TransitionSend:
         if self.resolution:
             payload["fields"] = {"resolution": {"name": self.resolution}}
         path = "/issue/" + path_escape(self.issue_id) + "/transitions"
+        # A rejected token refreshes and resends once: a 401 proves Jira did not apply the transition.
         response = await self.client.request(
-            self.call, self.credentials, "POST", path, cloud_id=self.cloud_id, payload=payload, fenced=True
+            self.call, self.credentials, "POST", path, cloud_id=self.cloud_id, payload=payload
         )
         receipt = self.client.receipt(self.call, response, output.issue_key)
         if response.request_defect:
