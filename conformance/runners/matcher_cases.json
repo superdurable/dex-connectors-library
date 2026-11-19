@@ -1,5 +1,20 @@
 [
   {
+    "name": "root-request-path",
+    "requestPath": "/",
+    "requestHeaders": {},
+    "requestBody": "",
+    "exchange": {
+      "method": "GET",
+      "path": "/",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": ""
+    },
+    "expectedMismatches": []
+  },
+  {
     "name": "empty-values-and-json-array",
     "requestPath": "/matcher?q=",
     "requestHeaders": {

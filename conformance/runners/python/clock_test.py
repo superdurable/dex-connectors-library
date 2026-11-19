@@ -9,11 +9,28 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from connector_scenarios import HeartbeatContext, _same_heartbeat, load_scenarios
+import httpx
+
+from connector_scenarios import (
+    ExchangeRecorder,
+    HeartbeatContext,
+    _same_heartbeat,
+    load_scenarios,
+)
 from dex_connectors.sdk.singledispatch import Marker
 
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+class RootRequestPathTest(unittest.TestCase):
+    def test_pathless_url_and_root_prefix_preserve_root_and_child_paths(self) -> None:
+        for prefix, path in (("", ""), ("/", "/"), ("/", "/resource")):
+            with self.subTest(prefix=prefix, path=path):
+                exchange = {"method": "GET", "path": path or "/", "keyMode": "absent", "status": 200, "headers": {}, "body": ""}
+                recorder = ExchangeRecorder({"exchanges": [exchange]}, "call", prefix)
+                asyncio.run(recorder.answer(httpx.Request("GET", "https://example.test" + path)))
+                self.assertEqual(recorder.mismatches, [])
 
 
 class ClockTest(unittest.TestCase):
