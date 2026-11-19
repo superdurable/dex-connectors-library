@@ -1319,8 +1319,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "spreadsheetId": "",
@@ -1453,7 +1452,7 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "TRANSPORT",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
@@ -1521,7 +1520,7 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "PROTOCOL",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
@@ -1563,6 +1562,61 @@
       "operation": "createSpreadsheet",
       "priorHeartbeat": {
         "attempt": 3,
+        "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets",
+          "requestBody": {
+            "properties": {
+              "title": "Contacts"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "spreadsheetId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "966d2233-4d52-5cee-a998-aed701d69b68",
+      "input": {
+        "title": "Contacts"
+      },
+      "name": "createSpreadsheet-malformed-success-at-cap",
+      "operation": "createSpreadsheet",
+      "priorHeartbeat": {
+        "attempt": 2,
         "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
         "state": "claimed"
       }
@@ -1756,14 +1810,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "sheetId": 0,
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2150,14 +2200,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "clearedRange": "",
-          "spreadsheetId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2417,8 +2463,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "rowNumber": 0,
@@ -2487,8 +2532,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "rowNumber": 0,
@@ -2552,20 +2596,16 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
-        "failureKind": "PROTOCOL",
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "rowNumber": 0,
-          "updatedRange": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2779,7 +2819,7 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "TRANSPORT",
+        "failureKind": "AVAILABILITY",
         "heartbeat": {
           "attempt": 1,
           "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
@@ -2833,6 +2873,81 @@
       "operation": "appendRow",
       "priorHeartbeat": {
         "attempt": 3,
+        "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/spreadsheets/sheet-id/values/'Contacts':append",
+          "query": {
+            "insertDataOption": [
+              "INSERT_ROWS"
+            ],
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "rowNumber": 0,
+          "updatedRange": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "df466986-f32d-5fa4-be11-95e98b23328f",
+      "input": {
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "appendRow-malformed-success-at-cap",
+      "operation": "appendRow",
+      "priorHeartbeat": {
+        "attempt": 2,
         "callId": "df466986-f32d-5fa4-be11-95e98b23328f",
         "state": "claimed"
       }
@@ -7187,6 +7302,64 @@
       },
       "name": "upsertRow-accepted-unparsable-missing-uncertain",
       "operation": "upsertRow"
+    },
+    {
+      "callId": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/spreadsheets/sheet-id/values/'Contacts'!A2",
+          "query": {
+            "valueInputOption": [
+              "RAW"
+            ]
+          },
+          "requestBody": {
+            "majorDimension": "ROWS",
+            "range": "'Contacts'!A2",
+            "values": [
+              [
+                "ada@example.test",
+                "Ada",
+                "active"
+              ]
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sheets-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "631bf04b-600d-54fd-9346-362c2b216b35",
+      "input": {
+        "rowNumber": 2,
+        "sheetName": "Contacts",
+        "spreadsheetId": "sheet-id",
+        "values": [
+          "ada@example.test",
+          "Ada",
+          "active"
+        ]
+      },
+      "name": "updateRow-malformedSuccessRetries",
+      "operation": "updateRow"
     }
   ],
   "schemaVersion": 1

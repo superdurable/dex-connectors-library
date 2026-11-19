@@ -221,16 +221,16 @@ func (operation UpdatePlaylistOperation) Invoke(call sdkgo.Call, input UpdatePla
 	}
 	response, outcome := operation.client.exchange(call, "updatePlaylist", providerRequest{method: http.MethodPut, path: "/playlists", query: url.Values{"part": {"snippet,status"}}, body: body, requiresManage: true}, input.PlaylistID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[Playlist](*outcome, updatePlaylistBranches)
+		return mutationAttemptForSafeWriteOutcome[Playlist](*outcome, updatePlaylistBranches)
 	}
 	receipt := operation.client.receipt(call, input.PlaylistID, response.header)
 	var item providerPlaylist
 	if decodeResponse(response.body, &item) != nil {
-		return sdkgo.NewMutationBranch(UpdatePlaylistBranchInvalidResponse, Playlist{}, providerFailurePointer("updatePlaylist", sdkgo.FailureProtocol, "YouTube returned an invalid playlist response"), receipt)
+		return sdkgo.NewMutationRetry[Playlist](providerFailure("updatePlaylist", sdkgo.FailureProtocol, "YouTube returned an invalid playlist response"), 0)
 	}
 	playlist, ok := convertProviderPlaylist(item)
 	if !ok || playlist.ID != input.PlaylistID || playlist.Title != input.Title || playlist.Description != input.Description || playlist.PrivacyStatus != input.PrivacyStatus {
-		return sdkgo.NewMutationBranch(UpdatePlaylistBranchInvalidResponse, Playlist{}, providerFailurePointer("updatePlaylist", sdkgo.FailureProtocol, "YouTube returned different playlist values"), receipt)
+		return sdkgo.NewMutationRetry[Playlist](providerFailure("updatePlaylist", sdkgo.FailureProtocol, "YouTube returned different playlist values"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdatePlaylistBranchUpdated, playlist, nil, receipt)
 }
@@ -242,11 +242,11 @@ func (operation DeletePlaylistOperation) Invoke(call sdkgo.Call, input GetPlayli
 	}
 	response, outcome := operation.client.exchange(call, "deletePlaylist", providerRequest{method: http.MethodDelete, path: "/playlists", query: url.Values{"id": {input.PlaylistID}}, requiresManage: true}, input.PlaylistID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[DeletedPlaylist](*outcome, deletePlaylistBranches)
+		return mutationAttemptForSafeWriteOutcome[DeletedPlaylist](*outcome, deletePlaylistBranches)
 	}
 	receipt := operation.client.receipt(call, input.PlaylistID, response.header)
 	if response.statusCode != http.StatusNoContent {
-		return sdkgo.NewMutationBranch(DeletePlaylistBranchInvalidResponse, DeletedPlaylist{}, providerFailurePointer("deletePlaylist", sdkgo.FailureProtocol, "YouTube returned an unexpected delete status"), receipt)
+		return sdkgo.NewMutationRetry[DeletedPlaylist](providerFailure("deletePlaylist", sdkgo.FailureProtocol, "YouTube returned an unexpected delete status"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeletePlaylistBranchDeleted, DeletedPlaylist{PlaylistID: input.PlaylistID}, nil, receipt)
 }

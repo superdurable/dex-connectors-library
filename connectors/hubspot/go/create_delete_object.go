@@ -52,6 +52,9 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 				return sdkgo.NewMutationBranch(CreateObjectBranchCreated, object, nil, operation.client.receipt(call, readResponse, object.ID))
 			}
 		}
+		if decision.Kind != singledispatch.ReadBackRequired {
+			return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, sdkgo.FailureTransport, "created record could not be confirmed"), 0)
+		}
 		return sdkgo.NewMutationUncertain(CRMObject{}, providerFailure(operationID, sdkgo.FailureTransport, "created record could not be confirmed"), sdkgo.Receipt{})
 	}
 	if decision.Kind != singledispatch.SendAllowed && decision.Kind != singledispatch.ReadBackThenResendAllowed {
@@ -70,10 +73,10 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 		return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, sdkgo.FailureAvailability, "create dispatch did not start"), 0)
 	}
 	if err != nil {
-		return sdkgo.NewMutationUncertain(CRMObject{}, providerFailure(operationID, sdkgo.FailureTransport, "create dispatch could not be confirmed"), sdkgo.Receipt{})
+		return createObjectUnknownOutcome(call, decision, sdkgo.FailureTransport, "create dispatch could not be confirmed")
 	}
 	if outcome != nil {
-		if outcome.disposition == outcomeRetry && (response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable || response.statusCode == http.StatusLocked || !didGetConnection.Load()) {
+		if outcome.disposition == outcomeRetry && (response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable || !didGetConnection.Load()) {
 			if checkpointError := fence.RecordCanResend(); checkpointError != nil {
 				return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, sdkgo.FailureAvailability, "retry checkpoint is unavailable"), 0)
 			}
@@ -86,25 +89,36 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 			return sdkgo.NewMutationUncertain(CRMObject{}, outcome.failure, outcome.receipt)
 		}
 		if response.statusCode >= 200 && response.statusCode < 300 {
-			return sdkgo.NewMutationUncertain(CRMObject{}, outcome.failure, outcome.receipt)
+			return createObjectUnknownOutcome(call, decision, outcome.failure.Kind, outcome.failure.Message)
 		}
-		if decision.MaximumPriorSends > 0 {
-			return sdkgo.NewMutationUncertain(CRMObject{}, providerFailure(operationID, sdkgo.FailureTransport, "prior create remains unconfirmed"), outcome.receipt)
+		if decision.MaximumPriorSends > 0 || !outcome.isDefiniteRefusal {
+			return createObjectUnknownOutcome(call, decision, outcome.failure.Kind, outcome.failure.Message)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, sdkgo.FailureAvailability, "refusal checkpoint is unavailable"), 0)
 		}
 		return mutationAttemptForOutcome[CRMObject](*outcome, operationBranches{conflict: CreateObjectBranchConflict, rejected: CreateObjectBranchProviderRejected, defect: CreateObjectBranchDefect})
 	}
 	receipt := operation.client.receipt(call, response, "")
 	if response.statusCode != http.StatusCreated {
-		return sdkgo.NewMutationUncertain(CRMObject{}, providerFailure(operationID, sdkgo.FailureProtocol, "HubSpot returned an unexpected create status"), receipt)
+		return createObjectUnknownOutcome(call, decision, sdkgo.FailureProtocol, "HubSpot returned an unexpected create status")
 	}
 	object, err := decodeObject(input.ObjectType, response.body)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(CRMObject{}, providerFailure(operationID, sdkgo.FailureProtocol, "HubSpot returned an invalid created record"), receipt)
+		return createObjectUnknownOutcome(call, decision, sdkgo.FailureProtocol, "HubSpot returned an invalid created record")
 	}
 	receipt.ProviderObjectID = object.ID
 	// The accepted result remains known if its read-back checkpoint fails.
 	_ = fence.RecordProviderID(object.ID)
 	return sdkgo.NewMutationBranch(CreateObjectBranchCreated, object, nil, receipt)
+}
+
+func createObjectUnknownOutcome(call sdkgo.Call, decision singledispatch.Decision, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CRMObject] {
+	failure := providerFailure("createObject", kind, message)
+	if decision.MaximumPriorSends+1 < call.MaxSends() {
+		return sdkgo.NewMutationRetry[CRMObject](failure, 0)
+	}
+	return sdkgo.NewMutationUncertain(CRMObject{}, failure, sdkgo.Receipt{})
 }
 
 func createObjectFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CRMObject] {

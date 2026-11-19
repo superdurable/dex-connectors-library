@@ -146,7 +146,8 @@ type providerOutcome struct {
 	retryAfter  time.Duration
 	receipt     sdkgo.Receipt
 	// statusCode is the HTTP status of the answer, or zero when no answer arrived.
-	statusCode int
+	statusCode        int
+	isDefiniteRefusal bool
 }
 
 // operationBranches names the branch each outcome selects for one operation.
@@ -273,6 +274,7 @@ func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, 
 	classified := classifyErrorResponse(operation, response, client.now())
 	classified.receipt = receipt
 	classified.statusCode = response.statusCode
+	classified.isDefiniteRefusal = isDefiniteHubSpotRefusal(response)
 	return response, &classified
 }
 
@@ -470,9 +472,7 @@ func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operatio
 	// Both writes are repeat-safe, so a status that does not prove a refusal, such as a bare 409, is
 	// retried. A documented CONFLICT is definite even after an earlier send: repeating our own write
 	// sets the same values on the same record and cannot conflict with it.
-	isUnknownStatus := outcome.statusCode != 0 && (outcome.statusCode < 200 || outcome.statusCode >= 300) &&
-		!isDefiniteRefusalStatus(outcome.statusCode) && outcome.failure.Kind != sdkgo.FailureQuotaExhausted &&
-		outcome.disposition != outcomeConflict
+	isUnknownStatus := outcome.statusCode != 0 && (outcome.statusCode < 200 || outcome.statusCode >= 300) && !outcome.isDefiniteRefusal
 	// An oversized or unusable answer may follow an applied write, and repeating it is safe.
 	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse || isUnknownStatus {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
@@ -509,6 +509,18 @@ func isDefiniteRefusalStatus(status int) bool {
 		return true
 	}
 	return false
+}
+
+func isDefiniteHubSpotRefusal(response providerResponse) bool {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(response.body, &fields) != nil || fields["id"] != nil || fields["properties"] != nil || fields["results"] != nil {
+		return false
+	}
+	errorBody := decodeErrorBody(response.body)
+	if response.statusCode == http.StatusConflict {
+		return isDocumentedConflictCategory(errorBody.Category)
+	}
+	return isDefiniteRefusalStatus(response.statusCode) && errorBody.Category != ""
 }
 
 // preferredBranchOr returns preferred, or fallback when the operation declares no preferred branch.

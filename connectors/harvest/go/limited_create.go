@@ -34,21 +34,28 @@ func invokeLimitedHarvestCreate[T any](client *Client, call sdkgo.Call, operatio
 		if decision.Kind == singledispatch.ReadBackRequired {
 			return harvestMutationUncertain[T](operationID, sdkgo.FailureTransport, "prior create cannot be confirmed")
 		}
+		return harvestMutationRetry[T](operationID, sdkgo.FailureTransport, "created resource is not yet visible", 0)
 	} else if decision.Kind == singledispatch.ReadBackRequired {
 		return harvestMutationUncertain[T](operationID, sdkgo.FailureTransport, "prior create cannot be confirmed")
 	}
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		if decision.MaximumPriorSends > 0 {
-			return harvestMutationUncertain[T](operationID, sdkgo.FailureAuthentication, "credentials unavailable after an unconfirmed create")
+			return harvestMutationRetry[T](operationID, sdkgo.FailureAuthentication, "credentials unavailable after an unconfirmed create", 0)
 		}
 		return harvestMutationFailure[T](operationID, defectBranch, sdkgo.FailureAuthentication, "connection credentials are invalid")
 	}
 	request, err := client.newHarvestRequest(call.Context, credentials, http.MethodPost, path, payload)
 	if err != nil {
+		if decision.MaximumPriorSends > 0 {
+			return harvestMutationRetry[T](operationID, sdkgo.FailureLocalDefect, "create request cannot be built", 0)
+		}
 		return harvestMutationFailure[T](operationID, defectBranch, sdkgo.FailureLocalDefect, "create request cannot be built")
 	}
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+		if decision.MaximumPriorSends > 0 {
+			return harvestMutationRetry[T](operationID, sdkgo.FailureLocalDefect, "create request is invalid", 0)
+		}
 		return harvestMutationFailure[T](operationID, defectBranch, sdkgo.FailureLocalDefect, "create request is invalid")
 	}
 	var response *http.Response
@@ -84,10 +91,13 @@ func invokeLimitedHarvestCreate[T any](client *Client, call sdkgo.Call, operatio
 		return retryOrUncertainHarvestCreate[T](call, decision, operationID, sdkgo.FailureAvailability, "create outcome is unknown", 0)
 	}
 	if response.StatusCode >= 400 {
-		if decision.MaximumPriorSends > 0 {
-			return harvestMutationUncertain[T](operationID, sdkgo.FailureProviderRejection, "a prior create remains unconfirmed")
+		if isDefiniteHarvestRefusal(response, client.maxResponseBytes) && decision.MaximumPriorSends == 0 {
+			if err := fence.RecordCanResend(); err != nil {
+				return harvestMutationRetry[T](operationID, sdkgo.FailureAvailability, "create refusal checkpoint is unavailable", 0)
+			}
+			return harvestMutationFailure[T](operationID, rejectedBranch, sdkgo.FailureProviderRejection, "Harvest rejected HTTP "+strconv.Itoa(response.StatusCode))
 		}
-		return harvestMutationFailure[T](operationID, rejectedBranch, sdkgo.FailureProviderRejection, "Harvest rejected HTTP "+strconv.Itoa(response.StatusCode))
+		return retryOrUncertainHarvestCreate[T](call, decision, operationID, sdkgo.FailureAvailability, "create outcome is unknown", 0)
 	}
 	if response.StatusCode != http.StatusCreated {
 		return retryOrUncertainHarvestCreate[T](call, decision, operationID, sdkgo.FailureProtocol, "unexpected create status", 0)
@@ -100,7 +110,7 @@ func invokeLimitedHarvestCreate[T any](client *Client, call sdkgo.Call, operatio
 	if err != nil {
 		return retryOrUncertainHarvestCreate[T](call, decision, operationID, sdkgo.FailureProtocol, "create response was invalid", 0)
 	}
-	_ = fence.RecordProviderID(providerID(created))
+	_ = fence.RecordProviderID(providerID(created)) // The successful response already confirms acceptance.
 	return sdkgo.NewMutationBranch(successBranch, created, nil, sdkgo.Receipt{})
 }
 

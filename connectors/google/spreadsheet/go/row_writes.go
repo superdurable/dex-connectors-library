@@ -77,6 +77,9 @@ func (operation AppendRowOperation) Invoke(call sdkgo.Call, input AppendRowInput
 	credential, failure, isTerminal := operation.client.resolveCredential(call.Context, call, "appendRow")
 	if failure != nil {
 		if isTerminal {
+			if decision.MaximumPriorSends > 0 {
+				return sdkgo.NewMutationRetry[RowWriteResult](*failure, 0)
+			}
 			return spreadsheetDocumentMutationBranch(AppendRowBranchDefect, RowWriteResult{}, failure.Kind, failure.Message)
 		}
 		return sdkgo.NewMutationRetry[RowWriteResult](*failure, 0)
@@ -86,6 +89,9 @@ func (operation AppendRowOperation) Invoke(call sdkgo.Call, input AppendRowInput
 			result, isConfirmed := operation.readBackAppendedRow(call, credential, input, decision.Marker.ProviderID)
 			if isConfirmed {
 				return sdkgo.NewMutationBranch(AppendRowBranchAppended, result, nil, spreadsheetDocumentReceipt(call, input.SpreadsheetID+"#"+result.UpdatedRange))
+			}
+			if decision.Kind != singledispatch.ReadBackRequired {
+				return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureTransport, "appendRow", "appended row locator requires confirmation"), 0)
 			}
 		}
 		if decision.Kind == singledispatch.ReadBackRequired {
@@ -106,9 +112,12 @@ func (operation AppendRowOperation) Invoke(call sdkgo.Call, input AppendRowInput
 	if requestError != nil {
 		var providerError *providerRequestError
 		if errors.As(requestError, &providerError) && providerError.undispatched {
-			_ = fence.RecordCanResend()
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "undispatched checkpoint failed"), 0)
+			}
+			return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureTransport, "appendRow", "append request was not sent"), 0)
 		}
-		return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureTransport, "appendRow", "append request failed"), 0)
+		return appendRowUnknownOutcome(call, decision, "append request outcome is unknown")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -119,28 +128,39 @@ func (operation AppendRowOperation) Invoke(call sdkgo.Call, input AppendRowInput
 		}
 		return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "Google temporarily refused the append"), 0)
 	}
-	if response.status >= 500 || response.status == http.StatusRequestTimeout {
-		return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "append outcome is unknown"), 0)
-	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && decision.MaximumPriorSends == 0 && isDefiniteSpreadsheetRefusal(response) {
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "refusal checkpoint is unavailable"), 0)
+		}
 		return spreadsheetDocumentMutationBranch(AppendRowBranchNotFound, RowWriteResult{}, sdkgo.FailureNotFound, "spreadsheet or tab was not found")
 	}
 	if response.status != http.StatusOK {
+		if decision.MaximumPriorSends > 0 || !isDefiniteSpreadsheetRefusal(response) {
+			return appendRowUnknownOutcome(call, decision, "append outcome is unknown")
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "refusal checkpoint is unavailable"), 0)
+		}
 		return spreadsheetDocumentMutationBranch(AppendRowBranchProviderRejected, RowWriteResult{}, sdkgo.FailureProviderRejection, "Google rejected append with HTTP "+strconv.Itoa(response.status))
 	}
 	var wire updateResponse
 	if json.Unmarshal(response.body, &wire) != nil || wire.Updates == nil || wire.Updates.UpdatedRange == "" {
-		return spreadsheetDocumentMutationBranch(AppendRowBranchInvalidResponse, RowWriteResult{}, sdkgo.FailureProtocol, "Google accepted append but returned no row locator")
+		return appendRowUnknownOutcome(call, decision, "Google accepted append but returned no row locator")
 	}
 	rowNumber, hasRow := firstRowNumber(wire.Updates.UpdatedRange)
 	if !hasRow {
-		return spreadsheetDocumentMutationBranch(AppendRowBranchInvalidResponse, RowWriteResult{}, sdkgo.FailureProtocol, "Google returned an invalid appended row range")
+		return appendRowUnknownOutcome(call, decision, "Google returned an invalid appended row range")
 	}
-	if err := fence.RecordProviderID(wire.Updates.UpdatedRange); err != nil {
-		return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "append locator checkpoint failed"), 0)
-	}
+	_ = fence.RecordProviderID(wire.Updates.UpdatedRange) // Acceptance is known even if the locator checkpoint fails.
 	result := RowWriteResult{RowNumber: rowNumber, UpdatedRange: wire.Updates.UpdatedRange}
 	return sdkgo.NewMutationBranch(AppendRowBranchAppended, result, nil, spreadsheetDocumentReceipt(call, input.SpreadsheetID+"#"+result.UpdatedRange))
+}
+
+func appendRowUnknownOutcome(call sdkgo.Call, decision singledispatch.Decision, message string) sdkgo.MutationAttempt[RowWriteResult] {
+	if decision.MaximumPriorSends+1 < call.MaxSends() {
+		return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", message), 0)
+	}
+	return spreadsheetDocumentMutationBranch(AppendRowBranchUncertain, RowWriteResult{}, sdkgo.FailureAvailability, message)
 }
 
 func (operation AppendRowOperation) readBackAppendedRow(call sdkgo.Call, credential Credentials, input AppendRowInput, updatedRange string) (RowWriteResult, bool) {
@@ -196,17 +216,21 @@ func (operation UpdateRowOperation) Invoke(call sdkgo.Call, input UpdateRowInput
 	if retry, hasRetry := sheetMutationRetry[RowWriteResult](response, err, "updateRow"); hasRetry {
 		return retry
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSpreadsheetRefusal(response) {
 		return spreadsheetDocumentMutationBranch(UpdateRowBranchNotFound, RowWriteResult{}, sdkgo.FailureNotFound, "spreadsheet or tab was not found")
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteSpreadsheetRefusal(response) {
+			return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "updateRow", "row update outcome is unknown"), 0)
+		}
 		return spreadsheetDocumentMutationBranch(UpdateRowBranchProviderRejected, RowWriteResult{}, sdkgo.FailureProviderRejection, "Google rejected row update with HTTP "+strconv.Itoa(response.status))
 	}
 	updatedRange := fmt.Sprintf("%s!A%d:%s%d", quoteSheet(input.SheetName), input.RowNumber, columnName(len(input.Values)), input.RowNumber)
 	var wire updateResponse
-	if json.Unmarshal(response.body, &wire) == nil && strings.TrimSpace(wire.UpdatedRange) != "" {
-		updatedRange = wire.UpdatedRange
+	if json.Unmarshal(response.body, &wire) != nil || strings.TrimSpace(wire.UpdatedRange) == "" {
+		return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureProtocol, "updateRow", "row update response is invalid"), 0)
 	}
+	updatedRange = wire.UpdatedRange
 	result := RowWriteResult{RowNumber: input.RowNumber, UpdatedRange: updatedRange}
 	return sdkgo.NewMutationBranch(UpdateRowBranchUpdated, result, nil, spreadsheetDocumentReceipt(call, input.SpreadsheetID+"#"+updatedRange))
 }

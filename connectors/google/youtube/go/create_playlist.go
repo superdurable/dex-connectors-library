@@ -88,13 +88,19 @@ func (operation CreatePlaylistOperation) Invoke(call sdkgo.Call, input CreatePla
 				return sdkgo.NewMutationRetry[Playlist](providerFailure("createPlaylist", sdkgo.FailureAvailability, "playlist no-send checkpoint is unavailable"), 0)
 			}
 			return sdkgo.NewMutationRetry[Playlist](outcome.failure, outcome.retryAfter)
-		case outcomeWriteUnconfirmed:
+		case outcomeWriteUnconfirmed, outcomeAcceptedUnreadable:
 			return sdkgo.NewMutationRetry[Playlist](outcome.failure, 0)
 		case outcomeRetry:
 			return sdkgo.NewMutationRetry[Playlist](outcome.failure, outcome.retryAfter)
 		}
 		if decision.MaximumPriorSends > 0 {
+			if decision.MaximumPriorSends+1 < call.MaxSends() {
+				return sdkgo.NewMutationRetry[Playlist](outcome.failure, outcome.retryAfter)
+			}
 			return sdkgo.NewMutationUncertain(Playlist{}, providerFailure("createPlaylist", outcome.failure.Kind, "an earlier playlist create may have succeeded before this refusal"), outcome.receipt)
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[Playlist](providerFailure("createPlaylist", sdkgo.FailureAvailability, "refusal checkpoint is unavailable"), 0)
 		}
 		return mutationAttemptForOutcome[Playlist](*outcome, createPlaylistBranches)
 	}
@@ -109,7 +115,7 @@ func (operation CreatePlaylistOperation) Invoke(call sdkgo.Call, input CreatePla
 	}
 	playlist.Description = input.Description
 	// The fence claim already prevents an unconfirmed second send if this optional marker fails.
-	_ = fence.RecordProviderID(playlist.ID)
+	_ = fence.RecordProviderID(playlist.ID) // The successful response already confirms acceptance.
 	receipt.ProviderObjectID = playlist.ID
 	return sdkgo.NewMutationBranch(CreatePlaylistBranchCreated, playlist, nil, receipt)
 }

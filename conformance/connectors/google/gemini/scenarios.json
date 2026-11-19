@@ -346,6 +346,64 @@
       }
     },
     {
+      "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/fileSearchStores",
+          "requestBody": {
+            "displayName": "Team docs",
+            "embeddingModel": "models/gemini-embedding-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+      "input": {
+        "displayName": "Team docs",
+        "embeddingModel": "models/gemini-embedding-2"
+      },
+      "name": "createFileSearchStore-malformed-success-at-cap",
+      "operation": "createFileSearchStore",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+        "sendCount": 2,
+        "state": "claimed"
+      }
+    },
+    {
       "callId": "gemini-listFileSearchStores-success",
       "exchanges": [
         {
@@ -403,7 +461,7 @@
       "callId": "gemini-listFileSearchStores-rejected",
       "exchanges": [
         {
-          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -616,7 +674,7 @@
       "callId": "gemini-getFileSearchStore-rejected",
       "exchanges": [
         {
-          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -809,7 +867,7 @@
       "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
       "exchanges": [
         {
-          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -838,8 +896,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "name": ""
@@ -938,8 +995,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -985,8 +1041,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "requestCount": 0,
         "retry": true,
@@ -1049,7 +1104,48 @@
       "callId": "d79c6ff8-edbf-5523-b094-750517724e15",
       "exchanges": [
         {
-          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "input": {
+        "force": true,
+        "name": "fileSearchStores/team-docs-abc123def456"
+      },
+      "name": "deleteFileSearchStore-malformed-success-retries",
+      "operation": "deleteFileSearchStore"
+    },
+    {
+      "callId": "d79c6ff8-edbf-5523-b094-750517724e15",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",

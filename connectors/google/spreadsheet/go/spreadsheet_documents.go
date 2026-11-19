@@ -124,12 +124,30 @@ func (operation CreateSpreadsheetOperation) Invoke(call sdkgo.Call, input Create
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureTransport, "createSpreadsheet", "spreadsheet create checkpoint is unavailable"), 0)
 	}
+	if decision.Marker.ProviderID != "" {
+		credential, failure, _ := operation.client.resolveCredential(call.Context, call, "createSpreadsheet")
+		if failure == nil {
+			response, _, requestError := operation.client.request(call.Context, call, credential, http.MethodGet, decision.Marker.ProviderID, "", nil, nil)
+			if requestError == nil && response.status == http.StatusOK {
+				info, isValid := decodeSpreadsheetInfo(response.body)
+				if isValid && info.SpreadsheetID == decision.Marker.ProviderID {
+					return sdkgo.NewMutationBranch(CreateSpreadsheetBranchCreated, info, nil, spreadsheetDocumentReceipt(call, info.SpreadsheetID))
+				}
+			}
+		}
+		if decision.Kind != singledispatch.ReadBackRequired {
+			return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureTransport, "createSpreadsheet", "created spreadsheet ID requires confirmation"), 0)
+		}
+	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return spreadsheetDocumentMutationBranch(CreateSpreadsheetBranchUncertain, SpreadsheetInfo{}, sdkgo.FailureAvailability, "spreadsheet create may have succeeded but no document ID was returned before the send cap")
 	}
 	credential, failure, isTerminal := operation.client.resolveCredential(call.Context, call, "createSpreadsheet")
 	if failure != nil {
 		if isTerminal {
+			if decision.MaximumPriorSends > 0 {
+				return sdkgo.NewMutationRetry[SpreadsheetInfo](*failure, 0)
+			}
 			return spreadsheetDocumentMutationBranch(CreateSpreadsheetBranchDefect, SpreadsheetInfo{}, failure.Kind, failure.Message)
 		}
 		return sdkgo.NewMutationRetry[SpreadsheetInfo](*failure, 0)
@@ -143,7 +161,14 @@ func (operation CreateSpreadsheetOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureAvailability, "createSpreadsheet", "spreadsheet create could not be dispatched safely"), 0)
 	}
 	if requestError != nil {
-		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureTransport, "createSpreadsheet", "spreadsheet create request failed"), 0)
+		var providerError *providerRequestError
+		if errors.As(requestError, &providerError) && providerError.undispatched {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureAvailability, "createSpreadsheet", "undispatched checkpoint failed"), 0)
+			}
+			return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureTransport, "createSpreadsheet", "spreadsheet create request was not sent"), 0)
+		}
+		return createSpreadsheetUnknownOutcome(call, decision, "spreadsheet create request outcome is unknown")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -155,20 +180,44 @@ func (operation CreateSpreadsheetOperation) Invoke(call sdkgo.Call, input Create
 		}
 		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(kind, "createSpreadsheet", "Google temporarily refused spreadsheet creation"), 0)
 	}
-	if response.status >= 500 {
-		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureAvailability, "createSpreadsheet", "spreadsheet create outcome is unknown"), 0)
-	}
 	if response.status != http.StatusOK {
+		if decision.MaximumPriorSends > 0 || !isDefiniteSpreadsheetRefusal(response) {
+			return createSpreadsheetUnknownOutcome(call, decision, "spreadsheet create outcome is unknown")
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureAvailability, "createSpreadsheet", "refusal checkpoint is unavailable"), 0)
+		}
 		return spreadsheetDocumentMutationBranch(CreateSpreadsheetBranchProviderRejected, SpreadsheetInfo{}, sdkgo.FailureProviderRejection, "Google rejected spreadsheet creation with HTTP "+strconv.Itoa(response.status))
 	}
 	info, isValid := decodeSpreadsheetInfo(response.body)
 	if !isValid {
-		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureProtocol, "createSpreadsheet", "Google accepted spreadsheet creation but returned invalid metadata"), 0)
+		return createSpreadsheetUnknownOutcome(call, decision, "Google accepted spreadsheet creation but returned invalid metadata")
 	}
-	if err := fence.RecordProviderID(info.SpreadsheetID); err != nil {
-		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureAvailability, "createSpreadsheet", "spreadsheet ID checkpoint could not be recorded"), 0)
-	}
+	_ = fence.RecordProviderID(info.SpreadsheetID) // The successful response already confirms acceptance.
 	return sdkgo.NewMutationBranch(CreateSpreadsheetBranchCreated, info, nil, spreadsheetDocumentReceipt(call, info.SpreadsheetID))
+}
+
+func createSpreadsheetUnknownOutcome(call sdkgo.Call, decision singledispatch.Decision, message string) sdkgo.MutationAttempt[SpreadsheetInfo] {
+	if decision.MaximumPriorSends+1 < call.MaxSends() {
+		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureAvailability, "createSpreadsheet", message), 0)
+	}
+	return spreadsheetDocumentMutationBranch(CreateSpreadsheetBranchUncertain, SpreadsheetInfo{}, sdkgo.FailureAvailability, message)
+}
+
+func isDefiniteSpreadsheetRefusal(response requestResult) bool {
+	if !isDefiniteRefusalStatus(response.status) {
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(response.body, &fields) != nil || len(fields) != 1 {
+		return false
+	}
+	var envelope struct {
+		Error struct {
+			Code int `json:"code"`
+		} `json:"error"`
+	}
+	return json.Unmarshal(response.body, &envelope) == nil && envelope.Error.Code == response.status
 }
 
 // DeleteSpreadsheetOperation permanently removes one app-accessible file.
@@ -211,8 +260,11 @@ func (operation DeleteSpreadsheetOperation) Invoke(call sdkgo.Call, input Delete
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[DeletedSpreadsheet](sheetFailure(sdkgo.FailureAvailability, "deleteSpreadsheet", "Drive deletion outcome is unknown"), 0)
 	}
-	if response.status == http.StatusOK || response.status == http.StatusNoContent || response.status == http.StatusNotFound {
+	if response.status == http.StatusOK || response.status == http.StatusNoContent || (response.status == http.StatusNotFound && isDefiniteSpreadsheetRefusal(response)) {
 		return sdkgo.NewMutationBranch(DeleteSpreadsheetBranchDeleted, DeletedSpreadsheet{SpreadsheetID: input.SpreadsheetID}, nil, spreadsheetDocumentReceipt(call, input.SpreadsheetID))
+	}
+	if !isDefiniteSpreadsheetRefusal(response) {
+		return sdkgo.NewMutationRetry[DeletedSpreadsheet](sheetFailure(sdkgo.FailureAvailability, "deleteSpreadsheet", "Drive deletion outcome is unknown"), 0)
 	}
 	return spreadsheetDocumentMutationBranch(DeleteSpreadsheetBranchProviderRejected, DeletedSpreadsheet{}, sdkgo.FailureProviderRejection, "Google rejected Drive deletion with HTTP "+strconv.Itoa(response.status))
 }

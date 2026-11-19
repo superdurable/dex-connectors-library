@@ -8,8 +8,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"net/http/httptrace"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
@@ -124,15 +126,23 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 		}{{Data: base64.StdEncoding.EncodeToString([]byte(input.Text)), Attributes: input.Attributes}},
 	})
 	var response providerResponse
+	var didGetConnection atomic.Bool
 	if err := fence.Dispatch(func(dispatchContext context.Context) error {
-		response = operation.client.requestWithContext(dispatchContext, call, http.MethodPost, "/v1/"+input.Topic+":publish", body)
+		trace := &httptrace.ClientTrace{GotConn: func(httptrace.GotConnInfo) { didGetConnection.Store(true) }}
+		response = operation.client.requestWithContext(httptrace.WithClientTrace(dispatchContext, trace), call, http.MethodPost, "/v1/"+input.Topic+":publish", body)
 		return nil
 	}); err != nil {
 		return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub publish could not be dispatched safely"), 0)
 	}
 	if failure := topicManagementResponseFailure(response); failure != nil {
-		if failure.Kind == sdkgo.FailureAuthentication {
-			return topicManagementMutationBranch(PublishMessageBranchDefect, PublishedMessage{}, failure.Kind, failure.Message)
+		if !didGetConnection.Load() {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub undispatched checkpoint is unavailable"), 0)
+			}
+			return sdkgo.NewMutationRetry[PublishedMessage](*failure, 0)
+		}
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return topicManagementMutationBranch(PublishMessageBranchUncertain, PublishedMessage{}, failure.Kind, "Pub/Sub publish outcome is unknown at the send cap")
 		}
 		return sdkgo.NewMutationRetry[PublishedMessage](*failure, 0)
 	}
@@ -146,24 +156,28 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 		}
 		return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", kind, "Pub/Sub temporarily refused the publish"), response.retryAfter)
 	}
-	if response.status >= 500 {
-		return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub publish outcome is unknown"), response.retryAfter)
-	}
 	if response.status != http.StatusOK {
-		if decision.Kind != singledispatch.SendAllowed {
-			return topicManagementMutationBranch(PublishMessageBranchUncertain, PublishedMessage{}, sdkgo.FailureAvailability, "Pub/Sub rejected a later attempt, but an earlier publish may have succeeded")
+		if isDefinitePubSubRefusal(response) && decision.MaximumPriorSends == 0 {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub refusal checkpoint is unavailable"), 0)
+			}
+			return topicManagementMutationBranch(PublishMessageBranchProviderRejected, PublishedMessage{}, sdkgo.FailureProviderRejection, "Pub/Sub rejected publish with HTTP "+strconv.Itoa(response.status))
 		}
-		return topicManagementMutationBranch(PublishMessageBranchProviderRejected, PublishedMessage{}, sdkgo.FailureProviderRejection, "Pub/Sub rejected publish with HTTP "+strconv.Itoa(response.status))
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return topicManagementMutationBranch(PublishMessageBranchUncertain, PublishedMessage{}, sdkgo.FailureAvailability, "Pub/Sub publish was not confirmed at the send cap")
+		}
+		return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub publish outcome is unknown"), response.retryAfter)
 	}
 	var published struct {
 		MessageIDs []string `json:"messageIds"`
 	}
 	if json.Unmarshal(response.body, &published) != nil || len(published.MessageIDs) != 1 || published.MessageIDs[0] == "" {
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return topicManagementMutationBranch(PublishMessageBranchUncertain, PublishedMessage{}, sdkgo.FailureProtocol, "Pub/Sub publish response is invalid at the send cap")
+		}
 		return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureProtocol, "Pub/Sub accepted publish but returned no message ID"), 0)
 	}
-	if err := fence.RecordProviderID(published.MessageIDs[0]); err != nil {
-		return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub message ID checkpoint could not be recorded"), 0)
-	}
+	_ = fence.RecordProviderID(published.MessageIDs[0]) // The returned message ID already confirms acceptance.
 	return sdkgo.NewMutationBranch(PublishMessageBranchPublished, PublishedMessage{MessageID: published.MessageIDs[0]}, nil, topicManagementReceipt(call, published.MessageIDs[0]))
 }
 
@@ -246,7 +260,7 @@ func (operation AcknowledgeMessagesOperation) Invoke(call sdkgo.Call, input Ackn
 	if failure := topicManagementResponseFailure(response); failure != nil {
 		return topicManagementMutationFailure[AcknowledgedMessages](*failure, AcknowledgeMessagesBranchDefect, AcknowledgeMessagesBranchProviderRejected)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefinitePubSubRefusal(response) {
 		return topicManagementMutationBranch(AcknowledgeMessagesBranchNotFound, AcknowledgedMessages{}, sdkgo.FailureNotFound, "Pub/Sub subscription was not found")
 	}
 	if response.status != http.StatusOK && response.status != http.StatusNoContent {

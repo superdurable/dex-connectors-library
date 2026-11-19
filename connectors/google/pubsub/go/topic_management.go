@@ -120,14 +120,17 @@ func (operation CreateTopicOperation) Invoke(call sdkgo.Call, input CreateTopicI
 				return sdkgo.NewMutationBranch(CreateTopicBranchCreated, topic, nil, topicManagementReceipt(call, topic.Name))
 			}
 		}
-		return topicManagementMutationBranch(CreateTopicBranchProviderRejected, Topic{}, sdkgo.FailureConflict, "Pub/Sub topic already exists with different labels")
+		if isDefinitePubSubRefusal(response) {
+			return topicManagementMutationBranch(CreateTopicBranchProviderRejected, Topic{}, sdkgo.FailureConflict, "Pub/Sub topic already exists with different labels")
+		}
+		return sdkgo.NewMutationRetry[Topic](topicManagementFailure("createTopic", sdkgo.FailureConflict, "Pub/Sub topic create outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
 		return topicManagementMutationStatus[Topic](response, CreateTopicBranchProviderRejected, "createTopic")
 	}
 	topic, isValid := decodeTopic(response.body, input.Name)
 	if !isValid {
-		return topicManagementMutationBranch(CreateTopicBranchInvalidResponse, Topic{}, sdkgo.FailureProtocol, "Pub/Sub returned invalid created topic JSON")
+		return sdkgo.NewMutationRetry[Topic](topicManagementFailure("createTopic", sdkgo.FailureProtocol, "Pub/Sub returned invalid created topic JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateTopicBranchCreated, topic, nil, topicManagementReceipt(call, topic.Name))
 }
@@ -163,7 +166,7 @@ func (operation UpdateTopicLabelsOperation) Invoke(call sdkgo.Call, input Update
 	if failure := topicManagementResponseFailure(response); failure != nil {
 		return topicManagementMutationFailure[Topic](*failure, UpdateTopicLabelsBranchDefect, UpdateTopicLabelsBranchInvalidResponse)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefinitePubSubRefusal(response) {
 		return topicManagementMutationBranch(UpdateTopicLabelsBranchNotFound, Topic{}, sdkgo.FailureNotFound, "Pub/Sub topic was not found")
 	}
 	if response.status != http.StatusOK {
@@ -171,7 +174,7 @@ func (operation UpdateTopicLabelsOperation) Invoke(call sdkgo.Call, input Update
 	}
 	topic, isValid := decodeTopic(response.body, input.Name)
 	if !isValid || !sameTopicLabels(topic.Labels, input.Labels) {
-		return topicManagementMutationBranch(UpdateTopicLabelsBranchInvalidResponse, Topic{}, sdkgo.FailureProtocol, "Pub/Sub returned invalid updated topic JSON")
+		return sdkgo.NewMutationRetry[Topic](topicManagementFailure("updateTopicLabels", sdkgo.FailureProtocol, "Pub/Sub returned invalid updated topic JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateTopicLabelsBranchUpdated, topic, nil, topicManagementReceipt(call, topic.Name))
 }
@@ -199,7 +202,7 @@ func (operation DeleteTopicOperation) Invoke(call sdkgo.Call, input DeleteTopicI
 	if failure := topicManagementResponseFailure(response); failure != nil {
 		return topicManagementMutationFailure[DeletedTopic](*failure, DeleteTopicBranchDefect, DeleteTopicBranchProviderRejected)
 	}
-	if response.status == http.StatusOK || response.status == http.StatusNoContent || response.status == http.StatusNotFound {
+	if response.status == http.StatusOK || response.status == http.StatusNoContent || (response.status == http.StatusNotFound && isDefinitePubSubRefusal(response)) {
 		return sdkgo.NewMutationBranch(DeleteTopicBranchDeleted, DeletedTopic{Name: input.Name}, nil, topicManagementReceipt(call, input.Name))
 	}
 	return topicManagementMutationStatus[DeletedTopic](response, DeleteTopicBranchProviderRejected, "deleteTopic")
@@ -259,12 +262,9 @@ func topicManagementQueryFailure[T any](failure sdkgo.Failure, defectBranch, inv
 	}
 	return sdkgo.NewQueryRetry[T](failure, 0)
 }
-func topicManagementMutationFailure[T any](failure sdkgo.Failure, defectBranch, invalidBranch sdkgo.BranchID) sdkgo.MutationAttempt[T] {
+func topicManagementMutationFailure[T any](failure sdkgo.Failure, defectBranch, _ sdkgo.BranchID) sdkgo.MutationAttempt[T] {
 	if failure.Kind == sdkgo.FailureAuthentication {
 		return sdkgo.NewMutationBranch(defectBranch, *new(T), &failure, sdkgo.Receipt{})
-	}
-	if failure.Kind == sdkgo.FailureResponseTooLarge {
-		return sdkgo.NewMutationBranch(invalidBranch, *new(T), &failure, sdkgo.Receipt{})
 	}
 	return sdkgo.NewMutationRetry[T](failure, 0)
 }
@@ -275,10 +275,33 @@ func topicManagementQueryStatus[T any](response providerResponse, rejectedBranch
 	return topicManagementQueryBranch(rejectedBranch, *new(T), sdkgo.FailureProviderRejection, "Pub/Sub rejected HTTP "+strconv.Itoa(response.status))
 }
 func topicManagementMutationStatus[T any](response providerResponse, rejectedBranch sdkgo.BranchID, operationID string) sdkgo.MutationAttempt[T] {
-	if response.status == http.StatusTooManyRequests || response.status == http.StatusRequestTimeout || response.status >= 500 {
+	if !isDefinitePubSubRefusal(response) {
 		return sdkgo.NewMutationRetry[T](topicManagementFailure(operationID, sdkgo.FailureAvailability, "Pub/Sub is temporarily unavailable"), response.retryAfter)
 	}
 	return topicManagementMutationBranch(rejectedBranch, *new(T), sdkgo.FailureProviderRejection, "Pub/Sub rejected HTTP "+strconv.Itoa(response.status))
+}
+func isDefinitePubSubRefusal(response providerResponse) bool {
+	if !isDefiniteRefusalStatus(response.status) {
+		return false
+	}
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(response.body, &envelope) != nil || len(envelope) != 1 {
+		return false
+	}
+	var providerError struct {
+		Code   int    `json:"code"`
+		Status string `json:"status"`
+	}
+	return json.Unmarshal(envelope["error"], &providerError) == nil && providerError.Code == response.status && providerError.Status != ""
+}
+func isDefiniteRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 func topicManagementQueryBranch[T any](branch sdkgo.BranchID, value T, kind sdkgo.FailureKind, message string) sdkgo.QueryAttempt[T] {
 	failure := topicManagementFailure("topicManagement", kind, message)

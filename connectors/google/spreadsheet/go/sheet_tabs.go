@@ -95,7 +95,7 @@ func (operation CreateSheetOperation) Invoke(call sdkgo.Call, input CreateSheetI
 		if metadata.status == http.StatusOK {
 			info, isValid := decodeSpreadsheetInfo(metadata.body)
 			if !isValid {
-				return spreadsheetDocumentMutationBranch(CreateSheetBranchInvalidResponse, SpreadsheetTab{}, sdkgo.FailureProtocol, "Google returned invalid tab metadata")
+				return sdkgo.NewMutationRetry[SpreadsheetTab](sheetFailure(sdkgo.FailureProtocol, "createSheet", "Google returned invalid tab metadata"), 0)
 			}
 			for _, tab := range info.Sheets {
 				if tab.SheetID == sheetID && tab.Title == input.Title {
@@ -104,10 +104,13 @@ func (operation CreateSheetOperation) Invoke(call sdkgo.Call, input CreateSheetI
 			}
 		}
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSpreadsheetRefusal(response) {
 		return spreadsheetDocumentMutationBranch(CreateSheetBranchNotFound, SpreadsheetTab{}, sdkgo.FailureNotFound, "spreadsheet was not found")
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteSpreadsheetRefusal(response) {
+			return sdkgo.NewMutationRetry[SpreadsheetTab](sheetFailure(sdkgo.FailureAvailability, "createSheet", "tab creation outcome is unknown"), 0)
+		}
 		return spreadsheetDocumentMutationBranch(CreateSheetBranchProviderRejected, SpreadsheetTab{}, sdkgo.FailureProviderRejection, "Google rejected tab creation with HTTP "+strconv.Itoa(response.status))
 	}
 	var wire struct {
@@ -118,7 +121,7 @@ func (operation CreateSheetOperation) Invoke(call sdkgo.Call, input CreateSheetI
 		} `json:"replies"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || len(wire.Replies) != 1 || wire.Replies[0].AddSheet.Properties.SheetID != sheetID || wire.Replies[0].AddSheet.Properties.Title != input.Title {
-		return spreadsheetDocumentMutationBranch(CreateSheetBranchInvalidResponse, SpreadsheetTab{}, sdkgo.FailureProtocol, "Google returned invalid created tab metadata")
+		return sdkgo.NewMutationRetry[SpreadsheetTab](sheetFailure(sdkgo.FailureProtocol, "createSheet", "Google returned invalid created tab metadata"), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateSheetBranchCreated, wire.Replies[0].AddSheet.Properties, nil, spreadsheetDocumentReceipt(call, input.SpreadsheetID+"#"+strconv.FormatInt(sheetID, 10)))
 }
@@ -172,10 +175,13 @@ func (operation DeleteSheetOperation) Invoke(call sdkgo.Call, input DeleteSheetI
 			return sdkgo.NewMutationBranch(DeleteSheetBranchDeleted, DeletedSheet(input), nil, spreadsheetDocumentReceipt(call, input.SpreadsheetID+"#"+strconv.FormatInt(input.SheetID, 10)))
 		}
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSpreadsheetRefusal(response) {
 		return spreadsheetDocumentMutationBranch(DeleteSheetBranchNotFound, DeletedSheet{}, sdkgo.FailureNotFound, "spreadsheet was not found")
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteSpreadsheetRefusal(response) {
+			return sdkgo.NewMutationRetry[DeletedSheet](sheetFailure(sdkgo.FailureAvailability, "deleteSheet", "tab deletion outcome is unknown"), 0)
+		}
 		return spreadsheetDocumentMutationBranch(DeleteSheetBranchProviderRejected, DeletedSheet{}, sdkgo.FailureProviderRejection, "Google rejected tab deletion with HTTP "+strconv.Itoa(response.status))
 	}
 	return sdkgo.NewMutationBranch(DeleteSheetBranchDeleted, DeletedSheet(input), nil, spreadsheetDocumentReceipt(call, input.SpreadsheetID+"#"+strconv.FormatInt(input.SheetID, 10)))
@@ -211,15 +217,18 @@ func (operation ClearValuesOperation) Invoke(call sdkgo.Call, input ClearValuesI
 	if retry, hasRetry := sheetMutationRetry[ClearedValues](response, err, "clearValues"); hasRetry {
 		return retry
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteSpreadsheetRefusal(response) {
 		return spreadsheetDocumentMutationBranch(ClearValuesBranchNotFound, ClearedValues{}, sdkgo.FailureNotFound, "spreadsheet or range was not found")
 	}
 	if response.status != http.StatusOK {
+		if !isDefiniteSpreadsheetRefusal(response) {
+			return sdkgo.NewMutationRetry[ClearedValues](sheetFailure(sdkgo.FailureAvailability, "clearValues", "range clear outcome is unknown"), 0)
+		}
 		return spreadsheetDocumentMutationBranch(ClearValuesBranchProviderRejected, ClearedValues{}, sdkgo.FailureProviderRejection, "Google rejected range clear with HTTP "+strconv.Itoa(response.status))
 	}
 	var output ClearedValues
 	if json.Unmarshal(response.body, &output) != nil || output.SpreadsheetID != input.SpreadsheetID || output.ClearedRange == "" {
-		return spreadsheetDocumentMutationBranch(ClearValuesBranchInvalidResponse, ClearedValues{}, sdkgo.FailureProtocol, "Google returned invalid clear metadata")
+		return sdkgo.NewMutationRetry[ClearedValues](sheetFailure(sdkgo.FailureProtocol, "clearValues", "Google returned invalid clear metadata"), 0)
 	}
 	return sdkgo.NewMutationBranch(ClearValuesBranchCleared, output, nil, spreadsheetDocumentReceipt(call, input.SpreadsheetID))
 }

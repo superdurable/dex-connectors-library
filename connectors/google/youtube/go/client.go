@@ -155,6 +155,7 @@ type providerOutcome struct {
 	receipt     sdkgo.Receipt
 	// isTransientCredentialFailure marks credentials that could not be resolved or refreshed, without a revoked grant.
 	isTransientCredentialFailure bool
+	isUnknownWriteOutcome        bool
 }
 
 // operationBranches names the branch each outcome selects for one operation.
@@ -251,6 +252,7 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 	}
 	classified := classifyErrorResponse(operation, response, client.now())
 	classified.receipt = receipt
+	classified.isUnknownWriteOutcome = request.method != http.MethodGet && !isDefiniteYouTubeRefusal(response)
 	return response, &classified
 }
 
@@ -300,7 +302,8 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 		classified.disposition = outcomeWriteUnconfirmed
 	case classified.disposition == outcomeQuotaExhausted:
 		// Google's quotaExceeded reason is an explicit refusal of the request.
-	case !isDefiniteRefusalStatus(response.statusCode) || response.isErrorBodyOversized:
+	case (operation == "addPlaylistItem" && (!isDefiniteRefusalStatus(response.statusCode) || response.isErrorBodyOversized)) ||
+		(operation != "addPlaylistItem" && !isDefiniteYouTubeRefusal(response)):
 		// Any other status, such as 409, a redirect, or an unlisted 4xx, may follow an applied insert,
 		// and an oversized refusal body might hide an item ID.
 		classified.disposition = outcomeWriteUnconfirmed
@@ -317,6 +320,28 @@ func isDefiniteRefusalStatus(status int) bool {
 		return true
 	}
 	return false
+}
+
+func isDefiniteYouTubeRefusal(response providerResponse) bool {
+	if response.isErrorBodyOversized {
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(response.body, &fields) != nil || len(fields) != 1 {
+		return false
+	}
+	var envelope struct {
+		Error struct {
+			Code   int `json:"code"`
+			Errors []struct {
+				Reason string `json:"reason"`
+			} `json:"errors"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(response.body, &envelope) != nil || envelope.Error.Code != response.statusCode || len(envelope.Error.Errors) == 0 || envelope.Error.Errors[0].Reason == "" {
+		return false
+	}
+	return isDefiniteRefusalStatus(response.statusCode) || slices.Contains(quotaReasons, envelope.Error.Errors[0].Reason)
 }
 
 // insertedItemID returns the playlist item ID an error response still carries, whatever its other fields hold.
@@ -622,10 +647,17 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 // mutationAttemptForOutcome maps an unsuccessful exchange that changed nothing to Retry or a branch.
 func mutationAttemptForOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
-	if outcome.disposition == outcomeRetry {
+	if outcome.disposition == outcomeRetry || outcome.isUnknownWriteOutcome {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	return sdkgo.NewMutationBranch(branches.branchFor(outcome.disposition), zero, &outcome.failure, outcome.receipt)
+}
+
+func mutationAttemptForSafeWriteOutcome[T any](outcome providerOutcome, branches operationBranches) sdkgo.MutationAttempt[T] {
+	if outcome.disposition == outcomeInvalidResponse {
+		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
+	}
+	return mutationAttemptForOutcome[T](outcome, branches)
 }
 
 func (branches operationBranches) branchFor(disposition outcomeDisposition) sdkgo.BranchID {

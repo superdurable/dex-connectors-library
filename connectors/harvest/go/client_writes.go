@@ -85,14 +85,23 @@ func (operation CreateClientOperation) Invoke(call sdkgo.Call, input CreateClien
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[ClientRecord](sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "harvest", Operation: "createClient", Message: "client creation checkpoint is unavailable"}, 0)
 	}
+	if decision.Marker.ProviderID != "" {
+		confirmed, isFound := readBackHarvestCreate(operation.client, call, "/clients/"+decision.Marker.ProviderID, decodeClientRecord)
+		if isFound {
+			return sdkgo.NewMutationBranch(CreateClientBranchCreated, confirmed, nil, sdkgo.Receipt{})
+		}
+		if decision.Kind != singledispatch.ReadBackRequired {
+			return retryClientMutation[ClientRecord]("createClient", sdkgo.FailureTransport, "created client is not yet visible", 0)
+		}
+	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return uncertainClientMutation("createClient", sdkgo.FailureTransport, "the prior client creation could not be confirmed")
 	}
-	// Client names are not unique in Harvest, so a name-only read cannot identify this creation.
+	// Client names are not unique in Harvest, so no name-only read can identify an unknown creation.
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIKey.Reveal()) {
 		if decision.MaximumPriorSends > 0 {
-			return uncertainClientMutation("createClient", sdkgo.FailureAuthentication, "credentials are unavailable after an unconfirmed creation")
+			return retryClientMutation[ClientRecord]("createClient", sdkgo.FailureAuthentication, "credentials are unavailable after an unconfirmed creation", 0)
 		}
 		return failedClientMutation[ClientRecord]("createClient", CreateClientBranchDefect, sdkgo.FailureAuthentication, "connection credentials are invalid")
 	}
@@ -107,9 +116,15 @@ func (operation CreateClientOperation) Invoke(call sdkgo.Call, input CreateClien
 	}
 	request, err := operation.client.newHarvestRequest(call.Context, credentials, http.MethodPost, "/clients", payload)
 	if err != nil {
+		if decision.MaximumPriorSends > 0 {
+			return retryClientMutation[ClientRecord]("createClient", sdkgo.FailureLocalDefect, "client request cannot be built", 0)
+		}
 		return failedClientMutation[ClientRecord]("createClient", CreateClientBranchDefect, sdkgo.FailureLocalDefect, "client request cannot be built")
 	}
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+		if decision.MaximumPriorSends > 0 {
+			return retryClientMutation[ClientRecord]("createClient", sdkgo.FailureLocalDefect, "client request is invalid", 0)
+		}
 		return failedClientMutation[ClientRecord]("createClient", CreateClientBranchDefect, sdkgo.FailureLocalDefect, "client request is invalid")
 	}
 	var response *http.Response
@@ -145,10 +160,13 @@ func (operation CreateClientOperation) Invoke(call sdkgo.Call, input CreateClien
 		return operation.retryOrUncertainCreate(call, decision, sdkgo.FailureAvailability, "client creation outcome is unknown", 0)
 	}
 	if response.StatusCode >= 400 {
-		if decision.MaximumPriorSends > 0 {
-			return uncertainClientMutation("createClient", sdkgo.FailureProviderRejection, "a prior client creation remains unconfirmed")
+		if isDefiniteHarvestRefusal(response, operation.client.maxResponseBytes) && decision.MaximumPriorSends == 0 {
+			if err := fence.RecordCanResend(); err != nil {
+				return retryClientMutation[ClientRecord]("createClient", sdkgo.FailureAvailability, "client refusal checkpoint is unavailable", 0)
+			}
+			return failedClientMutation[ClientRecord]("createClient", CreateClientBranchProviderRejected, sdkgo.FailureProviderRejection, "Harvest rejected HTTP "+strconv.Itoa(response.StatusCode))
 		}
-		return failedClientMutation[ClientRecord]("createClient", CreateClientBranchProviderRejected, sdkgo.FailureProviderRejection, "Harvest rejected HTTP "+strconv.Itoa(response.StatusCode))
+		return operation.retryOrUncertainCreate(call, decision, sdkgo.FailureAvailability, "client creation outcome is unknown", 0)
 	}
 	if response.StatusCode != http.StatusCreated {
 		return operation.retryOrUncertainCreate(call, decision, sdkgo.FailureProtocol, "Harvest returned an unexpected create status", 0)
@@ -161,7 +179,7 @@ func (operation CreateClientOperation) Invoke(call sdkgo.Call, input CreateClien
 	if err != nil {
 		return operation.retryOrUncertainCreate(call, decision, sdkgo.FailureProtocol, "client creation response was invalid", 0)
 	}
-	_ = fence.RecordProviderID(strconv.FormatInt(created.ID, 10))
+	_ = fence.RecordProviderID(strconv.FormatInt(created.ID, 10)) // The successful response already confirms acceptance.
 	return sdkgo.NewMutationBranch(CreateClientBranchCreated, created, nil, sdkgo.Receipt{})
 }
 
@@ -268,7 +286,7 @@ func invokeSafeHarvestWrite[T any](client *Client, call sdkgo.Call, operationID,
 	if response.StatusCode >= 500 || response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusConflict {
 		return retryClientMutation[T](operationID, sdkgo.FailureAvailability, "client write outcome is unknown", 0)
 	}
-	if response.StatusCode == http.StatusNotFound {
+	if response.StatusCode == http.StatusNotFound && isDefiniteHarvestRefusal(response, client.maxResponseBytes) {
 		if method == http.MethodDelete && call.Context.Attempt() > 1 {
 			value, _ := decode(nil)
 			return sdkgo.NewMutationBranch(successBranch, value, nil, sdkgo.Receipt{})
@@ -276,6 +294,9 @@ func invokeSafeHarvestWrite[T any](client *Client, call sdkgo.Call, operationID,
 		return failedClientMutation[T](operationID, notFoundBranch, sdkgo.FailureNotFound, "client was not found")
 	}
 	if response.StatusCode >= 400 {
+		if !isDefiniteHarvestRefusal(response, client.maxResponseBytes) {
+			return retryClientMutation[T](operationID, sdkgo.FailureAvailability, "client write outcome is unknown", 0)
+		}
 		return failedClientMutation[T](operationID, rejectedBranch, sdkgo.FailureProviderRejection, "Harvest rejected HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent {
@@ -294,6 +315,33 @@ func invokeSafeHarvestWrite[T any](client *Client, call sdkgo.Call, operationID,
 		return retryClientMutation[T](operationID, sdkgo.FailureProtocol, "client response was invalid", 0)
 	}
 	return sdkgo.NewMutationBranch(successBranch, value, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteHarvestRefusal(response *http.Response, limit int64) bool {
+	switch response.StatusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, min(limit, int64(64<<10)))
+	if err != nil {
+		return false
+	}
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(body, &envelope) != nil || len(envelope) != 1 {
+		return false
+	}
+	var message string
+	if json.Unmarshal(envelope["error"], &message) == nil {
+		return strings.TrimSpace(message) != ""
+	}
+	var providerError struct {
+		Code   int    `json:"code"`
+		Status string `json:"status"`
+	}
+	return json.Unmarshal(envelope["error"], &providerError) == nil && providerError.Code == response.StatusCode && providerError.Status != ""
 }
 
 func validHarvestCurrency(currency string) bool {

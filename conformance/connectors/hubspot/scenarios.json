@@ -1696,7 +1696,7 @@
       "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"category\":\"OBJECT_NOT_FOUND\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -2271,7 +2271,7 @@
       "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"category\":\"VALIDATION_ERROR\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2303,8 +2303,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "archived": false,
@@ -2590,7 +2589,7 @@
       "callId": "18662c81-e225-5f7f-a222-099286ba7439",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"category\":\"MISSING_SCOPES\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",

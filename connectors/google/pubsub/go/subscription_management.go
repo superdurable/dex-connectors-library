@@ -207,14 +207,17 @@ func (operation CreateSubscriptionOperation) Invoke(call sdkgo.Call, input Creat
 				return sdkgo.NewMutationBranch(CreateSubscriptionBranchCreated, subscription, nil, topicManagementReceipt(call, subscription.Name))
 			}
 		}
-		return topicManagementMutationBranch(CreateSubscriptionBranchProviderRejected, Subscription{}, sdkgo.FailureConflict, "Pub/Sub subscription already exists with different settings")
+		if isDefinitePubSubRefusal(response) {
+			return topicManagementMutationBranch(CreateSubscriptionBranchProviderRejected, Subscription{}, sdkgo.FailureConflict, "Pub/Sub subscription already exists with different settings")
+		}
+		return sdkgo.NewMutationRetry[Subscription](topicManagementFailure("createSubscription", sdkgo.FailureConflict, "Pub/Sub subscription create outcome is unknown"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
 		return topicManagementMutationStatus[Subscription](response, CreateSubscriptionBranchProviderRejected, "createSubscription")
 	}
 	subscription, isValid := decodeSubscription(response.body, input.Name)
 	if !isValid || subscription.Topic != input.Topic {
-		return topicManagementMutationBranch(CreateSubscriptionBranchInvalidResponse, Subscription{}, sdkgo.FailureProtocol, "Pub/Sub returned invalid created subscription JSON")
+		return sdkgo.NewMutationRetry[Subscription](topicManagementFailure("createSubscription", sdkgo.FailureProtocol, "Pub/Sub returned invalid created subscription JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateSubscriptionBranchCreated, subscription, nil, topicManagementReceipt(call, subscription.Name))
 }
@@ -250,7 +253,7 @@ func (operation UpdateSubscriptionLabelsOperation) Invoke(call sdkgo.Call, input
 	if failure := topicManagementResponseFailure(response); failure != nil {
 		return topicManagementMutationFailure[Subscription](*failure, UpdateSubscriptionLabelsBranchDefect, UpdateSubscriptionLabelsBranchInvalidResponse)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefinitePubSubRefusal(response) {
 		return topicManagementMutationBranch(UpdateSubscriptionLabelsBranchNotFound, Subscription{}, sdkgo.FailureNotFound, "Pub/Sub subscription was not found")
 	}
 	if response.status != http.StatusOK {
@@ -258,7 +261,7 @@ func (operation UpdateSubscriptionLabelsOperation) Invoke(call sdkgo.Call, input
 	}
 	subscription, isValid := decodeSubscription(response.body, input.Name)
 	if !isValid || !sameTopicLabels(subscription.Labels, input.Labels) {
-		return topicManagementMutationBranch(UpdateSubscriptionLabelsBranchInvalidResponse, Subscription{}, sdkgo.FailureProtocol, "Pub/Sub returned invalid updated subscription JSON")
+		return sdkgo.NewMutationRetry[Subscription](topicManagementFailure("updateSubscriptionLabels", sdkgo.FailureProtocol, "Pub/Sub returned invalid updated subscription JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateSubscriptionLabelsBranchUpdated, subscription, nil, topicManagementReceipt(call, subscription.Name))
 }
@@ -290,7 +293,7 @@ func (operation DeleteSubscriptionOperation) Invoke(call sdkgo.Call, input Delet
 	if failure := topicManagementResponseFailure(response); failure != nil {
 		return topicManagementMutationFailure[DeletedSubscription](*failure, DeleteSubscriptionBranchDefect, DeleteSubscriptionBranchProviderRejected)
 	}
-	if response.status == http.StatusOK || response.status == http.StatusNoContent || response.status == http.StatusNotFound {
+	if response.status == http.StatusOK || response.status == http.StatusNoContent || (response.status == http.StatusNotFound && isDefinitePubSubRefusal(response)) {
 		return sdkgo.NewMutationBranch(DeleteSubscriptionBranchDeleted, DeletedSubscription{Name: input.Name}, nil, topicManagementReceipt(call, input.Name))
 	}
 	return topicManagementMutationStatus[DeletedSubscription](response, DeleteSubscriptionBranchProviderRejected, "deleteSubscription")

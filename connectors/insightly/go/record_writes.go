@@ -166,6 +166,9 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 				return sdkgo.NewMutationBranch(CreateRecordBranchCreated, record, nil, sdkgo.Receipt{})
 			}
 		}
+		if decision.Kind != singledispatch.ReadBackRequired {
+			return recordMutationRetry[Record](operationID, sdkgo.FailureTransport, "created record cannot be confirmed", 0)
+		}
 		return recordMutationUncertain[Record](operationID, sdkgo.FailureTransport, "created record cannot be confirmed")
 	}
 	if decision.Kind != singledispatch.SendAllowed && decision.Kind != singledispatch.ReadBackThenResendAllowed {
@@ -182,7 +185,7 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 		return recordMutationRetry[Record](operationID, sdkgo.FailureAvailability, "create dispatch did not start", 0)
 	}
 	if err != nil {
-		return recordMutationUncertain[Record](operationID, sdkgo.FailureTransport, "create dispatch cannot be confirmed")
+		return unknownCreateRecordOutcome(call, decision, sdkgo.FailureTransport, "create dispatch cannot be confirmed")
 	}
 	if result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable || (errors.Is(result.err, errRequest) && !didGetConnection.Load()) {
 		if checkpointError := fence.RecordCanResend(); checkpointError != nil {
@@ -205,26 +208,59 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 	}
 	if errors.Is(result.err, errCredential) {
 		if decision.MaximumPriorSends > 0 {
-			return recordMutationUncertain[Record](operationID, sdkgo.FailureAuthentication, "prior create remains unconfirmed")
+			return recordMutationRetry[Record](operationID, sdkgo.FailureAuthentication, "prior create remains unconfirmed", 0)
 		}
 		return recordMutationFailure[Record](operationID, CreateRecordBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
 	if result.status < 200 || result.status >= 300 {
-		if decision.MaximumPriorSends > 0 {
-			return recordMutationUncertain[Record](operationID, sdkgo.FailureTransport, "prior create remains unconfirmed")
+		if decision.MaximumPriorSends > 0 || !isDefiniteInsightlyRefusal(result) {
+			return unknownCreateRecordOutcome(call, decision, sdkgo.FailureTransport, "create remains unconfirmed")
+		}
+		if err := fence.RecordCanResend(); err != nil {
+			return recordMutationRetry[Record](operationID, sdkgo.FailureAvailability, "refusal checkpoint is unavailable", 0)
 		}
 		return recordMutationFailure[Record](operationID, CreateRecordBranchProviderRejected, sdkgo.FailureProviderRejection, "Insightly rejected HTTP "+strconv.Itoa(result.status))
 	}
 	if result.err != nil || result.status != http.StatusCreated {
-		return recordMutationUncertain[Record](operationID, sdkgo.FailureProtocol, "Insightly create response cannot be confirmed")
+		return unknownCreateRecordOutcome(call, decision, sdkgo.FailureProtocol, "Insightly create response cannot be confirmed")
 	}
 	record, err := decodeRecord(input.RecordType, result.body)
 	if err != nil {
-		return recordMutationUncertain[Record](operationID, sdkgo.FailureProtocol, "Insightly returned an invalid created record")
+		return unknownCreateRecordOutcome(call, decision, sdkgo.FailureProtocol, "Insightly returned an invalid created record")
 	}
 	// The accepted result remains known if its read-back checkpoint fails.
 	_ = fence.RecordProviderID(strconv.FormatInt(record.ID, 10))
 	return sdkgo.NewMutationBranch(CreateRecordBranchCreated, record, nil, sdkgo.Receipt{})
+}
+
+func unknownCreateRecordOutcome(call sdkgo.Call, decision singledispatch.Decision, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[Record] {
+	if decision.MaximumPriorSends+1 < call.MaxSends() {
+		return recordMutationRetry[Record]("createRecord", kind, message, 0)
+	}
+	return recordMutationUncertain[Record]("createRecord", kind, message)
+}
+
+func isDefiniteInsightlyRefusal(result insightlyExchange) bool {
+	if result.err != nil {
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(result.body, &fields) != nil || len(fields) != 1 || fields["ID"] != nil || fields["CONTACT_ID"] != nil || fields["ORGANISATION_ID"] != nil {
+		return false
+	}
+	switch result.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body struct {
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	return json.Unmarshal(result.body, &body) == nil && len(body.Errors) > 0 && body.Errors[0].Message != ""
 }
 
 // Invoke changes only the listed fields, repeating the same values safely.
@@ -257,7 +293,7 @@ func (operation UpdateRecordOperation) Invoke(call sdkgo.Call, input UpdateRecor
 	}
 	record, err := decodeRecord(input.RecordType, result.body)
 	if err != nil || record.ID != input.ID {
-		return recordMutationFailure[Record](operationID, UpdateRecordBranchInvalidResponse, sdkgo.FailureProtocol, "Insightly returned an invalid updated record")
+		return recordMutationRetry[Record](operationID, sdkgo.FailureProtocol, "Insightly returned an invalid updated record", 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateRecordBranchUpdated, record, nil, sdkgo.Receipt{})
 }
@@ -272,7 +308,7 @@ func (operation DeleteRecordOperation) Invoke(call sdkgo.Call, input DeleteRecor
 		return recordMutationFailure[DeletedRecord](operationID, DeleteRecordBranchDefect, sdkgo.FailureValidation, "record ID must be positive")
 	}
 	result := operation.client.exchange(call.Context, call, http.MethodDelete, input.RecordType.path()+"/"+strconv.FormatInt(input.ID, 10), nil)
-	if result.status == http.StatusNotFound || (result.status >= 200 && result.status < 300 && result.err == nil) {
+	if (result.status == http.StatusNotFound && isDefiniteInsightlyRefusal(result)) || (result.status >= 200 && result.status < 300 && result.err == nil) {
 		return sdkgo.NewMutationBranch(DeleteRecordBranchDeleted, DeletedRecord{RecordType: input.RecordType, ID: input.ID}, nil, sdkgo.Receipt{})
 	}
 	if attempt, handled := classifySafeRecordWrite[DeletedRecord](operationID, result, "", DeleteRecordBranchProviderRejected, DeleteRecordBranchDefect); handled {
@@ -307,10 +343,13 @@ func classifySafeRecordWrite[T any](operation string, result insightlyExchange, 
 	if result.status == http.StatusRequestTimeout || result.status >= 500 {
 		return recordMutationRetry[T](operation, sdkgo.FailureAvailability, "Insightly is temporarily unavailable", result.retryAfter), true
 	}
-	if result.status == http.StatusNotFound && notFound != "" {
+	if result.status == http.StatusNotFound && notFound != "" && isDefiniteInsightlyRefusal(result) {
 		return recordMutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "Insightly did not find the record"), true
 	}
 	if result.status < 200 || result.status >= 300 {
+		if !isDefiniteInsightlyRefusal(result) {
+			return recordMutationRetry[T](operation, sdkgo.FailureAvailability, "Insightly write outcome is unknown", result.retryAfter), true
+		}
 		return recordMutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "Insightly rejected HTTP "+strconv.Itoa(result.status)), true
 	}
 	return zero, false

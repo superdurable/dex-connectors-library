@@ -120,7 +120,7 @@ func (operation UpdateChannelOperation) Invoke(call sdkgo.Call, input UpdateChan
 	}
 	readResponse, outcome := operation.client.exchange(call, "updateChannel", providerRequest{method: http.MethodGet, path: "/channels", query: url.Values{"part": {"brandingSettings"}, "id": {input.ChannelID}}, requiresManage: true}, input.ChannelID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[UpdatedChannelDescription](*outcome, updateChannelBranches)
+		return mutationAttemptForSafeWriteOutcome[UpdatedChannelDescription](*outcome, updateChannelBranches)
 	}
 	readReceipt := operation.client.receipt(call, input.ChannelID, readResponse.header)
 	var current struct {
@@ -130,18 +130,18 @@ func (operation UpdateChannelOperation) Invoke(call sdkgo.Call, input UpdateChan
 		} `json:"items"`
 	}
 	if decodeResponse(readResponse.body, &current) != nil || len(current.Items) > 1 {
-		return sdkgo.NewMutationBranch(UpdateChannelBranchInvalidResponse, UpdatedChannelDescription{}, providerFailurePointer("updateChannel", sdkgo.FailureProtocol, "YouTube returned invalid channel branding"), readReceipt)
+		return sdkgo.NewMutationRetry[UpdatedChannelDescription](providerFailure("updateChannel", sdkgo.FailureProtocol, "YouTube returned invalid channel branding"), 0)
 	}
 	if len(current.Items) == 0 {
 		return sdkgo.NewMutationBranch(UpdateChannelBranchNotFound, UpdatedChannelDescription{}, providerFailurePointer("updateChannel", sdkgo.FailureNotFound, "channel is not visible"), readReceipt)
 	}
 	if current.Items[0].ID != input.ChannelID {
-		return sdkgo.NewMutationBranch(UpdateChannelBranchInvalidResponse, UpdatedChannelDescription{}, providerFailurePointer("updateChannel", sdkgo.FailureProtocol, "YouTube returned a different channel"), readReceipt)
+		return sdkgo.NewMutationRetry[UpdatedChannelDescription](providerFailure("updateChannel", sdkgo.FailureProtocol, "YouTube returned a different channel"), 0)
 	}
 	branding := current.Items[0].BrandingSettings
 	var channelSettings map[string]json.RawMessage
 	if json.Unmarshal(branding["channel"], &channelSettings) != nil || channelSettings == nil {
-		return sdkgo.NewMutationBranch(UpdateChannelBranchInvalidResponse, UpdatedChannelDescription{}, providerFailurePointer("updateChannel", sdkgo.FailureProtocol, "YouTube omitted channel branding settings"), readReceipt)
+		return sdkgo.NewMutationRetry[UpdatedChannelDescription](providerFailure("updateChannel", sdkgo.FailureProtocol, "YouTube omitted channel branding settings"), 0)
 	}
 	description, err := json.Marshal(input.Description)
 	if err != nil {
@@ -158,7 +158,7 @@ func (operation UpdateChannelOperation) Invoke(call sdkgo.Call, input UpdateChan
 	}
 	response, outcome := operation.client.exchange(call, "updateChannel", providerRequest{method: http.MethodPut, path: "/channels", query: url.Values{"part": {"brandingSettings"}}, body: body, requiresManage: true}, input.ChannelID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[UpdatedChannelDescription](*outcome, updateChannelBranches)
+		return mutationAttemptForSafeWriteOutcome[UpdatedChannelDescription](*outcome, updateChannelBranches)
 	}
 	receipt := operation.client.receipt(call, input.ChannelID, response.header)
 	var updated struct {
@@ -170,7 +170,7 @@ func (operation UpdateChannelOperation) Invoke(call sdkgo.Call, input UpdateChan
 		} `json:"brandingSettings"`
 	}
 	if decodeResponse(response.body, &updated) != nil || updated.ID != input.ChannelID || updated.BrandingSettings.Channel.Description != input.Description {
-		return sdkgo.NewMutationBranch(UpdateChannelBranchInvalidResponse, UpdatedChannelDescription{}, providerFailurePointer("updateChannel", sdkgo.FailureProtocol, "YouTube returned a different channel description"), receipt)
+		return sdkgo.NewMutationRetry[UpdatedChannelDescription](providerFailure("updateChannel", sdkgo.FailureProtocol, "YouTube returned a different channel description"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateChannelBranchUpdated, UpdatedChannelDescription{ID: input.ChannelID, Description: input.Description}, nil, receipt)
 }

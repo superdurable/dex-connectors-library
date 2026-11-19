@@ -1832,7 +1832,45 @@
       "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
       "exchanges": [
         {
-          "body": "{\"errors\":[{\"message\":\"denied\"}]}",
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/messages/4138476039",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "input": {
+        "id": "4138476039"
+      },
+      "name": "deleteMessage-malformed-success-retries",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"code\":1000,\"message\":\"denied\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2008,7 +2046,7 @@
       "callId": "9fd2a359-d0d5-5a71-99ed-023d11da3a16",
       "exchanges": [
         {
-          "body": "{\"data\":{}}",
+          "body": "{\"errors\":[{\"code\":1000,\"message\":\"not found\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",

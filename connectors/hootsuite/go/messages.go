@@ -131,10 +131,42 @@ func (operation DeleteMessageOperation) Invoke(call sdkgo.Call, input DeleteMess
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return messageMutationRetry(sdkgo.FailureAvailability, "Hootsuite is temporarily unavailable", response.retryAfter)
 	}
+	if response.err != nil {
+		return messageMutationRetry(sdkgo.FailureTransport, "Hootsuite deletion response is incomplete", 0)
+	}
+	if response.status != http.StatusOK && response.status != http.StatusNotFound && !isDefiniteMessageRefusal(response.status, response.body) {
+		return messageMutationRetry(sdkgo.FailureAvailability, "Hootsuite deletion outcome is unknown", response.retryAfter)
+	}
 	if response.status != http.StatusOK && response.status != http.StatusNotFound {
 		return messageMutationBranch(DeleteMessageBranchProviderRejected, sdkgo.FailureProviderRejection, "Hootsuite rejected HTTP "+strconv.Itoa(response.status))
 	}
+	if response.status == http.StatusNotFound && !isDefiniteMessageRefusal(response.status, response.body) {
+		return messageMutationRetry(sdkgo.FailureAvailability, "Hootsuite deletion outcome is unknown", response.retryAfter)
+	}
+	if response.status == http.StatusOK {
+		var fields map[string]json.RawMessage
+		var data map[string]json.RawMessage
+		if json.Unmarshal(response.body, &fields) != nil || len(fields) != 1 || json.Unmarshal(fields["data"], &data) != nil || data == nil {
+			return messageMutationRetry(sdkgo.FailureProtocol, "Hootsuite deletion response is invalid", 0)
+		}
+	}
 	return sdkgo.NewMutationBranch(DeleteMessageBranchDeleted, DeletedMessage{ID: input.ID}, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteMessageRefusal(status int, body []byte) bool {
+	if !isDefiniteRefusalStatus(status) {
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil || len(fields) != 1 {
+		return false
+	}
+	var envelope struct {
+		Errors []struct {
+			Code int `json:"code"`
+		} `json:"errors"`
+	}
+	return json.Unmarshal(body, &envelope) == nil && len(envelope.Errors) > 0 && envelope.Errors[0].Code != 0
 }
 
 func numericHootsuiteMessageID(id string) bool {

@@ -9,10 +9,12 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -198,7 +200,10 @@ func (operation CreateFileSearchStoreOperation) Invoke(call sdkgo.Call, input Cr
 		if response.StatusCode == http.StatusOK {
 			var store FileSearchStore
 			if err := json.Unmarshal(response.Body, &store); err != nil || store.Name != decision.Marker.ProviderID {
-				return storeMutationBranch(CreateFileSearchStoreBranchDefect, FileSearchStore{}, sdkgo.FailureProtocol, "Gemini returned invalid store read-back")
+				if decision.Kind == singledispatch.ReadBackRequired {
+					return storeMutationBranch(CreateFileSearchStoreBranchUncertain, FileSearchStore{}, sdkgo.FailureProtocol, "Gemini returned invalid store read-back at the send cap")
+				}
+				return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureProtocol, "Gemini returned invalid store read-back"), 0)
 			}
 			return sdkgo.NewMutationBranch(CreateFileSearchStoreBranchCreated, store, nil, sdkgo.Receipt{CallID: call.ID, Provider: providerName, ProviderObjectID: store.Name, ObservedAt: time.Now().UTC()})
 		}
@@ -208,6 +213,10 @@ func (operation CreateFileSearchStoreOperation) Invoke(call sdkgo.Call, input Cr
 			}
 			return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini store read-back failed"), 0)
 		}
+		if decision.Kind == singledispatch.ReadBackRequired {
+			return storeMutationBranch(CreateFileSearchStoreBranchUncertain, FileSearchStore{}, sdkgo.FailureNotFound, "Gemini store ID was not found at the send cap")
+		}
+		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureNotFound, "Gemini store ID is not yet visible"), 0)
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return storeMutationBranch(CreateFileSearchStoreBranchUncertain, FileSearchStore{}, sdkgo.FailureAvailability, "Gemini create may have succeeded but its identity cannot be confirmed")
@@ -215,39 +224,59 @@ func (operation CreateFileSearchStoreOperation) Invoke(call sdkgo.Call, input Cr
 	body, _ := json.Marshal(input)
 	var response storeHTTPResponse
 	var failure *sdkgo.Failure
+	var didGetConnection atomic.Bool
 	if err := fence.Dispatch(func(dispatchContext context.Context) error {
-		response, failure = operation.client.doStoreRequestWithContext(dispatchContext, call, http.MethodPost, "/fileSearchStores", body)
+		trace := &httptrace.ClientTrace{GotConn: func(httptrace.GotConnInfo) { didGetConnection.Store(true) }}
+		response, failure = operation.client.doStoreRequestWithContext(httptrace.WithClientTrace(dispatchContext, trace), call, http.MethodPost, "/fileSearchStores", body)
 		return nil
 	}); err != nil {
 		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create could not be dispatched safely"), 0)
 	}
 	if failure != nil {
-		if failure.Kind == sdkgo.FailureAuthentication {
-			return storeMutationBranch(CreateFileSearchStoreBranchDefect, FileSearchStore{}, failure.Kind, failure.Message)
+		if failure.Kind == sdkgo.FailureAuthentication || failure.Kind == sdkgo.FailureLocalDefect || (failure.Kind == sdkgo.FailureTransport && !didGetConnection.Load()) {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini pre-send checkpoint is unavailable"), 0)
+			}
+			return sdkgo.NewMutationRetry[FileSearchStore](*failure, 0)
+		}
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return storeMutationBranch(CreateFileSearchStoreBranchUncertain, FileSearchStore{}, failure.Kind, "Gemini create outcome is unknown at the send cap")
 		}
 		return sdkgo.NewMutationRetry[FileSearchStore](*failure, 0)
 	}
 	if response.StatusCode == http.StatusTooManyRequests {
 		if err := fence.RecordCanResend(); err != nil {
-			return storeMutationBranch(CreateFileSearchStoreBranchDefect, FileSearchStore{}, sdkgo.FailureLocalDefect, "Gemini create checkpoint could not record a safe resend")
+			return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create checkpoint could not record a safe resend"), 0)
 		}
 		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureRateLimit, "Gemini rate limited the create"), 0)
 	}
 	if response.StatusCode == http.StatusServiceUnavailable {
-		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create outcome is unknown"), 0)
-	}
-	if response.StatusCode >= 500 {
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create checkpoint could not record a safe resend"), 0)
+		}
 		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create outcome is unknown"), 0)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return storeMutationBranch(CreateFileSearchStoreBranchProviderRejected, FileSearchStore{}, sdkgo.FailureProviderRejection, "Gemini rejected the create with HTTP "+strconv.Itoa(response.StatusCode))
+		if isDefiniteGeminiStoreRefusal(response) && decision.MaximumPriorSends == 0 {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini refusal checkpoint is unavailable"), 0)
+			}
+			return storeMutationBranch(CreateFileSearchStoreBranchProviderRejected, FileSearchStore{}, sdkgo.FailureProviderRejection, "Gemini rejected the create with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return storeMutationBranch(CreateFileSearchStoreBranchUncertain, FileSearchStore{}, sdkgo.FailureAvailability, "Gemini create outcome is unknown at the send cap")
+		}
+		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create outcome is unknown"), 0)
 	}
 	var store FileSearchStore
 	if err := json.Unmarshal(response.Body, &store); err != nil || !fileSearchStoreNamePattern.MatchString(store.Name) {
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return storeMutationBranch(CreateFileSearchStoreBranchUncertain, FileSearchStore{}, sdkgo.FailureProtocol, "Gemini create response is invalid at the send cap")
+		}
 		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureProtocol, "Gemini accepted the create but returned invalid store JSON"), 0)
 	}
 	if err := fence.RecordProviderID(store.Name); err != nil {
-		return storeMutationBranch(CreateFileSearchStoreBranchDefect, FileSearchStore{}, sdkgo.FailureLocalDefect, "Gemini create checkpoint could not record the provider identity")
+		return sdkgo.NewMutationBranch(CreateFileSearchStoreBranchCreated, store, nil, sdkgo.Receipt{CallID: call.ID, Provider: providerName, ProviderObjectID: store.Name, ObservedAt: time.Now().UTC()})
 	}
 	return sdkgo.NewMutationBranch(CreateFileSearchStoreBranchCreated, store, nil, sdkgo.Receipt{CallID: call.ID, Provider: providerName, ProviderObjectID: store.Name, ObservedAt: time.Now().UTC()})
 }
@@ -289,8 +318,23 @@ func (operation DeleteFileSearchStoreOperation) Invoke(call sdkgo.Call, input De
 	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 		return sdkgo.NewMutationRetry[DeleteFileSearchStoreOutput](storeFailure(sdkgo.FailureAvailability, "Gemini delete is temporarily unavailable"), 0)
 	}
-	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusNotFound {
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusNotFound && isDefiniteGeminiStoreRefusal(response) {
 		return storeMutationBranch(DeleteFileSearchStoreBranchProviderRejected, DeleteFileSearchStoreOutput{}, sdkgo.FailureProviderRejection, "Gemini rejected the delete with HTTP "+strconv.Itoa(response.StatusCode))
+	}
+	if response.StatusCode == http.StatusNotFound && !isDefiniteGeminiStoreRefusal(response) {
+		return sdkgo.NewMutationRetry[DeleteFileSearchStoreOutput](storeFailure(sdkgo.FailureAvailability, "Gemini delete absence is unconfirmed"), 0)
+	}
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusNotFound {
+		return sdkgo.NewMutationRetry[DeleteFileSearchStoreOutput](storeFailure(sdkgo.FailureAvailability, "Gemini delete outcome is unknown"), 0)
+	}
+	if response.StatusCode == http.StatusOK && len(response.Body) > 0 {
+		var result map[string]json.RawMessage
+		if json.Unmarshal(response.Body, &result) != nil || result == nil || result["error"] != nil {
+			return sdkgo.NewMutationRetry[DeleteFileSearchStoreOutput](storeFailure(sdkgo.FailureProtocol, "Gemini delete response is invalid"), 0)
+		}
+	}
+	if response.StatusCode == http.StatusNoContent && len(response.Body) > 0 {
+		return sdkgo.NewMutationRetry[DeleteFileSearchStoreOutput](storeFailure(sdkgo.FailureProtocol, "Gemini delete response is contradictory"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteFileSearchStoreBranchDeleted, DeleteFileSearchStoreOutput{Name: input.Name}, nil, sdkgo.Receipt{CallID: call.ID, Provider: providerName, ProviderObjectID: input.Name, ObservedAt: time.Now().UTC()})
 }
@@ -335,6 +379,31 @@ func (client *Client) doStoreRequestWithContext(requestContext context.Context, 
 		return storeHTTPResponse{}, failurePointer(sdkgo.FailureResponseTooLarge, "Gemini store response exceeded the configured limit")
 	}
 	return storeHTTPResponse{StatusCode: response.StatusCode, Body: content}, nil
+}
+
+func isDefiniteGeminiStoreRefusal(response storeHTTPResponse) bool {
+	if !isDefiniteStoreRefusalStatus(response.StatusCode) || len(response.Body) > maxErrorResponseBytes {
+		return false
+	}
+	var envelope map[string]json.RawMessage
+	if json.Unmarshal(response.Body, &envelope) != nil || len(envelope) != 1 {
+		return false
+	}
+	var providerError struct {
+		Code   int    `json:"code"`
+		Status string `json:"status"`
+	}
+	return json.Unmarshal(envelope["error"], &providerError) == nil && providerError.Code == response.StatusCode && providerError.Status != ""
+}
+
+func isDefiniteStoreRefusalStatus(status int) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
 }
 
 func validStorePageToken(token string) bool {

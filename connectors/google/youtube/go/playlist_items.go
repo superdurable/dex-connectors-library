@@ -93,11 +93,11 @@ func (operation DeletePlaylistItemOperation) Invoke(call sdkgo.Call, input Playl
 	}
 	response, outcome := operation.client.exchange(call, "deletePlaylistItem", providerRequest{method: http.MethodDelete, path: "/playlistItems", query: url.Values{"id": {input.PlaylistItemID}}, requiresManage: true}, input.PlaylistItemID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[DeletedPlaylistItem](*outcome, deletePlaylistItemBranches)
+		return mutationAttemptForSafeWriteOutcome[DeletedPlaylistItem](*outcome, deletePlaylistItemBranches)
 	}
 	receipt := operation.client.receipt(call, input.PlaylistItemID, response.header)
 	if response.statusCode != http.StatusNoContent {
-		return sdkgo.NewMutationBranch(DeletePlaylistItemBranchInvalidResponse, DeletedPlaylistItem{}, providerFailurePointer("deletePlaylistItem", sdkgo.FailureProtocol, "YouTube returned an unexpected delete status"), receipt)
+		return sdkgo.NewMutationRetry[DeletedPlaylistItem](providerFailure("deletePlaylistItem", sdkgo.FailureProtocol, "YouTube returned an unexpected delete status"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeletePlaylistItemBranchDeleted, DeletedPlaylistItem{PlaylistItemID: input.PlaylistItemID}, nil, receipt)
 }

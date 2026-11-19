@@ -2022,7 +2022,7 @@
       "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Rejected\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2055,8 +2055,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "fields": {},
@@ -2313,7 +2312,7 @@
       "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Rejected\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2394,15 +2393,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "fields": {},
-          "id": 0,
-          "recordType": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2421,7 +2415,7 @@
       "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Not found\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2617,7 +2611,7 @@
       "callId": "0a120567-ab57-59e2-823b-958b707df505",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Rejected\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2660,7 +2654,7 @@
       "callId": "0a120567-ab57-59e2-823b-958b707df505",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"message\":\"Not found\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",

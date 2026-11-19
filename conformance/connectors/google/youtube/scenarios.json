@@ -70,7 +70,7 @@
       "callId": "be196038-7c32-5303-8e13-bb65984124cf",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":404,\"errors\":[{\"reason\":\"notFound\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -135,7 +135,7 @@
       "callId": "be196038-7c32-5303-8e13-bb65984124cf",
       "exchanges": [
         {
-          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -200,7 +200,7 @@
       "callId": "be196038-7c32-5303-8e13-bb65984124cf",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"forbidden\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -301,17 +301,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "categoryId": "",
-          "description": "",
-          "privacyStatus": "",
-          "title": "",
-          "videoId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -593,7 +586,7 @@
       "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":404,\"errors\":[{\"reason\":\"notFound\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -655,7 +648,7 @@
       "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
       "exchanges": [
         {
-          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -717,7 +710,7 @@
       "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"forbidden\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -814,16 +807,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "description": "",
-          "id": "",
-          "privacyStatus": "",
-          "title": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1284,14 +1271,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "description": "",
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1508,7 +1491,7 @@
       "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":404,\"errors\":[{\"reason\":\"notFound\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1556,7 +1539,7 @@
       "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
       "exchanges": [
         {
-          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1604,7 +1587,7 @@
       "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"forbidden\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1677,14 +1660,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "rating": "",
-          "videoId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4417,7 +4396,7 @@
       "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":404,\"errors\":[{\"reason\":\"notFound\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4460,7 +4439,7 @@
       "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
       "exchanges": [
         {
-          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4503,7 +4482,7 @@
       "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"forbidden\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4568,13 +4547,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "videoId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4771,7 +4747,7 @@
       "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":404,\"errors\":[{\"reason\":\"notFound\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4814,7 +4790,7 @@
       "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
       "exchanges": [
         {
-          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4857,7 +4833,7 @@
       "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"forbidden\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -4922,13 +4898,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "playlistItemId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5125,7 +5098,7 @@
       "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":404,\"errors\":[{\"reason\":\"notFound\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5168,7 +5141,7 @@
       "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
       "exchanges": [
         {
-          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5211,7 +5184,7 @@
       "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":403,\"errors\":[{\"reason\":\"forbidden\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5276,13 +5249,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "playlistId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5542,8 +5512,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "description": "",
@@ -5569,7 +5538,7 @@
       "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":{\"code\":400,\"errors\":[{\"reason\":\"badRequest\"}]}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5608,8 +5577,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "description": "",

@@ -245,11 +245,11 @@ func (operation RateVideoOperation) Invoke(call sdkgo.Call, input RateVideoInput
 	}
 	response, outcome := operation.client.exchange(call, "rateVideo", providerRequest{method: http.MethodPost, path: "/videos/rate", query: url.Values{"id": {input.VideoID}, "rating": {input.Rating}}, requiresManage: true}, input.VideoID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[RatedVideo](*outcome, rateVideoBranches)
+		return mutationAttemptForSafeWriteOutcome[RatedVideo](*outcome, rateVideoBranches)
 	}
 	receipt := operation.client.receipt(call, input.VideoID, response.header)
 	if response.statusCode != http.StatusNoContent {
-		return sdkgo.NewMutationBranch(RateVideoBranchInvalidResponse, RatedVideo{}, providerFailurePointer("rateVideo", sdkgo.FailureProtocol, "YouTube returned an unexpected rating status"), receipt)
+		return sdkgo.NewMutationRetry[RatedVideo](providerFailure("rateVideo", sdkgo.FailureProtocol, "YouTube returned an unexpected rating status"), 0)
 	}
 	return sdkgo.NewMutationBranch(RateVideoBranchRated, RatedVideo{VideoID: input.VideoID, Rating: input.Rating}, nil, receipt)
 }
@@ -261,11 +261,11 @@ func (operation DeleteVideoOperation) Invoke(call sdkgo.Call, input GetVideoInpu
 	}
 	response, outcome := operation.client.exchange(call, "deleteVideo", providerRequest{method: http.MethodDelete, path: "/videos", query: url.Values{"id": {input.VideoID}}, requiresManage: true}, input.VideoID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[DeletedVideo](*outcome, deleteVideoBranches)
+		return mutationAttemptForSafeWriteOutcome[DeletedVideo](*outcome, deleteVideoBranches)
 	}
 	receipt := operation.client.receipt(call, input.VideoID, response.header)
 	if response.statusCode != http.StatusNoContent {
-		return sdkgo.NewMutationBranch(DeleteVideoBranchInvalidResponse, DeletedVideo{}, providerFailurePointer("deleteVideo", sdkgo.FailureProtocol, "YouTube returned an unexpected delete status"), receipt)
+		return sdkgo.NewMutationRetry[DeletedVideo](providerFailure("deleteVideo", sdkgo.FailureProtocol, "YouTube returned an unexpected delete status"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteVideoBranchDeleted, DeletedVideo{VideoID: input.VideoID}, nil, receipt)
 }
@@ -281,7 +281,7 @@ func (operation UpdateVideoOperation) Invoke(call sdkgo.Call, input UpdateVideoI
 	}
 	response, outcome := operation.client.exchange(call, "updateVideo", providerRequest{method: http.MethodPut, path: "/videos", query: url.Values{"part": {"snippet,status"}}, body: body, requiresManage: true}, input.VideoID)
 	if outcome != nil {
-		return mutationAttemptForOutcome[UpdatedVideo](*outcome, updateVideoBranches)
+		return mutationAttemptForSafeWriteOutcome[UpdatedVideo](*outcome, updateVideoBranches)
 	}
 	receipt := operation.client.receipt(call, input.VideoID, response.header)
 	var decoded struct {
@@ -296,7 +296,7 @@ func (operation UpdateVideoOperation) Invoke(call sdkgo.Call, input UpdateVideoI
 		} `json:"status"`
 	}
 	if decodeResponse(response.body, &decoded) != nil || decoded.ID != input.VideoID || decoded.Snippet.Title != input.Title || decoded.Snippet.Description != input.Description || decoded.Snippet.CategoryID != input.CategoryID || decoded.Status.PrivacyStatus != input.PrivacyStatus {
-		return sdkgo.NewMutationBranch(UpdateVideoBranchInvalidResponse, UpdatedVideo{}, providerFailurePointer("updateVideo", sdkgo.FailureProtocol, "YouTube returned different video metadata"), receipt)
+		return sdkgo.NewMutationRetry[UpdatedVideo](providerFailure("updateVideo", sdkgo.FailureProtocol, "YouTube returned different video metadata"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateVideoBranchUpdated, UpdatedVideo{VideoID: input.VideoID, Title: input.Title, Description: input.Description, CategoryID: input.CategoryID, PrivacyStatus: input.PrivacyStatus}, nil, receipt)
 }

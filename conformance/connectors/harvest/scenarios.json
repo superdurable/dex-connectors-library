@@ -63,7 +63,7 @@
       "callId": "01e26541-1d03-566f-8287-b2871bcefd71",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -393,7 +393,7 @@
       "callId": "377c4e05-9fbb-57ef-89e6-89cb9bba3b55",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -722,7 +722,7 @@
       "callId": "00000000-0000-5000-8000-000000000002",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1067,7 +1067,7 @@
       "callId": "00000000-0000-5000-8000-000000000009",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1270,7 +1270,7 @@
       "callId": "00000000-0000-5000-8000-000000000014",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1427,7 +1427,7 @@
       "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1464,8 +1464,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": 0,
@@ -1783,7 +1782,7 @@
       "callId": "4906ed61-e84d-5486-b6bb-1387198e38f5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -2056,7 +2055,7 @@
       "callId": "4906ed61-e84d-5486-b6bb-1387198e38f5",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -2159,7 +2158,7 @@
       "callId": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2365,7 +2364,7 @@
       "callId": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2441,6 +2440,67 @@
       }
     },
     {
+      "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "exchanges": [
+        {
+          "body": "{\"id\":2001,\"name\":\"Meridian\",\"is_active\":true,\"address\":\"123 Main\",\"currency\":\"USD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "address": "123 Main",
+          "currency": "USD",
+          "id": 2001,
+          "isActive": true,
+          "name": "Meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "createClient-provider-id-readback",
+      "operation": "createClient",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+          "providerId": "2001",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
       "callId": "00000000-0000-5000-8000-000000000036",
       "exchanges": [
         {
@@ -2489,7 +2549,7 @@
       "callId": "00000000-0000-5000-8000-000000000037",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2692,7 +2752,7 @@
       "callId": "00000000-0000-5000-8000-000000000042",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2853,7 +2913,7 @@
       "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2893,8 +2953,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9160bfb5-d9ad-54b7-b276-3c883af3cb0a",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "id": 0,
@@ -3237,7 +3296,7 @@
       "callId": "864ace6c-386b-5f30-92aa-c561f649b6f8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -3510,7 +3569,7 @@
       "callId": "864ace6c-386b-5f30-92aa-c561f649b6f8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -3613,7 +3672,7 @@
       "callId": "5eb46710-b9eb-5618-950b-b2166a92daa8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3819,7 +3878,7 @@
       "callId": "5eb46710-b9eb-5618-950b-b2166a92daa8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3949,7 +4008,7 @@
       "callId": "00000000-0000-5000-8000-000000000065",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4155,7 +4214,7 @@
       "callId": "00000000-0000-5000-8000-000000000070",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4321,7 +4380,7 @@
       "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4359,8 +4418,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "b3f181a5-cb69-5bda-b7a8-dc36262df662",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "hours": 0,
@@ -4701,7 +4759,7 @@
       "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4740,8 +4798,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "aebec58b-ba37-5ef5-849b-06d6d5c09fb8",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "hours": 0,
@@ -5083,7 +5140,7 @@
       "callId": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -5369,7 +5426,7 @@
       "callId": "8c30fdee-cb7d-50c4-9be2-44aeed4dfc13",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -5477,7 +5534,7 @@
       "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5683,7 +5740,7 @@
       "callId": "3e53b20f-1b89-594b-b94f-058b76a6f638",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5771,7 +5828,7 @@
       "callId": "078da0b0-b031-5426-aaef-069e67c3daa3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5977,7 +6034,7 @@
       "callId": "078da0b0-b031-5426-aaef-069e67c3daa3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -6070,7 +6127,7 @@
       "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -6281,7 +6338,7 @@
       "callId": "db821d5f-5584-5bae-a3cb-6991dbf19c3a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -6511,7 +6568,7 @@
           "status": 500
         },
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -6622,7 +6679,7 @@
       "callId": "00000000-0000-5000-8000-000000000113",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -6967,7 +7024,7 @@
       "callId": "00000000-0000-5000-8000-000000000120",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -7172,7 +7229,7 @@
       "callId": "00000000-0000-5000-8000-000000000125",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -7311,7 +7368,7 @@
       "callId": "00000000-0000-5000-8000-000000000128",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -7618,7 +7675,7 @@
       "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7655,8 +7712,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "email": "",
@@ -7976,7 +8032,7 @@
       "callId": "2a966c28-f262-5893-a441-89d07eb471a9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -8251,7 +8307,7 @@
       "callId": "2a966c28-f262-5893-a441-89d07eb471a9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -8356,7 +8412,7 @@
       "callId": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -8562,7 +8618,7 @@
       "callId": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -8707,7 +8763,7 @@
       "callId": "CONTACT-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -9060,7 +9116,7 @@
       "callId": "CONTACT-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -9264,7 +9320,7 @@
       "callId": "CONTACT-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -9424,7 +9480,7 @@
       "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -9461,8 +9517,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "565a95d0-90e6-5fc8-9585-d5d6dc01dcee",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "clientId": 0,
@@ -9779,7 +9834,7 @@
       "callId": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -10043,7 +10098,7 @@
       "callId": "35d46690-2e81-5e5e-8bf0-1f063a7c6b56",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -10145,7 +10200,7 @@
       "callId": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -10351,7 +10406,7 @@
       "callId": "2aca48f6-f93c-5006-a3a0-9906c2eb1403",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -10476,7 +10531,7 @@
       "callId": "COMPANY-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -10772,7 +10827,7 @@
       "callId": "106af6ef-cd4e-50de-99b9-56e43f43cc32",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -11022,7 +11077,7 @@
       "callId": "106af6ef-cd4e-50de-99b9-56e43f43cc32",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -11143,7 +11198,7 @@
       "callId": "TASK-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -11522,7 +11577,7 @@
       "callId": "TASK-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -11728,7 +11783,7 @@
       "callId": "TASK-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -11894,7 +11949,7 @@
       "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -11932,8 +11987,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "da332b9a-9100-5ad0-b76c-82e94e96988d",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "billableByDefault": false,
@@ -12266,7 +12320,7 @@
       "callId": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -12552,7 +12606,7 @@
       "callId": "b0ace265-6804-5fd6-ae33-e277d08c64dc",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -12660,7 +12714,7 @@
       "callId": "f0e1c3c1-efe9-5a91-963c-30616e742270",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -12866,7 +12920,7 @@
       "callId": "f0e1c3c1-efe9-5a91-963c-30616e742270",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -13021,7 +13075,7 @@
       "callId": "INVOICE-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -13430,7 +13484,7 @@
       "callId": "INVOICE-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -13639,7 +13693,7 @@
       "callId": "INVOICE-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -13834,7 +13888,7 @@
       "callId": "6b9751da-ff65-5eaa-8435-c6d20166f6da",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -13882,8 +13936,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "6b9751da-ff65-5eaa-8435-c6d20166f6da",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "amount": 0,
@@ -14312,7 +14365,7 @@
       "callId": "c2d33c4a-d90e-59cb-84cb-af03f7fdda1c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -14601,7 +14654,7 @@
       "callId": "c2d33c4a-d90e-59cb-84cb-af03f7fdda1c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -14712,7 +14765,7 @@
       "callId": "43ab9ba0-0326-58b9-9376-887662fe47a7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -14918,7 +14971,7 @@
       "callId": "43ab9ba0-0326-58b9-9376-887662fe47a7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -15080,7 +15133,7 @@
       "callId": "EXPENSE-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -15461,7 +15514,7 @@
       "callId": "EXPENSE-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -15668,7 +15721,7 @@
       "callId": "EXPENSE-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -15839,7 +15892,7 @@
       "callId": "28813615-bd9e-5dc4-a954-61427477c036",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -15878,8 +15931,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "28813615-bd9e-5dc4-a954-61427477c036",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "billable": false,
@@ -16221,7 +16273,7 @@
       "callId": "c83bfce2-b49c-5a39-9991-f1016c7f7a2c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -16498,7 +16550,7 @@
       "callId": "c83bfce2-b49c-5a39-9991-f1016c7f7a2c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -16605,7 +16657,7 @@
       "callId": "cf4ef529-ac76-5c0d-a621-19fd6c927412",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -16811,7 +16863,7 @@
       "callId": "cf4ef529-ac76-5c0d-a621-19fd6c927412",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -16966,7 +17018,7 @@
       "callId": "ESTIMATE-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -17371,7 +17423,7 @@
       "callId": "ESTIMATE-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -17578,7 +17630,7 @@
       "callId": "ESTIMATE-CALL-ID",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -17763,7 +17815,7 @@
       "callId": "af67a07c-eaf0-5428-8df7-cfd390429af8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -17809,8 +17861,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "af67a07c-eaf0-5428-8df7-cfd390429af8",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "amount": 0,
@@ -18213,7 +18264,7 @@
       "callId": "fa24abc4-9918-5854-ba7f-36d0c48761f2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -18480,7 +18531,7 @@
       "callId": "fa24abc4-9918-5854-ba7f-36d0c48761f2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -18585,7 +18636,7 @@
       "callId": "454e4145-ca72-58b4-ae5d-07f544697a73",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Unauthorized\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -18791,7 +18842,7 @@
       "callId": "454e4145-ca72-58b4-ae5d-07f544697a73",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"Not found\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",

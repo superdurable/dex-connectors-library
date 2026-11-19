@@ -45,7 +45,7 @@
       "callId": "pubsub-getTopic-rejected",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -219,7 +219,7 @@
       "callId": "pubsub-getTopic-not-found",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":404}}",
+          "body": "{\"error\":{\"code\":404,\"status\":\"NOT_FOUND\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -328,7 +328,7 @@
       "callId": "788de680-88c4-54f6-8798-cfce0b753845",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -538,13 +538,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -642,7 +639,7 @@
       "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -872,13 +869,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -896,7 +890,7 @@
       "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":404}}",
+          "body": "{\"error\":{\"code\":404,\"status\":\"NOT_FOUND\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -1011,7 +1005,7 @@
       "callId": "928049ae-09fe-51fa-b068-11ccf4c9666d",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -2058,7 +2052,7 @@
       "callId": "bubsub-getTopic-rejected",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2234,7 +2228,7 @@
       "callId": "bubsub-getTopic-not-found",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":404}}",
+          "body": "{\"error\":{\"code\":404,\"status\":\"NOT_FOUND\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2351,7 +2345,7 @@
       "callId": "a99bdb38-0345-5fff-bcc2-d3cc296bc454",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2580,14 +2574,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "name": "",
-          "topic": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2767,7 +2757,7 @@
       "callId": "c734325c-a338-5b23-b9e5-9faee456d12b",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -3003,14 +2993,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "name": "",
-          "topic": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3028,7 +3014,7 @@
       "callId": "c734325c-a338-5b23-b9e5-9faee456d12b",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":404}}",
+          "body": "{\"error\":{\"code\":404,\"status\":\"NOT_FOUND\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -3146,7 +3132,7 @@
       "callId": "4afe63c2-b552-5e21-9785-dc8b22a5cc66",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3370,7 +3356,7 @@
       "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3405,8 +3391,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageId": ""
@@ -3578,8 +3563,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "requestCount": 0,
         "retry": true,
@@ -3722,7 +3706,7 @@
       "callId": "pubsub-pullMessages",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":404}}",
+          "body": "{\"error\":{\"code\":404,\"status\":\"NOT_FOUND\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3766,7 +3750,7 @@
       "callId": "pubsub-pullMessages",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4001,7 +3985,7 @@
       "callId": "ece6af34-ef56-55bd-b7ec-5d3c0569bec2",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":404}}",
+          "body": "{\"error\":{\"code\":404,\"status\":\"NOT_FOUND\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4050,7 +4034,7 @@
       "callId": "ece6af34-ef56-55bd-b7ec-5d3c0569bec2",
       "exchanges": [
         {
-          "body": "{\"error\":{\"code\":403}}",
+          "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4281,6 +4265,367 @@
       "operation": "publishMessage",
       "priorHeartbeat": {
         "attempt": 3,
+        "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/topics/events:publish",
+          "requestBody": {
+            "messages": [
+              {
+                "attributes": {
+                  "kind": "sample"
+                },
+                "data": "ZXZlbnQ="
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "input": {
+        "attributes": {
+          "kind": "sample"
+        },
+        "text": "event",
+        "topic": "projects/sample-project/topics/events"
+      },
+      "name": "publishMessage-malformed-success-at-cap",
+      "operation": "publishMessage",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":409,\"status\":\"ALREADY_EXISTS\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/topics/events:publish",
+          "requestBody": {
+            "messages": [
+              {
+                "attributes": {
+                  "kind": "sample"
+                },
+                "data": "ZXZlbnQ="
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "input": {
+        "attributes": {
+          "kind": "sample"
+        },
+        "text": "event",
+        "topic": "projects/sample-project/topics/events"
+      },
+      "name": "publishMessage-conflictUnknown",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":405,\"status\":\"METHOD_NOT_ALLOWED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/topics/events:publish",
+          "requestBody": {
+            "messages": [
+              {
+                "attributes": {
+                  "kind": "sample"
+                },
+                "data": "ZXZlbnQ="
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 405
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "input": {
+        "attributes": {
+          "kind": "sample"
+        },
+        "text": "event",
+        "topic": "projects/sample-project/topics/events"
+      },
+      "name": "publishMessage-methodNotAllowedUnknown",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/topics/events:publish",
+          "requestBody": {
+            "messages": [
+              {
+                "attributes": {
+                  "kind": "sample"
+                },
+                "data": "ZXZlbnQ="
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "input": {
+        "attributes": {
+          "kind": "sample"
+        },
+        "text": "event",
+        "topic": "projects/sample-project/topics/events"
+      },
+      "name": "publishMessage-emptyBadRequestUnknown",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":400,\"status\":\"INVALID_ARGUMENT\"},\"messageIds\":[\"provider-message\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/topics/events:publish",
+          "requestBody": {
+            "messages": [
+              {
+                "attributes": {
+                  "kind": "sample"
+                },
+                "data": "ZXZlbnQ="
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "input": {
+        "attributes": {
+          "kind": "sample"
+        },
+        "text": "event",
+        "topic": "projects/sample-project/topics/events"
+      },
+      "name": "publishMessage-contradictoryBadRequestUnknown",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/sample-project/topics/events:publish",
+          "requestBody": {
+            "messages": [
+              {
+                "attributes": {
+                  "kind": "sample"
+                },
+                "data": "ZXZlbnQ="
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
+      "input": {
+        "attributes": {
+          "kind": "sample"
+        },
+        "text": "event",
+        "topic": "projects/sample-project/topics/events"
+      },
+      "name": "publishMessage-resendEmptyBadRequestUnknown",
+      "operation": "publishMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
         "callId": "fbdfa24e-3af1-50ea-a092-0fde8a9dbb11",
         "state": "claimed"
       }

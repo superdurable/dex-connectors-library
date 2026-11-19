@@ -173,11 +173,15 @@ func sendHeapAcceptance[T any](client *Client, call sdkgo.Call, operationID, pat
 		return heapMutationRetry[T](operationID, sdkgo.FailureAvailability, "Heap is temporarily unavailable", retryAfter)
 	}
 	if response.StatusCode != http.StatusOK {
+		body, readErr := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+		if readErr != nil || !isDefiniteHeapRefusal(response.StatusCode, body) {
+			return heapMutationRetry[T](operationID, sdkgo.FailureAvailability, "Heap write outcome is unknown", retryAfter)
+		}
 		return heapMutationBranch(operationID, rejectedBranch, sdkgo.FailureProviderRejection, "Heap rejected HTTP "+strconv.Itoa(response.StatusCode), accepted)
 	}
 	if _, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes); err != nil {
 		if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-			return heapMutationBranch(operationID, invalidBranch, sdkgo.FailureResponseTooLarge, "Heap confirmation exceeded the limit", accepted)
+			return heapMutationRetry[T](operationID, sdkgo.FailureResponseTooLarge, "Heap confirmation exceeded the limit", 0)
 		}
 		return heapMutationRetry[T](operationID, sdkgo.FailureTransport, "Heap confirmation was interrupted", 0)
 	}
