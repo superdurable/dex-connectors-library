@@ -9,3 +9,7 @@ See the [runnable Dex Flow](go/examples/folder-files/README.md). Its default moc
 ## TypeScript
 
 The [`typescript/`](typescript/) package implements `listFolderFiles` with the same Go conformance scenarios. Its [runnable Flow](typescript/examples/basic) uses the static `kingsoftoffice` connection and persists the provider result in Dex. Live provider authorization remains unverified.
+
+## Python
+
+The [Python package](python/README.md) implements the same Query with Go-recorded conformance and a [runnable Flow](python/examples/folder_files/README.md).

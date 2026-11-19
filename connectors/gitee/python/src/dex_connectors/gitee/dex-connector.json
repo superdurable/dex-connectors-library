@@ -1,0 +1,70 @@
+{
+  "connectorId": "gitee",
+  "releaseTag": "connectors/gitee/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-gitee",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_repository_step",
+      "kind": "query",
+      "operationId": "getRepository",
+      "inputType": "GetRepositoryInput",
+      "description": "Retrieve metadata for one Gitee repository by owner path and repository path.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetRepositoryInput selects one Gitee repository by its URL owner and repository path segments.",
+        "properties": {
+          "owner": {
+            "description": "Owner is the organization, enterprise, or user path from the Gitee repository URL.",
+            "type": "string"
+          },
+          "repo": {
+            "description": "Repo is the repository path from the Gitee repository URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner",
+          "repo"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

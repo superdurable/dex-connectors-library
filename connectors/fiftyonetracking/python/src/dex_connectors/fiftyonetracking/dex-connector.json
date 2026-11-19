@@ -1,0 +1,52 @@
+{
+  "connectorId": "fiftyonetracking",
+  "releaseTag": "connectors/fiftyonetracking/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-fiftyonetracking",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_shipment_status_counts_step",
+      "kind": "query",
+      "operationId": "getShipmentStatusCounts",
+      "inputType": "GetShipmentStatusCountsInput",
+      "description": "Count registered parcels by delivery status without exposing tracking numbers or customer data.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "counted",
+          "field": "counted",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetShipmentStatusCountsInput selects the account's aggregate parcel statuses.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

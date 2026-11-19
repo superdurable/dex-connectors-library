@@ -9,6 +9,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: caiyun
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-caiyun
+      operations: [getCurrentWeather]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-caiyun"
+      operations: [getCurrentWeather]
+      triggers: []
   codegen:
     go:
       package: caiyun

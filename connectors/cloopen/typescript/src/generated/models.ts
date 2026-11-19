@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Main-account ACCOUNT SID from https://console.yuntongxun.com > management console > account information. Copy the exact 32-character alphanumeric ID; it is placed in the API path and signed header. Blank prevents requests. */
+  /** Secret main-account ACCOUNT SID from https://console.yuntongxun.com > management console > account information. Copy the exact 32-character alphanumeric ID; it is placed in the API path and signed header. Blank prevents requests. */
   accountSid: SecretString;
   /** Main-account AUTH TOKEN from https://console.yuntongxun.com > management console > account information. Copy the exact 32-character secret; it is used only to create the request signature. Blank prevents requests. */
   authToken: SecretString;

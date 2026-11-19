@@ -7,3 +7,5 @@ Use a **search/reading Key** from the DataEyes console's **MCP产品 → 接入�
 Run the [example Flow](go/examples/read-web-page/) with the generated mock or a user-controlled connection. Live reading and quota behavior are unverified without a user-controlled Key.
 
 The [TypeScript package](typescript/README.md) implements `readWebPage` and includes a [runnable Dex Flow](typescript/examples/web-reader/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.
+
+The [Python package](python/README.md) implements `readWebPage` and includes a [runnable Dex Flow](python/examples/read_web_page/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.

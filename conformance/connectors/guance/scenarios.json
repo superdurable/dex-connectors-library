@@ -97,7 +97,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
+      "input": {"pageIndex": 1, "pageSize": 10},
       "name": "listDashboardsPage-empty",
       "operation": "listDashboardsPage"
     },

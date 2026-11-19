@@ -15,3 +15,7 @@ The [campaign catalog Flow](go/examples/campaign-catalog/) is a runnable Worker 
 ## TypeScript
 
 The [`typescript/`](typescript/) package implements `listCampaigns` with the same Go conformance scenarios. Its [runnable Flow](typescript/examples/basic) uses the static `sensorsdata` connection and persists the provider result in Dex. Live provider authorization remains unverified.
+
+## Python
+
+The [Python package](python/README.md) implements the same Query with Go-recorded conformance and a [runnable Flow](python/examples/campaign_catalog/README.md).
