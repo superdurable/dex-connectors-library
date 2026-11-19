@@ -1,0 +1,65 @@
+{
+  "connectorId": "cainiao",
+  "releaseTag": "connectors/cainiao/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-cainiao",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newQueryWaybillTraceStep",
+      "kind": "query",
+      "operationId": "queryWaybillTrace",
+      "inputType": "QueryWaybillTraceInput",
+      "description": "Read logistics events for one authorized Cainiao electronic waybill.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryWaybillTraceInput identifies a Cainiao electronic waybill and carrier.",
+        "properties": {
+          "carrierCode": {
+            "description": "CarrierCode is the carrier cp_code, such as YTO.",
+            "type": "string"
+          },
+          "waybillCode": {
+            "description": "WaybillCode is the Cainiao electronic waybill number.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "carrierCode",
+          "waybillCode"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
