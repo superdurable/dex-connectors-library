@@ -9,6 +9,8 @@ metadata:
   version: v0.1.0
 spec:
   provider: zego
+  languages:
+    python: {version: v0.1.0, operations: [getRoomUserCount], triggers: []}
   codegen:
     go:
       package: zego
