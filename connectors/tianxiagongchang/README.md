@@ -11,3 +11,7 @@ Follow the [Open Platform quick start](https://www.tianxiagongchang.com/open/doc
 ## Example
 
 The [account status Flow](go/examples/account-status/) is a runnable Worker with static Dex connection name `tianxiagongchang`. Its mock uses synthetic application and credit values and is verified against a real Dex Worker and Client. Live key authorization and account status remain unverified until a user configures a provider connection.
+
+## TypeScript
+
+`@superdurable/connector-tianxiagongchang` provides the `getAccountStatus` Query and a [runnable TypeScript Dex example](typescript/examples/basic/README.md). The package replays Go-recorded provider scenarios with `npm run check`, and `npm run test:integration` verifies retry and persistence against `dexcli dev -open=false`. Real provider credentials and live API behavior have not been verified.
