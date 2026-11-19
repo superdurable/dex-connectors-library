@@ -7,3 +7,4 @@ In the target workspace, open [轻流](https://qingflow.com/) **轻商城 > 插�
 The public-cloud endpoint is fixed; DingTalk and private Qingflow deployments have different hosts. Run the [example Flow](go/examples/list-applications/) with the generated mock or a user-controlled connection. Real Qingflow authorization and plan entitlement remain to be tested with an account.
 
 The [Python package](python/) implements the same `listApplications` Query and replays the seven Go-recorded provider scenarios. Its [runnable Flow](python/examples/application_directory/) verifies retry and persistence with a real local Dex Worker and Client.
+The [TypeScript package](typescript/) provides the same `ListApplications` operation, recorded conformance, and a runnable Dex Worker and Client example.

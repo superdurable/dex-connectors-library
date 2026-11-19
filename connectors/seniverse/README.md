@@ -9,3 +9,4 @@ See the [runnable Dex Flow](go/examples/current-weather/README.md) for connectio
 The company logo comes from Seniverse's [official brand assets](https://www.seniverse.com/brand).
 
 The [Python package](python/) implements `getCurrentWeather` and its [runnable Flow](python/examples/current_query/) verifies retry and persistence with a real local Dex Worker and Client.
+The [TypeScript package](typescript/) provides the same `GetCurrentWeather` operation, Go-recorded conformance, and a runnable Dex Worker and Client example.
