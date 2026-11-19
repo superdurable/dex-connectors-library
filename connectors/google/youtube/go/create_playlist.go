@@ -82,6 +82,12 @@ func (operation CreatePlaylistOperation) Invoke(call sdkgo.Call, input CreatePla
 	}
 	response, outcome := operation.client.exchange(call, "createPlaylist", providerRequest{method: http.MethodPost, path: "/playlists", query: url.Values{"part": {"snippet,status"}}, body: body, requiresManage: true, writeFence: fence}, "")
 	if outcome != nil {
+		if response.statusCode == 0 && (outcome.disposition == outcomeDefect || outcome.disposition == outcomeRejected) {
+			if decision.MaximumPriorSends > 0 {
+				return sdkgo.NewMutationRetry[Playlist](providerFailure("createPlaylist", outcome.failure.Kind, "prior playlist create remains unconfirmed"), 0)
+			}
+			return mutationAttemptForOutcome[Playlist](*outcome, createPlaylistBranches)
+		}
 		switch outcome.disposition {
 		case outcomeRetryUnprocessed:
 			if err := fence.RecordCanResend(); err != nil {

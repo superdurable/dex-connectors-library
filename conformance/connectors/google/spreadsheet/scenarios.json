@@ -1251,6 +1251,9 @@
             ],
             "Content-Type": [
               "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "966d2233-4d52-5cee-a998-aed701d69b68"
             ]
           },
           "status": 200
@@ -1308,6 +1311,9 @@
             ],
             "Content-Type": [
               "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "966d2233-4d52-5cee-a998-aed701d69b68"
             ]
           },
           "status": 403
@@ -1357,6 +1363,9 @@
             ],
             "Content-Type": [
               "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "966d2233-4d52-5cee-a998-aed701d69b68"
             ]
           },
           "status": 429
@@ -1402,6 +1411,9 @@
             ],
             "Content-Type": [
               "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "966d2233-4d52-5cee-a998-aed701d69b68"
             ]
           },
           "status": 503
@@ -1445,6 +1457,9 @@
             ],
             "Content-Type": [
               "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "966d2233-4d52-5cee-a998-aed701d69b68"
             ]
           },
           "transportFailure": "before-send"
@@ -1452,12 +1467,11 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "966d2233-4d52-5cee-a998-aed701d69b68",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "requestCount": 0,
         "retry": true,
@@ -1513,6 +1527,9 @@
             ],
             "Content-Type": [
               "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "966d2233-4d52-5cee-a998-aed701d69b68"
             ]
           },
           "status": 200
@@ -1586,6 +1603,9 @@
             ],
             "Content-Type": [
               "application/json"
+            ],
+            "X-Idempotency-Key": [
+              "966d2233-4d52-5cee-a998-aed701d69b68"
             ]
           },
           "status": 200

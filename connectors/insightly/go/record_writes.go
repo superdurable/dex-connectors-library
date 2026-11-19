@@ -207,6 +207,9 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 		return recordMutationUncertain[Record](operationID, sdkgo.FailureAvailability, "create outcome is unknown")
 	}
 	if errors.Is(result.err, errCredential) {
+		if err := fence.RecordCanResend(); err != nil {
+			return recordMutationRetry[Record](operationID, sdkgo.FailureAvailability, "credential checkpoint is unavailable", 0)
+		}
 		if decision.MaximumPriorSends > 0 {
 			return recordMutationRetry[Record](operationID, sdkgo.FailureAuthentication, "prior create remains unconfirmed", 0)
 		}

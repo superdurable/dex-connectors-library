@@ -134,18 +134,6 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 	}); err != nil {
 		return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub publish could not be dispatched safely"), 0)
 	}
-	if failure := topicManagementResponseFailure(response); failure != nil {
-		if !didGetConnection.Load() {
-			if err := fence.RecordCanResend(); err != nil {
-				return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub undispatched checkpoint is unavailable"), 0)
-			}
-			return sdkgo.NewMutationRetry[PublishedMessage](*failure, 0)
-		}
-		if decision.MaximumPriorSends+1 >= call.MaxSends() {
-			return topicManagementMutationBranch(PublishMessageBranchUncertain, PublishedMessage{}, failure.Kind, "Pub/Sub publish outcome is unknown at the send cap")
-		}
-		return sdkgo.NewMutationRetry[PublishedMessage](*failure, 0)
-	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
 			return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub publish refusal checkpoint could not be recorded"), 0)
@@ -155,6 +143,21 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 			kind = sdkgo.FailureRateLimit
 		}
 		return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", kind, "Pub/Sub temporarily refused the publish"), response.retryAfter)
+	}
+	if failure := topicManagementResponseFailure(response); failure != nil {
+		if !didGetConnection.Load() {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[PublishedMessage](topicManagementFailure("publishMessage", sdkgo.FailureAvailability, "Pub/Sub undispatched checkpoint is unavailable"), 0)
+			}
+			if failure.Kind == sdkgo.FailureAuthentication && decision.MaximumPriorSends == 0 {
+				return topicManagementMutationBranch(PublishMessageBranchDefect, PublishedMessage{}, failure.Kind, failure.Message)
+			}
+			return sdkgo.NewMutationRetry[PublishedMessage](*failure, 0)
+		}
+		if decision.MaximumPriorSends+1 >= call.MaxSends() {
+			return topicManagementMutationBranch(PublishMessageBranchUncertain, PublishedMessage{}, failure.Kind, "Pub/Sub publish outcome is unknown at the send cap")
+		}
+		return sdkgo.NewMutationRetry[PublishedMessage](*failure, 0)
 	}
 	if response.status != http.StatusOK {
 		if isDefinitePubSubRefusal(response) && decision.MaximumPriorSends == 0 {

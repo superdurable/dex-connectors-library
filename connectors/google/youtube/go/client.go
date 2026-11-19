@@ -266,7 +266,11 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	var credentialFailure *providerOutcome
 	var sendErr error
 	dispatchErr := request.writeFence.Dispatch(func(requestContext context.Context) error {
-		response, credentialFailure, sendErr = client.sendWithRefresh(call, requestContext, operation, credential, request, observation)
+		if operation == "createPlaylist" {
+			response, sendErr = client.send(requestContext, credential, request, observation)
+		} else {
+			response, credentialFailure, sendErr = client.sendWithRefresh(call, requestContext, operation, credential, request, observation)
+		}
 		return sendErr
 	})
 	receipt := client.receipt(call, objectID, response.header)
@@ -276,6 +280,8 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	case credentialFailure != nil:
 		// A credential failure follows a 401, which YouTube returns without inserting.
 		return providerResponse{}, credentialFailure
+	case sendErr != nil && (response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable):
+		return response, client.outcome(outcomeRetryUnprocessed, operation, sdkgo.FailureAvailability, "YouTube temporarily refused the insert", receipt)
 	case errors.Is(sendErr, errRequestNotBuilt):
 		return response, client.outcome(outcomeDefect, operation, sdkgo.FailureLocalDefect, errRequestNotBuilt.Error(), receipt)
 	case errors.Is(sendErr, errResponseTooLarge):
@@ -412,7 +418,7 @@ func (client *Client) send(requestContext context.Context, credential Credential
 	response.body, err = providerhttp.ReadBoundedBody(httpResponse.Body, limit)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
 		if !isSuccess {
-			// An oversized error body still classifies by status alone.
+			// Preserve the status so 429 and 503 can retry without parsing the oversized body.
 			response.isErrorBodyOversized = true
 			return response, nil
 		}

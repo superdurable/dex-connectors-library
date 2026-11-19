@@ -247,12 +247,20 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 // exchangeWithContext sends one request, refreshing and resending once after HubSpot rejects an OAuth
 // token. Trigger pollers pass their own ctx because their calls have no Dex Step context.
 func (client *Client) exchangeWithContext(ctx context.Context, call sdkgo.Call, operation string, request providerRequest, objectID string) (providerResponse, *providerOutcome) {
+	return client.exchangeWithContextPolicy(ctx, call, operation, request, objectID, true)
+}
+
+func (client *Client) exchangeWithoutRejectionRefresh(ctx context.Context, call sdkgo.Call, operation string, request providerRequest, objectID string) (providerResponse, *providerOutcome) {
+	return client.exchangeWithContextPolicy(ctx, call, operation, request, objectID, false)
+}
+
+func (client *Client) exchangeWithContextPolicy(ctx context.Context, call sdkgo.Call, operation string, request providerRequest, objectID string, canRefreshAfterRejection bool) (providerResponse, *providerOutcome) {
 	credentials, outcome := client.resolveCredentials(ctx, call, operation)
 	if outcome != nil {
 		return providerResponse{}, outcome
 	}
 	response, err := client.send(ctx, credentials, request)
-	if err == nil && response.statusCode == http.StatusUnauthorized && client.canRefreshAfterRejection(credentials) {
+	if canRefreshAfterRejection && err == nil && response.statusCode == http.StatusUnauthorized && client.canRefreshAfterRejection(credentials) {
 		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(ctx, client.credentials, call, client.refreshDriver)
 		if refreshErr == nil && validateResolvedCredentials(replacement) == nil {
 			response, err = client.send(ctx, replacement, request)

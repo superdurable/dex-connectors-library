@@ -109,6 +109,15 @@ func (operation AppendRowOperation) Invoke(call sdkgo.Call, input AppendRowInput
 	}); err != nil {
 		return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "append could not be dispatched safely"), 0)
 	}
+	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "append refusal checkpoint failed"), 0)
+		}
+		if response.status == http.StatusTooManyRequests {
+			return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureRateLimit, "appendRow", "Google rate limited the append"), 0)
+		}
+		return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "Google temporarily refused the append"), 0)
+	}
 	if requestError != nil {
 		var providerError *providerRequestError
 		if errors.As(requestError, &providerError) && providerError.undispatched {
@@ -118,15 +127,6 @@ func (operation AppendRowOperation) Invoke(call sdkgo.Call, input AppendRowInput
 			return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureTransport, "appendRow", "append request was not sent"), 0)
 		}
 		return appendRowUnknownOutcome(call, decision, "append request outcome is unknown")
-	}
-	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
-		if err := fence.RecordCanResend(); err != nil {
-			return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "append refusal checkpoint failed"), 0)
-		}
-		if response.status == http.StatusTooManyRequests {
-			return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureRateLimit, "appendRow", "Google rate limited the append"), 0)
-		}
-		return sdkgo.NewMutationRetry[RowWriteResult](sheetFailure(sdkgo.FailureAvailability, "appendRow", "Google temporarily refused the append"), 0)
 	}
 	if response.status == http.StatusNotFound && decision.MaximumPriorSends == 0 && isDefiniteSpreadsheetRefusal(response) {
 		if err := fence.RecordCanResend(); err != nil {

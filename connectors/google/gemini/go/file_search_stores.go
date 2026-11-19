@@ -232,8 +232,26 @@ func (operation CreateFileSearchStoreOperation) Invoke(call sdkgo.Call, input Cr
 	}); err != nil {
 		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create could not be dispatched safely"), 0)
 	}
+	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable {
+		if err := fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create checkpoint could not record a safe resend"), 0)
+		}
+		if response.StatusCode == http.StatusTooManyRequests {
+			return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureRateLimit, "Gemini rate limited the create"), 0)
+		}
+		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create outcome is unknown"), 0)
+	}
 	if failure != nil {
-		if failure.Kind == sdkgo.FailureAuthentication || failure.Kind == sdkgo.FailureLocalDefect || (failure.Kind == sdkgo.FailureTransport && !didGetConnection.Load()) {
+		if failure.Kind == sdkgo.FailureAuthentication || failure.Kind == sdkgo.FailureLocalDefect {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini pre-send checkpoint is unavailable"), 0)
+			}
+			if decision.MaximumPriorSends == 0 {
+				return storeMutationBranch(CreateFileSearchStoreBranchDefect, FileSearchStore{}, failure.Kind, failure.Message)
+			}
+			return sdkgo.NewMutationRetry[FileSearchStore](*failure, 0)
+		}
+		if failure.Kind == sdkgo.FailureTransport && !didGetConnection.Load() {
 			if err := fence.RecordCanResend(); err != nil {
 				return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini pre-send checkpoint is unavailable"), 0)
 			}
@@ -243,18 +261,6 @@ func (operation CreateFileSearchStoreOperation) Invoke(call sdkgo.Call, input Cr
 			return storeMutationBranch(CreateFileSearchStoreBranchUncertain, FileSearchStore{}, failure.Kind, "Gemini create outcome is unknown at the send cap")
 		}
 		return sdkgo.NewMutationRetry[FileSearchStore](*failure, 0)
-	}
-	if response.StatusCode == http.StatusTooManyRequests {
-		if err := fence.RecordCanResend(); err != nil {
-			return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create checkpoint could not record a safe resend"), 0)
-		}
-		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureRateLimit, "Gemini rate limited the create"), 0)
-	}
-	if response.StatusCode == http.StatusServiceUnavailable {
-		if err := fence.RecordCanResend(); err != nil {
-			return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create checkpoint could not record a safe resend"), 0)
-		}
-		return sdkgo.NewMutationRetry[FileSearchStore](storeFailure(sdkgo.FailureAvailability, "Gemini create outcome is unknown"), 0)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		if isDefiniteGeminiStoreRefusal(response) && decision.MaximumPriorSends == 0 {
@@ -373,10 +379,10 @@ func (client *Client) doStoreRequestWithContext(requestContext context.Context, 
 	}
 	content, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	if err != nil {
-		return storeHTTPResponse{}, failurePointer(sdkgo.FailureTransport, "Gemini store response was interrupted")
+		return storeHTTPResponse{StatusCode: response.StatusCode}, failurePointer(sdkgo.FailureTransport, "Gemini store response was interrupted")
 	}
 	if int64(len(content)) > limit && response.StatusCode >= 200 && response.StatusCode < 300 {
-		return storeHTTPResponse{}, failurePointer(sdkgo.FailureResponseTooLarge, "Gemini store response exceeded the configured limit")
+		return storeHTTPResponse{StatusCode: response.StatusCode}, failurePointer(sdkgo.FailureResponseTooLarge, "Gemini store response exceeded the configured limit")
 	}
 	return storeHTTPResponse{StatusCode: response.StatusCode, Body: content}, nil
 }

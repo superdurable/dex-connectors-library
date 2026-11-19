@@ -427,11 +427,15 @@ func (client *Client) requestURL(ctx context.Context, call sdkgo.Call, credentia
 }
 
 func (client *Client) writeRequest(ctx context.Context, call sdkgo.Call, credential Credentials, method, spreadsheetID, suffix string, query url.Values, payload any) (requestResult, error) {
+	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
+	return client.writeRequestURL(ctx, call, credential, method, target, query, payload)
+}
+
+func (client *Client) writeRequestURL(ctx context.Context, call sdkgo.Call, credential Credentials, method, target string, query url.Values, payload any) (requestResult, error) {
 	encodedPayload, err := json.Marshal(payload)
 	if err != nil {
 		return requestResult{}, &providerRequestError{kind: sdkgo.FailureLocalDefect, message: "provider write could not be encoded", undispatched: true}
 	}
-	target := strings.TrimRight(client.endpoint.String(), "/") + "/spreadsheets/" + url.PathEscape(spreadsheetID) + suffix
 	observation := &writeDispatchObservation{}
 	requestContext := httptrace.WithClientTrace(ctx, observation.clientTrace())
 	request, err := http.NewRequestWithContext(requestContext, method, target, bytes.NewReader(encodedPayload))

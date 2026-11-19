@@ -66,7 +66,7 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 	var didGetConnection atomic.Bool
 	err = fence.Dispatch(func(requestContext context.Context) error {
 		trace := &httptrace.ClientTrace{GotConn: func(httptrace.GotConnInfo) { didGetConnection.Store(true) }}
-		response, outcome = operation.client.exchangeWithContext(httptrace.WithClientTrace(requestContext, trace), call, operationID, request, "")
+		response, outcome = operation.client.exchangeWithoutRejectionRefresh(httptrace.WithClientTrace(requestContext, trace), call, operationID, request, "")
 		return nil
 	})
 	if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
@@ -75,8 +75,30 @@ func (operation CreateObjectOperation) Invoke(call sdkgo.Call, input CreateObjec
 	if err != nil {
 		return createObjectUnknownOutcome(call, decision, sdkgo.FailureTransport, "create dispatch could not be confirmed")
 	}
+	if response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable {
+		if checkpointError := fence.RecordCanResend(); checkpointError != nil {
+			return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, sdkgo.FailureAvailability, "retry checkpoint is unavailable"), 0)
+		}
+		kind := sdkgo.FailureAvailability
+		if response.statusCode == http.StatusTooManyRequests {
+			kind = sdkgo.FailureRateLimit
+		}
+		if outcome != nil {
+			return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, kind, "HubSpot deferred the create"), outcome.retryAfter)
+		}
+		return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, kind, "HubSpot deferred the create"), 0)
+	}
+	if outcome != nil && response.statusCode == 0 && !didGetConnection.Load() && outcome.disposition != outcomeRetry {
+		if checkpointError := fence.RecordCanResend(); checkpointError != nil {
+			return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, sdkgo.FailureAvailability, "pre-send checkpoint is unavailable"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return createObjectUnknownOutcome(call, decision, outcome.failure.Kind, "prior create remains unconfirmed")
+		}
+		return mutationAttemptForOutcome[CRMObject](*outcome, operationBranches{conflict: CreateObjectBranchConflict, rejected: CreateObjectBranchProviderRejected, defect: CreateObjectBranchDefect})
+	}
 	if outcome != nil {
-		if outcome.disposition == outcomeRetry && (response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable || !didGetConnection.Load()) {
+		if outcome.disposition == outcomeRetry && !didGetConnection.Load() {
 			if checkpointError := fence.RecordCanResend(); checkpointError != nil {
 				return sdkgo.NewMutationRetry[CRMObject](providerFailure(operationID, sdkgo.FailureAvailability, "retry checkpoint is unavailable"), 0)
 			}

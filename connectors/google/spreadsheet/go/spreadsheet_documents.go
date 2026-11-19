@@ -155,20 +155,10 @@ func (operation CreateSpreadsheetOperation) Invoke(call sdkgo.Call, input Create
 	var response requestResult
 	var requestError error
 	if err := fence.Dispatch(func(dispatchContext context.Context) error {
-		response, _, requestError = operation.client.requestURL(dispatchContext, call, credential, http.MethodPost, strings.TrimRight(operation.client.endpoint.String(), "/")+"/spreadsheets", nil, map[string]any{"properties": map[string]string{"title": input.Title}})
+		response, requestError = operation.client.writeRequestURL(dispatchContext, call, credential, http.MethodPost, strings.TrimRight(operation.client.endpoint.String(), "/")+"/spreadsheets", nil, map[string]any{"properties": map[string]string{"title": input.Title}})
 		return nil
 	}); err != nil {
 		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureAvailability, "createSpreadsheet", "spreadsheet create could not be dispatched safely"), 0)
-	}
-	if requestError != nil {
-		var providerError *providerRequestError
-		if errors.As(requestError, &providerError) && providerError.undispatched {
-			if err := fence.RecordCanResend(); err != nil {
-				return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureAvailability, "createSpreadsheet", "undispatched checkpoint failed"), 0)
-			}
-			return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureTransport, "createSpreadsheet", "spreadsheet create request was not sent"), 0)
-		}
-		return createSpreadsheetUnknownOutcome(call, decision, "spreadsheet create request outcome is unknown")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -179,6 +169,16 @@ func (operation CreateSpreadsheetOperation) Invoke(call sdkgo.Call, input Create
 			kind = sdkgo.FailureRateLimit
 		}
 		return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(kind, "createSpreadsheet", "Google temporarily refused spreadsheet creation"), 0)
+	}
+	if requestError != nil {
+		var providerError *providerRequestError
+		if errors.As(requestError, &providerError) && providerError.undispatched {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureAvailability, "createSpreadsheet", "undispatched checkpoint failed"), 0)
+			}
+			return sdkgo.NewMutationRetry[SpreadsheetInfo](sheetFailure(sdkgo.FailureTransport, "createSpreadsheet", "spreadsheet create request was not sent"), 0)
+		}
+		return createSpreadsheetUnknownOutcome(call, decision, "spreadsheet create request outcome is unknown")
 	}
 	if response.status != http.StatusOK {
 		if decision.MaximumPriorSends > 0 || !isDefiniteSpreadsheetRefusal(response) {
