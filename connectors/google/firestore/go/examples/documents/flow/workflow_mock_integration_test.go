@@ -24,7 +24,8 @@ import (
 func TestDocumentsUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := firestoremock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	deleteFlow := NewDeleteFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, deleteFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestDocumentsUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "projects/sample-project/databases/(default)/documents/events/sample-event", output.Documents[0].Name)
 	require.Len(t, mock.ListDocuments().Calls(), 1)
+	deleteFlowID := "google-firestore-delete-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, deleteFlow, deleteFlowID, firestore.GetDocumentInput{ProjectID: "sample-project", CollectionID: "events", DocumentID: "sample-event"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	deleteResult, err := client.WaitForFlow(ctx, deleteFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, deleteResult.Status, deleteResult.ErrorMessage)
+	var deleted firestore.FirestoreDocument
+	require.NoError(t, deleteResult.DecodeSingleOutput(&deleted))
+	require.Equal(t, "projects/sample-project/databases/(default)/documents/events/sample-event", deleted.Name)
+	require.Len(t, mock.DeleteDocument().Calls(), 1)
 }

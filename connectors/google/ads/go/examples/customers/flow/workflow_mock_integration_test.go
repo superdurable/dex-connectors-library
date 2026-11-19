@@ -24,7 +24,8 @@ import (
 func TestCustomersUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := adsmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	campaignFlow := NewCampaignFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, campaignFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,16 @@ func TestCustomersUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "customers/1234567890", output.ResourceNames[0])
 	require.Len(t, mock.ListAccessibleCustomers().Calls(), 1)
+	campaignFlowID := "google-ads-campaigns-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	campaignRequest := ads.ListCampaignsInput{CustomerID: "1234567890"}
+	_, err = client.StartFlow(ctx, campaignFlow, campaignFlowID, campaignRequest, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	campaignResult, err := client.WaitForFlow(ctx, campaignFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, campaignResult.Status, campaignResult.ErrorMessage)
+	var campaignOutput ads.CampaignPage
+	require.NoError(t, campaignResult.DecodeSingleOutput(&campaignOutput))
+	require.Len(t, campaignOutput.Rows, 1)
+	require.Equal(t, "customers/1234567890/campaigns/7", campaignOutput.Rows[0].Campaign.ResourceName)
+	require.Len(t, mock.ListCampaigns().Calls(), 1)
 }

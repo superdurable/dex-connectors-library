@@ -1,6 +1,6 @@
 # GetResponse contact-inspection Flow
 
-This runnable Flow calls `listContacts` with the static `getresponse` connection. Its happy-path contact page is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only basic contact fields enter the Flow result; the API Key does not.
+This runnable worker offers `GetResponseContactInspection` for `listContacts` and `GetResponseContactUpdate` for `updateContact`, both with the static `getresponse` connection. Each happy-path result is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. Only basic contact fields enter the Flow result; the API Key does not.
 
 ## Strict FDG 2.0 generation
 
@@ -23,5 +23,7 @@ GOWORK=off go run ./examples/contact-inspection
 ```
 
 Start `GetResponseContactInspection` with a unique Flow ID and input `{"page":1,"perPage":20}`. The Worker connects to Dex Server without an inbound listener. The provider connection name is fixed in `flow/workflow.go`.
+
+To update a contact, start `GetResponseContactUpdate` with `{"contactId":"abc123","name":"Ada Byron"}`, replacing the ID with one returned by `listContacts`. GetResponse uses the supplied fields as absolute values; blank email and name together are invalid. The `contactId` is an alphanumeric ID from [GetResponse Contacts](https://app.getresponse.com/lists), not an email address.
 
 With `dexcli dev` serving at `127.0.0.1:8905`, run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8905 GOWORK=off go test -race -tags=integration ./examples/contact-inspection/flow -count=1`. Live provider authorization remains a separate check.

@@ -5,6 +5,7 @@
 package figmalookup
 
 import (
+	"encoding/json"
 	"github.com/superdurable/dex-connectors-library/connectors/figma/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -16,6 +17,7 @@ const FlowType = "FigmaLookup"
 // ConnectionName is the static Dex Web connection name.
 const ConnectionName = "figma"
 const firstStepType = "ReadFigmaFirst"
+const nodesStepType = "ReadFigmaNodes"
 const secondStepType = "ReadFigmaSecond"
 
 var fileKeyAttribute = dex.DefineAttribute[string]("figma-file-key")
@@ -70,6 +72,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStartStep(startRequest{}),
 		dex.DefineStep(figma.NewGetFileStep(figma.GetFileStepConfig[Request]{StepType: firstStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "figma-lookup", GroupLabel: "Figma lookup", Explanation: "Read Figma records."}, MapToOperationInput: MapToGetFileInput, Found: sdkgo.GoTo(afterFirst{})})),
 		dex.DefineStep(afterFirst{}),
+		dex.DefineStep(figma.NewGetFileNodesStep(figma.GetFileNodesStepConfig[figma.GetFileNodesInput]{StepType: nodesStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "figma-lookup", GroupLabel: "Figma lookup", Explanation: "Read the file root node."}, MapToOperationInput: MapToGetFileNodesInput, Found: sdkgo.GoTo(afterNodes{})})),
+		dex.DefineStep(afterNodes{}),
 		dex.DefineStep(figma.NewGetFileCommentsStep(figma.GetFileCommentsStepConfig[figma.GetFileCommentsInput]{StepType: secondStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "figma-lookup", GroupLabel: "Figma lookup", Explanation: "Read the related Figma resource."}, MapToOperationInput: MapToGetFileCommentsInput, Listed: sdkgo.GoTo(completeLookup{})})),
 		dex.DefineStep(completeLookup{}),
 	}
@@ -84,6 +88,9 @@ func MapToGetFileInput(request Request) figma.GetFileInput {
 func MapToGetFileCommentsInput(input figma.GetFileCommentsInput) figma.GetFileCommentsInput {
 	return input
 }
+
+// MapToGetFileNodesInput maps the file's root node ID to the node query.
+func MapToGetFileNodesInput(input figma.GetFileNodesInput) figma.GetFileNodesInput { return input }
 
 // dex:group group-id:figma-lookup group-label:"Figma lookup"
 // dex:explanation text:"Start the Figma read with the typed request."
@@ -111,6 +118,27 @@ type afterFirst struct {
 
 func (afterFirst) GetStepType() string { return "AfterFigmaFirst" }
 func (afterFirst) Execute(ctx dex.Context, result figma.GetFileResult) (*dex.StepDecision, error) {
+	var root struct {
+		ID string `json:"id"`
+	}
+	if json.Unmarshal(result.Value.Document, &root) != nil || root.ID == "" {
+		return dex.ForceFail("file root ID is missing"), nil
+	}
+	fileKey, err := fileKeyAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[figma.GetFileNodesInput](nodesStepType), figma.GetFileNodesInput{FileKey: fileKey, NodeIDs: []string{root.ID}}), nil
+}
+
+// dex:group group-id:figma-lookup group-label:"Figma lookup"
+// dex:explanation text:"Continue to comments after reading the file root node."
+type afterNodes struct {
+	dex.StepDefaultsNoWaitFor[figma.GetFileNodesResult]
+}
+
+func (afterNodes) GetStepType() string { return "AfterFigmaNodes" }
+func (afterNodes) Execute(ctx dex.Context, _ figma.GetFileNodesResult) (*dex.StepDecision, error) {
 	fileKey, err := fileKeyAttribute.Get(ctx)
 	if err != nil {
 		return nil, err

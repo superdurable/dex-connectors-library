@@ -24,6 +24,122 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[freshsales.ContactMetadata](`{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
 			return err
 		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.ContactsPage](`{"contacts":[{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}],"page":1,"total":1}`)
+			return err
+		}},
+		{name: "createContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.ContactMetadata](`{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.ContactMetadata](`{"id":144,"firstName":"Ada","lastName":"Byron","emailAddress":"ada@example.com"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedContact](`{"contactId":"144","deleted":true}`)
+			return err
+		}},
+		{name: "listAccountViews/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMViews](`{"views":[{"id":1,"name":"All Accounts"}]}`)
+			return err
+		}},
+		{name: "getAccount/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordMetadata](`{"id":301,"name":"Acme"}`)
+			return err
+		}},
+		{name: "listAccounts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordsPage](`{"records":[{"id":301,"name":"Acme"}],"page":1,"total":1}`)
+			return err
+		}},
+		{name: "createAccount/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordMetadata](`{"id":301,"name":"Acme"}`)
+			return err
+		}},
+		{name: "updateAccount/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordMetadata](`{"id":301,"name":"Acme Updated"}`)
+			return err
+		}},
+		{name: "deleteAccount/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":301,"deleted":true}`)
+			return err
+		}},
+		{name: "listDealViews/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMViews](`{"views":[{"id":1,"name":"All Deals"}]}`)
+			return err
+		}},
+		{name: "getDeal/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordMetadata](`{"id":401,"name":"Expansion Deal"}`)
+			return err
+		}},
+		{name: "listDeals/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordsPage](`{"records":[{"id":401,"name":"Expansion Deal"}],"page":1,"total":1}`)
+			return err
+		}},
+		{name: "createDeal/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordMetadata](`{"id":401,"name":"Expansion Deal"}`)
+			return err
+		}},
+		{name: "updateDeal/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.CRMRecordMetadata](`{"id":401,"name":"Updated Deal"}`)
+			return err
+		}},
+		{name: "deleteDeal/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":401,"deleted":true}`)
+			return err
+		}},
+		{name: "createNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.NoteMetadata](`{"id":501,"description":"Example note"}`)
+			return err
+		}},
+		{name: "updateNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.NoteMetadata](`{"id":501,"description":"Updated note"}`)
+			return err
+		}},
+		{name: "deleteNote/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":501,"deleted":true}`)
+			return err
+		}},
+		{name: "getAppointment/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.AppointmentMetadata](`{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "listAppointments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.AppointmentPage](`{"appointments":[{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}],"total":1}`)
+			return err
+		}},
+		{name: "createAppointment/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.AppointmentMetadata](`{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "updateAppointment/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.AppointmentMetadata](`{"id":601,"title":"Expansion Appointment","fromDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "deleteAppointment/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":601,"deleted":true}`)
+			return err
+		}},
+		{name: "getSalesActivity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.SalesActivityMetadata](`{"id":701,"title":"Expansion Call","startDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "listSalesActivities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.SalesActivityPage](`{"activities":[{"id":701,"title":"Expansion Call","startDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}],"total":1}`)
+			return err
+		}},
+		{name: "createSalesActivity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.SalesActivityMetadata](`{"id":701,"title":"Expansion Call","startDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "updateSalesActivity/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.SalesActivityMetadata](`{"id":701,"title":"Expansion Call","startDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "deleteSalesActivity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":701,"deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +155,92 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.ListAccountViews().Definition().Operation.OperationID != "listAccountViews" {
+		t.Errorf("listAccountViews mock has another definition")
+	}
+	if mock.GetAccount().Definition().Operation.OperationID != "getAccount" {
+		t.Errorf("getAccount mock has another definition")
+	}
+	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
+		t.Errorf("listAccounts mock has another definition")
+	}
+	if mock.CreateAccount().Definition().Operation.OperationID != "createAccount" {
+		t.Errorf("createAccount mock has another definition")
+	}
+	if mock.UpdateAccount().Definition().Operation.OperationID != "updateAccount" {
+		t.Errorf("updateAccount mock has another definition")
+	}
+	if mock.DeleteAccount().Definition().Operation.OperationID != "deleteAccount" {
+		t.Errorf("deleteAccount mock has another definition")
+	}
+	if mock.ListDealViews().Definition().Operation.OperationID != "listDealViews" {
+		t.Errorf("listDealViews mock has another definition")
+	}
+	if mock.GetDeal().Definition().Operation.OperationID != "getDeal" {
+		t.Errorf("getDeal mock has another definition")
+	}
+	if mock.ListDeals().Definition().Operation.OperationID != "listDeals" {
+		t.Errorf("listDeals mock has another definition")
+	}
+	if mock.CreateDeal().Definition().Operation.OperationID != "createDeal" {
+		t.Errorf("createDeal mock has another definition")
+	}
+	if mock.UpdateDeal().Definition().Operation.OperationID != "updateDeal" {
+		t.Errorf("updateDeal mock has another definition")
+	}
+	if mock.DeleteDeal().Definition().Operation.OperationID != "deleteDeal" {
+		t.Errorf("deleteDeal mock has another definition")
+	}
+	if mock.CreateNote().Definition().Operation.OperationID != "createNote" {
+		t.Errorf("createNote mock has another definition")
+	}
+	if mock.UpdateNote().Definition().Operation.OperationID != "updateNote" {
+		t.Errorf("updateNote mock has another definition")
+	}
+	if mock.DeleteNote().Definition().Operation.OperationID != "deleteNote" {
+		t.Errorf("deleteNote mock has another definition")
+	}
+	if mock.GetAppointment().Definition().Operation.OperationID != "getAppointment" {
+		t.Errorf("getAppointment mock has another definition")
+	}
+	if mock.ListAppointments().Definition().Operation.OperationID != "listAppointments" {
+		t.Errorf("listAppointments mock has another definition")
+	}
+	if mock.CreateAppointment().Definition().Operation.OperationID != "createAppointment" {
+		t.Errorf("createAppointment mock has another definition")
+	}
+	if mock.UpdateAppointment().Definition().Operation.OperationID != "updateAppointment" {
+		t.Errorf("updateAppointment mock has another definition")
+	}
+	if mock.DeleteAppointment().Definition().Operation.OperationID != "deleteAppointment" {
+		t.Errorf("deleteAppointment mock has another definition")
+	}
+	if mock.GetSalesActivity().Definition().Operation.OperationID != "getSalesActivity" {
+		t.Errorf("getSalesActivity mock has another definition")
+	}
+	if mock.ListSalesActivities().Definition().Operation.OperationID != "listSalesActivities" {
+		t.Errorf("listSalesActivities mock has another definition")
+	}
+	if mock.CreateSalesActivity().Definition().Operation.OperationID != "createSalesActivity" {
+		t.Errorf("createSalesActivity mock has another definition")
+	}
+	if mock.UpdateSalesActivity().Definition().Operation.OperationID != "updateSalesActivity" {
+		t.Errorf("updateSalesActivity mock has another definition")
+	}
+	if mock.DeleteSalesActivity().Definition().Operation.OperationID != "deleteSalesActivity" {
+		t.Errorf("deleteSalesActivity mock has another definition")
 	}
 }
