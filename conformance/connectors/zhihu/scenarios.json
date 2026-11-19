@@ -1,0 +1,334 @@
+{
+  "connector": "zhihu",
+  "scenarios": [
+    {
+      "callId": "121a3d75-8086-52fc-a022-91d2040371f5",
+      "exchanges": [
+        {
+          "body": "{\"Code\":0,\"Message\":\"success\",\"Data\":[{\"APIID\":\"knowledge\",\"APIName\":\"Knowledge Base\",\"TotalQuota\":500,\"TotalUsed\":12,\"RemainingQuota\":488}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/quota",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "X-Request-Timestamp": [
+              "1767323045"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "quotas": [
+            {
+              "apiId": "knowledge",
+              "apiName": "Knowledge Base",
+              "remainingQuota": 488,
+              "totalQuota": 500,
+              "totalUsed": 12
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {},
+      "name": "listQuotas-success",
+      "operation": "listQuotas"
+    },
+    {
+      "callId": "065c47a2-035e-5012-b3e9-65be124948db",
+      "exchanges": [
+        {
+          "body": "{\"Code\":0,\"Data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/quota",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "X-Request-Timestamp": [
+              "1767323045"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "quotas": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {},
+      "name": "listQuotas-empty",
+      "operation": "listQuotas"
+    },
+    {
+      "callId": "513b68a3-a891-5edf-93bd-f830c5ccf128",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/quota",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "X-Request-Timestamp": [
+              "1767323045"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "quotas": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {},
+      "name": "listQuotas-providerRejected",
+      "operation": "listQuotas"
+    },
+    {
+      "callId": "13cf7415-ee0d-544d-a7af-c50a0afb762d",
+      "exchanges": [
+        {
+          "body": "{\"Code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/quota",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "X-Request-Timestamp": [
+              "1767323045"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "quotas": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {},
+      "name": "listQuotas-invalidResponse",
+      "operation": "listQuotas"
+    },
+    {
+      "callId": "9a0f76e3-46ac-5090-9cf2-a564c11a2060",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/quota",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "X-Request-Timestamp": [
+              "1767323045"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {},
+      "name": "listQuotas-retry429",
+      "operation": "listQuotas"
+    },
+    {
+      "callId": "f58b53a5-f5cc-53a2-b2ce-f64086958b43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/quota",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "X-Request-Timestamp": [
+              "1767323045"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {},
+      "name": "listQuotas-retry503",
+      "operation": "listQuotas"
+    },
+    {
+      "callId": "723ac3ff-a2e1-50f1-9416-41e74cde0df8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/quota",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "X-Request-Timestamp": [
+              "1767323045"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {},
+      "name": "listQuotas-transport",
+      "operation": "listQuotas"
+    },
+    {
+      "callId": "2c9e0631-d838-5941-9e5c-5b942f5218aa",
+      "exchanges": [
+        {
+          "body": "{\"Code\":0,\"Message\":\"success\",\"Data\":[{\"APIID\":\"knowledge\",\"APIName\":\"Knowledge Base\",\"TotalQuota\":500,\"TotalUsed\":12,\"RemainingQuota\":488}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/quota",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer secretTestToken"
+            ],
+            "X-Request-Timestamp": [
+              "1767323045"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "quotas": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {},
+      "name": "listQuotas-oversized",
+      "operation": "listQuotas"
+    },
+    {
+      "callId": "f09cdfa4-f7d3-5307-a7fa-357ef5c0550e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "quotas": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-01-02T03:04:05Z",
+      "input": {},
+      "name": "listQuotas-defect",
+      "operation": "listQuotas"
+    }
+  ],
+  "schemaVersion": 1
+}
