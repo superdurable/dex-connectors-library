@@ -1,6 +1,6 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.28.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.29.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
@@ -18,7 +18,7 @@ The Gmail Connector receives root messages and replies, reads and searches
 messages, threads, and labels, and sends new messages or replies from the
 verified primary address.
 
-The Go `listMessages` and `listThreads` Queries accept Gmail search syntax,
+From Go v0.29.0, the `listMessages` and `listThreads` Queries accept Gmail search syntax,
 label IDs, a page token, an optional 1–500 result limit, and an option to
 include Spam and Trash. They return IDs and a next token; call `getMessage` or
 `getThread` for full content. `getThread` decodes its messages. `listLabels`

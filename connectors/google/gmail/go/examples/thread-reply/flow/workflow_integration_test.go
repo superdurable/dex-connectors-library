@@ -240,7 +240,7 @@ func waitForGmailStatus(
 	t *testing.T,
 	ctx context.Context,
 	client *dex.Client,
-	flow *Flow,
+	_ *Flow,
 	flowID string,
 	expected Status,
 ) ThreadState {
@@ -248,8 +248,9 @@ func waitForGmailStatus(
 	var state ThreadState
 	require.Eventually(t, func() bool {
 		state = ThreadState{}
-		return client.InvokeRPC(ctx, flowID, flow.GetThreadStatus, nil, &state) == nil && state.Status == expected
-	}, 20*time.Second, 100*time.Millisecond)
+		attributes, err := client.GetAttributes(ctx, flowID, dex.ReadAttribute(threadStateAttribute, &state))
+		return err == nil && attributes.IsSet(threadStateAttribute) && state.Status == expected
+	}, 20*time.Second, 500*time.Millisecond)
 	return state
 }
 

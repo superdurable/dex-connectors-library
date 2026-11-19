@@ -1,5 +1,7 @@
 # Gmail thread reply example
 
+The mailbox search Flow requires Gmail Connector Go v0.29.0 or later.
+
 This example keeps an inbound Gmail integration and a mailbox search Flow
 beside the Gmail Connector. The inbound Flow:
 
