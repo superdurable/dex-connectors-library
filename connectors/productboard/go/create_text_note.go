@@ -63,6 +63,9 @@ func (operation CreateTextNoteOperation) Invoke(call sdkgo.Call, input CreateTex
 				return sdkgo.NewMutationBranch(CreateTextNoteBranchCreated, note, nil, sdkgo.Receipt{})
 			}
 		}
+		if decision.MaximumPriorSends >= call.MaxSends() {
+			return noteCreateUncertain(sdkgo.FailureTransport, "Productboard note creation could not be confirmed by ID")
+		}
 		return noteCreateRetry(sdkgo.FailureAvailability, "Productboard note creation could not be confirmed by ID", 0)
 	}
 	if decision.Kind != singledispatch.SendAllowed && decision.Kind != singledispatch.ReadBackThenResendAllowed {
@@ -70,6 +73,9 @@ func (operation CreateTextNoteOperation) Invoke(call sdkgo.Call, input CreateTex
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
+		if decision.MaximumPriorSends > 0 {
+			return noteCreateUnknownOutcome(call, decision, "an earlier Productboard note creation may have succeeded; credentials are unavailable")
+		}
 		return noteCreateBranch(CreateTextNoteBranchDefect, sdkgo.FailureAuthentication, "Productboard credentials are unavailable")
 	}
 	payload, err := json.Marshal(map[string]any{"data": map[string]any{"type": "textNote", "fields": map[string]string{"name": input.Name, "content": input.Content}}})

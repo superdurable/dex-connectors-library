@@ -2,6 +2,132 @@
   "connector": "plaid",
   "scenarios": [
     {
+      "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "exchanges": [
+        {
+          "body": "{\"error_type\":\"ITEM_ERROR\",\"error_code\":\"CONFLICT\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/remove",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "input": {},
+      "name": "removeItem-409-unknown",
+      "operation": "removeItem"
+    },
+    {
+      "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/remove",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "input": {},
+      "name": "removeItem-empty-403-unknown",
+      "operation": "removeItem"
+    },
+    {
+      "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/remove",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "input": {},
+      "name": "removeItem-malformed-200-unknown",
+      "operation": "removeItem"
+    },
+    {
       "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
       "exchanges": [
         {
@@ -749,7 +875,7 @@
       "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
       "exchanges": [
         {
-          "body": "{\"request_id\":\"example\"}",
+          "body": "{\"removed\":true,\"request_id\":\"example\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -839,7 +965,7 @@
       "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error_type\":\"AUTH_ERROR\",\"error_code\":\"INVALID_API_KEYS\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

@@ -504,8 +504,8 @@ func mutationAttemptFromOutcome[T any](
 ) sdkgo.MutationAttempt[T] {
 	branch := branches.branch(outcome.route)
 	// Both writes are repeat-safe, so a status that does not prove a refusal, such as 409, is retried.
-	isUnknownStatus := outcome.statusCode != 0 && !isDefiniteRefusalStatus(outcome.statusCode)
-	if branch == "" || isUnknownStatus {
+	isUnknownStatus := outcome.statusCode != 0 && (!isDefiniteRefusalStatus(outcome.statusCode) || len(outcome.providerErrors) == 0)
+	if branch == "" || isUnknownStatus || outcome.route == routeInvalidResponse {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)
 	}
 	failure := outcome.failure

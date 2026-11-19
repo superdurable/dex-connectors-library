@@ -5,6 +5,7 @@ package shopify
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -216,6 +217,9 @@ func (operation CreateProductOperation) Invoke(call sdkgo.Call, input CreateProd
 		return writeBranch("createProduct", CreateProductBranchDefect, Product{}, sdkgo.FailureLocalDefect, "product dispatch fence could not be built")
 	}
 	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[Product](*failureFor("createProduct", sdkgo.FailureAvailability, "product dispatch checkpoint could not be trusted"), 0)
+	}
 	if decision.Marker.ProviderID != "" {
 		providerID, parseError := strconv.ParseInt(decision.Marker.ProviderID, 10, 64)
 		if parseError != nil || providerID <= 0 {
@@ -223,21 +227,43 @@ func (operation CreateProductOperation) Invoke(call sdkgo.Call, input CreateProd
 		}
 		response, readError := operation.client.doWrite(call.Context, call, http.MethodGet, productPath(providerID), nil)
 		if readError != nil || response.status != http.StatusOK {
+			if decision.MaximumPriorSends < call.MaxSends() {
+				return sdkgo.NewMutationRetry[Product](*failureFor("createProduct", sdkgo.FailureAvailability, "previously created product could not be confirmed"), 0)
+			}
 			return uncertainProduct(call, "previously created product could not be confirmed")
 		}
 		product, decodeError := decodeGetProductResponse(response.body, nil)
 		if decodeError != nil || product.ID != providerID {
+			if decision.MaximumPriorSends < call.MaxSends() {
+				return sdkgo.NewMutationRetry[Product](*failureFor("createProduct", sdkgo.FailureProtocol, "previously created product could not be confirmed"), 0)
+			}
 			return uncertainProduct(call, "previously created product could not be confirmed")
 		}
 		return sdkgo.NewMutationBranch(CreateProductBranchCreated, product, nil, writeReceipt(call, decision.Marker.ProviderID))
 	}
-	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationRetry[Product](*failureFor("createProduct", sdkgo.FailureAvailability, "product dispatch checkpoint could not be trusted"), 0)
+	if decision.MaximumPriorSends > 0 {
+		product, found, readError := operation.readProductByCallMarker(call)
+		if readError != nil {
+			if decision.MaximumPriorSends >= call.MaxSends() {
+				return uncertainProduct(call, "earlier product creation could not be checked")
+			}
+			return sdkgo.NewMutationRetry[Product](*failureFor("createProduct", sdkgo.FailureAvailability, "earlier product creation could not be checked"), 0)
+		}
+		if found {
+			return sdkgo.NewMutationBranch(CreateProductBranchCreated, product, nil, writeReceipt(call, strconv.FormatInt(product.ID, 10)))
+		}
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return uncertainProduct(call, "an earlier product creation may have succeeded")
 	}
-	payload, err := json.Marshal(map[string]any{"product": productCreateFields(input)})
+	fields := productCreateFields(input)
+	fields["handle"] = productCallHandle(call)
+	if input.Tags == "" {
+		fields["tags"] = productCallTag(call)
+	} else {
+		fields["tags"] = input.Tags + ", " + productCallTag(call)
+	}
+	payload, err := json.Marshal(map[string]any{"product": fields})
 	if err != nil {
 		return writeBranch("createProduct", CreateProductBranchDefect, Product{}, sdkgo.FailureValidation, "product payload could not be encoded")
 	}
@@ -251,6 +277,12 @@ func (operation CreateProductOperation) Invoke(call sdkgo.Call, input CreateProd
 		return sdkgo.NewMutationRetry[Product](*failureFor("createProduct", sdkgo.FailureAvailability, "product request was not sent"), 0)
 	}
 	if errors.Is(err, errShopifyCredential) {
+		if decision.MaximumPriorSends > 0 {
+			if decision.MaximumPriorSends < call.MaxSends() {
+				return sdkgo.NewMutationRetry[Product](*failureFor("createProduct", sdkgo.FailureAuthentication, "credentials are unavailable after an earlier possible product creation"), 0)
+			}
+			return uncertainProduct(call, "an earlier product creation may have succeeded; credentials are unavailable")
+		}
 		return writeBranch("createProduct", CreateProductBranchDefect, Product{}, sdkgo.FailureAuthentication, "Shopify credentials are unavailable")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
@@ -291,6 +323,43 @@ func (operation CreateProductOperation) Invoke(call sdkgo.Call, input CreateProd
 		return sdkgo.NewMutationRetry[Product](*failureFor("createProduct", sdkgo.FailureAvailability, "product checkpoint failed"), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateProductBranchCreated, product, nil, writeReceipt(call, strconv.FormatInt(product.ID, 10)))
+}
+
+func productCallHandle(call sdkgo.Call) string {
+	return fmt.Sprintf("dex-%x", sha256.Sum256([]byte(call.IdempotencyKey)))
+}
+
+func productCallTag(call sdkgo.Call) string {
+	return "dex_call_id:" + string(call.IdempotencyKey)
+}
+
+func (operation CreateProductOperation) readProductByCallMarker(call sdkgo.Call) (Product, bool, error) {
+	query := url.Values{"handle": {productCallHandle(call)}, "limit": {"250"}}
+	response, err := operation.client.doWrite(call.Context, call, http.MethodGet, "/products.json?"+query.Encode(), nil)
+	if err != nil || response.status != http.StatusOK {
+		return Product{}, false, errors.New("product marker read failed")
+	}
+	var page struct {
+		Products []Product `json:"products"`
+	}
+	if json.Unmarshal(response.body, &page) != nil || page.Products == nil {
+		return Product{}, false, errors.New("product marker page is invalid")
+	}
+	for _, product := range page.Products {
+		if product.ID > 0 && product.Handle == productCallHandle(call) && hasProductCallTag(product.Tags, productCallTag(call)) {
+			return product, true, nil
+		}
+	}
+	return Product{}, false, nil
+}
+
+func hasProductCallTag(tags, marker string) bool {
+	for _, tag := range strings.Split(tags, ",") {
+		if strings.TrimSpace(tag) == marker {
+			return true
+		}
+	}
+	return false
 }
 
 func productCreateFields(input CreateProductInput) map[string]any {

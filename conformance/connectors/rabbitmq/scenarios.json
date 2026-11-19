@@ -2,6 +2,35 @@
   "connector": "rabbitmq",
   "scenarios": [
     {
+      "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "routed": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "deab991b-ac68-5109-8f2a-d153b0665421",
+      "input": {
+        "exchange": "amq.direct",
+        "payload": "hello",
+        "routingKey": "work",
+        "virtualHost": "/"
+      },
+      "name": "publishMessage-credentials-unavailable",
+      "operation": "publishMessage",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "deab991b-ac68-5109-8f2a-d153b0665421",
+        "state": "claimed"
+      }
+    },
+    {
       "callId": "c4c68be5-8dc6-5d70-83b5-a9f1c6a7c57b",
       "exchanges": [
         {

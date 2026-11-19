@@ -60,6 +60,9 @@ func (operation CreateFeatureOperation) Invoke(call sdkgo.Call, input CreateFeat
 				return sdkgo.NewMutationBranch(CreateFeatureBranchCreated, feature, nil, sdkgo.Receipt{})
 			}
 		}
+		if decision.MaximumPriorSends >= call.MaxSends() {
+			return createFeatureUncertain(sdkgo.FailureTransport, "Productboard feature creation could not be confirmed by ID")
+		}
 		return sdkgo.NewMutationRetry[FeatureMetadata](featureFailure("createFeature", sdkgo.FailureAvailability, "Productboard feature creation could not be confirmed by ID"), 0)
 	}
 	if decision.Kind != singledispatch.SendAllowed && decision.Kind != singledispatch.ReadBackThenResendAllowed {
@@ -67,6 +70,9 @@ func (operation CreateFeatureOperation) Invoke(call sdkgo.Call, input CreateFeat
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
+		if decision.MaximumPriorSends > 0 {
+			return createFeatureUnknownOutcome(call, decision, "an earlier Productboard feature creation may have succeeded; credentials are unavailable")
+		}
 		return featureMutationBranch(CreateFeatureBranchDefect, "createFeature", sdkgo.FailureAuthentication, "Productboard credentials are unavailable", FeatureMetadata{})
 	}
 	payload, err := json.Marshal(map[string]any{"data": map[string]any{"type": "feature", "fields": map[string]string{"name": input.Name}, "relationships": []any{map[string]any{"type": "parent", "target": map[string]string{"type": "component", "id": input.ParentComponentID}}}}})

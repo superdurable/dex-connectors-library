@@ -2,6 +2,155 @@
   "connector": "productboard",
   "scenarios": [
     {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-409-unknown",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/entities/123e4567-e89b-12d3-a456-426614174000",
+          "requestBody": {
+            "data": {
+              "fields": {
+                "name": "Roadmap"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6b385f2d-0e1e-5429-bf72-6be5d221bb8f",
+      "input": {
+        "featureId": "123e4567-e89b-12d3-a456-426614174000",
+        "name": "Roadmap"
+      },
+      "name": "renameFeature-empty-403-unknown",
+      "operation": "renameFeature"
+    },
+    {
+      "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ec396915-184d-58a1-8628-21b70d6e8677",
+      "input": {
+        "name": "Roadmap",
+        "parentComponentId": "223e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "createFeature-credentials-unavailable",
+      "operation": "createFeature",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "ec396915-184d-58a1-8628-21b70d6e8677",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+      "input": {
+        "content": "\u003cp\u003eFeedback.\u003c/p\u003e",
+        "name": "Example note"
+      },
+      "name": "createTextNote-credentials-unavailable",
+      "operation": "createTextNote",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "3f00bd07-d241-595b-b3f3-115f8aba4302",
+        "state": "claimed"
+      }
+    },
+    {
       "callId": "aa59c2a2-1fb0-5517-b7ae-5eb8a50c37c9",
       "exchanges": [
         {

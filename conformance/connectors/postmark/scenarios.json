@@ -2,6 +2,104 @@
   "connector": "postmark",
   "scenarios": [
     {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":422,\"Message\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-409-unknown",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-empty-422-unknown",
+      "operation": "createSuppression"
+    },
+    {
       "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
       "exchanges": [
         {
@@ -5102,14 +5200,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "EmailAddress": "",
-          "Status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5531,14 +5625,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "EmailAddress": "",
-          "Status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

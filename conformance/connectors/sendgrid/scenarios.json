@@ -2,6 +2,86 @@
   "connector": "sendgrid",
   "scenarios": [
     {
+      "callId": "bcd13ef5-78d2-5fdc-b58d-ea6266450273",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"conflict\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/marketing/contacts",
+          "query": {
+            "ids": [
+              "contact-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd13ef5-78d2-5fdc-b58d-ea6266450273",
+      "input": {
+        "id": "contact-123"
+      },
+      "name": "deleteContact-409-unknown",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "bcd13ef5-78d2-5fdc-b58d-ea6266450273",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/marketing/contacts",
+          "query": {
+            "ids": [
+              "contact-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcd13ef5-78d2-5fdc-b58d-ea6266450273",
+      "input": {
+        "id": "contact-123"
+      },
+      "name": "deleteContact-empty-403-unknown",
+      "operation": "deleteContact"
+    },
+    {
       "callId": "f1e2d3c4-b5a6-4789-9012-34567890abcd",
       "exchanges": [
         {
@@ -1598,13 +1678,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "jobId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

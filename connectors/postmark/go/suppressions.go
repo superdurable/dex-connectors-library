@@ -148,7 +148,7 @@ func validStreamID(streamID string) bool {
 	return streamID != "" && strings.TrimSpace(streamID) == streamID && !strings.Contains(streamID, "/")
 }
 
-func (client *Client) changeSuppression(call sdkgo.Call, operation, streamID, emailAddress string, isDelete bool, success, rejected, invalid, defect sdkgo.BranchID) sdkgo.MutationAttempt[SuppressionAction] {
+func (client *Client) changeSuppression(call sdkgo.Call, operation, streamID, emailAddress string, isDelete bool, success, rejected, _, defect sdkgo.BranchID) sdkgo.MutationAttempt[SuppressionAction] {
 	if !validStreamID(streamID) || !validEmailAddress(emailAddress) {
 		return mutationFailure[SuppressionAction](operation, defect, sdkgo.FailureValidation, "message stream ID or recipient email is invalid")
 	}
@@ -175,11 +175,14 @@ func (client *Client) changeSuppression(call sdkgo.Call, operation, streamID, em
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewMutationRetry[SuppressionAction](newFailure(operation, sdkgo.FailureAvailability, "provider outcome is unknown"), 0)
 	case response.StatusCode != http.StatusOK:
-		return mutationFailure[SuppressionAction](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected suppression request")
+		if isDefinitePostmarkRefusal(response, client.maxResponseBytes) {
+			return mutationFailure[SuppressionAction](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected suppression request")
+		}
+		return sdkgo.NewMutationRetry[SuppressionAction](newFailure(operation, sdkgo.FailureTransport, "provider suppression outcome is unknown"), 0)
 	}
 	content, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
-		return mutationFailure[SuppressionAction](operation, invalid, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[SuppressionAction](newFailure(operation, sdkgo.FailureResponseTooLarge, "provider response exceeded the configured limit"), 0)
 	}
 	if err != nil {
 		return sdkgo.NewMutationRetry[SuppressionAction](newFailure(operation, sdkgo.FailureAvailability, "provider response was interrupted"), 0)
@@ -188,7 +191,7 @@ func (client *Client) changeSuppression(call sdkgo.Call, operation, streamID, em
 		Suppressions []SuppressionAction `json:"Suppressions"`
 	}
 	if err := json.Unmarshal(content, &envelope); err != nil || len(envelope.Suppressions) != 1 || envelope.Suppressions[0].EmailAddress != emailAddress {
-		return mutationFailure[SuppressionAction](operation, invalid, sdkgo.FailureProtocol, "provider suppression response is invalid")
+		return sdkgo.NewMutationRetry[SuppressionAction](newFailure(operation, sdkgo.FailureProtocol, "provider suppression response is invalid"), 0)
 	}
 	action := envelope.Suppressions[0]
 	expectedStatus := "Suppressed"
@@ -199,7 +202,7 @@ func (client *Client) changeSuppression(call sdkgo.Call, operation, streamID, em
 		return mutationFailure[SuppressionAction](operation, rejected, sdkgo.FailureProviderRejection, "Postmark refused the recipient suppression change")
 	}
 	if action.Status != expectedStatus {
-		return mutationFailure[SuppressionAction](operation, invalid, sdkgo.FailureProtocol, "provider suppression response has unknown status")
+		return sdkgo.NewMutationRetry[SuppressionAction](newFailure(operation, sdkgo.FailureProtocol, "provider suppression response has unknown status"), 0)
 	}
 	return sdkgo.NewMutationBranch(success, action, nil, sdkgo.Receipt{})
 }

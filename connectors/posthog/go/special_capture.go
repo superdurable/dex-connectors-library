@@ -206,7 +206,10 @@ func (client *Client) captureSpecial(call sdkgo.Call, operationName, event, dist
 		return specialCaptureRetry(operationName, sdkgo.FailureAvailability, "PostHog capture is temporarily unavailable", retryAfter)
 	}
 	if response.StatusCode != http.StatusOK {
-		return specialCaptureBranch(operationName, branches.rejected, posthogRejectionKind(response.StatusCode), "PostHog rejected capture with HTTP "+strconv.Itoa(response.StatusCode))
+		if isDefiniteCaptureRefusal(response, client.maxResponseBytes) {
+			return specialCaptureBranch(operationName, branches.rejected, posthogRejectionKind(response.StatusCode), "PostHog rejected capture with HTTP "+strconv.Itoa(response.StatusCode))
+		}
+		return specialCaptureRetry(operationName, sdkgo.FailureAvailability, "PostHog capture outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), retryAfter)
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {

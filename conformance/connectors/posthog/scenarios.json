@@ -113,7 +113,7 @@
       "callId": "ce4f06ff-5537-5013-8621-997f4bef8718",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -500,7 +500,7 @@
       "callId": "8da2c509-308c-55ea-aac1-7ae3e3f5114c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -857,7 +857,7 @@
       "callId": "c3441e6d-8ff7-59f1-8bd8-0f9a220513eb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1181,7 +1181,7 @@
       "callId": "4fe70ae3-9795-574e-8918-7d8bd60a5ea8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1515,7 +1515,7 @@
       "callId": "bafae9ca-9b95-525d-8899-8296b5813577",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1831,7 +1831,7 @@
       "callId": "1a9695cb-acb4-55ed-bb1a-b52a510b88bc",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"error\":\"request rejected\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",

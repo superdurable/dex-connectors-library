@@ -54,7 +54,7 @@ func TestGetItemProjectsLinkedIdentity(t *testing.T) {
 
 func TestRemoveItemTreatsAlreadyAbsentAsRemoved(t *testing.T) {
 	status := http.StatusOK
-	body := `{"request_id":"example"}`
+	body := `{"removed":true,"request_id":"example"}`
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		require.Equal(t, "/api/item/remove", request.URL.Path)
 		require.JSONEq(t, `{"access_token":"sample-plaid-access-token"}`, readRequestBody(t, request))
@@ -74,10 +74,17 @@ func TestRemoveItemTreatsAlreadyAbsentAsRemoved(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, RemoveItemBranchRemoved, result.Branch)
 	status = http.StatusForbidden
-	body = `{}`
+	body = `{"error_type":"AUTH_ERROR","error_code":"INVALID_API_KEYS"}`
 	result, err = sdkgo.RunMutation(queryContext{}, client.RemoveItem(), testConnection, RemoveItemInput{})
 	require.NoError(t, err)
 	require.Equal(t, RemoveItemBranchProviderRejected, result.Branch)
+	for _, unknownStatus := range []int{http.StatusConflict, http.StatusForbidden, http.StatusOK} {
+		status = unknownStatus
+		body = `{}`
+		_, err = sdkgo.RunMutation(queryContext{}, client.RemoveItem(), testConnection, RemoveItemInput{})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+	}
 	for _, retryStatus := range []int{http.StatusTooManyRequests, http.StatusServiceUnavailable} {
 		status = retryStatus
 		_, err = sdkgo.RunMutation(queryContext{}, client.RemoveItem(), testConnection, RemoveItemInput{})

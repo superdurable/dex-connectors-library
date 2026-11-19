@@ -5,8 +5,10 @@
 package posthog
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
@@ -68,6 +70,22 @@ func isDefiniteRefusalStatus(status int) bool {
 		return true
 	}
 	return false
+}
+
+func isDefiniteCaptureRefusal(response *http.Response, maxResponseBytes int64) bool {
+	if !isDefiniteRefusalStatus(response.StatusCode) {
+		return false
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
+	if err != nil {
+		return false
+	}
+	var rejection struct {
+		Error string `json:"error"`
+		Detail string `json:"detail"`
+		Message string `json:"message"`
+	}
+	return json.Unmarshal(body, &rejection) == nil && (strings.TrimSpace(rejection.Error) != "" || strings.TrimSpace(rejection.Detail) != "" || strings.TrimSpace(rejection.Message) != "")
 }
 
 func posthogRejectionKind(status int) sdkgo.FailureKind {

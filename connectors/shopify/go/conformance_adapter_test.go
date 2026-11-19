@@ -6,6 +6,7 @@ package shopify
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,9 +19,13 @@ const conformanceFixturePathPrefix = "/admin/api/2026-10"
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	_ = endpoint // Shopify's API host is fixed; the recorder intercepts its transport.
-	client, err := New(Config{ShopSubdomain: "test-shop"}, sdkgo.StaticCredentialProvider[Credentials]{
+	credentials := sdkgo.StaticCredentialProvider[Credentials]{
 		testConnection: {AccessToken: sdkgo.NewSecretString("test-token")},
-	}, WithHTTPClient(transport))
+	}
+	if strings.HasSuffix(scenario.Name, "-credentials-unavailable") {
+		credentials = sdkgo.StaticCredentialProvider[Credentials]{}
+	}
+	client, err := New(Config{ShopSubdomain: "test-shop"}, credentials, WithHTTPClient(transport))
 	require.NoError(t, err)
 	mutationContext := &mutationConformanceContext{attempt: 1}
 	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { mutationContext.heartbeat = value })

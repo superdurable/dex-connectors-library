@@ -73,6 +73,9 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.Username) || strings.Contains(credentials.Username, ":") || !providerhttp.IsHeaderSafeCredential(credentials.Password.Reveal()) {
+		if decision.MaximumPriorSends > 0 {
+			return publishUnknownOutcome(call, decision, "an earlier RabbitMQ publish may have succeeded; credentials are unavailable")
+		}
 		return publishBranch(PublishMessageBranchDefect, sdkgo.FailureAuthentication, "RabbitMQ credentials are unavailable")
 	}
 	payload, err := json.Marshal(map[string]any{"properties": map[string]any{}, "routing_key": input.RoutingKey, "payload": input.Payload, "payload_encoding": "string"})

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -84,6 +85,9 @@ func (operation CreateOrderOperation) Invoke(call sdkgo.Call, input CreateOrderI
 		return writeBranch("createOrder", CreateOrderBranchDefect, Order{}, sdkgo.FailureLocalDefect, "order dispatch fence could not be built")
 	}
 	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return sdkgo.NewMutationRetry[Order](*failureFor("createOrder", sdkgo.FailureAvailability, "order dispatch checkpoint could not be trusted"), 0)
+	}
 	if decision.Marker.ProviderID != "" {
 		providerID, parseError := strconv.ParseInt(decision.Marker.ProviderID, 10, 64)
 		if parseError != nil || providerID <= 0 {
@@ -91,21 +95,36 @@ func (operation CreateOrderOperation) Invoke(call sdkgo.Call, input CreateOrderI
 		}
 		response, readError := operation.client.doWrite(call.Context, call, http.MethodGet, "/orders/"+decision.Marker.ProviderID+".json", nil)
 		if readError != nil || response.status != http.StatusOK {
+			if decision.MaximumPriorSends < call.MaxSends() {
+				return sdkgo.NewMutationRetry[Order](*failureFor("createOrder", sdkgo.FailureAvailability, "previously created order could not be confirmed"), 0)
+			}
 			return uncertainOrder(call, "previously created order could not be confirmed")
 		}
 		order, decodeError := decodeGetOrderResponse(response.body, nil)
 		if decodeError != nil || order.ID != providerID {
+			if decision.MaximumPriorSends < call.MaxSends() {
+				return sdkgo.NewMutationRetry[Order](*failureFor("createOrder", sdkgo.FailureProtocol, "previously created order could not be confirmed"), 0)
+			}
 			return uncertainOrder(call, "previously created order could not be confirmed")
 		}
 		return sdkgo.NewMutationBranch(CreateOrderBranchCreated, order, nil, writeReceipt(call, decision.Marker.ProviderID))
 	}
-	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationRetry[Order](*failureFor("createOrder", sdkgo.FailureAvailability, "order dispatch checkpoint could not be trusted"), 0)
+	if decision.MaximumPriorSends > 0 {
+		order, found, readError := operation.readOrderByCallMarker(call)
+		if readError != nil {
+			if decision.MaximumPriorSends >= call.MaxSends() {
+				return uncertainOrder(call, "earlier order creation could not be checked")
+			}
+			return sdkgo.NewMutationRetry[Order](*failureFor("createOrder", sdkgo.FailureAvailability, "earlier order creation could not be checked"), 0)
+		}
+		if found {
+			return sdkgo.NewMutationBranch(CreateOrderBranchCreated, order, nil, writeReceipt(call, strconv.FormatInt(order.ID, 10)))
+		}
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return uncertainOrder(call, "an earlier order creation may have succeeded")
 	}
-	payload, err := json.Marshal(map[string]any{"order": map[string]any{"line_items": input.LineItems, "note": input.Note, "tags": input.Tags, "send_receipt": false, "inventory_behaviour": "bypass"}})
+	payload, err := json.Marshal(map[string]any{"order": map[string]any{"line_items": input.LineItems, "note": input.Note, "tags": input.Tags, "note_attributes": []map[string]string{{"name": "dex_call_id", "value": string(call.IdempotencyKey)}}, "send_receipt": false, "inventory_behaviour": "bypass"}})
 	if err != nil {
 		return writeBranch("createOrder", CreateOrderBranchDefect, Order{}, sdkgo.FailureValidation, "order payload could not be encoded")
 	}
@@ -119,6 +138,12 @@ func (operation CreateOrderOperation) Invoke(call sdkgo.Call, input CreateOrderI
 		return sdkgo.NewMutationRetry[Order](*failureFor("createOrder", sdkgo.FailureAvailability, "order request was not sent"), 0)
 	}
 	if errors.Is(err, errShopifyCredential) {
+		if decision.MaximumPriorSends > 0 {
+			if decision.MaximumPriorSends < call.MaxSends() {
+				return sdkgo.NewMutationRetry[Order](*failureFor("createOrder", sdkgo.FailureAuthentication, "credentials are unavailable after an earlier possible order creation"), 0)
+			}
+			return uncertainOrder(call, "an earlier order creation may have succeeded; credentials are unavailable")
+		}
 		return writeBranch("createOrder", CreateOrderBranchDefect, Order{}, sdkgo.FailureAuthentication, "Shopify credentials are unavailable")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
@@ -159,6 +184,45 @@ func (operation CreateOrderOperation) Invoke(call sdkgo.Call, input CreateOrderI
 		return sdkgo.NewMutationRetry[Order](*failureFor("createOrder", sdkgo.FailureAvailability, "order checkpoint failed"), 0)
 	}
 	return sdkgo.NewMutationBranch(CreateOrderBranchCreated, order, nil, writeReceipt(call, strconv.FormatInt(order.ID, 10)))
+}
+
+func (operation CreateOrderOperation) readOrderByCallMarker(call sdkgo.Call) (Order, bool, error) {
+	var sinceID int64
+	for {
+		query := url.Values{"status": {"any"}, "limit": {"250"}, "fields": {"id,name,financial_status,total_price,currency,note_attributes"}}
+		if sinceID > 0 {
+			query.Set("since_id", strconv.FormatInt(sinceID, 10))
+		}
+		response, err := operation.client.doWrite(call.Context, call, http.MethodGet, "/orders.json?"+query.Encode(), nil)
+		if err != nil || response.status != http.StatusOK {
+			return Order{}, false, errors.New("order marker read failed")
+		}
+		var page struct {
+			Orders []struct {
+				Order
+				NoteAttributes []struct{ Name, Value string } `json:"note_attributes"`
+			} `json:"orders"`
+		}
+		if json.Unmarshal(response.body, &page) != nil || page.Orders == nil {
+			return Order{}, false, errors.New("order marker page is invalid")
+		}
+		for _, item := range page.Orders {
+			if item.ID <= sinceID {
+				return Order{}, false, errors.New("order marker page did not advance")
+			}
+			if item.ID > sinceID {
+				sinceID = item.ID
+			}
+			for _, attribute := range item.NoteAttributes {
+				if attribute.Name == "dex_call_id" && attribute.Value == string(call.IdempotencyKey) {
+					return item.Order, true, nil
+				}
+			}
+		}
+		if len(page.Orders) < 250 {
+			return Order{}, false, nil
+		}
+	}
 }
 
 func isValidCreateOrderInput(input CreateOrderInput) bool {

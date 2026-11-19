@@ -6,6 +6,7 @@ package productboard
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,9 +20,13 @@ const conformanceFixturePathPrefix = "/v2"
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	reference := sdkgo.ConnectionRef{Provider: "productboard", Name: "productboard"}
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
+	credentials := sdkgo.StaticCredentialProvider[Credentials]{
 		reference: {APIToken: sdkgo.NewSecretString("sample-productboard-token")},
-	}, WithHTTPClient(transport))
+	}
+	if strings.HasSuffix(scenario.Name, "-credentials-unavailable") {
+		credentials = sdkgo.StaticCredentialProvider[Credentials]{}
+	}
+	client, err := New(Config{BaseURL: endpoint}, credentials, WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := singledispatchtest.NewContext("productboard-conformance", "feature-operation")
 	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) {

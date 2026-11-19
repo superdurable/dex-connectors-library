@@ -196,7 +196,7 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input ContactIDI
 		if decodeErr == nil {
 			return sdkgo.NewMutationBranch(DeleteContactBranchQueued, output, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "sendgrid"})
 		}
-		return mutationBranch("deleteContact", branches.invalid, ContactJobOutput{}, sdkgo.FailureProtocol, "provider returned an invalid deletion job")
+		return sdkgo.NewMutationRetry[ContactJobOutput](queryFailure("deleteContact", sdkgo.FailureProtocol, "provider returned an invalid deletion job"), 0)
 	}
 	if status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable || status >= 500 || errors.Is(err, errRequest) {
 		return sdkgo.NewMutationRetry[ContactJobOutput](queryFailure("deleteContact", sdkgo.FailureAvailability, "provider deletion outcome is unknown"), retryAfter)
@@ -204,7 +204,10 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input ContactIDI
 	if errors.Is(err, errCredential) {
 		return mutationBranch("deleteContact", branches.defect, ContactJobOutput{}, sdkgo.FailureAuthentication, "connection credentials are unavailable")
 	}
-	return mutationBranch("deleteContact", branches.rejected, ContactJobOutput{}, sdkgo.FailureProviderRejection, "provider rejected contact deletion")
+	if err == nil && isDefiniteSendGridRefusal(status, body) {
+		return mutationBranch("deleteContact", branches.rejected, ContactJobOutput{}, sdkgo.FailureProviderRejection, "provider rejected contact deletion")
+	}
+	return sdkgo.NewMutationRetry[ContactJobOutput](queryFailure("deleteContact", sdkgo.FailureTransport, "provider deletion outcome is unknown"), 0)
 }
 
 func isSafeIdentifier(identifier string) bool {

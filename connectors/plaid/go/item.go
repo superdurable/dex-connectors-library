@@ -138,16 +138,40 @@ func (operation RemoveItemOperation) Invoke(call sdkgo.Call, _ RemoveItemInput) 
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[ItemRemoval](removalFailure(sdkgo.FailureAvailability, "Plaid is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound || (response.err == nil && isPlaidItemNotFound(response.body)) {
+	if response.err == nil && isPlaidItemNotFound(response.body) {
 		return sdkgo.NewMutationBranch(RemoveItemBranchRemoved, ItemRemoval{Removed: true}, nil, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK {
-		return removalBranch(RemoveItemBranchProviderRejected, sdkgo.FailureProviderRejection, "Plaid rejected HTTP "+strconv.Itoa(response.status))
+		if isDefinitePlaidWriteRefusal(response.status, response.body) {
+			return removalBranch(RemoveItemBranchProviderRejected, sdkgo.FailureProviderRejection, "Plaid rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[ItemRemoval](removalFailure(sdkgo.FailureTransport, "Plaid Item removal outcome is unknown"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[ItemRemoval](removalFailure(sdkgo.FailureTransport, "Plaid response was interrupted"), 0)
 	}
+	var confirmation struct {
+		Removed *bool `json:"removed"`
+	}
+	if json.Unmarshal(response.body, &confirmation) != nil || confirmation.Removed == nil || !*confirmation.Removed {
+		return sdkgo.NewMutationRetry[ItemRemoval](removalFailure(sdkgo.FailureProtocol, "Plaid Item removal confirmation is incomplete"), 0)
+	}
 	return sdkgo.NewMutationBranch(RemoveItemBranchRemoved, ItemRemoval{Removed: true}, nil, sdkgo.Receipt{})
+}
+
+func isDefinitePlaidWriteRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var rejection struct {
+		ErrorType string `json:"error_type"`
+		ErrorCode string `json:"error_code"`
+	}
+	return json.Unmarshal(body, &rejection) == nil && rejection.ErrorType != "" && rejection.ErrorCode != ""
 }
 
 func removalFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
