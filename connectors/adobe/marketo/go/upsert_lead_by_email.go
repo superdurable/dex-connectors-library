@@ -59,7 +59,7 @@ func (operation UpsertLeadByEmailOperation) Invoke(call sdkgo.Call, input Upsert
 	if err != nil {
 		return upsertLeadBranch(UpsertLeadByEmailBranchDefect, sdkgo.FailureLocalDefect, "lead upsert could not be encoded")
 	}
-	response := operation.client.requestLeadAPI(call, http.MethodPost, "/v1/leads.json", body)
+	response := operation.client.writeLeadAPI(call, "/v1/leads.json", body)
 	if errors.Is(response.err, errLeadReauthorization) {
 		return upsertLeadBranch(UpsertLeadByEmailBranchDefect, sdkgo.FailureAuthentication, "Marketo connection needs authorization")
 	}
@@ -90,8 +90,10 @@ func (operation UpsertLeadByEmailOperation) Invoke(call sdkgo.Call, input Upsert
 			return upsertLeadRetry(sdkgo.FailureRateLimit, "Marketo temporarily blocked the upsert", response.retryAfter)
 		case "retry-availability":
 			return upsertLeadRetry(sdkgo.FailureAvailability, "Marketo is temporarily unavailable", response.retryAfter)
+		case "already-exists", "multiple-matches":
+			return upsertLeadBranch(UpsertLeadByEmailBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the duplicate lead")
 		default:
-			return upsertLeadBranch(UpsertLeadByEmailBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the lead upsert")
+			return upsertLeadRetry(sdkgo.FailureProtocol, "Marketo lead upsert outcome is inconclusive", 0)
 		}
 	}
 	if result.Status != "created" && result.Status != "updated" || result.ID <= 0 {
@@ -158,6 +160,8 @@ func classifyLeadSyncCode(code string) string {
 		return "retry-availability"
 	case "1005":
 		return "already-exists"
+	case "1007":
+		return "multiple-matches"
 	default:
 		return "rejected"
 	}
@@ -168,6 +172,9 @@ func upsertLeadFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
 }
 func upsertLeadBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SyncedLead] {
 	failure := upsertLeadFailure(kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[SyncedLead](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, SyncedLead{}, &failure, sdkgo.Receipt{})
 }
 func upsertLeadRetry(kind sdkgo.FailureKind, message string, delay time.Duration) sdkgo.MutationAttempt[SyncedLead] {

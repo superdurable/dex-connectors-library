@@ -75,14 +75,14 @@ spec:
       inputType: CreateEmailIdentityInput
       outputType: CreatedEmailIdentity
       kind: mutation
-      description: Start verification of an email address or domain; retries may send another verification email, so cap possible creates at three and read back before resending.
+      description: Start verification of an email address or domain; retries may send another verification email, so cap possible creates at three.
       idempotency: required
       authorization: required
       execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: SES accepted the identity for verification.}
         - {id: providerRejected, goName: ProviderRejected, description: SES conclusively rejected the identity creation., optional: true}
-        - {id: uncertain, goName: Uncertain, description: SES may have created the identity but read-back could not confirm it., optional: true}
+        - {id: uncertain, goName: Uncertain, description: SES may have created the identity but the capped sends could not confirm it., optional: true}
         - {id: defect, goName: Defect, description: The identity or connection is invalid., optional: true}
       mocks:
         - name: createdIdentity
@@ -184,14 +184,14 @@ spec:
       inputType: CreateEmailTemplateInput
       outputType: EmailTemplate
       kind: mutation
-      description: Create one stored email template with bounded sends and read-back after an unknown outcome.
+      description: Create one stored email template with bounded sends after an unknown outcome.
       idempotency: required
       authorization: required
       execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
-        - {id: created, goName: Created, description: SES accepted or read-back confirmed the template.}
+        - {id: created, goName: Created, description: SES accepted the template creation.}
         - {id: providerRejected, goName: ProviderRejected, description: SES conclusively refused creation or the name has different content., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The template might exist but read-back could not confirm it., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The template might exist but the capped sends could not confirm it., optional: true}
         - {id: defect, goName: Defect, description: The template content or connection is invalid., optional: true}
       mocks:
         - name: createdTemplate
@@ -307,12 +307,12 @@ spec:
       inputType: CreateCustomVerificationEmailTemplateInput
       outputType: CustomVerificationEmailTemplate
       kind: mutation
-      description: Create a custom verification email template with read-back and bounded possible creates.
+      description: Create a custom verification email template with bounded possible creates.
       idempotency: required
       authorization: required
       execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
-        - {id: created, goName: Created, description: SES accepted or read-back confirmed the template.}
+        - {id: created, goName: Created, description: SES accepted the template creation.}
         - {id: providerRejected, goName: ProviderRejected, description: SES conclusively rejected creation or the name has different content., optional: true}
         - {id: uncertain, goName: Uncertain, description: Creation may have happened but could not be confirmed., optional: true}
         - {id: defect, goName: Defect, description: The template content or connection is invalid., optional: true}

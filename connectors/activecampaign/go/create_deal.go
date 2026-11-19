@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +18,7 @@ import (
 
 // CreateDealInput creates a deal for one primary contact in a pipeline stage.
 type CreateDealInput struct {
-	// Title is the deal title used in read-back after an unknown outcome.
+	// Title is the deal title.
 	Title string `json:"title"`
 	// ContactID is the numeric primary contact ID.
 	ContactID string `json:"contactId"`
@@ -99,7 +98,7 @@ func (operation CreateDealOperation) Invoke(call sdkgo.Call, input CreateDealInp
 		return dealMutationBranch("createDeal", CreateDealBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if errors.Is(dispatch.err, errRequest) {
-		return sdkgo.NewMutationRetry[DealMetadata](queryFailure("createDeal", sdkgo.FailureTransport, "deal create outcome is unknown"), 0)
+		return limitedActiveCampaignUnknown[DealMetadata](call, decision, queryFailure("createDeal", sdkgo.FailureTransport, "deal create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status == http.StatusTooManyRequests || dispatch.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -112,71 +111,47 @@ func (operation CreateDealOperation) Invoke(call sdkgo.Call, input CreateDealInp
 		return sdkgo.NewMutationRetry[DealMetadata](queryFailure("createDeal", kind, "ActiveCampaign temporarily rejected the deal create"), dispatch.retryAfter)
 	}
 	if dispatch.status == http.StatusRequestTimeout || dispatch.status >= 500 {
-		return sdkgo.NewMutationRetry[DealMetadata](queryFailure("createDeal", sdkgo.FailureAvailability, "deal create outcome is unknown"), dispatch.retryAfter)
+		return limitedActiveCampaignUnknown[DealMetadata](call, decision, queryFailure("createDeal", sdkgo.FailureAvailability, "deal create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status != http.StatusCreated && dispatch.status != http.StatusOK {
-		if decision.MaximumPriorSends > 0 {
-			return createDealUncertain(call, "an earlier deal create may have succeeded despite this rejection")
+		if decision.MaximumPriorSends == 0 && dispatch.err == nil && isDefiniteActiveCampaignRefusal(dispatch.status, dispatch.responseBody) {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[DealMetadata](queryFailure("createDeal", sdkgo.FailureAvailability, "deal refusal checkpoint is unavailable"), 0)
+			}
+			return dealMutationBranch("createDeal", CreateDealBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
 		}
-		return dealMutationBranch("createDeal", CreateDealBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
+		return limitedActiveCampaignUnknown[DealMetadata](call, decision, queryFailure("createDeal", sdkgo.FailureTransport, "deal create response did not prove refusal"), dealReceipt(call, ""))
 	}
 	if dispatch.err != nil {
-		return createDealUncertain(call, "ActiveCampaign accepted the deal create but response was incomplete")
+		return limitedActiveCampaignUnknown[DealMetadata](call, decision, queryFailure("createDeal", sdkgo.FailureTransport, "deal create response was incomplete"), dealReceipt(call, ""))
 	}
 	deal, err := decodeDeal(dispatch.responseBody)
 	if err != nil {
-		return createDealUncertain(call, "ActiveCampaign accepted the deal create but returned invalid JSON")
+		return limitedActiveCampaignUnknown[DealMetadata](call, decision, queryFailure("createDeal", sdkgo.FailureProtocol, "deal create confirmation was invalid"), dealReceipt(call, ""))
 	}
 	_ = fence.RecordProviderID(deal.ID)
 	return sdkgo.NewMutationBranch(CreateDealBranchCreated, deal, nil, dealReceipt(call, deal.ID))
 }
 
 func (operation CreateDealOperation) readBackDeal(call sdkgo.Call, input CreateDealInput, providerID string) (DealMetadata, string) {
-	if providerID != "" {
-		body, status, _, err := operation.client.get(call, "/deals/"+providerID)
-		if err != nil || status == http.StatusTooManyRequests || status >= 500 {
-			return DealMetadata{}, "retry"
-		}
-		if status == http.StatusNotFound {
-			return DealMetadata{}, "absent"
-		}
-		if status != http.StatusOK {
-			return DealMetadata{}, "uncertain"
-		}
-		deal, err := decodeDeal(body)
-		if err != nil || !matchesCreatedDeal(deal, input) {
-			return DealMetadata{}, "uncertain"
-		}
-		return deal, "found"
+	if providerID == "" {
+		return DealMetadata{}, "absent"
 	}
-	query := url.Values{"filters[title]": {input.Title}}
-	body, status, _, err := operation.client.get(call, "/deals?"+query.Encode())
+	body, status, _, err := operation.client.get(call, "/deals/"+providerID)
 	if err != nil || status == http.StatusTooManyRequests || status >= 500 {
 		return DealMetadata{}, "retry"
+	}
+	if status == http.StatusNotFound {
+		return DealMetadata{}, "absent"
 	}
 	if status != http.StatusOK {
 		return DealMetadata{}, "uncertain"
 	}
-	page, err := decodeDealsPage(body, ListDealsInput{Limit: 20})
-	if err != nil {
+	deal, err := decodeDeal(body)
+	if err != nil || !matchesCreatedDeal(deal, input) {
 		return DealMetadata{}, "uncertain"
 	}
-	var matched DealMetadata
-	for _, deal := range page.Deals {
-		if matchesCreatedDeal(deal, input) {
-			if matched.ID != "" {
-				return DealMetadata{}, "uncertain"
-			}
-			matched = deal
-		}
-	}
-	if page.Total > len(page.Deals) {
-		return DealMetadata{}, "uncertain"
-	}
-	if matched.ID != "" {
-		return matched, "found"
-	}
-	return DealMetadata{}, "absent"
+	return deal, "found"
 }
 
 func matchesCreatedDeal(deal DealMetadata, input CreateDealInput) bool {
@@ -214,5 +189,8 @@ func dealReceipt(call sdkgo.Call, providerID string) sdkgo.Receipt {
 
 func dealMutationBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[DealMetadata] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[DealMetadata](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, DealMetadata{}, &failure, sdkgo.Receipt{})
 }

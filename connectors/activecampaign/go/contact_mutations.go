@@ -116,7 +116,7 @@ func invokeContactMutation(call sdkgo.Call, client *Client, operation, method, p
 	if err != nil {
 		return contactMutationBranch(operation, defect, sdkgo.FailureLocalDefect, "contact request could not be encoded")
 	}
-	body, status, retryAfter, err := client.request(call, method, path, encoded)
+	body, status, retryAfter, err := client.mutate(call, method, path, encoded)
 	if errors.Is(err, errCredential) {
 		return contactMutationBranch(operation, defect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -150,5 +150,8 @@ func invokeContactMutation(call sdkgo.Call, client *Client, operation, method, p
 
 func contactMutationBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ContactMetadata] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[ContactMetadata](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, ContactMetadata{}, &failure, sdkgo.Receipt{})
 }

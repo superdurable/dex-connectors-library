@@ -419,7 +419,7 @@
       "callId": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
       "exchanges": [
         {
-          "body": "{\"message\":\"forbidden\"}",
+          "body": "{\"message\":\"forbidden\",\"status\":403}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1401,7 +1401,7 @@
       "callId": "59aaad50-2125-5c14-95fa-854bca947c5c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"forbidden\",\"status\":403}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1489,14 +1489,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "objectID": "",
-          "taskID": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1744,7 +1740,7 @@
       "callId": "127dc4ff-a9d8-519c-9d16-49c98b32b896",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"message\":\"forbidden\",\"status\":403}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1813,14 +1809,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "objectID": "",
-          "taskID": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

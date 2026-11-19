@@ -53,11 +53,11 @@ func TestCreatePaymentLinkClassifiesProviderOutcomes(t *testing.T) {
 		branch sdkgo.BranchID
 		retry  bool
 	}{
-		{name: "rejected", status: 400, branch: CreatePaymentLinkBranchProviderRejected},
+		{name: "rejected", status: 400, body: `{"status":400,"errorCode":"901","message":"No acceptance"}`, branch: CreatePaymentLinkBranchProviderRejected},
 		{name: "rate limit", status: 429, retry: true},
 		{name: "unavailable", status: 503, retry: true},
 		{name: "unknown outcome", status: 500, retry: true},
-		{name: "invalid URL", status: 201, body: `{"id":"PL50C5F751CED39G71","status":"active","amount":{"currency":"EUR","value":1200},"url":"http://example.test/link"}`, branch: CreatePaymentLinkBranchInvalidResponse},
+		{name: "invalid URL", status: 201, body: `{"id":"PL50C5F751CED39G71","status":"active","amount":{"currency":"EUR","value":1200},"url":"http://example.test/link"}`, retry: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {

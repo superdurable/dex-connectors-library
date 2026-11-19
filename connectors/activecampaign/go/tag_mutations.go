@@ -111,7 +111,7 @@ func (operation DeleteTagOperation) Invoke(call sdkgo.Call, input DeleteTagInput
 	if !numericID.MatchString(input.TagID) {
 		return tagDeletionBranch("deleteTag", DeleteTagBranchDefect, sdkgo.FailureValidation, "tag ID must be numeric")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodDelete, "/tags/"+input.TagID, nil)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodDelete, "/tags/"+input.TagID, nil)
 	if errors.Is(err, errCredential) {
 		return tagDeletionBranch("deleteTag", DeleteTagBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -156,7 +156,7 @@ func invokeTagMutation(call sdkgo.Call, client *Client, operation, method, path,
 	if err != nil {
 		return tagMutationBranch(operation, defect, sdkgo.FailureLocalDefect, "tag request could not be encoded")
 	}
-	body, status, retryAfter, err := client.request(call, method, path, encoded)
+	body, status, retryAfter, err := client.mutate(call, method, path, encoded)
 	if errors.Is(err, errCredential) {
 		return tagMutationBranch(operation, defect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -190,10 +190,16 @@ func invokeTagMutation(call sdkgo.Call, client *Client, operation, method, path,
 
 func tagMutationBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[TagMetadata] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[TagMetadata](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, TagMetadata{}, &failure, sdkgo.Receipt{})
 }
 
 func tagDeletionBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[TagDeletion] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[TagDeletion](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, TagDeletion{}, &failure, sdkgo.Receipt{})
 }

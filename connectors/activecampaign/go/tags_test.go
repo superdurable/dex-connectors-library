@@ -72,6 +72,8 @@ func TestTagMutationsUseAbsoluteFieldsAndConvergeOnDeletion(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				w.WriteHeader(http.StatusNotFound)
+				_, writeErr := w.Write([]byte(`{"errors":[{"title":"Not found"}]}`))
+				require.NoError(t, writeErr)
 			}
 		default:
 			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)

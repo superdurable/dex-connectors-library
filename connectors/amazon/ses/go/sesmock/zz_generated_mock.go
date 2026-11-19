@@ -410,7 +410,7 @@ func SendEmailSentEmail() connectormock.Case[ses.SentEmail] {
 // SendEmailDefault is the manifest default, sentEmail, which New installs.
 func SendEmailDefault() connectormock.Case[ses.SentEmail] { return SendEmailSentEmail() }
 
-// CreateEmailTemplateCreated selects the created branch: SES accepted or read-back confirmed the template.
+// CreateEmailTemplateCreated selects the created branch: SES accepted the template creation.
 func CreateEmailTemplateCreated(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
 	return connectormock.Branch(ses.CreateEmailTemplateBranchCreated, value, failure)
 }
@@ -626,7 +626,7 @@ func SendTemplatedEmailDefault() connectormock.Case[ses.SentEmail] {
 	return SendTemplatedEmailSentTemplatedEmail()
 }
 
-// CreateCustomVerificationEmailTemplateCreated selects the created branch: SES accepted or read-back confirmed the template.
+// CreateCustomVerificationEmailTemplateCreated selects the created branch: SES accepted the template creation.
 func CreateCustomVerificationEmailTemplateCreated(value ses.CustomVerificationEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.CustomVerificationEmailTemplate] {
 	return connectormock.Branch(ses.CreateCustomVerificationEmailTemplateBranchCreated, value, failure)
 }

@@ -92,7 +92,8 @@ func (operation CopyObjectOperation) Invoke(call sdkgo.Call, input CopyObjectInp
 	if err != nil {
 		return copyDefect(errors.New("copy fence could not be initialized"))
 	}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[CopiedObject](newFailure(copyObjectOperationID, sdkgo.FailureAvailability, "S3 copy checkpoint is unavailable"), 0)
 	case singledispatch.ReadBackRequired, singledispatch.ReadBackThenResendAllowed:
@@ -100,7 +101,7 @@ func (operation CopyObjectOperation) Invoke(call sdkgo.Call, input CopyObjectInp
 			value.ETag, value.VersionID, value.IsFromEarlierAttempt = metadata.ETag, metadata.VersionID, true
 			return sdkgo.NewMutationBranch(CopyObjectBranchCopied, value, nil, client.receipt(call, "", destination))
 		}
-		if fence.Decide().Kind == singledispatch.ReadBackRequired {
+		if decision.Kind == singledispatch.ReadBackRequired {
 			return sdkgo.NewMutationUncertain(value, newFailure(copyObjectOperationID, sdkgo.FailureTransport, "S3 copy could not be confirmed after the send cap"), sdkgo.Receipt{})
 		}
 	}
@@ -110,7 +111,10 @@ func (operation CopyObjectOperation) Invoke(call sdkgo.Call, input CopyObjectInp
 			return sdkgo.NewMutationRetry[CopiedObject](*failure, 0)
 		}
 		if fence.RecordNotSent() != nil {
-			return sdkgo.NewMutationUncertain(value, newFailure(copyObjectOperationID, sdkgo.FailureTransport, "S3 unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CopiedObject](newFailure(copyObjectOperationID, sdkgo.FailureAvailability, "S3 unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[CopiedObject](*failure, 0)
 		}
 		return sdkgo.NewMutationBranch(CopyObjectBranchDefect, value, failure, sdkgo.Receipt{})
 	}
@@ -128,38 +132,52 @@ func (operation CopyObjectOperation) Invoke(call sdkgo.Call, input CopyObjectInp
 	}
 	dispatch := &bucketCreateDispatch{client: client, session: session, request: s3Request{method: http.MethodPut, location: destination, header: header}}
 	if fence.Dispatch(dispatch.send) != nil {
-		return sdkgo.NewMutationUncertain(value, newFailure(copyObjectOperationID, sdkgo.FailureTransport, "S3 copy dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CopiedObject](newFailure(copyObjectOperationID, sdkgo.FailureAvailability, "S3 copy dispatch checkpoint is unavailable"), 0)
 	}
 	response, err := dispatch.response, dispatch.err
 	if errors.Is(err, errRequestNotBuilt) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[CopiedObject](newFailure(copyObjectOperationID, sdkgo.FailureLocalDefect, err.Error()), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CopiedObject](newFailure(copyObjectOperationID, sdkgo.FailureAvailability, "S3 refusal checkpoint is unavailable"), 0)
+		}
 		return copyDefect(err)
 	}
 	if err != nil {
-		return sdkgo.NewMutationRetry[CopiedObject](transportFailure(copyObjectOperationID, "object copy"), 0)
+		return limitedS3Unknown(call, decision, value, transportFailure(copyObjectOperationID, "object copy"))
 	}
 	defer closeResponseBody(response)
 	if !isSuccessStatus(response.StatusCode) {
-		classified := classifyErrorResponse(copyObjectOperationID, "object copy", client.readErrorResponse(response, session.credentials), false)
+		errorResponse := client.readErrorResponse(response, session.credentials)
+		classified := classifyErrorResponse(copyObjectOperationID, "object copy", errorResponse, false)
 		if classified.outcome == outcomeRetry {
 			if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable {
 				if fence.RecordCanResend() != nil {
-					return sdkgo.NewMutationUncertain(value, newFailure(copyObjectOperationID, sdkgo.FailureTransport, "S3 resend checkpoint could not be recorded"), sdkgo.Receipt{})
+					return sdkgo.NewMutationRetry[CopiedObject](newFailure(copyObjectOperationID, sdkgo.FailureAvailability, "S3 resend checkpoint could not be recorded"), 0)
 				}
+				return sdkgo.NewMutationRetry[CopiedObject](classified.failure, classified.retryAfter)
 			}
-			return sdkgo.NewMutationRetry[CopiedObject](classified.failure, classified.retryAfter)
+			return limitedS3Unknown(call, decision, value, classified.failure)
 		}
-		return sdkgo.NewMutationBranch(CopyObjectBranchProviderRejected, value, &classified.failure, client.receipt(call, classified.requestID, destination))
+		if decision.MaximumPriorSends == 0 && isDefiniteS3Refusal(errorResponse) {
+			if fence.RecordCanResend() != nil {
+				return sdkgo.NewMutationRetry[CopiedObject](newFailure(copyObjectOperationID, sdkgo.FailureAvailability, "S3 refusal checkpoint is unavailable"), 0)
+			}
+			return sdkgo.NewMutationBranch(CopyObjectBranchProviderRejected, value, &classified.failure, client.receipt(call, classified.requestID, destination))
+		}
+		return limitedS3Unknown(call, decision, value, classified.failure)
 	}
 	contents, err := providerhttp.ReadBoundedBody(response.Body, providerhttp.MaxErrorBodyBytes)
 	if err != nil || containsCredential(string(contents), session.credentials, true) {
-		return sdkgo.NewMutationRetry[CopiedObject](newFailure(copyObjectOperationID, sdkgo.FailureProtocol, "S3 copy response could not be verified"), 0)
+		return limitedS3Unknown(call, decision, value, newFailure(copyObjectOperationID, sdkgo.FailureProtocol, "S3 copy response could not be verified"))
 	}
 	var document struct {
 		XMLName xml.Name `xml:"CopyObjectResult"`
 		ETag    string   `xml:"ETag"`
 	}
 	if xml.Unmarshal(contents, &document) != nil || document.XMLName.Local != "CopyObjectResult" || document.ETag == "" || len(document.ETag) > 128 {
-		return sdkgo.NewMutationRetry[CopiedObject](newFailure(copyObjectOperationID, sdkgo.FailureProtocol, "S3 copy response could not be verified"), 0)
+		return limitedS3Unknown(call, decision, value, newFailure(copyObjectOperationID, sdkgo.FailureProtocol, "S3 copy response could not be verified"))
 	}
 	value.ETag = document.ETag
 	value.VersionID = safeHeaderValue(response.Header.Get(versionIDHeader), session.credentials)

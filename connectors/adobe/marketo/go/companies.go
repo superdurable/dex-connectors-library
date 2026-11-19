@@ -148,7 +148,7 @@ func (operation UpsertCompanyOperation) Invoke(call sdkgo.Call, input UpsertComp
 	if err != nil {
 		return companyWriteBranch("upsertCompany", UpsertCompanyBranchDefect, sdkgo.FailureLocalDefect, "company upsert could not be encoded")
 	}
-	response := operation.client.requestLeadAPI(call, http.MethodPost, "/v1/companies.json", body)
+	response := operation.client.writeLeadAPI(call, "/v1/companies.json", body)
 	if kind, message, retry := classifyCompanyTransport(response); retry {
 		return companyWriteRetry("upsertCompany", kind, message, response.retryAfter)
 	}
@@ -169,7 +169,10 @@ func (operation UpsertCompanyOperation) Invoke(call sdkgo.Call, input UpsertComp
 		return companyWriteBranch("upsertCompany", UpsertCompanyBranchInvalidResponse, sdkgo.FailureProtocol, "Marketo returned invalid company upsert JSON")
 	}
 	if outcome != "" {
-		return companyWriteBranch("upsertCompany", UpsertCompanyBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the company upsert")
+		if outcome == "1005" && call.Context.Attempt() == 1 {
+			return companyWriteBranch("upsertCompany", UpsertCompanyBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the company upsert")
+		}
+		return companyWriteRetry("upsertCompany", sdkgo.FailureProtocol, "Marketo company upsert outcome is inconclusive", 0)
 	}
 	value := CompanyWriteResult{ID: result.ID, Status: result.Status}
 	return sdkgo.NewMutationBranch(UpsertCompanyBranchSynced, value, nil, companyReceipt(call, result.ID))
@@ -198,7 +201,7 @@ func (operation DeleteCompanyOperation) Invoke(call sdkgo.Call, input DeleteComp
 	if err != nil {
 		return companyDeleteBranch(DeleteCompanyBranchDefect, sdkgo.FailureLocalDefect, "company delete could not be encoded")
 	}
-	response := operation.client.requestLeadAPI(call, http.MethodPost, "/v1/companies/delete.json", body)
+	response := operation.client.writeLeadAPI(call, "/v1/companies/delete.json", body)
 	if kind, message, retry := classifyCompanyTransport(response); retry {
 		return companyDeleteRetry(kind, message, response.retryAfter)
 	}
@@ -221,7 +224,7 @@ func (operation DeleteCompanyOperation) Invoke(call sdkgo.Call, input DeleteComp
 	if outcome == "1013" || outcome == "" && result.Status == "deleted" {
 		return sdkgo.NewMutationBranch(DeleteCompanyBranchDeleted, DeletedCompany{Deleted: true}, nil, companyReceipt(call, result.ID))
 	}
-	return companyDeleteBranch(DeleteCompanyBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the company deletion")
+	return companyDeleteRetry(sdkgo.FailureProtocol, "Marketo company deletion outcome is inconclusive", 0)
 }
 
 type companyError struct {
@@ -323,6 +326,9 @@ func companyQueryRetry(kind sdkgo.FailureKind, message string, delay time.Durati
 
 func companyWriteBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CompanyWriteResult] {
 	failure := sdkgo.Failure{Kind: kind, Provider: "adobe-marketo", Operation: operation, Message: message}
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[CompanyWriteResult](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, CompanyWriteResult{}, &failure, sdkgo.Receipt{})
 }
 
@@ -332,6 +338,9 @@ func companyWriteRetry(operation string, kind sdkgo.FailureKind, message string,
 
 func companyDeleteBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[DeletedCompany] {
 	failure := sdkgo.Failure{Kind: kind, Provider: "adobe-marketo", Operation: "deleteCompany", Message: message}
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[DeletedCompany](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, DeletedCompany{}, &failure, sdkgo.Receipt{})
 }
 

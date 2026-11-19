@@ -51,8 +51,8 @@ func TestCreateAgreementReminderClassifiesOutcomes(t *testing.T) {
 		branch sdkgo.BranchID
 		retry  bool
 	}{
-		{name: "rejected", status: 403, body: `{"message":"private@example.com"}`, branch: CreateAgreementReminderBranchProviderRejected},
-		{name: "uncertain", status: 200, body: `{}`, branch: CreateAgreementReminderBranchUncertain},
+		{name: "rejected", status: 403, body: `{"code":"DENIED","message":"private@example.com"}`, branch: CreateAgreementReminderBranchProviderRejected},
+		{name: "uncertain", status: 200, body: `{}`, retry: true},
 		{name: "429", status: 429, body: `{}`, retry: true},
 		{name: "503", status: 503, body: `{}`, retry: true},
 		{name: "500", status: 500, body: `{}`, retry: true},

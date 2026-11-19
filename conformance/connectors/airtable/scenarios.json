@@ -2193,8 +2193,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "createdTime": "0001-01-01T00:00:00Z",
@@ -2276,9 +2275,9 @@
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -2300,7 +2299,12 @@
         "tableIdOrName": "tblPolicies000001"
       },
       "name": "createRecord-uncertain-response",
-      "operation": "createRecord"
+      "operation": "createRecord",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+        "state": "claimed"
+      }
     },
     {
       "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
@@ -2651,13 +2655,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "recordId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

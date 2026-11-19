@@ -568,7 +568,7 @@
       "callId": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"ValidationException\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -665,13 +665,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "applied": false
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -728,13 +725,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "applied": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -957,7 +951,7 @@
       "callId": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"ValidationException\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1068,13 +1062,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "applied": false
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1139,13 +1130,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "applied": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1403,7 +1391,7 @@
       "callId": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"ValidationException\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1491,13 +1479,10 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "applied": false
-        },
+        "branch": "",
+        "failureKind": "TRANSPORT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1548,13 +1533,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "applied": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

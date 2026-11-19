@@ -41,7 +41,7 @@ func TestDealNoteQueriesFilterRelationships(t *testing.T) {
 	require.Equal(t, page.Value.Notes[0], note.Value)
 }
 
-func TestCreateDealNoteReadsBackAfterUnknownOutcome(t *testing.T) {
+func TestCreateDealNoteDoesNotConfirmByTextAfterUnknownOutcome(t *testing.T) {
 	var sends, reads atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -71,12 +71,10 @@ func TestCreateDealNoteReadsBackAfterUnknownOutcome(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	ctx.attempt = 2
-	created, err := sdkgo.RunMutation(ctx, client.CreateDealNote(), testConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, CreateDealNoteBranchCreated, created.Branch)
-	require.Equal(t, "91", created.Value.ID)
-	require.Equal(t, int32(1), sends.Load())
-	require.Equal(t, int32(1), reads.Load())
+	_, err = sdkgo.RunMutation(ctx, client.CreateDealNote(), testConnection, input)
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, int32(2), sends.Load())
+	require.Equal(t, int32(0), reads.Load())
 }
 
 func TestUpdateDealNoteReplacesText(t *testing.T) {

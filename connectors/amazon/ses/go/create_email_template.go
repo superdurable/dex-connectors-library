@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
@@ -55,25 +54,20 @@ func (operation CreateEmailTemplateOperation) Invoke(call sdkgo.Call, input Crea
 	if err != nil {
 		return templateMutationBranch[EmailTemplate](createEmailTemplateOperationID, CreateEmailTemplateBranchDefect, sdkgo.FailureLocalDefect, "SES template creation fence could not be initialized")
 	}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[EmailTemplate](sesFailure(createEmailTemplateOperationID, sdkgo.FailureAvailability, "SES template creation checkpoint is unavailable"), 0)
-	case singledispatch.ReadBackRequired, singledispatch.ReadBackThenResendAllowed:
-		confirmed, exists := operation.readBack(call, input)
-		if confirmed {
-			return sdkgo.NewMutationBranch(CreateEmailTemplateBranchCreated, value, nil, templateReceipt(call, input.TemplateName))
-		}
-		if exists {
-			return templateMutationBranch[EmailTemplate](createEmailTemplateOperationID, CreateEmailTemplateBranchProviderRejected, sdkgo.FailureConflict, "SES template name belongs to different content")
-		}
-		if fence.Decide().Kind == singledispatch.ReadBackRequired {
-			return sdkgo.NewMutationUncertain(value, sesFailure(createEmailTemplateOperationID, sdkgo.FailureTransport, "SES template creation could not be confirmed after the send cap"), sdkgo.Receipt{})
-		}
+	case singledispatch.ReadBackRequired:
+		return sdkgo.NewMutationUncertain(value, sesFailure(createEmailTemplateOperationID, sdkgo.FailureTransport, "SES template creation could not be confirmed after the send cap"), sdkgo.Receipt{})
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil && !errors.Is(checkpointErr, singledispatch.ErrDispatchNotAllowed) {
-			return sdkgo.NewMutationUncertain(value, sesFailure(createEmailTemplateOperationID, sdkgo.FailureTransport, "SES unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[EmailTemplate](sesFailure(createEmailTemplateOperationID, sdkgo.FailureAvailability, "SES unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[EmailTemplate](sesFailure(createEmailTemplateOperationID, sdkgo.FailureAuthentication, "SES credentials are unavailable after an earlier send"), 0)
 		}
 		return templateMutationBranch[EmailTemplate](createEmailTemplateOperationID, CreateEmailTemplateBranchDefect, sdkgo.FailureAuthentication, "SES credentials are unavailable or invalid")
 	}
@@ -86,12 +80,12 @@ func (operation CreateEmailTemplateOperation) Invoke(call sdkgo.Call, input Crea
 	}
 	send := &sesTemplateCreate{client: operation.client, call: call, body: body}
 	if fence.Dispatch(send.dispatch) != nil {
-		return sdkgo.NewMutationUncertain(value, sesFailure(createEmailTemplateOperationID, sdkgo.FailureTransport, "SES template create dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[EmailTemplate](sesFailure(createEmailTemplateOperationID, sdkgo.FailureAvailability, "SES template create dispatch checkpoint is unavailable"), 0)
 	}
 	response := send.response
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(value, sesFailure(createEmailTemplateOperationID, sdkgo.FailureTransport, "SES resend checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[EmailTemplate](sesFailure(createEmailTemplateOperationID, sdkgo.FailureAvailability, "SES resend checkpoint could not be recorded"), 0)
 		}
 		kind := sdkgo.FailureRateLimit
 		if response.status == http.StatusServiceUnavailable {
@@ -100,27 +94,21 @@ func (operation CreateEmailTemplateOperation) Invoke(call sdkgo.Call, input Crea
 		return sdkgo.NewMutationRetry[EmailTemplate](sesFailure(createEmailTemplateOperationID, kind, "SES asked the connector to retry template creation"), response.retryAfter)
 	}
 	if errors.Is(response.err, errCredential) {
-		return sdkgo.NewMutationUncertain(value, sesFailure(createEmailTemplateOperationID, sdkgo.FailureProtocol, "SES template response repeated a credential"), sdkgo.Receipt{})
+		return limitedSESUnknown(call, decision, value, sesFailure(createEmailTemplateOperationID, sdkgo.FailureProtocol, "SES template response repeated a credential"))
 	}
 	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return sdkgo.NewMutationRetry[EmailTemplate](sesFailure(createEmailTemplateOperationID, sdkgo.FailureTransport, "SES template creation outcome is unknown"), 0)
+		return limitedSESUnknown(call, decision, value, sesFailure(createEmailTemplateOperationID, sdkgo.FailureTransport, "SES template creation outcome is unknown"))
 	}
 	if response.status != http.StatusOK {
-		return templateMutationBranch[EmailTemplate](createEmailTemplateOperationID, CreateEmailTemplateBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected template creation")
+		if decision.MaximumPriorSends == 0 && isDefiniteSESRefusal(response.status, response.body) {
+			if fence.RecordCanResend() != nil {
+				return sdkgo.NewMutationRetry[EmailTemplate](sesFailure(createEmailTemplateOperationID, sdkgo.FailureAvailability, "SES refusal checkpoint could not be recorded"), 0)
+			}
+			return templateMutationBranch[EmailTemplate](createEmailTemplateOperationID, CreateEmailTemplateBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected template creation")
+		}
+		return limitedSESUnknown(call, decision, value, sesFailure(createEmailTemplateOperationID, sdkgo.FailureTransport, "SES template create response is inconclusive"))
 	}
 	return sdkgo.NewMutationBranch(CreateEmailTemplateBranchCreated, value, nil, templateReceipt(call, input.TemplateName))
-}
-
-func (operation CreateEmailTemplateOperation) readBack(call sdkgo.Call, input CreateEmailTemplateInput) (bool, bool) {
-	response := operation.client.request(call, http.MethodGet, "/v2/email/templates/"+url.PathEscape(input.TemplateName), nil)
-	if response.status != http.StatusOK || response.err != nil {
-		return false, false
-	}
-	value, err := decodeEmailTemplate(input.TemplateName, response.body)
-	if err != nil {
-		return false, false
-	}
-	return value.Content == input.Content, true
 }
 
 type sesTemplateCreate struct {

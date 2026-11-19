@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -96,7 +95,7 @@ func (operation CreateAccountContactOperation) Invoke(call sdkgo.Call, input Cre
 		return accountContactMutationBranch("createAccountContact", CreateAccountContactBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
 	if errors.Is(dispatch.err, errRequest) {
-		return sdkgo.NewMutationRetry[AccountContactAssociation](queryFailure("createAccountContact", sdkgo.FailureTransport, "account-contact link create outcome is unknown"), 0)
+		return limitedActiveCampaignUnknown[AccountContactAssociation](call, decision, queryFailure("createAccountContact", sdkgo.FailureTransport, "account-contact link create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status == http.StatusTooManyRequests || dispatch.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -109,34 +108,36 @@ func (operation CreateAccountContactOperation) Invoke(call sdkgo.Call, input Cre
 		return sdkgo.NewMutationRetry[AccountContactAssociation](queryFailure("createAccountContact", kind, "ActiveCampaign temporarily rejected link creation"), dispatch.retryAfter)
 	}
 	if dispatch.status == http.StatusRequestTimeout || dispatch.status >= 500 {
-		return sdkgo.NewMutationRetry[AccountContactAssociation](queryFailure("createAccountContact", sdkgo.FailureAvailability, "account-contact link create outcome is unknown"), dispatch.retryAfter)
+		return limitedActiveCampaignUnknown[AccountContactAssociation](call, decision, queryFailure("createAccountContact", sdkgo.FailureAvailability, "account-contact link create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status != http.StatusCreated && dispatch.status != http.StatusOK {
-		if decision.MaximumPriorSends > 0 {
-			return accountContactCreateUncertain(call, "earlier account-contact link create may have succeeded")
+		if decision.MaximumPriorSends == 0 && dispatch.err == nil && isDefiniteActiveCampaignRefusal(dispatch.status, dispatch.response) {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[AccountContactAssociation](queryFailure("createAccountContact", sdkgo.FailureAvailability, "account-contact refusal checkpoint is unavailable"), 0)
+			}
+			return accountContactMutationBranch("createAccountContact", CreateAccountContactBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
 		}
-		return accountContactMutationBranch("createAccountContact", CreateAccountContactBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
+		return limitedActiveCampaignUnknown[AccountContactAssociation](call, decision, queryFailure("createAccountContact", sdkgo.FailureTransport, "account-contact response did not prove refusal"), dealReceipt(call, ""))
 	}
 	if dispatch.err != nil {
-		return accountContactCreateUncertain(call, "account-contact link create response was interrupted")
+		return limitedActiveCampaignUnknown[AccountContactAssociation](call, decision, queryFailure("createAccountContact", sdkgo.FailureTransport, "account-contact response was interrupted"), dealReceipt(call, ""))
 	}
 	accountContact, err := decodeAccountContact(dispatch.response)
 	if err != nil {
-		return accountContactCreateUncertain(call, "account-contact link create response was invalid")
+		return limitedActiveCampaignUnknown[AccountContactAssociation](call, decision, queryFailure("createAccountContact", sdkgo.FailureProtocol, "account-contact confirmation was invalid"), dealReceipt(call, ""))
 	}
 	if !matchesAccountContact(accountContact, input) {
-		return accountContactCreateUncertain(call, "account-contact link create response does not match the request")
+		return limitedActiveCampaignUnknown[AccountContactAssociation](call, decision, queryFailure("createAccountContact", sdkgo.FailureProtocol, "account-contact confirmation contradicted the request"), dealReceipt(call, ""))
 	}
 	_ = fence.RecordProviderID(accountContact.ID)
 	return sdkgo.NewMutationBranch(CreateAccountContactBranchCreated, accountContact, nil, dealReceipt(call, accountContact.ID))
 }
 
 func (operation CreateAccountContactOperation) readBack(call sdkgo.Call, input CreateAccountContactInput, providerID string) (AccountContactAssociation, string) {
-	path := "/accountContacts/" + providerID
 	if providerID == "" {
-		path = "/accountContacts?" + url.Values{"filters[contact]": {input.ContactID}, "limit": {"100"}}.Encode()
+		return AccountContactAssociation{}, "absent"
 	}
-	body, status, _, err := operation.client.get(call, path)
+	body, status, _, err := operation.client.get(call, "/accountContacts/"+providerID)
 	if err != nil || status == http.StatusTooManyRequests || status >= 500 {
 		return AccountContactAssociation{}, "retry"
 	}
@@ -146,46 +147,11 @@ func (operation CreateAccountContactOperation) readBack(call sdkgo.Call, input C
 	if status != http.StatusOK {
 		return AccountContactAssociation{}, "uncertain"
 	}
-	if providerID != "" {
-		accountContact, err := decodeAccountContact(body)
-		if err != nil || !matchesAccountContact(accountContact, input) {
-			return AccountContactAssociation{}, "uncertain"
-		}
-		return accountContact, "found"
-	}
-	var wire struct {
-		AccountContacts []accountContactWire `json:"accountContacts"`
-		Meta            struct {
-			Total string `json:"total"`
-		} `json:"meta"`
-	}
-	if err := json.Unmarshal(body, &wire); err != nil || wire.AccountContacts == nil {
+	accountContact, err := decodeAccountContact(body)
+	if err != nil || !matchesAccountContact(accountContact, input) {
 		return AccountContactAssociation{}, "uncertain"
 	}
-	total, err := strconv.Atoi(wire.Meta.Total)
-	if err != nil || total > len(wire.AccountContacts) {
-		return AccountContactAssociation{}, "uncertain"
-	}
-	var match AccountContactAssociation
-	for _, item := range wire.AccountContacts {
-		accountContact, err := accountContactAssociation(item)
-		if err != nil {
-			return AccountContactAssociation{}, "uncertain"
-		}
-		if accountContact.ContactID == input.ContactID {
-			if !matchesAccountContact(accountContact, input) {
-				return AccountContactAssociation{}, "uncertain"
-			}
-			if match.ID != "" {
-				return AccountContactAssociation{}, "uncertain"
-			}
-			match = accountContact
-		}
-	}
-	if match.ID != "" {
-		return match, "found"
-	}
-	return AccountContactAssociation{}, "absent"
+	return accountContact, "found"
 }
 
 func matchesAccountContact(link AccountContactAssociation, input CreateAccountContactInput) bool {

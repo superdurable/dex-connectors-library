@@ -129,7 +129,7 @@ func (operation ApplyTagToContactOperation) Invoke(call sdkgo.Call, input ApplyT
 	if err != nil {
 		return contactTagMutationBranch("applyTagToContact", ApplyTagToContactBranchDefect, sdkgo.FailureLocalDefect, "tag assignment could not be encoded")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodPost, "/contacts/"+input.ContactID+"/tags", encoded)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodPost, "/contacts/"+input.ContactID+"/tags", encoded)
 	if errors.Is(err, errCredential) {
 		return contactTagMutationBranch("applyTagToContact", ApplyTagToContactBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -167,7 +167,7 @@ func (operation RemoveTagFromContactOperation) Invoke(call sdkgo.Call, input Rem
 	if !numericID.MatchString(input.ContactID) || !numericID.MatchString(input.TagID) {
 		return contactTagRemovalBranch("removeTagFromContact", RemoveTagFromContactBranchDefect, sdkgo.FailureValidation, "contact or tag ID must be numeric")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodDelete, "/contacts/"+input.ContactID+"/tags/"+input.TagID, nil)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodDelete, "/contacts/"+input.ContactID+"/tags/"+input.TagID, nil)
 	if errors.Is(err, errCredential) {
 		return contactTagRemovalBranch("removeTagFromContact", RemoveTagFromContactBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -223,10 +223,16 @@ func decodeContactTags(body []byte, contactID string) (ContactTagAssociations, e
 
 func contactTagMutationBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ContactTagAssociation] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[ContactTagAssociation](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, ContactTagAssociation{}, &failure, sdkgo.Receipt{})
 }
 
 func contactTagRemovalBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ContactTagRemoval] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[ContactTagRemoval](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, ContactTagRemoval{}, &failure, sdkgo.Receipt{})
 }

@@ -171,6 +171,9 @@ func (client *Client) invokePaymentModification(call sdkgo.Call, input PaymentMo
 	}
 	response := client.post(call, "/payments/"+input.PaymentPspReference+"/"+pathSuffix, requestBody)
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return paymentModificationRetry(operation, sdkgo.FailureAuthentication, "Adyen credentials are unavailable after an earlier send", 0)
+		}
 		return paymentModificationBranch(operation, defect, sdkgo.FailureAuthentication, "Adyen credentials unavailable")
 	}
 	if errors.Is(response.err, errRequest) {
@@ -183,7 +186,10 @@ func (client *Client) invokePaymentModification(call sdkgo.Call, input PaymentMo
 		return paymentModificationRetry(operation, sdkgo.FailureAvailability, "modification request outcome unknown", response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
-		return paymentModificationBranch(operation, rejected, sdkgo.FailureProviderRejection, "Adyen rejected HTTP "+strconv.Itoa(response.status))
+		if call.Context.Attempt() == 1 && response.err == nil && isDefiniteAdyenRefusal(response.status, response.body) {
+			return paymentModificationBranch(operation, rejected, sdkgo.FailureProviderRejection, "Adyen rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return paymentModificationRetry(operation, sdkgo.FailureTransport, "Adyen modification response is inconclusive", 0)
 	}
 	// The modification may have been accepted even when the response is unreadable.
 	if response.err != nil {

@@ -73,7 +73,7 @@ func (operation CreateFolderOperation) Invoke(call sdkgo.Call, input CreateFolde
 		return sdkgo.NewMutationBranch(CreateFolderBranchCreated, value, nil, client.receipt(call, safeRequestID(response.Header), location))
 	}
 	classified := classifyErrorResponse(createFolderOperationID, "folder marker write", client.readErrorResponse(response, session.credentials), false)
-	return mutationAttemptForFailure(classified, client.receipt(call, classified.requestID, location), CreateFolderBranchProviderRejected, CreateFolderBranchDefect, value)
+	return mutationAttemptForFailure(call, classified, client.receipt(call, classified.requestID, location), CreateFolderBranchProviderRejected, CreateFolderBranchDefect, value)
 }
 
 // DeleteFolderInput names a prefix whose current objects should be removed.
@@ -132,7 +132,7 @@ func (operation DeleteFolderOperation) Invoke(call sdkgo.Call, input DeleteFolde
 		if !isSuccessStatus(response.StatusCode) {
 			classified := classifyErrorResponse(deleteFolderOperationID, "folder listing", client.readErrorResponse(response, session.credentials), false)
 			closeResponseBody(response)
-			return mutationAttemptForFailure(classified, client.receipt(call, classified.requestID, location), DeleteFolderBranchProviderRejected, DeleteFolderBranchDefect, value)
+			return mutationAttemptForFailure(call, classified, client.receipt(call, classified.requestID, location), DeleteFolderBranchProviderRejected, DeleteFolderBranchDefect, value)
 		}
 		contents, readErr := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 		requestID := safeRequestID(response.Header)
@@ -162,7 +162,7 @@ func (operation DeleteFolderOperation) Invoke(call sdkgo.Call, input DeleteFolde
 			if !isSuccessStatus(deleted.StatusCode) {
 				classified := classifyErrorResponse(deleteFolderOperationID, "folder object deletion", client.readErrorResponse(deleted, session.credentials), true)
 				closeResponseBody(deleted)
-				return mutationAttemptForFailure(classified, client.receipt(call, classified.requestID, item), DeleteFolderBranchProviderRejected, DeleteFolderBranchDefect, value)
+				return mutationAttemptForFailure(call, classified, client.receipt(call, classified.requestID, item), DeleteFolderBranchProviderRejected, DeleteFolderBranchDefect, value)
 			}
 			closeResponseBody(deleted)
 		}

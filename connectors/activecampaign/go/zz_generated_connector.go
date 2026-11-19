@@ -2416,7 +2416,6 @@ func NewListContactListMembershipsStep[IN any](config ListContactListMemberships
 const SubscribeContactToListBranchSubscribed sdkgo.BranchID = "subscribed"
 const SubscribeContactToListBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const SubscribeContactToListBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const SubscribeContactToListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const SubscribeContactToListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var SubscribeContactToListDefinition = sdkgo.MutationDefinition{
@@ -2425,7 +2424,6 @@ var SubscribeContactToListDefinition = sdkgo.MutationDefinition{
 		{ID: SubscribeContactToListBranchSubscribed, Description: "ActiveCampaign completed the list-membership operation."},
 		{ID: SubscribeContactToListBranchUncertain, Description: "A bounded subscription change could not be confirmed.", Optional: true},
 		{ID: SubscribeContactToListBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
-		{ID: SubscribeContactToListBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
 		{ID: SubscribeContactToListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -2451,7 +2449,6 @@ type SubscribeContactToListStepConfig[IN any] struct {
 	Subscribed                        sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=subscribed"`
 	Uncertain                         sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=uncertain,optional"`
 	ProviderRejected                  sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=providerRejected,optional"`
-	InvalidResponse                   sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactListMembership]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
@@ -2471,7 +2468,7 @@ func NewSubscribeContactToListStep[IN any](config SubscribeContactToListStepConf
 		Operation: config.Connection.operations.SubscribeContactToList(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[SubscribeContactToListResult] {
-			branches := make([]sdkgo.BranchTarget[SubscribeContactToListResult], 0, 5)
+			branches := make([]sdkgo.BranchTarget[SubscribeContactToListResult], 0, 4)
 			if config.Subscribed.HasStep() {
 				branches = append(branches, config.Subscribed.BranchTarget(SubscribeContactToListBranchSubscribed))
 			}
@@ -2480,9 +2477,6 @@ func NewSubscribeContactToListStep[IN any](config SubscribeContactToListStepConf
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(SubscribeContactToListBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(SubscribeContactToListBranchInvalidResponse))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SubscribeContactToListBranchDefect))
@@ -2498,7 +2492,6 @@ func NewSubscribeContactToListStep[IN any](config SubscribeContactToListStepConf
 const UnsubscribeContactFromListBranchUnsubscribed sdkgo.BranchID = "unsubscribed"
 const UnsubscribeContactFromListBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const UnsubscribeContactFromListBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const UnsubscribeContactFromListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const UnsubscribeContactFromListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var UnsubscribeContactFromListDefinition = sdkgo.MutationDefinition{
@@ -2507,7 +2500,6 @@ var UnsubscribeContactFromListDefinition = sdkgo.MutationDefinition{
 		{ID: UnsubscribeContactFromListBranchUnsubscribed, Description: "ActiveCampaign completed the list-membership operation."},
 		{ID: UnsubscribeContactFromListBranchUncertain, Description: "A bounded subscription change could not be confirmed.", Optional: true},
 		{ID: UnsubscribeContactFromListBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
-		{ID: UnsubscribeContactFromListBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
 		{ID: UnsubscribeContactFromListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -2533,7 +2525,6 @@ type UnsubscribeContactFromListStepConfig[IN any] struct {
 	Unsubscribed                      sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=unsubscribed"`
 	Uncertain                         sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=uncertain,optional"`
 	ProviderRejected                  sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=providerRejected,optional"`
-	InvalidResponse                   sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactListMembership]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
@@ -2553,7 +2544,7 @@ func NewUnsubscribeContactFromListStep[IN any](config UnsubscribeContactFromList
 		Operation: config.Connection.operations.UnsubscribeContactFromList(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UnsubscribeContactFromListResult] {
-			branches := make([]sdkgo.BranchTarget[UnsubscribeContactFromListResult], 0, 5)
+			branches := make([]sdkgo.BranchTarget[UnsubscribeContactFromListResult], 0, 4)
 			if config.Unsubscribed.HasStep() {
 				branches = append(branches, config.Unsubscribed.BranchTarget(UnsubscribeContactFromListBranchUnsubscribed))
 			}
@@ -2562,9 +2553,6 @@ func NewUnsubscribeContactFromListStep[IN any](config UnsubscribeContactFromList
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(UnsubscribeContactFromListBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(UnsubscribeContactFromListBranchInvalidResponse))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UnsubscribeContactFromListBranchDefect))

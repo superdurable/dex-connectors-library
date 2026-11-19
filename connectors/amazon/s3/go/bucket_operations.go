@@ -158,16 +158,12 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 		return sdkgo.NewMutationBranch(CreateBucketBranchDefect, CreatedBucket{}, failurePointer(createBucketOperationID, sdkgo.FailureLocalDefect, "S3 bucket creation fence could not be initialized"), sdkgo.Receipt{})
 	}
 	value := CreatedBucket{Bucket: input.Bucket, Region: client.region}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[CreatedBucket](newFailure(createBucketOperationID, sdkgo.FailureAvailability, "S3 bucket creation checkpoint is unavailable"), 0)
-	case singledispatch.ReadBackRequired, singledispatch.ReadBackThenResendAllowed:
-		if operation.bucketExists(call, input.Bucket) {
-			return sdkgo.NewMutationBranch(CreateBucketBranchCreated, value, nil, client.receipt(call, "", objectLocation{bucket: input.Bucket}))
-		}
-		if fence.Decide().Kind == singledispatch.ReadBackRequired {
-			return sdkgo.NewMutationUncertain(value, newFailure(createBucketOperationID, sdkgo.FailureTransport, "S3 bucket creation could not be confirmed after the send cap"), sdkgo.Receipt{})
-		}
+	case singledispatch.ReadBackRequired:
+		return sdkgo.NewMutationUncertain(value, newFailure(createBucketOperationID, sdkgo.FailureTransport, "S3 bucket creation could not be confirmed after the send cap"), sdkgo.Receipt{})
 	}
 	if client.region == "us-east-1" && call.Context.Attempt() == 1 && operation.bucketExists(call, input.Bucket) {
 		return sdkgo.NewMutationBranch(CreateBucketBranchProviderRejected, value, failurePointer(createBucketOperationID, sdkgo.FailureConflict, "S3 bucket already exists; recreating it in us-east-1 can reset its ACL"), sdkgo.Receipt{})
@@ -178,7 +174,10 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 			return sdkgo.NewMutationRetry[CreatedBucket](*failure, 0)
 		}
 		if fence.RecordNotSent() != nil {
-			return sdkgo.NewMutationUncertain(value, newFailure(createBucketOperationID, sdkgo.FailureTransport, "S3 unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CreatedBucket](newFailure(createBucketOperationID, sdkgo.FailureAvailability, "S3 unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[CreatedBucket](*failure, 0)
 		}
 		return sdkgo.NewMutationBranch(CreateBucketBranchDefect, value, failure, sdkgo.Receipt{})
 	}
@@ -191,29 +190,43 @@ func (operation CreateBucketOperation) Invoke(call sdkgo.Call, input CreateBucke
 	}
 	dispatch := &bucketCreateDispatch{client: client, session: session, request: s3Request{method: http.MethodPut, location: objectLocation{bucket: input.Bucket}, body: body, header: header}}
 	if fence.Dispatch(dispatch.send) != nil {
-		return sdkgo.NewMutationUncertain(value, newFailure(createBucketOperationID, sdkgo.FailureTransport, "S3 bucket creation dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CreatedBucket](newFailure(createBucketOperationID, sdkgo.FailureAvailability, "S3 bucket creation dispatch checkpoint is unavailable"), 0)
 	}
 	response, err := dispatch.response, dispatch.err
 	if errors.Is(err, errRequestNotBuilt) {
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[CreatedBucket](newFailure(createBucketOperationID, sdkgo.FailureLocalDefect, err.Error()), 0)
+		}
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CreatedBucket](newFailure(createBucketOperationID, sdkgo.FailureAvailability, "S3 refusal checkpoint is unavailable"), 0)
+		}
 		return sdkgo.NewMutationBranch(CreateBucketBranchDefect, value, failurePointer(createBucketOperationID, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 	}
 	if err != nil {
-		return sdkgo.NewMutationRetry[CreatedBucket](transportFailure(createBucketOperationID, "bucket creation"), 0)
+		return limitedS3Unknown(call, decision, value, transportFailure(createBucketOperationID, "bucket creation"))
 	}
 	defer closeResponseBody(response)
 	if isSuccessStatus(response.StatusCode) {
 		return sdkgo.NewMutationBranch(CreateBucketBranchCreated, value, nil, client.receipt(call, safeRequestID(response.Header), objectLocation{bucket: input.Bucket}))
 	}
-	classified := classifyErrorResponse(createBucketOperationID, "bucket creation", client.readErrorResponse(response, session.credentials), false)
+	errorResponse := client.readErrorResponse(response, session.credentials)
+	classified := classifyErrorResponse(createBucketOperationID, "bucket creation", errorResponse, false)
 	if classified.outcome == outcomeRetry {
 		if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable {
 			if fence.RecordCanResend() != nil {
-				return sdkgo.NewMutationUncertain(value, newFailure(createBucketOperationID, sdkgo.FailureTransport, "S3 resend checkpoint could not be recorded"), sdkgo.Receipt{})
+				return sdkgo.NewMutationRetry[CreatedBucket](newFailure(createBucketOperationID, sdkgo.FailureAvailability, "S3 resend checkpoint could not be recorded"), 0)
 			}
+			return sdkgo.NewMutationRetry[CreatedBucket](classified.failure, classified.retryAfter)
 		}
-		return sdkgo.NewMutationRetry[CreatedBucket](classified.failure, classified.retryAfter)
+		return limitedS3Unknown(call, decision, value, classified.failure)
 	}
-	return sdkgo.NewMutationBranch(CreateBucketBranchProviderRejected, value, &classified.failure, client.receipt(call, classified.requestID, objectLocation{bucket: input.Bucket}))
+	if decision.MaximumPriorSends == 0 && isDefiniteS3Refusal(errorResponse) {
+		if fence.RecordCanResend() != nil {
+			return sdkgo.NewMutationRetry[CreatedBucket](newFailure(createBucketOperationID, sdkgo.FailureAvailability, "S3 refusal checkpoint is unavailable"), 0)
+		}
+		return sdkgo.NewMutationBranch(CreateBucketBranchProviderRejected, value, &classified.failure, client.receipt(call, classified.requestID, objectLocation{bucket: input.Bucket}))
+	}
+	return limitedS3Unknown(call, decision, value, classified.failure)
 }
 
 func (operation CreateBucketOperation) bucketExists(call sdkgo.Call, bucket string) bool {
@@ -301,5 +314,5 @@ func (operation DeleteBucketOperation) Invoke(call sdkgo.Call, input DeleteBucke
 		return sdkgo.NewMutationBranch(DeleteBucketBranchDeleted, value, nil, client.receipt(call, providerError.requestID, objectLocation{bucket: bucket}))
 	}
 	classified := classifyErrorResponse(deleteBucketOperationID, "bucket deletion", providerError, false)
-	return mutationAttemptForFailure(classified, client.receipt(call, classified.requestID, objectLocation{bucket: bucket}), DeleteBucketBranchProviderRejected, DeleteBucketBranchDefect, value)
+	return mutationAttemptForFailure(call, classified, client.receipt(call, classified.requestID, objectLocation{bucket: bucket}), DeleteBucketBranchProviderRejected, DeleteBucketBranchDefect, value)
 }

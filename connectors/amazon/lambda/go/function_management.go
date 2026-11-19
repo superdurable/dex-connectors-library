@@ -176,14 +176,17 @@ func (operation UpdateFunctionDescriptionOperation) Invoke(call sdkgo.Call, inpu
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[FunctionDetails](functionUpdateFailure(sdkgo.FailureAvailability, "Lambda is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound && isDefiniteLambdaRefusal(call, response) {
 		return sdkgo.NewMutationBranch(UpdateFunctionDescriptionBranchMissing, FunctionDetails{}, nil, sdkgo.Receipt{})
 	}
 	if response.status != http.StatusOK {
-		return functionUpdateBranch(UpdateFunctionDescriptionBranchProviderRejected, sdkgo.FailureProviderRejection, "Lambda rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteLambdaRefusal(call, response) {
+			return functionUpdateBranch(UpdateFunctionDescriptionBranchProviderRejected, sdkgo.FailureProviderRejection, "Lambda rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[FunctionDetails](functionUpdateFailure(sdkgo.FailureTransport, "Lambda update outcome is unknown"), 0)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return functionUpdateBranch(UpdateFunctionDescriptionBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Lambda response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[FunctionDetails](functionUpdateFailure(sdkgo.FailureResponseTooLarge, "Lambda response exceeded the configured limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[FunctionDetails](functionUpdateFailure(sdkgo.FailureTransport, "Lambda response was interrupted"), 0)
@@ -193,7 +196,7 @@ func (operation UpdateFunctionDescriptionOperation) Invoke(call sdkgo.Call, inpu
 		ARN  string `json:"FunctionArn"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.Name != input.FunctionName || wire.ARN == "" {
-		return functionUpdateBranch(UpdateFunctionDescriptionBranchInvalidResponse, sdkgo.FailureProtocol, "Lambda returned invalid function JSON")
+		return sdkgo.NewMutationRetry[FunctionDetails](functionUpdateFailure(sdkgo.FailureProtocol, "Lambda returned invalid function JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateFunctionDescriptionBranchUpdated, FunctionDetails{Name: wire.Name, ARN: wire.ARN}, nil, sdkgo.Receipt{})
 }
@@ -217,9 +220,33 @@ func (operation DeleteFunctionOperation) Invoke(call sdkgo.Call, input DeleteFun
 		return sdkgo.NewMutationRetry[FunctionWriteResult](functionDeleteFailure(sdkgo.FailureAvailability, "Lambda is temporarily unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusNoContent && response.status != http.StatusNotFound {
-		return functionDeleteBranch(DeleteFunctionBranchProviderRejected, sdkgo.FailureProviderRejection, "Lambda rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteLambdaRefusal(call, response) {
+			return functionDeleteBranch(DeleteFunctionBranchProviderRejected, sdkgo.FailureProviderRejection, "Lambda rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[FunctionWriteResult](functionDeleteFailure(sdkgo.FailureTransport, "Lambda deletion outcome is unknown"), 0)
+	}
+	if response.status == http.StatusNotFound && !isDefiniteLambdaRefusal(call, response) {
+		return sdkgo.NewMutationRetry[FunctionWriteResult](functionDeleteFailure(sdkgo.FailureTransport, "Lambda deletion outcome is unknown"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteFunctionBranchDeleted, FunctionWriteResult{Applied: true}, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteLambdaRefusal(call sdkgo.Call, response providerResponse) bool {
+	if call.Context != nil && call.Context.Attempt() > 1 {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body struct {
+		Message     string `json:"message"`
+		FunctionARN string `json:"FunctionArn"`
+	}
+	return json.Unmarshal(response.body, &body) == nil && body.Message != "" && body.FunctionARN == ""
 }
 
 func functionPageFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {

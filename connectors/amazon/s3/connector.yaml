@@ -135,14 +135,14 @@ spec:
       inputType: CreateBucketInput
       outputType: CreatedBucket
       kind: mutation
-      description: Create a general purpose bucket in the connection Region, with bounded sends and read-back after an unknown outcome.
+      description: Create a general purpose bucket in the connection Region with bounded sends after an unknown outcome.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: S3 accepted creation or a previous attempt was confirmed.}
         - {id: providerRejected, goName: ProviderRejected, description: S3 refused the bucket name or permission., optional: true}
         - {id: defect, goName: Defect, description: The bucket name or connection is invalid., optional: true}
-        - {id: uncertain, goName: Uncertain, description: Bucket creation may have succeeded but read-back could not confirm it after the send cap., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Bucket creation may have succeeded but the capped sends could not confirm it., optional: true}
       execution:
         repeatOnUnknown: limited
         maxSends: 3

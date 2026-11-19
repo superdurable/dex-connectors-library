@@ -40,12 +40,12 @@ func TestExpirePaymentLinkClassifiesOutcomes(t *testing.T) {
 		branch sdkgo.BranchID
 		retry  bool
 	}{
-		{name: "missing", status: 404, branch: ExpirePaymentLinkBranchNotFound},
-		{name: "forbidden", status: 403, branch: ExpirePaymentLinkBranchProviderRejected},
+		{name: "missing", status: 404, body: `{"status":404,"errorCode":"404","message":"No acceptance"}`, branch: ExpirePaymentLinkBranchNotFound},
+		{name: "forbidden", status: 403, body: `{"status":403,"errorCode":"901","message":"No acceptance"}`, branch: ExpirePaymentLinkBranchProviderRejected},
 		{name: "rate limit", status: 429, retry: true},
 		{name: "unavailable", status: 503, retry: true},
 		{name: "server failure", status: 500, retry: true},
-		{name: "malformed", status: 200, body: `{"id":"PL50C5F751CED39G71","status":"active","amount":{"currency":"EUR"}}`, branch: ExpirePaymentLinkBranchInvalidResponse},
+		{name: "malformed", status: 200, body: `{"id":"PL50C5F751CED39G71","status":"active","amount":{"currency":"EUR"}}`, retry: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {

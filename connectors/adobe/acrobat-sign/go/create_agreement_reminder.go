@@ -99,6 +99,9 @@ func (operation CreateAgreementReminderOperation) Invoke(call sdkgo.Call, input 
 		return reminderBranch(CreateAgreementReminderBranchDefect, sdkgo.FailureAuthentication, "Acrobat Sign credentials are unavailable or invalid")
 	}
 	if response.isDiscovery && response.err == errInvalidAccessPoint {
+		if err := fence.RecordCanResend(); err != nil {
+			return reminderRetry(sdkgo.FailureAvailability, "reminder retry checkpoint is unavailable", 0)
+		}
 		return reminderBranch(CreateAgreementReminderBranchDefect, sdkgo.FailureProtocol, "Acrobat Sign returned an unsafe API access point")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
@@ -112,22 +115,25 @@ func (operation CreateAgreementReminderOperation) Invoke(call sdkgo.Call, input 
 		return reminderRetry(kind, "Acrobat Sign temporarily rejected the reminder", response.retryAfter)
 	}
 	if errors.Is(response.err, errRequest) || response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return reminderRetry(sdkgo.FailureAvailability, "Acrobat Sign reminder outcome is unknown", response.retryAfter)
+		return reminderUnknown(call, decision, "Acrobat Sign reminder outcome is unknown")
 	}
 	if response.status < 200 || response.status >= 300 {
-		if decision.MaximumPriorSends > 0 {
-			return reminderUncertain(call, "an earlier reminder may have been created")
+		if decision.MaximumPriorSends == 0 && response.err == nil && isDefiniteReminderRefusal(response.status, response.body) {
+			if err := fence.RecordCanResend(); err != nil {
+				return reminderRetry(sdkgo.FailureAvailability, "reminder refusal checkpoint is unavailable", 0)
+			}
+			return reminderBranch(CreateAgreementReminderBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign rejected the reminder")
 		}
-		return reminderBranch(CreateAgreementReminderBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign rejected the reminder")
+		return reminderUnknown(call, decision, "Acrobat Sign reminder outcome is unknown")
 	}
 	if response.err != nil {
-		return reminderUncertain(call, "Acrobat Sign reminder response could not be read completely")
+		return reminderUnknown(call, decision, "Acrobat Sign reminder response could not be read completely")
 	}
 	var result struct {
 		ID string `json:"id"`
 	}
 	if json.Unmarshal(response.body, &result) != nil || !validAgreementID(result.ID) {
-		return reminderUncertain(call, "Acrobat Sign accepted the reminder but returned invalid metadata")
+		return reminderUnknown(call, decision, "Acrobat Sign reminder response has invalid metadata")
 	}
 	// The provider ID is already in the returned receipt if this best-effort checkpoint fails.
 	_ = fence.RecordProviderID(result.ID)
@@ -157,4 +163,26 @@ func reminderRetry(kind sdkgo.FailureKind, message string, delay time.Duration) 
 func reminderUncertain(call sdkgo.Call, message string) sdkgo.MutationAttempt[CreatedAgreementReminder] {
 	failure := sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "adobe-acrobat-sign", Operation: "createAgreementReminder", Message: message}
 	return sdkgo.NewMutationUncertain(CreatedAgreementReminder{}, failure, reminderReceipt(call, ""))
+}
+
+func reminderUnknown(call sdkgo.Call, decision singledispatch.Decision, message string) sdkgo.MutationAttempt[CreatedAgreementReminder] {
+	if decision.MaximumPriorSends+1 >= call.MaxSends() {
+		return reminderUncertain(call, message)
+	}
+	return reminderRetry(sdkgo.FailureTransport, message, 0)
+}
+
+func isDefiniteReminderRefusal(status int, body []byte) bool {
+	switch status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var response struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+	return json.Unmarshal(body, &response) == nil && response.Code != "" && response.Message != ""
 }

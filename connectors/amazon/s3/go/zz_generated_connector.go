@@ -361,7 +361,7 @@ var CreateBucketDefinition = sdkgo.MutationDefinition{
 		{ID: CreateBucketBranchCreated, Description: "S3 accepted creation or a previous attempt was confirmed."},
 		{ID: CreateBucketBranchProviderRejected, Description: "S3 refused the bucket name or permission.", Optional: true},
 		{ID: CreateBucketBranchDefect, Description: "The bucket name or connection is invalid.", Optional: true},
-		{ID: CreateBucketBranchUncertain, Description: "Bucket creation may have succeeded but read-back could not confirm it after the send cap.", Optional: true},
+		{ID: CreateBucketBranchUncertain, Description: "Bucket creation may have succeeded but the capped sends could not confirm it.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),

@@ -90,7 +90,7 @@ func (operation UpdateAccountContactOperation) Invoke(call sdkgo.Call, input Upd
 	if err != nil {
 		return accountContactMutationBranch("updateAccountContact", UpdateAccountContactBranchDefect, sdkgo.FailureLocalDefect, "link update could not be encoded")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodPut, "/accountContacts/"+input.AssociationID, encoded)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodPut, "/accountContacts/"+input.AssociationID, encoded)
 	if errors.Is(err, errCredential) {
 		return accountContactMutationBranch("updateAccountContact", UpdateAccountContactBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
@@ -127,7 +127,7 @@ func (operation DeleteAccountContactOperation) Invoke(call sdkgo.Call, input Del
 	if !numericID.MatchString(input.AssociationID) {
 		return accountContactDeletionBranch(DeleteAccountContactBranchDefect, sdkgo.FailureValidation, "link ID must be numeric")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodDelete, "/accountContacts/"+input.AssociationID, nil)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodDelete, "/accountContacts/"+input.AssociationID, nil)
 	if errors.Is(err, errCredential) {
 		return accountContactDeletionBranch(DeleteAccountContactBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
@@ -157,9 +157,15 @@ func (operation DeleteAccountContactOperation) Invoke(call sdkgo.Call, input Del
 
 func accountContactMutationBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[AccountContactAssociation] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[AccountContactAssociation](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, AccountContactAssociation{}, &failure, sdkgo.Receipt{})
 }
 func accountContactDeletionBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[AccountContactDeletion] {
 	failure := queryFailure("deleteAccountContact", kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[AccountContactDeletion](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, AccountContactDeletion{}, &failure, sdkgo.Receipt{})
 }

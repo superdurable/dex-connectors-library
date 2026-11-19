@@ -67,5 +67,5 @@ func (operation DeleteObjectOperation) Invoke(call sdkgo.Call, input DeleteObjec
 		return sdkgo.NewMutationBranch(DeleteObjectBranchDeleted, deleted, nil, client.receipt(call, safeRequestID(response.Header), location))
 	}
 	classified := classifyErrorResponse(deleteObjectOperationID, "object deletion", client.readErrorResponse(response, session.credentials), true)
-	return mutationAttemptForFailure(classified, client.receipt(call, classified.requestID, location), DeleteObjectBranchProviderRejected, DeleteObjectBranchDefect, deleted)
+	return mutationAttemptForFailure(call, classified, client.receipt(call, classified.requestID, location), DeleteObjectBranchProviderRejected, DeleteObjectBranchDefect, deleted)
 }

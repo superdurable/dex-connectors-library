@@ -52,7 +52,7 @@ func TestEmailTemplateReadListUpdateAndDelete(t *testing.T) {
 	require.Equal(t, DeleteEmailTemplateBranchDeleted, deleted.Branch)
 }
 
-func TestCreateEmailTemplateReadsBackAfterUnknownOutcome(t *testing.T) {
+func TestCreateEmailTemplateDoesNotConfirmByNameAfterUnknownOutcome(t *testing.T) {
 	var posts, reads int
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.Method == http.MethodPost {
@@ -72,11 +72,10 @@ func TestCreateEmailTemplateReadsBackAfterUnknownOutcome(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	context.attempt = 2
-	result, err := sdkgo.RunMutation(context, client.CreateEmailTemplate(), testConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, CreateEmailTemplateBranchCreated, result.Branch)
-	require.Equal(t, 1, posts)
-	require.Equal(t, 1, reads)
+	_, err = sdkgo.RunMutation(context, client.CreateEmailTemplate(), testConnection, input)
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, 2, posts)
+	require.Equal(t, 0, reads)
 }
 
 func TestSendTemplatedEmailSignsTemplateAndData(t *testing.T) {

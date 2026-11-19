@@ -95,6 +95,15 @@ func (client *Client) requestLeadAPI(call sdkgo.Call, method, path string, body 
 	return client.requestLeadAPIWithContext(call.Context, call, method, path, body)
 }
 
+func (client *Client) writeLeadAPI(call sdkgo.Call, path string, body []byte) leadResponse {
+	response := client.requestLeadAPI(call, http.MethodPost, path, body)
+	if response.status > 0 && response.status != http.StatusOK && response.status != http.StatusTooManyRequests && response.status != http.StatusServiceUnavailable &&
+		(response.err != nil || call.Context.Attempt() > 1 || !isDefiniteMarketoRefusal(response.status, response.body)) {
+		response.err = errLeadTransport
+	}
+	return response
+}
+
 func (client *Client) requestLeadAPIWithContext(requestContext context.Context, call sdkgo.Call, method, path string, body []byte) leadResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if err != nil {

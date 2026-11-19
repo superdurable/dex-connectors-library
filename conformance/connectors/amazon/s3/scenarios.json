@@ -2874,7 +2874,7 @@
       "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
       "exchanges": [
         {
-          "body": "\u003cError\u003e\u003cCode\u003eBucketAlreadyExists\u003c/Code\u003e\u003c/Error\u003e",
+          "body": "\u003cError\u003e\u003cCode\u003eInvalidBucketName\u003c/Code\u003e\u003c/Error\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2897,17 +2897,16 @@
               "20261025T090000Z"
             ]
           },
-          "status": 409
+          "status": 400
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "CONFLICT",
+        "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
           "attempt": 1,
           "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "bucket": "new-reports-bucket",
@@ -3099,30 +3098,7 @@
     },
     {
       "callId": "408e485e-cc6c-5b8c-bddc-f9c13d731b5a",
-      "exchanges": [
-        {
-          "body": "\u003cError\u003e\u003cCode\u003eNoSuchBucket\u003c/Code\u003e\u003c/Error\u003e",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "HEAD",
-          "path": "/new-reports-bucket",
-          "requestHeaders": {
-            "Accept-Encoding": [
-              "identity"
-            ],
-            "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIAS3CONNECTORTEST1/20261025/eu-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=5639c9d5320ccb41ff8789e3e6d6ce9505e0b03e64d76c02e411110857f6e174"
-            ],
-            "X-Amz-Content-Sha256": [
-              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-            ],
-            "X-Amz-Date": [
-              "20261025T090000Z"
-            ]
-          },
-          "status": 404
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
@@ -3130,7 +3106,7 @@
           "bucket": "new-reports-bucket",
           "region": "eu-west-1"
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -3505,8 +3481,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "f48763d2-ce4f-56f9-8555-b5f504506ad0",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "destinationBucket": "acme-archive",

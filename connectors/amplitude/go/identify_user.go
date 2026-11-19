@@ -80,7 +80,10 @@ func (operation IdentifyUserOperation) Invoke(call sdkgo.Call, input IdentifyUse
 		return sdkgo.NewMutationRetry[IdentifiedUser](identifyFailure(kind, "Amplitude Identify request should be retried"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return identifiedBranch(IdentifyUserBranchProviderRejected, sdkgo.FailureProviderRejection, "Amplitude rejected the user property update")
+		if isDefiniteIngestionRefusal(call, response) {
+			return identifiedBranch(IdentifyUserBranchProviderRejected, sdkgo.FailureProviderRejection, "Amplitude rejected the user property update")
+		}
+		return sdkgo.NewMutationRetry[IdentifiedUser](identifyFailure(sdkgo.FailureTransport, "Amplitude user property update outcome is unknown"), 0)
 	}
 	value := IdentifiedUser{UserID: input.UserID, PropertyName: input.PropertyName}
 	return sdkgo.NewMutationBranch(IdentifyUserBranchIdentified, value, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "amplitude", ProviderObjectID: input.UserID})

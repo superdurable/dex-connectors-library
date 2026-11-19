@@ -903,7 +903,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"code\":\"NOT_FOUND\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -965,7 +965,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"code\":\"DENIED\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1352,7 +1352,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"code\":\"NOT_FOUND\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1407,7 +1407,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"code\":\"DENIED\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1479,14 +1479,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "agreementId": "",
-          "status": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1833,7 +1829,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"code\":\"DENIED\",\"message\":\"Forbidden\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1864,8 +1860,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "reminderId": ""
@@ -1934,9 +1929,9 @@
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -1955,7 +1950,12 @@
         ]
       },
       "name": "createAgreementReminder-uncertain",
-      "operation": "createAgreementReminder"
+      "operation": "createAgreementReminder",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
+        "state": "claimed"
+      }
     },
     {
       "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",
@@ -2162,7 +2162,7 @@
       ],
       "expected": {
         "branch": "",
-        "failureKind": "AVAILABILITY",
+        "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
           "callId": "e1885f69-7ba9-5ceb-87a7-967128b45ac0",

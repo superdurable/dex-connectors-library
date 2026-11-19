@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -121,7 +120,7 @@ func (operation CreateDealNoteOperation) Invoke(call sdkgo.Call, input CreateDea
 		return dealNoteMutationBranch("createDealNote", CreateDealNoteBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if errors.Is(dispatch.err, errRequest) {
-		return sdkgo.NewMutationRetry[DealNoteMetadata](queryFailure("createDealNote", sdkgo.FailureTransport, "note create outcome is unknown"), 0)
+		return limitedActiveCampaignUnknown[DealNoteMetadata](call, decision, queryFailure("createDealNote", sdkgo.FailureTransport, "note create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status == http.StatusTooManyRequests || dispatch.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -134,20 +133,23 @@ func (operation CreateDealNoteOperation) Invoke(call sdkgo.Call, input CreateDea
 		return sdkgo.NewMutationRetry[DealNoteMetadata](queryFailure("createDealNote", kind, "ActiveCampaign temporarily rejected the note create"), dispatch.retryAfter)
 	}
 	if dispatch.status == http.StatusRequestTimeout || dispatch.status >= 500 {
-		return sdkgo.NewMutationRetry[DealNoteMetadata](queryFailure("createDealNote", sdkgo.FailureAvailability, "note create outcome is unknown"), dispatch.retryAfter)
+		return limitedActiveCampaignUnknown[DealNoteMetadata](call, decision, queryFailure("createDealNote", sdkgo.FailureAvailability, "note create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status != http.StatusCreated && dispatch.status != http.StatusOK {
-		if decision.MaximumPriorSends > 0 {
-			return createDealNoteUncertain(call, "an earlier note create may have succeeded despite this rejection")
+		if decision.MaximumPriorSends == 0 && dispatch.err == nil && isDefiniteActiveCampaignRefusal(dispatch.status, dispatch.responseBody) {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[DealNoteMetadata](queryFailure("createDealNote", sdkgo.FailureAvailability, "note refusal checkpoint is unavailable"), 0)
+			}
+			return dealNoteMutationBranch("createDealNote", CreateDealNoteBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
 		}
-		return dealNoteMutationBranch("createDealNote", CreateDealNoteBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
+		return limitedActiveCampaignUnknown[DealNoteMetadata](call, decision, queryFailure("createDealNote", sdkgo.FailureTransport, "note response did not prove refusal"), dealReceipt(call, ""))
 	}
 	if dispatch.err != nil {
-		return createDealNoteUncertain(call, "ActiveCampaign accepted the note but response was incomplete")
+		return limitedActiveCampaignUnknown[DealNoteMetadata](call, decision, queryFailure("createDealNote", sdkgo.FailureTransport, "note response was incomplete"), dealReceipt(call, ""))
 	}
 	note, err := decodeDealNote(dispatch.responseBody)
 	if err != nil || note.DealID != input.DealID {
-		return createDealNoteUncertain(call, "ActiveCampaign accepted the note but returned invalid JSON")
+		return limitedActiveCampaignUnknown[DealNoteMetadata](call, decision, queryFailure("createDealNote", sdkgo.FailureProtocol, "note confirmation was invalid"), dealReceipt(call, ""))
 	}
 	_ = fence.RecordProviderID(note.ID)
 	return sdkgo.NewMutationBranch(CreateDealNoteBranchCreated, note, nil, dealReceipt(call, note.ID))
@@ -162,7 +164,7 @@ func (operation UpdateDealNoteOperation) Invoke(call sdkgo.Call, input UpdateDea
 	if err != nil {
 		return dealNoteMutationBranch("updateDealNote", UpdateDealNoteBranchDefect, sdkgo.FailureLocalDefect, "deal note could not be encoded")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodPut, "/deals/"+input.DealID+"/notes/"+input.NoteID, encoded)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodPut, "/deals/"+input.DealID+"/notes/"+input.NoteID, encoded)
 	if errors.Is(err, errCredential) {
 		return dealNoteMutationBranch("updateDealNote", UpdateDealNoteBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -195,48 +197,24 @@ func (operation UpdateDealNoteOperation) Invoke(call sdkgo.Call, input UpdateDea
 }
 
 func (operation CreateDealNoteOperation) readBackDealNote(call sdkgo.Call, input CreateDealNoteInput, providerID string) (DealNoteMetadata, string) {
-	if providerID != "" {
-		body, status, _, err := operation.client.get(call, "/notes/"+providerID)
-		if err != nil || status == http.StatusTooManyRequests || status >= 500 {
-			return DealNoteMetadata{}, "retry"
-		}
-		if status == http.StatusNotFound {
-			return DealNoteMetadata{}, "absent"
-		}
-		if status != http.StatusOK {
-			return DealNoteMetadata{}, "uncertain"
-		}
-		note, err := decodeDealNote(body)
-		if err != nil || note.DealID != input.DealID || note.Text != input.Text {
-			return DealNoteMetadata{}, "uncertain"
-		}
-		return note, "found"
+	if providerID == "" {
+		return DealNoteMetadata{}, "absent"
 	}
-	query := url.Values{"filters[reltype]": {"Deal"}, "filters[relid]": {input.DealID}, "limit": {"100"}, "offset": {"0"}}
-	body, status, _, err := operation.client.get(call, "/notes?"+query.Encode())
+	body, status, _, err := operation.client.get(call, "/notes/"+providerID)
 	if err != nil || status == http.StatusTooManyRequests || status >= 500 {
 		return DealNoteMetadata{}, "retry"
+	}
+	if status == http.StatusNotFound {
+		return DealNoteMetadata{}, "absent"
 	}
 	if status != http.StatusOK {
 		return DealNoteMetadata{}, "uncertain"
 	}
-	page, err := decodeDealNotesPage(body, ListDealNotesInput{DealID: input.DealID, Limit: 100})
-	if err != nil || page.Total > len(page.Notes) {
+	note, err := decodeDealNote(body)
+	if err != nil || note.DealID != input.DealID || note.Text != input.Text {
 		return DealNoteMetadata{}, "uncertain"
 	}
-	var matched DealNoteMetadata
-	for _, note := range page.Notes {
-		if note.Text == input.Text {
-			if matched.ID != "" {
-				return DealNoteMetadata{}, "uncertain"
-			}
-			matched = note
-		}
-	}
-	if matched.ID != "" {
-		return matched, "found"
-	}
-	return DealNoteMetadata{}, "absent"
+	return note, "found"
 }
 
 func validDealNoteInput(dealID, text string) bool {
@@ -254,5 +232,8 @@ func createDealNoteUncertain(call sdkgo.Call, message string) sdkgo.MutationAtte
 
 func dealNoteMutationBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[DealNoteMetadata] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[DealNoteMetadata](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, DealNoteMetadata{}, &failure, sdkgo.Receipt{})
 }

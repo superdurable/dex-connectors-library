@@ -85,7 +85,10 @@ func (operation TrackEventOperation) Invoke(call sdkgo.Call, input TrackEventInp
 		return sdkgo.NewMutationRetry[TrackedEvent](eventFailure(kind, "Amplitude event upload should be retried"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return trackedBranch(TrackEventBranchProviderRejected, sdkgo.FailureProviderRejection, "Amplitude rejected the event upload")
+		if isDefiniteIngestionRefusal(call, response) {
+			return trackedBranch(TrackEventBranchProviderRejected, sdkgo.FailureProviderRejection, "Amplitude rejected the event upload")
+		}
+		return sdkgo.NewMutationRetry[TrackedEvent](eventFailure(sdkgo.FailureTransport, "Amplitude event upload outcome is unknown"), 0)
 	}
 	var accepted struct {
 		Code           int `json:"code"`

@@ -60,13 +60,19 @@ func (operation CancelAgreementOperation) Invoke(call sdkgo.Call, input CancelAg
 		return cancelAgreementBranch(CancelAgreementBranchDefect, sdkgo.FailureAuthentication, "Acrobat Sign credentials are unavailable or invalid")
 	}
 	if errors.Is(current.err, errInvalidAccessPoint) || errors.Is(current.err, providerhttp.ErrBodyTooLarge) {
-		return cancelAgreementBranch(CancelAgreementBranchInvalidResponse, sdkgo.FailureProtocol, "Acrobat Sign returned unsafe or oversized metadata")
+		return cancelAgreementRetry(sdkgo.FailureProtocol, "Acrobat Sign agreement metadata is inconclusive", 0)
 	}
 	if current.status == http.StatusNotFound && !current.isDiscovery {
-		return cancelAgreementBranch(CancelAgreementBranchNotFound, sdkgo.FailureNotFound, "Acrobat Sign did not expose the agreement")
+		if call.Context.Attempt() == 1 && isDefiniteReminderRefusal(current.status, current.body) {
+			return cancelAgreementBranch(CancelAgreementBranchNotFound, sdkgo.FailureNotFound, "Acrobat Sign did not expose the agreement")
+		}
+		return cancelAgreementRetry(sdkgo.FailureTransport, "Acrobat Sign agreement lookup is inconclusive", 0)
 	}
 	if current.status != http.StatusOK {
-		return cancelAgreementBranch(CancelAgreementBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign rejected the agreement lookup")
+		if call.Context.Attempt() == 1 && isDefiniteReminderRefusal(current.status, current.body) {
+			return cancelAgreementBranch(CancelAgreementBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign rejected the agreement lookup")
+		}
+		return cancelAgreementRetry(sdkgo.FailureTransport, "Acrobat Sign agreement lookup is inconclusive", 0)
 	}
 	if current.err != nil {
 		return cancelAgreementRetry(sdkgo.FailureTransport, "Acrobat Sign agreement response was interrupted", 0)
@@ -76,7 +82,7 @@ func (operation CancelAgreementOperation) Invoke(call sdkgo.Call, input CancelAg
 		Status string `json:"status"`
 	}
 	if json.Unmarshal(current.body, &metadata) != nil || metadata.ID != input.AgreementID || metadata.Status == "" {
-		return cancelAgreementBranch(CancelAgreementBranchInvalidResponse, sdkgo.FailureProtocol, "Acrobat Sign returned invalid agreement metadata")
+		return cancelAgreementRetry(sdkgo.FailureProtocol, "Acrobat Sign returned invalid agreement metadata", 0)
 	}
 	if metadata.Status == "ABORTED" || metadata.Status == "CANCELLED" {
 		return cancelAgreementSuccess(call, input.AgreementID)
@@ -89,10 +95,13 @@ func (operation CancelAgreementOperation) Invoke(call sdkgo.Call, input CancelAg
 		return cancelAgreementBranch(CancelAgreementBranchDefect, sdkgo.FailureAuthentication, "Acrobat Sign credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errInvalidAccessPoint) || errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return cancelAgreementBranch(CancelAgreementBranchInvalidResponse, sdkgo.FailureProtocol, "Acrobat Sign returned unsafe or oversized metadata")
+		return cancelAgreementRetry(sdkgo.FailureProtocol, "Acrobat Sign cancellation response is inconclusive", 0)
 	}
 	if response.status < 200 || response.status >= 300 {
-		return cancelAgreementBranch(CancelAgreementBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign refused cancellation")
+		if call.Context.Attempt() == 1 && isDefiniteReminderRefusal(response.status, response.body) {
+			return cancelAgreementBranch(CancelAgreementBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign refused cancellation")
+		}
+		return cancelAgreementRetry(sdkgo.FailureTransport, "Acrobat Sign cancellation response is inconclusive", 0)
 	}
 	if response.err != nil {
 		return cancelAgreementRetry(sdkgo.FailureTransport, "Acrobat Sign cancellation response was interrupted", 0)

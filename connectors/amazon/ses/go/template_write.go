@@ -57,7 +57,7 @@ func (operation UpdateEmailTemplateOperation) Invoke(call sdkgo.Call, input Upda
 		return templateMutationBranch[EmailTemplate](updateEmailTemplateOperationID, UpdateEmailTemplateBranchDefect, sdkgo.FailureLocalDefect, "SES template content could not be encoded")
 	}
 	response := operation.client.request(call, http.MethodPut, "/v2/email/templates/"+url.PathEscape(input.TemplateName), body)
-	if attempt, isFailure := templateMutationFailure[EmailTemplate](updateEmailTemplateOperationID, response, UpdateEmailTemplateBranchProviderRejected, UpdateEmailTemplateBranchDefect); isFailure {
+	if attempt, isFailure := templateMutationFailure[EmailTemplate](call, updateEmailTemplateOperationID, response, UpdateEmailTemplateBranchProviderRejected, UpdateEmailTemplateBranchDefect); isFailure {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(UpdateEmailTemplateBranchUpdated, EmailTemplate{Name: input.TemplateName, Content: input.Content}, nil, templateReceipt(call, input.TemplateName))
@@ -102,7 +102,7 @@ func (operation DeleteEmailTemplateOperation) Invoke(call sdkgo.Call, input Dele
 	if response.status == http.StatusNotFound && response.err == nil {
 		return sdkgo.NewMutationBranch(DeleteEmailTemplateBranchDeleted, DeletedEmailTemplate{Name: input.TemplateName}, nil, templateReceipt(call, input.TemplateName))
 	}
-	if attempt, isFailure := templateMutationFailure[DeletedEmailTemplate](deleteEmailTemplateOperationID, response, DeleteEmailTemplateBranchProviderRejected, DeleteEmailTemplateBranchDefect); isFailure {
+	if attempt, isFailure := templateMutationFailure[DeletedEmailTemplate](call, deleteEmailTemplateOperationID, response, DeleteEmailTemplateBranchProviderRejected, DeleteEmailTemplateBranchDefect); isFailure {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(DeleteEmailTemplateBranchDeleted, DeletedEmailTemplate{Name: input.TemplateName}, nil, templateReceipt(call, input.TemplateName))
@@ -120,7 +120,7 @@ type templateWireContent struct {
 	HTML    string `json:"Html,omitempty"`
 }
 
-func templateMutationFailure[T any](operationID string, response providerResponse, rejected, defect sdkgo.BranchID) (sdkgo.MutationAttempt[T], bool) {
+func templateMutationFailure[T any](call sdkgo.Call, operationID string, response providerResponse, rejected, defect sdkgo.BranchID) (sdkgo.MutationAttempt[T], bool) {
 	if errors.Is(response.err, errCredential) {
 		return templateMutationBranch[T](operationID, defect, sdkgo.FailureAuthentication, "SES credentials are unavailable or response repeated a credential"), true
 	}
@@ -135,7 +135,10 @@ func templateMutationFailure[T any](operationID string, response providerRespons
 		return sdkgo.NewMutationRetry[T](sesFailure(operationID, kind, "SES template request is temporarily unavailable"), response.retryAfter), true
 	}
 	if response.status != http.StatusOK {
-		return templateMutationBranch[T](operationID, rejected, sdkgo.FailureProviderRejection, "SES rejected template request HTTP "+strconv.Itoa(response.status)), true
+		if (call.Context == nil || call.Context.Attempt() == 1) && isDefiniteSESRefusal(response.status, response.body) {
+			return templateMutationBranch[T](operationID, rejected, sdkgo.FailureProviderRejection, "SES rejected template request HTTP "+strconv.Itoa(response.status)), true
+		}
+		return sdkgo.NewMutationRetry[T](sesFailure(operationID, sdkgo.FailureTransport, "SES template write outcome is unknown"), 0), true
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[T](sesFailure(operationID, sdkgo.FailureTransport, "SES template response was interrupted"), 0), true

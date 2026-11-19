@@ -37,7 +37,13 @@ func TestPublishMessageSignsPOSTAndReturnsMessageID(t *testing.T) {
 
 func TestPublishMessageClassifiesDefiniteAndUnknownOutcomes(t *testing.T) {
 	for _, status := range []int{http.StatusForbidden, http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusInternalServerError} {
-		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { response.WriteHeader(status) }))
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(status)
+			if status == http.StatusForbidden {
+				_, err := response.Write([]byte(`<ErrorResponse><Error><Code>AuthorizationError</Code></Error></ErrorResponse>`))
+				require.NoError(t, err)
+			}
+		}))
 		result, err := sdkgo.RunMutation(&publishTestContext{attempt: 1}, newTestClient(t, server.URL, 0).PublishMessage(), testConnection, exampleMessage)
 		if status == http.StatusForbidden {
 			require.NoError(t, err)

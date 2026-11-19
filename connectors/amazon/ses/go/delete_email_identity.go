@@ -70,7 +70,10 @@ func (operation DeleteEmailIdentityOperation) Invoke(call sdkgo.Call, input Dele
 		}
 		return sdkgo.NewMutationBranch(DeleteEmailIdentityBranchDeleted, deleted, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "amazon-ses", ProviderObjectID: input.EmailIdentity})
 	}
-	return deleteIdentityBranch(DeleteEmailIdentityBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected identity deletion HTTP "+strconv.Itoa(response.status), deleted)
+	if (call.Context == nil || call.Context.Attempt() == 1) && isDefiniteSESRefusal(response.status, response.body) {
+		return deleteIdentityBranch(DeleteEmailIdentityBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected identity deletion HTTP "+strconv.Itoa(response.status), deleted)
+	}
+	return sdkgo.NewMutationRetry[DeletedEmailIdentity](sesFailure(deleteEmailIdentityOperationID, sdkgo.FailureTransport, "SES identity deletion outcome is unknown"), 0)
 }
 
 func deleteIdentityBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string, value DeletedEmailIdentity) sdkgo.MutationAttempt[DeletedEmailIdentity] {

@@ -5,10 +5,8 @@ package marketo
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -73,17 +71,6 @@ func (operation CreateLeadOperation) Invoke(call sdkgo.Call, input CreateLeadInp
 	if decision.Kind == singledispatch.FailClosed {
 		return createLeadRetry(sdkgo.FailureAvailability, "lead create checkpoint is unavailable", 0)
 	}
-	if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
-		found, readStatus := operation.readBackCreatedLead(call, input)
-		switch readStatus {
-		case "found":
-			return sdkgo.NewMutationBranch(CreateLeadBranchCreated, found, nil, createLeadReceipt(call, found.ID))
-		case "retry":
-			return createLeadRetry(sdkgo.FailureAvailability, "Marketo lead read-back is temporarily unavailable", 0)
-		case "uncertain":
-			return createLeadUncertain(call, "Marketo lead read-back cannot confirm the earlier create")
-		}
-	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return createLeadUncertain(call, "an earlier Marketo create may have succeeded and reached the send cap")
 	}
@@ -102,7 +89,7 @@ func (operation CreateLeadOperation) Invoke(call sdkgo.Call, input CreateLeadInp
 		return createLeadRetry(sdkgo.FailureTransport, "Marketo credentials are unavailable", 0)
 	}
 	if errors.Is(response.err, errLeadTransport) {
-		return createLeadRetry(sdkgo.FailureTransport, "Marketo create outcome is unknown", 0)
+		return limitedMarketoUnknown[CreatedLead](call, decision, createLeadFailure(sdkgo.FailureTransport, "Marketo create outcome is unknown"), createLeadReceipt(call, 0))
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -115,16 +102,19 @@ func (operation CreateLeadOperation) Invoke(call sdkgo.Call, input CreateLeadInp
 		return createLeadRetry(kind, "Marketo temporarily rejected the create", response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return createLeadRetry(sdkgo.FailureAvailability, "Marketo create outcome is unknown", response.retryAfter)
+		return limitedMarketoUnknown[CreatedLead](call, decision, createLeadFailure(sdkgo.FailureAvailability, "Marketo create outcome is unknown"), createLeadReceipt(call, 0))
 	}
 	if response.status != http.StatusOK {
-		if decision.MaximumPriorSends > 0 {
-			return createLeadUncertain(call, "an earlier Marketo create may have succeeded")
+		if decision.MaximumPriorSends == 0 && response.err == nil && isDefiniteMarketoRefusal(response.status, response.body) {
+			if err := fence.RecordCanResend(); err != nil {
+				return createLeadRetry(sdkgo.FailureAvailability, "lead refusal checkpoint is unavailable", 0)
+			}
+			return createLeadBranch(CreateLeadBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected HTTP "+strconv.Itoa(response.status))
 		}
-		return createLeadBranch(CreateLeadBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected HTTP "+strconv.Itoa(response.status))
+		return limitedMarketoUnknown[CreatedLead](call, decision, createLeadFailure(sdkgo.FailureAvailability, "Marketo create outcome is unknown"), createLeadReceipt(call, 0))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) || response.err != nil {
-		return createLeadUncertain(call, "Marketo create response could not be read completely")
+		return limitedMarketoUnknown[CreatedLead](call, decision, createLeadFailure(sdkgo.FailureProtocol, "Marketo create response could not be read completely"), createLeadReceipt(call, 0))
 	}
 	result, outcome := decodeLeadSyncResponse(response.body)
 	if outcome != "" {
@@ -135,53 +125,24 @@ func (operation CreateLeadOperation) Invoke(call sdkgo.Call, input CreateLeadInp
 			return createLeadRetry(sdkgo.FailureAvailability, "Marketo is temporarily unavailable", response.retryAfter)
 		case "already-exists":
 			if decision.MaximumPriorSends > 0 {
-				return createLeadUncertain(call, "a prior Marketo create may have succeeded before the duplicate response")
+				return limitedMarketoUnknown[CreatedLead](call, decision, createLeadFailure(sdkgo.FailureTransport, "a prior Marketo create may have succeeded before the duplicate response"), createLeadReceipt(call, 0))
+			}
+			if err := fence.RecordCanResend(); err != nil {
+				return createLeadRetry(sdkgo.FailureAvailability, "lead refusal checkpoint is unavailable", 0)
 			}
 			return createLeadBranch(CreateLeadBranchAlreadyExists, sdkgo.FailureProviderRejection, "Marketo already has a lead with this email")
 		case "invalid":
-			return createLeadUncertain(call, "Marketo accepted the create but returned invalid JSON")
+			return limitedMarketoUnknown[CreatedLead](call, decision, createLeadFailure(sdkgo.FailureProtocol, "Marketo create response was invalid"), createLeadReceipt(call, 0))
 		default:
-			if decision.MaximumPriorSends > 0 {
-				return createLeadUncertain(call, "a prior Marketo create may have succeeded before this rejection")
-			}
-			return createLeadBranch(CreateLeadBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the lead create")
+			return limitedMarketoUnknown[CreatedLead](call, decision, createLeadFailure(sdkgo.FailureProtocol, "Marketo create response was contradictory"), createLeadReceipt(call, 0))
 		}
 	}
 	if result.ID <= 0 || result.Status != "created" {
-		return createLeadUncertain(call, "Marketo accepted the create but returned an unexpected result")
+		return limitedMarketoUnknown[CreatedLead](call, decision, createLeadFailure(sdkgo.FailureProtocol, "Marketo create response was unexpected"), createLeadReceipt(call, 0))
 	}
 	_ = fence.RecordProviderID(strconv.FormatInt(result.ID, 10))
 	created := CreatedLead{ID: result.ID, Status: result.Status}
 	return sdkgo.NewMutationBranch(CreateLeadBranchCreated, created, nil, createLeadReceipt(call, created.ID))
-}
-
-func (operation CreateLeadOperation) readBackCreatedLead(call sdkgo.Call, input CreateLeadInput) (CreatedLead, string) {
-	query := url.Values{"filterType": {"email"}, "filterValues": {input.Email}, "fields": {"id,firstName,lastName"}}
-	response := operation.client.requestLeadAPI(call, http.MethodGet, "/v1/leads.json?"+query.Encode(), nil)
-	if response.err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
-		return CreatedLead{}, "retry"
-	}
-	if response.status != http.StatusOK {
-		return CreatedLead{}, "uncertain"
-	}
-	var envelope struct {
-		Success *bool          `json:"success"`
-		Result  *[]LeadProfile `json:"result"`
-	}
-	if err := json.Unmarshal(response.body, &envelope); err != nil || envelope.Success == nil || !*envelope.Success || envelope.Result == nil {
-		return CreatedLead{}, "uncertain"
-	}
-	if len(*envelope.Result) == 0 {
-		return CreatedLead{}, "absent"
-	}
-	if len(*envelope.Result) != 1 {
-		return CreatedLead{}, "uncertain"
-	}
-	lead := (*envelope.Result)[0]
-	if lead.ID <= 0 || input.FirstName != nil && lead.FirstName != *input.FirstName || input.LastName != nil && lead.LastName != *input.LastName {
-		return CreatedLead{}, "uncertain"
-	}
-	return CreatedLead{ID: lead.ID, Status: "created"}, "found"
 }
 
 func (dispatch *createLeadDispatch) execute(ctx context.Context) error {

@@ -391,7 +391,7 @@
       "callId": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"status\":400,\"errorCode\":\"901\",\"message\":\"No acceptance\"}",
           "derivedKey": "b7c524ba-3742-5c8e-a370-651f0cc59ebb",
           "headers": {},
           "keyMode": "derived",
@@ -480,17 +480,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "amountMinorUnits": 0,
-          "currencyCode": "",
-          "id": "",
-          "status": "",
-          "url": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -738,7 +731,7 @@
       "callId": "139872d7-7357-5495-a564-8db377afcc9f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"status\":404,\"errorCode\":\"404\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -784,7 +777,7 @@
       "callId": "139872d7-7357-5495-a564-8db377afcc9f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"status\":403,\"errorCode\":\"901\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
@@ -853,15 +846,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "currencyCode": "",
-          "id": "",
-          "status": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1354,7 +1342,7 @@
       "callId": "7543b909-1b6a-5959-9574-eb84ea94927b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"status\":400,\"errorCode\":\"901\",\"message\":\"No acceptance\"}",
           "derivedKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
           "headers": {},
           "keyMode": "derived",
@@ -1685,7 +1673,7 @@
       "callId": "021a0718-5e2a-57b3-8149-6d2aff279f60",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"status\":400,\"errorCode\":\"901\",\"message\":\"No acceptance\"}",
           "derivedKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
           "headers": {},
           "keyMode": "derived",
@@ -1992,7 +1980,7 @@
       "callId": "dca80e36-babf-5cea-83d0-46749cd858e2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"status\":400,\"errorCode\":\"901\",\"message\":\"No acceptance\"}",
           "derivedKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
           "headers": {},
           "keyMode": "derived",
@@ -2323,7 +2311,7 @@
       "callId": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"status\":400,\"errorCode\":\"901\",\"message\":\"No acceptance\"}",
           "derivedKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
           "headers": {},
           "keyMode": "derived",
@@ -2630,7 +2618,7 @@
       "callId": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"status\":400,\"errorCode\":\"901\",\"message\":\"No acceptance\"}",
           "derivedKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
           "headers": {},
           "keyMode": "derived",

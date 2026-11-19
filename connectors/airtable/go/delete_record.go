@@ -50,17 +50,17 @@ func (operation DeleteRecordOperation) Invoke(call sdkgo.Call, input DeleteRecor
 		method: http.MethodDelete, path: recordPath(input.BaseID, input.TableIDOrName) + "/" + url.PathEscape(input.RecordID), baseID: input.BaseID,
 	}, input.RecordID)
 	if outcome != nil {
-		if outcome.disposition == outcomeNotFound {
+		if outcome.disposition == outcomeNotFound && readErrorType(response.body) != "" && (call.Context == nil || call.Context.Attempt() == 1) {
 			return sdkgo.NewMutationBranch(DeleteRecordBranchAlreadyAbsent, DeletedRecord{RecordID: input.RecordID}, &outcome.failure, outcome.receipt)
 		}
-		return mutationAttemptForOutcome[DeletedRecord](*outcome, response, operationBranches{rejected: DeleteRecordBranchProviderRejected, invalidResponse: DeleteRecordBranchInvalidResponse, defect: DeleteRecordBranchDefect})
+		return mutationAttemptForOutcome[DeletedRecord](call, *outcome, response, operationBranches{rejected: DeleteRecordBranchProviderRejected, invalidResponse: DeleteRecordBranchInvalidResponse, defect: DeleteRecordBranchDefect})
 	}
 	var deleted struct {
 		ID      string `json:"id"`
 		Deleted bool   `json:"deleted"`
 	}
 	if err := decodeResponse(response.body, &deleted); err != nil || deleted.ID != input.RecordID || !deleted.Deleted {
-		return sdkgo.NewMutationBranch(DeleteRecordBranchInvalidResponse, DeletedRecord{}, providerFailurePointer("deleteRecord", sdkgo.FailureProtocol, errors.New("Airtable returned an invalid deletion confirmation").Error()), operation.client.receipt(call, input.RecordID))
+		return sdkgo.NewMutationRetry[DeletedRecord](providerFailure("deleteRecord", sdkgo.FailureProtocol, errors.New("Airtable returned an invalid deletion confirmation").Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteRecordBranchDeleted, DeletedRecord{RecordID: input.RecordID}, nil, operation.client.receipt(call, input.RecordID))
 }

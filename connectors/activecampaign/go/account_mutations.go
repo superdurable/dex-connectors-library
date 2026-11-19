@@ -144,7 +144,7 @@ func (operation CreateAccountOperation) Invoke(call sdkgo.Call, input CreateAcco
 		return accountMutationBranch("createAccount", CreateAccountBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
 	if errors.Is(dispatch.err, errRequest) {
-		return sdkgo.NewMutationRetry[AccountMetadata](queryFailure("createAccount", sdkgo.FailureTransport, "account create outcome is unknown"), 0)
+		return limitedActiveCampaignUnknown[AccountMetadata](call, decision, queryFailure("createAccount", sdkgo.FailureTransport, "account create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status == http.StatusTooManyRequests || dispatch.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -157,34 +157,36 @@ func (operation CreateAccountOperation) Invoke(call sdkgo.Call, input CreateAcco
 		return sdkgo.NewMutationRetry[AccountMetadata](queryFailure("createAccount", kind, "ActiveCampaign temporarily rejected account creation"), dispatch.retryAfter)
 	}
 	if dispatch.status == http.StatusRequestTimeout || dispatch.status >= 500 {
-		return sdkgo.NewMutationRetry[AccountMetadata](queryFailure("createAccount", sdkgo.FailureAvailability, "account create outcome is unknown"), dispatch.retryAfter)
+		return limitedActiveCampaignUnknown[AccountMetadata](call, decision, queryFailure("createAccount", sdkgo.FailureAvailability, "account create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status != http.StatusCreated && dispatch.status != http.StatusOK {
-		if decision.MaximumPriorSends > 0 {
-			return accountCreateUncertain(call, "earlier account create may have succeeded")
+		if decision.MaximumPriorSends == 0 && dispatch.err == nil && isDefiniteActiveCampaignRefusal(dispatch.status, dispatch.response) {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[AccountMetadata](queryFailure("createAccount", sdkgo.FailureAvailability, "account refusal checkpoint is unavailable"), 0)
+			}
+			return accountMutationBranch("createAccount", CreateAccountBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
 		}
-		return accountMutationBranch("createAccount", CreateAccountBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
+		return limitedActiveCampaignUnknown[AccountMetadata](call, decision, queryFailure("createAccount", sdkgo.FailureTransport, "account response did not prove refusal"), dealReceipt(call, ""))
 	}
 	if dispatch.err != nil {
-		return accountCreateUncertain(call, "account create response was interrupted")
+		return limitedActiveCampaignUnknown[AccountMetadata](call, decision, queryFailure("createAccount", sdkgo.FailureTransport, "account response was interrupted"), dealReceipt(call, ""))
 	}
 	account, err := decodeAccount(dispatch.response)
 	if err != nil {
-		return accountCreateUncertain(call, "account create response was invalid")
+		return limitedActiveCampaignUnknown[AccountMetadata](call, decision, queryFailure("createAccount", sdkgo.FailureProtocol, "account confirmation was invalid"), dealReceipt(call, ""))
 	}
 	if account.Name != input.Name || account.AccountURL != input.AccountURL {
-		return accountCreateUncertain(call, "account create response does not match the request")
+		return limitedActiveCampaignUnknown[AccountMetadata](call, decision, queryFailure("createAccount", sdkgo.FailureProtocol, "account confirmation contradicted the request"), dealReceipt(call, ""))
 	}
 	_ = fence.RecordProviderID(account.ID)
 	return sdkgo.NewMutationBranch(CreateAccountBranchCreated, account, nil, dealReceipt(call, account.ID))
 }
 
 func (operation CreateAccountOperation) readBack(call sdkgo.Call, input CreateAccountInput, providerID string) (AccountMetadata, string) {
-	path := "/accounts/" + providerID
 	if providerID == "" {
-		path = "/accounts?" + url.Values{"search": {input.Name}, "limit": {"100"}}.Encode()
+		return AccountMetadata{}, "absent"
 	}
-	body, status, _, err := operation.client.get(call, path)
+	body, status, _, err := operation.client.get(call, "/accounts/"+providerID)
 	if err != nil || status == http.StatusTooManyRequests || status >= 500 {
 		return AccountMetadata{}, "retry"
 	}
@@ -194,43 +196,11 @@ func (operation CreateAccountOperation) readBack(call sdkgo.Call, input CreateAc
 	if status != http.StatusOK {
 		return AccountMetadata{}, "uncertain"
 	}
-	if providerID != "" {
-		account, err := decodeAccount(body)
-		if err != nil || account.Name != input.Name || account.AccountURL != input.AccountURL {
-			return AccountMetadata{}, "uncertain"
-		}
-		return account, "found"
-	}
-	var wire struct {
-		Accounts []accountWire `json:"accounts"`
-		Meta     struct {
-			Total string `json:"total"`
-		} `json:"meta"`
-	}
-	if err := json.Unmarshal(body, &wire); err != nil || wire.Accounts == nil {
+	account, err := decodeAccount(body)
+	if err != nil || account.Name != input.Name || account.AccountURL != input.AccountURL {
 		return AccountMetadata{}, "uncertain"
 	}
-	total, err := strconv.Atoi(wire.Meta.Total)
-	if err != nil || total > len(wire.Accounts) {
-		return AccountMetadata{}, "uncertain"
-	}
-	var match AccountMetadata
-	for _, item := range wire.Accounts {
-		account, err := accountMetadata(item)
-		if err != nil {
-			return AccountMetadata{}, "uncertain"
-		}
-		if account.Name == input.Name && account.AccountURL == input.AccountURL {
-			if match.ID != "" {
-				return AccountMetadata{}, "uncertain"
-			}
-			match = account
-		}
-	}
-	if match.ID != "" {
-		return match, "found"
-	}
-	return AccountMetadata{}, "absent"
+	return account, "found"
 }
 
 // Invoke replaces selected account fields by ID.
@@ -249,7 +219,7 @@ func (operation UpdateAccountOperation) Invoke(call sdkgo.Call, input UpdateAcco
 	if err != nil {
 		return accountMutationBranch("updateAccount", UpdateAccountBranchDefect, sdkgo.FailureLocalDefect, "account update could not be encoded")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodPut, "/accounts/"+input.AccountID, encoded)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodPut, "/accounts/"+input.AccountID, encoded)
 	if errors.Is(err, errCredential) {
 		return accountMutationBranch("updateAccount", UpdateAccountBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
@@ -283,7 +253,7 @@ func (operation DeleteAccountOperation) Invoke(call sdkgo.Call, input DeleteAcco
 	if !numericID.MatchString(input.AccountID) {
 		return accountDeletionBranch(DeleteAccountBranchDefect, sdkgo.FailureValidation, "account ID must be numeric")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodDelete, "/accounts/"+input.AccountID, nil)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodDelete, "/accounts/"+input.AccountID, nil)
 	if errors.Is(err, errCredential) {
 		return accountDeletionBranch(DeleteAccountBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
@@ -331,9 +301,15 @@ func accountCreateUncertain(call sdkgo.Call, message string) sdkgo.MutationAttem
 }
 func accountMutationBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[AccountMetadata] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[AccountMetadata](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, AccountMetadata{}, &failure, sdkgo.Receipt{})
 }
 func accountDeletionBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[AccountDeletion] {
 	failure := queryFailure("deleteAccount", kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[AccountDeletion](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, AccountDeletion{}, &failure, sdkgo.Receipt{})
 }

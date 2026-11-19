@@ -529,7 +529,7 @@ spec:
       inputType: CreateAccountInput
       outputType: AccountMetadata
       kind: mutation
-      description: Create a CRM account with bounded sends and name read-back.
+      description: Create a CRM account with bounded sends and provider-ID read-back when available.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
@@ -610,7 +610,7 @@ spec:
       inputType: SetContactListMembershipInput
       outputType: ContactListMembership
       kind: mutation
-      description: Subscribe a contact to an email list with bounded sends and read-back.
+      description: Subscribe a contact to an email list with bounded sends.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
@@ -618,7 +618,6 @@ spec:
         - {id: subscribed, goName: Subscribed, description: ActiveCampaign completed the list-membership operation.}
         - {id: uncertain, goName: Uncertain, description: A bounded subscription change could not be confirmed., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: subscribedDefault
@@ -631,7 +630,7 @@ spec:
       inputType: SetContactListMembershipInput
       outputType: ContactListMembership
       kind: mutation
-      description: Unsubscribe a contact from an email list with bounded sends and read-back.
+      description: Unsubscribe a contact from an email list with bounded sends.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
@@ -639,7 +638,6 @@ spec:
         - {id: unsubscribed, goName: Unsubscribed, description: ActiveCampaign completed the list-membership operation.}
         - {id: uncertain, goName: Uncertain, description: A bounded subscription change could not be confirmed., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - name: unsubscribedDefault
@@ -755,7 +753,7 @@ spec:
       inputType: CreateDealNoteInput
       outputType: DealNoteMetadata
       kind: mutation
-      description: Create a deal note with bounded sends and read-back.
+      description: Create a deal note with bounded sends and provider-ID read-back when available.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
@@ -838,7 +836,7 @@ spec:
       inputType: CreateDealInput
       outputType: DealMetadata
       kind: mutation
-      description: Create a deal for a contact with bounded sends and read-back.
+      description: Create a deal for a contact with bounded sends and provider-ID read-back when available.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}

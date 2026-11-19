@@ -454,13 +454,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "queueUrl": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2009,8 +2006,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "md5OfBody": "",
@@ -2091,9 +2087,9 @@
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -2113,7 +2109,12 @@
         "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
       },
       "name": "sendMessage-uncertain-response",
-      "operation": "sendMessage"
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",
+        "state": "claimed"
+      }
     },
     {
       "callId": "3e49ebce-c038-5b6c-8ca3-bcf6648986af",

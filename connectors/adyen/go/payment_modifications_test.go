@@ -90,7 +90,7 @@ func TestPaymentModificationClassifiesRetryAndRejection(t *testing.T) {
 		branch sdkgo.BranchID
 		retry  bool
 	}{
-		{"rejected", 400, `{}`, CancelPaymentBranchProviderRejected, false},
+		{"rejected", 400, `{"status":400,"errorCode":"901","message":"No acceptance"}`, CancelPaymentBranchProviderRejected, false},
 		{"rateLimit", 429, `{}`, "", true},
 		{"unavailable", 503, `{}`, "", true},
 		{"unknown", 500, `{}`, "", true},

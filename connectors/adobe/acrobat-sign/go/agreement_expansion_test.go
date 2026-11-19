@@ -62,7 +62,7 @@ func TestAgreementExpansionClassifiesOutcomes(t *testing.T) {
 		visibilityBranch sdkgo.BranchID
 		retry            bool
 	}{
-		{"rejected", 403, `{}`, ListAgreementsBranchProviderRejected, UpdateAgreementVisibilityBranchProviderRejected, false},
+		{"rejected", 403, `{"code":"DENIED","message":"No acceptance"}`, ListAgreementsBranchProviderRejected, UpdateAgreementVisibilityBranchProviderRejected, false},
 		{"malformed", 200, `{}`, ListAgreementsBranchInvalidResponse, UpdateAgreementVisibilityBranchUpdated, false},
 		{"rate limit", 429, `{}`, "", "", true},
 		{"unavailable", 503, `{}`, "", "", true},

@@ -290,7 +290,7 @@ func (operation SaveObjectOperation) Invoke(call sdkgo.Call, input SaveObjectInp
 		return sdkgo.NewMutationRetry[SavedObject](*failure, retryAfter)
 	}
 	if status != http.StatusOK {
-		if !isDefiniteRefusalStatus(status) {
+		if !isDefiniteAlgoliaRefusal(status, body) || (call.Context != nil && call.Context.Attempt() > 1) {
 			return sdkgo.NewMutationRetry[SavedObject](*algoliaFailure(name, sdkgo.FailureAvailability, "Algolia answered record replacement with HTTP "+strconv.Itoa(status)+"; outcome unknown"), 0)
 		}
 		return sdkgo.NewMutationBranch(SaveObjectBranchProviderRejected, SavedObject{}, algoliaFailure(name, rejectionKind(status), "Algolia rejected record replacement with HTTP "+strconv.Itoa(status)), sdkgo.Receipt{})
@@ -401,14 +401,17 @@ func (operation PartialUpdateObjectOperation) Invoke(call sdkgo.Call, input Part
 		if status < 0 {
 			return sdkgo.NewMutationRetry[SavedObject](*failure, retryAfter)
 		}
-		return sdkgo.NewMutationBranch(PartialUpdateObjectBranchInvalidResponse, SavedObject{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[SavedObject](*failure, retryAfter)
 	}
 	if status != http.StatusOK {
-		return sdkgo.NewMutationBranch(PartialUpdateObjectBranchProviderRejected, SavedObject{}, algoliaFailure(name, rejectionKind(status), "Algolia rejected attribute update with HTTP "+strconv.Itoa(status)), sdkgo.Receipt{})
+		if isDefiniteAlgoliaRefusal(status, body) && (call.Context == nil || call.Context.Attempt() == 1) {
+			return sdkgo.NewMutationBranch(PartialUpdateObjectBranchProviderRejected, SavedObject{}, algoliaFailure(name, rejectionKind(status), "Algolia rejected attribute update with HTTP "+strconv.Itoa(status)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[SavedObject](*algoliaFailure(name, sdkgo.FailureTransport, "Algolia attribute update outcome is unknown"), 0)
 	}
 	var result SavedObject
 	if json.Unmarshal(body, &result) != nil || result.ObjectID != input.ObjectID || result.TaskID <= 0 {
-		return sdkgo.NewMutationBranch(PartialUpdateObjectBranchInvalidResponse, SavedObject{}, algoliaFailure(name, sdkgo.FailureProtocol, "Algolia returned an invalid indexing task"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[SavedObject](*algoliaFailure(name, sdkgo.FailureProtocol, "Algolia returned an invalid indexing task"), 0)
 	}
 	return sdkgo.NewMutationBranch(PartialUpdateObjectBranchUpdated, result, nil, sdkgo.Receipt{})
 }
@@ -428,14 +431,17 @@ func (operation DeleteObjectOperation) Invoke(call sdkgo.Call, input ObjectInput
 		if status < 0 {
 			return sdkgo.NewMutationRetry[SavedObject](*failure, retryAfter)
 		}
-		return sdkgo.NewMutationBranch(DeleteObjectBranchInvalidResponse, SavedObject{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[SavedObject](*failure, retryAfter)
 	}
 	if status != http.StatusOK {
-		return sdkgo.NewMutationBranch(DeleteObjectBranchProviderRejected, SavedObject{}, algoliaFailure(name, rejectionKind(status), "Algolia rejected record deletion with HTTP "+strconv.Itoa(status)), sdkgo.Receipt{})
+		if isDefiniteAlgoliaRefusal(status, body) && (call.Context == nil || call.Context.Attempt() == 1) {
+			return sdkgo.NewMutationBranch(DeleteObjectBranchProviderRejected, SavedObject{}, algoliaFailure(name, rejectionKind(status), "Algolia rejected record deletion with HTTP "+strconv.Itoa(status)), sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationRetry[SavedObject](*algoliaFailure(name, sdkgo.FailureTransport, "Algolia record deletion outcome is unknown"), 0)
 	}
 	var result SavedObject
 	if json.Unmarshal(body, &result) != nil || result.ObjectID != input.ObjectID || result.TaskID <= 0 {
-		return sdkgo.NewMutationBranch(DeleteObjectBranchInvalidResponse, SavedObject{}, algoliaFailure(name, sdkgo.FailureProtocol, "Algolia returned an invalid deletion task"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[SavedObject](*algoliaFailure(name, sdkgo.FailureProtocol, "Algolia returned an invalid deletion task"), 0)
 	}
 	return sdkgo.NewMutationBranch(DeleteObjectBranchDeleted, result, nil, sdkgo.Receipt{})
 }
@@ -469,7 +475,11 @@ func (client *Client) send(call sdkgo.Call, method, path string, payload []byte,
 		return nil, -1, algoliaFailure(operation, sdkgo.FailureAvailability, "Algolia is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
 	}
 	if response.StatusCode != http.StatusOK {
-		return nil, response.StatusCode, nil, 0
+		body, err := providerhttp.ReadBoundedBody(response.Body, providerhttp.MaxErrorBodyBytes)
+		if err != nil {
+			return nil, -1, algoliaFailure(operation, sdkgo.FailureTransport, "Algolia error response is inconclusive"), 0
+		}
+		return body, response.StatusCode, nil, 0
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
@@ -489,6 +499,19 @@ func isDefiniteRefusalStatus(status int) bool {
 		return true
 	}
 	return false
+}
+
+func isDefiniteAlgoliaRefusal(status int, body []byte) bool {
+	if !isDefiniteRefusalStatus(status) {
+		return false
+	}
+	var response struct {
+		Message  string `json:"message"`
+		Status   int    `json:"status"`
+		TaskID   int64  `json:"taskID"`
+		ObjectID string `json:"objectID"`
+	}
+	return json.Unmarshal(body, &response) == nil && response.Message != "" && response.Status == status && response.TaskID == 0 && response.ObjectID == ""
 }
 
 func validPathPart(value string) bool {

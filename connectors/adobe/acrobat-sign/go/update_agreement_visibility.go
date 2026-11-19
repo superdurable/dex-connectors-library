@@ -74,19 +74,31 @@ func (operation UpdateAgreementVisibilityOperation) Invoke(call sdkgo.Call, inpu
 		return sdkgo.NewMutationRetry[AgreementVisibility](agreementVisibilityFailure(sdkgo.FailureAvailability, "Acrobat Sign is temporarily unavailable"), response.retryAfter)
 	}
 	if errors.Is(response.err, errInvalidAccessPoint) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[AgreementVisibility](agreementVisibilityFailure(sdkgo.FailureProtocol, "Acrobat Sign discovery is invalid after an earlier send"), 0)
+		}
 		return agreementVisibilityBranch(UpdateAgreementVisibilityBranchInvalidResponse, sdkgo.FailureProtocol, "Acrobat Sign returned an unsafe API access point")
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return agreementVisibilityBranch(UpdateAgreementVisibilityBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Acrobat Sign response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[AgreementVisibility](agreementVisibilityFailure(sdkgo.FailureResponseTooLarge, "Acrobat Sign response exceeded the configured limit"), 0)
 	}
 	if response.isDiscovery && response.status != http.StatusOK {
-		return agreementVisibilityBranch(UpdateAgreementVisibilityBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign rejected discovery HTTP "+strconv.Itoa(response.status))
+		if call.Context.Attempt() == 1 && isDefiniteReminderRefusal(response.status, response.body) {
+			return agreementVisibilityBranch(UpdateAgreementVisibilityBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign rejected discovery HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[AgreementVisibility](agreementVisibilityFailure(sdkgo.FailureTransport, "Acrobat Sign discovery response is inconclusive"), 0)
 	}
 	if response.status == http.StatusNotFound {
-		return agreementVisibilityBranch(UpdateAgreementVisibilityBranchNotFound, sdkgo.FailureNotFound, "Acrobat Sign did not expose the agreement")
+		if call.Context.Attempt() == 1 && isDefiniteReminderRefusal(response.status, response.body) {
+			return agreementVisibilityBranch(UpdateAgreementVisibilityBranchNotFound, sdkgo.FailureNotFound, "Acrobat Sign did not expose the agreement")
+		}
+		return sdkgo.NewMutationRetry[AgreementVisibility](agreementVisibilityFailure(sdkgo.FailureTransport, "Acrobat Sign visibility response is inconclusive"), 0)
 	}
 	if response.status < 200 || response.status >= 300 {
-		return agreementVisibilityBranch(UpdateAgreementVisibilityBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign rejected HTTP "+strconv.Itoa(response.status))
+		if call.Context.Attempt() == 1 && isDefiniteReminderRefusal(response.status, response.body) {
+			return agreementVisibilityBranch(UpdateAgreementVisibilityBranchProviderRejected, sdkgo.FailureProviderRejection, "Acrobat Sign rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[AgreementVisibility](agreementVisibilityFailure(sdkgo.FailureTransport, "Acrobat Sign visibility response is inconclusive"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[AgreementVisibility](agreementVisibilityFailure(sdkgo.FailureTransport, "Acrobat Sign response was interrupted"), 0)

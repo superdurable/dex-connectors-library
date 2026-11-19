@@ -124,7 +124,7 @@ func (operation UpsertEcommerceOrderOperation) Invoke(call sdkgo.Call, input Ups
 	currency, _ := json.Marshal(input.Currency)
 	query := fmt.Sprintf(`mutation { upsertOrder(order: { legacyConnectionId: %d, storeOrderId: %s, storeCustomerId: %s, email: %s, storeCreatedDate: %s, currency: %s, finalAmount: %s, creationSource: %s, normalizedStatus: %s%s }) { connectionId storeOrderId email } }`, connectionID, storeOrderID, storeCustomerID, email, createdAt, currency, input.FinalAmount, input.CreationSource, input.Status, lineFields)
 	requestBody, _ := json.Marshal(map[string]string{"query": query})
-	body, status, retryAfter, err := operation.client.request(call, http.MethodPost, "/ecom/graphql", requestBody)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodPost, "/ecom/graphql", requestBody)
 	if errors.Is(err, errCredential) {
 		return upsertOrderBranch(UpsertEcommerceOrderBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}

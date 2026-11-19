@@ -60,7 +60,8 @@ func (operation SendTemplatedEmailOperation) Invoke(call sdkgo.Call, input SendT
 	if err != nil {
 		return templatedSendBranch(SendTemplatedEmailBranchDefect, sdkgo.FailureLocalDefect, "SES templated send fence could not be initialized")
 	}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureAvailability, "SES templated send checkpoint is unavailable"), 0)
 	case singledispatch.ReadBackRequired:
@@ -69,7 +70,10 @@ func (operation SendTemplatedEmailOperation) Invoke(call sdkgo.Call, input SendT
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil && !errors.Is(checkpointErr, singledispatch.ErrDispatchNotAllowed) {
-			return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureTransport, "SES unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureAvailability, "SES unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureAuthentication, "SES credentials are unavailable after an earlier send"), 0)
 		}
 		return templatedSendBranch(SendTemplatedEmailBranchDefect, sdkgo.FailureAuthentication, "SES credentials are unavailable or invalid")
 	}
@@ -100,12 +104,12 @@ func (operation SendTemplatedEmailOperation) Invoke(call sdkgo.Call, input SendT
 	}
 	send := &sesEmailSend{client: operation.client, call: call, body: body}
 	if fence.Dispatch(send.dispatch) != nil {
-		return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureTransport, "SES templated send dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureAvailability, "SES templated send dispatch checkpoint is unavailable"), 0)
 	}
 	response := send.response
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureTransport, "SES resend checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureAvailability, "SES resend checkpoint could not be recorded"), 0)
 		}
 		kind := sdkgo.FailureRateLimit
 		if response.status == http.StatusServiceUnavailable {
@@ -114,19 +118,25 @@ func (operation SendTemplatedEmailOperation) Invoke(call sdkgo.Call, input SendT
 		return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendTemplatedEmailOperationID, kind, "SES asked the connector to retry templated email"), response.retryAfter)
 	}
 	if errors.Is(response.err, errCredential) {
-		return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureProtocol, "SES templated response repeated a credential"), sdkgo.Receipt{})
+		return limitedSESUnknown(call, decision, SentEmail{}, sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureProtocol, "SES templated response repeated a credential"))
 	}
 	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureTransport, "SES templated send outcome is unknown"), 0)
+		return limitedSESUnknown(call, decision, SentEmail{}, sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureTransport, "SES templated send outcome is unknown"))
 	}
 	if response.status != http.StatusOK {
-		return templatedSendBranch(SendTemplatedEmailBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected templated email")
+		if decision.MaximumPriorSends == 0 && isDefiniteSESRefusal(response.status, response.body) {
+			if fence.RecordCanResend() != nil {
+				return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureAvailability, "SES refusal checkpoint could not be recorded"), 0)
+			}
+			return templatedSendBranch(SendTemplatedEmailBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected templated email")
+		}
+		return limitedSESUnknown(call, decision, SentEmail{}, sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureTransport, "SES templated send response is inconclusive"))
 	}
 	var accepted struct {
 		MessageID string `json:"MessageId"`
 	}
 	if json.Unmarshal(response.body, &accepted) != nil || accepted.MessageID == "" || len(accepted.MessageID) > 512 {
-		return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureProtocol, "SES accepted templated email without a usable message ID"), sdkgo.Receipt{})
+		return limitedSESUnknown(call, decision, SentEmail{}, sesFailure(sendTemplatedEmailOperationID, sdkgo.FailureProtocol, "SES templated send response has no usable message ID"))
 	}
 	return sdkgo.NewMutationBranch(SendTemplatedEmailBranchSent, SentEmail{MessageID: accepted.MessageID}, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "amazon-ses", ProviderObjectID: accepted.MessageID})
 }

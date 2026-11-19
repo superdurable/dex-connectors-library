@@ -59,6 +59,9 @@ func TestDeleteEmailIdentitySignsAndClassifiesOutcomes(t *testing.T) {
 			require.Equal(t, "/v2/email/identities/example.com", request.URL.Path)
 			require.True(t, strings.Contains(request.Header.Get("Authorization"), "/ses/aws4_request"))
 			response.WriteHeader(status)
+			if status == http.StatusForbidden {
+				_, _ = response.Write([]byte(`{"__type":"AccessDeniedException","message":"No acceptance"}`))
+			}
 		}))
 		result, err := sdkgo.RunMutation(queryContext{}, newTestClient(t, server.URL, 0).DeleteEmailIdentity(), testConnection, DeleteEmailIdentityInput{EmailIdentity: "example.com"})
 		switch status {

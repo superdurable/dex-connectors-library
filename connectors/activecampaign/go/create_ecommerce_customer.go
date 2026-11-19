@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -97,7 +96,7 @@ func (operation CreateEcommerceCustomerOperation) Invoke(call sdkgo.Call, input 
 		return ecommerceCustomerMutationBranch("createEcommerceCustomer", CreateEcommerceCustomerBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
 	if errors.Is(dispatch.err, errRequest) {
-		return sdkgo.NewMutationRetry[EcommerceCustomerMetadata](queryFailure("createEcommerceCustomer", sdkgo.FailureTransport, "customer create outcome is unknown"), 0)
+		return limitedActiveCampaignUnknown[EcommerceCustomerMetadata](call, decision, queryFailure("createEcommerceCustomer", sdkgo.FailureTransport, "customer create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status == http.StatusTooManyRequests || dispatch.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -110,34 +109,36 @@ func (operation CreateEcommerceCustomerOperation) Invoke(call sdkgo.Call, input 
 		return sdkgo.NewMutationRetry[EcommerceCustomerMetadata](queryFailure("createEcommerceCustomer", kind, "ActiveCampaign temporarily rejected customer creation"), dispatch.retryAfter)
 	}
 	if dispatch.status == http.StatusRequestTimeout || dispatch.status >= 500 {
-		return sdkgo.NewMutationRetry[EcommerceCustomerMetadata](queryFailure("createEcommerceCustomer", sdkgo.FailureAvailability, "customer create outcome is unknown"), dispatch.retryAfter)
+		return limitedActiveCampaignUnknown[EcommerceCustomerMetadata](call, decision, queryFailure("createEcommerceCustomer", sdkgo.FailureAvailability, "customer create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status != http.StatusCreated && dispatch.status != http.StatusOK {
-		if decision.MaximumPriorSends > 0 {
-			return ecommerceCustomerCreateUncertain(call, "earlier customer create may have succeeded")
+		if decision.MaximumPriorSends == 0 && dispatch.err == nil && isDefiniteActiveCampaignRefusal(dispatch.status, dispatch.response) {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[EcommerceCustomerMetadata](queryFailure("createEcommerceCustomer", sdkgo.FailureAvailability, "customer refusal checkpoint is unavailable"), 0)
+			}
+			return ecommerceCustomerMutationBranch("createEcommerceCustomer", CreateEcommerceCustomerBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
 		}
-		return ecommerceCustomerMutationBranch("createEcommerceCustomer", CreateEcommerceCustomerBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
+		return limitedActiveCampaignUnknown[EcommerceCustomerMetadata](call, decision, queryFailure("createEcommerceCustomer", sdkgo.FailureTransport, "customer response did not prove refusal"), dealReceipt(call, ""))
 	}
 	if dispatch.err != nil {
-		return ecommerceCustomerCreateUncertain(call, "customer create response was interrupted")
+		return limitedActiveCampaignUnknown[EcommerceCustomerMetadata](call, decision, queryFailure("createEcommerceCustomer", sdkgo.FailureTransport, "customer response was interrupted"), dealReceipt(call, ""))
 	}
 	customer, err := decodeEcommerceCustomer(dispatch.response)
 	if err != nil {
-		return ecommerceCustomerCreateUncertain(call, "customer create response was invalid")
+		return limitedActiveCampaignUnknown[EcommerceCustomerMetadata](call, decision, queryFailure("createEcommerceCustomer", sdkgo.FailureProtocol, "customer confirmation was invalid"), dealReceipt(call, ""))
 	}
 	if !matchesEcommerceCustomer(customer, input) {
-		return ecommerceCustomerCreateUncertain(call, "customer create response does not match the request")
+		return limitedActiveCampaignUnknown[EcommerceCustomerMetadata](call, decision, queryFailure("createEcommerceCustomer", sdkgo.FailureProtocol, "customer confirmation contradicted the request"), dealReceipt(call, ""))
 	}
 	_ = fence.RecordProviderID(customer.ID)
 	return sdkgo.NewMutationBranch(CreateEcommerceCustomerBranchCreated, customer, nil, dealReceipt(call, customer.ID))
 }
 
 func (operation CreateEcommerceCustomerOperation) readBack(call sdkgo.Call, input CreateEcommerceCustomerInput, providerID string) (EcommerceCustomerMetadata, string) {
-	path := "/ecomCustomers/" + providerID
 	if providerID == "" {
-		path = "/ecomCustomers?" + url.Values{"filters[connectionid]": {input.ConnectionID}, "filters[externalid]": {input.ExternalID}}.Encode()
+		return EcommerceCustomerMetadata{}, "absent"
 	}
-	body, status, _, err := operation.client.get(call, path)
+	body, status, _, err := operation.client.get(call, "/ecomCustomers/"+providerID)
 	if err != nil || status == http.StatusTooManyRequests || status >= 500 {
 		return EcommerceCustomerMetadata{}, "retry"
 	}
@@ -147,46 +148,11 @@ func (operation CreateEcommerceCustomerOperation) readBack(call sdkgo.Call, inpu
 	if status != http.StatusOK {
 		return EcommerceCustomerMetadata{}, "uncertain"
 	}
-	if providerID != "" {
-		customer, err := decodeEcommerceCustomer(body)
-		if err != nil || !matchesEcommerceCustomer(customer, input) {
-			return EcommerceCustomerMetadata{}, "uncertain"
-		}
-		return customer, "found"
-	}
-	var wire struct {
-		EcomCustomers []ecommerceCustomerWire `json:"ecomCustomers"`
-		Meta          struct {
-			Total string `json:"total"`
-		} `json:"meta"`
-	}
-	if err := json.Unmarshal(body, &wire); err != nil || wire.EcomCustomers == nil {
+	customer, err := decodeEcommerceCustomer(body)
+	if err != nil || !matchesEcommerceCustomer(customer, input) {
 		return EcommerceCustomerMetadata{}, "uncertain"
 	}
-	total, err := strconv.Atoi(wire.Meta.Total)
-	if err != nil || total > len(wire.EcomCustomers) {
-		return EcommerceCustomerMetadata{}, "uncertain"
-	}
-	var match EcommerceCustomerMetadata
-	for _, item := range wire.EcomCustomers {
-		customer, err := ecommerceCustomerMetadata(item)
-		if err != nil {
-			return EcommerceCustomerMetadata{}, "uncertain"
-		}
-		if customer.ConnectionID == input.ConnectionID && customer.ExternalID == input.ExternalID {
-			if !matchesEcommerceCustomer(customer, input) {
-				return EcommerceCustomerMetadata{}, "uncertain"
-			}
-			if match.ID != "" {
-				return EcommerceCustomerMetadata{}, "uncertain"
-			}
-			match = customer
-		}
-	}
-	if match.ID != "" {
-		return match, "found"
-	}
-	return EcommerceCustomerMetadata{}, "absent"
+	return customer, "found"
 }
 
 func matchesEcommerceCustomer(customer EcommerceCustomerMetadata, input CreateEcommerceCustomerInput) bool {

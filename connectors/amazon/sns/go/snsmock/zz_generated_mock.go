@@ -372,7 +372,7 @@ func ListTopicsPageDefault() connectormock.Case[sns.TopicPage] {
 // ListTopicsDefault is the manifest default, pageDefault, which New installs.
 func ListTopicsDefault() connectormock.Case[sns.TopicPage] { return ListTopicsPageDefault() }
 
-// SubscribeEndpointSubscribed selects the subscribed branch: SNS accepted or read-back confirmed the subscription.
+// SubscribeEndpointSubscribed selects the subscribed branch: SNS accepted the subscription.
 func SubscribeEndpointSubscribed(value sns.SubscriptionIdentity, failure *sdkgo.Failure) connectormock.Case[sns.SubscriptionIdentity] {
 	return connectormock.Branch(sns.SubscribeEndpointBranchSubscribed, value, failure)
 }

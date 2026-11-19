@@ -57,7 +57,8 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 	if err != nil {
 		return publishBranch(PublishMessageBranchDefect, sdkgo.FailureLocalDefect, "SNS publish fence could not be initialized")
 	}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[PublishedMessage](topicOperationFailure("publishMessage", sdkgo.FailureAvailability, "SNS publish checkpoint is unavailable"), 0)
 	case singledispatch.ReadBackRequired:
@@ -66,7 +67,10 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil && !errors.Is(checkpointErr, singledispatch.ErrDispatchNotAllowed) {
-			return sdkgo.NewMutationUncertain(PublishedMessage{}, topicOperationFailure("publishMessage", sdkgo.FailureTransport, "SNS unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PublishedMessage](topicOperationFailure("publishMessage", sdkgo.FailureAvailability, "SNS unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[PublishedMessage](topicOperationFailure("publishMessage", sdkgo.FailureAuthentication, "SNS credentials are unavailable after an earlier send"), 0)
 		}
 		return publishBranch(PublishMessageBranchDefect, sdkgo.FailureAuthentication, "SNS credentials are unavailable or invalid")
 	}
@@ -76,12 +80,12 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 	}
 	send := &snsPublishSend{client: operation.client, call: call, query: query}
 	if fence.Dispatch(send.dispatch) != nil {
-		return sdkgo.NewMutationUncertain(PublishedMessage{}, topicOperationFailure("publishMessage", sdkgo.FailureTransport, "SNS publish dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[PublishedMessage](topicOperationFailure("publishMessage", sdkgo.FailureAvailability, "SNS publish dispatch checkpoint is unavailable"), 0)
 	}
 	response := send.response
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(PublishedMessage{}, topicOperationFailure("publishMessage", sdkgo.FailureTransport, "SNS resend checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[PublishedMessage](topicOperationFailure("publishMessage", sdkgo.FailureAvailability, "SNS resend checkpoint could not be recorded"), 0)
 		}
 		kind := sdkgo.FailureRateLimit
 		if response.status == http.StatusServiceUnavailable {
@@ -90,10 +94,16 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 		return sdkgo.NewMutationRetry[PublishedMessage](topicOperationFailure("publishMessage", kind, "SNS asked the connector to retry publishing"), response.retryAfter)
 	}
 	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return sdkgo.NewMutationRetry[PublishedMessage](topicOperationFailure("publishMessage", sdkgo.FailureTransport, "SNS publish outcome is unknown"), 0)
+		return limitedSNSUnknown[PublishedMessage](call, decision, topicOperationFailure("publishMessage", sdkgo.FailureTransport, "SNS publish outcome is unknown"))
 	}
 	if response.status != http.StatusOK {
-		return publishBranch(PublishMessageBranchProviderRejected, sdkgo.FailureProviderRejection, "SNS rejected the message")
+		if decision.MaximumPriorSends == 0 && isDefiniteSNSRefusal(response.status, response.body) {
+			if fence.RecordCanResend() != nil {
+				return sdkgo.NewMutationRetry[PublishedMessage](topicOperationFailure("publishMessage", sdkgo.FailureAvailability, "SNS refusal checkpoint is unavailable"), 0)
+			}
+			return publishBranch(PublishMessageBranchProviderRejected, sdkgo.FailureProviderRejection, "SNS rejected the message")
+		}
+		return limitedSNSUnknown[PublishedMessage](call, decision, topicOperationFailure("publishMessage", sdkgo.FailureTransport, "SNS publish response is inconclusive"))
 	}
 	var wire struct {
 		XMLName xml.Name `xml:"PublishResponse"`
@@ -102,7 +112,7 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 		} `xml:"PublishResult"`
 	}
 	if xml.Unmarshal(response.body, &wire) != nil || wire.XMLName.Local != "PublishResponse" || !isSNSNamespace(wire.XMLName.Space) || wire.Result.MessageID == "" || len(wire.Result.MessageID) > 512 {
-		return sdkgo.NewMutationUncertain(PublishedMessage{}, topicOperationFailure("publishMessage", sdkgo.FailureProtocol, "SNS accepted the publish without a usable message ID"), sdkgo.Receipt{})
+		return limitedSNSUnknown[PublishedMessage](call, decision, topicOperationFailure("publishMessage", sdkgo.FailureProtocol, "SNS publish response has no usable message ID"))
 	}
 	return sdkgo.NewMutationBranch(PublishMessageBranchPublished, PublishedMessage{MessageID: wire.Result.MessageID}, nil,
 		sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "amazon-sns", ProviderObjectID: wire.Result.MessageID})

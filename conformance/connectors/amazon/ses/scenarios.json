@@ -62,7 +62,7 @@
       "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
       "exchanges": [
         {
-          "body": "{\"message\":\"bad request\"}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"bad request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -90,8 +90,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "identityType": "",
@@ -394,11 +393,17 @@
           "body": "{\"IdentityType\":\"DOMAIN\",\"VerifiedForSendingStatus\":false,\"DkimAttributes\":{\"Tokens\":[\"token-a\",\"token-b\",\"token-c\"]}}",
           "headers": {},
           "keyMode": "absent",
-          "method": "GET",
-          "path": "/v2/email/identities/example.com",
+          "method": "POST",
+          "path": "/v2/email/identities",
+          "requestBody": {
+            "EmailIdentity": "example.com"
+          },
           "requestHeaders": {
             "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=72b8213b8e0c3d494186c31bff4345e11185ecfdfcecc6cef9fd3aab824f9514"
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8acfd27326d0cbca01f5a09e59f91cb2197330f0253c6028d3266a961b382d05"
+            ],
+            "Content-Type": [
+              "application/json"
             ],
             "X-Amz-Date": [
               "20261030T000000Z"
@@ -410,6 +415,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
+          "sendCount": 2,
+          "state": "claimed"
+        },
         "output": {
           "dkimTokens": [
             "token-a",
@@ -447,24 +458,7 @@
     },
     {
       "callId": "bbf66638-e05d-5c1b-b4c2-e1e313054696",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v2/email/identities/example.com",
-          "requestHeaders": {
-            "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=72b8213b8e0c3d494186c31bff4345e11185ecfdfcecc6cef9fd3aab824f9514"
-            ],
-            "X-Amz-Date": [
-              "20261030T000000Z"
-            ]
-          },
-          "status": 404
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
@@ -473,7 +467,7 @@
           "name": "",
           "verifiedForSending": false
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -1124,7 +1118,7 @@
       "callId": "0314958f-7422-5d02-a9db-8af35ced3c56",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"AccessDeniedException\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -1358,7 +1352,7 @@
       "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"bad request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1405,8 +1399,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageId": ""
@@ -1851,7 +1844,7 @@
         }
       ],
       "expected": {
-        "branch": "",
+        "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 3,
@@ -1859,10 +1852,13 @@
           "sendCount": 3,
           "state": "claimed"
         },
+        "output": {
+          "messageId": ""
+        },
         "requestCount": 3,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "bf685e2a-bde6-5bc2-bd95-67492f0a89c7",
       "input": {
@@ -2000,7 +1996,7 @@
       "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"bad request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2024,7 +2020,7 @@
               "20261030T000000Z"
             ]
           },
-          "status": 409
+          "status": 400
         }
       ],
       "expected": {
@@ -2033,8 +2029,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "content": {
@@ -2347,11 +2342,22 @@
           "body": "{\"TemplateContent\":{\"Subject\":\"Weekly report\",\"Text\":\"Hello {{name}}\",\"Html\":\"\u003cp\u003eHello {{name}}\u003c/p\u003e\"}}",
           "headers": {},
           "keyMode": "absent",
-          "method": "GET",
-          "path": "/v2/email/templates/weekly-report",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
           "requestHeaders": {
             "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
             ],
             "X-Amz-Date": [
               "20261030T000000Z"
@@ -2363,6 +2369,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 2,
+          "state": "claimed"
+        },
         "output": {
           "content": {
             "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
@@ -3019,7 +3031,7 @@
       "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3328,7 +3340,7 @@
       "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3556,7 +3568,7 @@
       "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"bad request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -3595,8 +3607,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageId": ""
@@ -3894,24 +3905,7 @@
     },
     {
       "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v2/email/templates/weekly-report",
-          "requestHeaders": {
-            "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
-            ],
-            "X-Amz-Date": [
-              "20261030T000000Z"
-            ]
-          },
-          "status": 404
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
@@ -3923,7 +3917,7 @@
           },
           "name": "weekly-report"
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -4055,7 +4049,7 @@
       "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"bad request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4088,8 +4082,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "content": "",
@@ -5013,7 +5006,7 @@
       "callId": "43e23d7f-6612-5174-bac3-e1920e92a677",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -5298,7 +5291,7 @@
       "callId": "7385fc40-bf83-5ec5-b2f9-36c87a54e6f2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"No acceptance\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5552,7 +5545,7 @@
       "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"__type\":\"BadRequestException\",\"message\":\"bad request\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5581,8 +5574,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "b71f198b-a236-5327-8e0c-38874fb1d59a",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageId": ""
@@ -5849,11 +5841,22 @@
           "body": "{\"TemplateName\":\"verify-customer\",\"FromEmailAddress\":\"sender@example.com\",\"TemplateSubject\":\"Verify your address\",\"TemplateContent\":\"Open the link to verify.\",\"SuccessRedirectionURL\":\"https://example.com/success\",\"FailureRedirectionURL\":\"https://example.com/failure\"}",
           "headers": {},
           "keyMode": "absent",
-          "method": "GET",
-          "path": "/v2/email/custom-verification-email-templates/verify-customer",
+          "method": "POST",
+          "path": "/v2/email/custom-verification-email-templates",
+          "requestBody": {
+            "FailureRedirectionURL": "https://example.com/failure",
+            "FromEmailAddress": "sender@example.com",
+            "SuccessRedirectionURL": "https://example.com/success",
+            "TemplateContent": "Open the link to verify.",
+            "TemplateName": "verify-customer",
+            "TemplateSubject": "Verify your address"
+          },
           "requestHeaders": {
             "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ac2a14422ad888279ffbe5f6d39bee1b7af0b1cfca3e1c1b1afb0547c454dfd5"
+            ],
+            "Content-Type": [
+              "application/json"
             ],
             "X-Amz-Date": [
               "20261030T000000Z"
@@ -5865,6 +5868,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
+          "sendCount": 2,
+          "state": "claimed"
+        },
         "output": {
           "content": "Open the link to verify.",
           "failureRedirectionURL": "https://example.com/failure",
@@ -5907,24 +5916,7 @@
     },
     {
       "callId": "8058ea9f-dfc7-5852-8406-e9fcbedf84be",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v2/email/custom-verification-email-templates/verify-customer",
-          "requestHeaders": {
-            "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=0b4032502c911af594fd4c23991ae973621974f7aa8c1127efc2a5e1c65bd615"
-            ],
-            "X-Amz-Date": [
-              "20261030T000000Z"
-            ]
-          },
-          "status": 404
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
@@ -5936,7 +5928,7 @@
           "subject": "Verify your address",
           "successRedirectionURL": "https://example.com/success"
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true

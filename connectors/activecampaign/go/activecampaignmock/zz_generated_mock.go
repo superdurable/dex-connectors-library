@@ -1649,11 +1649,6 @@ func SubscribeContactToListProviderRejected(value activecampaign.ContactListMemb
 	return connectormock.Branch(activecampaign.SubscribeContactToListBranchProviderRejected, value, failure)
 }
 
-// SubscribeContactToListInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
-func SubscribeContactToListInvalidResponse(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
-	return connectormock.Branch(activecampaign.SubscribeContactToListBranchInvalidResponse, value, failure)
-}
-
 // SubscribeContactToListDefect selects the defect branch: Local input or connection credentials are invalid.
 func SubscribeContactToListDefect(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
 	return connectormock.Branch(activecampaign.SubscribeContactToListBranchDefect, value, failure)
@@ -1688,11 +1683,6 @@ func UnsubscribeContactFromListUncertain(value activecampaign.ContactListMembers
 // UnsubscribeContactFromListProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
 func UnsubscribeContactFromListProviderRejected(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
 	return connectormock.Branch(activecampaign.UnsubscribeContactFromListBranchProviderRejected, value, failure)
-}
-
-// UnsubscribeContactFromListInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
-func UnsubscribeContactFromListInvalidResponse(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
-	return connectormock.Branch(activecampaign.UnsubscribeContactFromListBranchInvalidResponse, value, failure)
 }
 
 // UnsubscribeContactFromListDefect selects the defect branch: Local input or connection credentials are invalid.

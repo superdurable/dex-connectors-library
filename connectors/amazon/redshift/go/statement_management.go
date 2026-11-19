@@ -153,14 +153,14 @@ func (operation ExecuteStatementOperation) Invoke(call sdkgo.Call, input Execute
 		return executeBranch(ExecuteStatementBranchDefect, sdkgo.FailureValidation, "Redshift execution request could not be encoded")
 	}
 	response := operation.client.send(call, "ExecuteStatement", payload)
-	if outcome, ok := classifyExecuteResponse(response); ok {
+	if outcome, ok := classifyExecuteResponse(call, response); ok {
 		return outcome
 	}
 	var wire struct {
 		ID string `json:"Id"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || !statementIDPattern.MatchString(wire.ID) {
-		return executeBranch(ExecuteStatementBranchInvalidResponse, sdkgo.FailureProtocol, "Redshift returned invalid statement ID")
+		return sdkgo.NewMutationRetry[StatementIdentity](executeFailure(sdkgo.FailureProtocol, "Redshift returned invalid statement ID"), 0)
 	}
 	return sdkgo.NewMutationBranch(ExecuteStatementBranchSubmitted, StatementIdentity{ID: wire.ID}, nil, sdkgo.Receipt{})
 }
@@ -230,14 +230,14 @@ func (operation CancelStatementOperation) Invoke(call sdkgo.Call, input CancelSt
 		ID string `json:"Id"`
 	}{input.StatementID})
 	response := operation.client.send(call, "CancelStatement", payload)
-	if outcome, ok := classifyCancelResponse(response); ok {
+	if outcome, ok := classifyCancelResponse(call, response); ok {
 		return outcome
 	}
 	var wire struct {
 		Status *bool `json:"Status"`
 	}
 	if json.Unmarshal(response.body, &wire) != nil || wire.Status == nil {
-		return cancelBranch(CancelStatementBranchInvalidResponse, sdkgo.FailureProtocol, "Redshift returned invalid cancellation status")
+		return sdkgo.NewMutationRetry[StatementCancellation](cancelFailure(sdkgo.FailureProtocol, "Redshift returned invalid cancellation status"), 0)
 	}
 	if !*wire.Status {
 		confirmation := operation.client.send(call, "DescribeStatement", payload)
@@ -269,7 +269,7 @@ func isStatementStatus(status string) bool {
 	return false
 }
 
-func classifyExecuteResponse(response providerResponse) (sdkgo.MutationAttempt[StatementIdentity], bool) {
+func classifyExecuteResponse(call sdkgo.Call, response providerResponse) (sdkgo.MutationAttempt[StatementIdentity], bool) {
 	if errors.Is(response.err, errCredential) {
 		return executeBranch(ExecuteStatementBranchDefect, sdkgo.FailureAuthentication, "Redshift credentials are unavailable"), true
 	}
@@ -283,10 +283,13 @@ func classifyExecuteResponse(response providerResponse) (sdkgo.MutationAttempt[S
 		return sdkgo.NewMutationRetry[StatementIdentity](executeFailure(sdkgo.FailureAvailability, "Redshift is temporarily unavailable"), response.retryAfter), true
 	}
 	if response.status != http.StatusOK {
-		return executeBranch(ExecuteStatementBranchProviderRejected, sdkgo.FailureProviderRejection, "Redshift rejected HTTP "+strconv.Itoa(response.status)), true
+		if isDefiniteRedshiftRefusal(call, response) {
+			return executeBranch(ExecuteStatementBranchProviderRejected, sdkgo.FailureProviderRejection, "Redshift rejected HTTP "+strconv.Itoa(response.status)), true
+		}
+		return sdkgo.NewMutationRetry[StatementIdentity](executeFailure(sdkgo.FailureTransport, "Redshift execution outcome is unknown"), 0), true
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return executeBranch(ExecuteStatementBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Redshift response exceeded the configured limit"), true
+		return sdkgo.NewMutationRetry[StatementIdentity](executeFailure(sdkgo.FailureResponseTooLarge, "Redshift response exceeded the configured limit"), 0), true
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[StatementIdentity](executeFailure(sdkgo.FailureTransport, "Redshift response was interrupted"), 0), true
@@ -347,7 +350,7 @@ func classifyListResponse(response providerResponse) (sdkgo.QueryAttempt[Stateme
 	return sdkgo.QueryAttempt[StatementPage]{}, false
 }
 
-func classifyCancelResponse(response providerResponse) (sdkgo.MutationAttempt[StatementCancellation], bool) {
+func classifyCancelResponse(call sdkgo.Call, response providerResponse) (sdkgo.MutationAttempt[StatementCancellation], bool) {
 	if errors.Is(response.err, errCredential) {
 		return cancelBranch(CancelStatementBranchDefect, sdkgo.FailureAuthentication, "Redshift credentials are unavailable"), true
 	}
@@ -360,19 +363,41 @@ func classifyCancelResponse(response providerResponse) (sdkgo.MutationAttempt[St
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewMutationRetry[StatementCancellation](cancelFailure(sdkgo.FailureAvailability, "Redshift is temporarily unavailable"), response.retryAfter), true
 	}
-	if response.status == http.StatusNotFound || response.status == http.StatusBadRequest && hasErrorCode(response.body, "ResourceNotFoundException") {
+	if isDefiniteRedshiftRefusal(call, response) && (response.status == http.StatusNotFound || response.status == http.StatusBadRequest && hasErrorCode(response.body, "ResourceNotFoundException")) {
 		return sdkgo.NewMutationBranch(CancelStatementBranchMissing, StatementCancellation{}, nil, sdkgo.Receipt{}), true
 	}
 	if response.status != http.StatusOK {
-		return cancelBranch(CancelStatementBranchProviderRejected, sdkgo.FailureProviderRejection, "Redshift rejected HTTP "+strconv.Itoa(response.status)), true
+		if isDefiniteRedshiftRefusal(call, response) {
+			return cancelBranch(CancelStatementBranchProviderRejected, sdkgo.FailureProviderRejection, "Redshift rejected HTTP "+strconv.Itoa(response.status)), true
+		}
+		return sdkgo.NewMutationRetry[StatementCancellation](cancelFailure(sdkgo.FailureTransport, "Redshift cancellation outcome is unknown"), 0), true
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return cancelBranch(CancelStatementBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Redshift response exceeded the configured limit"), true
+		return sdkgo.NewMutationRetry[StatementCancellation](cancelFailure(sdkgo.FailureResponseTooLarge, "Redshift response exceeded the configured limit"), 0), true
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[StatementCancellation](cancelFailure(sdkgo.FailureTransport, "Redshift response was interrupted"), 0), true
 	}
 	return sdkgo.MutationAttempt[StatementCancellation]{}, false
+}
+
+func isDefiniteRedshiftRefusal(call sdkgo.Call, response providerResponse) bool {
+	if call.Context != nil && call.Context.Attempt() > 1 {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body struct {
+		Message string `json:"message"`
+		ID      string `json:"Id"`
+		Status  *bool  `json:"Status"`
+	}
+	return json.Unmarshal(response.body, &body) == nil && body.Message != "" && body.ID == "" && body.Status == nil
 }
 
 func executeFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {

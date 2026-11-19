@@ -338,19 +338,41 @@ func invokeItemWrite(call sdkgo.Call, client *Client, operation, target string, 
 		return sdkgo.NewMutationRetry[ItemWriteResult](writeFailure(operation, sdkgo.FailureAvailability, "DynamoDB is temporarily unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return writeBranch(operation, branches.rejected, sdkgo.FailureProviderRejection, "DynamoDB rejected HTTP "+strconv.Itoa(response.status))
+		if isDefiniteDynamoDBRefusal(call, response) {
+			return writeBranch(operation, branches.rejected, sdkgo.FailureProviderRejection, "DynamoDB rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[ItemWriteResult](writeFailure(operation, sdkgo.FailureTransport, "DynamoDB write outcome is unknown"), 0)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return writeBranch(operation, branches.invalid, sdkgo.FailureResponseTooLarge, "DynamoDB response exceeded the configured limit")
+		return sdkgo.NewMutationRetry[ItemWriteResult](writeFailure(operation, sdkgo.FailureResponseTooLarge, "DynamoDB response exceeded the configured limit"), 0)
 	}
 	if response.err != nil {
 		return sdkgo.NewMutationRetry[ItemWriteResult](writeFailure(operation, sdkgo.FailureTransport, "DynamoDB response was interrupted"), 0)
 	}
 	var body map[string]json.RawMessage
 	if json.Unmarshal(response.body, &body) != nil || body == nil {
-		return writeBranch(operation, branches.invalid, sdkgo.FailureProtocol, "DynamoDB returned invalid write JSON")
+		return sdkgo.NewMutationRetry[ItemWriteResult](writeFailure(operation, sdkgo.FailureProtocol, "DynamoDB returned invalid write JSON"), 0)
 	}
 	return sdkgo.NewMutationBranch(branches.written, ItemWriteResult{Applied: true}, nil, sdkgo.Receipt{})
+}
+
+func isDefiniteDynamoDBRefusal(call sdkgo.Call, response providerResponse) bool {
+	if call.Context != nil && call.Context.Attempt() > 1 {
+		return false
+	}
+	switch response.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+	default:
+		return false
+	}
+	var body struct {
+		Type       string          `json:"__type"`
+		Code       string          `json:"code"`
+		Attributes json.RawMessage `json:"Attributes"`
+	}
+	return json.Unmarshal(response.body, &body) == nil && (body.Type != "" || body.Code != "") && len(body.Attributes) == 0
 }
 
 func writeFailure(operation string, kind sdkgo.FailureKind, message string) sdkgo.Failure {

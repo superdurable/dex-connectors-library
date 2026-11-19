@@ -57,33 +57,32 @@ func (operation SubscribeEndpointOperation) Invoke(call sdkgo.Call, input Subscr
 	if err != nil {
 		return subscriptionMutationBranch(operationID, SubscribeEndpointBranchDefect, sdkgo.FailureLocalDefect, "SNS subscription fence could not be initialized")
 	}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, sdkgo.FailureAvailability, "SNS subscription checkpoint is unavailable"), 0)
-	case singledispatch.ReadBackRequired, singledispatch.ReadBackThenResendAllowed:
-		if value, found := operation.readBack(call, input); found {
-			return sdkgo.NewMutationBranch(SubscribeEndpointBranchSubscribed, value, nil, topicReceipt(call, value.SubscriptionARN))
-		}
-		if fence.Decide().Kind == singledispatch.ReadBackRequired {
-			return sdkgo.NewMutationUncertain(SubscriptionIdentity{}, topicOperationFailure(operationID, sdkgo.FailureTransport, "SNS subscription could not be confirmed after the send cap"), sdkgo.Receipt{})
-		}
+	case singledispatch.ReadBackRequired:
+		return sdkgo.NewMutationUncertain(SubscriptionIdentity{}, topicOperationFailure(operationID, sdkgo.FailureTransport, "SNS subscription could not be confirmed after the send cap"), sdkgo.Receipt{})
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil && !errors.Is(checkpointErr, singledispatch.ErrDispatchNotAllowed) {
-			return sdkgo.NewMutationUncertain(SubscriptionIdentity{}, topicOperationFailure(operationID, sdkgo.FailureTransport, "SNS unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, sdkgo.FailureAvailability, "SNS unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, sdkgo.FailureAuthentication, "SNS credentials are unavailable after an earlier send"), 0)
 		}
 		return subscriptionMutationBranch(operationID, SubscribeEndpointBranchDefect, sdkgo.FailureAuthentication, "SNS credentials are unavailable")
 	}
 	query := url.Values{"Action": {"Subscribe"}, "Version": {"2010-03-31"}, "TopicArn": {input.TopicARN}, "Protocol": {input.Protocol}, "Endpoint": {input.Endpoint}, "ReturnSubscriptionArn": {"true"}}
 	send := &snsSubscribeSend{client: operation.client, call: call, query: query}
 	if fence.Dispatch(send.dispatch) != nil {
-		return sdkgo.NewMutationUncertain(SubscriptionIdentity{}, topicOperationFailure(operationID, sdkgo.FailureTransport, "SNS subscription dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, sdkgo.FailureAvailability, "SNS subscription dispatch checkpoint is unavailable"), 0)
 	}
 	response := send.response
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(SubscriptionIdentity{}, topicOperationFailure(operationID, sdkgo.FailureTransport, "SNS resend checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, sdkgo.FailureAvailability, "SNS resend checkpoint could not be recorded"), 0)
 		}
 		kind := sdkgo.FailureRateLimit
 		if response.status == http.StatusServiceUnavailable {
@@ -92,13 +91,19 @@ func (operation SubscribeEndpointOperation) Invoke(call sdkgo.Call, input Subscr
 		return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, kind, "SNS asked the connector to retry subscription"), response.retryAfter)
 	}
 	if errors.Is(response.err, errCredential) {
-		return sdkgo.NewMutationUncertain(SubscriptionIdentity{}, topicOperationFailure(operationID, sdkgo.FailureProtocol, "SNS subscription response repeated a credential"), sdkgo.Receipt{})
+		return limitedSNSUnknown[SubscriptionIdentity](call, decision, topicOperationFailure(operationID, sdkgo.FailureProtocol, "SNS subscription response repeated a credential"))
 	}
 	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, sdkgo.FailureTransport, "SNS subscription outcome is unknown"), 0)
+		return limitedSNSUnknown[SubscriptionIdentity](call, decision, topicOperationFailure(operationID, sdkgo.FailureTransport, "SNS subscription outcome is unknown"))
 	}
 	if response.status != http.StatusOK {
-		return subscriptionMutationBranch(operationID, SubscribeEndpointBranchProviderRejected, sdkgo.FailureProviderRejection, "SNS rejected the subscription")
+		if decision.MaximumPriorSends == 0 && isDefiniteSNSRefusal(response.status, response.body) {
+			if fence.RecordCanResend() != nil {
+				return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, sdkgo.FailureAvailability, "SNS refusal checkpoint is unavailable"), 0)
+			}
+			return subscriptionMutationBranch(operationID, SubscribeEndpointBranchProviderRejected, sdkgo.FailureProviderRejection, "SNS rejected the subscription")
+		}
+		return limitedSNSUnknown[SubscriptionIdentity](call, decision, topicOperationFailure(operationID, sdkgo.FailureTransport, "SNS subscription response is inconclusive"))
 	}
 	var wire struct {
 		XMLName xml.Name `xml:"SubscribeResponse"`
@@ -107,38 +112,10 @@ func (operation SubscribeEndpointOperation) Invoke(call sdkgo.Call, input Subscr
 		} `xml:"SubscribeResult"`
 	}
 	if xml.Unmarshal(response.body, &wire) != nil || wire.XMLName.Local != "SubscribeResponse" || !isSNSNamespace(wire.XMLName.Space) || !validateSubscriptionARN(wire.Result.ARN) {
-		return sdkgo.NewMutationUncertain(SubscriptionIdentity{}, topicOperationFailure(operationID, sdkgo.FailureProtocol, "SNS accepted subscription without a usable ARN"), sdkgo.Receipt{})
+		return limitedSNSUnknown[SubscriptionIdentity](call, decision, topicOperationFailure(operationID, sdkgo.FailureProtocol, "SNS subscription response has no usable ARN"))
 	}
 	value := SubscriptionIdentity{SubscriptionARN: wire.Result.ARN, TopicARN: input.TopicARN, Protocol: input.Protocol, Endpoint: input.Endpoint}
 	return sdkgo.NewMutationBranch(SubscribeEndpointBranchSubscribed, value, nil, topicReceipt(call, wire.Result.ARN))
-}
-
-func (operation SubscribeEndpointOperation) readBack(call sdkgo.Call, input SubscribeEndpointInput) (SubscriptionIdentity, bool) {
-	nextToken := ""
-	for pageIndex := 0; pageIndex < 10; pageIndex++ {
-		query := url.Values{"Action": {"ListSubscriptionsByTopic"}, "Version": {"2010-03-31"}, "TopicArn": {input.TopicARN}}
-		if nextToken != "" {
-			query.Set("NextToken", nextToken)
-		}
-		response := operation.client.request(call, query)
-		if response.status != http.StatusOK || response.err != nil {
-			return SubscriptionIdentity{}, false
-		}
-		page, err := decodeSubscriptionPage(response.body, "ListSubscriptionsByTopicResponse", "ListSubscriptionsByTopicResult")
-		if err != nil {
-			return SubscriptionIdentity{}, false
-		}
-		for _, item := range page.Subscriptions {
-			if item.TopicARN == input.TopicARN && item.Protocol == input.Protocol && item.Endpoint == input.Endpoint && validateSubscriptionARN(item.SubscriptionARN) {
-				return SubscriptionIdentity{SubscriptionARN: item.SubscriptionARN, TopicARN: item.TopicARN, Protocol: item.Protocol, Endpoint: item.Endpoint}, true
-			}
-		}
-		if page.NextToken == "" {
-			return SubscriptionIdentity{}, false
-		}
-		nextToken = page.NextToken
-	}
-	return SubscriptionIdentity{}, false
 }
 
 func validSubscriptionEndpoint(input SubscribeEndpointInput) bool {

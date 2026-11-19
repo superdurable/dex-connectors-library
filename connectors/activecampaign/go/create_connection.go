@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -101,7 +100,7 @@ func (operation CreateConnectionOperation) Invoke(call sdkgo.Call, input CreateC
 		return connectionMutationBranch("createConnection", CreateConnectionBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
 	if errors.Is(dispatch.err, errRequest) {
-		return sdkgo.NewMutationRetry[ConnectionMetadata](queryFailure("createConnection", sdkgo.FailureTransport, "connection create outcome is unknown"), 0)
+		return limitedActiveCampaignUnknown[ConnectionMetadata](call, decision, queryFailure("createConnection", sdkgo.FailureTransport, "connection create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status == http.StatusTooManyRequests || dispatch.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -114,34 +113,36 @@ func (operation CreateConnectionOperation) Invoke(call sdkgo.Call, input CreateC
 		return sdkgo.NewMutationRetry[ConnectionMetadata](queryFailure("createConnection", kind, "ActiveCampaign temporarily rejected account creation"), dispatch.retryAfter)
 	}
 	if dispatch.status == http.StatusRequestTimeout || dispatch.status >= 500 {
-		return sdkgo.NewMutationRetry[ConnectionMetadata](queryFailure("createConnection", sdkgo.FailureAvailability, "connection create outcome is unknown"), dispatch.retryAfter)
+		return limitedActiveCampaignUnknown[ConnectionMetadata](call, decision, queryFailure("createConnection", sdkgo.FailureAvailability, "connection create outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status != http.StatusCreated && dispatch.status != http.StatusOK {
-		if decision.MaximumPriorSends > 0 {
-			return connectionCreateUncertain(call, "earlier connection create may have succeeded")
+		if decision.MaximumPriorSends == 0 && dispatch.err == nil && isDefiniteActiveCampaignRefusal(dispatch.status, dispatch.response) {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[ConnectionMetadata](queryFailure("createConnection", sdkgo.FailureAvailability, "connection refusal checkpoint is unavailable"), 0)
+			}
+			return connectionMutationBranch("createConnection", CreateConnectionBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
 		}
-		return connectionMutationBranch("createConnection", CreateConnectionBranchProviderRejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
+		return limitedActiveCampaignUnknown[ConnectionMetadata](call, decision, queryFailure("createConnection", sdkgo.FailureTransport, "connection response did not prove refusal"), dealReceipt(call, ""))
 	}
 	if dispatch.err != nil {
-		return connectionCreateUncertain(call, "connection create response was interrupted")
+		return limitedActiveCampaignUnknown[ConnectionMetadata](call, decision, queryFailure("createConnection", sdkgo.FailureTransport, "connection response was interrupted"), dealReceipt(call, ""))
 	}
 	connection, err := decodeConnection(dispatch.response)
 	if err != nil {
-		return connectionCreateUncertain(call, "connection create response was invalid")
+		return limitedActiveCampaignUnknown[ConnectionMetadata](call, decision, queryFailure("createConnection", sdkgo.FailureProtocol, "connection confirmation was invalid"), dealReceipt(call, ""))
 	}
 	if !matchesConnection(connection, input) {
-		return connectionCreateUncertain(call, "connection create response does not match the request")
+		return limitedActiveCampaignUnknown[ConnectionMetadata](call, decision, queryFailure("createConnection", sdkgo.FailureProtocol, "connection confirmation contradicted the request"), dealReceipt(call, ""))
 	}
 	_ = fence.RecordProviderID(connection.ID)
 	return sdkgo.NewMutationBranch(CreateConnectionBranchCreated, connection, nil, dealReceipt(call, connection.ID))
 }
 
 func (operation CreateConnectionOperation) readBack(call sdkgo.Call, input CreateConnectionInput, providerID string) (ConnectionMetadata, string) {
-	path := "/connections/" + providerID
 	if providerID == "" {
-		path = "/connections?" + url.Values{"filters[service]": {input.Service}, "filters[externalid]": {input.ExternalID}}.Encode()
+		return ConnectionMetadata{}, "absent"
 	}
-	body, status, _, err := operation.client.get(call, path)
+	body, status, _, err := operation.client.get(call, "/connections/"+providerID)
 	if err != nil || status == http.StatusTooManyRequests || status >= 500 {
 		return ConnectionMetadata{}, "retry"
 	}
@@ -151,46 +152,11 @@ func (operation CreateConnectionOperation) readBack(call sdkgo.Call, input Creat
 	if status != http.StatusOK {
 		return ConnectionMetadata{}, "uncertain"
 	}
-	if providerID != "" {
-		connection, err := decodeConnection(body)
-		if err != nil || !matchesConnection(connection, input) {
-			return ConnectionMetadata{}, "uncertain"
-		}
-		return connection, "found"
-	}
-	var wire struct {
-		Connections []connectionWire `json:"connections"`
-		Meta        struct {
-			Total string `json:"total"`
-		} `json:"meta"`
-	}
-	if err := json.Unmarshal(body, &wire); err != nil || wire.Connections == nil {
+	connection, err := decodeConnection(body)
+	if err != nil || !matchesConnection(connection, input) {
 		return ConnectionMetadata{}, "uncertain"
 	}
-	total, err := strconv.Atoi(wire.Meta.Total)
-	if err != nil || total > len(wire.Connections) {
-		return ConnectionMetadata{}, "uncertain"
-	}
-	var match ConnectionMetadata
-	for _, item := range wire.Connections {
-		connection, err := connectionMetadata(item)
-		if err != nil {
-			return ConnectionMetadata{}, "uncertain"
-		}
-		if connection.Service == input.Service && connection.ExternalID == input.ExternalID {
-			if !matchesConnection(connection, input) {
-				return ConnectionMetadata{}, "uncertain"
-			}
-			if match.ID != "" {
-				return ConnectionMetadata{}, "uncertain"
-			}
-			match = connection
-		}
-	}
-	if match.ID != "" {
-		return match, "found"
-	}
-	return ConnectionMetadata{}, "absent"
+	return connection, "found"
 }
 
 func matchesConnection(connection ConnectionMetadata, input CreateConnectionInput) bool {

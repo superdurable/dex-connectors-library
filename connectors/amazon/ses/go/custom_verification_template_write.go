@@ -44,7 +44,7 @@ func (operation UpdateCustomVerificationEmailTemplateOperation) Invoke(call sdkg
 		return templateMutationBranch[CustomVerificationEmailTemplate](operationID, UpdateCustomVerificationEmailTemplateBranchDefect, sdkgo.FailureLocalDefect, "SES verification template could not be encoded")
 	}
 	response := operation.client.request(call, http.MethodPut, customVerificationTemplatePath(input.Template.Name), body)
-	if attempt, failed := templateMutationFailure[CustomVerificationEmailTemplate](operationID, response, UpdateCustomVerificationEmailTemplateBranchProviderRejected, UpdateCustomVerificationEmailTemplateBranchDefect); failed {
+	if attempt, failed := templateMutationFailure[CustomVerificationEmailTemplate](call, operationID, response, UpdateCustomVerificationEmailTemplateBranchProviderRejected, UpdateCustomVerificationEmailTemplateBranchDefect); failed {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(UpdateCustomVerificationEmailTemplateBranchUpdated, input.Template, nil, templateReceipt(call, input.Template.Name))
@@ -84,7 +84,7 @@ func (operation DeleteCustomVerificationEmailTemplateOperation) Invoke(call sdkg
 	if response.status == http.StatusNotFound && response.err == nil {
 		return sdkgo.NewMutationBranch(DeleteCustomVerificationEmailTemplateBranchDeleted, DeletedEmailTemplate{Name: input.TemplateName}, nil, templateReceipt(call, input.TemplateName))
 	}
-	if attempt, failed := templateMutationFailure[DeletedEmailTemplate](operationID, response, DeleteCustomVerificationEmailTemplateBranchProviderRejected, DeleteCustomVerificationEmailTemplateBranchDefect); failed {
+	if attempt, failed := templateMutationFailure[DeletedEmailTemplate](call, operationID, response, DeleteCustomVerificationEmailTemplateBranchProviderRejected, DeleteCustomVerificationEmailTemplateBranchDefect); failed {
 		return attempt
 	}
 	return sdkgo.NewMutationBranch(DeleteCustomVerificationEmailTemplateBranchDeleted, DeletedEmailTemplate{Name: input.TemplateName}, nil, templateReceipt(call, input.TemplateName))

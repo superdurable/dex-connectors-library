@@ -69,7 +69,12 @@ func TestIdentifyUserAbsolutelySetsOneProperty(t *testing.T) {
 
 func TestIngestionWritesClassifyProviderOutcomes(t *testing.T) {
 	for _, status := range []int{http.StatusForbidden, http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusInternalServerError} {
-		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { response.WriteHeader(status) }))
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(status)
+			if status == http.StatusForbidden {
+				_, _ = response.Write([]byte(`{"error":"denied"}`))
+			}
+		}))
 		client := newTestClient(t, server.URL, 0)
 		for _, invoke := range []func() (sdkgo.BranchID, error){
 			func() (sdkgo.BranchID, error) {

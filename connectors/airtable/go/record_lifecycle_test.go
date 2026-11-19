@@ -66,10 +66,11 @@ func TestDeleteRecordConvergesOnAbsence(t *testing.T) {
 		status int
 		body   string
 		branch sdkgo.BranchID
+		retry  bool
 	}{
 		{name: "deleted", status: http.StatusOK, body: `{"id":"recReviewCreated1","deleted":true}`, branch: airtable.DeleteRecordBranchDeleted},
 		{name: "already absent", status: http.StatusNotFound, body: `{"error":{"type":"NOT_FOUND"}}`, branch: airtable.DeleteRecordBranchAlreadyAbsent},
-		{name: "invalid response", status: http.StatusOK, body: `{"id":"recReviewCreated1","deleted":false}`, branch: airtable.DeleteRecordBranchInvalidResponse},
+		{name: "invalid response", status: http.StatusOK, body: `{"id":"recReviewCreated1","deleted":false}`, retry: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			provider := newRecordingAirtable(t, func(response http.ResponseWriter, _ recordedRequest) {
@@ -79,6 +80,11 @@ func TestDeleteRecordConvergesOnAbsence(t *testing.T) {
 			result, err := sdkgo.RunMutation(newStepDexContext("delete-"+testCase.name), client.DeleteRecord(), airtableConnection, airtable.DeleteRecordInput{
 				BaseID: testBaseID, TableIDOrName: testTableID, RecordID: "recReviewCreated1",
 			})
+			if testCase.retry {
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, testCase.branch, result.Branch)
 			require.Equal(t, http.MethodDelete, provider.recordedRequests()[0].method)

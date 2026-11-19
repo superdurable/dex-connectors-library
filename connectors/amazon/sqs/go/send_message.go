@@ -66,7 +66,8 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	if err != nil {
 		return sendMessageBranch(SendMessageBranchDefect, sdkgo.FailureLocalDefect, "SQS send fence could not be initialized")
 	}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[SentMessage](newFailure(sendMessageOperationID, sdkgo.FailureAvailability, "SQS send checkpoint is unavailable"), 0)
 	case singledispatch.ReadBackRequired:
@@ -78,7 +79,10 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 			return sdkgo.NewMutationRetry[SentMessage](*failure, 0)
 		}
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil && !errors.Is(checkpointErr, singledispatch.ErrDispatchNotAllowed) {
-			return sdkgo.NewMutationUncertain(SentMessage{}, newFailure(sendMessageOperationID, sdkgo.FailureTransport, "SQS unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SentMessage](newFailure(sendMessageOperationID, sdkgo.FailureAvailability, "SQS unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[SentMessage](*failure, 0)
 		}
 		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SentMessage{}, failure, sdkgo.Receipt{})
 	}
@@ -89,34 +93,45 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	}
 	send := &sqsMessageSend{client: client, session: session, request: request}
 	if fence.Dispatch(send.dispatch) != nil {
-		return sdkgo.NewMutationUncertain(SentMessage{}, newFailure(sendMessageOperationID, sdkgo.FailureTransport, "SQS send dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[SentMessage](newFailure(sendMessageOperationID, sdkgo.FailureAvailability, "SQS send dispatch checkpoint is unavailable"), 0)
 	}
 	response, err := send.response, send.err
 	if errors.Is(err, errRequestNotBuilt) {
 		if fence.RecordNotSent() != nil {
-			return sdkgo.NewMutationUncertain(SentMessage{}, newFailure(sendMessageOperationID, sdkgo.FailureTransport, "SQS unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SentMessage](newFailure(sendMessageOperationID, sdkgo.FailureAvailability, "SQS unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[SentMessage](newFailure(sendMessageOperationID, sdkgo.FailureLocalDefect, "SQS send request could not be built"), 0)
 		}
 		return sendMessageBranch(SendMessageBranchDefect, sdkgo.FailureLocalDefect, "SQS send request could not be built")
 	}
 	if err != nil {
-		return sdkgo.NewMutationRetry[SentMessage](transportFailure(sendMessageOperationID, "message send"), 0)
+		return limitedSQSUnknown(call, decision, transportFailure(sendMessageOperationID, "message send"))
 	}
 	defer closeResponseBody(response)
 	if !isSuccessStatus(response.StatusCode) {
-		classified := classifyErrorResponse(sendMessageOperationID, "message send", client.readErrorResponse(response, session.credentials))
+		errorResponse := client.readErrorResponse(response, session.credentials)
+		classified := classifyErrorResponse(sendMessageOperationID, "message send", errorResponse)
 		if classified.outcome == outcomeRetry {
 			if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable {
 				if fence.RecordCanResend() != nil {
-					return sdkgo.NewMutationUncertain(SentMessage{}, newFailure(sendMessageOperationID, sdkgo.FailureTransport, "SQS resend checkpoint could not be recorded"), sdkgo.Receipt{})
+					return sdkgo.NewMutationRetry[SentMessage](newFailure(sendMessageOperationID, sdkgo.FailureAvailability, "SQS resend checkpoint could not be recorded"), 0)
 				}
+				return sdkgo.NewMutationRetry[SentMessage](classified.failure, classified.retryAfter)
 			}
-			return sdkgo.NewMutationRetry[SentMessage](classified.failure, classified.retryAfter)
+			return limitedSQSUnknown(call, decision, classified.failure)
 		}
-		return sdkgo.NewMutationBranch(SendMessageBranchProviderRejected, SentMessage{}, &classified.failure, sdkgo.Receipt{})
+		if decision.MaximumPriorSends == 0 && isDefiniteSQSRefusal(errorResponse) {
+			if fence.RecordCanResend() != nil {
+				return sdkgo.NewMutationRetry[SentMessage](newFailure(sendMessageOperationID, sdkgo.FailureAvailability, "SQS refusal checkpoint is unavailable"), 0)
+			}
+			return sdkgo.NewMutationBranch(SendMessageBranchProviderRejected, SentMessage{}, &classified.failure, sdkgo.Receipt{})
+		}
+		return limitedSQSUnknown(call, decision, classified.failure)
 	}
 	contents, err := providerhttp.ReadBoundedBody(response.Body, 64*1024)
 	if err != nil {
-		return sdkgo.NewMutationRetry[SentMessage](newFailure(sendMessageOperationID, sdkgo.FailureTransport, "SQS send response was interrupted"), 0)
+		return limitedSQSUnknown(call, decision, newFailure(sendMessageOperationID, sdkgo.FailureTransport, "SQS send response was interrupted"))
 	}
 	var accepted struct {
 		MessageID        string `json:"MessageId"`
@@ -124,7 +139,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	}
 	if json.Unmarshal(contents, &accepted) != nil || accepted.MessageID == "" || validateMessageID(accepted.MessageID) != nil ||
 		accepted.MD5OfMessageBody != bodyMD5(input.Body) || containsCredential(accepted.MessageID, session.credentials) {
-		return sdkgo.NewMutationUncertain(SentMessage{}, newFailure(sendMessageOperationID, sdkgo.FailureProtocol, "SQS accepted the send without a usable message ID or checksum"), sdkgo.Receipt{})
+		return limitedSQSUnknown(call, decision, newFailure(sendMessageOperationID, sdkgo.FailureProtocol, "SQS send response has no usable message ID or checksum"))
 	}
 	value := SentMessage{QueueURL: queue.url, MessageID: accepted.MessageID, MD5OfBody: accepted.MD5OfMessageBody}
 	return sdkgo.NewMutationBranch(SendMessageBranchSent, value, nil, client.receipt(call, safeRequestID(response.Header), messageObjectID(queue, accepted.MessageID)))
@@ -159,4 +174,22 @@ func bodyMD5(body string) string {
 func sendMessageBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentMessage] {
 	failure := newFailure(sendMessageOperationID, kind, message)
 	return sdkgo.NewMutationBranch(branch, SentMessage{}, &failure, sdkgo.Receipt{})
+}
+
+func limitedSQSUnknown(call sdkgo.Call, decision singledispatch.Decision, failure sdkgo.Failure) sdkgo.MutationAttempt[SentMessage] {
+	if decision.MaximumPriorSends+1 >= call.MaxSends() {
+		return sdkgo.NewMutationUncertain(SentMessage{}, failure, sdkgo.Receipt{})
+	}
+	return sdkgo.NewMutationRetry[SentMessage](failure, 0)
+}
+
+func isDefiniteSQSRefusal(response providerErrorResponse) bool {
+	switch response.statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return response.code != ""
+	default:
+		return false
+	}
 }

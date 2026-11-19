@@ -63,6 +63,8 @@ func TestSendMessageClassifiesRejectionAndUnknownResponse(t *testing.T) {
 			response.WriteHeader(status)
 			if status == http.StatusOK {
 				_, _ = response.Write([]byte(`{}`))
+			} else if status == http.StatusForbidden {
+				_, _ = response.Write([]byte(`{"__type":"AccessDenied"}`))
 			}
 		})
 		client, err := sqs.New(sqs.Config{Endpoint: server.URL, Region: testRegion, DefaultQueueURL: server.URL + "/123456789012/orders"}, staticCredentials(""))
@@ -73,8 +75,8 @@ func TestSendMessageClassifiesRejectionAndUnknownResponse(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, sqs.SendMessageBranchProviderRejected, result.Branch)
 		case http.StatusOK:
-			require.NoError(t, err)
-			require.Equal(t, sqs.SendMessageBranchUncertain, result.Branch)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
 		default:
 			var retry *sdkgo.RetryError
 			require.ErrorAs(t, err, &retry)

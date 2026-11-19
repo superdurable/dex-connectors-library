@@ -32,7 +32,7 @@ func TestListContactMembershipsFiltersProviderFields(t *testing.T) {
 	require.Equal(t, ContactListMembership{ID: "42", ContactID: "68", ListID: "11", Status: 1}, result.Value.Memberships[0])
 }
 
-func TestSubscribeReadsBackAfterUnknownOutcome(t *testing.T) {
+func TestSubscribeDoesNotConfirmByMembershipAfterUnknownOutcome(t *testing.T) {
 	var sends, reads atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
@@ -62,12 +62,10 @@ func TestSubscribeReadsBackAfterUnknownOutcome(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	ctx.attempt = 2
-	result, err := sdkgo.RunMutation(ctx, client.SubscribeContactToList(), testConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, SubscribeContactToListBranchSubscribed, result.Branch)
-	require.Equal(t, 1, result.Value.Status)
-	require.Equal(t, int32(1), sends.Load())
-	require.Equal(t, int32(2), reads.Load())
+	_, err = sdkgo.RunMutation(ctx, client.SubscribeContactToList(), testConnection, input)
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, int32(2), sends.Load())
+	require.Equal(t, int32(1), reads.Load())
 }
 
 func TestUnsubscribeConvergesWithoutAnotherWrite(t *testing.T) {

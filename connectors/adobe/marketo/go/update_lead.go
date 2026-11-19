@@ -61,7 +61,7 @@ func (operation UpdateLeadOperation) Invoke(call sdkgo.Call, input UpdateLeadInp
 	if err != nil {
 		return updateLeadBranch(UpdateLeadBranchDefect, sdkgo.FailureLocalDefect, "lead update could not be encoded")
 	}
-	response := operation.client.requestLeadAPI(call, http.MethodPost, "/v1/leads.json", body)
+	response := operation.client.writeLeadAPI(call, "/v1/leads.json", body)
 	if errors.Is(response.err, errLeadReauthorization) {
 		return updateLeadBranch(UpdateLeadBranchDefect, sdkgo.FailureAuthentication, "Marketo connection needs authorization")
 	}
@@ -99,20 +99,23 @@ func (operation UpdateLeadOperation) Invoke(call sdkgo.Call, input UpdateLeadInp
 		}
 		switch envelope.Errors[0].Code {
 		case "702":
+			if call.Context.Attempt() > 1 {
+				return updateLeadRetry(sdkgo.FailureNotFound, "Marketo lead update outcome is inconclusive", 0)
+			}
 			return updateLeadBranch(UpdateLeadBranchNotFound, sdkgo.FailureNotFound, "Marketo lead was not found")
 		case "602", "606", "607", "615":
 			return updateLeadRetry(sdkgo.FailureRateLimit, "Marketo token or quota temporarily blocked the update", response.retryAfter)
 		case "604", "608", "611", "614", "500", "502":
 			return updateLeadRetry(sdkgo.FailureAvailability, "Marketo is temporarily unavailable", response.retryAfter)
 		default:
-			return updateLeadBranch(UpdateLeadBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the lead update")
+			return updateLeadRetry(sdkgo.FailureProtocol, "Marketo lead update outcome is inconclusive", 0)
 		}
 	}
 	if envelope.Result == nil || len(*envelope.Result) > 1 {
 		return updateLeadBranch(UpdateLeadBranchInvalidResponse, sdkgo.FailureProtocol, "Marketo returned invalid update result")
 	}
 	if len(*envelope.Result) == 0 {
-		return updateLeadBranch(UpdateLeadBranchNotFound, sdkgo.FailureNotFound, "Marketo found no lead to update")
+		return updateLeadRetry(sdkgo.FailureProtocol, "Marketo lead update returned no result", 0)
 	}
 	updated := (*envelope.Result)[0]
 	if updated.ID != input.LeadID || updated.Status != "updated" {
@@ -127,6 +130,9 @@ func updateLeadFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
 }
 func updateLeadBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[UpdatedLead] {
 	failure := updateLeadFailure(kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[UpdatedLead](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, UpdatedLead{}, &failure, sdkgo.Receipt{})
 }
 func updateLeadRetry(kind sdkgo.FailureKind, message string, delay time.Duration) sdkgo.MutationAttempt[UpdatedLead] {

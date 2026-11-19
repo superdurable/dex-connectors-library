@@ -38,7 +38,7 @@ func TestSendEmailClassifiesDefiniteAndUnknownOutcomes(t *testing.T) {
 	for _, status := range []int{http.StatusBadRequest, http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusInternalServerError} {
 		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(status)
-			_, err := response.Write([]byte(`{"message":"rejected"}`))
+			_, err := response.Write([]byte(`{"__type":"BadRequestException","message":"rejected"}`))
 			require.NoError(t, err)
 		}))
 		result, err := sdkgo.RunMutation(queryContext{}, newTestClient(t, server.URL, 0).SendEmail(), testConnection, exampleEmail)

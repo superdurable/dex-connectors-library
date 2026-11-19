@@ -100,7 +100,7 @@ func (operation UpdateConnectionOperation) Invoke(call sdkgo.Call, input UpdateC
 	if err != nil {
 		return connectionMutationBranch("updateConnection", UpdateConnectionBranchDefect, sdkgo.FailureLocalDefect, "connection update could not be encoded")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodPut, "/connections/"+input.ConnectionID, encoded)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodPut, "/connections/"+input.ConnectionID, encoded)
 	if errors.Is(err, errCredential) {
 		return connectionMutationBranch("updateConnection", UpdateConnectionBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
@@ -137,7 +137,7 @@ func (operation DeleteConnectionOperation) Invoke(call sdkgo.Call, input DeleteC
 	if !numericID.MatchString(input.ConnectionID) {
 		return connectionDeletionBranch(DeleteConnectionBranchDefect, sdkgo.FailureValidation, "connection ID must be numeric")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodDelete, "/connections/"+input.ConnectionID, nil)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodDelete, "/connections/"+input.ConnectionID, nil)
 	if errors.Is(err, errCredential) {
 		return connectionDeletionBranch(DeleteConnectionBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
@@ -170,9 +170,15 @@ func validConnectionLabel(value string) bool {
 }
 func connectionMutationBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ConnectionMetadata] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[ConnectionMetadata](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, ConnectionMetadata{}, &failure, sdkgo.Receipt{})
 }
 func connectionDeletionBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[ConnectionDeletion] {
 	failure := queryFailure("deleteConnection", kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[ConnectionDeletion](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, ConnectionDeletion{}, &failure, sdkgo.Receipt{})
 }

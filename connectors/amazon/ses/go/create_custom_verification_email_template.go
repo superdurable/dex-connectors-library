@@ -46,25 +46,20 @@ func (operation CreateCustomVerificationEmailTemplateOperation) Invoke(call sdkg
 	if err != nil {
 		return templateMutationBranch[CustomVerificationEmailTemplate](operationID, CreateCustomVerificationEmailTemplateBranchDefect, sdkgo.FailureLocalDefect, "SES verification template fence could not be initialized")
 	}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[CustomVerificationEmailTemplate](sesFailure(operationID, sdkgo.FailureAvailability, "SES verification template checkpoint is unavailable"), 0)
-	case singledispatch.ReadBackRequired, singledispatch.ReadBackThenResendAllowed:
-		confirmed, exists := operation.readBack(call, input.Template)
-		if confirmed {
-			return sdkgo.NewMutationBranch(CreateCustomVerificationEmailTemplateBranchCreated, input.Template, nil, templateReceipt(call, input.Template.Name))
-		}
-		if exists {
-			return templateMutationBranch[CustomVerificationEmailTemplate](operationID, CreateCustomVerificationEmailTemplateBranchProviderRejected, sdkgo.FailureConflict, "SES verification template name belongs to different content")
-		}
-		if fence.Decide().Kind == singledispatch.ReadBackRequired {
-			return sdkgo.NewMutationUncertain(input.Template, sesFailure(operationID, sdkgo.FailureTransport, "SES verification template creation could not be confirmed after the send cap"), sdkgo.Receipt{})
-		}
+	case singledispatch.ReadBackRequired:
+		return sdkgo.NewMutationUncertain(input.Template, sesFailure(operationID, sdkgo.FailureTransport, "SES verification template creation could not be confirmed after the send cap"), sdkgo.Receipt{})
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil && !errors.Is(checkpointErr, singledispatch.ErrDispatchNotAllowed) {
-			return sdkgo.NewMutationUncertain(input.Template, sesFailure(operationID, sdkgo.FailureTransport, "SES unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CustomVerificationEmailTemplate](sesFailure(operationID, sdkgo.FailureAvailability, "SES unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[CustomVerificationEmailTemplate](sesFailure(operationID, sdkgo.FailureAuthentication, "SES credentials are unavailable after an earlier send"), 0)
 		}
 		return templateMutationBranch[CustomVerificationEmailTemplate](operationID, CreateCustomVerificationEmailTemplateBranchDefect, sdkgo.FailureAuthentication, "SES credentials are unavailable or invalid")
 	}
@@ -74,12 +69,12 @@ func (operation CreateCustomVerificationEmailTemplateOperation) Invoke(call sdkg
 	}
 	send := &customVerificationTemplateCreate{client: operation.client, call: call, body: body}
 	if fence.Dispatch(send.dispatch) != nil {
-		return sdkgo.NewMutationUncertain(input.Template, sesFailure(operationID, sdkgo.FailureTransport, "SES verification template dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CustomVerificationEmailTemplate](sesFailure(operationID, sdkgo.FailureAvailability, "SES verification template dispatch checkpoint is unavailable"), 0)
 	}
 	response := send.response
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(input.Template, sesFailure(operationID, sdkgo.FailureTransport, "SES verification template resend checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CustomVerificationEmailTemplate](sesFailure(operationID, sdkgo.FailureAvailability, "SES verification template resend checkpoint could not be recorded"), 0)
 		}
 		kind := sdkgo.FailureRateLimit
 		if response.status == http.StatusServiceUnavailable {
@@ -88,27 +83,21 @@ func (operation CreateCustomVerificationEmailTemplateOperation) Invoke(call sdkg
 		return sdkgo.NewMutationRetry[CustomVerificationEmailTemplate](sesFailure(operationID, kind, "SES asked the connector to retry verification template creation"), response.retryAfter)
 	}
 	if errors.Is(response.err, errCredential) {
-		return sdkgo.NewMutationUncertain(input.Template, sesFailure(operationID, sdkgo.FailureProtocol, "SES verification template response repeated a credential"), sdkgo.Receipt{})
+		return limitedSESUnknown(call, decision, input.Template, sesFailure(operationID, sdkgo.FailureProtocol, "SES verification template response repeated a credential"))
 	}
 	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return sdkgo.NewMutationRetry[CustomVerificationEmailTemplate](sesFailure(operationID, sdkgo.FailureTransport, "SES verification template creation outcome is unknown"), 0)
+		return limitedSESUnknown(call, decision, input.Template, sesFailure(operationID, sdkgo.FailureTransport, "SES verification template creation outcome is unknown"))
 	}
 	if response.status != http.StatusOK {
-		return templateMutationBranch[CustomVerificationEmailTemplate](operationID, CreateCustomVerificationEmailTemplateBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected verification template creation")
+		if decision.MaximumPriorSends == 0 && isDefiniteSESRefusal(response.status, response.body) {
+			if fence.RecordCanResend() != nil {
+				return sdkgo.NewMutationRetry[CustomVerificationEmailTemplate](sesFailure(operationID, sdkgo.FailureAvailability, "SES refusal checkpoint could not be recorded"), 0)
+			}
+			return templateMutationBranch[CustomVerificationEmailTemplate](operationID, CreateCustomVerificationEmailTemplateBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected verification template creation")
+		}
+		return limitedSESUnknown(call, decision, input.Template, sesFailure(operationID, sdkgo.FailureTransport, "SES verification template create response is inconclusive"))
 	}
 	return sdkgo.NewMutationBranch(CreateCustomVerificationEmailTemplateBranchCreated, input.Template, nil, templateReceipt(call, input.Template.Name))
-}
-
-func (operation CreateCustomVerificationEmailTemplateOperation) readBack(call sdkgo.Call, expected CustomVerificationEmailTemplate) (bool, bool) {
-	response := operation.client.request(call, http.MethodGet, customVerificationTemplatePath(expected.Name), nil)
-	if response.status != http.StatusOK || response.err != nil {
-		return false, false
-	}
-	actual, err := decodeCustomVerificationTemplate(expected.Name, response.body)
-	if err != nil {
-		return false, false
-	}
-	return actual == expected, true
 }
 
 type customVerificationTemplateCreate struct {

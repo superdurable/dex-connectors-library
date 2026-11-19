@@ -72,7 +72,10 @@ func (operation UnsetUserPropertyOperation) Invoke(call sdkgo.Call, input UnsetU
 		return sdkgo.NewMutationRetry[IdentifiedUser](unsetFailure(kind, "Amplitude unset should be retried"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return unsetBranch(UnsetUserPropertyBranchProviderRejected, sdkgo.FailureProviderRejection, "Amplitude refused the property removal")
+		if isDefiniteIngestionRefusal(call, response) {
+			return unsetBranch(UnsetUserPropertyBranchProviderRejected, sdkgo.FailureProviderRejection, "Amplitude refused the property removal")
+		}
+		return sdkgo.NewMutationRetry[IdentifiedUser](unsetFailure(sdkgo.FailureTransport, "Amplitude property removal outcome is unknown"), 0)
 	}
 	value := IdentifiedUser{UserID: input.UserID, PropertyName: input.PropertyName}
 	return sdkgo.NewMutationBranch(UnsetUserPropertyBranchUnset, value, nil, sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "amplitude", ProviderObjectID: input.UserID})

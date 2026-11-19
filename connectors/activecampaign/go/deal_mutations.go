@@ -100,7 +100,7 @@ func (operation UpdateDealOperation) Invoke(call sdkgo.Call, input UpdateDealInp
 	if err != nil {
 		return dealMutationBranch("updateDeal", UpdateDealBranchDefect, sdkgo.FailureLocalDefect, "deal update could not be encoded")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodPut, "/deals/"+input.DealID, encoded)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodPut, "/deals/"+input.DealID, encoded)
 	if errors.Is(err, errCredential) {
 		return dealMutationBranch("updateDeal", UpdateDealBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -137,7 +137,7 @@ func (operation DeleteDealOperation) Invoke(call sdkgo.Call, input DeleteDealInp
 	if !numericID.MatchString(input.DealID) {
 		return dealDeletionBranch("deleteDeal", DeleteDealBranchDefect, sdkgo.FailureValidation, "deal ID must be numeric")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodDelete, "/deals/"+input.DealID, nil)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodDelete, "/deals/"+input.DealID, nil)
 	if errors.Is(err, errCredential) {
 		return dealDeletionBranch("deleteDeal", DeleteDealBranchDefect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
@@ -167,5 +167,8 @@ func (operation DeleteDealOperation) Invoke(call sdkgo.Call, input DeleteDealInp
 
 func dealDeletionBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[DealDeletion] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[DealDeletion](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, DealDeletion{}, &failure, sdkgo.Receipt{})
 }

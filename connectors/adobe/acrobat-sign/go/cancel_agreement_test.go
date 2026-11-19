@@ -72,9 +72,9 @@ func TestCancelAgreementClassifiesReadFailures(t *testing.T) {
 		branch sdkgo.BranchID
 		retry  bool
 	}{
-		{name: "missing", status: 404, body: `{}`, branch: CancelAgreementBranchNotFound},
-		{name: "denied", status: 403, body: `{}`, branch: CancelAgreementBranchProviderRejected},
-		{name: "invalid", status: 200, body: `{`, branch: CancelAgreementBranchInvalidResponse},
+		{name: "missing", status: 404, body: `{"code":"NOT_FOUND","message":"No acceptance"}`, branch: CancelAgreementBranchNotFound},
+		{name: "denied", status: 403, body: `{"code":"DENIED","message":"No acceptance"}`, branch: CancelAgreementBranchProviderRejected},
+		{name: "invalid", status: 200, body: `{`, retry: true},
 		{name: "rate limited", status: 429, body: `{}`, retry: true},
 		{name: "unavailable", status: 503, body: `{}`, retry: true},
 		{name: "unknown", status: 500, body: `{}`, retry: true},

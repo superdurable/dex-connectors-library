@@ -213,9 +213,9 @@ spec:
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
-        - {id: subscribed, goName: Subscribed, description: SNS accepted or read-back confirmed the subscription.}
+        - {id: subscribed, goName: Subscribed, description: SNS accepted the subscription.}
         - {id: providerRejected, goName: ProviderRejected, description: SNS conclusively rejected the endpoint or topic., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The subscription may exist but read-back could not confirm it., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The subscription may exist but the capped sends could not confirm it., optional: true}
         - {id: defect, goName: Defect, description: "The topic, protocol, endpoint, or credentials are invalid.", optional: true}
       mocks:
         - {name: subscribedDefault, branch: subscribed, default: true, description: SNS accepted one HTTPS subscription., output: {subscriptionARN: 'arn:aws:sns:us-east-1:123456789012:example-topic:11111111-1111-4111-8111-111111111111', topicARN: 'arn:aws:sns:us-east-1:123456789012:example-topic', protocol: https, endpoint: 'https://example.com/sns'}}

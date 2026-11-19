@@ -151,7 +151,7 @@ func (operation UpsertOpportunityOperation) Invoke(call sdkgo.Call, input Upsert
 	if err != nil {
 		return opportunityWriteBranch("upsertOpportunity", UpsertOpportunityBranchDefect, sdkgo.FailureLocalDefect, "opportunity upsert could not be encoded")
 	}
-	response := operation.client.requestLeadAPI(call, http.MethodPost, "/v1/opportunities.json", body)
+	response := operation.client.writeLeadAPI(call, "/v1/opportunities.json", body)
 	if kind, message, retry := classifyOpportunityTransport(response); retry {
 		return opportunityWriteRetry("upsertOpportunity", kind, message, response.retryAfter)
 	}
@@ -172,7 +172,10 @@ func (operation UpsertOpportunityOperation) Invoke(call sdkgo.Call, input Upsert
 		return opportunityWriteBranch("upsertOpportunity", UpsertOpportunityBranchInvalidResponse, sdkgo.FailureProtocol, "Marketo returned invalid opportunity upsert JSON")
 	}
 	if outcome != "" {
-		return opportunityWriteBranch("upsertOpportunity", UpsertOpportunityBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the opportunity upsert")
+		if outcome == "1005" && call.Context.Attempt() == 1 {
+			return opportunityWriteBranch("upsertOpportunity", UpsertOpportunityBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the opportunity upsert")
+		}
+		return opportunityWriteRetry("upsertOpportunity", sdkgo.FailureProtocol, "Marketo opportunity upsert outcome is inconclusive", 0)
 	}
 	value := OpportunityWriteResult{MarketoGUID: result.MarketoGUID, Status: result.Status}
 	return sdkgo.NewMutationBranch(UpsertOpportunityBranchSynced, value, nil, opportunityReceipt(call, result.MarketoGUID))
@@ -205,7 +208,7 @@ func (operation DeleteOpportunityOperation) Invoke(call sdkgo.Call, input Delete
 	if err != nil {
 		return opportunityDeleteBranch(DeleteOpportunityBranchDefect, sdkgo.FailureLocalDefect, "opportunity delete could not be encoded")
 	}
-	response := operation.client.requestLeadAPI(call, http.MethodPost, "/v1/opportunities/delete.json", body)
+	response := operation.client.writeLeadAPI(call, "/v1/opportunities/delete.json", body)
 	if kind, message, retry := classifyOpportunityTransport(response); retry {
 		return opportunityDeleteRetry(kind, message, response.retryAfter)
 	}
@@ -228,7 +231,7 @@ func (operation DeleteOpportunityOperation) Invoke(call sdkgo.Call, input Delete
 	if outcome == "1013" || outcome == "" && result.Status == "deleted" {
 		return sdkgo.NewMutationBranch(DeleteOpportunityBranchDeleted, DeletedOpportunity{Deleted: true}, nil, opportunityReceipt(call, result.MarketoGUID))
 	}
-	return opportunityDeleteBranch(DeleteOpportunityBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the opportunity deletion")
+	return opportunityDeleteRetry(sdkgo.FailureProtocol, "Marketo opportunity deletion outcome is inconclusive", 0)
 }
 
 type opportunityError struct {
@@ -330,6 +333,9 @@ func opportunityQueryRetry(kind sdkgo.FailureKind, message string, delay time.Du
 
 func opportunityWriteBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[OpportunityWriteResult] {
 	failure := sdkgo.Failure{Kind: kind, Provider: "adobe-marketo", Operation: operation, Message: message}
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[OpportunityWriteResult](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, OpportunityWriteResult{}, &failure, sdkgo.Receipt{})
 }
 
@@ -339,6 +345,9 @@ func opportunityWriteRetry(operation string, kind sdkgo.FailureKind, message str
 
 func opportunityDeleteBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[DeletedOpportunity] {
 	failure := sdkgo.Failure{Kind: kind, Provider: "adobe-marketo", Operation: "deleteOpportunity", Message: message}
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[DeletedOpportunity](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, DeletedOpportunity{}, &failure, sdkgo.Receipt{})
 }
 

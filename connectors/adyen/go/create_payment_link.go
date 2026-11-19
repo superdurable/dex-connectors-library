@@ -84,6 +84,9 @@ func (operation CreatePaymentLinkOperation) Invoke(call sdkgo.Call, input Create
 	}
 	response := operation.client.post(call, "/paymentLinks", requestBody)
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[CreatedPaymentLink](createPaymentLinkFailure(sdkgo.FailureAuthentication, "Adyen credentials are unavailable after an earlier send"), 0)
+		}
 		return createPaymentLinkBranch(CreatePaymentLinkBranchDefect, sdkgo.FailureAuthentication, "Adyen credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRequest) {
@@ -96,7 +99,10 @@ func (operation CreatePaymentLinkOperation) Invoke(call sdkgo.Call, input Create
 		return sdkgo.NewMutationRetry[CreatedPaymentLink](createPaymentLinkFailure(sdkgo.FailureAvailability, "Adyen is temporarily unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusCreated {
-		return createPaymentLinkBranch(CreatePaymentLinkBranchProviderRejected, sdkgo.FailureProviderRejection, "Adyen rejected HTTP "+strconv.Itoa(response.status))
+		if call.Context.Attempt() == 1 && response.err == nil && isDefiniteAdyenRefusal(response.status, response.body) {
+			return createPaymentLinkBranch(CreatePaymentLinkBranchProviderRejected, sdkgo.FailureProviderRejection, "Adyen rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[CreatedPaymentLink](createPaymentLinkFailure(sdkgo.FailureTransport, "Adyen payment link response is inconclusive"), 0)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return createPaymentLinkBranch(CreatePaymentLinkBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Adyen response exceeded the configured limit")
@@ -169,5 +175,8 @@ func createPaymentLinkFailure(kind sdkgo.FailureKind, message string) sdkgo.Fail
 
 func createPaymentLinkBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[CreatedPaymentLink] {
 	failure := createPaymentLinkFailure(kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[CreatedPaymentLink](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, CreatedPaymentLink{}, &failure, sdkgo.Receipt{})
 }

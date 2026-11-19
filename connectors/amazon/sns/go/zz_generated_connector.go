@@ -739,9 +739,9 @@ const SubscribeEndpointBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var SubscribeEndpointDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "subscribeEndpoint"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: SubscribeEndpointBranchSubscribed, Description: "SNS accepted or read-back confirmed the subscription."},
+		{ID: SubscribeEndpointBranchSubscribed, Description: "SNS accepted the subscription."},
 		{ID: SubscribeEndpointBranchProviderRejected, Description: "SNS conclusively rejected the endpoint or topic.", Optional: true},
-		{ID: SubscribeEndpointBranchUncertain, Description: "The subscription may exist but read-back could not confirm it.", Optional: true},
+		{ID: SubscribeEndpointBranchUncertain, Description: "The subscription may exist but the capped sends could not confirm it.", Optional: true},
 		{ID: SubscribeEndpointBranchDefect, Description: "The topic, protocol, endpoint, or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

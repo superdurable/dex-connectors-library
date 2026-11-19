@@ -32,19 +32,18 @@ func TestCreateLeadUsesCreateOnlyAndOmitsEmailFromResult(t *testing.T) {
 
 func TestCreateLeadClassifiesDuplicateRetryAndUncertainty(t *testing.T) {
 	for _, testCase := range []struct {
-		name      string
-		status    int
-		body      string
-		branch    sdkgo.BranchID
-		retry     bool
-		uncertain bool
+		name   string
+		status int
+		body   string
+		branch sdkgo.BranchID
+		retry  bool
 	}{
 		{name: "duplicate", status: 200, body: `{"success":true,"result":[{"status":"skipped","reasons":[{"code":"1005","message":"secret"}]}]}`, branch: CreateLeadBranchAlreadyExists},
-		{name: "denied", status: 403, body: `{"error":"secret"}`, branch: CreateLeadBranchProviderRejected},
+		{name: "denied", status: 403, body: `{"success":false,"errors":[{"code":"1003"}]}`, branch: CreateLeadBranchProviderRejected},
 		{name: "rate limited", status: 429, body: `{}`, retry: true},
 		{name: "unavailable", status: 503, body: `{}`, retry: true},
 		{name: "unknown", status: 500, body: `{}`, retry: true},
-		{name: "malformed accepted", status: 200, body: `{}`, uncertain: true},
+		{name: "malformed accepted", status: 200, body: `{}`, retry: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			client := testClient(t, func(*http.Request) (*http.Response, error) { return response(testCase.status, testCase.body), nil })
@@ -52,11 +51,6 @@ func TestCreateLeadClassifiesDuplicateRetryAndUncertainty(t *testing.T) {
 			if testCase.retry {
 				var retry *sdkgo.RetryError
 				require.ErrorAs(t, err, &retry)
-				return
-			}
-			if testCase.uncertain {
-				require.NoError(t, err)
-				require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
 				return
 			}
 			require.NoError(t, err)
@@ -97,7 +91,7 @@ func TestUpsertLeadByEmailClassifiesRecordErrorsAndRetries(t *testing.T) {
 		retry  bool
 	}{
 		{name: "multiple matches", status: 200, body: `{"success":true,"result":[{"status":"skipped","reasons":[{"code":"1007","message":"secret"}]}]}`, branch: UpsertLeadByEmailBranchProviderRejected},
-		{name: "malformed", status: 200, body: `{`, branch: UpsertLeadByEmailBranchInvalidResponse},
+		{name: "malformed", status: 200, body: `{`, retry: true},
 		{name: "rate limit", status: 429, body: `{}`, retry: true},
 		{name: "unavailable", status: 503, body: `{}`, retry: true},
 		{name: "unknown", status: 500, body: `{}`, retry: true},

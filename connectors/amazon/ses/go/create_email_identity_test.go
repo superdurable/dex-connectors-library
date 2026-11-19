@@ -33,7 +33,7 @@ func TestCreateEmailIdentitySignsAndStartsVerification(t *testing.T) {
 	require.Equal(t, CreatedEmailIdentity{Name: "example.com", IdentityType: "DOMAIN", DKIMTokens: []string{"token-a", "token-b", "token-c"}}, result.Value)
 }
 
-func TestCreateEmailIdentityReadsBackBeforePossibleResend(t *testing.T) {
+func TestCreateEmailIdentityDoesNotConfirmByNameAfterUnknownOutcome(t *testing.T) {
 	var sends, reads int
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.Method == http.MethodPost {
@@ -53,16 +53,21 @@ func TestCreateEmailIdentityReadsBackBeforePossibleResend(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	context.attempt = 2
-	result, err := sdkgo.RunMutation(context, client.CreateEmailIdentity(), testConnection, CreateEmailIdentityInput{EmailIdentity: "example.com"})
-	require.NoError(t, err)
-	require.Equal(t, CreateEmailIdentityBranchCreated, result.Branch)
-	require.Equal(t, 1, sends)
-	require.Equal(t, 1, reads)
+	_, err = sdkgo.RunMutation(context, client.CreateEmailIdentity(), testConnection, CreateEmailIdentityInput{EmailIdentity: "example.com"})
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, 2, sends)
+	require.Equal(t, 0, reads)
 }
 
 func TestCreateEmailIdentityClassifiesDefiniteAndRetryableOutcomes(t *testing.T) {
 	for _, status := range []int{http.StatusBadRequest, http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusInternalServerError} {
-		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) { response.WriteHeader(status) }))
+		server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			response.WriteHeader(status)
+			if status == http.StatusBadRequest {
+				_, err := response.Write([]byte(`{"__type":"BadRequestException","message":"bad request"}`))
+				require.NoError(t, err)
+			}
+		}))
 		result, err := sdkgo.RunMutation(&conformanceSendContext{attempt: 1}, newTestClient(t, server.URL, 0).CreateEmailIdentity(), testConnection, CreateEmailIdentityInput{EmailIdentity: "example.com"})
 		if status == http.StatusBadRequest {
 			require.NoError(t, err)

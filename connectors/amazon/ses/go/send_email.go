@@ -63,7 +63,8 @@ func (operation SendEmailOperation) Invoke(call sdkgo.Call, input SendEmailInput
 	if err != nil {
 		return sendEmailBranch(SendEmailBranchDefect, sdkgo.FailureLocalDefect, "SES send fence could not be initialized")
 	}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendEmailOperationID, sdkgo.FailureAvailability, "SES send checkpoint is unavailable"), 0)
 	case singledispatch.ReadBackRequired:
@@ -72,7 +73,10 @@ func (operation SendEmailOperation) Invoke(call sdkgo.Call, input SendEmailInput
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil && !errors.Is(checkpointErr, singledispatch.ErrDispatchNotAllowed) {
-			return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendEmailOperationID, sdkgo.FailureTransport, "SES unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendEmailOperationID, sdkgo.FailureAvailability, "SES unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendEmailOperationID, sdkgo.FailureAuthentication, "SES credentials are unavailable after an earlier send"), 0)
 		}
 		return sendEmailBranch(SendEmailBranchDefect, sdkgo.FailureAuthentication, "SES credentials are unavailable or invalid")
 	}
@@ -89,12 +93,12 @@ func (operation SendEmailOperation) Invoke(call sdkgo.Call, input SendEmailInput
 	}
 	send := &sesEmailSend{client: operation.client, call: call, body: payload}
 	if err := fence.Dispatch(send.dispatch); err != nil {
-		return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendEmailOperationID, sdkgo.FailureTransport, "SES send dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendEmailOperationID, sdkgo.FailureAvailability, "SES send dispatch checkpoint is unavailable"), 0)
 	}
 	response := send.response
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendEmailOperationID, sdkgo.FailureTransport, "SES resend checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendEmailOperationID, sdkgo.FailureAvailability, "SES resend checkpoint could not be recorded"), 0)
 		}
 		kind := sdkgo.FailureRateLimit
 		if response.status == http.StatusServiceUnavailable {
@@ -103,19 +107,25 @@ func (operation SendEmailOperation) Invoke(call sdkgo.Call, input SendEmailInput
 		return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendEmailOperationID, kind, "SES asked the connector to retry the email"), response.retryAfter)
 	}
 	if errors.Is(response.err, errCredential) {
-		return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendEmailOperationID, sdkgo.FailureProtocol, "SES response repeated a credential"), sdkgo.Receipt{})
+		return limitedSESUnknown(call, decision, SentEmail{}, sesFailure(sendEmailOperationID, sdkgo.FailureProtocol, "SES response repeated a credential"))
 	}
 	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendEmailOperationID, sdkgo.FailureTransport, "SES send outcome is unknown"), 0)
+		return limitedSESUnknown(call, decision, SentEmail{}, sesFailure(sendEmailOperationID, sdkgo.FailureTransport, "SES send outcome is unknown"))
 	}
 	if response.status != http.StatusOK {
-		return sendEmailBranch(SendEmailBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected the email")
+		if decision.MaximumPriorSends == 0 && isDefiniteSESRefusal(response.status, response.body) {
+			if fence.RecordCanResend() != nil {
+				return sdkgo.NewMutationRetry[SentEmail](sesFailure(sendEmailOperationID, sdkgo.FailureAvailability, "SES refusal checkpoint could not be recorded"), 0)
+			}
+			return sendEmailBranch(SendEmailBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected the email")
+		}
+		return limitedSESUnknown(call, decision, SentEmail{}, sesFailure(sendEmailOperationID, sdkgo.FailureTransport, "SES send response is inconclusive"))
 	}
 	var accepted struct {
 		MessageID string `json:"MessageId"`
 	}
 	if json.Unmarshal(response.body, &accepted) != nil || accepted.MessageID == "" || len(accepted.MessageID) > 512 {
-		return sdkgo.NewMutationUncertain(SentEmail{}, sesFailure(sendEmailOperationID, sdkgo.FailureProtocol, "SES accepted the email without a usable message ID"), sdkgo.Receipt{})
+		return limitedSESUnknown(call, decision, SentEmail{}, sesFailure(sendEmailOperationID, sdkgo.FailureProtocol, "SES send response has no usable message ID"))
 	}
 	receipt := sdkgo.Receipt{CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: "amazon-ses", ProviderObjectID: accepted.MessageID}
 	return sdkgo.NewMutationBranch(SendEmailBranchSent, SentEmail{MessageID: accepted.MessageID}, nil, receipt)

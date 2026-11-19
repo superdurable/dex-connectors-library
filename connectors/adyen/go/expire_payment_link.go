@@ -45,6 +45,9 @@ func (operation ExpirePaymentLinkOperation) Invoke(call sdkgo.Call, input Expire
 	}
 	response := operation.client.patch(call, "/paymentLinks/"+url.PathEscape(input.PaymentLinkID), []byte(`{"status":"expired"}`))
 	if errors.Is(response.err, errCredential) {
+		if call.Context.Attempt() > 1 {
+			return sdkgo.NewMutationRetry[PaymentLinkStatus](expirePaymentLinkFailure(sdkgo.FailureAuthentication, "Adyen credentials are unavailable after an earlier send"), 0)
+		}
 		return expirePaymentLinkBranch(ExpirePaymentLinkBranchDefect, sdkgo.FailureAuthentication, "Adyen credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRequest) {
@@ -57,10 +60,16 @@ func (operation ExpirePaymentLinkOperation) Invoke(call sdkgo.Call, input Expire
 		return sdkgo.NewMutationRetry[PaymentLinkStatus](expirePaymentLinkFailure(sdkgo.FailureAvailability, "Adyen is temporarily unavailable"), response.retryAfter)
 	}
 	if response.status == http.StatusNotFound {
-		return expirePaymentLinkBranch(ExpirePaymentLinkBranchNotFound, sdkgo.FailureNotFound, "Adyen did not expose the payment link")
+		if call.Context.Attempt() == 1 && response.err == nil && isDefiniteAdyenRefusal(response.status, response.body) {
+			return expirePaymentLinkBranch(ExpirePaymentLinkBranchNotFound, sdkgo.FailureNotFound, "Adyen did not expose the payment link")
+		}
+		return sdkgo.NewMutationRetry[PaymentLinkStatus](expirePaymentLinkFailure(sdkgo.FailureTransport, "Adyen expiry response is inconclusive"), 0)
 	}
 	if response.status != http.StatusOK {
-		return expirePaymentLinkBranch(ExpirePaymentLinkBranchProviderRejected, sdkgo.FailureProviderRejection, "Adyen rejected HTTP "+strconv.Itoa(response.status))
+		if call.Context.Attempt() == 1 && response.err == nil && isDefiniteAdyenRefusal(response.status, response.body) {
+			return expirePaymentLinkBranch(ExpirePaymentLinkBranchProviderRejected, sdkgo.FailureProviderRejection, "Adyen rejected HTTP "+strconv.Itoa(response.status))
+		}
+		return sdkgo.NewMutationRetry[PaymentLinkStatus](expirePaymentLinkFailure(sdkgo.FailureTransport, "Adyen expiry response is inconclusive"), 0)
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return expirePaymentLinkBranch(ExpirePaymentLinkBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Adyen response exceeded the configured limit")
@@ -82,5 +91,8 @@ func expirePaymentLinkFailure(kind sdkgo.FailureKind, message string) sdkgo.Fail
 
 func expirePaymentLinkBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[PaymentLinkStatus] {
 	failure := expirePaymentLinkFailure(kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[PaymentLinkStatus](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, PaymentLinkStatus{}, &failure, sdkgo.Receipt{})
 }

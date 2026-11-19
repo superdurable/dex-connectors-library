@@ -79,7 +79,7 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 			return sdkgo.NewMutationRetry[Record](readOutcome.failure, readOutcome.retryAfter)
 		}
 		if readOutcome.disposition != outcomeNotFound {
-			return sdkgo.NewMutationUncertain(Record{}, readOutcome.failure, operation.client.receipt(call, decision.Marker.ProviderID))
+			return sdkgo.NewMutationRetry[Record](readOutcome.failure, readOutcome.retryAfter)
 		}
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
@@ -100,25 +100,37 @@ func (operation CreateRecordOperation) Invoke(call sdkgo.Call, input CreateRecor
 					return sdkgo.NewMutationRetry[Record](providerFailure(operationID, sdkgo.FailureAvailability, "Airtable create retry checkpoint is unavailable"), 0)
 				}
 			}
-			return sdkgo.NewMutationRetry[Record](outcome.failure, outcome.retryAfter)
-		case outcomeDefect:
-			return sdkgo.NewMutationBranch(CreateRecordBranchDefect, Record{}, &outcome.failure, outcome.receipt)
-		case outcomeInvalidResponse:
-			return sdkgo.NewMutationUncertain(Record{}, outcome.failure, outcome.receipt)
-		default:
-			if decision.MaximumPriorSends > 0 {
-				return sdkgo.NewMutationUncertain(Record{}, providerFailure(operationID, sdkgo.FailureTransport, "an earlier Airtable create may have succeeded despite this rejection"), outcome.receipt)
+			if outcome.failure.Kind == sdkgo.FailureRateLimit || dispatch.response.statusCode == http.StatusServiceUnavailable || outcome.receipt.CallID == "" {
+				return sdkgo.NewMutationRetry[Record](outcome.failure, outcome.retryAfter)
 			}
-			return sdkgo.NewMutationBranch(CreateRecordBranchProviderRejected, Record{}, &outcome.failure, outcome.receipt)
+			return limitedAirtableUnknown(call, decision, outcome.failure, outcome.receipt)
+		case outcomeDefect:
+			if decision.MaximumPriorSends == 0 && outcome.receipt.CallID == "" {
+				if err := fence.RecordCanResend(); err != nil {
+					return sdkgo.NewMutationRetry[Record](providerFailure(operationID, sdkgo.FailureAvailability, "Airtable create retry checkpoint is unavailable"), 0)
+				}
+				return sdkgo.NewMutationBranch(CreateRecordBranchDefect, Record{}, &outcome.failure, outcome.receipt)
+			}
+			return limitedAirtableUnknown(call, decision, outcome.failure, outcome.receipt)
+		case outcomeInvalidResponse:
+			return limitedAirtableUnknown(call, decision, outcome.failure, outcome.receipt)
+		default:
+			if decision.MaximumPriorSends == 0 && isDefiniteAirtableCreateRefusal(dispatch.response) {
+				if err := fence.RecordCanResend(); err != nil {
+					return sdkgo.NewMutationRetry[Record](providerFailure(operationID, sdkgo.FailureAvailability, "Airtable create refusal checkpoint is unavailable"), 0)
+				}
+				return sdkgo.NewMutationBranch(CreateRecordBranchProviderRejected, Record{}, &outcome.failure, outcome.receipt)
+			}
+			return limitedAirtableUnknown(call, decision, outcome.failure, outcome.receipt)
 		}
 	}
 	var provided providerRecord
 	if err := decodeResponse(dispatch.response.body, &provided); err != nil {
-		return sdkgo.NewMutationUncertain(Record{}, providerFailure(operationID, sdkgo.FailureProtocol, "Airtable accepted the create but returned an invalid record"), operation.client.receipt(call, ""))
+		return limitedAirtableUnknown(call, decision, providerFailure(operationID, sdkgo.FailureProtocol, "Airtable create response was invalid"), operation.client.receipt(call, ""))
 	}
 	record, err := convertProviderRecord(provided)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(Record{}, providerFailure(operationID, sdkgo.FailureProtocol, "Airtable accepted the create but returned an invalid record"), operation.client.receipt(call, ""))
+		return limitedAirtableUnknown(call, decision, providerFailure(operationID, sdkgo.FailureProtocol, "Airtable create response was invalid"), operation.client.receipt(call, ""))
 	}
 	// A lost checkpoint leaves the accepted result known to this attempt.
 	_ = fence.RecordProviderID(record.ID)
@@ -142,4 +154,22 @@ func (operation CreateRecordOperation) readCreatedRecord(call sdkgo.Call, input 
 func (dispatch *createRecordDispatch) execute(ctx context.Context) error {
 	dispatch.response, dispatch.outcome = dispatch.client.exchangeWithContext(ctx, dispatch.call, "createRecord", dispatch.request, "")
 	return nil
+}
+
+func limitedAirtableUnknown(call sdkgo.Call, decision singledispatch.Decision, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[Record] {
+	if decision.MaximumPriorSends+1 >= call.MaxSends() {
+		return sdkgo.NewMutationUncertain(Record{}, failure, receipt)
+	}
+	return sdkgo.NewMutationRetry[Record](failure, 0)
+}
+
+func isDefiniteAirtableCreateRefusal(response providerResponse) bool {
+	switch response.statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return readErrorType(response.body) != ""
+	default:
+		return false
+	}
 }

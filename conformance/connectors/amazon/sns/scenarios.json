@@ -406,7 +406,7 @@
       "callId": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
       "exchanges": [
         {
-          "body": "\u003cErrorResponse/\u003e",
+          "body": "\u003cErrorResponse\u003e\u003cError\u003e\u003cCode\u003eAuthorizationError\u003c/Code\u003e\u003c/Error\u003e\u003c/ErrorResponse\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -753,7 +753,7 @@
       "callId": "60216ff1-18da-59de-afc8-aac6a98aab39",
       "exchanges": [
         {
-          "body": "\u003cErrorResponse/\u003e",
+          "body": "\u003cErrorResponse\u003e\u003cError\u003e\u003cCode\u003eAuthorizationError\u003c/Code\u003e\u003c/Error\u003e\u003c/ErrorResponse\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1062,7 +1062,7 @@
       "callId": "adaad23c-2297-522c-a236-9c28b8b82ac9",
       "exchanges": [
         {
-          "body": "\u003cErrorResponse/\u003e",
+          "body": "\u003cErrorResponse\u003e\u003cError\u003e\u003cCode\u003eAuthorizationError\u003c/Code\u003e\u003c/Error\u003e\u003c/ErrorResponse\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1422,7 +1422,7 @@
       "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
       "exchanges": [
         {
-          "body": "\u003cErrorResponse/\u003e",
+          "body": "\u003cErrorResponse\u003e\u003cError\u003e\u003cCode\u003eAuthorizationError\u003c/Code\u003e\u003c/Error\u003e\u003c/ErrorResponse\u003e",
           "form": {
             "Action": [
               "Publish"
@@ -1464,8 +1464,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "messageID": ""
@@ -1551,9 +1550,9 @@
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -1571,7 +1570,12 @@
         "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
       },
       "name": "publishMessage-invalid",
-      "operation": "publishMessage"
+      "operation": "publishMessage",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+        "state": "claimed"
+      }
     },
     {
       "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
@@ -2453,7 +2457,7 @@
       "callId": "ce140ff0-eb66-5285-902d-701e171a419e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "\u003cErrorResponse\u003e\u003cError\u003e\u003cCode\u003eAuthorizationError\u003c/Code\u003e\u003c/Error\u003e\u003c/ErrorResponse\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2495,8 +2499,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "ce140ff0-eb66-5285-902d-701e171a419e",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "subscriptionARN": ""
@@ -3836,7 +3839,7 @@
       "callId": "bc3181e9-25a1-5d09-a002-013d20c45971",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "\u003cErrorResponse\u003e\u003cError\u003e\u003cCode\u003eAuthorizationError\u003c/Code\u003e\u003c/Error\u003e\u003c/ErrorResponse\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4125,7 +4128,7 @@
       "callId": "cc49426f-8753-533a-ab56-0cd112afcecb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "\u003cErrorResponse\u003e\u003cError\u003e\u003cCode\u003eAuthorizationError\u003c/Code\u003e\u003c/Error\u003e\u003c/ErrorResponse\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4417,14 +4420,23 @@
           "status": 500
         },
         {
-          "body": "\u003cListSubscriptionsByTopicResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cListSubscriptionsByTopicResult\u003e\u003cSubscriptions\u003e\u003cmember\u003e\u003cSubscriptionArn\u003earn:aws:sns:eu-west-1:123456789012:alerts:11111111-1111-4111-8111-111111111111\u003c/SubscriptionArn\u003e\u003cTopicArn\u003earn:aws:sns:eu-west-1:123456789012:alerts\u003c/TopicArn\u003e\u003cProtocol\u003ehttps\u003c/Protocol\u003e\u003cEndpoint\u003ehttps://example.com/sns\u003c/Endpoint\u003e\u003cOwner\u003e123456789012\u003c/Owner\u003e\u003c/member\u003e\u003c/Subscriptions\u003e\u003c/ListSubscriptionsByTopicResult\u003e\u003c/ListSubscriptionsByTopicResponse\u003e",
+          "body": "\u003cSubscribeResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cSubscribeResult\u003e\u003cSubscriptionArn\u003earn:aws:sns:eu-west-1:123456789012:alerts:11111111-1111-4111-8111-111111111111\u003c/SubscriptionArn\u003e\u003c/SubscribeResult\u003e\u003c/SubscribeResponse\u003e",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
           "path": "/",
           "query": {
             "Action": [
-              "ListSubscriptionsByTopic"
+              "Subscribe"
+            ],
+            "Endpoint": [
+              "https://example.com/sns"
+            ],
+            "Protocol": [
+              "https"
+            ],
+            "ReturnSubscriptionArn": [
+              "true"
             ],
             "TopicArn": [
               "arn:aws:sns:eu-west-1:123456789012:alerts"
@@ -4435,7 +4447,7 @@
           },
           "requestHeaders": {
             "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d2c8b4dcfc3c07c218d3f9c1cebe1c1a9b4645aa31226173bef5f22947d1e79a"
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=0824744eae99b80472802d3a415cb1053c689169960e7b20569ac19ffc392d7e"
             ],
             "X-Amz-Date": [
               "20261030T000000Z"
@@ -4447,6 +4459,12 @@
       "expected": {
         "branch": "subscribed",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "ce140ff0-eb66-5285-902d-701e171a419e",
+          "sendCount": 2,
+          "state": "claimed"
+        },
         "output": {
           "endpoint": "https://example.com/sns",
           "protocol": "https",
@@ -4482,42 +4500,14 @@
     },
     {
       "callId": "ce140ff0-eb66-5285-902d-701e171a419e",
-      "exchanges": [
-        {
-          "body": "\u003cListSubscriptionsByTopicResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cListSubscriptionsByTopicResult\u003e\u003cSubscriptions\u003e\u003c/Subscriptions\u003e\u003c/ListSubscriptionsByTopicResult\u003e\u003c/ListSubscriptionsByTopicResponse\u003e",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/",
-          "query": {
-            "Action": [
-              "ListSubscriptionsByTopic"
-            ],
-            "TopicArn": [
-              "arn:aws:sns:eu-west-1:123456789012:alerts"
-            ],
-            "Version": [
-              "2010-03-31"
-            ]
-          },
-          "requestHeaders": {
-            "Authorization": [
-              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d2c8b4dcfc3c07c218d3f9c1cebe1c1a9b4645aa31226173bef5f22947d1e79a"
-            ],
-            "X-Amz-Date": [
-              "20261030T000000Z"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
         "output": {
           "subscriptionARN": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true

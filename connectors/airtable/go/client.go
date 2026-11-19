@@ -410,10 +410,10 @@ func queryAttemptForOutcome[T any](outcome providerOutcome, branches operationBr
 // mutationAttemptForOutcome maps an unsuccessful write exchange to Retry or a branch. Both writes are
 // repeat-safe, so any HTTP status that does not prove a refusal, such as 409, 501, or a redirect, and
 // an oversized error body are retried.
-func mutationAttemptForOutcome[T any](outcome providerOutcome, response providerResponse, branches operationBranches) sdkgo.MutationAttempt[T] {
+func mutationAttemptForOutcome[T any](call sdkgo.Call, outcome providerOutcome, response providerResponse, branches operationBranches) sdkgo.MutationAttempt[T] {
 	var zero T
 	isHTTPOutcome := response.statusCode != 0
-	isUnknownStatus := isHTTPOutcome && (response.statusCode < 200 || response.statusCode >= 300) && !isDefiniteRefusalStatus(response.statusCode)
+	isUnknownStatus := isHTTPOutcome && (response.statusCode < 200 || response.statusCode >= 300) && (!isDefiniteRefusalStatus(response.statusCode) || readErrorType(response.body) == "" || (call.Context != nil && call.Context.Attempt() > 1))
 	// Both writes are safe to repeat, so an oversized or unusable response retries instead of failing.
 	if outcome.disposition == outcomeRetry || outcome.disposition == outcomeInvalidResponse || isUnknownStatus {
 		return sdkgo.NewMutationRetry[T](outcome.failure, outcome.retryAfter)

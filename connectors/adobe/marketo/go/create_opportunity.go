@@ -5,10 +5,8 @@ package marketo
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
@@ -39,7 +37,7 @@ func (CreateOpportunityOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateOp
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates by external key and reads back before a bounded resend.
+// Invoke creates by external key with bounded resends.
 func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input CreateOpportunityInput) sdkgo.MutationAttempt[OpportunityWriteResult] {
 	if !validExternalOpportunityID(input.ExternalOpportunityID) || !validOpportunityName(input.Name) {
 		return opportunityWriteBranch("createOpportunity", CreateOpportunityBranchDefect, sdkgo.FailureValidation, "external opportunity ID or name is invalid")
@@ -55,17 +53,6 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
 		return opportunityWriteRetry("createOpportunity", sdkgo.FailureAvailability, "opportunity create checkpoint is unavailable", 0)
-	}
-	if decision.MaximumPriorSends > 0 || decision.Marker.ProviderID != "" {
-		found, readStatus := operation.readBackCreatedOpportunity(call, input)
-		switch readStatus {
-		case "found":
-			return sdkgo.NewMutationBranch(CreateOpportunityBranchCreated, found, nil, opportunityReceipt(call, found.MarketoGUID))
-		case "retry":
-			return opportunityWriteRetry("createOpportunity", sdkgo.FailureAvailability, "Marketo opportunity read-back is temporarily unavailable", 0)
-		case "uncertain":
-			return createOpportunityUncertain(call, "Marketo opportunity read-back cannot confirm the earlier create")
-		}
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return createOpportunityUncertain(call, "an earlier Marketo opportunity create may have succeeded and reached the send cap")
@@ -85,7 +72,7 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 		return opportunityWriteRetry("createOpportunity", sdkgo.FailureTransport, "Marketo credentials are unavailable", 0)
 	}
 	if errors.Is(response.err, errLeadTransport) {
-		return opportunityWriteRetry("createOpportunity", sdkgo.FailureTransport, "Marketo opportunity create outcome is unknown", 0)
+		return createOpportunityUnknown(call, decision, "Marketo opportunity create outcome is unknown")
 	}
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -98,16 +85,19 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 		return opportunityWriteRetry("createOpportunity", kind, "Marketo temporarily rejected the opportunity create", response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return opportunityWriteRetry("createOpportunity", sdkgo.FailureAvailability, "Marketo opportunity create outcome is unknown", response.retryAfter)
+		return createOpportunityUnknown(call, decision, "Marketo opportunity create outcome is unknown")
 	}
 	if response.status != http.StatusOK {
-		if decision.MaximumPriorSends > 0 {
-			return createOpportunityUncertain(call, "an earlier Marketo opportunity create may have succeeded")
+		if decision.MaximumPriorSends == 0 && response.err == nil && isDefiniteMarketoRefusal(response.status, response.body) {
+			if err := fence.RecordCanResend(); err != nil {
+				return opportunityWriteRetry("createOpportunity", sdkgo.FailureAvailability, "opportunity refusal checkpoint is unavailable", 0)
+			}
+			return opportunityWriteBranch("createOpportunity", CreateOpportunityBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the opportunity create")
 		}
-		return opportunityWriteBranch("createOpportunity", CreateOpportunityBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the opportunity create")
+		return createOpportunityUnknown(call, decision, "Marketo opportunity create outcome is unknown")
 	}
 	if response.err != nil {
-		return createOpportunityUncertain(call, "Marketo opportunity create response could not be read completely")
+		return createOpportunityUnknown(call, decision, "Marketo opportunity create response could not be read completely")
 	}
 	result, outcome := decodeOpportunityResult(response.body)
 	if kind, retry := classifyOpportunityCode(outcome); retry {
@@ -115,44 +105,19 @@ func (operation CreateOpportunityOperation) Invoke(call sdkgo.Call, input Create
 	}
 	if outcome != "" {
 		if outcome == "1005" && decision.MaximumPriorSends == 0 {
+			if err := fence.RecordCanResend(); err != nil {
+				return opportunityWriteRetry("createOpportunity", sdkgo.FailureAvailability, "opportunity refusal checkpoint is unavailable", 0)
+			}
 			return opportunityWriteBranch("createOpportunity", CreateOpportunityBranchAlreadyExists, sdkgo.FailureProviderRejection, "Marketo already has a opportunity with this external ID")
 		}
-		if decision.MaximumPriorSends > 0 || outcome == "invalid" {
-			return createOpportunityUncertain(call, "Marketo opportunity create outcome cannot be confirmed")
-		}
-		return opportunityWriteBranch("createOpportunity", CreateOpportunityBranchProviderRejected, sdkgo.FailureProviderRejection, "Marketo rejected the opportunity create")
+		return createOpportunityUnknown(call, decision, "Marketo opportunity create outcome cannot be confirmed")
 	}
 	if result.MarketoGUID == "" || result.Status != "created" {
-		return createOpportunityUncertain(call, "Marketo accepted the opportunity create but returned an unexpected result")
+		return createOpportunityUnknown(call, decision, "Marketo opportunity create returned an unexpected result")
 	}
 	_ = fence.RecordProviderID(result.MarketoGUID)
 	value := OpportunityWriteResult{MarketoGUID: result.MarketoGUID, Status: "created"}
 	return sdkgo.NewMutationBranch(CreateOpportunityBranchCreated, value, nil, opportunityReceipt(call, result.MarketoGUID))
-}
-
-func (operation CreateOpportunityOperation) readBackCreatedOpportunity(call sdkgo.Call, input CreateOpportunityInput) (OpportunityWriteResult, string) {
-	query := url.Values{"filterType": {"externalOpportunityId"}, "filterValues": {input.ExternalOpportunityID}, "fields": {"marketoGUID,name"}}
-	response := operation.client.requestLeadAPI(call, http.MethodGet, "/v1/opportunities.json?"+query.Encode(), nil)
-	if response.err != nil || response.status == http.StatusTooManyRequests || response.status >= 500 {
-		return OpportunityWriteResult{}, "retry"
-	}
-	if response.status != http.StatusOK {
-		return OpportunityWriteResult{}, "uncertain"
-	}
-	var envelope struct {
-		Success *bool                 `json:"success"`
-		Result  *[]OpportunityProfile `json:"result"`
-	}
-	if json.Unmarshal(response.body, &envelope) != nil || envelope.Success == nil || !*envelope.Success || envelope.Result == nil {
-		return OpportunityWriteResult{}, "uncertain"
-	}
-	if len(*envelope.Result) == 0 {
-		return OpportunityWriteResult{}, "absent"
-	}
-	if len(*envelope.Result) != 1 || (*envelope.Result)[0].MarketoGUID == "" || (*envelope.Result)[0].Name != input.Name {
-		return OpportunityWriteResult{}, "uncertain"
-	}
-	return OpportunityWriteResult{MarketoGUID: (*envelope.Result)[0].MarketoGUID, Status: "created"}, "found"
 }
 
 func (dispatch *createOpportunityDispatch) execute(ctx context.Context) error {
@@ -163,4 +128,9 @@ func (dispatch *createOpportunityDispatch) execute(ctx context.Context) error {
 func createOpportunityUncertain(call sdkgo.Call, message string) sdkgo.MutationAttempt[OpportunityWriteResult] {
 	failure := sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "adobe-marketo", Operation: "createOpportunity", Message: message}
 	return sdkgo.NewMutationUncertain(OpportunityWriteResult{}, failure, opportunityReceipt(call, ""))
+}
+
+func createOpportunityUnknown(call sdkgo.Call, decision singledispatch.Decision, message string) sdkgo.MutationAttempt[OpportunityWriteResult] {
+	failure := sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "adobe-marketo", Operation: "createOpportunity", Message: message}
+	return limitedMarketoUnknown[OpportunityWriteResult](call, decision, failure, opportunityReceipt(call, ""))
 }

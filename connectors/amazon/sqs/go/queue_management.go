@@ -202,7 +202,7 @@ func (operation CreateQueueOperation) Invoke(call sdkgo.Call, input CreateQueueI
 		QueueURL string `json:"QueueUrl"`
 	}
 	if json.Unmarshal(body, &document) != nil || !queueURLMatchesName(document.QueueURL, input.QueueName) {
-		return queueMutationBranch[QueueIdentity](operationID, CreateQueueBranchInvalidResponse, sdkgo.FailureProtocol, "SQS returned invalid created queue URL")
+		return sdkgo.NewMutationRetry[QueueIdentity](newFailure(operationID, sdkgo.FailureProtocol, "SQS returned invalid created queue URL"), 0)
 	}
 	value := QueueIdentity{QueueURL: document.QueueURL}
 	return sdkgo.NewMutationBranch(CreateQueueBranchCreated, value, nil, operation.client.receipt(call, requestID, document.QueueURL))
@@ -347,7 +347,7 @@ func queueQueryFailure[T any](failure queueRequestFailure, rejected, invalid, de
 }
 
 func queueMutationFailure[T any](failure queueRequestFailure, call sdkgo.Call, client *Client, rejected, invalid, defect sdkgo.BranchID, objectID string) sdkgo.MutationAttempt[T] {
-	if failure.classified.outcome == outcomeRetry {
+	if failure.classified.outcome == outcomeRetry || failure.isInvalidResponse || (failure.classified.statusCode != 0 && ((call.Context != nil && call.Context.Attempt() > 1) || !isDefiniteSQSRefusal(providerErrorResponse{statusCode: failure.classified.statusCode, code: failure.classified.errorCode}))) {
 		return sdkgo.NewMutationRetry[T](failure.classified.failure, failure.classified.retryAfter)
 	}
 	branch := rejected

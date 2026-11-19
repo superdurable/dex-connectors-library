@@ -58,7 +58,11 @@ func TestContactMutationClassifiesProviderOutcomes(t *testing.T) {
 		retry  bool
 	}{
 		{"rejected", 422, `{"errors":[{"detail":"bad contact"}]}`, SyncContactBranchProviderRejected, false},
-		{"invalid", 200, `{"contact":{}}`, SyncContactBranchInvalidResponse, false},
+		{"invalid", 200, `{"contact":{}}`, "", true},
+		{"conflict", 409, `{"errors":[{"title":"Conflict"}]}`, "", true},
+		{"other client error", 405, `{}`, "", true},
+		{"empty forbidden", 403, `{}`, "", true},
+		{"contradictory forbidden", 403, `{"errors":[{"title":"Denied"}],"contact":{"id":"68"}}`, "", true},
 		{"rate limit", 429, `{}`, "", true},
 		{"unavailable", 503, `{}`, "", true},
 		{"unknown", 500, `{}`, "", true},

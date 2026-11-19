@@ -107,7 +107,7 @@ spec:
       kind: mutation
       idempotency: required
       authorization: required
-      description: Create one opportunity by external ID with bounded sends and read-back.
+      description: Create one opportunity by external ID with bounded sends.
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Marketo created the opportunity.}
@@ -173,7 +173,7 @@ spec:
       kind: mutation
       idempotency: required
       authorization: required
-      description: Create one company by external ID with bounded sends and read-back.
+      description: Create one company by external ID with bounded sends.
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Marketo created the company.}
@@ -268,7 +268,7 @@ spec:
       inputType: CreateLeadInput
       outputType: CreatedLead
       kind: mutation
-      description: Create one lead by email with createOnly, refusing an existing lead and reading back after an unknown send.
+      description: Create one lead by email with createOnly and bounded sends.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
@@ -276,7 +276,7 @@ spec:
         - {id: created, goName: Created, description: Marketo created the lead.}
         - {id: alreadyExists, goName: AlreadyExists, description: Marketo found an existing lead for this email., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Marketo conclusively rejected the create request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: A previous create may have succeeded but read-back cannot confirm it., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A previous create may have succeeded but cannot be confirmed at the send cap., optional: true}
         - {id: defect, goName: Defect, description: Local email or name fields are invalid., optional: true}
       mocks:
         - name: createdDefault

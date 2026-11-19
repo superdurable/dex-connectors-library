@@ -68,7 +68,7 @@ func TestDealQueriesExcludeRelationships(t *testing.T) {
 	require.NotContains(t, string(encoded), "private@example.com")
 }
 
-func TestCreateDealReadsBackAfterUnknownOutcome(t *testing.T) {
+func TestCreateDealDoesNotConfirmByTitleAfterUnknownOutcome(t *testing.T) {
 	var sends, reads atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -97,12 +97,10 @@ func TestCreateDealReadsBackAfterUnknownOutcome(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	ctx.attempt = 2
-	created, err := sdkgo.RunMutation(ctx, client.CreateDeal(), testConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, CreateDealBranchCreated, created.Branch)
-	require.Equal(t, "46", created.Value.ID)
-	require.Equal(t, int32(1), sends.Load())
-	require.Equal(t, int32(1), reads.Load())
+	_, err = sdkgo.RunMutation(ctx, client.CreateDeal(), testConnection, input)
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, int32(2), sends.Load())
+	require.Equal(t, int32(0), reads.Load())
 }
 
 func TestDealUpdateAndDeleteConverge(t *testing.T) {
@@ -124,6 +122,8 @@ func TestDealUpdateAndDeleteConverge(t *testing.T) {
 			require.NoError(t, err)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
+			_, writeErr := w.Write([]byte(`{"errors":[{"title":"Not found"}]}`))
+			require.NoError(t, writeErr)
 		}
 	}))
 	defer server.Close()

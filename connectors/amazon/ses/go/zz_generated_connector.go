@@ -270,7 +270,7 @@ var CreateEmailIdentityDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateEmailIdentityBranchCreated, Description: "SES accepted the identity for verification."},
 		{ID: CreateEmailIdentityBranchProviderRejected, Description: "SES conclusively rejected the identity creation.", Optional: true},
-		{ID: CreateEmailIdentityBranchUncertain, Description: "SES may have created the identity but read-back could not confirm it.", Optional: true},
+		{ID: CreateEmailIdentityBranchUncertain, Description: "SES may have created the identity but the capped sends could not confirm it.", Optional: true},
 		{ID: CreateEmailIdentityBranchDefect, Description: "The identity or connection is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -636,9 +636,9 @@ const CreateEmailTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 var CreateEmailTemplateDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createEmailTemplate"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: CreateEmailTemplateBranchCreated, Description: "SES accepted or read-back confirmed the template."},
+		{ID: CreateEmailTemplateBranchCreated, Description: "SES accepted the template creation."},
 		{ID: CreateEmailTemplateBranchProviderRejected, Description: "SES conclusively refused creation or the name has different content.", Optional: true},
-		{ID: CreateEmailTemplateBranchUncertain, Description: "The template might exist but read-back could not confirm it.", Optional: true},
+		{ID: CreateEmailTemplateBranchUncertain, Description: "The template might exist but the capped sends could not confirm it.", Optional: true},
 		{ID: CreateEmailTemplateBranchDefect, Description: "The template content or connection is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -1072,7 +1072,7 @@ const CreateCustomVerificationEmailTemplateBranchDefect sdkgo.BranchID = sdkgo.D
 var CreateCustomVerificationEmailTemplateDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCustomVerificationEmailTemplate"},
 	Branches: []sdkgo.BranchDefinition{
-		{ID: CreateCustomVerificationEmailTemplateBranchCreated, Description: "SES accepted or read-back confirmed the template."},
+		{ID: CreateCustomVerificationEmailTemplateBranchCreated, Description: "SES accepted the template creation."},
 		{ID: CreateCustomVerificationEmailTemplateBranchProviderRejected, Description: "SES conclusively rejected creation or the name has different content.", Optional: true},
 		{ID: CreateCustomVerificationEmailTemplateBranchUncertain, Description: "Creation may have happened but could not be confirmed.", Optional: true},
 		{ID: CreateCustomVerificationEmailTemplateBranchDefect, Description: "The template content or connection is invalid.", Optional: true},

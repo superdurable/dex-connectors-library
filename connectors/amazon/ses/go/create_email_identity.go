@@ -61,21 +61,20 @@ func (operation CreateEmailIdentityOperation) Invoke(call sdkgo.Call, input Crea
 	if err != nil {
 		return createIdentityBranch(CreateEmailIdentityBranchDefect, sdkgo.FailureLocalDefect, "SES identity creation fence could not be initialized")
 	}
-	switch fence.Decide().Kind {
+	decision := fence.Decide()
+	switch decision.Kind {
 	case singledispatch.FailClosed:
 		return sdkgo.NewMutationRetry[CreatedEmailIdentity](createIdentityFailure(sdkgo.FailureAvailability, "SES identity creation checkpoint is unavailable"), 0)
-	case singledispatch.ReadBackRequired, singledispatch.ReadBackThenResendAllowed:
-		if value, isConfirmed := operation.readBack(call, input.EmailIdentity); isConfirmed {
-			return sdkgo.NewMutationBranch(CreateEmailIdentityBranchCreated, value, nil, createIdentityReceipt(call, input.EmailIdentity))
-		}
-		if fence.Decide().Kind == singledispatch.ReadBackRequired {
-			return sdkgo.NewMutationUncertain(CreatedEmailIdentity{}, createIdentityFailure(sdkgo.FailureTransport, "SES identity creation could not be confirmed after the send cap"), sdkgo.Receipt{})
-		}
+	case singledispatch.ReadBackRequired:
+		return sdkgo.NewMutationUncertain(CreatedEmailIdentity{}, createIdentityFailure(sdkgo.FailureTransport, "SES identity creation could not be confirmed after the send cap"), sdkgo.Receipt{})
 	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil && !errors.Is(checkpointErr, singledispatch.ErrDispatchNotAllowed) {
-			return sdkgo.NewMutationUncertain(CreatedEmailIdentity{}, createIdentityFailure(sdkgo.FailureTransport, "SES unsent checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CreatedEmailIdentity](createIdentityFailure(sdkgo.FailureAvailability, "SES unsent checkpoint could not be recorded"), 0)
+		}
+		if decision.MaximumPriorSends > 0 {
+			return sdkgo.NewMutationRetry[CreatedEmailIdentity](createIdentityFailure(sdkgo.FailureAuthentication, "SES credentials are unavailable after an earlier send"), 0)
 		}
 		return createIdentityBranch(CreateEmailIdentityBranchDefect, sdkgo.FailureAuthentication, "SES credentials are unavailable or invalid")
 	}
@@ -87,12 +86,12 @@ func (operation CreateEmailIdentityOperation) Invoke(call sdkgo.Call, input Crea
 	}
 	send := &sesIdentityCreate{client: operation.client, call: call, body: body}
 	if fence.Dispatch(send.dispatch) != nil {
-		return sdkgo.NewMutationUncertain(CreatedEmailIdentity{}, createIdentityFailure(sdkgo.FailureTransport, "SES identity creation dispatch could not be confirmed"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[CreatedEmailIdentity](createIdentityFailure(sdkgo.FailureAvailability, "SES identity creation dispatch checkpoint is unavailable"), 0)
 	}
 	response := send.response
 	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
 		if fence.RecordCanResend() != nil {
-			return sdkgo.NewMutationUncertain(CreatedEmailIdentity{}, createIdentityFailure(sdkgo.FailureTransport, "SES resend checkpoint could not be recorded"), sdkgo.Receipt{})
+			return sdkgo.NewMutationRetry[CreatedEmailIdentity](createIdentityFailure(sdkgo.FailureAvailability, "SES resend checkpoint could not be recorded"), 0)
 		}
 		kind := sdkgo.FailureRateLimit
 		if response.status == http.StatusServiceUnavailable {
@@ -101,24 +100,22 @@ func (operation CreateEmailIdentityOperation) Invoke(call sdkgo.Call, input Crea
 		return sdkgo.NewMutationRetry[CreatedEmailIdentity](createIdentityFailure(kind, "SES asked the connector to retry identity creation"), response.retryAfter)
 	}
 	if response.err != nil || response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return sdkgo.NewMutationRetry[CreatedEmailIdentity](createIdentityFailure(sdkgo.FailureTransport, "SES identity creation outcome is unknown"), 0)
+		return limitedSESUnknown(call, decision, CreatedEmailIdentity{}, createIdentityFailure(sdkgo.FailureTransport, "SES identity creation outcome is unknown"))
 	}
 	if response.status != http.StatusOK {
-		return createIdentityBranch(CreateEmailIdentityBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected identity creation")
+		if decision.MaximumPriorSends == 0 && isDefiniteSESRefusal(response.status, response.body) {
+			if fence.RecordCanResend() != nil {
+				return sdkgo.NewMutationRetry[CreatedEmailIdentity](createIdentityFailure(sdkgo.FailureAvailability, "SES refusal checkpoint could not be recorded"), 0)
+			}
+			return createIdentityBranch(CreateEmailIdentityBranchProviderRejected, sdkgo.FailureProviderRejection, "SES rejected identity creation")
+		}
+		return limitedSESUnknown(call, decision, CreatedEmailIdentity{}, createIdentityFailure(sdkgo.FailureTransport, "SES identity create response is inconclusive"))
 	}
 	value, isValid := decodeCreatedIdentity(response.body, input.EmailIdentity)
 	if !isValid {
-		return sdkgo.NewMutationRetry[CreatedEmailIdentity](createIdentityFailure(sdkgo.FailureProtocol, "SES identity creation response was invalid"), 0)
+		return limitedSESUnknown(call, decision, CreatedEmailIdentity{}, createIdentityFailure(sdkgo.FailureProtocol, "SES identity creation response was invalid"))
 	}
 	return sdkgo.NewMutationBranch(CreateEmailIdentityBranchCreated, value, nil, createIdentityReceipt(call, input.EmailIdentity))
-}
-
-func (operation CreateEmailIdentityOperation) readBack(call sdkgo.Call, identity string) (CreatedEmailIdentity, bool) {
-	response := operation.client.getEmailIdentity(call, identity)
-	if response.status != http.StatusOK || response.err != nil {
-		return CreatedEmailIdentity{}, false
-	}
-	return decodeCreatedIdentity(response.body, identity)
 }
 
 type sesIdentityCreate struct {

@@ -114,7 +114,7 @@ func (operation SetSubscriptionAttributeOperation) Invoke(call sdkgo.Call, input
 		return subscriptionMutationBranch(operationID, SetSubscriptionAttributeBranchDefect, sdkgo.FailureValidation, "SNS filter scope is invalid")
 	}
 	response := operation.client.request(call, url.Values{"Action": {"SetSubscriptionAttributes"}, "Version": {"2010-03-31"}, "SubscriptionArn": {input.SubscriptionARN}, "AttributeName": {input.AttributeName}, "AttributeValue": {input.AttributeValue}})
-	if attempt, failed := subscriptionMutationFailure(operationID, response, SetSubscriptionAttributeBranchProviderRejected, SetSubscriptionAttributeBranchDefect); failed {
+	if attempt, failed := subscriptionMutationFailure(call, operationID, response, SetSubscriptionAttributeBranchProviderRejected, SetSubscriptionAttributeBranchDefect); failed {
 		return attempt
 	}
 	if !validSubscriptionWriteXML(response.body, "SetSubscriptionAttributesResponse") {
@@ -151,7 +151,7 @@ func (operation UnsubscribeEndpointOperation) Invoke(call sdkgo.Call, input Subs
 	if response.status == http.StatusNotFound && response.err == nil {
 		return sdkgo.NewMutationBranch(UnsubscribeEndpointBranchUnsubscribed, SubscriptionIdentity{SubscriptionARN: input.SubscriptionARN}, nil, topicReceipt(call, input.SubscriptionARN))
 	}
-	if attempt, failed := subscriptionMutationFailure(operationID, response, UnsubscribeEndpointBranchProviderRejected, UnsubscribeEndpointBranchDefect); failed {
+	if attempt, failed := subscriptionMutationFailure(call, operationID, response, UnsubscribeEndpointBranchProviderRejected, UnsubscribeEndpointBranchDefect); failed {
 		return attempt
 	}
 	if !validSubscriptionWriteXML(response.body, "UnsubscribeResponse") {
@@ -165,7 +165,7 @@ func validSubscriptionWriteXML(body []byte, responseName string) bool {
 	return xml.Unmarshal(body, &wire) == nil && wire.XMLName.Local == responseName && isSNSNamespace(wire.XMLName.Space)
 }
 
-func subscriptionMutationFailure(operationID string, response providerResponse, rejected, defect sdkgo.BranchID) (sdkgo.MutationAttempt[SubscriptionIdentity], bool) {
+func subscriptionMutationFailure(call sdkgo.Call, operationID string, response providerResponse, rejected, defect sdkgo.BranchID) (sdkgo.MutationAttempt[SubscriptionIdentity], bool) {
 	if errors.Is(response.err, errCredential) {
 		return subscriptionMutationBranch(operationID, defect, sdkgo.FailureAuthentication, "SNS credentials are unavailable"), true
 	}
@@ -180,7 +180,10 @@ func subscriptionMutationFailure(operationID string, response providerResponse, 
 		return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, kind, "SNS subscription request should be retried"), response.retryAfter), true
 	}
 	if response.status != http.StatusOK {
-		return subscriptionMutationBranch(operationID, rejected, sdkgo.FailureProviderRejection, "SNS rejected subscription request"), true
+		if (call.Context == nil || call.Context.Attempt() == 1) && isDefiniteSNSRefusal(response.status, response.body) {
+			return subscriptionMutationBranch(operationID, rejected, sdkgo.FailureProviderRejection, "SNS rejected subscription request"), true
+		}
+		return sdkgo.NewMutationRetry[SubscriptionIdentity](topicOperationFailure(operationID, sdkgo.FailureTransport, "SNS subscription write outcome is unknown"), 0), true
 	}
 	return sdkgo.MutationAttempt[SubscriptionIdentity]{}, false
 }

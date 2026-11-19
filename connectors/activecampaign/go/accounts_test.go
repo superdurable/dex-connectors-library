@@ -46,7 +46,7 @@ func TestAccountQueriesExcludeProviderRelationships(t *testing.T) {
 	require.NotContains(t, string(encoded), "private-url")
 }
 
-func TestCreateAccountReadsBackAfterUnknownOutcome(t *testing.T) {
+func TestCreateAccountDoesNotConfirmByNameAfterUnknownOutcome(t *testing.T) {
 	var sends, reads atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -75,12 +75,10 @@ func TestCreateAccountReadsBackAfterUnknownOutcome(t *testing.T) {
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
 	ctx.attempt = 2
-	created, err := sdkgo.RunMutation(ctx, client.CreateAccount(), testConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, CreateAccountBranchCreated, created.Branch)
-	require.Equal(t, "1", created.Value.ID)
-	require.Equal(t, int32(1), sends.Load())
-	require.Equal(t, int32(1), reads.Load())
+	_, err = sdkgo.RunMutation(ctx, client.CreateAccount(), testConnection, input)
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, int32(2), sends.Load())
+	require.Equal(t, int32(0), reads.Load())
 }
 
 func TestUpdateAndDeleteAccountConverge(t *testing.T) {
@@ -101,6 +99,8 @@ func TestUpdateAndDeleteAccountConverge(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				w.WriteHeader(http.StatusNotFound)
+				_, writeErr := w.Write([]byte(`{"errors":[{"title":"Not found"}]}`))
+				require.NoError(t, writeErr)
 			}
 		default:
 			t.Errorf("unexpected method %s", r.Method)

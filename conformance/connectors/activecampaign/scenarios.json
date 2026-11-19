@@ -703,7 +703,7 @@
       "callId": "0eede10c-3459-5f64-81dc-f00bc3dfa07f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -777,16 +777,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "email": "",
-          "firstName": "",
-          "id": "",
-          "lastName": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1008,7 +1002,7 @@
       "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1058,7 +1052,7 @@
       "callId": "02da0d66-8503-5b29-b030-b77f5f306256",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -1133,16 +1127,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "email": "",
-          "firstName": "",
-          "id": "",
-          "lastName": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2594,7 +2582,7 @@
       "callId": "aca9b4bf-edfe-5605-9fb8-366f106c3fe4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2673,16 +2661,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "description": "",
-          "id": "",
-          "name": "",
-          "tagType": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2911,7 +2893,7 @@
       "callId": "5dba7913-07d9-5add-bdf7-8a627d6a87b9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -2964,7 +2946,7 @@
       "callId": "5dba7913-07d9-5add-bdf7-8a627d6a87b9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -3044,16 +3026,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "description": "",
-          "id": "",
-          "name": "",
-          "tagType": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -3274,7 +3250,7 @@
       "callId": "ad12ce0b-50a0-57d2-9659-cd66cba101e9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3313,7 +3289,7 @@
       "callId": "ad12ce0b-50a0-57d2-9659-cd66cba101e9",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -3369,14 +3345,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "deleted": false,
-          "tagId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -4192,7 +4164,7 @@
       "callId": "c917c25a-2897-5033-ae71-dfdc373c2a61",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"Forbidden\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -4228,8 +4200,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "c917c25a-2897-5033-ae71-dfdc373c2a61",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "contactId": "",
@@ -4293,11 +4264,11 @@
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "c917c25a-2897-5033-ae71-dfdc373c2a61",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -4324,7 +4295,12 @@
         "valueMinor": 45600
       },
       "name": "createDeal-uncertain",
-      "operation": "createDeal"
+      "operation": "createDeal",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "c917c25a-2897-5033-ae71-dfdc373c2a61",
+        "state": "claimed"
+      }
     },
     {
       "callId": "c917c25a-2897-5033-ae71-dfdc373c2a61",
@@ -4599,7 +4575,7 @@
       "callId": "67393d03-7467-5b8d-987a-7fb4aeea682b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4660,7 +4636,7 @@
       "callId": "67393d03-7467-5b8d-987a-7fb4aeea682b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -4750,19 +4726,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "contactId": "",
-          "currency": "",
-          "id": "",
-          "stageId": "",
-          "status": 0,
-          "title": "",
-          "valueMinor": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5003,7 +4970,7 @@
       "callId": "cd56ed4d-bb98-578a-945e-c38e43179ea4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5042,7 +5009,7 @@
       "callId": "cd56ed4d-bb98-578a-945e-c38e43179ea4",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -5098,14 +5065,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "dealId": "",
-          "deleted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -5924,7 +5887,7 @@
       "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"Forbidden\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -5954,8 +5917,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "dealId": "",
@@ -6005,11 +5967,11 @@
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -6028,7 +5990,12 @@
         "text": "Follow up"
       },
       "name": "createDealNote-uncertain",
-      "operation": "createDealNote"
+      "operation": "createDealNote",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
+        "state": "claimed"
+      }
     },
     {
       "callId": "5e53250d-4ade-5557-a9d7-c8d038b6b969",
@@ -6254,7 +6221,7 @@
       "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6304,7 +6271,7 @@
       "callId": "4f5352b3-4c12-575d-8ae3-ed4f2604066a",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -6379,15 +6346,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "dealId": "",
-          "id": "",
-          "text": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -6891,7 +6853,7 @@
       "callId": "d94fea25-a103-5f6e-a51e-c735661d0ae2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -6941,7 +6903,7 @@
       "callId": "d94fea25-a103-5f6e-a51e-c735661d0ae2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -7017,15 +6979,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "associationId": "",
-          "contactId": "",
-          "tagId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7239,7 +7196,7 @@
       "callId": "ed83a4f6-b5bf-54c2-ad11-08bc99e690bb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7280,7 +7237,7 @@
       "callId": "ed83a4f6-b5bf-54c2-ad11-08bc99e690bb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -7338,15 +7295,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "contactId": "",
-          "removed": false,
-          "tagId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -7990,7 +7942,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"Forbidden\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -8022,8 +7974,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "contactId": "",
@@ -8047,33 +7998,6 @@
     {
       "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
       "exchanges": [
-        {
-          "body": "{\"contactLists\":[],\"meta\":{\"total\":\"0\"}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/contactLists",
-          "query": {
-            "contact": [
-              "68"
-            ],
-            "limit": [
-              "100"
-            ],
-            "offset": [
-              "0"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Token": [
-              "test-token"
-            ]
-          },
-          "status": 200
-        },
         {
           "body": "{}",
           "headers": {},
@@ -8103,11 +8027,11 @@
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -8116,7 +8040,7 @@
           "listId": "",
           "status": 0
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -8127,60 +8051,12 @@
         "listId": "11"
       },
       "name": "subscribeContactToList-uncertain",
-      "operation": "subscribeContactToList"
-    },
-    {
-      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
-      "exchanges": [
-        {
-          "body": "{\"contactLists\":{}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/contactLists",
-          "query": {
-            "contact": [
-              "68"
-            ],
-            "limit": [
-              "100"
-            ],
-            "offset": [
-              "0"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Token": [
-              "test-token"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "invalidResponse",
-        "failureKind": "PROTOCOL",
-        "output": {
-          "contactId": "",
-          "id": "",
-          "listId": "",
-          "status": 0
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
-      "input": {
-        "contactId": "68",
-        "listId": "11"
-      },
-      "name": "subscribeContactToList-invalidResponse",
-      "operation": "subscribeContactToList"
+      "operation": "subscribeContactToList",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+        "state": "claimed"
+      }
     },
     {
       "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
@@ -8631,7 +8507,7 @@
           "status": 200
         },
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"Forbidden\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -8663,8 +8539,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "contactId": "",
@@ -8688,33 +8563,6 @@
     {
       "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
       "exchanges": [
-        {
-          "body": "{\"contactLists\":[{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":1}],\"meta\":{\"total\":\"1\"}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/contactLists",
-          "query": {
-            "contact": [
-              "68"
-            ],
-            "limit": [
-              "100"
-            ],
-            "offset": [
-              "0"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Token": [
-              "test-token"
-            ]
-          },
-          "status": 200
-        },
         {
           "body": "{}",
           "headers": {},
@@ -8744,11 +8592,11 @@
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -8757,7 +8605,7 @@
           "listId": "",
           "status": 0
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -8768,60 +8616,12 @@
         "listId": "11"
       },
       "name": "unsubscribeContactFromList-uncertain",
-      "operation": "unsubscribeContactFromList"
-    },
-    {
-      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
-      "exchanges": [
-        {
-          "body": "{\"contactLists\":{}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/contactLists",
-          "query": {
-            "contact": [
-              "68"
-            ],
-            "limit": [
-              "100"
-            ],
-            "offset": [
-              "0"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Api-Token": [
-              "test-token"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "invalidResponse",
-        "failureKind": "PROTOCOL",
-        "output": {
-          "contactId": "",
-          "id": "",
-          "listId": "",
-          "status": 0
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
-      "input": {
-        "contactId": "68",
-        "listId": "11"
-      },
-      "name": "unsubscribeContactFromList-invalidResponse",
-      "operation": "unsubscribeContactFromList"
+      "operation": "unsubscribeContactFromList",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+        "state": "claimed"
+      }
     },
     {
       "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
@@ -9880,7 +9680,7 @@
       "callId": "4891d971-7729-52b5-9eba-9fe376dcdb70",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"Forbidden\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -9911,8 +9711,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "4891d971-7729-52b5-9eba-9fe376dcdb70",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "accountUrl": "",
@@ -9963,11 +9762,11 @@
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "4891d971-7729-52b5-9eba-9fe376dcdb70",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -9986,7 +9785,12 @@
         "name": "Example Account"
       },
       "name": "createAccount-uncertain",
-      "operation": "createAccount"
+      "operation": "createAccount",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "4891d971-7729-52b5-9eba-9fe376dcdb70",
+        "state": "claimed"
+      }
     },
     {
       "callId": "4891d971-7729-52b5-9eba-9fe376dcdb70",
@@ -10216,7 +10020,7 @@
       "callId": "fc97e2ae-f464-5ec0-8665-b2ded5a1f0a1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -10293,15 +10097,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accountUrl": "",
-          "id": "",
-          "name": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -10318,7 +10117,7 @@
       "callId": "fc97e2ae-f464-5ec0-8665-b2ded5a1f0a1",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -10568,7 +10367,7 @@
       "callId": "b326371e-ed39-5490-82a5-b65f9c5a15e6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -10624,14 +10423,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accountId": "",
-          "deleted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11448,7 +11243,7 @@
       "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"Forbidden\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -11480,8 +11275,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "accountId": "",
@@ -11535,11 +11329,11 @@
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -11560,7 +11354,12 @@
         "jobTitle": "Manager"
       },
       "name": "createAccountContact-uncertain",
-      "operation": "createAccountContact"
+      "operation": "createAccountContact",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+        "state": "claimed"
+      }
     },
     {
       "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
@@ -11799,7 +11598,7 @@
       "callId": "ebfecd83-89aa-570a-9740-15512735b193",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -11874,16 +11673,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "accountId": "",
-          "contactId": "",
-          "id": "",
-          "jobTitle": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -11899,7 +11692,7 @@
       "callId": "ebfecd83-89aa-570a-9740-15512735b193",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -12143,7 +11936,7 @@
       "callId": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -12199,14 +11992,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "associationId": "",
-          "deleted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -12995,7 +12784,7 @@
       "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"Forbidden\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -13028,8 +12817,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "externalId": "",
@@ -13086,11 +12874,11 @@
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -13113,7 +12901,12 @@
         "service": "fooCommerce"
       },
       "name": "createConnection-uncertain",
-      "operation": "createConnection"
+      "operation": "createConnection",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
+        "state": "claimed"
+      }
     },
     {
       "callId": "9d29a58e-dfdd-50fe-82e3-7c4bd9253bd2",
@@ -13365,7 +13158,7 @@
       "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -13450,17 +13243,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "externalId": "",
-          "id": "",
-          "listId": "",
-          "name": "",
-          "service": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -13479,7 +13265,7 @@
       "callId": "a19a9d62-854d-579f-a382-1e81bf117679",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -13749,7 +13535,7 @@
       "callId": "2fbbcadd-0eae-55fe-8391-73b7d5427bad",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -13805,14 +13591,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "connectionId": "",
-          "deleted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -14617,7 +14399,7 @@
       "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"Forbidden\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -14649,8 +14431,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
-          "sendCount": 1,
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "connectionId": "",
@@ -14704,11 +14485,11 @@
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "failureKind": "PROTOCOL",
         "heartbeat": {
-          "attempt": 1,
+          "attempt": 3,
           "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
-          "sendCount": 1,
+          "sendCount": 3,
           "state": "claimed"
         },
         "output": {
@@ -14729,7 +14510,12 @@
         "externalId": "store-customer-1"
       },
       "name": "createEcommerceCustomer-uncertain",
-      "operation": "createEcommerceCustomer"
+      "operation": "createEcommerceCustomer",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+        "state": "claimed"
+      }
     },
     {
       "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
@@ -14968,7 +14754,7 @@
       "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -15046,16 +14832,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "connectionId": "",
-          "email": "",
-          "externalId": "",
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -15072,7 +14852,7 @@
       "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
@@ -15324,7 +15104,7 @@
       "callId": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"title\":\"No acceptance\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "DELETE",
@@ -15380,14 +15160,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "customerId": "",
-          "deleted": false
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

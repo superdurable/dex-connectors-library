@@ -66,7 +66,7 @@ func (operation CreateTopicOperation) Invoke(call sdkgo.Call, input CreateTopicI
 		return topicMutationBranch(CreateTopicBranchDefect, "createTopic", sdkgo.FailureValidation, "SNS topic name is invalid")
 	}
 	response := operation.client.request(call, url.Values{"Action": {"CreateTopic"}, "Version": {"2010-03-31"}, "Name": {input.Name}})
-	if attempt, hasFailure := classifyTopicWriteResponse(response, "createTopic", CreateTopicBranchProviderRejected, CreateTopicBranchDefect); hasFailure {
+	if attempt, hasFailure := classifyTopicWriteResponse(call, response, "createTopic", CreateTopicBranchProviderRejected, CreateTopicBranchDefect); hasFailure {
 		return attempt
 	}
 	var wire struct {
@@ -105,7 +105,7 @@ func (operation DeleteTopicOperation) Invoke(call sdkgo.Call, input TopicARNInpu
 	if response.status == http.StatusNotFound && response.err == nil {
 		return sdkgo.NewMutationBranch(DeleteTopicBranchDeleted, TopicIdentity{TopicARN: input.TopicARN}, nil, topicReceipt(call, input.TopicARN))
 	}
-	if attempt, hasFailure := classifyTopicWriteResponse(response, "deleteTopic", DeleteTopicBranchProviderRejected, DeleteTopicBranchDefect); hasFailure {
+	if attempt, hasFailure := classifyTopicWriteResponse(call, response, "deleteTopic", DeleteTopicBranchProviderRejected, DeleteTopicBranchDefect); hasFailure {
 		return attempt
 	}
 	var wire struct {
@@ -151,7 +151,7 @@ func (operation SetTopicAttributeOperation) Invoke(call sdkgo.Call, input SetTop
 		}
 	}
 	response := operation.client.request(call, url.Values{"Action": {"SetTopicAttributes"}, "Version": {"2010-03-31"}, "TopicArn": {input.TopicARN}, "AttributeName": {input.AttributeName}, "AttributeValue": {input.AttributeValue}})
-	if attempt, hasFailure := classifyTopicWriteResponse(response, "setTopicAttribute", SetTopicAttributeBranchProviderRejected, SetTopicAttributeBranchDefect); hasFailure {
+	if attempt, hasFailure := classifyTopicWriteResponse(call, response, "setTopicAttribute", SetTopicAttributeBranchProviderRejected, SetTopicAttributeBranchDefect); hasFailure {
 		return attempt
 	}
 	var wire struct {
@@ -163,7 +163,7 @@ func (operation SetTopicAttributeOperation) Invoke(call sdkgo.Call, input SetTop
 	return sdkgo.NewMutationBranch(SetTopicAttributeBranchUpdated, TopicIdentity{TopicARN: input.TopicARN}, nil, topicReceipt(call, input.TopicARN))
 }
 
-func classifyTopicWriteResponse(response providerResponse, operation string, rejected sdkgo.BranchID, defect sdkgo.BranchID) (sdkgo.MutationAttempt[TopicIdentity], bool) {
+func classifyTopicWriteResponse(call sdkgo.Call, response providerResponse, operation string, rejected sdkgo.BranchID, defect sdkgo.BranchID) (sdkgo.MutationAttempt[TopicIdentity], bool) {
 	if errors.Is(response.err, errCredential) {
 		return topicMutationBranch(defect, operation, sdkgo.FailureAuthentication, "SNS credentials are unavailable or invalid"), true
 	}
@@ -178,7 +178,10 @@ func classifyTopicWriteResponse(response providerResponse, operation string, rej
 		return sdkgo.NewMutationRetry[TopicIdentity](topicOperationFailure(operation, kind, "SNS topic request should be retried"), response.retryAfter), true
 	}
 	if response.status != http.StatusOK {
-		return topicMutationBranch(rejected, operation, sdkgo.FailureProviderRejection, "SNS rejected the topic request"), true
+		if (call.Context == nil || call.Context.Attempt() == 1) && isDefiniteSNSRefusal(response.status, response.body) {
+			return topicMutationBranch(rejected, operation, sdkgo.FailureProviderRejection, "SNS rejected the topic request"), true
+		}
+		return sdkgo.NewMutationRetry[TopicIdentity](topicOperationFailure(operation, sdkgo.FailureTransport, "SNS topic write outcome is unknown"), 0), true
 	}
 	return sdkgo.MutationAttempt[TopicIdentity]{}, false
 }

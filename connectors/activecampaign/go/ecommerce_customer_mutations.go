@@ -90,7 +90,7 @@ func (operation UpdateEcommerceCustomerOperation) Invoke(call sdkgo.Call, input 
 	if err != nil {
 		return ecommerceCustomerMutationBranch("updateEcommerceCustomer", UpdateEcommerceCustomerBranchDefect, sdkgo.FailureLocalDefect, "customer update could not be encoded")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodPut, "/ecomCustomers/"+input.CustomerID, encoded)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodPut, "/ecomCustomers/"+input.CustomerID, encoded)
 	if errors.Is(err, errCredential) {
 		return ecommerceCustomerMutationBranch("updateEcommerceCustomer", UpdateEcommerceCustomerBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
@@ -127,7 +127,7 @@ func (operation DeleteEcommerceCustomerOperation) Invoke(call sdkgo.Call, input 
 	if !numericID.MatchString(input.CustomerID) {
 		return ecommerceCustomerDeletionBranch(DeleteEcommerceCustomerBranchDefect, sdkgo.FailureValidation, "customer ID must be numeric")
 	}
-	body, status, retryAfter, err := operation.client.request(call, http.MethodDelete, "/ecomCustomers/"+input.CustomerID, nil)
+	body, status, retryAfter, err := operation.client.mutate(call, http.MethodDelete, "/ecomCustomers/"+input.CustomerID, nil)
 	if errors.Is(err, errCredential) {
 		return ecommerceCustomerDeletionBranch(DeleteEcommerceCustomerBranchDefect, sdkgo.FailureAuthentication, "connection credentials unavailable")
 	}
@@ -157,9 +157,15 @@ func (operation DeleteEcommerceCustomerOperation) Invoke(call sdkgo.Call, input 
 
 func ecommerceCustomerMutationBranch(operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[EcommerceCustomerMetadata] {
 	failure := queryFailure(operation, kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[EcommerceCustomerMetadata](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, EcommerceCustomerMetadata{}, &failure, sdkgo.Receipt{})
 }
 func ecommerceCustomerDeletionBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[EcommerceCustomerDeletion] {
 	failure := queryFailure("deleteEcommerceCustomer", kind, message)
+	if branch == "invalidResponse" {
+		return sdkgo.NewMutationRetry[EcommerceCustomerDeletion](failure, 0)
+	}
 	return sdkgo.NewMutationBranch(branch, EcommerceCustomerDeletion{}, &failure, sdkgo.Receipt{})
 }

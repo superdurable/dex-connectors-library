@@ -97,6 +97,15 @@ func (client *Client) requestWithContext(ctx context.Context, call sdkgo.Call, m
 	return body, response.StatusCode, retryAfter, err
 }
 
+func (client *Client) mutate(call sdkgo.Call, method, path string, body []byte) ([]byte, int, time.Duration, error) {
+	responseBody, status, retryAfter, err := client.request(call, method, path, body)
+	if (status < 200 || status >= 300) && status != http.StatusTooManyRequests && status != http.StatusServiceUnavailable &&
+		(err != nil || (call.Context != nil && call.Context.Attempt() > 1) || !isDefiniteActiveCampaignRefusal(status, responseBody)) {
+		return responseBody, status, retryAfter, errRequest
+	}
+	return responseBody, status, retryAfter, err
+}
+
 type queryBranches struct{ found, notFound, rejected, invalid, defect sdkgo.BranchID }
 
 func invokeQuery[T any](call sdkgo.Call, client *Client, operation, path string, branches queryBranches, decode func([]byte) (T, error)) sdkgo.QueryAttempt[T] {

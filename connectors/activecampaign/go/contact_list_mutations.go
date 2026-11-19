@@ -22,7 +22,7 @@ type SubscribeContactToListOperation struct{ client *Client }
 // UnsubscribeContactFromListOperation deactivates one contact's list membership.
 type UnsubscribeContactFromListOperation struct{ client *Client }
 
-type contactListChangeBranches struct{ success, rejected, invalid, defect sdkgo.BranchID }
+type contactListChangeBranches struct{ success, rejected, defect sdkgo.BranchID }
 
 type contactListDispatch struct {
 	client       *Client
@@ -66,37 +66,19 @@ func (UnsubscribeContactFromListOperation) IdempotencyKey(callID sdkgo.CallID, _
 
 // Invoke activates a membership, reading first to avoid repeat subscription side effects.
 func (operation SubscribeContactToListOperation) Invoke(call sdkgo.Call, input SetContactListMembershipInput) sdkgo.MutationAttempt[ContactListMembership] {
-	branches := contactListChangeBranches{success: SubscribeContactToListBranchSubscribed, rejected: SubscribeContactToListBranchProviderRejected, invalid: SubscribeContactToListBranchInvalidResponse, defect: SubscribeContactToListBranchDefect}
+	branches := contactListChangeBranches{success: SubscribeContactToListBranchSubscribed, rejected: SubscribeContactToListBranchProviderRejected, defect: SubscribeContactToListBranchDefect}
 	return changeContactListStatus(call, operation.client, "subscribeContactToList", input, 1, SubscribeContactToListDefinition, branches)
 }
 
 // Invoke deactivates a membership, reading first to avoid repeat unsubscribe side effects.
 func (operation UnsubscribeContactFromListOperation) Invoke(call sdkgo.Call, input SetContactListMembershipInput) sdkgo.MutationAttempt[ContactListMembership] {
-	branches := contactListChangeBranches{success: UnsubscribeContactFromListBranchUnsubscribed, rejected: UnsubscribeContactFromListBranchProviderRejected, invalid: UnsubscribeContactFromListBranchInvalidResponse, defect: UnsubscribeContactFromListBranchDefect}
+	branches := contactListChangeBranches{success: UnsubscribeContactFromListBranchUnsubscribed, rejected: UnsubscribeContactFromListBranchProviderRejected, defect: UnsubscribeContactFromListBranchDefect}
 	return changeContactListStatus(call, operation.client, "unsubscribeContactFromList", input, 2, UnsubscribeContactFromListDefinition, branches)
 }
 
 func changeContactListStatus(call sdkgo.Call, client *Client, operation string, input SetContactListMembershipInput, targetStatus int, definition sdkgo.MutationDefinition, branches contactListChangeBranches) sdkgo.MutationAttempt[ContactListMembership] {
 	if !numericID.MatchString(input.ContactID) || !numericID.MatchString(input.ListID) {
 		return contactListChangeBranch(operation, branches.defect, sdkgo.FailureValidation, "contact or list ID must be numeric")
-	}
-	membership, state, kind, retryAfter := readCurrentContactListMembership(call, client, input)
-	switch state {
-	case "retry":
-		return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, kind, "membership read-back is temporarily unavailable"), retryAfter)
-	case "defect":
-		return contactListChangeBranch(operation, branches.defect, kind, "connection credentials are unavailable or invalid")
-	case "rejected":
-		return contactListChangeBranch(operation, branches.rejected, kind, "ActiveCampaign rejected the membership read")
-	case "invalid":
-		return contactListChangeBranch(operation, branches.invalid, kind, "ActiveCampaign returned invalid membership data")
-	}
-	if membership.Status == targetStatus && state == "found" {
-		return sdkgo.NewMutationBranch(branches.success, membership, nil, dealReceipt(call, membership.ID))
-	}
-	if state == "absent" && targetStatus == 2 {
-		value := ContactListMembership{ContactID: input.ContactID, ListID: input.ListID, Status: 2}
-		return sdkgo.NewMutationBranch(branches.success, value, nil, dealReceipt(call, ""))
 	}
 	encoded, err := json.Marshal(map[string]any{"contactList": map[string]any{"contact": input.ContactID, "list": input.ListID, "status": targetStatus}})
 	if err != nil {
@@ -109,6 +91,26 @@ func changeContactListStatus(call sdkgo.Call, client *Client, operation string, 
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
 		return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, sdkgo.FailureAvailability, "membership checkpoint is unavailable"), 0)
+	}
+	if decision.MaximumPriorSends == 0 {
+		membership, state, kind, retryAfter := readCurrentContactListMembership(call, client, input)
+		switch state {
+		case "retry":
+			return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, kind, "membership read-back is temporarily unavailable"), retryAfter)
+		case "defect":
+			return contactListChangeBranch(operation, branches.defect, kind, "connection credentials are unavailable or invalid")
+		case "rejected":
+			return contactListChangeBranch(operation, branches.rejected, kind, "ActiveCampaign rejected the membership read")
+		case "invalid":
+			return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, kind, "membership read-back is invalid"), 0)
+		}
+		if membership.Status == targetStatus && state == "found" {
+			return sdkgo.NewMutationBranch(branches.success, membership, nil, dealReceipt(call, membership.ID))
+		}
+		if state == "absent" && targetStatus == 2 {
+			value := ContactListMembership{ContactID: input.ContactID, ListID: input.ListID, Status: 2}
+			return sdkgo.NewMutationBranch(branches.success, value, nil, dealReceipt(call, ""))
+		}
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return contactListChangeUncertain(call, operation, "a prior membership change may have succeeded and reached the send cap")
@@ -124,7 +126,7 @@ func changeContactListStatus(call sdkgo.Call, client *Client, operation string, 
 		return contactListChangeBranch(operation, branches.defect, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}
 	if errors.Is(dispatch.err, errRequest) {
-		return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, sdkgo.FailureTransport, "membership change outcome is unknown"), 0)
+		return limitedActiveCampaignUnknown[ContactListMembership](call, decision, queryFailure(operation, sdkgo.FailureTransport, "membership change outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status == http.StatusTooManyRequests || dispatch.status == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
@@ -137,20 +139,23 @@ func changeContactListStatus(call sdkgo.Call, client *Client, operation string, 
 		return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, kind, "ActiveCampaign temporarily rejected the membership change"), dispatch.retryAfter)
 	}
 	if dispatch.status == http.StatusRequestTimeout || dispatch.status >= 500 {
-		return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, sdkgo.FailureAvailability, "membership change outcome is unknown"), dispatch.retryAfter)
+		return limitedActiveCampaignUnknown[ContactListMembership](call, decision, queryFailure(operation, sdkgo.FailureAvailability, "membership change outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.status != http.StatusOK && dispatch.status != http.StatusCreated {
-		if decision.MaximumPriorSends > 0 {
-			return contactListChangeUncertain(call, operation, "a prior membership change may have succeeded despite this rejection")
+		if decision.MaximumPriorSends == 0 && dispatch.err == nil && isDefiniteActiveCampaignRefusal(dispatch.status, dispatch.responseBody) {
+			if err := fence.RecordCanResend(); err != nil {
+				return sdkgo.NewMutationRetry[ContactListMembership](queryFailure(operation, sdkgo.FailureAvailability, "membership refusal checkpoint is unavailable"), 0)
+			}
+			return contactListChangeBranch(operation, branches.rejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
 		}
-		return contactListChangeBranch(operation, branches.rejected, sdkgo.FailureProviderRejection, "ActiveCampaign rejected HTTP "+strconv.Itoa(dispatch.status))
+		return limitedActiveCampaignUnknown[ContactListMembership](call, decision, queryFailure(operation, sdkgo.FailureAvailability, "membership change outcome is unknown"), dealReceipt(call, ""))
 	}
 	if dispatch.err != nil {
-		return contactListChangeUncertain(call, operation, "ActiveCampaign accepted the membership change but response was incomplete")
+		return limitedActiveCampaignUnknown[ContactListMembership](call, decision, queryFailure(operation, sdkgo.FailureProtocol, "membership response was incomplete"), dealReceipt(call, ""))
 	}
 	value, err := decodeContactListMembership(dispatch.responseBody)
 	if err != nil || value.ContactID != input.ContactID || value.ListID != input.ListID || value.Status != targetStatus {
-		return contactListChangeUncertain(call, operation, "ActiveCampaign accepted the membership change but returned invalid JSON")
+		return limitedActiveCampaignUnknown[ContactListMembership](call, decision, queryFailure(operation, sdkgo.FailureProtocol, "membership response was invalid"), dealReceipt(call, ""))
 	}
 	_ = fence.RecordProviderID(value.ID)
 	return sdkgo.NewMutationBranch(branches.success, value, nil, dealReceipt(call, value.ID))

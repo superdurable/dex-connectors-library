@@ -184,6 +184,8 @@ type classifiedFailure struct {
 	failure    sdkgo.Failure
 	retryAfter time.Duration
 	requestID  string
+	statusCode int
+	errorCode  string
 }
 
 // headObjectResult is one successful HEAD exchange; isInvalid marks metadata a Result cannot carry.
@@ -264,7 +266,9 @@ func (client *Client) GetObjectText() GetObjectTextOperation {
 }
 
 // GetObjectBytes returns the getObjectBytes Query bound to this client.
-func (client *Client) GetObjectBytes() GetObjectBytesOperation { return GetObjectBytesOperation{client: client} }
+func (client *Client) GetObjectBytes() GetObjectBytesOperation {
+	return GetObjectBytesOperation{client: client}
+}
 
 // PutObject returns the putObject Mutation bound to this client.
 func (client *Client) PutObject() PutObjectOperation { return PutObjectOperation{client: client} }
@@ -291,10 +295,14 @@ func (client *Client) DeleteBucket() DeleteBucketOperation {
 }
 
 // CreateFolder returns the createFolder Mutation bound to this client.
-func (client *Client) CreateFolder() CreateFolderOperation { return CreateFolderOperation{client: client} }
+func (client *Client) CreateFolder() CreateFolderOperation {
+	return CreateFolderOperation{client: client}
+}
 
 // DeleteFolder returns the deleteFolder Mutation bound to this client.
-func (client *Client) DeleteFolder() DeleteFolderOperation { return DeleteFolderOperation{client: client} }
+func (client *Client) DeleteFolder() DeleteFolderOperation {
+	return DeleteFolderOperation{client: client}
+}
 
 // ListFolders returns the listFolders Query bound to this client.
 func (client *Client) ListFolders() ListFoldersOperation { return ListFoldersOperation{client: client} }
@@ -465,7 +473,7 @@ func (client *Client) readErrorResponse(response *http.Response, credentials Cre
 
 // classifyErrorResponse maps a non-2xx response onto Retry or a branch category, by status and error code.
 func classifyErrorResponse(operationID string, subject string, response providerErrorResponse, isObjectRequest bool) classifiedFailure {
-	classified := classifiedFailure{requestID: response.requestID, retryAfter: response.retryAfter}
+	classified := classifiedFailure{requestID: response.requestID, retryAfter: response.retryAfter, statusCode: response.statusCode, errorCode: response.code}
 	status, code := response.statusCode, response.code
 	switch {
 	case status == http.StatusTooManyRequests || code == "SlowDown":
@@ -527,8 +535,11 @@ func queryAttemptForFailure[T any](classified classifiedFailure, receipt sdkgo.R
 }
 
 // mutationAttemptForFailure converts a classified failure into a Mutation Retry or branch.
-func mutationAttemptForFailure[T any](classified classifiedFailure, receipt sdkgo.Receipt, rejected, defect sdkgo.BranchID, value T) sdkgo.MutationAttempt[T] {
+func mutationAttemptForFailure[T any](call sdkgo.Call, classified classifiedFailure, receipt sdkgo.Receipt, rejected, defect sdkgo.BranchID, value T) sdkgo.MutationAttempt[T] {
 	failure := classified.failure
+	if classified.outcome != outcomeRetry && ((call.Context != nil && call.Context.Attempt() > 1) || !isDefiniteS3Refusal(providerErrorResponse{statusCode: classified.statusCode, code: classified.errorCode})) {
+		return sdkgo.NewMutationRetry[T](failure, classified.retryAfter)
+	}
 	switch classified.outcome {
 	case outcomeRetry:
 		return sdkgo.NewMutationRetry[T](failure, classified.retryAfter)

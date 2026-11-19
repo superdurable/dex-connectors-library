@@ -1149,7 +1149,7 @@ var CreateLeadDefinition = sdkgo.MutationDefinition{
 		{ID: CreateLeadBranchCreated, Description: "Marketo created the lead."},
 		{ID: CreateLeadBranchAlreadyExists, Description: "Marketo found an existing lead for this email.", Optional: true},
 		{ID: CreateLeadBranchProviderRejected, Description: "Marketo conclusively rejected the create request.", Optional: true},
-		{ID: CreateLeadBranchUncertain, Description: "A previous create may have succeeded but read-back cannot confirm it.", Optional: true},
+		{ID: CreateLeadBranchUncertain, Description: "A previous create may have succeeded but cannot be confirmed at the send cap.", Optional: true},
 		{ID: CreateLeadBranchDefect, Description: "Local email or name fields are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

@@ -161,6 +161,8 @@ type classifiedFailure struct {
 	failure    sdkgo.Failure
 	retryAfter time.Duration
 	requestID  string
+	statusCode int
+	errorCode  string
 }
 
 // sqsErrorDocument is the JSON error body SQS returns for every failed request.
@@ -333,7 +335,7 @@ func (client *Client) readErrorResponse(response *http.Response, credentials Cre
 
 // classifyErrorResponse maps a non-2xx response onto Retry or a branch category, by status and error code.
 func classifyErrorResponse(operationID string, subject string, response providerErrorResponse) classifiedFailure {
-	classified := classifiedFailure{requestID: response.requestID, retryAfter: response.retryAfter}
+	classified := classifiedFailure{requestID: response.requestID, retryAfter: response.retryAfter, statusCode: response.statusCode, errorCode: response.code}
 	status, code := response.statusCode, response.code
 	switch {
 	case status == http.StatusTooManyRequests || isThrottlingErrorCode(code):
@@ -387,8 +389,11 @@ func (client *Client) receipt(call sdkgo.Call, requestID string, providerObjectI
 }
 
 // mutationAttemptForFailure maps a classified failure to Retry or a branch; blank receiptHandleInvalid means rejected.
-func mutationAttemptForFailure[T any](classified classifiedFailure, receipt sdkgo.Receipt, receiptHandleInvalid, rejected, defect sdkgo.BranchID, value T) sdkgo.MutationAttempt[T] {
+func mutationAttemptForFailure[T any](call sdkgo.Call, classified classifiedFailure, receipt sdkgo.Receipt, receiptHandleInvalid, rejected, defect sdkgo.BranchID, value T) sdkgo.MutationAttempt[T] {
 	failure := classified.failure
+	if classified.outcome != outcomeRetry && ((call.Context != nil && call.Context.Attempt() > 1) || !isDefiniteSQSRefusal(providerErrorResponse{statusCode: classified.statusCode, code: classified.errorCode})) {
+		return sdkgo.NewMutationRetry[T](failure, classified.retryAfter)
+	}
 	switch {
 	case classified.outcome == outcomeRetry:
 		return sdkgo.NewMutationRetry[T](failure, classified.retryAfter)
