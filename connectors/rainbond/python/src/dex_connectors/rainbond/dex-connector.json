@@ -1,0 +1,65 @@
+{
+  "connectorId": "rainbond",
+  "releaseTag": "connectors/rainbond/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-rainbond",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_teams_step",
+      "kind": "query",
+      "operationId": "listTeams",
+      "inputType": "ListTeamsInput",
+      "description": "List one page of teams visible to the console token.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTeamsInput selects a one-based team page; zero page and size use 1 and 20.",
+        "properties": {
+          "page": {
+            "description": "Page is the one-based page number.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of teams to request, from 1 to 100.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
