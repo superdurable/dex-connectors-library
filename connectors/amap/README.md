@@ -34,3 +34,5 @@ The provider tests use an HTTP server and do not require a live Key. The
 example's Dex integration test requires `dexcli dev`. A live Amap call requires
 a user-configured Web Service Key in Dex Web Connections; it is not run by the
 provider tests.
+
+The [TypeScript package](typescript/README.md) implements `geocodeAddress` and includes a [runnable Dex Flow](typescript/examples/address-lookup/README.md). Its provider scenarios replay the Go-recorded contract; live provider authorization remains unverified without user-controlled credentials.
