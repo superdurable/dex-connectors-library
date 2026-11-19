@@ -1,0 +1,65 @@
+{
+  "connectorId": "west",
+  "releaseTag": "connectors/west/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-west",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListDomainsStep",
+      "kind": "query",
+      "operationId": "listDomains",
+      "inputType": "ListDomainsInput",
+      "description": "Read one page of domain names and expiration dates.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDomainsInput selects one reseller domain page. Zero page and limit use 1 and 20.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the number of domains to request, from 1 to 100; zero uses 20.",
+            "type": "integer"
+          },
+          "page": {
+            "description": "Page is the one-based page number; zero selects the first page.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "page"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
