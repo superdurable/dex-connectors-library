@@ -1,0 +1,65 @@
+{
+  "connectorId": "wangdian",
+  "releaseTag": "connectors/wangdian/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-wangdian",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_shops_step",
+      "kind": "query",
+      "operationId": "listShops",
+      "inputType": "ListShopsInput",
+      "description": "List one page of enabled Wangdian ERP shops.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListShopsInput selects a zero-based shop page. Zero page size uses 30.",
+        "properties": {
+          "page": {
+            "description": "Page is the zero-based page number.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of shops per page, from 1 to 100.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
