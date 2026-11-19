@@ -56,7 +56,7 @@ mkdir -p /tmp/discord-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/discord/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/discord/go \
-  --version v0.4.0 --tag connectors/discord/go/v0.4.0 \
+  --version v0.5.0 --tag connectors/discord/go/v0.5.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/discord-release/connector-release.json \
   --digest-output /tmp/discord-release/connector-release.json.sha256
